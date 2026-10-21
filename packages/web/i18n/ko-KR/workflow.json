@@ -55,8 +55,6 @@
   "tag_filter_op_gt": "보다 큼",
   "tag_filter_op_gte": "크거나 같음",
   "tag_filter_op_in": "포함됨",
-  "tag_filter_op_is": "일치",
-  "tag_filter_op_is_not": "불일치",
   "tag_filter_op_lt": "보다 작음",
   "tag_filter_op_lte": "작거나 같음",
   "tag_filter_op_ne": "같지 않음",

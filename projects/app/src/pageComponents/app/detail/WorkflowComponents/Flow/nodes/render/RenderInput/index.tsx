@@ -16,6 +16,8 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isDatasetTagFilterOpen } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -235,21 +237,26 @@ const RenderInput = ({
                 }
               : input;
 
+          const isCollectionFilter = input.key === NodeInputKeyEnum.collectionFilterMatch;
+          const isFilterOpen =
+            !isCollectionFilter ||
+            datasetSearchUsesLegacyFilter(filterProInputs) ||
+            isDatasetTagFilterOpen(renderInput.value);
+          const LableRightComponent = isCollectionFilter
+            ? RenderList[FlowNodeInputTypeEnum.datasetTagFilter]?.LableRightComponent
+            : RenderItem.LableRightComponent;
+
           return {
-            Component: (
+            Component: isFilterOpen ? (
               <RenderItem.Component
                 inputs={filterProInputs}
                 item={renderInput}
                 nodeId={nodeId}
                 settingLLMModelProps={settingLLMModelProps}
               />
-            ),
-            LableRightComponent: RenderItem.LableRightComponent ? (
-              <RenderItem.LableRightComponent
-                inputs={filterProInputs}
-                item={renderInput}
-                nodeId={nodeId}
-              />
+            ) : null,
+            LableRightComponent: LableRightComponent ? (
+              <LableRightComponent inputs={filterProInputs} item={renderInput} nodeId={nodeId} />
             ) : undefined
           };
         })();
@@ -298,7 +305,7 @@ const RenderInput = ({
               )
             ) : (
               <>
-                {!!RenderComponent && (
+                {!!RenderComponent?.Component && (
                   <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
                     {RenderComponent.Component}
                   </Box>

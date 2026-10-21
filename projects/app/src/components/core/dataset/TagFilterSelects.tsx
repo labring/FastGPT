@@ -7,12 +7,12 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Portal,
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import {
   formatTagOptionKey,
@@ -54,7 +54,6 @@ const TagFilterDropdownSelect = ({
   placeholder,
   width = '110px',
   highlightSelected = true,
-  isDisabled = false,
   searchable = false,
   popoverWidth = '140px',
   popoverMinWidth,
@@ -66,7 +65,6 @@ const TagFilterDropdownSelect = ({
   placeholder: string;
   width?: string;
   highlightSelected?: boolean;
-  isDisabled?: boolean;
   searchable?: boolean;
   popoverWidth?: string;
   popoverMinWidth?: string;
@@ -115,7 +113,7 @@ const TagFilterDropdownSelect = ({
             boxShadow={isOpen ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
             color={isOpen ? 'primary.700' : 'myGray.700'}
             bg={'white'}
-            isDisabled={isDisabled}
+            _hover={{ borderColor: 'primary.300', color: 'primary.600' }}
             _active={{ transform: 'none' }}
             rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           >
@@ -139,109 +137,97 @@ const TagFilterDropdownSelect = ({
             )}
           </Button>
         </PopoverTrigger>
-        <Portal>
-          <PopoverContent
-            className="nowheel"
-            w={popoverWidth}
-            minW={popoverMinWidth}
-            p={'6px'}
-            bg={'white'}
-            borderRadius={'sm'}
-            border={'1px solid #fff'}
-            boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
-            _focusVisible={{ outline: 'none' }}
-            zIndex={1500}
-          >
-            <Flex direction={'column'} gap={searchable ? '4px' : '2px'}>
-              {searchable && (
-                <Input
-                  h={'32px'}
-                  px={2}
-                  fontSize={'xs'}
-                  borderRadius={'sm'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  placeholder={t('common:Search')}
-                  _placeholder={{ color: 'myGray.500' }}
-                  _focus={{
-                    borderColor: 'primary.600',
-                    boxShadow: 'focus'
-                  }}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              )}
-              <Flex
-                direction={'column'}
-                gap={searchable ? undefined : '2px'}
-                maxH={searchable ? '160px' : undefined}
-                overflowY={searchable ? 'auto' : undefined}
-              >
-                {filteredItems.length === 0 ? (
-                  <Box px={'4px'} py={'6px'} fontSize={'xs'} color={'myGray.500'}>
-                    {t('common:no_select_data')}
-                  </Box>
-                ) : (
-                  filteredItems.map((item) => {
-                    const selected = item.value === selectedValue;
-                    return (
-                      <Flex
-                        key={item.value}
-                        alignItems={'center'}
-                        gap={item.icon ? 2 : undefined}
-                        px={'4px'}
-                        py={'6px'}
-                        minH={'28px'}
-                        borderRadius={'xs'}
-                        cursor={'pointer'}
-                        fontSize={'xs'}
-                        fontWeight={'medium'}
-                        bg={
-                          selected
-                            ? highlightSelected
-                              ? 'primary.50'
-                              : 'myGray.50'
-                            : 'transparent'
-                        }
-                        color={selected && highlightSelected ? 'primary.700' : 'myGray.600'}
-                        _hover={{ bg: selected && highlightSelected ? 'primary.50' : 'myGray.50' }}
-                        onClick={() => {
-                          onSelect(item.value);
-                          onClose();
-                        }}
-                      >
-                        {item.icon && (
-                          <MyIcon
-                            name={item.icon}
-                            w={'16px'}
-                            h={'16px'}
-                            flexShrink={0}
-                            transform={item.iconFlip ? 'scaleX(-1)' : undefined}
-                          />
-                        )}
-                        <MyTooltip
-                          label={item.label}
-                          showOnlyWhenOverflow
-                          shouldWrapChildren={false}
+        <PopoverContent
+          className="nowheel"
+          w={popoverWidth}
+          minW={popoverMinWidth}
+          p={'6px'}
+          bg={'white'}
+          borderRadius={'sm'}
+          border={'1px solid #fff'}
+          boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
+          _focusVisible={{ outline: 'none' }}
+          zIndex={1500}
+        >
+          <Flex direction={'column'} gap={searchable ? '4px' : '2px'}>
+            {searchable && (
+              <Input
+                h={'32px'}
+                px={2}
+                fontSize={'xs'}
+                borderRadius={'sm'}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                placeholder={t('common:Search')}
+                _placeholder={{ color: 'myGray.500' }}
+                _focus={{
+                  borderColor: 'primary.600',
+                  boxShadow: 'focus'
+                }}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+            <Flex
+              direction={'column'}
+              gap={searchable ? undefined : '2px'}
+              maxH={searchable ? '160px' : undefined}
+              overflowY={searchable ? 'auto' : undefined}
+            >
+              {filteredItems.length === 0 ? (
+                <EmptyTip py={0} text={t('common:no_select_data')} />
+              ) : (
+                filteredItems.map((item) => {
+                  const selected = item.value === selectedValue;
+                  return (
+                    <Flex
+                      key={item.value}
+                      alignItems={'center'}
+                      gap={item.icon ? 2 : undefined}
+                      px={'4px'}
+                      py={'6px'}
+                      minH={'28px'}
+                      borderRadius={'xs'}
+                      cursor={'pointer'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      bg={
+                        selected ? (highlightSelected ? 'primary.50' : 'myGray.50') : 'transparent'
+                      }
+                      color={selected && highlightSelected ? 'primary.700' : 'myGray.600'}
+                      _hover={{ bg: selected && highlightSelected ? 'primary.50' : 'myGray.50' }}
+                      onClick={() => {
+                        onSelect(item.value);
+                        onClose();
+                      }}
+                    >
+                      {item.icon && (
+                        <MyIcon
+                          name={item.icon}
+                          w={'16px'}
+                          h={'16px'}
+                          flexShrink={0}
+                          transform={item.iconFlip ? 'scaleX(-1)' : undefined}
+                        />
+                      )}
+                      <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                        <Box
+                          flex={1}
+                          minW={0}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
                         >
-                          <Box
-                            flex={1}
-                            minW={0}
-                            overflow={'hidden'}
-                            textOverflow={'ellipsis'}
-                            whiteSpace={'nowrap'}
-                          >
-                            {item.label}
-                          </Box>
-                        </MyTooltip>
-                      </Flex>
-                    );
-                  })
-                )}
-              </Flex>
+                          {item.label}
+                        </Box>
+                      </MyTooltip>
+                    </Flex>
+                  );
+                })
+              )}
             </Flex>
-          </PopoverContent>
-        </Portal>
+          </Flex>
+        </PopoverContent>
       </Popover>
     </Box>
   );
@@ -366,8 +352,6 @@ export const TagFilterOpSelect = ({
     const labels: Record<string, string> = {
       'workflow:tag_filter_op_empty': t('workflow:tag_filter_op_empty'),
       'workflow:tag_filter_op_not_empty': t('workflow:tag_filter_op_not_empty'),
-      'workflow:tag_filter_op_is': t('workflow:tag_filter_op_is'),
-      'workflow:tag_filter_op_is_not': t('workflow:tag_filter_op_is_not'),
       'workflow:tag_filter_op_contains': t('workflow:tag_filter_op_contains'),
       'workflow:tag_filter_op_not_contains': t('workflow:tag_filter_op_not_contains'),
       'workflow:tag_filter_op_starts_with': t('workflow:tag_filter_op_starts_with'),
@@ -402,7 +386,6 @@ export const TagFilterOpSelect = ({
       placeholder={t('workflow:tag_filter_select_condition')}
       width={'100px'}
       highlightSelected={false}
-      isDisabled={list.length === 0}
       popoverWidth={'115px'}
       popoverMinWidth={'100px'}
       onSelect={onChange}

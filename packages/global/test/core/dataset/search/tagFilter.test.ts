@@ -345,6 +345,7 @@ describe('hasEffectiveDatasetTagFilter', () => {
       open: false
     };
     expect(serializeDatasetTagFilterValue(closedFilter)).toBeUndefined();
+    expect(formatCollectionFilterMatchParam({ value: closedFilter })).toBeUndefined();
     expect(hasEffectiveDatasetTagFilter(closedFilter)).toBe(false);
     expect(isDatasetTagFilterOpen(closedFilter)).toBe(false);
 
@@ -360,6 +361,10 @@ describe('hasEffectiveDatasetTagFilter', () => {
       open: true
     };
     expect(isDatasetTagFilterOpen(emptyOpenFilter)).toBe(true);
+
+    // Variable reference mode array values (empty or selected tuple) are open in UI
+    expect(isDatasetTagFilterOpen([])).toBe(true);
+    expect(isDatasetTagFilterOpen(['node-1', 'output'])).toBe(true);
 
     // Empty filter without open is closed by default
     expect(isDatasetTagFilterOpen(createEmptyTagFilterValue())).toBe(false);

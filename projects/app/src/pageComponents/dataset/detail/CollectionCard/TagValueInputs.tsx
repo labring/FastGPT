@@ -153,6 +153,7 @@ export const DateTimeTagInput = ({
     value={value === undefined || value === '' ? undefined : Number(value)}
     onChange={onChange}
     placeholder={placeholder}
+    usePortal={!joined}
     w={'100%'}
     {...(joined ? joinedFieldStyles : {})}
   />
@@ -487,6 +488,150 @@ export const ArrayTagSelect = ({
   const visibleValues = value.slice(0, visibleCount);
   const overflowCount = Math.max(value.length - visibleCount, 0);
 
+  const popoverContent = (
+    <PopoverContent
+      className="nowheel"
+      w={joined ? '240px' : '370px'}
+      minW={joined ? 'full' : undefined}
+      maxW={'360px'}
+      p={1.5}
+      bg={'white'}
+      borderRadius={'sm'}
+      boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+      _focusVisible={{ outline: 'none' }}
+      zIndex={1500}
+    >
+      <Flex direction={'column'} w={'full'} gap={1}>
+        <Input
+          value={search}
+          placeholder={allowCreate ? t('dataset:tag.search_or_create_option') : t('common:Search')}
+          h={'32px'}
+          px={2}
+          fontSize={'xs'}
+          borderRadius={'sm'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          _focus={{
+            borderColor: 'primary.600',
+            boxShadow: 'focus'
+          }}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (allowCreate) handleCreateOption();
+            }
+          }}
+        />
+
+        {canCreate && (
+          <Flex
+            alignItems={'center'}
+            gap={2}
+            h={'28px'}
+            px={1}
+            borderRadius={'xs'}
+            bg={ARRAY_OPTION_HOVER_BG}
+            cursor={'pointer'}
+            _hover={{ bg: 'myGray.100' }}
+            onClick={handleCreateOption}
+          >
+            <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
+              {t('dataset:tag.create_option')}
+            </Box>
+            <MyTooltip label={search.trim()} showOnlyWhenOverflow shouldWrapChildren={false}>
+              <Box
+                flex={1}
+                minW={0}
+                fontSize={'xs'}
+                fontWeight={'medium'}
+                color={'myGray.600'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+              >
+                {search.trim()}
+              </Box>
+            </MyTooltip>
+          </Flex>
+        )}
+
+        {!search.trim() && allOptions.length > 0 && (
+          <>
+            <Flex
+              alignItems={'center'}
+              h={'28px'}
+              px={1}
+              borderRadius={'xs'}
+              cursor={'pointer'}
+              _hover={{ bg: ARRAY_OPTION_HOVER_BG }}
+              onClick={handleToggleAll}
+            >
+              <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'}>
+                {t('common:All')}
+              </Box>
+            </Flex>
+            <Box borderBottom={'1px solid'} borderColor={'myGray.150'} />
+          </>
+        )}
+
+        <Flex maxH={'160px'} overflowY={'auto'} direction={'column'} gap={1}>
+          {filteredOptions.length === 0 && !canCreate ? (
+            <Box px={1} py={2} fontSize={'xs'} color={'myGray.500'} textAlign={'center'}>
+              {t('common:no_select_data')}
+            </Box>
+          ) : (
+            filteredOptions.map((opt) => {
+              const isChecked = value.includes(opt);
+              return (
+                <Flex
+                  key={opt}
+                  alignItems={'center'}
+                  gap={2}
+                  h={'28px'}
+                  px={1}
+                  borderRadius={'xs'}
+                  cursor={'pointer'}
+                  bg={isChecked ? ARRAY_OPTION_HOVER_BG : 'transparent'}
+                  _hover={{ bg: ARRAY_OPTION_HOVER_BG }}
+                  onClick={() => handleToggleOption(opt)}
+                >
+                  <Checkbox
+                    isChecked={isChecked}
+                    pointerEvents={'none'}
+                    size={'sm'}
+                    borderRadius={'xs'}
+                    icon={<MyIcon name={'common/check'} w={'10px'} />}
+                    sx={{
+                      // 自定义勾图标不会走 Chakra 未选中时的隐藏，悬浮会露出白勾
+                      '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 }
+                    }}
+                  />
+                  <MyTooltip label={opt} showOnlyWhenOverflow shouldWrapChildren={false}>
+                    <Box
+                      flex={1}
+                      minW={0}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      color={'myGray.600'}
+                      overflow={'hidden'}
+                      textOverflow={'ellipsis'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {opt}
+                    </Box>
+                  </MyTooltip>
+                </Flex>
+              );
+            })
+          )}
+        </Flex>
+      </Flex>
+    </PopoverContent>
+  );
+
   return (
     <Popover
       isOpen={isOpen}
@@ -503,6 +648,7 @@ export const ArrayTagSelect = ({
     >
       <PopoverTrigger>
         <Flex
+          className={joined ? 'nowheel' : undefined}
           {...tagInputBaseStyles}
           alignItems={'center'}
           justifyContent={'space-between'}
@@ -569,150 +715,7 @@ export const ArrayTagSelect = ({
           />
         </Flex>
       </PopoverTrigger>
-      <Portal>
-        <PopoverContent
-          w={joined ? '240px' : '370px'}
-          minW={joined ? 'full' : undefined}
-          maxW={'360px'}
-          p={1.5}
-          bg={'white'}
-          borderRadius={'sm'}
-          boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusVisible={{ outline: 'none' }}
-          zIndex={1500}
-        >
-          <Flex direction={'column'} w={'full'} gap={1}>
-            <Input
-              value={search}
-              placeholder={
-                allowCreate ? t('dataset:tag.search_or_create_option') : t('common:Search')
-              }
-              h={'32px'}
-              px={2}
-              fontSize={'xs'}
-              borderRadius={'sm'}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              _focus={{
-                borderColor: 'primary.600',
-                boxShadow: 'focus'
-              }}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (allowCreate) handleCreateOption();
-                }
-              }}
-            />
-
-            {canCreate && (
-              <Flex
-                alignItems={'center'}
-                gap={2}
-                h={'28px'}
-                px={1}
-                borderRadius={'xs'}
-                bg={ARRAY_OPTION_HOVER_BG}
-                cursor={'pointer'}
-                _hover={{ bg: 'myGray.100' }}
-                onClick={handleCreateOption}
-              >
-                <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
-                  {t('dataset:tag.create_option')}
-                </Box>
-                <MyTooltip label={search.trim()} showOnlyWhenOverflow shouldWrapChildren={false}>
-                  <Box
-                    flex={1}
-                    minW={0}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                    color={'myGray.600'}
-                    overflow={'hidden'}
-                    textOverflow={'ellipsis'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {search.trim()}
-                  </Box>
-                </MyTooltip>
-              </Flex>
-            )}
-
-            {!search.trim() && allOptions.length > 0 && (
-              <>
-                <Flex
-                  alignItems={'center'}
-                  h={'28px'}
-                  px={1}
-                  borderRadius={'xs'}
-                  cursor={'pointer'}
-                  _hover={{ bg: ARRAY_OPTION_HOVER_BG }}
-                  onClick={handleToggleAll}
-                >
-                  <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'}>
-                    {t('common:All')}
-                  </Box>
-                </Flex>
-                <Box borderBottom={'1px solid'} borderColor={'myGray.150'} />
-              </>
-            )}
-
-            <Flex maxH={'160px'} overflowY={'auto'} direction={'column'} gap={1}>
-              {filteredOptions.length === 0 && !canCreate ? (
-                <Box px={1} py={2} fontSize={'xs'} color={'myGray.500'} textAlign={'center'}>
-                  {t('common:no_select_data')}
-                </Box>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isChecked = value.includes(opt);
-                  return (
-                    <Flex
-                      key={opt}
-                      alignItems={'center'}
-                      gap={2}
-                      h={'28px'}
-                      px={1}
-                      borderRadius={'xs'}
-                      cursor={'pointer'}
-                      bg={isChecked ? ARRAY_OPTION_HOVER_BG : 'transparent'}
-                      _hover={{ bg: ARRAY_OPTION_HOVER_BG }}
-                      onClick={() => handleToggleOption(opt)}
-                    >
-                      <Checkbox
-                        isChecked={isChecked}
-                        pointerEvents={'none'}
-                        size={'sm'}
-                        borderRadius={'xs'}
-                        icon={<MyIcon name={'common/check'} w={'10px'} />}
-                        sx={{
-                          // 自定义勾图标不会走 Chakra 未选中时的隐藏，悬浮会露出白勾
-                          '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 }
-                        }}
-                      />
-                      <MyTooltip label={opt} showOnlyWhenOverflow shouldWrapChildren={false}>
-                        <Box
-                          flex={1}
-                          minW={0}
-                          fontSize={'xs'}
-                          fontWeight={'medium'}
-                          color={'myGray.600'}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                          whiteSpace={'nowrap'}
-                        >
-                          {opt}
-                        </Box>
-                      </MyTooltip>
-                    </Flex>
-                  );
-                })
-              )}
-            </Flex>
-          </Flex>
-        </PopoverContent>
-      </Portal>
+      {joined ? popoverContent : <Portal>{popoverContent}</Portal>}
     </Popover>
   );
 };

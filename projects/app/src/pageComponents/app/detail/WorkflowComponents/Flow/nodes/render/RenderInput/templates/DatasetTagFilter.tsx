@@ -11,6 +11,7 @@ import {
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useReference } from './Reference';
 import DatasetTagFilterRows, {
@@ -104,9 +105,6 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
     );
   }
 
-  const isOpen = isDatasetTagFilterOpen(item.value);
-  if (!isOpen) return null;
-
   return (
     <DatasetTagFilterRows
       value={item.value}
@@ -181,19 +179,24 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
 
   const handleToggle = () => {
     const nextOpen = !isOpen;
-    const baseValue = isDatasetTagFilterValue(item.value)
-      ? item.value
-      : createEmptyTagFilterValue();
+    const renderType = getSelectedInputRenderType(item);
+    const nextValue =
+      renderType === FlowNodeInputTypeEnum.reference
+        ? nextOpen
+          ? []
+          : undefined
+        : {
+            ...(isDatasetTagFilterValue(item.value) ? item.value : createEmptyTagFilterValue()),
+            open: nextOpen
+          };
+
     onChangeNode({
       nodeId,
       type: 'updateInput',
       key: item.key,
       value: {
         ...item,
-        value: {
-          ...baseValue,
-          open: nextOpen
-        }
+        value: nextValue
       }
     });
   };
@@ -213,7 +216,7 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
         color={'myGray.600'}
         onClick={handleToggle}
       >
-        {isOpen ? t('common:Open') : t('common:Close')}
+        {isOpen ? t('app:sandbox_enable') : t('app:sandbox_disable')}
       </Button>
     </MyTooltip>
   );

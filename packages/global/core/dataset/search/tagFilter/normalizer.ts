@@ -318,8 +318,9 @@ export const formatCollectionFilterMatchParam = ({
 
   // 1. 表单 AST 结构：解析 reference 模式下的引用变量并序列化为检索 JSON
   if (structured) {
+    if (structured.open === false) return undefined;
     const resolved: DatasetTagFilterValue = {
-      logic: structured.logic,
+      ...structured,
       conditions: structured.conditions.map((condition) =>
         resolveConditionValue(condition, resolveReference)
       )
@@ -449,11 +450,12 @@ export const hasEffectiveDatasetTagFilter = (value: unknown): boolean => {
 
 /**
  * 判断标签过滤在工作流节点中是否处于开启状态。
- * - 若显式指定 open，则以 open 为准；
- * - 存量未存 open 的结构，若包含有效过滤条件则视为开启；
- * - 其余情况（如初始空行且未显式开启）默认处于关闭状态。
+ * - 变量引用模式下，数组形式（含已开启待选的空数组）视为开启；
+ * - 手动输入模式下，显式指定 open 时以 open 为准，未指定时按是否包含有效过滤条件判定；
+ * - 其余情况（如初始 undefined 或空行且未显式开启）默认处于关闭状态。
  */
 export const isDatasetTagFilterOpen = (value: unknown): boolean => {
+  if (Array.isArray(value)) return true;
   if (!isDatasetTagFilterValue(value)) return false;
   if (value.open !== undefined) return value.open;
   return hasEffectiveDatasetTagFilter(value);

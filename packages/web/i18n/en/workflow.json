@@ -76,8 +76,6 @@
   "tag_filter_op_gt": "Greater than",
   "tag_filter_op_gte": "Greater than or equal to",
   "tag_filter_op_in": "Is in",
-  "tag_filter_op_is": "Is",
-  "tag_filter_op_is_not": "Is not",
   "tag_filter_op_lt": "Less than",
   "tag_filter_op_lte": "Less than or equal to",
   "tag_filter_op_ne": "Not equal to",

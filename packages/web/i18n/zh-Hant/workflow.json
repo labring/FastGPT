@@ -76,8 +76,6 @@
   "tag_filter_op_gt": "大於",
   "tag_filter_op_gte": "大於等於",
   "tag_filter_op_in": "屬於",
-  "tag_filter_op_is": "是",
-  "tag_filter_op_is_not": "不是",
   "tag_filter_op_lt": "小於",
   "tag_filter_op_lte": "小於等於",
   "tag_filter_op_ne": "不等於",

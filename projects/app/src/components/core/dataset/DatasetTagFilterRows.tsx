@@ -242,6 +242,8 @@ const TagFilterValueCell = ({
   const isReference =
     isCollectionId || condition.valueMode === DatasetTagFilterValueModeEnum.reference;
   const isAttrSelected = isTagFilterAttrSelected(condition);
+  const isOpDisabled = isTagFilterOpWithoutValue(condition.op);
+  const canSwitchMode = isAttrSelected && !isOpDisabled;
 
   const filteredReferenceList = useMemo(() => {
     const allowedTypes = getTagFilterAllowedValueTypes(condition);
@@ -263,13 +265,9 @@ const TagFilterValueCell = ({
         <Input
           {...tagInputBaseStyles}
           {...valueCellJoinedStyles}
-          fontSize={'sm'}
-          _placeholder={{
-            color: 'myGray.500',
-            fontSize: 'sm'
-          }}
-          isDisabled
           placeholder={t('workflow:tag_filter_input_value')}
+          value={typeof condition.value === 'string' ? condition.value : ''}
+          onChange={(e) => onChange({ value: e.target.value })}
         />
       );
     }
@@ -307,7 +305,7 @@ const TagFilterValueCell = ({
   })();
 
   return (
-    <Flex flex={1} minW={0} h={'36px'} alignItems={'stretch'}>
+    <Flex position={'relative'} flex={1} minW={0} h={'36px'} alignItems={'stretch'}>
       {isCollectionId ? (
         <Flex
           w={'41px'}
@@ -333,7 +331,7 @@ const TagFilterValueCell = ({
         </Flex>
       ) : (
         <MyTooltip
-          isDisabled={!isAttrSelected}
+          isDisabled={!canSwitchMode}
           label={
             isReference
               ? t('workflow:click_to_change_reference')
@@ -353,11 +351,11 @@ const TagFilterValueCell = ({
             borderLeftRadius={'sm'}
             bg={'white'}
             justifyContent={'center'}
-            cursor={isAttrSelected ? 'pointer' : 'not-allowed'}
+            cursor={canSwitchMode ? 'pointer' : 'not-allowed'}
             flexShrink={0}
-            _hover={isAttrSelected ? { bg: 'myGray.50' } : undefined}
+            _hover={canSwitchMode ? { bg: 'myGray.50' } : undefined}
             onClick={() => {
-              if (!isAttrSelected) return;
+              if (!canSwitchMode) return;
               if (isReference) {
                 onChange({
                   valueMode: DatasetTagFilterValueModeEnum.input,
@@ -375,13 +373,13 @@ const TagFilterValueCell = ({
               name={isReference ? 'core/workflow/inputType/reference' : 'core/app/variable/input'}
               w={'16px'}
               h={'16px'}
-              color={isAttrSelected ? 'primary.600' : 'myGray.400'}
+              color={canSwitchMode ? 'primary.600' : 'myGray.400'}
             />
             <MyIcon
               name={'common/lineChange'}
               w={'16px'}
               h={'16px'}
-              color={isAttrSelected ? 'myGray.500' : 'myGray.400'}
+              color={canSwitchMode ? 'myGray.500' : 'myGray.400'}
             />
           </HStack>
         </MyTooltip>
@@ -409,6 +407,20 @@ const TagFilterValueCell = ({
           literalInput
         )}
       </Box>
+
+      {isOpDisabled && (
+        <Box
+          position={'absolute'}
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg={'whiteAlpha.700'}
+          zIndex={1}
+          borderRadius={'sm'}
+          cursor={'not-allowed'}
+        />
+      )}
     </Flex>
   );
 };
@@ -435,7 +447,6 @@ const TagFilterConditionRow = ({
       item.tagType === condition.tagType
   );
   const ops = getTagFilterOpsByCondition(condition);
-  const hideValue = isTagFilterOpWithoutValue(condition.op);
 
   const handleFieldChange = (next: DatasetTagFilterCondition) => {
     onChange({
@@ -465,14 +476,12 @@ const TagFilterConditionRow = ({
           list={ops}
           onChange={(op) => onChange({ op, value: undefined })}
         />
-        {!hideValue && (
-          <TagFilterValueCell
-            condition={condition}
-            option={option}
-            referenceList={referenceList}
-            onChange={onChange}
-          />
-        )}
+        <TagFilterValueCell
+          condition={condition}
+          option={option}
+          referenceList={referenceList}
+          onChange={onChange}
+        />
       </Flex>
       <MyIconButton
         icon={'minus'}
