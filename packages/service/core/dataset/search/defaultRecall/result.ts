@@ -11,18 +11,16 @@ import { formatDatasetDataTextValue } from '../../data/controller';
 
 /**
  * 把召回命中的 data 与 collection 统一整理成搜索结果。
- * embedding/full-text 召回只负责生成各自的 score，展示字段和来源字段在这里保持一致。
+ * embedding/full-text 召回只负责生成各自的 score，索引、元数据和来源字段在这里保持一致。
  */
 export const buildSearchResultItem = ({
   data,
   collection,
-  score,
-  includeIndexes = false
+  score
 }: {
   data: DatasetDataSchemaType;
   collection: DatasetCollectionSchemaType;
   score: SearchDataResponseItemType['score'];
-  includeIndexes?: boolean;
 }): SearchDataResponseItemType => {
   const formattedValue = formatDatasetDataTextValue({
     q: data.q,
@@ -36,7 +34,7 @@ export const buildSearchResultItem = ({
     ...formattedValue,
     imageId: data.imageId,
     chunkIndex: data.chunkIndex,
-    ...(includeIndexes ? { indexes: data.indexes } : {}),
+    indexes: data.indexes,
     ...(data.metadata ? { metadata: data.metadata } : {}),
     datasetId: String(data.datasetId),
     collectionId: String(data.collectionId),
