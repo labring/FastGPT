@@ -353,27 +353,29 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
               isSortMode
                 ? ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
                 : !isTeam && isRoot
-                  ? ['repeat(2, minmax(0, 1fr))', 'repeat(4, auto)']
-                  : ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
+                  ? ['repeat(2, minmax(0, 1fr))', 'repeat(4, minmax(0, 1fr))']
+                  : ['repeat(2, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))']
             }
             gap={2}
           >
             {isSortMode ? (
               <>
                 <Button
-                  w={['100%', 'auto']}
+                  w={['100%', '81px']}
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
+                  leftIcon={<MyIcon name={'common/closeLight'} w={'16px'} h={'16px'} />}
                   onClick={cancelSortMode}
                 >
                   {t('config_model:model.cancel_sort')}
                 </Button>
                 <Button
-                  w={['100%', 'auto']}
+                  w={['100%', '123px']}
                   minW={0}
                   px={[2, 4]}
                   variant={'primary'}
+                  leftIcon={<MyIcon name={'common/check'} w={'16px'} h={'16px'} />}
                   isLoading={savingModelOrder}
                   onClick={handleSaveModelOrder}
                 >
@@ -382,10 +384,20 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
               </>
             ) : (
               <>
+                <Button
+                  w={'100%'}
+                  minW={0}
+                  px={[2, 4]}
+                  variant={'whiteBase'}
+                  isDisabled={channelMutationLoading || modelItems.length === 0}
+                  onClick={enterSortMode}
+                >
+                  {t('config_model:model.custom_sort')}
+                </Button>
                 {!isTeam && isRoot && (
                   <>
                     <Button
-                      w={['100%', 'auto']}
+                      w={'100%'}
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
@@ -394,7 +406,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                       {t('config_model:model.default_model')}
                     </Button>
                     <Button
-                      w={['100%', 'auto']}
+                      w={'100%'}
                       minW={0}
                       px={[2, 4]}
                       variant={'whiteBase'}
@@ -404,16 +416,6 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                     </Button>
                   </>
                 )}
-                <Button
-                  w={['100%', 'auto']}
-                  minW={0}
-                  px={[2, 4]}
-                  variant={'whiteBase'}
-                  isDisabled={channelMutationLoading || modelItems.length === 0}
-                  onClick={enterSortMode}
-                >
-                  {t('config_model:model.custom_sort')}
-                </Button>
                 <AddModel
                   installedModels={modelItems}
                   channels={channelList}
@@ -421,10 +423,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                   channelType={channelType}
                   onSuccess={refreshModels}
                   isDisabled={channelMutationLoading}
-                  w={['100%', 'auto']}
+                  w={'100%'}
                   minW={0}
                   px={[2, 4]}
-                  buttonBoxProps={{ w: ['100%', 'fit-content'] }}
+                  buttonBoxProps={{ w: '100%' }}
                 />
               </>
             )}
@@ -485,22 +487,29 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
                                 <Tr
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
                                   h={`${sortModelRowHeight}px`}
-                                  style={{
-                                    ...provided.draggableProps.style,
-                                    opacity: snapshot.isDragging ? 0.8 : 1
-                                  }}
+                                  cursor={sortModels.length > 1 ? 'grab' : 'not-allowed'}
+                                  bg={snapshot.isDragging ? 'primary.50' : undefined}
+                                  _hover={{ bg: 'primary.50' }}
+                                  clipPath={snapshot.isDragging ? 'inset(0 round 8px)' : undefined}
+                                  style={provided.draggableProps.style}
                                 >
-                                  <Td px={3}>
+                                  <Td px={3} py={3}>
                                     <HStack spacing={3} minW={0}>
                                       <Box
-                                        {...provided.dragHandleProps}
-                                        w={6}
-                                        h={6}
+                                        w={'16px'}
+                                        h={'24px'}
+                                        p={'2px'}
                                         display={'flex'}
                                         alignItems={'center'}
                                         justifyContent={'center'}
                                         flexShrink={0}
+                                        borderRadius={'xs'}
+                                        _hover={{
+                                          bg: '#E5E9F4',
+                                          '& svg': { color: 'myGray.500' }
+                                        }}
                                         cursor={sortModels.length > 1 ? 'grab' : 'not-allowed'}
                                       >
                                         <MyIcon name={'drag'} w={'16px'} color={'myGray.400'} />
