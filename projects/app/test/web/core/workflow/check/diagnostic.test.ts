@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -26,7 +27,7 @@ describe('formatWorkflowDiagnostic', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING',
+          code: WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing,
           severity: 'error',
           inputKey: NodeInputKeyEnum.updateList
         },
@@ -37,7 +38,7 @@ describe('formatWorkflowDiagnostic', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING',
+          code: WorkflowDiagnosticCodeEnum.variableUpdateValueMissing,
           severity: 'error',
           inputKey: NodeInputKeyEnum.updateList
         },
@@ -48,7 +49,7 @@ describe('formatWorkflowDiagnostic', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING',
+          code: WorkflowDiagnosticCodeEnum.templateParameterSchemaMissing,
           severity: 'warning',
           inputKey: 'payload'
         },
@@ -79,7 +80,7 @@ describe('formatWorkflowDiagnostic', () => {
         node: duplicateNode,
         t,
         diagnostic: {
-          code: 'WORKFLOW_MODEL_REQUIRED',
+          code: WorkflowDiagnosticCodeEnum.modelRequired,
           severity: 'error',
           inputKey: NodeInputKeyEnum.aiModelId,
           path: ['nodes', 1, 'inputs', 1, 'value']
@@ -92,7 +93,7 @@ describe('formatWorkflowDiagnostic', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'WORKFLOW_BRANCH_CONFIGURATION_INVALID',
+          code: WorkflowDiagnosticCodeEnum.branchConfigurationInvalid,
           severity: 'error',
           params: { reason: 'invalid_keys' }
         },
@@ -103,7 +104,7 @@ describe('formatWorkflowDiagnostic', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID',
+          code: WorkflowDiagnosticCodeEnum.formInputConfigurationInvalid,
           severity: 'error',
           params: { reason: 'invalid_field', fieldKeys: ['missingOutput'] }
         },
@@ -113,11 +114,11 @@ describe('formatWorkflowDiagnostic', () => {
     ).toBe('表单字段的键名或对应输出配置不完整：missingOutput');
   });
 
-  it('preserves the exact reason and parameters for new unmapped diagnostics', () => {
+  it('preserves the exact reason and parameters for registered but unmapped diagnostics', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
-          code: 'NEW_ERROR',
+          code: WorkflowDiagnosticCodeEnum.outputReferencesRemain,
           severity: 'error',
           params: { reason: 'original error detail' }
         },
@@ -126,16 +127,22 @@ describe('formatWorkflowDiagnostic', () => {
     ).toBe('original error detail');
     expect(
       formatWorkflowDiagnostic({
-        diagnostic: { code: 'NEW_ERROR', severity: 'warning', params: { expected: 2 } },
+        diagnostic: {
+          code: WorkflowDiagnosticCodeEnum.outputReferencesRemain,
+          severity: 'warning',
+          params: { expected: 2 }
+        },
         t
       })
     ).toMatchObject({
       level: 'warning',
       nodeId: '__workflow__',
-      message: 'NEW_ERROR: {"expected":2}'
+      message: `${WorkflowDiagnosticCodeEnum.outputReferencesRemain}: {"expected":2}`
     });
     expect(
-      formatWorkflowDiagnostic({ diagnostic: { code: 'NEW_ERROR', severity: 'error' } }).message
-    ).toBe('NEW_ERROR');
+      formatWorkflowDiagnostic({
+        diagnostic: { code: WorkflowDiagnosticCodeEnum.outputReferencesRemain, severity: 'error' }
+      }).message
+    ).toBe(WorkflowDiagnosticCodeEnum.outputReferencesRemain);
   });
 });

@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import type {
   WorkflowCheckNodeIssueMap,
@@ -79,10 +80,12 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
       (diagnostic.path?.[0] === 'chatConfig' ? chatConfigIssues : workflowIssues).push(issue);
       continue;
     }
-    const isModel = diagnostic.code.startsWith('WORKFLOW_MODEL_');
+    const isModel =
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelRequired ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelUnavailable;
     const isConnection =
-      diagnostic.code === 'WORKFLOW_NODE_ISOLATED' ||
-      diagnostic.code === 'WORKFLOW_NODE_NOT_REACHABLE';
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeIsolated ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeNotReachable;
     const order = isModel ? (diagnostic.params?.customSelector ? 0 : 2) : isConnection ? 4 : 3;
     for (const owner of owners) {
       if (nodeId && owner !== nodeId) continue;

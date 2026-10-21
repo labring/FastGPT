@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { applyWorkflowCommand } from '../../src/command/apply';
 import { builtinTemplateProvider } from '../template/provider';
@@ -89,7 +90,7 @@ describe('code node IO synchronization', () => {
     ]);
     expect(result.warnings).toContainEqual(
       expect.objectContaining({
-        code: 'WORKFLOW_OUTPUT_REFERENCES_REMAIN',
+        code: WorkflowDiagnosticCodeEnum.outputReferencesRemain,
         params: expect.objectContaining({ outputKey: 'result' })
       })
     );

@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { getWorkflowChecksum } from '../domain/checksum';
 import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
@@ -45,7 +46,7 @@ export const applyWorkflowChangeSet = async ({
   if (changeSet.baseChecksum !== baseChecksum) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_BASE_CHECKSUM_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.baseChecksumMismatch,
         severity: 'error',
         params: { expected: changeSet.baseChecksum, actual: baseChecksum }
       }

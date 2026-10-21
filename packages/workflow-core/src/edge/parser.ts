@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import type {
   ExecutionSourcePortRef,
@@ -12,7 +13,7 @@ export const parseExecutionSourcePortRef = (value: string): ExecutionSourcePortR
 
   if (separatorIndex <= 0 || !port) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_SOURCE_PORT_INVALID', severity: 'error', params: { value } }
+      { code: WorkflowDiagnosticCodeEnum.sourcePortInvalid, severity: 'error', params: { value } }
     ]);
   }
 
@@ -29,7 +30,7 @@ export const parseExecutionSourcePortRef = (value: string): ExecutionSourcePortR
   }
 
   throw new WorkflowCommandError([
-    { code: 'WORKFLOW_SOURCE_PORT_UNSUPPORTED', severity: 'error', params: { value } }
+    { code: WorkflowDiagnosticCodeEnum.sourcePortUnsupported, severity: 'error', params: { value } }
   ]);
 };
 
@@ -41,7 +42,7 @@ export const parseExecutionTargetPortRef = (value: string): ExecutionTargetPortR
 
   if (separatorIndex <= 0 || !port) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_TARGET_PORT_INVALID', severity: 'error', params: { value } }
+      { code: WorkflowDiagnosticCodeEnum.targetPortInvalid, severity: 'error', params: { value } }
     ]);
   }
 
@@ -49,6 +50,6 @@ export const parseExecutionTargetPortRef = (value: string): ExecutionTargetPortR
   if (port === 'tools') return { kind: 'selectedTools', nodeId };
 
   throw new WorkflowCommandError([
-    { code: 'WORKFLOW_TARGET_PORT_UNSUPPORTED', severity: 'error', params: { value } }
+    { code: WorkflowDiagnosticCodeEnum.targetPortUnsupported, severity: 'error', params: { value } }
   ]);
 };

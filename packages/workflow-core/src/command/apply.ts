@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { assertExecutionEdge, getDefaultExecutionSourcePort } from '../edge/validation';
 import { getWorkflowChecksum } from '../domain/checksum';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
@@ -132,7 +133,7 @@ export const applyWorkflowCommand = async ({
     codeIOSync?.removedOutputs.forEach((output) => {
       if (output.references.length === 0) return;
       warnings.push({
-        code: 'WORKFLOW_OUTPUT_REFERENCES_REMAIN',
+        code: WorkflowDiagnosticCodeEnum.outputReferencesRemain,
         severity: 'warning',
         nodeId: command.nodeId,
         params: { outputKey: output.outputKey, references: output.references }
@@ -152,7 +153,7 @@ export const applyWorkflowCommand = async ({
     });
     if (removedBranchEdgeCount > 0) {
       warnings.push({
-        code: 'WORKFLOW_BRANCH_EDGES_REMOVED',
+        code: WorkflowDiagnosticCodeEnum.branchEdgesRemoved,
         severity: 'warning',
         nodeId: command.nodeId,
         params: { removedEdgeCount: removedBranchEdgeCount }
@@ -208,7 +209,11 @@ export const applyWorkflowCommand = async ({
       command.catchError === undefined
     ) {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_NODE_UPDATE_EMPTY', severity: 'error', nodeId: command.nodeId }
+        {
+          code: WorkflowDiagnosticCodeEnum.nodeUpdateEmpty,
+          severity: 'error',
+          nodeId: command.nodeId
+        }
       ]);
     }
     updateNode({
@@ -255,7 +260,7 @@ export const applyWorkflowCommand = async ({
   if (command.type === 'node.insert') {
     if (command.from.kind === 'selectedTools') {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_INSERT_TOOL_EDGE_UNSUPPORTED', severity: 'error' }
+        { code: WorkflowDiagnosticCodeEnum.insertToolEdgeUnsupported, severity: 'error' }
       ]);
     }
     const oldEdge: WorkflowExecutionEdge = { source: command.from, target: command.to };
@@ -354,7 +359,7 @@ export const applyWorkflowCommand = async ({
     });
     if (details.references.length > 0) {
       warnings.push({
-        code: 'WORKFLOW_OUTPUT_REFERENCES_REMAIN',
+        code: WorkflowDiagnosticCodeEnum.outputReferencesRemain,
         severity: 'warning',
         nodeId: command.nodeId,
         params: { outputKey: command.outputKey, references: details.references }
@@ -408,7 +413,9 @@ export const applyWorkflowCommand = async ({
 
   if (command.type === 'meta.update') {
     if (command.name === undefined && command.intro === undefined) {
-      throw new WorkflowCommandError([{ code: 'WORKFLOW_META_UPDATE_EMPTY', severity: 'error' }]);
+      throw new WorkflowCommandError([
+        { code: WorkflowDiagnosticCodeEnum.metaUpdateEmpty, severity: 'error' }
+      ]);
     }
     if (command.name !== undefined) nextDocument.app.name = command.name;
     if (command.intro !== undefined) nextDocument.app.intro = command.intro;
@@ -433,7 +440,11 @@ export const applyWorkflowCommand = async ({
   if (command.type === 'variable.update') {
     if (Object.keys(command.patch).length === 0) {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_VARIABLE_UPDATE_EMPTY', severity: 'error', params: { key: command.key } }
+        {
+          code: WorkflowDiagnosticCodeEnum.variableUpdateEmpty,
+          severity: 'error',
+          params: { key: command.key }
+        }
       ]);
     }
     updateGlobalVariable({ document: nextDocument, key: command.key, patch: command.patch });

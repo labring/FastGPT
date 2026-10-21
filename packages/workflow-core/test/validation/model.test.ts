@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
@@ -62,7 +63,7 @@ describe('checkWorkflowModels', () => {
         )
       ).toEqual([
         {
-          code: 'WORKFLOW_MODEL_UNAVAILABLE',
+          code: WorkflowDiagnosticCodeEnum.modelUnavailable,
           severity: 'error',
           nodeId: 'node',
           inputKey: NodeInputKeyEnum.aiModelId,
@@ -76,7 +77,7 @@ describe('checkWorkflowModels', () => {
   it.each([undefined, null, '', '   '])('requires non-optional empty models (%s)', (value) => {
     expect(check(makeDocument([makeInput(NodeInputKeyEnum.aiModelId, { value })]))).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         inputKey: NodeInputKeyEnum.aiModelId
       })
     ]);
@@ -86,7 +87,7 @@ describe('checkWorkflowModels', () => {
     const document = makeDocument([]);
     expect(check(document)).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         inputKey: NodeInputKeyEnum.aiModelId
       })
     ]);
@@ -131,7 +132,7 @@ describe('checkWorkflowModels', () => {
         })
       ]);
       expect(check(document)).toEqual([
-        expect.objectContaining({ code: 'WORKFLOW_MODEL_REQUIRED' })
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.modelRequired })
       ]);
     }
   );
@@ -140,8 +141,8 @@ describe('checkWorkflowModels', () => {
     { defaultValue: 'gpt-4o', expected: [] },
     { value: 'llm-id', expected: [] },
     { value: '', expected: [] },
-    { value: '', required: true, expected: ['WORKFLOW_MODEL_REQUIRED'] },
-    { value: 'missing-id', expected: ['WORKFLOW_MODEL_UNAVAILABLE'] },
+    { value: '', required: true, expected: [WorkflowDiagnosticCodeEnum.modelRequired] },
+    { value: 'missing-id', expected: [WorkflowDiagnosticCodeEnum.modelUnavailable] },
     { value: '{{start.model}}', expected: [] },
     { value: ['start', 'model'], selectedType: FlowNodeInputTypeEnum.reference, expected: [] }
   ])('checks custom tool selectors and legacy defaults: %j', ({ expected, ...overrides }) => {
@@ -172,14 +173,18 @@ describe('checkWorkflowModels', () => {
   it.each([
     { flag: false, expected: [] },
     { flag: undefined, expected: [] },
-    { flag: true, expected: ['WORKFLOW_MODEL_UNAVAILABLE'] },
+    { flag: true, expected: [WorkflowDiagnosticCodeEnum.modelUnavailable] },
     { flag: true, datasets: [], expected: [] },
-    { flag: true, datasets: [{ datasetId: 'dataset' }], expected: ['WORKFLOW_MODEL_UNAVAILABLE'] },
+    {
+      flag: true,
+      datasets: [{ datasetId: 'dataset' }],
+      expected: [WorkflowDiagnosticCodeEnum.modelUnavailable]
+    },
     {
       flag: true,
       datasets: ['start', 'datasets'],
       reference: true,
-      expected: ['WORKFLOW_MODEL_UNAVAILABLE']
+      expected: [WorkflowDiagnosticCodeEnum.modelUnavailable]
     }
   ])('only checks enabled dataset model features with selected datasets: %j', (item) => {
     const inputs = [
@@ -215,7 +220,7 @@ describe('checkWorkflowModels', () => {
     ];
     expect(check(makeDocument(inputs, FlowNodeTypeEnum.datasetSearchNode))).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         inputKey: NodeInputKeyEnum.datasetDeepSearchModelId
       })
     ]);
@@ -225,7 +230,7 @@ describe('checkWorkflowModels', () => {
       'missing';
     expect(check(makeDocument(inputs, FlowNodeTypeEnum.datasetSearchNode))).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_UNAVAILABLE',
+        code: WorkflowDiagnosticCodeEnum.modelUnavailable,
         inputKey: NodeInputKeyEnum.datasetSearchExtensionModelId
       })
     ]);
@@ -287,19 +292,19 @@ describe('checkWorkflowModels', () => {
       })
     ).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         path: ['chatConfig', 'questionGuide']
       }),
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         path: ['chatConfig', 'ttsConfig']
       })
     ]);
     document.chatConfig.questionGuide = { open: true, modelId: 'missing', model: 'gpt-4o' };
     document.chatConfig.ttsConfig = { type: 'model', modelId: 'llm-id' };
     expect(check(document).map((item) => item.code)).toEqual([
-      'WORKFLOW_MODEL_UNAVAILABLE',
-      'WORKFLOW_MODEL_UNAVAILABLE'
+      WorkflowDiagnosticCodeEnum.modelUnavailable,
+      WorkflowDiagnosticCodeEnum.modelUnavailable
     ]);
     document.chatConfig.questionGuide = { open: true, model: 'gpt-4o' };
     document.chatConfig.ttsConfig = { type: 'model', modelId: 'tts-id' };

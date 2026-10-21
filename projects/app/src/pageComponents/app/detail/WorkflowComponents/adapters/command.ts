@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -64,7 +65,7 @@ export const validateConnectionWithCore = ({
   ) {
     return {
       status: 'domain-error',
-      diagnostics: [{ code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED', severity: 'error' }]
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported, severity: 'error' }]
     };
   }
 

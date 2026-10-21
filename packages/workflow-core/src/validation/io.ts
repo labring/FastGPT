@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -66,7 +67,7 @@ export const validateNodeIO = ({
   for (const input of node.inputs) {
     if (inputKeys.has(input.key)) {
       diagnostics.push({
-        code: 'WORKFLOW_INPUT_KEY_DUPLICATED',
+        code: WorkflowDiagnosticCodeEnum.inputKeyDuplicated,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key
@@ -92,7 +93,7 @@ export const validateNodeIO = ({
     const selectedType = getSelectedInputRenderType(normalizedInput);
     if (selectedType === undefined) {
       diagnostics.push({
-        code: 'WORKFLOW_INPUT_MODE_INVALID',
+        code: WorkflowDiagnosticCodeEnum.inputModeInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key
@@ -115,7 +116,7 @@ export const validateNodeIO = ({
       !isToolInputValueConfigured({ input })
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_TOOL_INPUT_CONFIGURATION_MISSING',
+        code: WorkflowDiagnosticCodeEnum.toolInputConfigurationMissing,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key
@@ -195,7 +196,7 @@ export const validateNodeIO = ({
       (!input.key || !input.label || isReferenceValueMissing(input.value, false))
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_CODE_INPUT_INCOMPLETE',
+        code: WorkflowDiagnosticCodeEnum.codeInputIncomplete,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key
@@ -210,7 +211,7 @@ export const validateNodeIO = ({
       isMissingValue
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_REQUIRED_INPUT_MISSING',
+        code: WorkflowDiagnosticCodeEnum.requiredInputMissing,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key
@@ -220,7 +221,7 @@ export const validateNodeIO = ({
     if (secretValueResult) {
       if (!secretValueResult.success) {
         diagnostics.push({
-          code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+          code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
           severity: 'error',
           nodeId: node.nodeId,
           inputKey: input.key
@@ -243,7 +244,7 @@ export const validateNodeIO = ({
       );
     } else if (!valueMatchesType(effectiveValue, input.valueType)) {
       diagnostics.push({
-        code: 'WORKFLOW_INPUT_VALUE_TYPE_INVALID',
+        code: WorkflowDiagnosticCodeEnum.inputValueTypeInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: input.key,
@@ -254,7 +255,7 @@ export const validateNodeIO = ({
         getInputAutomationMeta(node.flowNodeType, input.key)?.valueSchema ?? input.customJsonSchema;
       if (valueSchema && !valueMatchesSchema(effectiveValue, valueSchema)) {
         diagnostics.push({
-          code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+          code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
           severity: 'error',
           nodeId: node.nodeId,
           inputKey: input.key
@@ -267,7 +268,7 @@ export const validateNodeIO = ({
   for (const output of node.outputs) {
     if (outputKeys.has(output.key)) {
       diagnostics.push({
-        code: 'WORKFLOW_OUTPUT_KEY_DUPLICATED',
+        code: WorkflowDiagnosticCodeEnum.outputKeyDuplicated,
         severity: 'error',
         nodeId: node.nodeId,
         params: { outputKey: output.key }

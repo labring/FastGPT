@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import {
   NodeInputKeyEnum,
@@ -235,7 +236,10 @@ describe('validateNodeIO', () => {
         inputs: [{ ...template.inputs.find((input) => input.key === key)!, value }]
       });
       expect(check(node)).toEqual([
-        expect.objectContaining({ code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID', inputKey: key })
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
+          inputKey: key
+        })
       ]);
     }
   );
@@ -275,7 +279,7 @@ describe('validateNodeIO', () => {
       });
       expect(check(node)).toEqual([
         expect.objectContaining({
-          code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+          code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
           inputKey: NodeInputKeyEnum.datasetSelectList
         })
       ]);
@@ -302,7 +306,7 @@ describe('validateNodeIO', () => {
         ]
       });
       expect(check(node).map((item) => item.code)).toEqual(
-        mode === LoopRunModeEnum.array ? ['WORKFLOW_REQUIRED_INPUT_MISSING'] : []
+        mode === LoopRunModeEnum.array ? [WorkflowDiagnosticCodeEnum.requiredInputMissing] : []
       );
       if (mode === LoopRunModeEnum.conditional) {
         node.inputs[1].value = ['deleted'];
@@ -324,7 +328,9 @@ describe('validateNodeIO', () => {
 
   it.each(['', []])('does not replace explicitly empty values with a default: %j', (value) => {
     const result = check(makeNode({ inputs: [makeInput({ value, defaultValue: 'fallback' })] }));
-    expect(result.map((item) => item.code)).toContain('WORKFLOW_REQUIRED_INPUT_MISSING');
+    expect(result.map((item) => item.code)).toContain(
+      WorkflowDiagnosticCodeEnum.requiredInputMissing
+    );
   });
 
   it.each([
@@ -386,8 +392,8 @@ describe('validateNodeIO', () => {
     });
 
     expect(check(node).map((item) => item.code)).toEqual([
-      'WORKFLOW_INPUT_KEY_DUPLICATED',
-      'WORKFLOW_OUTPUT_KEY_DUPLICATED'
+      WorkflowDiagnosticCodeEnum.inputKeyDuplicated,
+      WorkflowDiagnosticCodeEnum.outputKeyDuplicated
     ]);
   });
 
@@ -405,7 +411,9 @@ describe('validateNodeIO', () => {
         ]
       });
 
-      expect(check(node).map((item) => item.code)).toEqual(['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND']);
+      expect(check(node).map((item) => item.code)).toEqual([
+        WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+      ]);
     }
   );
 
@@ -427,9 +435,9 @@ describe('validateNodeIO', () => {
       ]
     });
     expect(check(node).map((item) => [item.inputKey, item.code])).toEqual([
-      ['number', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
-      ['hidden', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
-      ['schema', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
+      ['number', WorkflowDiagnosticCodeEnum.inputValueTypeInvalid],
+      ['hidden', WorkflowDiagnosticCodeEnum.inputValueTypeInvalid],
+      ['schema', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]
     ]);
   });
 
@@ -491,8 +499,8 @@ describe('validateNodeIO', () => {
       ]
     });
     expect(check(node).map((item) => [item.inputKey, item.code])).toEqual([
-      ['wrongType', 'WORKFLOW_INPUT_VALUE_TYPE_INVALID'],
-      ['wrongSchema', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
+      ['wrongType', WorkflowDiagnosticCodeEnum.inputValueTypeInvalid],
+      ['wrongSchema', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]
     ]);
   });
 
@@ -544,9 +552,9 @@ describe('validateNodeIO', () => {
     });
     const diagnostics = check(node);
     expect(diagnostics.map((item) => [item.inputKey, item.code])).toEqual([
-      ['empty', 'WORKFLOW_REQUIRED_INPUT_MISSING'],
-      ['malformed', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID'],
-      ['malformedEmpty', 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID']
+      ['empty', WorkflowDiagnosticCodeEnum.requiredInputMissing],
+      ['malformed', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid],
+      ['malformedEmpty', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]
     ]);
     expect(JSON.stringify(diagnostics)).not.toContain('invalid-with-private-data');
   });
@@ -559,7 +567,9 @@ describe('validateNodeIO', () => {
           inputs: [makeInput({ renderTypeList: [FlowNodeInputTypeEnum.reference], value })]
         })
       );
-      expect(result.map((item) => item.code)).toEqual(['WORKFLOW_REQUIRED_INPUT_MISSING']);
+      expect(result.map((item) => item.code)).toEqual([
+        WorkflowDiagnosticCodeEnum.requiredInputMissing
+      ]);
     }
   );
 
@@ -607,17 +617,20 @@ describe('validateNodeIO', () => {
       expect.arrayContaining([
         expect.objectContaining({
           inputKey: 'malformed',
-          code: 'WORKFLOW_REFERENCE_FORMAT_INVALID'
+          code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid
         }),
         expect.objectContaining({
           inputKey: 'deleted',
-          code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'
+          code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound
         }),
         expect.objectContaining({
           inputKey: 'global',
-          code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'
+          code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound
         }),
-        expect.objectContaining({ inputKey: 'type', code: 'WORKFLOW_REFERENCE_TYPE_MISMATCH' })
+        expect.objectContaining({
+          inputKey: 'type',
+          code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch
+        })
       ])
     );
   });
@@ -660,7 +673,7 @@ describe('validateNodeIO', () => {
       check(makeNode({ inputs: [makeInput({ defaultToAgentGenerated: true })] })).map(
         (item) => item.code
       )
-    ).toEqual(['WORKFLOW_REQUIRED_INPUT_MISSING']);
+    ).toEqual([WorkflowDiagnosticCodeEnum.requiredInputMissing]);
   });
 
   it('requires tool system configuration and accepts its configured default', () => {
@@ -675,7 +688,7 @@ describe('validateNodeIO', () => {
       ]
     });
     expect(check(node, true).map((item) => item.code)).toEqual([
-      'WORKFLOW_TOOL_INPUT_CONFIGURATION_MISSING'
+      WorkflowDiagnosticCodeEnum.toolInputConfigurationMissing
     ]);
     node.inputs[0].defaultValue = 'configured';
     expect(check(node, true)).toEqual([]);
@@ -707,8 +720,8 @@ describe('validateNodeIO', () => {
       ]
     });
     expect(check(node).map((item) => [item.inputKey, item.code])).toEqual([
-      ['missing', 'WORKFLOW_CODE_INPUT_INCOMPLETE'],
-      ['label', 'WORKFLOW_CODE_INPUT_INCOMPLETE']
+      ['missing', WorkflowDiagnosticCodeEnum.codeInputIncomplete],
+      ['label', WorkflowDiagnosticCodeEnum.codeInputIncomplete]
     ]);
   });
 
@@ -725,9 +738,9 @@ describe('validateNodeIO', () => {
       ]
     });
     expect(check(node).map((item) => item.code)).toEqual([
-      'WORKFLOW_INPUT_KEY_DUPLICATED',
-      'WORKFLOW_INPUT_MODE_INVALID',
-      'WORKFLOW_OUTPUT_KEY_DUPLICATED'
+      WorkflowDiagnosticCodeEnum.inputKeyDuplicated,
+      WorkflowDiagnosticCodeEnum.inputModeInvalid,
+      WorkflowDiagnosticCodeEnum.outputKeyDuplicated
     ]);
   });
 });

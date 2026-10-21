@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
@@ -42,7 +43,9 @@ export const getWorkflowBindingDiagnostics = (
 ): WorkflowDiagnostic[] =>
   bindings.map((binding) => ({
     code:
-      binding.status === 'missing' ? 'WORKFLOW_BINDING_REQUIRED' : 'WORKFLOW_BINDING_UNVERIFIED',
+      binding.status === 'missing'
+        ? WorkflowDiagnosticCodeEnum.bindingRequired
+        : WorkflowDiagnosticCodeEnum.bindingUnverified,
     severity: 'warning',
     nodeId: binding.nodeId,
     inputKey: binding.inputKey,

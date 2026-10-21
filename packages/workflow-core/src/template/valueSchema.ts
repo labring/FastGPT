@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
 
 type JsonSchema = {
@@ -185,7 +186,7 @@ export const assertValueSchema = ({
   if (!valueMatchesSchema(value, schema)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_INPUT_VALUE_SCHEMA_INVALID',
+        code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
         severity: 'error',
         nodeId,
         inputKey

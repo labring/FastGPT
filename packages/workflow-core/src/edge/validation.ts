@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { compileExecutionEdge } from './compiler';
@@ -54,7 +55,7 @@ export const getDefaultExecutionSourcePort = (
   }
   if (NODE_TYPES_WITHOUT_NEXT_PORT.has(node.flowNodeType)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_HAS_NO_DEFAULT_SOURCE_PORT', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeHasNoDefaultSourcePort, severity: 'error', nodeId }
     ]);
   }
   return { kind: 'next', nodeId };
@@ -91,7 +92,7 @@ const assertBranchKey = (document: WorkflowDocument, edge: WorkflowExecutionEdge
   if (!keys.includes(edge.source.branchKey)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_BRANCH_KEY_NOT_FOUND',
+        code: WorkflowDiagnosticCodeEnum.branchKeyNotFound,
         severity: 'error',
         nodeId: edge.source.nodeId,
         params: { branchKey: edge.source.branchKey }
@@ -106,19 +107,23 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   const targetNode = getDocumentNode(document, edge.target.nodeId);
   if (sourceNode.nodeId === targetNode.nodeId) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_EDGE_SELF_CONNECTION', severity: 'error', nodeId: sourceNode.nodeId }
+      {
+        code: WorkflowDiagnosticCodeEnum.edgeSelfConnection,
+        severity: 'error',
+        nodeId: sourceNode.nodeId
+      }
     ]);
   }
   if (sourceNode.parentNodeId !== targetNode.parentNodeId) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_EDGE_CROSS_SCOPE', severity: 'error', params: { edge } }
+      { code: WorkflowDiagnosticCodeEnum.edgeCrossScope, severity: 'error', params: { edge } }
     ]);
   }
   const sourceIsTool = edge.source.kind === 'selectedTools';
   const targetIsTool = edge.target.kind === 'selectedTools';
   if (sourceIsTool !== targetIsTool) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_TOOL_EDGE_INVALID', severity: 'error', params: { edge } }
+      { code: WorkflowDiagnosticCodeEnum.toolEdgeInvalid, severity: 'error', params: { edge } }
     ]);
   }
   if (sourceIsTool) {
@@ -127,12 +132,20 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
       NODE_TYPES_WITHOUT_TOOL_TARGET.has(targetNode.flowNodeType)
     ) {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_TOOL_EDGE_NODE_INVALID', severity: 'error', params: { edge } }
+        {
+          code: WorkflowDiagnosticCodeEnum.toolEdgeNodeInvalid,
+          severity: 'error',
+          params: { edge }
+        }
       ]);
     }
   } else if (edge.target.kind !== 'target') {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_EDGE_TARGET_KIND_INVALID', severity: 'error', params: { edge } }
+      {
+        code: WorkflowDiagnosticCodeEnum.edgeTargetKindInvalid,
+        severity: 'error',
+        params: { edge }
+      }
     ]);
   }
   if (
@@ -141,7 +154,7 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   ) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_TARGET_PORT_UNSUPPORTED',
+        code: WorkflowDiagnosticCodeEnum.targetPortUnsupported,
         severity: 'error',
         nodeId: targetNode.nodeId
       }
@@ -149,13 +162,17 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   }
   if (edge.source.kind === 'catch' && sourceNode.catchError !== true) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_CATCH_NOT_ENABLED', severity: 'error', nodeId: sourceNode.nodeId }
+      {
+        code: WorkflowDiagnosticCodeEnum.catchNotEnabled,
+        severity: 'error',
+        nodeId: sourceNode.nodeId
+      }
     ]);
   }
   if (edge.source.kind === 'next' && NODE_TYPES_WITHOUT_NEXT_PORT.has(sourceNode.flowNodeType)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_NEXT_PORT_UNSUPPORTED',
+        code: WorkflowDiagnosticCodeEnum.nextPortUnsupported,
         severity: 'error',
         nodeId: sourceNode.nodeId
       }
@@ -176,7 +193,7 @@ export const assertExecutionConnection = ({
   assertExecutionEdge(document, edge);
   if (document.executionEdges.some((item) => executionEdgesEqual(item, edge))) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error', params: { edge } }
+      { code: WorkflowDiagnosticCodeEnum.edgeDuplicated, severity: 'error', params: { edge } }
     ]);
   }
 };

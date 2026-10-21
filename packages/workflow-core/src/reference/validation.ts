@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -34,7 +35,12 @@ export const getWorkflowInputReferenceDiagnostics = ({
   const references = getWorkflowReferenceValues(input.value);
   if (!references) {
     return [
-      { code: 'WORKFLOW_REFERENCE_FORMAT_INVALID', severity: 'error', nodeId, inputKey: input.key }
+      {
+        code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid,
+        severity: 'error',
+        nodeId,
+        inputKey: input.key
+      }
     ];
   }
 
@@ -61,7 +67,7 @@ export const getWorkflowInputReferenceDiagnostics = ({
         }).includes(nodeOutput))
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND',
+        code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
         severity: 'error',
         nodeId,
         inputKey: input.key,
@@ -76,7 +82,7 @@ export const getWorkflowInputReferenceDiagnostics = ({
       })
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_REFERENCE_TYPE_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
         severity: 'error',
         nodeId,
         inputKey: input.key,
@@ -88,7 +94,7 @@ export const getWorkflowInputReferenceDiagnostics = ({
     sourceNodes ??= getInputReferenceSourceNodes({ document, nodeId, input });
     if (!sourceNodes.some((source) => source.nodeId === sourceNodeId)) {
       diagnostics.push({
-        code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
+        code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
         severity: 'error',
         nodeId,
         inputKey: input.key,

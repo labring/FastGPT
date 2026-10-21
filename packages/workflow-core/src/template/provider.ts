@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   WorkflowTemplateBundleSchema,
   type WorkflowTemplateBundle,
@@ -13,7 +14,7 @@ import {
 const throwTemplateUnavailable = (ref: NodeTemplateRef): never => {
   throw new WorkflowCommandError([
     {
-      code: 'WORKFLOW_TEMPLATE_UNAVAILABLE',
+      code: WorkflowDiagnosticCodeEnum.templateUnavailable,
       severity: 'error',
       params: { template: formatNodeTemplateRef(ref) }
     }
@@ -35,7 +36,7 @@ export const createWorkflowTemplateBundleProvider = (
     if (entries.has(key)) {
       throw new WorkflowCommandError([
         {
-          code: 'WORKFLOW_TEMPLATE_PROVIDER_CONFLICT',
+          code: WorkflowDiagnosticCodeEnum.templateProviderConflict,
           severity: 'error',
           params: { template: key }
         }
@@ -78,7 +79,7 @@ export const composeWorkflowTemplateProviders = (
         if (entries.has(key)) {
           throw new WorkflowCommandError([
             {
-              code: 'WORKFLOW_TEMPLATE_PROVIDER_CONFLICT',
+              code: WorkflowDiagnosticCodeEnum.templateProviderConflict,
               severity: 'error',
               params: { template: key }
             }
@@ -112,7 +113,7 @@ export const composeWorkflowTemplateProviders = (
       if (resolved.length > 1) {
         throw new WorkflowCommandError([
           {
-            code: 'WORKFLOW_TEMPLATE_PROVIDER_CONFLICT',
+            code: WorkflowDiagnosticCodeEnum.templateProviderConflict,
             severity: 'error',
             params: { template: formatNodeTemplateRef(ref) }
           }
@@ -126,9 +127,10 @@ export const composeWorkflowTemplateProviders = (
           !(
             result.reason instanceof WorkflowCommandError &&
             result.reason.diagnostics.every((diagnostic) =>
-              ['WORKFLOW_TEMPLATE_NOT_FOUND', 'WORKFLOW_TEMPLATE_UNAVAILABLE'].includes(
-                diagnostic.code
-              )
+              [
+                WorkflowDiagnosticCodeEnum.templateNotFound,
+                WorkflowDiagnosticCodeEnum.templateUnavailable
+              ].includes(diagnostic.code)
             )
           )
       );

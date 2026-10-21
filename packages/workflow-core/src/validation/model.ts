@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
@@ -74,7 +75,7 @@ export const checkWorkflowModels = ({
     if (isEmptyModelValue(value)) {
       if (defaultWhenEmpty) return;
       diagnostics.push({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         severity: 'error',
         ...location,
         params: {
@@ -97,7 +98,7 @@ export const checkWorkflowModels = ({
     );
     if (available) return;
     diagnostics.push({
-      code: 'WORKFLOW_MODEL_UNAVAILABLE',
+      code: WorkflowDiagnosticCodeEnum.modelUnavailable,
       severity: 'error',
       ...location,
       params: {

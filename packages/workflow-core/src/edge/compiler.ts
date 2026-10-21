@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -17,7 +18,7 @@ const assertNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_NOT_FOUND', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeNotFound, severity: 'error', nodeId }
     ]);
   }
   return node;
@@ -38,7 +39,7 @@ const compileSourceHandle = (port: ExecutionSourcePortRef, document: WorkflowDoc
     ) {
       throw new WorkflowCommandError([
         {
-          code: 'WORKFLOW_BRANCH_PORT_UNSUPPORTED',
+          code: WorkflowDiagnosticCodeEnum.branchPortUnsupported,
           severity: 'error',
           nodeId: port.nodeId,
           params: { branchKey: port.branchKey }
@@ -52,7 +53,7 @@ const compileSourceHandle = (port: ExecutionSourcePortRef, document: WorkflowDoc
   if (!output || output.type !== FlowNodeOutputTypeEnum.source) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_SOURCE_OUTPUT_NOT_FOUND',
+        code: WorkflowDiagnosticCodeEnum.sourceOutputNotFound,
         severity: 'error',
         nodeId: port.nodeId,
         params: { outputKey: port.outputKey }
@@ -108,7 +109,7 @@ const parseSourceHandle = ({
   if (!edge.sourceHandle.startsWith(prefix)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
+        code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported,
         severity: 'error',
         params: { edge }
       }
@@ -125,7 +126,7 @@ const parseSourceHandle = ({
   }
   throw new WorkflowCommandError([
     {
-      code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
+      code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported,
       severity: 'error',
       params: { edge }
     }
@@ -146,7 +147,7 @@ const parseTargetHandle = (edge: StoreEdgeItemType): ExecutionTargetPortRef => {
 
   throw new WorkflowCommandError([
     {
-      code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
+      code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported,
       severity: 'error',
       params: { edge }
     }
@@ -166,7 +167,7 @@ export const decompileStoreEdge = (
   };
   if ((result.source.kind === 'selectedTools') !== (result.target.kind === 'selectedTools')) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_TOOL_EDGE_INVALID', severity: 'error', params: { edge } }
+      { code: WorkflowDiagnosticCodeEnum.toolEdgeInvalid, severity: 'error', params: { edge } }
     ]);
   }
   return result;

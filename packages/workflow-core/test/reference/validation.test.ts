@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import {
   VARIABLE_NODE_ID,
@@ -77,13 +78,16 @@ const makeDocument = (input: Partial<FlowNodeInputItemType> = {}) =>
 
 describe('getWorkflowInputReferenceDiagnostics', () => {
   it.each([
-    { value: ['start'], code: 'WORKFLOW_REFERENCE_FORMAT_INVALID' },
-    { value: ['deleted', 'text'], code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' },
-    { value: ['start', 'deleted'], code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' },
-    { value: ['start', 'count'], code: 'WORKFLOW_REFERENCE_TYPE_MISMATCH' },
-    { value: [VARIABLE_NODE_ID, 'deleted'], code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' },
-    { value: ['start', 'unavailable'], code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' },
-    { value: ['start', 'error'], code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' }
+    { value: ['start'], code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid },
+    { value: ['deleted', 'text'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
+    { value: ['start', 'deleted'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
+    { value: ['start', 'count'], code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch },
+    {
+      value: [VARIABLE_NODE_ID, 'deleted'],
+      code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+    },
+    { value: ['start', 'unavailable'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
+    { value: ['start', 'error'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound }
   ])('reports $code for $value', ({ value, code }) => {
     const document = makeDocument({ value });
     expect(
@@ -101,7 +105,9 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     document.executionEdges = [];
     expect(
       getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })
-    ).toContainEqual(expect.objectContaining({ code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM' }));
+    ).toContainEqual(
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream })
+    );
     document.executionEdges = [
       { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
     ];
@@ -226,13 +232,13 @@ describe('validateWorkflow reference policy', () => {
       required: true,
       value: ['deleted', 'text'],
       valueType: WorkflowIOValueTypeEnum.string,
-      expected: ['WORKFLOW_REQUIRED_INPUT_MISSING']
+      expected: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
       required: true,
       value: [['deleted', 'text']],
       valueType: WorkflowIOValueTypeEnum.arrayString,
-      expected: ['WORKFLOW_REQUIRED_INPUT_MISSING']
+      expected: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
       required: true,
@@ -249,7 +255,7 @@ describe('validateWorkflow reference policy', () => {
       const document = makeDocument(input);
       const before = structuredClone(document);
       expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
-        expect.objectContaining({ code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND' })
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound })
       );
       expect(
         validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' }).map((issue) => issue.code)
@@ -273,27 +279,27 @@ describe('node and global reference coverage', () => {
     {
       name: 'deleted optional global',
       value: [VARIABLE_NODE_ID, 'deleted'],
-      strict: ['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'],
+      strict: [WorkflowDiagnosticCodeEnum.referenceOutputNotFound],
       client: []
     },
     {
       name: 'deleted required global',
       value: [VARIABLE_NODE_ID, 'deleted'],
       required: true,
-      strict: ['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'],
-      client: ['WORKFLOW_REQUIRED_INPUT_MISSING']
+      strict: [WorkflowDiagnosticCodeEnum.referenceOutputNotFound],
+      client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
       name: 'user global type mismatch',
       value: [VARIABLE_NODE_ID, 'count'],
       required: true,
-      strict: ['WORKFLOW_REFERENCE_TYPE_MISMATCH'],
-      client: ['WORKFLOW_REQUIRED_INPUT_MISSING']
+      strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],
+      client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
       name: 'system global type mismatch',
       value: [VARIABLE_NODE_ID, 'histories'],
-      strict: ['WORKFLOW_REFERENCE_TYPE_MISMATCH'],
+      strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],
       client: []
     },
     {
@@ -306,7 +312,10 @@ describe('node and global reference coverage', () => {
       ],
       valueType: WorkflowIOValueTypeEnum.arrayString,
       required: true,
-      strict: ['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND', 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'],
+      strict: [
+        WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
+        WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+      ],
       client: [],
       effectiveValue: [
         ['start', 'text'],

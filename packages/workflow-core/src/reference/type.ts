@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import z from 'zod';
 import { WorkflowCommandError } from '../domain/diagnostic';
 
@@ -13,7 +14,7 @@ export const parseVariableRef = (value: string): VariableRef => {
   const separatorIndex = value.lastIndexOf('.');
   if (separatorIndex <= 0 || separatorIndex === value.length - 1) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_VARIABLE_REF_INVALID', severity: 'error', params: { value } }
+      { code: WorkflowDiagnosticCodeEnum.variableRefInvalid, severity: 'error', params: { value } }
     ]);
   }
 

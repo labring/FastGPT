@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   parseWorkflowDocument,
   readWorkflowFile,
@@ -35,7 +36,9 @@ describe('workflow file codec', () => {
   it('reports malformed workflow JSON as a CLI argument error', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'workflow-invalid-'));
     await writeFile(join(dir, 'workflow.json'), '{', 'utf8');
-    await expect(readWorkflowFile(dir)).rejects.toMatchObject({ code: 'CLI_ARGUMENT_INVALID' });
+    await expect(readWorkflowFile(dir)).rejects.toMatchObject({
+      code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid
+    });
   });
 
   it('reports unsupported schema versions with migration guidance', async () => {
@@ -46,9 +49,9 @@ describe('workflow file codec', () => {
       'utf8'
     );
     await expect(readWorkflowFile(dir)).rejects.toMatchObject({
-      code: 'CLI_ARGUMENT_INVALID',
+      code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid,
       params: {
-        code: 'WORKFLOW_DOCUMENT_VERSION_UNSUPPORTED',
+        code: WorkflowDiagnosticCodeEnum.documentVersionUnsupported,
         foundVersion: 'fastgpt-workflow/v2',
         guidance: expect.stringContaining('migrate one version at a time')
       }

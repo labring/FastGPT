@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   getRemovalNodeIdsWithCore,
   validateConnectionWithCore
@@ -131,7 +132,7 @@ describe('Workflow Core command adapters', () => {
     });
     expect(result).toMatchObject({
       status: 'domain-error',
-      diagnostics: [{ code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED' }]
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported }]
     });
     expect(getRemovalNodeIdsWithCore({ ...graph, nodeId: 'missing' }).status).toBe('domain-error');
   });

@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   WorkflowChangeSetChunkSchema,
   WorkflowChangeSetSchema,
@@ -7,10 +8,10 @@ import {
 } from './type';
 
 export class WorkflowChangeSetMergeError extends Error {
-  readonly code: string;
+  readonly code: WorkflowDiagnosticCodeEnum;
   readonly params?: Record<string, unknown>;
 
-  constructor(code: string, message: string, params?: Record<string, unknown>) {
+  constructor(code: WorkflowDiagnosticCodeEnum, message: string, params?: Record<string, unknown>) {
     super(message);
     this.name = 'WorkflowChangeSetMergeError';
     this.code = code;
@@ -99,7 +100,7 @@ const sortChunks = (chunks: WorkflowChangeSetChunk[]) => {
     if (currentState === 'visited') return;
     if (currentState === 'visiting') {
       throw new WorkflowChangeSetMergeError(
-        'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_CYCLE',
+        WorkflowDiagnosticCodeEnum.changesetChunkDependencyCycle,
         `Chunk dependency cycle includes ${chunk.chunkId}`
       );
     }
@@ -108,7 +109,7 @@ const sortChunks = (chunks: WorkflowChangeSetChunk[]) => {
       const dependency = byId.get(dependencyId);
       if (!dependency) {
         throw new WorkflowChangeSetMergeError(
-          'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_MISSING',
+          WorkflowDiagnosticCodeEnum.changesetChunkDependencyMissing,
           `Chunk ${chunk.chunkId} depends on missing chunk ${dependencyId}`
         );
       }
@@ -135,7 +136,7 @@ export const mergeWorkflowChangeSetChunks = ({
 }): WorkflowChangeSet => {
   if (chunks.length === 0) {
     throw new WorkflowChangeSetMergeError(
-      'WORKFLOW_CHANGESET_CHUNKS_EMPTY',
+      WorkflowDiagnosticCodeEnum.changesetChunksEmpty,
       'At least one ChangeSet chunk is required'
     );
   }
@@ -215,7 +216,7 @@ export const mergeWorkflowChangeSetChunks = ({
         continue;
       }
       throw new WorkflowChangeSetMergeError(
-        'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
+        WorkflowDiagnosticCodeEnum.changesetCommandConflict,
         `Conflicting commands target ${target ?? identity}`,
         {
           target: target ?? identity,

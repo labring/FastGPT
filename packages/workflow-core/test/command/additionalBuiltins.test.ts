@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -87,7 +88,7 @@ describe('additional builtin nodes', () => {
       })
     ).rejects.toMatchObject({
       diagnostics: [
-        expect.objectContaining({ code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER' })
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.templateNotAvailableForBuilder })
       ]
     });
   });
@@ -110,7 +111,7 @@ describe('additional builtin nodes', () => {
       })
     ).rejects.toMatchObject({
       diagnostics: [
-        expect.objectContaining({ code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER' })
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.templateNotAvailableForBuilder })
       ]
     });
     expect(document).toEqual(before);
@@ -129,7 +130,7 @@ describe('additional builtin nodes', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER',
+          code: WorkflowDiagnosticCodeEnum.templateNotAvailableForBuilder,
           nodeId: 'legacy-query'
         })
       ]

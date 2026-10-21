@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { applyWorkflowCommand } from '../../src/command/apply';
 import {
@@ -35,7 +36,7 @@ describe('assertExecutionConnection', () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     const before = structuredClone(document);
     expect(() => assertExecutionConnection({ document, edge: document.executionEdges[0] })).toThrow(
-      'WORKFLOW_EDGE_DUPLICATED'
+      WorkflowDiagnosticCodeEnum.edgeDuplicated
     );
     expect(() =>
       assertExecutionConnection({
@@ -81,8 +82,8 @@ describe('assertExecutionEdge', () => {
         else
           expect(connect, message).toThrow(
             direction === 'source'
-              ? 'WORKFLOW_NEXT_PORT_UNSUPPORTED'
-              : 'WORKFLOW_TARGET_PORT_UNSUPPORTED'
+              ? WorkflowDiagnosticCodeEnum.nextPortUnsupported
+              : WorkflowDiagnosticCodeEnum.targetPortUnsupported
           );
       }
     }
@@ -99,7 +100,10 @@ describe('assertExecutionEdge', () => {
           target: { kind: 'selectedTools', nodeId: 'tool' }
         });
       if (template.isTool) expect(connect, template.flowNodeType).not.toThrow();
-      else expect(connect, template.flowNodeType).toThrow('WORKFLOW_TOOL_EDGE_NODE_INVALID');
+      else
+        expect(connect, template.flowNodeType).toThrow(
+          WorkflowDiagnosticCodeEnum.toolEdgeNodeInvalid
+        );
     }
   });
 
@@ -115,7 +119,7 @@ describe('assertExecutionEdge', () => {
         source: { kind: 'selectedTools', nodeId: 'caller' },
         target: { kind: 'selectedTools', nodeId: 'config' }
       })
-    ).toThrow('WORKFLOW_TOOL_EDGE_NODE_INVALID');
+    ).toThrow(WorkflowDiagnosticCodeEnum.toolEdgeNodeInvalid);
   });
 
   it('retains enabled catch and container-scope guards', () => {
@@ -126,7 +130,9 @@ describe('assertExecutionEdge', () => {
       source: { kind: 'catch' as const, nodeId: 'caller' },
       target: { kind: 'target' as const, nodeId: 'target' }
     };
-    expect(() => assertExecutionEdge(document, catchEdge)).toThrow('WORKFLOW_CATCH_NOT_ENABLED');
+    expect(() => assertExecutionEdge(document, catchEdge)).toThrow(
+      WorkflowDiagnosticCodeEnum.catchNotEnabled
+    );
     document.nodes[0].catchError = true;
     expect(() => assertExecutionEdge(document, catchEdge)).not.toThrow();
     const toolEdge = {
@@ -135,7 +141,9 @@ describe('assertExecutionEdge', () => {
     };
     document.nodes[1].flowNodeType = FlowNodeTypeEnum.code;
     document.nodes[1].parentNodeId = 'container';
-    expect(() => assertExecutionEdge(document, toolEdge)).toThrow('WORKFLOW_EDGE_CROSS_SCOPE');
+    expect(() => assertExecutionEdge(document, toolEdge)).toThrow(
+      WorkflowDiagnosticCodeEnum.edgeCrossScope
+    );
   });
 });
 
