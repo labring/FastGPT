@@ -84,6 +84,14 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
         return basicNodeTemplates
           .filter((item) => {
             if (item.flowNodeType === FlowNodeTypeEnum.queryExtension) return false;
+            // 工具集仅在侧栏浏览或工具调用节点的工具选择器中展示。
+            if (
+              item.flowNodeType === FlowNodeTypeEnum.toolSet &&
+              !context?.isSidebar &&
+              context?.handleId !== NodeOutputKeyEnum.selectedTools
+            ) {
+              return false;
+            }
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(

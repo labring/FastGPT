@@ -432,6 +432,7 @@
   "toolset_intro_tips": "The toolset description does not affect tool calling. If needed, edit the tool description directly.",
   "tool_soon_offset_tips": "This tool will be offline in the future. For the sake of your business stability, please replace it as soon as possible.",
   "tool_tip": "When run as a Tool, use this field as the Tool response?",
+  "tool_type_tool_call": "Tool calling",
   "tool_type_tools": "tool",
   "toolkit_activation_label": "Key Activation",
   "toolkit_activation_not_required": "No Activation",

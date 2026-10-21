@@ -25,6 +25,10 @@ export const workflowSystemNodeTemplateList: {
     label: i18nT('app:tool_type_tools')
   },
   {
+    type: FlowNodeTemplateTypeEnum.toolCall,
+    label: i18nT('app:tool_type_tool_call')
+  },
+  {
     type: FlowNodeTemplateTypeEnum.other,
     label: i18nT('common:Other')
   }
