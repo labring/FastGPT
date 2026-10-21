@@ -24,6 +24,7 @@ projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAge
   s_d810470cdcf640::t_43f4b41d864670 438-440
   s_d810470cdcf640::t_3b26b99bc6fa5d 593
   s_d810470cdcf640::t_dbdf78c4c76be5 396-399,411-416,427-430,441-450,586
+  s_f9d56302239928::t_9e29302679a2f2 279-290,295-299,301-310,312,316-334,336-354,356-363
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -35,6 +36,14 @@ projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAge
       "agent_id": {
         "tool": "claude",
         "id": "bded94b9-de30-45c6-9dcc-254955f91400",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_f9d56302239928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6bf872a-d37b-4d2f-862e-8f82a722d42f",
         "model": "deepseek-v4-flash"
       },
       "human_author": "Jon <ljp@sangfor.com.cn>"
