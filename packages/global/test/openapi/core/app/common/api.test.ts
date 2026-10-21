@@ -2,13 +2,21 @@ import {
   AppChatConfigInputSchema,
   AppQuestionGuideInputSchema,
   AppTTSConfigInputSchema,
+  type CreateAppBodyType,
   CreateAppBodySchema,
   CreateAppRequestBodySchema,
   OpenAPIAppChatConfigSchema,
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  type PublishAppBodyType,
+  PublishAppBodySchema
+} from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  type StoreNodeItemType,
+  NodeToolConfigTypeSchema
+} from '@fastgpt/global/core/workflow/type/node';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
@@ -26,6 +34,37 @@ const currentNode = {
   ],
   outputs: []
 };
+
+const runtimeNode: StoreNodeItemType = {
+  ...currentNode,
+  inputs: [],
+  flowNodeType: 'toolSet',
+  toolConfig: {
+    mcpTool: {
+      name: 'search',
+      description: 'Search',
+      url: 'https://mcp.example.com'
+    },
+    httpTool: {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'GET'
+    }
+  }
+};
+
+const runtimeCreateBody: CreateAppBodyType = {
+  name: 'runtime app',
+  type: 'simple',
+  nodes: [runtimeNode],
+  edges: []
+};
+const runtimePublishBody: PublishAppBodyType = {
+  nodes: [runtimeNode]
+};
+void runtimeCreateBody;
+void runtimePublishBody;
 
 describe('UpdateAppBodySchema', () => {
   it('rejects workflow fields', () => {
@@ -159,6 +198,111 @@ describe('PublishAppBodySchema', () => {
 
     expect(result).not.toHaveProperty('nodes.0.unsupportedNodeField');
     expect(result).not.toHaveProperty('nodes.0.inputs.0.unsupportedInputField');
+  });
+});
+
+describe('persisted workflow node tool secrets', () => {
+  const parseCreateNode = (node: StoreNodeItemType) =>
+    CreateAppRequestBodySchema.safeParse({
+      name: 'tool secret app',
+      type: 'simple',
+      nodes: [node],
+      edges: []
+    }).success;
+
+  it.each([
+    {
+      protocol: 'MCP',
+      toolConfig: {
+        mcpTool: {
+          toolId: 'mcp-app/search',
+          headerSecret: { Authorization: { value: 'mcp-tool-secret' } }
+        }
+      }
+    },
+    {
+      protocol: 'HTTP',
+      toolConfig: {
+        httpTool: {
+          toolId: 'http-app/search',
+          headerSecret: { Authorization: { value: 'http-tool-secret' } }
+        }
+      }
+    }
+  ])('rejects $protocol secret on a single tool reference', ({ toolConfig }) => {
+    const node = {
+      ...currentNode,
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(false);
+  });
+
+  it.each([
+    {
+      toolSetKey: 'mcpToolSet',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: { Authorization: { value: 'mcp-set-secret' } },
+          toolList: [{ name: 'search', description: 'MCP search' }]
+        }
+      }
+    },
+    {
+      toolSetKey: 'httpToolSet',
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: { Authorization: { value: 'http-set-secret' } },
+          toolList: [{ name: 'search', description: 'HTTP search', path: '/search', method: 'GET' }]
+        }
+      }
+    }
+  ])('keeps $toolSetKey secret on a node-local tool set', ({ toolConfig }) => {
+    const node = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(true);
+  });
+
+  it('rejects a tool-set secret when the node uses an external reference', () => {
+    const node = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      pluginId: 'external-tool-set',
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: { Authorization: { value: 'http-set-secret' } },
+          toolList: []
+        }
+      }
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(false);
+  });
+
+  it('keeps HTTP child tool secret in the shared runtime schema', () => {
+    const toolConfig = {
+      httpToolSet: {
+        baseUrl: 'https://api.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'HTTP search',
+            path: '/search',
+            method: 'GET',
+            headerSecret: { Authorization: { value: 'http-child-secret' } }
+          }
+        ]
+      }
+    };
+
+    expect(NodeToolConfigTypeSchema.safeParse(toolConfig).success).toBe(true);
   });
 });
 

@@ -2,7 +2,7 @@ import z from 'zod';
 import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { PaginationSchema } from '../../../api';
-import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import { PersistedOpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
@@ -16,11 +16,11 @@ export const PublishAppQuerySchema = z.object({
 });
 export type PublishAppQueryType = z.infer<typeof PublishAppQuerySchema>;
 
-const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+const AppVersionNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 
-const PublishAppNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+const PublishAppNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
   description: '本次保存的应用节点配置'
 });
 
@@ -186,6 +186,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
   }),
   resources: AppVersionResourcesSchema
 });
+
 export type GetAppVersionDetailResponseType = z.infer<typeof GetAppVersionDetailResponseSchema>;
 
 /* ============================================================================
@@ -223,6 +224,7 @@ export const GetLatestAppVersionResponseSchema = z.object({
   chatConfig: AppVersionChatConfigSchema,
   resources: AppVersionResourcesSchema
 });
+
 export type GetLatestAppVersionResponseType = z.infer<typeof GetLatestAppVersionResponseSchema>;
 
 /* ============================================================================

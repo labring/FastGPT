@@ -31,10 +31,7 @@ const AdminTemplateBaseSchema = AppTemplateStorageSchema.omit({
   order: true
 });
 
-const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
-  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
-});
+const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema;
 
 const AdminWorkflowTemplateSchema = z.object({
   nodes: z.array(AdminWorkflowNodeSchema),
