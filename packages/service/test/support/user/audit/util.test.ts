@@ -28,6 +28,27 @@ describe('addAuditLog', () => {
     });
   });
 
+  it('writes a system-scoped audit without a member ID', async () => {
+    const create = vi.spyOn(MongoTeamAudit, 'create').mockResolvedValue(undefined as never);
+    const params = { name: 'System', datasetName: 'Dataset', datasetType: 'dataset' };
+
+    await expect(
+      addAuditLog({
+        teamId: input.teamId,
+        scope: 'system',
+        event: AuditEventEnum.CREATE_DATASET,
+        params
+      })
+    ).resolves.toBeUndefined();
+
+    expect(create).toHaveBeenCalledWith({
+      teamId: input.teamId,
+      scope: 'system',
+      event: AuditEventEnum.CREATE_DATASET,
+      metadata: params
+    });
+  });
+
   it('retries temporary write failures', async () => {
     const create = vi
       .spyOn(MongoTeamAudit, 'create')
