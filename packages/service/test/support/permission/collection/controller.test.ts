@@ -1496,10 +1496,10 @@ describe.sequential('syncDatasetToCollections', () => {
       { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
       { tmbId: String(users.members[2].tmbId), permission: ReadRoleVal }
     ];
-    // 跨树同步只在启用态生效：关闭态短路，不写 collection 快照
+    // 开关按 dataset 独立判定：被断言 collection 所属的 child dataset 需为启用态
     await enableDatasetCollectionPermissions({
       teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id)
+      datasetId: String(childDataset._id)
     });
     await mongoSessionRun((session) =>
       syncDatasetToCollections({
@@ -1520,6 +1520,181 @@ describe.sequential('syncDatasetToCollections', () => {
         [String(users.members[2].tmbId), ReadRoleVal]
       ])
     );
+  });
+
+  it('dataset folder（自身开关关闭）授权透传到子知识库的 collection folder 与文件', async () => {
+    const users = await getFakeUsers(2);
+    const teamId = String(users.owner.teamId);
+    const ownerTmbId = String(users.owner.tmbId);
+    const memberTmbId = String(users.members[0].tmbId);
+
+    // folder 类型 dataset 永远不会开启 collection 权限开关
+    const outerFolder = await mongoSessionRun(async (session) => {
+      const folder = await MongoDataset.create({
+        teamId,
+        tmbId: ownerTmbId,
+        type: DatasetTypeEnum.folder,
+        name: 'outer-folder'
+      });
+      await createResourceDefaultCollaborators({
+        resource: { _id: String(folder._id), type: folder.type, teamId },
+        resourceType: PerResourceTypeEnum.dataset,
+        session,
+        tmbId: ownerTmbId
+      });
+      return folder;
+    });
+    const dataset = await mongoSessionRun(async (session) => {
+      const child = await MongoDataset.create({
+        teamId,
+        tmbId: ownerTmbId,
+        parentId: outerFolder._id,
+        type: DatasetTypeEnum.dataset,
+        name: 'child-dataset'
+      });
+      await createResourceDefaultCollaborators({
+        resource: { _id: String(child._id), type: child.type, teamId },
+        resourceType: PerResourceTypeEnum.dataset,
+        session,
+        tmbId: ownerTmbId
+      });
+      return child;
+    });
+    await enableDatasetCollectionPermissions({ teamId, datasetId: String(dataset._id) });
+
+    const folder = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'collection-folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const file = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'file',
+      parentId: String(folder._id)
+    });
+
+    await mongoSessionRun(async (session) => {
+      const oldOuterClbs = await getResourceOwnedClbs({
+        teamId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(outerFolder._id),
+        session
+      });
+      const newOuterClbs = [...oldOuterClbs, { tmbId: memberTmbId, permission: ManageRoleVal }];
+      // 生产顺序：先同步 collection，再写 dataset 树（后代快照此时仍是旧值）
+      await syncDatasetToCollections({
+        teamId,
+        datasetId: String(outerFolder._id),
+        oldEffectiveClbs: oldOuterClbs,
+        newEffectiveClbs: newOuterClbs,
+        session
+      });
+      await updateResourceCollaborators({
+        resource: { _id: String(outerFolder._id), type: outerFolder.type, teamId },
+        resourceModel: MongoDataset,
+        resourceType: PerResourceTypeEnum.dataset,
+        oldCollaborators: oldOuterClbs,
+        newCollaborators: newOuterClbs,
+        session
+      });
+    });
+
+    const expectedMap = new Map([
+      [ownerTmbId, OwnerRoleVal],
+      [memberTmbId, ManageRoleVal]
+    ]);
+    for (const collectionId of [String(folder._id), String(file._id)]) {
+      await expect(collectionClbs(teamId, collectionId).then(toPermissionMap)).resolves.toEqual(
+        expectedMap
+      );
+    }
+  });
+
+  it('开关按 dataset 独立判定：关闭态子知识库的 collection 快照保持不变', async () => {
+    const users = await getFakeUsers(2);
+    const teamId = String(users.owner.teamId);
+    const ownerTmbId = String(users.owner.tmbId);
+    const memberTmbId = String(users.members[0].tmbId);
+
+    const outerFolder = await mongoSessionRun(async (session) => {
+      const folder = await MongoDataset.create({
+        teamId,
+        tmbId: ownerTmbId,
+        type: DatasetTypeEnum.folder,
+        name: 'outer-folder'
+      });
+      await createResourceDefaultCollaborators({
+        resource: { _id: String(folder._id), type: folder.type, teamId },
+        resourceType: PerResourceTypeEnum.dataset,
+        session,
+        tmbId: ownerTmbId
+      });
+      return folder;
+    });
+    const createChildDataset = (name: string) =>
+      mongoSessionRun(async (session) => {
+        const child = await MongoDataset.create({
+          teamId,
+          tmbId: ownerTmbId,
+          parentId: outerFolder._id,
+          type: DatasetTypeEnum.dataset,
+          name
+        });
+        await createResourceDefaultCollaborators({
+          resource: { _id: String(child._id), type: child.type, teamId },
+          resourceType: PerResourceTypeEnum.dataset,
+          session,
+          tmbId: ownerTmbId
+        });
+        return child;
+      });
+    const enabledDataset = await createChildDataset('enabled-dataset');
+    const disabledDataset = await createChildDataset('disabled-dataset');
+    await enableDatasetCollectionPermissions({ teamId, datasetId: String(enabledDataset._id) });
+
+    const enabledFile = await createCollection({
+      user: users.owner,
+      datasetId: String(enabledDataset._id),
+      name: 'enabled-file'
+    });
+    // 关闭态存量数据可能残留 ACL 行，跨树同步不应触碰
+    const disabledFile = await createCollection({
+      user: users.owner,
+      datasetId: String(disabledDataset._id),
+      name: 'disabled-file',
+      legacySnapshot: true
+    });
+
+    await mongoSessionRun(async (session) => {
+      const oldOuterClbs = await getResourceOwnedClbs({
+        teamId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: String(outerFolder._id),
+        session
+      });
+      const newOuterClbs = [...oldOuterClbs, { tmbId: memberTmbId, permission: ReadRoleVal }];
+      await syncDatasetToCollections({
+        teamId,
+        datasetId: String(outerFolder._id),
+        oldEffectiveClbs: oldOuterClbs,
+        newEffectiveClbs: newOuterClbs,
+        session
+      });
+    });
+
+    await expect(
+      collectionClbs(teamId, String(enabledFile._id)).then(toPermissionMap)
+    ).resolves.toEqual(
+      new Map([
+        [ownerTmbId, OwnerRoleVal],
+        [memberTmbId, ReadRoleVal]
+      ])
+    );
+    await expect(
+      collectionClbs(teamId, String(disabledFile._id)).then(toPermissionMap)
+    ).resolves.toEqual(new Map([[ownerTmbId, OwnerRoleVal]]));
   });
 });
 
