@@ -278,21 +278,23 @@ export async function syncDatasetToCollections({
 
 实现要点：
 
-1. 收集 `datasetId` 及其继承态后代 dataset（读 `MongoDataset` 的 `_id/parentId/inheritPermission`）；
+1. 收集 `datasetId` 及其继承态后代 dataset（读 `MongoDataset` 的 `_id/parentId/inheritPermission/collectionPermissionEnabled`）；
 2. 批量加载后代 dataset 物化快照（`$in`，无 N+1）；
 3. BFS 自顶向下推导每个 dataset 的旧/新有效 clbs（`merge(父级有效 clbs, 自身 clbs)`，自身 clbs 由 `calculateInheritedResourceCollaborators` 反推）；
-4. 对每个受影响 dataset，将其直接子 collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，folder 经 `syncResourceTreePermissions`（`resourceType: collection`）递归子树；
+4. 对每个**自身开关为开启态**的 dataset，将其直接子 collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，folder 经 `syncResourceTreePermissions`（`resourceType: collection`）递归子树；关闭态 dataset 跳过自身 collection，但继续向下遍历（关闭态 folder 下可以有开启态知识库）；
 5. 批量 diff `patchResources` 写入，幂等。
 
-**dataset 模块集成（最小耦合）**：dataset 写路径在事务内、权限传播完成后追加一行：
+**dataset 模块集成（最小耦合）**：dataset 写路径在事务内、**dataset 树写入之前**调用：
 
 ```
 await syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs, session });
 ```
 
-涉及：`projects/app/src/service/core/dataset/move.ts`（dataset move，`PUT /api/core/dataset/update` 的移动分支复用该服务）、`pro/admin/.../dataset/collaborator/update.ts`、`.../dataset/resumeInheritPermission.ts`。
+必须在 dataset 树写入前调用：hook 依赖后代 dataset 的**变更前**快照推导 diff，先写 dataset 树会让 diff 为空、后代 collection 漏同步。
 
-**关闭态短路**：`syncDatasetToCollections` 在开关为 `false` 时直接返回（关闭态不存在自定义 collection 权限，读路径已短路），既省一次全树扫描，也让「关闭态无 collection ACL 行」更接近事实。
+涉及：`projects/app/src/service/core/dataset/move.ts`（dataset move，`PUT /api/core/dataset/update` 的移动分支复用该服务）、`pro/admin/.../dataset/collaborator/update.ts`（`onUpdated` 必须在 `updateResourceCollaborators` 之前执行）、`.../dataset/resumeInheritPermission.ts`。
+
+**开关按 dataset 独立判定**：`syncDatasetToCollections` 不再用被改节点自己的开关短路整棵树。folder 类型 dataset 永远不会开启该开关，若按根节点短路会导致其后代知识库的 collection 永远收不到权限变更。关闭态 dataset 自身的 collection 不写快照（读路径已短路），但遍历继续向下。
 
 ---
 
@@ -302,8 +304,8 @@ await syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffecti
 
 新架构下 dataset 快照已物化，**有效 clbs == 物化快照**。dataset 权限变更的传播：
 
-1. dataset 自身 ACL 变更（collaborator update / move / resume）→ dataset 模块用 `syncResourceTreePermissions` 传播到继承态后代 dataset；
-2. collection 侧 hook `syncDatasetToCollections` 在同一事务内，将受影响 dataset（含后代）的全部 collection 快照重新物化（§5.3）。
+1. dataset 模块先调用 collection 侧 hook `syncDatasetToCollections`（同一事务内），将受影响 dataset（含后代）中**已开启开关**的 dataset 的 collection 快照重新物化（§5.3）——必须在 dataset 树写入前执行，才能读到后代 dataset 的旧快照；
+2. 随后 dataset 模块用 `syncResourceTreePermissions` 传播到继承态后代 dataset。
 
 影响面统一为：**受影响 dataset 的根级继承态 collection 及其子树**。
 
