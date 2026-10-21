@@ -1,0 +1,42 @@
+packages/service/test/core/workflow/dispatch/ai/agent/adapter/runtime.test.ts
+  s_cb283d2df8fb64::t_c33d56050c15ee 127-149
+  s_cb283d2df8fb64::t_18501ed6b0d0c9 112
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/index.tsx
+  s_c1db842a72b21d::t_720c5b1849961b 82-84
+  s_cb283d2df8fb64::t_ff86a2730eb275 85-103
+  s_c1db842a72b21d::t_1646b82f4c28be 242,244,257-258
+  s_cb283d2df8fb64::t_8a9c38b80ed06b 239
+  s_cb283d2df8fb64::t_b940454a8c7a5f 74,79
+projects/app/test/web/core/app/workflow/utils.test.ts
+  s_c1db842a72b21d::t_91e706d13dce34 301-302
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  s_cb283d2df8fb64::t_c2f00b1a9970d7 53
+packages/service/core/workflow/dispatch/ai/agent/adapter/runtime.ts
+  s_cb283d2df8fb64::t_669baff4df05c8 127
+packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts
+  s_cb283d2df8fb64::t_90b68eccc7356e 1450-1464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d8437402bc41c72afb2ad80d985873008916316",
+  "prompts": {},
+  "sessions": {
+    "s_c1db842a72b21d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d192b3e-2692-4b40-88fe-00d20c616da1",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_cb283d2df8fb64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5823b276-993e-483b-a125-c1da2ba5f154",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
