@@ -151,7 +151,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
       </Flex>
     ),
-    [data, httpToolSet, localHttpToolSet, t, toolList.length]
+    [data, localHttpToolSet, t]
   );
 
   return (
@@ -186,7 +186,6 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           apiSchemaStr={localHttpToolSet.apiSchemaStr || ''}
           headerSecret={localHttpToolSet.headerSecret || {}}
           customHeaders={localHttpToolSet.customHeaders || '{}'}
-          avatar={data.avatar}
           isCustomToolSet
           onClose={() => setToolDetailIndex(null)}
           onSaveToolList={onSaveHttpToolList}
@@ -195,7 +194,6 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {toolDetail && localMcpToolSet && (
         <McpToolDetailModal
           tool={toolDetail as McpToolConfigType}
-          avatar={data.avatar}
           showIcon={false}
           toolList={localMcpToolSet.toolList ?? []}
           onSaveToolList={onSaveMcpToolList}
