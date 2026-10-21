@@ -1,0 +1,37 @@
+projects/app/src/web/core/workflow/type.ts
+  s_f9d56302239928::t_81a4ea824660b5 24-25
+packages/web/i18n/zh-CN/common.json
+  s_f9d56302239928::t_754a713898cb7c 676-682
+packages/web/i18n/en/common.json
+  s_f9d56302239928::t_47f8068276f6ae 676-682
+packages/web/i18n/zh-Hant/common.json
+  s_f9d56302239928::t_faa258d26b4c01 676-682
+projects/app/src/web/core/workflow/check/node.ts
+  s_f9d56302239928::t_bf1bbd67f0219d 78-90,92-126,129-138,146-150
+  s_f9d56302239928::t_48548ad9e553e5 159-167,171-180,195-200,203,208-209,214,216-221,228-229,242-251,253-258,287-291,297-301,307-311,325-326
+projects/app/test/web/core/workflow/check/check.test.ts
+  s_f9d56302239928::t_4695876c91fc1e 892-1053
+projects/app/src/web/core/workflow/check/message.ts
+  s_f9d56302239928::t_56bc54cac6055c 52-59
+  s_f9d56302239928::t_a5860b7570df71 254-255
+  s_f9d56302239928::t_5e5e0a991fa911 158-171
+  s_f9d56302239928::t_22b547d6fa0575 13-19
+packages/web/i18n/ko-KR/common.json
+  s_f9d56302239928::t_6be5bd076d518f 668-674
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5be85a1e5d2818185460708cc9a77edf856728da",
+  "prompts": {},
+  "sessions": {
+    "s_f9d56302239928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6bf872a-d37b-4d2f-862e-8f82a722d42f",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
