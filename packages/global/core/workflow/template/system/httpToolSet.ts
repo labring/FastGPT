@@ -12,7 +12,7 @@ export const HttpToolSetNode: FlowNodeTemplateType = {
   isTool: true,
   intro: '',
   name: 'app:toolType_http',
-  avatar: 'core/app/type/httpToolsFill',
+  avatar: 'core/app/type/httpPluginFill',
   showStatus: false,
   inputs: [],
   outputs: [],
