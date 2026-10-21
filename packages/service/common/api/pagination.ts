@@ -10,7 +10,7 @@ const PaginationPageSizeRequestSchema = PaginationSchema.pick({ pageSize: true }
  * 整组选取 body 或 query 中的分页参数，body 优先。
  * 当请求省略 pageSize 时仍保留分页位置（offset 或 pageNum）；
  * 若同时提供 offset（包括 0）与 pageNum，优先按 offset 定位。
- * pageSize 使用统一的 API 入参校验，超限或格式不正确时按入参错误返回 400。
+ * pageSize 超过统一上限时自动截断，格式不正确时按入参错误返回 400。
  */
 export const parsePaginationRequest = (req: NodeApiRequest) => {
   const paginationKeys = ['pageSize', 'pageNum', 'offset'];
