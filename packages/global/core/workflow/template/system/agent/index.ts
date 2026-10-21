@@ -14,7 +14,6 @@ import {
 import {
   Input_Template_Dataset_Tag_Filter_Version,
   Input_Template_File_Link,
-  Input_Template_History,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput
@@ -131,7 +130,6 @@ export const AgentNode: FlowNodeTemplateType = {
       description: systemPromptTip,
       placeholder: chatNodeSystemPromptTip
     },
-    Input_Template_History,
     Input_Template_File_Link,
     Input_Template_UserChatInput,
     {

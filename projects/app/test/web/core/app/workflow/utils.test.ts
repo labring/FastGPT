@@ -301,43 +301,8 @@ describe('storeNode2FlowNode', () => {
     ).toBe('workflow:tag_filter');
   });
 
-  it('hydrates missing Agent history input from the template', () => {
-    const storeNode = {
-      ...AgentNode,
-      nodeId: 'agent',
-      position: { x: 0, y: 0 },
-      inputs: AgentNode.inputs.filter((input) => input.key !== NodeInputKeyEnum.history)
-    } as StoreNodeItemType;
-
-    const result = storeNode2FlowNode({
-      item: storeNode,
-      t: ((key: string) => key) as any
-    });
-
-    const historyInput = AgentNode.inputs.find((input) => input.key === NodeInputKeyEnum.history);
-    expect(result.data.inputs.find((input) => input.key === NodeInputKeyEnum.history)?.value).toBe(
-      historyInput?.value
-    );
-  });
-
-  it('preserves stored Agent history value', () => {
-    const storeNode = {
-      ...AgentNode,
-      nodeId: 'agent',
-      position: { x: 0, y: 0 },
-      inputs: AgentNode.inputs.map((input) =>
-        input.key === NodeInputKeyEnum.history ? { ...input, value: 12 } : input
-      )
-    } as StoreNodeItemType;
-
-    const result = storeNode2FlowNode({
-      item: storeNode,
-      t: ((key: string) => key) as any
-    });
-
-    expect(result.data.inputs.find((input) => input.key === NodeInputKeyEnum.history)?.value).toBe(
-      12
-    );
+  it('does not expose Agent history input from the template', () => {
+    expect(AgentNode.inputs.some((input) => input.key === NodeInputKeyEnum.history)).toBe(false);
   });
 
   it('restores tool set nodes without a source handle', () => {

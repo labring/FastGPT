@@ -1447,4 +1447,19 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
   });
+
+  it('forwards node maxToken into the agent loop runtime', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.maxToken = 2048;
+
+    let promise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      promise = dispatchRunAgent(props);
+    });
+    const result = await promise!;
+
+    expect(result.error).toBeUndefined();
+    expect(runAgentLoopMock.mock.calls[0][0].runtime.llmParams.maxTokens).toBe(2048);
+  });
 });

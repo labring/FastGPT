@@ -50,6 +50,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
   [NodeInputKeyEnum.userChatInput]: string;
 
+  [NodeInputKeyEnum.aiChatMaxToken]?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatAudio]?: boolean;
   [NodeInputKeyEnum.aiChatVideo]?: boolean;

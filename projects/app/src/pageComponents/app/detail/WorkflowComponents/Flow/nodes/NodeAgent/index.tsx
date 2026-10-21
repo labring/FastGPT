@@ -72,13 +72,35 @@ const getRenderType = (input: FlowNodeInputItemType) =>
   getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;
 
 const agentModelSettingProps = {
-  showMaxToken: false,
+  showMaxToken: true,
   showTemperature: false,
   showTopP: false,
   showStopSign: false,
   showResponseFormat: false,
-  showMultimodalConfig: false
+  showMultimodalConfig: true
 };
+
+// 聊天记录轮数不在节点上配置，与 Agent V2 表单保持一致；存量节点若仍有该输入也不展示。
+const hiddenInputKeys = new Set<NodeInputKeyEnum>([NodeInputKeyEnum.history]);
+
+// AI 配置弹窗会读写这些输入。hidden 输入不渲染，但必须一并传给设置组件，否则修改无法写回节点。
+const aiSettingInputKeys = new Set<NodeInputKeyEnum>([
+  NodeInputKeyEnum.aiModelId,
+  NodeInputKeyEnum.aiModel,
+  NodeInputKeyEnum.aiChatTemperature,
+  NodeInputKeyEnum.aiChatMaxToken,
+  NodeInputKeyEnum.aiChatIsResponseText,
+  NodeInputKeyEnum.aiChatVision,
+  NodeInputKeyEnum.aiChatAudio,
+  NodeInputKeyEnum.aiChatVideo,
+  NodeInputKeyEnum.aiChatExtractFiles,
+  NodeInputKeyEnum.aiChatReasoning,
+  NodeInputKeyEnum.aiChatReasoningEffort,
+  NodeInputKeyEnum.aiChatTopP,
+  NodeInputKeyEnum.aiChatStopSign,
+  NodeInputKeyEnum.aiChatResponseFormat,
+  NodeInputKeyEnum.aiChatJsonSchema
+]);
 
 const ManualInputLabel = React.memo(function ManualInputLabel({
   input
@@ -215,24 +237,12 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     []
   );
   const modelInputs = useMemo(
-    () =>
-      commonInputs.filter(
-        (i) =>
-          i.key === NodeInputKeyEnum.aiModelId ||
-          i.key === NodeInputKeyEnum.aiModel ||
-          // hidden 输入不渲染，但要传给模型设置弹窗以显示“隐藏回答”开关。
-          i.key === NodeInputKeyEnum.aiChatIsResponseText
-      ),
+    () => commonInputs.filter((i) => aiSettingInputKeys.has(i.key as NodeInputKeyEnum)),
     [commonInputs]
   );
-  // Inputs rendered before skills/tools (history, fileLink, userChatInput)
+  // Inputs rendered before skills/tools (fileLink, userChatInput)
   const chatInputKeys = useMemo(
-    () =>
-      new Set([
-        NodeInputKeyEnum.history,
-        NodeInputKeyEnum.fileUrlList,
-        NodeInputKeyEnum.userChatInput
-      ]),
+    () => new Set([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput]),
     []
   );
   const chatInputs = useMemo(
@@ -245,7 +255,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       commonInputs.filter(
         (i) =>
           !manualKeys.has(i.key as NodeInputKeyEnum) &&
-          !chatInputKeys.has(i.key as NodeInputKeyEnum)
+          !chatInputKeys.has(i.key as NodeInputKeyEnum) &&
+          !hiddenInputKeys.has(i.key as NodeInputKeyEnum)
       ),
     [commonInputs, manualKeys, chatInputKeys]
   );
