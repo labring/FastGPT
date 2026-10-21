@@ -25,10 +25,10 @@ export const isValidHttpUrl = (url?: string): boolean => {
 };
 
 /**
- * 为缺少协议头的地址补全 `https://`，仅用于兼容历史数据。
+ * 为缺少协议头的地址补全 `https://`。
  *
- * 新保存的 API 数据集地址已在请求入参 schema 中强制要求完整的 http(s) 地址；
- * 这里只兜底历史记录，避免 axios / `new URL()` 抛 `ERR_INVALID_URL`。
+ * 用于三方知识库 baseUrl 的归一化：schema 解析时统一补全，存量裸域名也不会在
+ * axios / `new URL()` 处抛 `ERR_INVALID_URL`。
  * 已带任意显式协议的地址原样返回（避免把 `ftp://x` 拼成 `https://ftp://x`），
  * 协议相对地址 `//host` 按 https 处理。
  */

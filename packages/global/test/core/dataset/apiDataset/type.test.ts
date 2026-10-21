@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { APIFileServerSchema } from '@fastgpt/global/core/dataset/apiDataset/type';
 import {
-  ApiDatasetServerInputSchema,
+  APIFileServerSchema,
+  ApiDatasetServerSchema
+} from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
   CreateDatasetBodySchema,
   UpdateDatasetBodySchema
 } from '@fastgpt/global/openapi/core/dataset/api';
@@ -9,88 +11,67 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const objectId = '68ad85a7463006c963799a05';
 
-describe('APIFileServerSchema (read side)', () => {
-  it('keeps legacy bare domains unchanged and never rejects', () => {
-    // 该 schema 同时用于读取历史记录和响应输出：不能改写或拒绝旧数据
-    expect(APIFileServerSchema.parse({ baseUrl: 'api.example.com' }).baseUrl).toBe(
-      'api.example.com'
-    );
-    expect(APIFileServerSchema.parse({ baseUrl: '  api.example.com  ' }).baseUrl).toBe(
-      '  api.example.com  '
-    );
-    expect(APIFileServerSchema.safeParse({ baseUrl: '' }).success).toBe(true);
-    expect(APIFileServerSchema.safeParse({ baseUrl: 'not a url at all' }).success).toBe(true);
+describe('APIFileServerSchema', () => {
+  it('keeps complete http/https addresses and trims surrounding whitespace', () => {
+    expect(APIFileServerSchema.parse({ baseUrl: ' https://api.example.com ' })).toEqual({
+      baseUrl: 'https://api.example.com'
+    });
     expect(
-      APIFileServerSchema.safeParse({ baseUrl: 'api.example.com', authorization: 'token' }).success
-    ).toBe(true);
-  });
-});
-
-describe('ApiDatasetServerInputSchema (write side)', () => {
-  it('accepts complete http/https addresses and trims surrounding whitespace', () => {
-    expect(
-      ApiDatasetServerInputSchema.parse({ apiServer: { baseUrl: ' https://api.example.com ' } })
-    ).toEqual({ apiServer: { baseUrl: 'https://api.example.com' } });
-    expect(
-      ApiDatasetServerInputSchema.safeParse({ apiServer: { baseUrl: 'http://api.example.com' } })
-        .success
-    ).toBe(true);
+      APIFileServerSchema.parse({ baseUrl: 'http://localhost:3000', authorization: 'token' })
+    ).toEqual({ baseUrl: 'http://localhost:3000', authorization: 'token' });
   });
 
   it.each([
-    'api.example.com',
-    'api.example.com/v1',
-    '',
-    'https://',
-    'ftp://api.example.com',
-    'not a url at all'
-  ])('rejects missing protocol or invalid baseUrl: %s', (baseUrl) => {
-    const result = ApiDatasetServerInputSchema.safeParse({ apiServer: { baseUrl } });
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].path).toEqual(['apiServer', 'baseUrl']);
-    }
+    ['api.example.com', 'https://api.example.com'],
+    ['api.example.com/v1', 'https://api.example.com/v1'],
+    ['//api.example.com', 'https://api.example.com'],
+    ['HTTPS://api.example.com', 'HTTPS://api.example.com'],
+    // 其它显式协议原样保留，不会拼成 https://ftp://...
+    ['ftp://api.example.com', 'ftp://api.example.com'],
+    // 历史空值保持为空，避免存量记录解析失败
+    ['', '']
+  ])('normalizes baseUrl: %s -> %s', (baseUrl, expected) => {
+    expect(APIFileServerSchema.parse({ baseUrl }).baseUrl).toBe(expected);
   });
+});
 
+describe('ApiDatasetServerSchema', () => {
   it('allows configs without an API server', () => {
-    expect(ApiDatasetServerInputSchema.safeParse({}).success).toBe(true);
+    expect(ApiDatasetServerSchema.safeParse({}).success).toBe(true);
     expect(
-      ApiDatasetServerInputSchema.safeParse({
+      ApiDatasetServerSchema.safeParse({
         feishuServer: { appId: 'app', folderToken: 'folder' }
       }).success
     ).toBe(true);
   });
+
+  it('normalizes legacy bare domains when parsing stored configs', () => {
+    // detail 接口用 DatasetItemSchema 解析历史记录，存量裸域名必须能通过并归一化
+    expect(ApiDatasetServerSchema.parse({ apiServer: { baseUrl: 'api.example.com' } })).toEqual({
+      apiServer: { baseUrl: 'https://api.example.com' }
+    });
+  });
 });
 
 describe('dataset create/update contracts', () => {
-  it('applies strict baseUrl validation when saving api datasets', () => {
-    const invalidApiDatasetServer = {
-      apiServer: { baseUrl: 'api.example.com' }
-    };
+  it('normalizes a bare-domain baseUrl when saving', () => {
+    const parsed = CreateDatasetBodySchema.parse({
+      parentId: null,
+      type: DatasetTypeEnum.apiDataset,
+      name: 'dataset',
+      intro: '',
+      apiDatasetServer: { apiServer: { baseUrl: 'api.example.com' } }
+    });
 
-    expect(
-      CreateDatasetBodySchema.safeParse({
-        parentId: null,
-        type: DatasetTypeEnum.apiDataset,
-        name: 'dataset',
-        intro: '',
-        apiDatasetServer: invalidApiDatasetServer
-      }).success
-    ).toBe(false);
+    expect(parsed.apiDatasetServer?.apiServer?.baseUrl).toBe('https://api.example.com');
+  });
 
+  it('normalizes an updated baseUrl', () => {
     expect(
-      UpdateDatasetBodySchema.safeParse({
+      UpdateDatasetBodySchema.parse({
         id: objectId,
-        apiDatasetServer: invalidApiDatasetServer
-      }).success
-    ).toBe(false);
-
-    expect(
-      UpdateDatasetBodySchema.safeParse({
-        id: objectId,
-        apiDatasetServer: { apiServer: { baseUrl: 'https://api.example.com' } }
-      }).success
-    ).toBe(true);
+        apiDatasetServer: { apiServer: { baseUrl: ' https://api.example.com ' } }
+      }).apiDatasetServer?.apiServer?.baseUrl
+    ).toBe('https://api.example.com');
   });
 });
