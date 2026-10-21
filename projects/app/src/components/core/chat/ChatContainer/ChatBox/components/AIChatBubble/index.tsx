@@ -5,7 +5,6 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import type { ChatSiteItemType } from '../../type';
 import AIChatBubbleContent from './Content';
-import WorkflowBuilderContent from './WorkflowBuilderContent';
 import AIChatBubbleActions from './Actions';
 import type { ChatControllerProps } from '../ChatController';
 import { useContextSelector } from 'use-context-selector';
@@ -56,10 +55,6 @@ const AIChatBubble = ({
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
-  const collapseIntermediateAgentResponses = useContextSelector(
-    ChatBoxContext,
-    (v) => v.collapseIntermediateAgentResponses ?? false
-  );
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -101,9 +96,6 @@ const AIChatBubble = ({
     : showNoOutputTip
       ? t('chat:no_output_content')
       : '';
-  const ContentComponent = collapseIntermediateAgentResponses
-    ? WorkflowBuilderContent
-    : AIChatBubbleContent;
 
   return (
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
@@ -114,7 +106,7 @@ const AIChatBubble = ({
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}
       >
-        <ContentComponent
+        <AIChatBubbleContent
           chatValue={chatValue}
           responseData={chat.responseData}
           dataId={chat.dataId}

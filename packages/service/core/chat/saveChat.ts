@@ -18,7 +18,10 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
-import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
+import {
+  checkInteractiveResponseStatus,
+  getUserChatInteractiveReply
+} from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {
   FlowNodeTypeEnum,
@@ -731,11 +734,10 @@ export const pushChatRecords = async (props: Props) => {
   }
 };
 
-/*
-  更新交互节点，包含两种情况：
-  1. 更新当前的 items，并把 value 追加到当前 items
-  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
-*/
+/**
+ * 保存交互回复：query 回写上一轮交互状态并完成预创建的 Human/AI 轮次；
+ * submit 将交互状态和续跑结果合并到当前 AI 消息。
+ */
 export const updateInteractiveChat = async ({
   interactive,
   shouldFinalizePreparedRound = false,
@@ -762,22 +764,12 @@ export const updateInteractiveChat = async ({
     sourceId: props.sourceId
   };
   const appSourceId = chatSource.sourceId;
-  if (!chatId) return;
+  if (!chatId || isSkipSaveChatId(chatId)) return;
 
   const { variables: variableList } = getAppChatConfig({
     chatConfig: appChatConfig,
     isPublicFetch: false
   });
-
-  const chatItem = await MongoChatItem.findOne({
-    ...buildChatSourceQuery(chatSource),
-    chatId,
-    obj: ChatRoleEnum.AI
-  }).sort({
-    _id: -1
-  });
-
-  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
   // Get interactive value
   interactive.params = interactive.params || {};
@@ -795,6 +787,12 @@ export const updateInteractiveChat = async ({
   if (status === 'query') {
     if (!shouldFinalizePreparedRound) {
       throw new Error('Prepared chat round is required for interactive query');
+    }
+
+    const interactiveReply = getUserChatInteractiveReply({ interactive, text: userInteractiveVal });
+    if (interactiveReply && userContent.value[0]) {
+      userContent.hideInUI = false;
+      userContent.value[0] = { ...userContent.value[0], interactiveReply };
     }
 
     if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
@@ -816,32 +814,57 @@ export const updateInteractiveChat = async ({
         finalInteractive.params.submitted = true;
       }
 
-      const interactiveChatItem = await MongoChatItem.findOne({
-        ...buildChatSourceQuery(chatSource),
-        chatId,
-        obj: ChatRoleEnum.AI,
-        'value.interactive': { $exists: true }
-      }).sort({ _id: -1 });
-      if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
-        throw new Error(`Interactive query chat item not found: ${chatId}`);
-      }
-      const previousInteractiveIndex = interactiveChatItem.value.findLastIndex(
-        (item) => !!item.interactive
-      );
-      if (previousInteractiveIndex === -1) {
-        throw new Error(`Interactive query value not found: ${chatId}`);
-      }
-      interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
-      interactiveChatItem.markModified('value');
-      await interactiveChatItem.save();
-
-      props.userContent.value.forEach((item) => {
+      // Ask 的答案由 tool response 恢复，标记用户内容以避免重复进入普通对话上下文。
+      userContent.value.forEach((item) => {
         item.askId = finalInteractive.askId;
       });
+    } else if (finalInteractive.type === 'workflowBuilderPreview' && !finalInteractive.previewId) {
+      throw new Error(`Workflow Builder previewId is required: ${chatId}`);
     }
+
+    // 本轮 AI 是预创建的占位消息；交互状态仍需回写到上一轮携带交互的 AI。
+    const interactiveChatItem = await MongoChatItem.findOne({
+      ...buildChatSourceQuery(chatSource),
+      chatId,
+      obj: ChatRoleEnum.AI,
+      deleteTime: null,
+      'value.interactive': { $exists: true }
+    }).sort({ _id: -1 });
+    if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
+      throw new Error(`Interactive query chat item not found: ${chatId}`);
+    }
+    const previousInteractiveIndex = interactiveChatItem.value.findLastIndex((item) => {
+      if (!item.interactive) return false;
+      const previousInteractive = extractDeepestInteractive(item.interactive);
+      if (finalInteractive.type === 'workflowBuilderPreview') {
+        return (
+          previousInteractive.type === 'workflowBuilderPreview' &&
+          previousInteractive.previewId === finalInteractive.previewId
+        );
+      }
+      return (
+        (previousInteractive.type === 'agentAsk' ||
+          previousInteractive.type === 'agentPlanAskQuery') &&
+        (finalInteractive.type === 'agentAsk' || finalInteractive.type === 'agentPlanAskQuery') &&
+        previousInteractive.askId === finalInteractive.askId
+      );
+    });
+    if (previousInteractiveIndex === -1) {
+      throw new Error(`Interactive query value not found: ${chatId}`);
+    }
+    interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
+    interactiveChatItem.markModified('value');
+    await interactiveChatItem.save();
 
     return finalizeChatRound(props);
   }
+
+  const chatItem = await MongoChatItem.findOne({
+    ...buildChatSourceQuery(chatSource),
+    chatId,
+    obj: ChatRoleEnum.AI
+  }).sort({ _id: -1 });
+  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
 
   const parsedUserInteractiveVal = (() => {
     try {

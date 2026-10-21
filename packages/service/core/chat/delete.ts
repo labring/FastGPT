@@ -4,6 +4,69 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
 import { assertChatAccess, type ChatAccessScope } from './auth';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import type { ClientSession } from '../../common/mongo';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { resetDeletedInteractiveReply } from '@fastgpt/global/core/chat/utils';
+
+/**
+ * 软删除指定消息；删除末轮 Ask/Preview 的 user 回复时，同事务恢复原问题的待回答状态。
+ * 答案跟随真实 user 记录，重试裁剪后不能让旧 AI 的已回答标记阻止续跑。
+ * 仅恢复剩余的最后一条 AI，删除历史中间消息不重启后续已经完成的对话。
+ */
+export const softDeleteChatItems = async (
+  {
+    sourceType,
+    sourceId,
+    chatId,
+    contentIds
+  }: ChatSourceParams & { chatId: string; contentIds: string[] },
+  session?: ClientSession
+) => {
+  if (contentIds.length === 0) return;
+  const chatQuery = { ...buildChatSourceQuery({ sourceType, sourceId }), chatId };
+  const remove = async (session: ClientSession) => {
+    const users = await MongoChatItem.find({
+      ...chatQuery,
+      obj: ChatRoleEnum.Human,
+      dataId: { $in: contentIds },
+      deleteTime: null
+    })
+      .select('obj value')
+      .session(session)
+      .lean();
+    const replies = users.flatMap((item) =>
+      item.obj === ChatRoleEnum.Human
+        ? item.value.flatMap((value) => (value.interactiveReply ? [value.interactiveReply] : []))
+        : []
+    );
+
+    await MongoChatItem.updateMany(
+      { ...chatQuery, dataId: { $in: contentIds } },
+      {
+        $set: { deleteTime: new Date() }
+      },
+      { session }
+    );
+    if (replies.length === 0) return;
+
+    const previousAi = await MongoChatItem.findOne({
+      ...chatQuery,
+      obj: ChatRoleEnum.AI,
+      deleteTime: null
+    })
+      .sort({ _id: -1 })
+      .session(session);
+    if (previousAi?.obj !== ChatRoleEnum.AI) return;
+    const value = previousAi.value.at(-1);
+    if (!value?.interactive) return;
+    if (!resetDeletedInteractiveReply({ interactive: value.interactive, replies })) return;
+    previousAi.markModified('value');
+    await previousAi.save({ session });
+  };
+  if (session) return remove(session);
+  return mongoSessionRun(remove);
+};
 
 export type DeleteChatResourcesBySourceParams = ChatSourceParams & {
   chatIds?: string[];

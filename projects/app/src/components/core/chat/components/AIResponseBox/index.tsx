@@ -21,7 +21,6 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
-import RenderWorkflowBuilderPreviewInteractive from './WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
 import RenderWorkflowBuilderVersion from './WorkflowBuilder/RenderWorkflowBuilderVersion';
 import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
@@ -199,15 +198,6 @@ const AIResponseBox = ({
           key="interactive"
           interactive={interactive}
           responseData={responseData}
-          isLastChild={isLastChild}
-        />
-      );
-    }
-    if (interactive.type === 'workflowBuilderPreview') {
-      responseBlocks.push(
-        <RenderWorkflowBuilderPreviewInteractive
-          key="interactive"
-          interactive={interactive}
           isLastChild={isLastChild}
         />
       );

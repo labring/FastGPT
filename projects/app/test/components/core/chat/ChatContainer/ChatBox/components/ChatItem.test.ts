@@ -7,9 +7,10 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import type AIChatBubble from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble';
 import ChatItem from '@/components/core/chat/ChatContainer/ChatBox/components/ChatItem';
+import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-// 这里只隔离 AI 叶子的 Markdown、工具与操作区，保留 ChatItem 和用户气泡的真实渲染。
+// 只隔离 AI 叶子展示和操作区，保留 ChatItem 分组和用户气泡的真实渲染。
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', () => ({
   default: ({ chatValue, children }: React.ComponentProps<typeof AIChatBubble>) =>
     React.createElement(
@@ -44,12 +45,22 @@ const answeredAsk: ChatSiteItemType = {
 };
 
 /** SSR 足以验证消息归属与顺序，避免为纯展示路由引入请求或生成状态 mock。 */
-const renderChatItem = (chat: ChatSiteItemType, children?: React.ReactNode) => {
+const renderChatItem = (
+  chat: ChatSiteItemType | ChatSiteItemType[],
+  children?: React.ReactNode
+) => {
+  const chats = Array.isArray(chat) ? chat : [chat];
   const markup = renderToStaticMarkup(
     React.createElement(
       ChakraProvider,
       null,
-      React.createElement(ChatItem, { chat, isLastChild: true }, children)
+      chats.map((item, index) =>
+        React.createElement(
+          ChatItem,
+          { key: item.dataId, chat: item, isLastChild: index === chats.length - 1 },
+          children
+        )
+      )
     )
   );
   const dom = new JSDOM(markup);
@@ -57,41 +68,196 @@ const renderChatItem = (chat: ChatSiteItemType, children?: React.ReactNode) => {
   return dom;
 };
 
-describe('ChatItem Agent Ask messages', () => {
+describe('ChatItem interactive replies', () => {
   beforeAll(() => vi.stubGlobal('React', React));
   afterAll(() => vi.unstubAllGlobals());
 
-  it('renders the reply between AI segments as a separate user bubble', () => {
-    const dom = renderChatItem({
-      ...answeredAsk,
+  it('renders Ask only on its real user record and preserves both AI segments', () => {
+    const user: ChatSiteItemType = {
+      id: 'answer-user',
+      dataId: 'answer-user',
+      obj: ChatRoleEnum.Human,
+      status: ChatStatusEnum.finish,
       value: [
-        { text: { content: 'Before ask' } },
-        ...answeredAsk.value,
-        { text: { content: 'After ask' } }
+        {
+          askId: 'ask-1',
+          text: { content: '{"answers":["Answer"]}' },
+          interactiveReply: {
+            type: 'agentAsk',
+            interactionId: 'ask-1',
+            questions: [{ question: 'Question', answer: 'Answer' }]
+          }
+        }
       ]
-    });
-    const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
+    };
+    const dom = renderChatItem([
+      { ...answeredAsk, value: [{ text: { content: 'Before ask' } }, ...answeredAsk.value] },
+      user,
+      {
+        ...answeredAsk,
+        id: 'continued-ai',
+        dataId: 'continued-ai',
+        value: [{ text: { content: 'After ask' } }]
+      }
+    ]);
+    const document = dom.window.document;
+    const cards = [...document.querySelectorAll('.chat-box-card')];
     expect(cards.map((card) => card.textContent)).toEqual([
       'Before ask',
       'QuestionAnswer',
       'After ask'
     ]);
-    expect(cards[1].querySelector('.chakra-card')).not.toBeNull();
-    expect(cards[1].querySelector('[data-ai-message]')).toBeNull();
+    const replyCard = document.querySelector('[data-chat-id="answer-user"] .chakra-card');
+    expect(replyCard?.textContent).toBe('QuestionAnswer');
+    expect(replyCard?.querySelector('[data-ai-message]')).toBeNull();
+    expect(document.querySelector('[data-chat-id="ai-1"]')?.textContent).not.toContain('Question');
+    expect(document.body.textContent).not.toContain('answers');
     dom.window.close();
+
+    // 分页加载时即使没有原来的提问 AI，user 消息仍能独立渲染问答。
+    const standalone = renderChatItem(user);
+    expect(standalone.window.document.querySelector('.chakra-card')?.textContent).toBe(
+      'QuestionAnswer'
+    );
+    standalone.window.close();
   });
 
-  it('keeps resume errors and feedback after an Ask that has no other AI output', () => {
+  it('keeps resume errors and feedback on the AI record without rendering a user reply there', () => {
     const dom = renderChatItem(
       { ...answeredAsk, errorMsg: 'Resume failed' },
       React.createElement('div', null, 'Feedback')
     );
     const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
-    expect(cards).toHaveLength(2);
-    expect(cards[0].textContent).toBe('QuestionAnswer');
-    expect(cards[1].textContent).toContain('Resume failed');
-    expect(cards[1].textContent).toContain('Feedback');
-    expect(cards[1].querySelector('[data-ai-message]')).not.toBeNull();
+    expect(cards).toHaveLength(1);
+    expect(cards[0].textContent).toContain('Resume failed');
+    expect(cards[0].textContent).toContain('Feedback');
+    expect(cards[0].querySelector('[data-ai-message]')).not.toBeNull();
+    expect(dom.window.document.querySelector('.chakra-card')).toBeNull();
     dom.window.close();
   });
+
+  it('uses the same readonly question/answer layout for custom and skipped Ask answers', () => {
+    const dom = renderChatItem({
+      id: 'answer-user',
+      dataId: 'answer-user',
+      obj: ChatRoleEnum.Human,
+      status: ChatStatusEnum.finish,
+      value: [
+        {
+          text: { content: '{"answers":["custom",""]}' },
+          interactiveReply: {
+            type: 'agentAsk',
+            interactionId: 'ask-1',
+            questions: [
+              { question: 'Question 1', answer: 'custom' },
+              { question: 'Question 2', answer: '' }
+            ]
+          }
+        }
+      ]
+    });
+    expect(dom.window.document.querySelector('.chakra-card')?.textContent).toBe(
+      'Question 1customQuestion 2chat:interactive.agent_ask.unanswered'
+    );
+    expect(dom.window.document.body.textContent).not.toContain('answers');
+    dom.window.close();
+  });
+
+  it('does not render a consultation row or an empty AI bubble while waiting for an answer', () => {
+    const value = answeredAsk.value[0];
+    if (value.interactive?.type !== 'agentAsk') throw new Error('Missing Ask fixture');
+
+    const dom = renderChatItem({
+      ...answeredAsk,
+      value: [
+        {
+          ...value,
+          interactive: {
+            ...value.interactive,
+            params: { ...value.interactive.params, submitted: false }
+          }
+        }
+      ]
+    });
+    const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
+    expect(cards).toHaveLength(0);
+    expect(dom.window.document.querySelector('[data-ai-message]')).toBeNull();
+    dom.window.close();
+  });
+
+  it.each([
+    { answerValue: 'confirm', answerText: undefined, expected: '确认并开始搭建' },
+    { answerValue: 'revise', answerText: '增加审核分支', expected: '增加审核分支' },
+    { answerValue: 'cancel', answerText: undefined, expected: '取消' }
+  ] as const)(
+    'renders a persisted $answerValue user reply once before the next AI message',
+    (response) => {
+      const preview: WorkflowBuilderPreviewInteractive = {
+        type: 'workflowBuilderPreview',
+        previewId: 'preview-1',
+        params: {
+          title: '确认工作流方案？',
+          mermaid: 'flowchart LR\n  A --> B',
+          sections: [{ title: '工作流说明', content: '预览内容' }],
+          actions: [
+            { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
+            { value: 'revise', label: '修改方案', inputMode: 'text' },
+            { value: 'cancel', label: '取消', inputMode: 'none' }
+          ],
+          answerValue: response.answerValue,
+          answerText: response.answerText
+        }
+      };
+      const dom = renderChatItem([
+        {
+          ...answeredAsk,
+          value: [
+            {
+              interactive: { ...preview, entryNodeIds: [], memoryEdges: [], nodeOutputs: [] }
+            }
+          ]
+        },
+        {
+          id: 'preview-reply',
+          dataId: 'preview-reply',
+          obj: ChatRoleEnum.Human,
+          status: ChatStatusEnum.finish,
+          value: [
+            {
+              text: { content: response.expected },
+              interactiveReply: {
+                type: 'workflowBuilderPreview',
+                interactionId: 'preview-1',
+                questions: [{ question: preview.params.title, answer: response.expected }]
+              }
+            }
+          ]
+        },
+        {
+          ...answeredAsk,
+          id: 'continued-ai',
+          dataId: 'continued-ai',
+          value: [{ text: { content: '继续搭建' } }]
+        }
+      ]);
+      const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
+      expect(cards).toHaveLength(2);
+      expect(cards[0].textContent).toBe(`确认工作流方案？${response.expected}`);
+      expect(dom.window.document.querySelector('[data-chat-id="preview-reply"] .chakra-card')).toBe(
+        cards[0].querySelector('.chakra-card')
+      );
+      expect(dom.window.document.querySelector('[data-chat-id="ai-1"]')?.textContent).not.toContain(
+        response.expected
+      );
+      expect(cards[0].querySelector('.chakra-card')).not.toBeNull();
+      expect(cards[0].querySelector('[data-ai-message]')).toBeNull();
+      expect(cards[1].textContent).toBe('继续搭建');
+      expect(dom.window.document.body.textContent).not.toContain('预览内容');
+      expect(dom.window.document.body.textContent).not.toContain(
+        'interactive.user_select.selected'
+      );
+      expect(dom.window.document.body.textContent).not.toContain('interactive.agent_ask.waiting');
+      dom.window.close();
+    }
+  );
 });

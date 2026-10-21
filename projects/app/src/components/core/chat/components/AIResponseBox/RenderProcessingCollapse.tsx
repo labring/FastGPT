@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
+import { useCollapseScroll } from './useCollapseScroll';
 
 const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
   children,
@@ -28,14 +29,18 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
 }) {
   const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const { collapseRef, onCollapseChange } = useCollapseScroll();
 
   return (
     <Accordion
       allowToggle
       index={isExpanded ? 0 : -1}
-      onChange={(index) => setIsExpanded(Array.isArray(index) ? index.length > 0 : index === 0)}
+      onChange={(index) => {
+        onCollapseChange(index);
+        setIsExpanded(Array.isArray(index) ? index.length > 0 : index === 0);
+      }}
     >
-      <AccordionItem borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
+      <AccordionItem ref={collapseRef} borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
         <Box w={'full'} pb={'4px'} borderBottom={'1px solid'} borderBottomColor={'myGray.100'}>
           <AccordionButton
             w={'fit-content'}
@@ -96,7 +101,14 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
           </Box>
         )}
         {isExpanded && (
-          <AccordionPanel py={0} pr={0} pl={0} mt={2}>
+          <AccordionPanel
+            py={0}
+            pr={0}
+            pl={0}
+            mt={2}
+            // 内容已按展开状态挂载，放开动画容器的裁剪，让单项标题相对聊天滚动区域吸顶。
+            motionProps={{ style: { overflow: 'visible' } }}
+          >
             <Flex flexDirection={'column'} gap={2}>
               {children}
             </Flex>

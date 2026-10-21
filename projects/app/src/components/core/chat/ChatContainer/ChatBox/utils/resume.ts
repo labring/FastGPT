@@ -301,11 +301,7 @@ export const shouldAppendResumeInteractive = ({
 
   if (!isSameInteractive) return true;
 
-  return !(
-    (existingFinalInteractive.type === 'userInput' ||
-      existingFinalInteractive.type === 'agentAsk') &&
-    existingFinalInteractive.params.submitted
-  );
+  return !isSubmittedInteractive(existingFinalInteractive);
 };
 
 /** 判断两个交互是否为同一轮工作流交互（比较最内层 interactive，而非 child 包装层）。 */
@@ -318,6 +314,17 @@ const areSameInteractive = (
 
   if (finalA.type !== finalB.type) return false;
 
+  // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
+  if (
+    (finalA.type === 'agentAsk' || finalA.type === 'agentPlanAskQuery') &&
+    (finalB.type === 'agentAsk' || finalB.type === 'agentPlanAskQuery')
+  ) {
+    return finalA.askId === finalB.askId;
+  }
+  if (finalA.type === 'workflowBuilderPreview' && finalB.type === 'workflowBuilderPreview') {
+    return finalA.previewId === finalB.previewId;
+  }
+
   // 新数据使用每次暂停生成的 interactiveId 区分同一节点的不同触发轮次。
   if (finalA.interactiveId || finalB.interactiveId) {
     return !!finalA.interactiveId && finalA.interactiveId === finalB.interactiveId;
@@ -326,6 +333,15 @@ const areSameInteractive = (
   return (
     // 兼容旧数据：没有 interactiveId 时，仍按历史规则识别同一轮交互。
     finalA.usageId === finalB.usageId || isSameArray(finalA.entryNodeIds, finalB.entryNodeIds)
+  );
+};
+
+/** 已提交交互不能被恢复流重放的未提交快照覆盖。 */
+const isSubmittedInteractive = (interactive: WorkflowInteractiveResponseType) => {
+  if (interactive.type === 'workflowBuilderPreview') return !!interactive.params.answerValue;
+  return (
+    (interactive.type === 'userInput' || interactive.type === 'agentAsk') &&
+    !!interactive.params.submitted
   );
 };
 
@@ -347,10 +363,7 @@ const mergeSubmittedInteractiveValues = ({
       if (!interactive) return false;
 
       const finalInteractive = extractDeepestInteractive(interactive);
-      return (
-        (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentAsk') &&
-        !!finalInteractive.params.submitted
-      );
+      return isSubmittedInteractive(finalInteractive);
     });
 
   if (!currentSubmittedInteractives.length) return completedValues;
@@ -360,7 +373,11 @@ const mergeSubmittedInteractiveValues = ({
     if (!value.interactive) return value;
 
     const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type !== 'userInput' && finalInteractive.type !== 'agentAsk') {
+    if (
+      finalInteractive.type !== 'userInput' &&
+      finalInteractive.type !== 'agentAsk' &&
+      finalInteractive.type !== 'workflowBuilderPreview'
+    ) {
       return value;
     }
 

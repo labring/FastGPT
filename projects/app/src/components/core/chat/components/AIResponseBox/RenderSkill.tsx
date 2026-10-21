@@ -10,20 +10,25 @@ import type { SkillModuleResponseItemType } from '@fastgpt/global/core/chat/type
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { isEqual } from 'lodash-es';
 import React from 'react';
-import { accordionButtonStyle } from './constants';
+import { accordionButtonStyle, processingItemHeaderStyle } from './constants';
+import { useCollapseScroll } from './useCollapseScroll';
 
 const RenderSkill = React.memo(
   function RenderSkill({ skill }: { skill: SkillModuleResponseItemType }) {
+    const { collapseRef, onCollapseChange } = useCollapseScroll();
+
     return (
-      <Accordion allowToggle>
-        <AccordionItem borderTop={'none'} borderBottom={'none'}>
-          <AccordionButton {...accordionButtonStyle}>
-            <Avatar src={skill.skillAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
-            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-              {skill.skillName}
-            </Box>
-            <AccordionIcon color={'myGray.600'} ml={5} />
-          </AccordionButton>
+      <Accordion allowToggle onChange={onCollapseChange}>
+        <AccordionItem ref={collapseRef} borderTop={'none'} borderBottom={'none'}>
+          <Box {...processingItemHeaderStyle}>
+            <AccordionButton {...accordionButtonStyle}>
+              <Avatar src={skill.skillAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
+              <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
+                {skill.skillName}
+              </Box>
+              <AccordionIcon color={'myGray.600'} ml={5} />
+            </AccordionButton>
+          </Box>
           <AccordionPanel
             py={0}
             px={0}

@@ -8,11 +8,13 @@ import {
   mergeResumeCompletedChatRecords,
   shouldCheckChatResumeStatus,
   shouldCreateResumeAiPlaceholder,
+  shouldAppendResumeInteractive,
   waitForConflictRecoveryRecords
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const createAiRecord = (override: Partial<ChatSiteItemType>): ChatSiteItemType =>
   ({
@@ -326,6 +328,100 @@ describe('hasMeaningfulAiOutput', () => {
 });
 
 describe('mergeResumeCompletedChatRecords', () => {
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'matches %s by interaction ID so pagination cannot copy an earlier answer into the next question',
+    (type) => {
+      const createInteractive = (
+        id: string,
+        submitted: boolean
+      ): WorkflowInteractiveResponseType => {
+        if (type === 'agentAsk') {
+          return {
+            type,
+            memoryEdges: [],
+            nodeOutputs: [],
+            askId: id,
+            entryNodeIds: ['same-node'],
+            usageId: 'same-usage',
+            params: {
+              description: '',
+              questions: [{ question: 'Question', options: [], answer: submitted ? 'Answer' : '' }],
+              submitted
+            }
+          };
+        }
+        return {
+          type,
+          memoryEdges: [],
+          nodeOutputs: [],
+          previewId: id,
+          entryNodeIds: ['same-node'],
+          usageId: 'same-usage',
+          params: {
+            title: 'Confirm?',
+            mermaid: '',
+            sections: [],
+            actions: [],
+            answerValue: submitted ? 'confirm' : undefined
+          }
+        };
+      };
+      const submitted = createInteractive('old-interaction', true);
+      const pending = createInteractive('next-interaction', false);
+      const pendingSame = createInteractive('old-interaction', false);
+      const existingValues = [{ interactive: submitted }];
+      expect(shouldAppendResumeInteractive({ existingValues, incomingInteractive: pending })).toBe(
+        true
+      );
+      expect(
+        shouldAppendResumeInteractive({ existingValues, incomingInteractive: pendingSame })
+      ).toBe(false);
+
+      const current = createAiRecord({ dataId: 'old-ai', value: existingValues });
+      const user = createHumanRecord({
+        value: [
+          {
+            text: { content: 'Answer' },
+            interactiveReply: {
+              type,
+              interactionId: 'old-interaction',
+              questions: [{ question: 'Question', answer: 'Answer' }]
+            }
+          }
+        ]
+      });
+      const completed = createAiRecord({
+        dataId: 'next-ai',
+        value: [
+          {
+            interactive: {
+              type: 'childrenInteractive',
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: { childrenResponse: pending }
+            }
+          }
+        ]
+      });
+      const result = mergeResumeCompletedChatRecords({
+        currentRecords: [current, user],
+        completedRecords: [user, completed],
+        responseChatId: 'next-ai'
+      });
+      expect(result[0]).toBe(user);
+      expect(result[1].value).toEqual(completed.value);
+
+      const sameRound = createAiRecord({ dataId: 'old-ai', value: [{ interactive: pendingSame }] });
+      const restored = mergeResumeCompletedChatRecords({
+        currentRecords: [current],
+        completedRecords: [sameRound],
+        responseChatId: 'old-ai'
+      });
+      expect(restored[0].value).toEqual(existingValues);
+    }
+  );
+
   it('merges replayed children into matching completed responseData nodes', () => {
     const completed = createAiRecord({
       dataId: 'response-ai',

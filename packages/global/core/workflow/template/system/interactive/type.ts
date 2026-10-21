@@ -220,7 +220,6 @@ export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInterac
 export const AgentAskInteractiveSchema = z.object({
   type: z.literal('agentAsk'),
   askId: z.string().min(1),
-  responseMode: z.literal('submit').optional(),
   params: z.object({
     description: z.string(),
     questions: z.array(AgentAskQuestionInteractiveSchema).min(1).max(3),

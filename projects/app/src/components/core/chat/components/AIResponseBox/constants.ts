@@ -14,6 +14,14 @@ export const accordionButtonStyle = {
   }
 };
 
+/** 单项标题仅在所属内容内吸顶，层级高于内部代码块的 header，避免滚动时内容透出。 */
+export const processingItemHeaderStyle = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 3,
+  bg: 'white'
+} as const;
+
 export const AGENT_PLAN_ASK_OTHER_OPTION_VALUE = '__fastgpt_agent_plan_ask_other__';
 
 export const planStepStatusStyle: Record<

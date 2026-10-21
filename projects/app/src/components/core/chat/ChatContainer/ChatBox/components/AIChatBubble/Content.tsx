@@ -11,7 +11,7 @@ import {
   hasAiStandaloneProcessingContent
 } from './utils';
 
-/** 普通聊天沿用正文与交互之间的处理过程分组，不参与辅助生成的整轮分段。 */
+/** 统一按正文与交互边界展示思考、工具调用和回答，回答及版本卡片始终在处理折叠之外。 */
 const AIChatBubbleContent = (props: AIChatBubbleContentProps) => {
   const {
     chatValue,

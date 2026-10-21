@@ -1,26 +1,39 @@
 import { Box, Flex } from '@chakra-ui/react';
-import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  UserChatInteractiveReplyType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 import HumanChatBubble from './HumanChatBubble';
+import HumanChatBubbleContent from './HumanChatBubble/Content';
 
-/** 将一次已提交的 Agent Ask 显示为只读用户气泡，复制时保留问题与可读答案。 */
-const AgentAskReply = ({ interactive }: { interactive: AgentAskInteractive }) => {
+/** 在真实 useritem 中统一展示问答回复，复制时保留问题与可读答案。 */
+const InteractiveReply = ({
+  reply,
+  chatValue,
+  chatTime,
+  children
+}: {
+  reply: UserChatInteractiveReplyType;
+  chatValue: UserChatItemValueItemType[];
+  chatTime?: Date;
+  children?: React.ReactNode;
+}) => {
   const { t } = useTranslation();
-  const questions = interactive.params.questions.map((question) => ({
-    question: question.question,
-    answer:
-      question.answer === '' || question.answer === undefined
-        ? t('chat:interactive.agent_ask.unanswered')
-        : (question.options.find((option) => option.value === question.answer)?.summary ??
-          question.answer)
+  const questions = reply.questions.map(({ question, answer }) => ({
+    question,
+    answer: answer === '' ? t('chat:interactive.agent_ask.unanswered') : answer
   }));
+  const files = chatValue.filter((value) => value.file).map(({ file }) => ({ file }));
 
   return (
     <HumanChatBubble
       canEdit={false}
+      chatTime={chatTime}
       chatValue={[
+        ...files,
         {
           text: {
             content: questions.map(({ question, answer }) => `${question}\n${answer}`).join('\n\n')
@@ -29,6 +42,7 @@ const AgentAskReply = ({ interactive }: { interactive: AgentAskInteractive }) =>
       ]}
       content={
         <Flex direction={'column'} gap={3} minW={0} maxW={'100%'}>
+          {files.length > 0 && <HumanChatBubbleContent chatValue={files} />}
           {questions.map(({ question, answer }, index) => (
             <Box key={index} minW={0} maxW={'100%'} lineHeight={7}>
               <MyTooltip label={question} showOnlyWhenOverflow>
@@ -43,8 +57,10 @@ const AgentAskReply = ({ interactive }: { interactive: AgentAskInteractive }) =>
           ))}
         </Flex>
       }
-    />
+    >
+      {children}
+    </HumanChatBubble>
   );
 };
 
-export default React.memo(AgentAskReply);
+export default React.memo(InteractiveReply);

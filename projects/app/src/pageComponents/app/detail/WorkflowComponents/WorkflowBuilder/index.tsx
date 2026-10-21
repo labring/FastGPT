@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -156,7 +156,15 @@ const WorkflowBuilder = () => {
         });
         myToast({
           status: 'success',
-          title: t('workflow_builder_applied', { name: version.name })
+          title: (
+            <Text as="span" fontWeight="normal">
+              <Trans
+                i18nKey="workflow:workflow_builder_applied"
+                values={{ name: version.name }}
+                components={{ bold: <Text as="strong" fontWeight={600} /> }}
+              />
+            </Text>
+          )
         });
         return archivedVersion;
       } catch (error) {

@@ -5,7 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { delChatRecordById } from '@/web/core/chat/record/api';
+import { delChatRecordById, getChatRecords } from '@/web/core/chat/record/api';
+import type {
+  ChatItemMiniType,
+  UserChatInteractiveReplyType
+} from '@fastgpt/global/core/chat/type';
+import { resetDeletedInteractiveReply } from '@fastgpt/global/core/chat/utils';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
@@ -85,21 +91,77 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       const delHistory = chatRecords.slice(index);
 
       try {
+        const user = delHistory[0];
+        if (index < 0 || user?.obj !== ChatRoleEnum.Human) return;
+        const history = chatRecords.slice(0, index);
+        const reply = user.value.find((value) => value.interactiveReply)?.interactiveReply;
+
+        // 重试问答要恢复原交互；Preview 还需保留 confirm/revise/cancel，避免确认被当成修改建议。
+        const interactive = await (async () => {
+          if (!reply) return;
+          const findInteractive = (histories: ChatItemMiniType[]) => {
+            for (const item of [...histories].reverse()) {
+              if (item.obj !== ChatRoleEnum.AI) continue;
+              for (const value of [...item.value].reverse()) {
+                const source = value.interactive;
+                if (!source) continue;
+                const final = extractDeepestInteractive(source);
+                if (
+                  (reply.type === 'agentAsk' &&
+                    final.type === 'agentAsk' &&
+                    final.askId === reply.interactionId) ||
+                  (reply.type === 'workflowBuilderPreview' &&
+                    final.type === 'workflowBuilderPreview' &&
+                    final.previewId === reply.interactionId)
+                )
+                  return source;
+              }
+            }
+          };
+          const existing = findInteractive(history);
+          if (existing) return existing;
+
+          // 分页边界可能只有 user 记录；在删除前取回其前一轮 AI，禁止猜测交互参数。
+          const previous = await getChatRecords({
+            ...chatAuthTarget,
+            chatId,
+            prevId: dataId,
+            pageSize: 2
+          });
+          const restored = findInteractive(previous.list);
+          if (!restored) throw new Error('Interactive message not found');
+          return restored;
+        })();
+        const finalInteractive = interactive ? extractDeepestInteractive(interactive) : undefined;
+        const agentPlanAskResponse = (() => {
+          if (finalInteractive?.type !== 'workflowBuilderPreview') return;
+          if (!finalInteractive.params.answerValue)
+            throw new Error('Workflow preview response not found');
+          return {
+            askId: finalInteractive.previewId,
+            optionValue: finalInteractive.params.answerValue,
+            text: finalInteractive.params.answerText
+          };
+        })();
+
         await onDelMessages(delHistory.map((item) => item.dataId));
-        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
+        setChatRecords(history);
 
         sendPrompt({
-          ...formatChatValue2InputType(delHistory[0].value),
-          hideInUI: hideInUI || delHistory[0].hideInUI,
-          history: chatRecords.slice(0, index)
+          ...formatChatValue2InputType(user.value),
+          hideInUI: hideInUI || user.hideInUI,
+          history,
+          interactive,
+          agentPlanAskResponse
         });
       } catch (error) {
         toast({
           status: 'warning',
           title: t(getErrText(error, 'Retry failed'))
         });
+      } finally {
+        setIsRecordActionLoading(false);
       }
-      setIsRecordActionLoading(false);
     };
   });
 
@@ -152,9 +214,14 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       setChatRecords((state) => {
         let aiIndex = -1;
         const deletedDataIds: string[] = [];
+        const replies: UserChatInteractiveReplyType[] = [];
 
         const nextState = state.filter((chat, i) => {
           if (chat.dataId === dataId) {
+            if (chat.obj === ChatRoleEnum.Human)
+              chat.value.forEach((value) => {
+                if (value.interactiveReply) replies.push(value.interactiveReply);
+              });
             aiIndex = i + 1;
             deletedDataIds.push(dataId);
             return false;
@@ -164,6 +231,24 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
           }
           return true;
         });
+
+        // 与服务端软删除同步恢复末轮问题，删除回答后立即重新显示底部提问框。
+        const previousAiIndex = nextState.findLastIndex(
+          (item) => item.obj === ChatRoleEnum.AI && !item.deleteTime
+        );
+        const previousAi = nextState[previousAiIndex];
+        if (previousAi?.obj === ChatRoleEnum.AI && replies.length > 0) {
+          const lastValue = previousAi.value.at(-1);
+          const interactive = lastValue?.interactive
+            ? structuredClone(lastValue.interactive)
+            : undefined;
+          if (interactive && resetDeletedInteractiveReply({ interactive, replies })) {
+            nextState[previousAiIndex] = {
+              ...previousAi,
+              value: [...previousAi.value.slice(0, -1), { ...lastValue, interactive }]
+            };
+          }
+        }
 
         void onDelMessages(deletedDataIds);
         return nextState;

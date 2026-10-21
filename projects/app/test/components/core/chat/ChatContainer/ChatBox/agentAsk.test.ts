@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 import { getAIChatDisplayGroups } from '@/components/core/chat/ChatContainer/ChatBox/utils/agentAsk';
-import {
-  getWorkflowBuilderDisplayBlocks,
-  getWorkflowBuilderFinalAnswerIndex
-} from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble/utils';
 
 const ask: AgentAskInteractive = {
   type: 'agentAsk',
@@ -23,38 +20,43 @@ const askValue = {
 } satisfies AIChatItemValueItemType;
 const before: AIChatItemValueItemType = { text: { content: 'Before ask' } };
 const after: AIChatItemValueItemType = { text: { content: 'After ask' } };
+const preview: WorkflowBuilderPreviewInteractive = {
+  type: 'workflowBuilderPreview',
+  previewId: 'preview-1',
+  params: {
+    title: 'Confirm this workflow?',
+    mermaid: 'flowchart LR\n  A --> B',
+    sections: [],
+    actions: [
+      { value: 'confirm', label: 'Confirm and build', inputMode: 'none' },
+      { value: 'revise', label: 'Revise', inputMode: 'text' },
+      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+    ],
+    answerValue: 'confirm'
+  }
+};
+const previewValue = {
+  interactive: { ...preview, entryNodeIds: [], memoryEdges: [], nodeOutputs: [] }
+} satisfies AIChatItemValueItemType;
 
-describe.each([false, true])('getAIChatDisplayGroups (collapse=%s)', (collapse) => {
+describe('getAIChatDisplayGroups', () => {
+  const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
   const getGroups = (
     chatValue: AIChatItemValueItemType[],
     overrides: Partial<Parameters<typeof getAIChatDisplayGroups>[0]> = {}
-  ) =>
-    getAIChatDisplayGroups({
-      chatValue,
-      isLastChild: true,
-      isChatting: false,
-      collapseIntermediateAgentResponses: collapse,
-      ...overrides
-    });
+  ) => getAIChatDisplayGroups({ chatValue, isLastChild: true, isChatting: false, ...overrides });
 
-  it('preserves ordinary responses, empty placeholders, and non-Ask interactions', () => {
-    expect(getGroups([before, after])).toEqual(
-      collapse
-        ? [{ type: 'ai', values: [before, after] }]
-        : [
-            { type: 'ai', values: [before] },
-            { type: 'ai', values: [after] }
-          ]
-    );
+  it('preserves ordinary output, independent AI placeholders, and other interactions', () => {
+    expect(getGroups([before, after])).toEqual([
+      { type: 'ai', values: [before] },
+      { type: 'ai', values: [after] }
+    ]);
     expect(getGroups([])).toEqual([{ type: 'ai', values: [{ text: { content: '' } }] }]);
-
     const select: AIChatItemValueItemType = {
       interactive: {
         type: 'userSelect',
-        params: { description: '', userSelectOptions: [] },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
+        ...runtime,
+        params: { description: '', userSelectOptions: [] }
       }
     };
     expect(getGroups([select])).toEqual([{ type: 'ai', values: [select] }]);
@@ -63,46 +65,34 @@ describe.each([false, true])('getAIChatDisplayGroups (collapse=%s)', (collapse) 
     ]);
   });
 
-  it('hides pending Ask content while retaining preceding AI output', () => {
-    const pending = {
-      ...askValue,
-      interactive: { ...askValue.interactive, params: { ...ask.params, submitted: false } }
+  it.each([askValue, previewValue])(
+    'never projects a user bubble or a waiting label from $interactive.type',
+    (value) => {
+      const original = structuredClone(value);
+      for (const isLastChild of [true, false]) {
+        for (const isChatting of [true, false]) {
+          expect(getGroups([value], { isLastChild, isChatting })).toEqual([]);
+          expect(getGroups([before, value, after], { isLastChild, isChatting })).toEqual([
+            { type: 'ai', values: [before] },
+            { type: 'ai', values: [after] }
+          ]);
+        }
+      }
+      expect(value).toEqual(original);
+    }
+  );
+
+  it('hides pending, consecutive, and historical Ask interactions', () => {
+    const pending: AIChatItemValueItemType = {
+      interactive: { ...askValue.interactive, params: { ...ask.params, submitted: undefined } }
     };
     expect(getGroups([pending])).toEqual([]);
-    expect(getGroups([pending], { isChatting: true })).toEqual([]);
-    expect(getGroups([before, pending])).toEqual([
-      { type: 'ai', values: collapse ? [before, pending] : [before] }
-    ]);
+    expect(getGroups([pending], { isLastChild: false })).toEqual([]);
+    expect(getGroups([askValue, previewValue])).toEqual([]);
+    expect(getGroups([pending, { text: { content: '' } }], { isChatting: true })).toEqual([]);
   });
 
-  it('places a readonly user reply between AI segments without changing stored values', () => {
-    const values = [before, askValue, after];
-    const groups = getGroups(values);
-
-    expect(groups).toEqual([
-      { type: 'ai', values: collapse ? [before, askValue] : [before] },
-      { type: 'agentAsk', interactive: askValue.interactive },
-      { type: 'ai', values: [after] }
-    ]);
-    expect(values).toEqual([before, askValue, after]);
-    if (collapse && groups[0].type === 'ai') {
-      expect(
-        getWorkflowBuilderFinalAnswerIndex({ chatValue: groups[0].values, isGenerating: false })
-      ).toBe(-1);
-    }
-  });
-
-  it('keeps consecutive Ask submissions in order without creating empty AI bubbles', () => {
-    const second: AIChatItemValueItemType = {
-      interactive: { ...askValue.interactive, askId: 'ask-2' }
-    };
-    expect(getGroups([askValue, second])).toEqual([
-      { type: 'agentAsk', interactive: askValue.interactive },
-      { type: 'agentAsk', interactive: second.interactive }
-    ]);
-  });
-
-  it('preserves processing and workflow version cards on both sides of an Ask', () => {
+  it('preserves mixed text, processing and version output around the interaction', () => {
     const processing: AIChatItemValueItemType = { reasoning: { content: 'Thinking' } };
     const version: AIChatItemValueItemType = {
       workflowBuilderVersion: {
@@ -113,120 +103,51 @@ describe.each([false, true])('getAIChatDisplayGroups (collapse=%s)', (collapse) 
         generatedAt: '2026-08-12T10:00:00.000Z'
       }
     };
-    expect(getGroups([processing, askValue, version])).toEqual([
-      { type: 'ai', values: collapse ? [processing, askValue] : [processing] },
-      { type: 'agentAsk', interactive: askValue.interactive },
+    const mixed = { ...askValue, ...before };
+    expect(getGroups([processing, mixed, version])).toEqual([
+      { type: 'ai', values: [processing] },
+      { type: 'ai', values: [mixed] },
       { type: 'ai', values: [version] }
     ]);
   });
 
-  it('shows new AI activity after submitting, before the next response event', () => {
-    const groups = getGroups([askValue], { isChatting: true });
-    expect(groups.map((group) => group.type)).toEqual(['agentAsk', 'ai']);
-    const lastGroup = groups[1];
-    if (lastGroup.type !== 'ai') throw new Error('Missing active AI group');
-
-    if (collapse) {
-      expect(
-        getWorkflowBuilderDisplayBlocks({ chatValue: lastGroup.values, isGenerating: true })
-      ).toContainEqual({
-        type: 'process',
-        valueIndices: [],
-        answerValueIndices: [],
-        startIndex: 1,
-        isProcessing: true
-      });
-    } else {
-      expect(lastGroup.values).toEqual([{ text: { content: '' } }]);
+  it.each([askValue, previewValue])(
+    'hides nested $interactive.type without hiding generated text',
+    (value) => {
+      const nested: AIChatItemValueItemType = {
+        interactive: {
+          type: 'childrenInteractive',
+          ...runtime,
+          params: { childrenResponse: value.interactive }
+        }
+      };
+      expect(getGroups([nested])).toEqual([]);
+      expect(getGroups([before, nested, after])).toEqual([
+        { type: 'ai', values: [before] },
+        { type: 'ai', values: [after] }
+      ]);
     }
-    expect(getGroups([askValue], { isLastChild: false, isChatting: true })).toHaveLength(1);
-  });
+  );
 
-  it('keeps non-Ask content on mixed values and nested workflow interactions', () => {
-    const mixed = { ...askValue, ...before };
-    expect(getGroups([mixed])).toEqual([
-      { type: 'ai', values: [mixed] },
-      { type: 'agentAsk', interactive: askValue.interactive }
-    ]);
-
-    const nested: AIChatItemValueItemType = {
-      interactive: {
-        type: 'childrenInteractive',
-        params: { childrenResponse: askValue.interactive },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
-      }
-    };
-    expect(getGroups([nested])).toEqual([{ type: 'agentAsk', interactive: askValue.interactive }]);
-  });
-
-  it('treats finished historical records without submitted as readonly replies', () => {
-    const historical: AIChatItemValueItemType = {
-      interactive: {
-        ...askValue.interactive,
-        params: { ...ask.params, submitted: undefined }
-      }
-    };
-    expect(getGroups([historical], { isLastChild: false })).toEqual([
-      { type: 'agentAsk', interactive: historical.interactive }
-    ]);
-  });
-
-  it('adapts answered legacy asks and hides unanswered ones in the active record', () => {
+  it('hides both answered and pending legacy ask records', () => {
     const legacy = {
       interactive: {
         type: 'agentPlanAskQuery',
-        askId: 'ask-1',
-        params: {
-          content: 'Which direction?',
-          reason: 'Need clarification',
-          options: ['A', 'B'],
-          answer: 'B'
-        },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
+        ...runtime,
+        askId: 'legacy-1',
+        params: { content: 'Choose?', options: ['A', 'B'], answer: 'B' }
       }
     } satisfies AIChatItemValueItemType;
-    expect(getGroups([legacy])).toEqual([
-      {
-        type: 'agentAsk',
-        interactive: {
-          type: 'agentAsk',
-          askId: 'ask-1',
-          params: {
-            description: 'Need clarification',
-            questions: [
-              {
-                question: 'Which direction?',
-                options: [
-                  { summary: 'A', value: 'A' },
-                  { summary: 'B', value: 'B' }
-                ],
-                answer: 'B'
-              }
-            ],
-            submitted: true
+    expect(getGroups([legacy])).toEqual([]);
+    expect(
+      getGroups([
+        {
+          interactive: {
+            ...legacy.interactive,
+            params: { content: 'Choose?', options: ['A', 'B'] }
           }
         }
-      }
-    ]);
-
-    const pending: AIChatItemValueItemType = {
-      interactive: {
-        ...legacy.interactive,
-        params: { content: 'Which direction?', options: [] }
-      }
-    };
-    expect(getGroups([pending])).toEqual([]);
-    expect(getGroups([pending], { isLastChild: false })).toMatchObject([
-      {
-        type: 'agentAsk',
-        interactive: {
-          params: { description: '', questions: [{ answer: '' }] }
-        }
-      }
-    ]);
+      ])
+    ).toEqual([]);
   });
 });

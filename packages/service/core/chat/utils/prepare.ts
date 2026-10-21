@@ -12,6 +12,8 @@ import { MongoChat } from '../chatSchema';
 import { tryStartGenerateChat, updateChatGenerateStatus } from '../chatGenerateStatus';
 import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
+import { getUserChatInteractiveReply } from '@fastgpt/global/core/chat/utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import {
   canWriteGeneratedTitle,
   invalidGeneratedTitleValues,
@@ -134,20 +136,16 @@ export const prepareChatRound = async (
 
   params.userContent.dataId = responseChatItemId;
   const now = new Date();
+  const interactiveReply = params.userContent.value[0]?.interactiveReply;
 
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
-    value: params.userContent.value.map((item) =>
-      item.file?.key
-        ? {
-            ...item,
-            file: {
-              ...item.file,
-              url: ''
-            }
-          }
-        : item
-    ),
+    value: params.userContent.value.map((item) => ({
+      ...item,
+      ...(item.file?.key ? { file: { ...item.file, url: '' } } : {}),
+      // 只标记落库副本，运行中的原始回答仍要交给 Agent 处理。
+      ...(interactiveReply?.type === 'agentAsk' ? { askId: interactiveReply.interactionId } : {})
+    })),
     dataId: responseChatItemId,
     obj: ChatRoleEnum.Human
   };
@@ -241,6 +239,18 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     userContent: params.userContent
   });
   const isInteractiveContinue = !!params.interactive && interactiveStatus !== 'query';
+
+  const interactiveReply = params.interactive
+    ? getUserChatInteractiveReply({
+        interactive: params.interactive,
+        text: chatValue2RuntimePrompt(params.userContent.value).text
+      })
+    : undefined;
+  if (interactiveReply && params.userContent.value[0]) {
+    // 生成前就保存展示快照，续跑失败或刷新时也能显示本轮真实的用户回答。
+    params.userContent.hideInUI = false;
+    params.userContent.value[0] = { ...params.userContent.value[0], interactiveReply };
+  }
 
   if (!shouldPersistChatRound) {
     return {

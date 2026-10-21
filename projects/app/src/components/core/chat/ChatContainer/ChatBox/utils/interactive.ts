@@ -10,7 +10,10 @@ import type {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanAskResponse } from '@fastgpt/global/core/workflow/builder/type';
 import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
-import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
+import {
+  checkInteractiveResponseStatus,
+  getUserChatInteractiveReply
+} from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
@@ -350,7 +353,7 @@ export const getInteractiveByHistories = (
  * 解析前端本轮请求应该携带的 responseChatItemId。
  *
  * interactive submit 会把运行结果追加回上一轮 AI 消息，前端也需要沿用上一轮 AI 的 dataId；
- * agentPlanAskQuery 属于继续提问，会产生新 AI 消息，因此继续使用本轮新生成的 id。
+ * Agent 追问和方案确认使用 query，会产生新的 Human/AI 轮次，因此保留本轮新生成的 id。
  */
 export const resolveInteractiveResponseChatItemId = ({
   histories,
@@ -384,6 +387,7 @@ export const rewriteHistoriesByInteractiveResponse = ({
   agentPlanAskResponse?: AgentPlanAskResponse;
 }): ChatSiteItemType[] => {
   const status = checkInteractiveResponseStatus({ interactive, input: interactiveVal });
+  const interactiveReply = getUserChatInteractiveReply({ interactive, text: interactiveVal });
 
   const formatHistories = (() => {
     if (status === 'query') {
@@ -403,6 +407,22 @@ export const rewriteHistoriesByInteractiveResponse = ({
       : formatHistories;
 
   const newHistories = workingHistories.map((item, i) => {
+    if (
+      status === 'query' &&
+      interactiveReply &&
+      i === workingHistories.length - 2 &&
+      item.obj === ChatRoleEnum.Human
+    ) {
+      return {
+        ...item,
+        hideInUI: false,
+        value: item.value.map((value, index) => ({
+          ...value,
+          ...(index === 0 ? { interactiveReply } : {}),
+          ...(interactiveReply.type === 'agentAsk' ? { askId: interactiveReply.interactionId } : {})
+        }))
+      };
+    }
     if (i !== workingHistories.length - 1) return item;
 
     if (status === 'query') {
@@ -463,24 +483,6 @@ export const rewriteHistoriesByInteractiveResponse = ({
         };
       }
 
-      if (finalInteractive.type === 'agentAsk') {
-        const answers = parseAgentAskAnswers(interactiveVal);
-        return {
-          ...val,
-          interactive: {
-            ...finalInteractive,
-            params: {
-              ...finalInteractive.params,
-              questions: finalInteractive.params.questions.map((question, index) => ({
-                ...question,
-                answer: answers[index] ?? question.answer
-              })),
-              submitted: true
-            }
-          }
-        };
-      }
-
       if (finalInteractive.type === 'paymentPause') {
         return {
           ...val,
@@ -489,24 +491,6 @@ export const rewriteHistoriesByInteractiveResponse = ({
             params: {
               ...finalInteractive.params,
               continue: true
-            }
-          }
-        };
-      }
-
-      if (finalInteractive.type === 'workflowBuilderPreview') {
-        return {
-          ...val,
-          interactive: {
-            ...finalInteractive,
-            params: {
-              ...finalInteractive.params,
-              answerValue: agentPlanAskResponse?.optionValue as
-                | 'confirm'
-                | 'revise'
-                | 'cancel'
-                | undefined,
-              answerText: agentPlanAskResponse?.text
             }
           }
         };

@@ -7,6 +7,8 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -832,6 +834,41 @@ describe('pushChatRecords', () => {
   });
 
   describe('updateInteractiveChat function', () => {
+    it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+      'does not persist or reject an ephemeral %s reply',
+      async (type) => {
+        const interactive: WorkflowInteractiveResponseType =
+          type === 'agentAsk'
+            ? {
+                type,
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: [],
+                askId: 'ask-1',
+                params: {
+                  description: '',
+                  questions: [{ question: 'Question', options: [], answer: '' }]
+                }
+              }
+            : {
+                type,
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: [],
+                previewId: 'preview-1',
+                params: { title: 'Confirm?', mermaid: '', sections: [], actions: [] }
+              };
+        const props = createMockProps(
+          { chatId: 'NO_RECORD_HISTORIES' },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        await expect(
+          updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: false })
+        ).resolves.toBeUndefined();
+        expect(await MongoChatItem.countDocuments({ appId: testAppId })).toBe(0);
+      }
+    );
+
     it('should skip update if chatId is empty', async () => {
       const props = createMockProps(
         { chatId: '' },
@@ -1476,11 +1513,173 @@ describe('pushChatRecords', () => {
         obj: ChatRoleEnum.Human,
         dataId: 'prepared-round-data-id'
       });
-      expect(finalizedHumanItem?.value[0].askId).toBe('call_ask_agent');
+      if (finalizedHumanItem?.obj !== ChatRoleEnum.Human)
+        throw new Error('Expected the user reply');
+      expect(finalizedHumanItem.value[0].askId).toBe('call_ask_agent');
+      expect(finalizedHumanItem?.hideInUI).toBe(false);
+      expect(finalizedHumanItem?.value[0]).toMatchObject({
+        interactiveReply: {
+          type: 'agentAsk',
+          interactionId: 'call_ask_agent',
+          questions: [
+            { question: '请选择方向', answer: 'Rust' },
+            { question: '需要示例吗', answer: '' }
+          ]
+        }
+      });
       expect(finalizedAiItem?.value[0].text?.content).toBe(
         'Rust 系统编程方向包括所有权、并发和 unsafe 边界。'
       );
     });
+
+    it.each(['confirm', 'revise', 'cancel'] as const)(
+      'persists a preview %s as a new Human/AI round while keeping the old interactive',
+      async (answerValue) => {
+        const answerText = answerValue === 'revise' ? '增加审核分支' : undefined;
+        const interactive: WorkflowInteractiveResponseType = {
+          type: 'workflowBuilderPreview',
+          previewId: 'preview-1',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            title: '确认工作流？',
+            mermaid: 'flowchart LR\n A --> B',
+            sections: [],
+            actions: [
+              { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
+              { value: 'revise', label: '修改方案', inputMode: 'text' },
+              { value: 'cancel', label: '取消', inputMode: 'none' }
+            ],
+            answerValue,
+            answerText
+          }
+        };
+        const answer =
+          answerText ||
+          interactive.params.actions.find((action) => action.value === answerValue)!.label;
+        const props = createMockProps(
+          {
+            sourceType: ChatSourceTypeEnum.workflowBuilder,
+            userContent: {
+              obj: ChatRoleEnum.Human,
+              dataId: 'preview-user',
+              value: [{ text: { content: answer } }]
+            },
+            aiContent: {
+              obj: ChatRoleEnum.AI,
+              dataId: 'continued-ai',
+              value: [{ text: { content: '继续搭建' } }]
+            }
+          },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
+        const source = {
+          appId: testAppId,
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          chatId: props.chatId,
+          teamId: testTeamId,
+          tmbId: testTmbId
+        };
+        await MongoChat.create({ ...source, source: props.source, title: 'Builder' });
+        await MongoChatItem.create({
+          ...source,
+          obj: ChatRoleEnum.AI,
+          dataId: 'preview-ai',
+          value: [
+            {
+              interactive: {
+                ...interactive,
+                params: { ...interactive.params, answerValue: undefined, answerText: undefined }
+              }
+            }
+          ]
+        });
+
+        const prepared = await preChatRound({
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          sourceId: testAppId,
+          chatId: props.chatId,
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          source: props.source,
+          userContent: props.userContent,
+          responseChatItemId: 'continued-ai',
+          interactive
+        });
+        expect(prepared.shouldFinalizePreparedRound).toBe(true);
+        expect(prepared.responseChatItemId).toBe('continued-ai');
+        const pendingHuman = await MongoChatItem.findOne({
+          ...source,
+          obj: ChatRoleEnum.Human,
+          dataId: 'continued-ai'
+        }).lean();
+        if (pendingHuman?.obj !== ChatRoleEnum.Human)
+          throw new Error('Expected the pending user reply');
+        expect(pendingHuman?.hideInUI).toBe(false);
+        expect(pendingHuman?.value[0]).toMatchObject({
+          interactiveReply: {
+            type: 'workflowBuilderPreview',
+            interactionId: 'preview-1',
+            questions: [{ question: '确认工作流？', answer }]
+          }
+        });
+        // 重试留下的软删除交互不能遮住真正待回写的上一轮问题。
+        await MongoChatItem.create({
+          ...source,
+          obj: ChatRoleEnum.AI,
+          dataId: 'deleted-ai',
+          deleteTime: new Date(),
+          value: [
+            {
+              interactive: {
+                ...interactive,
+                previewId: 'deleted-preview',
+                params: { ...interactive.params, answerValue: undefined }
+              }
+            }
+          ]
+        });
+        await updateInteractiveChat({ ...props, interactive, shouldFinalizePreparedRound: true });
+
+        const records = await MongoChatItem.find({
+          appId: testAppId,
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          chatId: props.chatId,
+          deleteTime: null
+        })
+          .sort({ _id: 1 })
+          .lean();
+        expect(records.map((record) => record.obj)).toEqual([
+          ChatRoleEnum.AI,
+          ChatRoleEnum.Human,
+          ChatRoleEnum.AI
+        ]);
+        const [previewItem, userItem, aiItem] = records;
+        if (
+          previewItem.obj !== ChatRoleEnum.AI ||
+          userItem.obj !== ChatRoleEnum.Human ||
+          aiItem.obj !== ChatRoleEnum.AI
+        ) {
+          throw new Error('Expected preview AI, user decision, and continued AI records');
+        }
+        expect(previewItem.dataId).toBe('preview-ai');
+        expect(previewItem.value).toHaveLength(1);
+        expect(previewItem.value[0].interactive?.params).toMatchObject({ answerValue });
+        expect(userItem.value[0].text?.content).toBe(answer);
+        expect(userItem.value[0]).toMatchObject({
+          interactiveReply: {
+            type: 'workflowBuilderPreview',
+            interactionId: 'preview-1',
+            questions: [{ question: '确认工作流？', answer }]
+          }
+        });
+        expect(userItem.value[0].askId).toBeUndefined();
+        expect(userItem.hideInUI).not.toBe(true);
+        expect(aiItem.dataId).toBe('continued-ai');
+        expect(aiItem.value[0].text?.content).toBe('继续搭建');
+      }
+    );
 
     it('should merge child interactive tool response and plan snapshot into existing values', async () => {
       await MongoChatItem.create({

@@ -175,8 +175,23 @@ export type ChatFileStoreValue =
       type: ChatFileTypeEnum;
     };
 
+export const UserChatInteractiveReplySchema = z.object({
+  type: z.enum(['agentAsk', 'workflowBuilderPreview']).meta({ description: '用户回复的交互类型' }),
+  interactionId: z.string().min(1).meta({ description: '被回答的交互 ID' }),
+  questions: z
+    .array(
+      z.object({
+        question: z.string().meta({ description: '提问时的问题快照' }),
+        answer: z.string().meta({ description: '可读答案；空字符串表示跳过' })
+      })
+    )
+    .meta({ description: '本次用户回复的问答展示内容' })
+});
+export type UserChatInteractiveReplyType = z.infer<typeof UserChatInteractiveReplySchema>;
+
 export const UserChatItemValueItemSchema = z.object({
   askId: z.string().nullish(),
+  interactiveReply: UserChatInteractiveReplySchema.optional(),
   text: z
     .object({
       content: z.string()

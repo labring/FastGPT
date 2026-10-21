@@ -5,6 +5,7 @@ import {
   type AIChatItemValueItemType,
   type ChatHistoryItemResType,
   type ChatItemMiniType,
+  type UserChatInteractiveReplyType,
   type UserChatItemValueItemType
 } from './type';
 import { sliceStrStartEnd } from '../../common/string/tools';
@@ -13,6 +14,84 @@ import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
+import { parseAgentAskAnswers } from '../ai/agent/utils';
+
+/**
+ * 为真实用户消息生成问答快照，不改变供模型续跑的原始回答。
+ * 快照随 user value 保存，刷新、失败恢复或分页时无需依赖旧 AI 消息才能展示。
+ */
+export const getUserChatInteractiveReply = ({
+  interactive,
+  text
+}: {
+  interactive: WorkflowInteractiveResponseType;
+  text: string;
+}): UserChatInteractiveReplyType | undefined => {
+  const finalInteractive = extractDeepestInteractive(interactive);
+  if (finalInteractive.type === 'agentAsk') {
+    const answers = parseAgentAskAnswers(text);
+    return {
+      type: 'agentAsk',
+      interactionId: finalInteractive.askId,
+      questions: finalInteractive.params.questions.map((question, index) => {
+        const answer = answers[index] ?? question.answer ?? '';
+        return {
+          question: question.question,
+          answer: question.options.find((option) => option.value === answer)?.summary ?? answer
+        };
+      })
+    };
+  }
+  if (finalInteractive.type === 'agentPlanAskQuery') {
+    return {
+      type: 'agentAsk',
+      interactionId: finalInteractive.askId,
+      questions: [{ question: finalInteractive.params.content, answer: text }]
+    };
+  }
+  if (finalInteractive.type === 'workflowBuilderPreview') {
+    return {
+      type: 'workflowBuilderPreview',
+      interactionId: finalInteractive.previewId,
+      questions: [{ question: finalInteractive.params.title, answer: text }]
+    };
+  }
+};
+
+/**
+ * 就地恢复被删除 user 回复对应的 Ask/Preview；仅清除答案，保留暂停点与嵌套运行状态。
+ * 返回是否匹配并更新。客户端应传入副本，服务端可传入待保存的 Mongo value。
+ */
+export const resetDeletedInteractiveReply = ({
+  interactive,
+  replies
+}: {
+  interactive: WorkflowInteractiveResponseType;
+  replies: UserChatInteractiveReplyType[];
+}) => {
+  const final = extractDeepestInteractive(interactive);
+  if (
+    final.type === 'agentAsk' &&
+    replies.some((reply) => reply.type === 'agentAsk' && reply.interactionId === final.askId)
+  ) {
+    final.params.submitted = false;
+    final.params.questions.forEach((question) => {
+      question.answer = '';
+    });
+    return true;
+  }
+  if (
+    final.type === 'workflowBuilderPreview' &&
+    replies.some(
+      (reply) => reply.type === 'workflowBuilderPreview' && reply.interactionId === final.previewId
+    )
+  ) {
+    delete final.params.answerValue;
+    delete final.params.answerText;
+    return true;
+  }
+  return false;
+};
 
 /**
  * 合并两段历史，并把 system 消息排到最前。
@@ -368,7 +447,8 @@ export const checkInteractiveResponseStatus = ({
   const finalInteractive = extractDeepestInteractive(interactive);
   if (
     finalInteractive.type === 'agentPlanAskQuery' ||
-    (finalInteractive.type === 'agentAsk' && finalInteractive.responseMode !== 'submit')
+    finalInteractive.type === 'workflowBuilderPreview' ||
+    finalInteractive.type === 'agentAsk'
   ) {
     return 'query';
   }
