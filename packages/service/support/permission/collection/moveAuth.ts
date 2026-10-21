@@ -53,15 +53,17 @@ export const authDatasetCollectionMoves = async ({
 }) => {
   // Mongoose 文档的 _id 运行时可能是 ObjectId；统一 Map、豁免列表和 Mongo 查询的 ID 形式。
   const idOf = (id: string) => new Types.ObjectId(id).toHexString();
+  // HTTP 层 SelectCollections 用空串表示根目录，ObjectId 转换前统一收敛为 null。
+  const parentIdOf = (id: string | null) => (id ? idOf(id) : null);
   const moves = requestedMoves.map((item) => ({
     collectionId: idOf(item.collectionId),
-    targetParentId: item.targetParentId === null ? null : idOf(item.targetParentId)
+    targetParentId: parentIdOf(item.targetParentId)
   }));
   const collectionChecks = requestedCollectionChecks.map((item) => ({
     ...item,
     collectionId: idOf(item.collectionId)
   }));
-  const creationParentIds = requestedCreationParentIds.map((id) => (id ? idOf(id) : null));
+  const creationParentIds = requestedCreationParentIds.map(parentIdOf);
   const newFolderIds = new Set([...requestedNewFolderIds].map(idOf));
   const identity = await parseHeaderCert(auth);
   const { teamId, tmbId, isRoot } = identity;

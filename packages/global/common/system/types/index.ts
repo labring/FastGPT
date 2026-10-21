@@ -185,6 +185,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启 Agent 代码沙箱执行环境' }),
+  show_workflow_builder: BoolSchema.optional().meta({
+    description: '是否展示工作流 AI 辅助构建入口'
+  }),
   show_agent_sandbox_free_tip: z
     .boolean()
     .optional()

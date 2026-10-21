@@ -406,12 +406,19 @@ export class OpenSandboxLifecycle {
 
     try {
       this.setStatus({ state: 'Creating' });
+      const requests = config.resourceRequests;
       const sandbox = await Sandbox.create({
         ...this.getSdkOptions(),
         image: formatImageSpec(config.image),
         entrypoint: config.entrypoint,
         timeoutSeconds: config.timeoutSeconds ?? null,
         resource: this.convertResourceLimits(config.resourceLimits),
+        resourceRequests: requests
+          ? {
+              ...(requests.cpuCount === undefined ? {} : { cpu: String(requests.cpuCount) }),
+              ...(requests.memoryMiB === undefined ? {} : { memory: `${requests.memoryMiB}Mi` })
+            }
+          : undefined,
         env: config.env,
         metadata: { ...config.metadata, sessionId: this.connectionConfig.sessionId },
         networkPolicy: this.convertNetworkPolicy(config.networkPolicy),

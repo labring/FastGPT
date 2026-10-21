@@ -1,7 +1,7 @@
 import React, { useState, type ReactNode } from 'react';
 import { Accordion, Box, Flex, SkeletonText, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import MyBox from '../../../../common/MyBox';
 import LightRowTabs from '../../../../common/Tabs/LightRowTabs';
 import { ParamSection, SubToolAccordionItem } from './components';
@@ -57,7 +57,7 @@ const ToolDetailBody = ({
         ))}
       </Flex>
       <Box fontSize={'12px'} color="myGray.500" mt={3}>
-        {parseI18nString(parentTool?.description ?? '', i18n.language)}
+        {selectPluginText(parentTool?.description, i18n.language)}
       </Box>
       <Box fontSize={'12px'} color="myGray.500" mt={3}>
         {`by ${author}`}

@@ -208,17 +208,11 @@ export const onCreateApp = async ({
     await checkAppResourceReadPermissions({
       resources,
       tmbId,
+      teamId,
       isRoot,
       modelHandle
     });
   }
-
-  // 工具集节点可能已编码 JSON Schema；只清理旧节点字段，保留嵌套 schema 的存储格式。
-  const sanitizedStorageNodes = storageNodes?.map((node) => {
-    const storageNode = { ...node } as typeof node & { toolDescription?: unknown };
-    delete storageNode.toolDescription;
-    return storageNode;
-  });
 
   const create = async (session: ClientSession) => {
     const _avatar = await (async () => {
@@ -266,7 +260,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: sanitizedStorageNodes ?? normalizedWorkflow.nodes,
+            nodes: storageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,

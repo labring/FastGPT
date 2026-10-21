@@ -74,6 +74,15 @@ FastGPT Plugin 将插件服务、SDK 和 CLI 集中在[独立仓库](https://git
 | 全系统安装与配置 | root 系统管理员 | [系统工具管理](/zh-CN/guide/build/tools/system-plugins/upload_system_tool) |
 | 运行容量、环境变量与服务排障 | 部署运维人员 | [插件运行时配置](/zh-CN/plugin/runtime) |
 
+### 插件元数据的多语言展示
+
+FastGPT 保留插件元数据中的多语言对象，在 UI 展示时按当前语言选择，并按当前语言、简体中文、英文顺序回退。普通字符串继续兼容旧插件及缓存。
+
+- 插件名、简介、工具集子工具文案，以及输入、输出和密钥 Schema 的 `x-i18n` 文案用于 UI；旧 Schema 文案字段继续作为回退。
+- 工具的模型 function description 由名称和按 UI/metadata locale 解析后的简介组成；不会再按调度请求语言重新选择独立描述。
+- README 优先使用 `readmeUrls` 当前语言，再回退简体中文、英文和旧 `readmeUrl`。
+- 工作流节点及 Agent 中固定的插件工具会保存添加时的文案语言快照；修改 UI 语言不会改写既有快照。内置 Workflow 模板保持原样。
+
 ## `.pkg` 插件包协议
 
 工具插件以 `.pkg` 文件交付。作者需要维护入口、元信息和 Schema；产物结构与 SDK 入口见[插件包与 SDK 参考](/zh-CN/plugin/package-reference)。

@@ -17,10 +17,8 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import {
-  WorkflowStart,
-  userFilesInput
-} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import {
   AiChatModule,
   AiChatQuotePrompt,
@@ -199,6 +197,7 @@ export const appWorkflow2Form = ({
         id: node.nodeId,
         pluginId: node.pluginId,
         source: node.source,
+        metadataLocale: node.metadataLocale,
         isFolder: node.isFolder,
         name: node.pluginData?.name ?? node.name,
         avatar: node.pluginData?.avatar ?? node.avatar,
@@ -690,6 +689,7 @@ export function form2AppWorkflow(
             nodeId,
             pluginId: tool.pluginId,
             source: tool.source,
+            metadataLocale: tool.metadataLocale,
             name: tool.name,
             intro: tool.intro,
             avatar: tool.avatar,

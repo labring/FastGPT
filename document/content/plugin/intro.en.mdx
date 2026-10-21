@@ -74,6 +74,15 @@ After verification, tool authors follow the [publishing workflow](/en/plugin/deb
 | System-wide installation and configuration | Root administrator | [System tool management](/en/guide/build/tools/system-plugins/upload_system_tool) |
 | Runtime capacity, environment variables, and troubleshooting | Deployment operator | [Plugin runtime configuration](/en/plugin/runtime) |
 
+### Localized Plugin Metadata
+
+FastGPT preserves localized plugin metadata and selects text at the UI presentation boundary, falling back from the active locale to Simplified Chinese and then English. Legacy string values remain supported for older plugins and cached responses.
+
+- Plugin names, introductions, toolkit child metadata, and `x-i18n` text in input, output, and secret schemas are used in the UI; ordinary schema text remains the fallback for older plugins.
+- A tool's model function description combines its name with the introduction resolved for the UI/metadata locale; FastGPT no longer selects a separate description by dispatch request language.
+- README selection prefers the active locale in `readmeUrls`, then Simplified Chinese, English, and the legacy `readmeUrl`.
+- Workflow nodes and Agent tool selections retain the metadata locale snapshot from when the plugin tool was added; changing the UI locale does not rewrite existing snapshots. Built-in Workflow templates remain unchanged.
+
 ## `.pkg` Plugin Package Protocol
 
 Tool plugins are delivered as `.pkg` files. Authors maintain the entry point, metadata, and schemas. See [package and SDK reference](/en/plugin/package-reference) for artifacts and SDK entry points.

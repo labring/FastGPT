@@ -32,7 +32,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
-import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import { authOutLinkChatStart } from '@fastgpt/service/support/permission/publish/authChat';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
@@ -506,8 +506,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streamResponseContext.responseWrite(
         workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
-
-      await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
@@ -591,7 +589,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         sseErrRes(res, err);
       }
-      await streamResponseContext?.flushResume();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
@@ -601,6 +598,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } finally {
     if (stream) {
+      // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
+      await streamResponseContext?.flushResume();
       res.end();
     }
   }

@@ -1,4 +1,4 @@
-import { authOutLink } from '@/service/support/permission/auth/outLink';
+import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { scopeToChannelType } from '@fastgpt/global/core/ai/model/utils';

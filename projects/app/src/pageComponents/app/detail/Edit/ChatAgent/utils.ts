@@ -19,10 +19,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import {
-  WorkflowStart,
-  userFilesInput
-} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
@@ -323,6 +321,7 @@ export function agentForm2AppWorkflow(
                   avatar: tool.avatar,
                   version: tool.version,
                   source: tool.source,
+                  metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,
                   inputs: tool.inputs.filter(canInputBeAgentGenerated).map((input) => ({
                     key: input.key,

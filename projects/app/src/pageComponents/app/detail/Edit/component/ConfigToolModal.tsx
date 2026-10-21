@@ -265,6 +265,9 @@ const mergeConfiguredTool = ({
 
   return {
     ...mergedTool,
+    name: prevTool.name ?? mergedTool.name,
+    intro: prevTool.intro ?? mergedTool.intro,
+    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale,
     configStatus: getToolConfigStatus({ tool: mergedTool }).status
   };
 };
@@ -809,7 +812,8 @@ const ToolVersionSelect = ({
       const nextTool = await getClientToolPreviewNode({
         appId: tool.pluginId,
         versionId,
-        source: tool.source
+        source: tool.source,
+        lang: tool.metadataLocale ?? 'en'
       });
       const mergedTool = mergeConfiguredTool({
         nextTool,
@@ -832,7 +836,7 @@ const ToolVersionSelect = ({
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label: item.version,
         value: item.version
       }))
     ],

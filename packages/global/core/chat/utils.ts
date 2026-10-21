@@ -317,6 +317,7 @@ export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResT
   return outputs;
 };
 
+/** 将发布渠道映射为聊天来源，企微 Webhook 与长连接共用现有企微统计来源。 */
 export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum) => {
   switch (publishChannel) {
     case PublishChannelEnum.share:
@@ -328,6 +329,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
     case PublishChannelEnum.feishu:
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:
+    case PublishChannelEnum.wecomWebsocket:
       return ChatSourceEnum.wecom;
     case PublishChannelEnum.wechat:
       return ChatSourceEnum.wechat;

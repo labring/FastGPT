@@ -1,8 +1,10 @@
+import { WorkflowBuilderPreviewInteractiveSchema } from '../../../builder/type';
 import { NodeOutputItemSchema } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
 import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
+import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
@@ -113,13 +115,18 @@ export type LoopRunInteractive = InteractiveNodeType & {
   };
 };
 
-export const AgentPlanAskOptionSchema = z.string().min(1);
+/**
+ * 旧版单题 ask_user 的字符串选项，仅用于兼容历史数据，保持原有非空字符串约定。
+ * @deprecated 新交互使用 AgentAskOptionSchema（summary/value），不再扩展此旧协议。
+ */
+export const AgentPlanAskOptionSchema = z.string().min(1).meta({ deprecated: true });
+/** @deprecated 仅兼容旧版单题交互；新交互使用 AgentAskOption。 */
 export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
 /**
- * Legacy `ask_user` schema.
+ * 旧版单题 ask_user 交互，仅用于兼容历史记录。
  *
- * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ * @deprecated 新交互使用 AgentAskInteractiveSchema（多题问答），不再扩展此旧协议。
  */
 export const AgentPlanAskQueryInteractiveSchema = z
   .object({
@@ -140,7 +147,7 @@ export const AgentPlanAskQueryInteractiveSchema = z
   });
 
 /**
- * @deprecated Use `AgentAskInteractiveSchema` (multiple questions).
+ * @deprecated 仅兼容历史记录；新交互使用 AgentAskInteractive（多题问答）。
  */
 export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
 
@@ -180,6 +187,15 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
   list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+  listInputType: z
+    .enum([FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference])
+    .optional()
+    .meta({
+      description: '选项配置方式（input 手动输入 / reference 变量引用）'
+    }),
+  listReference: ReferenceArrayValueTypeSchema.optional().meta({
+    description: '动态选项引用变量列表'
+  }),
 
   canLocalUpload: z.boolean().optional(),
   canUrlUpload: z.boolean().optional()
@@ -188,7 +204,7 @@ export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput'),
   params: z.object({
-    // 同 userSelect：说明文字可留空，缺省为空串。
+    // 说明文字是可选输入，缺省为空串。
     description: z.string().default(''),
     inputForm: z.array(UserInputFormItemSchema),
     submitted: z.boolean().optional()
@@ -233,7 +249,8 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
     AgentPlanAskQueryInteractiveSchema,
-    AgentAskInteractiveSchema
+    AgentAskInteractiveSchema,
+    WorkflowBuilderPreviewInteractiveSchema
   ]),
   z.object({
     askId: z.string().nullish()

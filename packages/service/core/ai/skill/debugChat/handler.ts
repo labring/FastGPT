@@ -1,3 +1,4 @@
+import type { NodeApiRequest, NodeApiResponse, NodeHttpRequest } from '../../../../types/http';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { SkillDebugChatBody } from '@fastgpt/global/core/ai/skill/api';
@@ -22,7 +23,7 @@ import {
 } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { LimitTypeEnum, teamFrequencyLimit } from '../../../../common/api/frequencyLimit';
+import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getLocale } from '../../../../common/middle/i18n';
@@ -32,7 +33,6 @@ import { assertAuthModels } from '../../../../support/permission/model/auth';
 import { authSkill } from '../../../../support/permission/skill/auth';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
 
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
@@ -68,20 +68,36 @@ const skillDebugFileSelectConfig: AppFileSelectConfigType = {
   customFileExtensionList: []
 };
 
+export type SkillDebugChatStreamContextFactoryParams = {
+  teamId: string;
+  skillId: string;
+  chatId: string;
+};
+
+export type RunSkillDebugChatOptions = {
+  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  checkTeamFrequencyLimit: (teamId: string) => Promise<boolean>;
+  createStreamResponseContext: (
+    params: SkillDebugChatStreamContextFactoryParams
+  ) => Promise<WorkflowStreamResponseContext>;
+  workflowResponse?: NodeApiResponse;
+};
+
 /**
- * 处理 Skill 调试对话的共享主流程。
+ * 执行与 HTTP 框架无关的 Skill 调试对话主流程。
  *
- * 开源 API 与 Pro API 都调用这里；差异只通过 options 显式传入，避免复制 chat round、
- * workflow 调度和 SSE 收尾逻辑。
+ * 权限、聊天轮次、Workflow、usage 和失败收尾只在这里维护。调用方注入限流与
+ * SSE 上下文，使 Next API 和其他 HTTP 适配层能够共享同一业务流程。
  */
-export async function handleSkillDebugChat(
-  req: NodeApiRequest,
-  res: NodeApiResponse,
-  body: SkillDebugChatBody,
-  options: {
-    agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
-  } = {}
-): Promise<ChatWorkflowSseResponseType> {
+export async function runSkillDebugChat({
+  req,
+  body,
+  options
+}: {
+  req: NodeHttpRequest;
+  body: SkillDebugChatBody;
+  options: RunSkillDebugChatOptions;
+}): Promise<void> {
   let skillId = '';
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const roundState = {
@@ -131,8 +147,8 @@ export async function handleSkillDebugChat(
       type: ModelTypeEnum.llm
     });
 
-    if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
-      return ChatWorkflowSseResponseSchema.parse('');
+    if (!(await options.checkTeamFrequencyLimit(teamId))) {
+      return;
     }
 
     const sandboxInstance = await getRunningSkillEditSandbox({ skillId, teamId });
@@ -199,17 +215,10 @@ export async function handleSkillDebugChat(
       systemPrompt
     );
 
-    streamResponseContext = await createWorkflowStreamResponseContext({
-      req,
-      res,
-      stream: true,
-      detail: true,
+    streamResponseContext = await options.createStreamResponseContext({
       teamId,
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId: runningChatId,
-      responseId: runningChatId,
-      showNodeStatus: true
+      skillId,
+      chatId: runningChatId
     });
 
     logger.debug('Dispatching skill debug workflow', {
@@ -227,7 +236,7 @@ export async function handleSkillDebugChat(
       workflowRuntimeSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
-      res,
+      res: options.workflowResponse,
       lang: getLocale(req),
       requestOrigin: req.headers.origin,
       mode: 'test',
@@ -349,8 +358,6 @@ export async function handleSkillDebugChat(
     }
 
     streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
-
-    await streamResponseContext.flushResume();
   } catch (err: any) {
     const { preparedRound } = roundState;
     if (
@@ -378,15 +385,59 @@ export async function handleSkillDebugChat(
       }
     }
 
-    if (streamResponseContext) {
-      streamResponseContext.writeStreamError(err);
-    } else {
-      sseErrRes(res, err);
-    }
+    if (!streamResponseContext) throw err;
+
+    streamResponseContext.writeStreamError(err);
+  } finally {
+    // runner 统一等待缓存收尾，HTTP 响应仍由调用方关闭。
     await streamResponseContext?.flushResume();
   }
+}
 
-  res.end();
+/**
+ * Next API 的 Skill 调试适配器。
+ *
+ * 保留既有接口行为，并把 Node 响应相关的限流 header、SSE 初始化和结束动作
+ * 注入通用 runner，保留现有路由签名、限流策略和响应格式。
+ */
+export async function handleSkillDebugChat(
+  req: NodeApiRequest,
+  res: NodeApiResponse,
+  body: SkillDebugChatBody,
+  options: {
+    agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
+  } = {}
+): Promise<ChatWorkflowSseResponseType> {
+  try {
+    await runSkillDebugChat({
+      req,
+      body,
+      options: {
+        agentSandboxPrepareActions: options.agentSandboxPrepareActions,
+        checkTeamFrequencyLimit: (teamId) =>
+          teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }),
+        createStreamResponseContext: ({ teamId, skillId, chatId }) =>
+          createWorkflowStreamResponseContext({
+            req,
+            res,
+            stream: true,
+            detail: true,
+            teamId,
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId,
+            chatId,
+            responseId: chatId,
+            showNodeStatus: true
+          }),
+        workflowResponse: res
+      }
+    });
+  } catch (error) {
+    sseErrRes(res, error);
+  }
+
+  // 限流适配器可能已写入并结束 429 响应，避免重复结束同一个响应。
+  if (!res.writableEnded) res.end();
 
   // SSE 内容已经直接写入 res；返回值仅用于让路由类型和 OpenAPI 共用同一响应契约。
   return ChatWorkflowSseResponseSchema.parse('');

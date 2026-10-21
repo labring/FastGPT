@@ -143,4 +143,22 @@ describe('update collection', () => {
     expect(result.code).not.toBe(200);
     expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
   });
+  it('parentId 为空串移回根目录时校验团队创建权限并落库为 null', async () => {
+    const { actor, owner, file, source } = await fixture();
+    const denied = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: '' }
+    });
+    expect(denied.code).not.toBe(200);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(source._id)
+    );
+
+    const allowed = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), parentId: '' }
+    });
+    expect(allowed.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+  });
 });

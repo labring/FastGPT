@@ -36,6 +36,7 @@ export const createAgentLoopCoreEventDispatcher = ({
     Extract<AgentLoopEvent, { type: 'tool_call' }>['call']
   >();
   const completedToolCallIds = new Set<string>();
+  const announcedActivityIds = new Set<string>();
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
@@ -77,6 +78,26 @@ export const createAgentLoopCoreEventDispatcher = ({
           callId: event.callId,
           argsDelta: event.argsDelta
         });
+        return;
+      }
+      case 'tool_activity': {
+        if (!shouldStreamTool(event.toolName)) return;
+        if (!announcedActivityIds.has(event.callId)) {
+          announcedActivityIds.add(event.callId);
+          eventStream.streamToolCall(
+            {
+              id: event.callId,
+              type: 'function',
+              function: { name: event.toolName, arguments: '' }
+            },
+            { hideDetails: true }
+          );
+        }
+        if (event.status === 'done' && !completedToolCallIds.has(event.callId)) {
+          completedToolCallIds.add(event.callId);
+          // 空响应只作为完成信号，沿用现有 SSE 协议，不暴露实际执行结果。
+          eventStream.streamToolResponse({ toolCallId: event.callId, response: '' });
+        }
         return;
       }
       case 'tool_run_end': {

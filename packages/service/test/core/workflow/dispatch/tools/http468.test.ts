@@ -70,16 +70,34 @@ describe('dispatchHttp468Request empty keys', () => {
     isInternalAddressMock.mockResolvedValue(false);
   });
 
-  it.each([ContentTypes.formData, ContentTypes.xWwwFormUrlencoded])(
-    'silently skips empty keys for %s requests',
-    async (httpContentType) => {
-      await dispatchHttp468Request(buildProps(httpContentType));
+  it.each(
+    [ContentTypes.formData, ContentTypes.xWwwFormUrlencoded].flatMap((httpContentType) =>
+      [true, false].map((hasType) => ({ httpContentType, hasType }))
+    )
+  )(
+    'sends persisted $httpContentType entries and skips empty keys (type saved: $hasType)',
+    async ({ httpContentType, hasType }) => {
+      const props = buildProps(httpContentType);
+      for (const key of [
+        NodeInputKeyEnum.httpHeaders,
+        NodeInputKeyEnum.httpParams,
+        NodeInputKeyEnum.httpFormBody
+      ]) {
+        if (!hasType)
+          props.params[key] = props.params[key].map(
+            ({ key, value }: { key: string; value: string }) => ({ key, value })
+          );
+      }
+      props.params = JSON.parse(JSON.stringify(props.params));
+      const before = structuredClone(props.params);
+      await dispatchHttp468Request(props);
 
       const request = axiosMock.mock.calls[0][0];
       expect(request.headers).toMatchObject({ 'X-Valid': 'header' });
       expect(Object.keys(request.headers)).not.toContain('');
       expect(request.params).toEqual({ validParam: 'param' });
       expect(Object.fromEntries(request.data)).toEqual({ validField: 'field' });
+      expect(props.params).toEqual(before);
     }
   );
 });

@@ -113,6 +113,14 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
       description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
+    AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox CPU 超卖倍数（仅 opensandbox + kubernetes 运行态生效）：CPU requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
+    AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox 内存超卖倍数（仅 opensandbox + kubernetes 运行态生效）：内存 requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),

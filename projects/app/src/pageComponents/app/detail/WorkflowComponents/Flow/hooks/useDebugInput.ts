@@ -1,13 +1,15 @@
 import {
+  workflowReferenceValueIsSelectable,
+  type WorkflowReferenceSourceNode,
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import {
-  getSelectedInputRenderType,
-  nodeInputIsReference
-} from '@fastgpt/global/common/workflow/reference';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeInputTypeEnum,
@@ -18,10 +20,6 @@ import type { FileSelectorValueItemType } from '@/components/core/app/FileSelect
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import {
-  workflowReferenceValueIsSelectable,
-  type WorkflowReferenceSourceNode
-} from '@/web/core/workflow/utils';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([

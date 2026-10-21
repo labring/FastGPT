@@ -149,6 +149,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -256,6 +257,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         nodes,
         edges,
         modelData,
+        chatConfig,
         nodeId,
         t
       });
@@ -281,7 +283,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [appId, edges, getNodes, setNodes, t]
+    [appId, chatConfig, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -323,10 +325,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, chatConfig, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {

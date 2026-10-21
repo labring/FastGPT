@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   FlowNodeInputItemType,
@@ -93,10 +94,10 @@ export const SubToolAccordionItem = ({ tool }: { tool: ToolDetailExtendedType })
       >
         <Box flex={1} textAlign="left">
           <Box fontSize="md" color="myGray.900">
-            {parseI18nString(tool.name, i18n.language)}
+            {selectPluginText(tool.name, i18n.language)}
           </Box>
           <Box fontSize={'sm'} color={'myGray.600'}>
-            {parseI18nString(tool.intro || tool.description || '', i18n.language)}
+            {selectPluginText(tool.intro ?? tool.description, i18n.language)}
           </Box>
         </Box>
         <AccordionIcon />

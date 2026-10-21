@@ -422,47 +422,78 @@ describe('update dataset', () => {
     );
   });
 
-  it('keeps an independent dataset isolated when moved back to the dataset root', async () => {
-    const { owner } = await getFakeUsers(1);
-    const teamId = String(owner.teamId);
+  it.each([null, ''])(
+    'keeps an independent dataset isolated when moved back to the dataset root (%s) and enforces team create permission',
+    async (rootParentId) => {
+      const { owner, members } = await getFakeUsers(1);
+      const member = members[0];
+      const teamId = String(owner.teamId);
 
-    const folder = await createDatasetWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'folder',
-      type: DatasetTypeEnum.folder
-    });
-    const dataset = await createDatasetWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'independent-dataset',
-      type: DatasetTypeEnum.dataset
-    });
-    await MongoDataset.updateOne(
-      { _id: dataset._id },
-      { parentId: String(folder._id), inheritPermission: false }
-    );
-
-    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
-      auth: owner,
-      body: { id: String(dataset._id), parentId: null }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-    const updated = await MongoDataset.findById(dataset._id).lean();
-    expect(updated?.parentId ?? null).toBeNull();
-    expect(updated?.inheritPermission).toBe(false);
-    await expect(
-      getResourceOwnedClbs({
+      const folder = await createDatasetWithOwnerSnapshot({
         teamId,
-        resourceId: String(dataset._id),
-        resourceType: PerResourceTypeEnum.dataset
-      }).then(toPermissionRows)
-    ).resolves.toEqual(
-      toPermissionRows([{ tmbId: String(owner.tmbId), permission: OwnerRoleVal }])
-    );
-  });
+        tmbId: String(owner.tmbId),
+        name: 'folder',
+        type: DatasetTypeEnum.folder
+      });
+      await setDatasetCollaborators({
+        datasetId: String(folder._id),
+        teamId,
+        type: folder.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: OwnerRoleVal }
+        ]
+      });
+      const dataset = await createDatasetWithOwnerSnapshot({
+        teamId,
+        tmbId: String(owner.tmbId),
+        name: 'independent-dataset',
+        type: DatasetTypeEnum.dataset
+      });
+      await setDatasetCollaborators({
+        datasetId: String(dataset._id),
+        teamId,
+        type: dataset.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ]
+      });
+      await MongoDataset.updateOne(
+        { _id: dataset._id },
+        { parentId: String(folder._id), inheritPermission: false }
+      );
+
+      const denied = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+        auth: member,
+        body: { id: String(dataset._id), parentId: rootParentId }
+      });
+      expect(denied.code).not.toBe(200);
+
+      const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+        auth: owner,
+        body: { id: String(dataset._id), parentId: rootParentId }
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(res.code).toBe(200);
+      const updated = await MongoDataset.findById(dataset._id).lean();
+      expect(updated?.parentId ?? null).toBeNull();
+      expect(updated?.inheritPermission).toBe(false);
+      await expect(
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: String(dataset._id),
+          resourceType: PerResourceTypeEnum.dataset
+        }).then(toPermissionRows)
+      ).resolves.toEqual(
+        toPermissionRows([
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ])
+      );
+    }
+  );
 
   it('does not re-materialize collection permissions when an independent dataset is moved', async () => {
     const { owner, members } = await getFakeUsers(1);

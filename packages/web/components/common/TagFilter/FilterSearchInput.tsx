@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Flex, Input } from '@chakra-ui/react';
 import MyIconButton from '../Icon/button';
 import { shadowLight } from '../../../styles/theme';
@@ -29,47 +29,59 @@ type Props = {
 };
 
 /** TagFilter 下拉里 32px 搜索框，有内容时显示清空。 */
-const FilterSearchInput = ({ value, placeholder, onChange }: Props) => (
-  <Flex
-    w={'100%'}
-    h={'32px'}
-    alignItems={'center'}
-    px={1}
-    border={'1px solid'}
-    borderColor={'borderColor.low'}
-    borderRadius={'sm'}
-    _hover={{ borderColor: 'primary.300' }}
-    _focusWithin={{
-      borderColor: 'primary.500',
-      boxShadow: shadowLight,
-      bg: 'white'
-    }}
-  >
-    <Input
-      flex={'1 1 0'}
-      w={0}
-      minW={0}
-      h={'100%'}
-      px={0}
-      variant={'unstyled'}
-      fontSize={'xs'}
-      lineHeight={'16px'}
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-    />
-    {!!value && (
-      <MyIconButton
-        icon={'common/closeLight'}
-        flex={'0 0 auto'}
-        position={'relative'}
-        zIndex={1}
-        size={'14px'}
-        hoverColor={'myGray.700'}
-        onClick={() => onChange('')}
+const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSearchInput(
+  { value, placeholder, onChange },
+  ref
+) {
+  return (
+    <Flex
+      w={'100%'}
+      h={'32px'}
+      alignItems={'center'}
+      px={1}
+      border={'1px solid'}
+      borderColor={'borderColor.low'}
+      borderRadius={'sm'}
+      _hover={{ borderColor: 'primary.300' }}
+      _focusWithin={{
+        borderColor: 'primary.500',
+        boxShadow: shadowLight,
+        bg: 'white'
+      }}
+      onKeyDown={(e) => {
+        // 文本输入由搜索框处理，方向键和 Escape 交给菜单导航、关闭。
+        if (!['ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) {
+          e.stopPropagation();
+        }
+      }}
+    >
+      <Input
+        ref={ref}
+        flex={'1 1 0'}
+        w={0}
+        minW={0}
+        h={'100%'}
+        px={0}
+        variant={'unstyled'}
+        fontSize={'xs'}
+        lineHeight={'16px'}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
       />
-    )}
-  </Flex>
-);
+      {!!value && (
+        <MyIconButton
+          icon={'common/closeLight'}
+          flex={'0 0 auto'}
+          position={'relative'}
+          zIndex={1}
+          size={'14px'}
+          hoverColor={'myGray.700'}
+          onClick={() => onChange('')}
+        />
+      )}
+    </Flex>
+  );
+});
 
 export default FilterSearchInput;

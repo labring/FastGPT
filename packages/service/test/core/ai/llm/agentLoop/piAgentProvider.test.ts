@@ -368,6 +368,38 @@ describe('runPiAgentLoop', () => {
     ]);
   });
 
+  it('continues the same pi agent when completion policy rejects a natural completion', async () => {
+    const completionPolicy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        action: 'continue',
+        message: 'Continue until terminal facts exist.'
+      })
+      .mockResolvedValueOnce({ action: 'complete' });
+
+    const result = await runPiAgentLoop({
+      input: { messages: [{ role: 'user', content: 'build it' }] },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: { model: 'gpt-5' },
+        completionPolicy,
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(agentPromptMock).toHaveBeenNthCalledWith(1, 'build it');
+    expect(agentPromptMock).toHaveBeenNthCalledWith(2, 'Continue until terminal facts exist.');
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(result.completeMessages).toContainEqual({
+      role: 'user',
+      content: 'Continue until terminal facts exist.'
+    });
+  });
+
   it('preserves multimodal content in the current user prompt', async () => {
     await runPiAgentLoop({
       input: {
@@ -578,6 +610,25 @@ describe('runPiAgentLoop', () => {
     expect(events.filter((event) => event.type === 'llm_request_end')).toHaveLength(1);
   });
 
+  it('returns an error when completion policy cannot reach terminal facts within the run budget', async () => {
+    const result = await runPiAgentLoop({
+      input: { messages: [{ role: 'user', content: 'build it' }] },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: { model: 'gpt-5' },
+        maxRunAgentTimes: 1,
+        completionPolicy: () => ({ action: 'continue', message: 'Continue.' }),
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(result.status).toBe('error');
+    expect(String(result.error)).toContain('Agent loop reached max run times: 1');
+    expect(agentPromptMock).toHaveBeenCalledTimes(1);
+  });
+
   it('closes a started LLM request when pi-agent-core ends before message_end', async () => {
     const events: any[] = [];
     agentFailAfterPayload.value = 'network unavailable';
@@ -654,6 +705,42 @@ describe('runPiAgentLoop', () => {
       'ask_user',
       'dataset_search'
     ]);
+  });
+
+  it('does not disable executable tools for a sandbox-only runtime', async () => {
+    await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'inspect workspace' }],
+        systemPrompt: 'Sandbox is available.'
+      },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: {
+          model: 'gpt-5'
+        },
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        },
+        toolCatalog: {
+          runtimeTools: []
+        },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(agentConstructorArgs.at(-1).initialState.systemPrompt).toBe('Sandbox is available.');
+    expect(agentConstructorArgs.at(-1).initialState.systemPrompt).not.toContain(
+      '<tool_constraint>'
+    );
+    expect(
+      agentConstructorArgs
+        .at(-1)
+        .initialState.tools.some((tool: { name: string }) => tool.name === 'sandbox_read_file')
+    ).toBe(true);
   });
 
   it('emits one successful plan operation with the complete plan', async () => {
@@ -1319,6 +1406,7 @@ describe('runPiAgentLoop', () => {
 
   it('injects sandbox tools as system tools and emits sandbox events', async () => {
     const events: any[] = [];
+    const validate = vi.fn(() => undefined);
     runSandboxToolsMock.mockResolvedValue({
       success: true,
       input: {
@@ -1339,7 +1427,8 @@ describe('runPiAgentLoop', () => {
         systemTools: {
           sandbox: {
             enabled: true,
-            client: {} as any
+            client: {} as any,
+            validate
           }
         },
         toolCatalog: {
@@ -1361,7 +1450,8 @@ describe('runPiAgentLoop', () => {
       expect.objectContaining({
         toolName: 'sandbox_shell',
         args: '{"command":"pwd"}',
-        sandboxClient: expect.anything()
+        sandboxClient: expect.anything(),
+        validate
       })
     );
     expect(result).toEqual({
@@ -1479,6 +1569,53 @@ describe('runPiAgentLoop', () => {
         content: 'answer '
       })
     );
+  });
+
+  it('returns an injected ask validation error without creating a pause', async () => {
+    const validate = vi.fn(() => 'Preview markdown is required.');
+    agentToolToExecute.value = {
+      name: 'ask_user',
+      callId: 'call_invalid_preview',
+      args: {
+        reason: '需要确认流程拓扑',
+        blockerType: 'user_choice',
+        questions: [
+          {
+            question: '请确认工作流',
+            options: [
+              { summary: '确认', value: '确认当前工作流。' },
+              { summary: '修改', value: '修改当前工作流。' }
+            ]
+          }
+        ]
+      }
+    };
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: '搭建工作流' }]
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        systemTools: { ask: { enabled: true, validate } },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questions: [expect.objectContaining({ question: '请确认工作流' })]
+      })
+    );
+    expect(result.providerState).not.toHaveProperty('pendingMainContext');
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_invalid_preview',
+      content: 'Preview markdown is required.'
+    });
   });
 
   it('stores ask pause as standard pending context without pi messages', async () => {

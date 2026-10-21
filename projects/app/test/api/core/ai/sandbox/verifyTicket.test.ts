@@ -52,9 +52,8 @@ const createTicket = (channel: 'fs' | 'terminal', permission = 'read') =>
 const createReq = (ticket: string) => ({ query: { ticket }, headers: {} }) as any;
 const previewSandboxId = 'app-0123456789abcdef';
 const previewSessionId = 'a12345678901234567890123';
-const previewCredential = `${previewSandboxId}:${previewSessionId}`;
 const createPreviewReq = () =>
-  ({ query: {}, headers: { 'x-sandbox-preview-session': previewCredential } }) as any;
+  ({ query: {}, headers: { 'x-sandbox-preview-session': previewSessionId } }) as any;
 const previewContext = {
   sandboxId: previewSandboxId,
   sourceType: ChatSourceTypeEnum.app,
@@ -83,7 +82,7 @@ describe('sandbox verifyTicket API', () => {
       agent_token: 'agent-password'
     });
 
-    expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(previewCredential);
+    expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(previewSessionId);
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(previewContext);
     expect(mocks.getEndpoint).toHaveBeenCalledWith(1319);
   });

@@ -283,7 +283,7 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
       }
     };
 
-    const formatText = await parseMarkdownBase64Images(htmlTable2Md(text), {
+    const formatText = await parseMarkdownBase64Images(text, {
       parseBase64: true,
       parseHttp: true,
       controller: options.uploadImage
@@ -322,7 +322,8 @@ export const useDoc2xServer = ({ apiKey }: { apiKey: string }) => {
 
     return {
       pages,
-      text: formatText
+      // 文本清理会消耗反斜杠，表格转义必须最后执行，避免单元格再次变成列分隔符。
+      text: htmlTable2Md(formatText)
     };
   };
 

@@ -31,7 +31,8 @@ const punctuationMap: Record<string, string> = {
 /**
  * 处理 Mermaid SVG：
  * 1. 确保包含标准 xmlns 命名空间；
- * 2. 注入纯白背景矩形，避免大图预览、全屏灯箱暗黑遮罩或导出时呈现透明底色。
+ * 2. 注入纯白背景矩形，避免大图预览、全屏灯箱暗黑遮罩或导出时呈现透明底色；
+ * 3. 闭合换行标签，保证生成的 SVG 可以按 XML 解码为图片。
  */
 const prepareMermaidSvgForView = (rawSvg: string) => {
   let processed = rawSvg.trim();
@@ -47,6 +48,9 @@ const prepareMermaidSvgForView = (rawSvg: string) => {
       '$1<rect id="mermaid-bg-rect" width="100%" height="100%" fill="#ffffff"/>'
     );
   }
+
+  // Mermaid 的 HTML 清理会生成 <br>；作为 SVG 图片加载时需闭合，否则 XML 解码失败。
+  processed = processed.replace(/<br\s*>/gi, '<br/>');
 
   return processed;
 };
@@ -117,11 +121,12 @@ const MermaidBlock = ({ code }: { code: string }) => {
         const { svg: renderedSvg } = await mermaid.render(`mermaid-${Date.now()}`, formatCode);
         setSvg(renderedSvg);
         setHasError(false);
-      } catch {
+      } catch (error) {
         // 流式打字期间半截语法解析失败属于正常过程态，静默处理，避免闪烁和红框抖动
         if (showAnimation) {
           return;
         }
+        console.error('[Mermaid] Diagram rendering failed', error);
         // 只有输出彻底结束后，如果依然有语法错误，才标记错误
         setHasError(true);
       }
@@ -132,6 +137,15 @@ const MermaidBlock = ({ code }: { code: string }) => {
   const svgDataUrl = useMemo(() => {
     if (!svg) return '';
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(prepareMermaidSvgForView(svg));
+  }, [svg]);
+
+  /** 图片加载失败时提供 XML 解析诊断，不输出整段 SVG 或业务图内容。 */
+  const handleSvgImageError = useCallback(() => {
+    const xml = new DOMParser().parseFromString(prepareMermaidSvgForView(svg), 'image/svg+xml');
+    console.error('[Mermaid] SVG image failed to load', {
+      svgLength: svg.length,
+      xmlError: xml.querySelector('parsererror')?.textContent ?? undefined
+    });
   }, [svg]);
 
   // 复制代码
@@ -162,6 +176,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.onerror = handleSvgImageError;
     img.src = svgDataUrl;
 
     img.onload = () => {
@@ -189,7 +204,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
       a.click();
       document.body.removeChild(a);
     };
-  }, [svgDataUrl]);
+  }, [svgDataUrl, handleSvgImageError]);
 
   // 模块加载中
   if (isLoading) {
@@ -327,6 +342,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
       <Box p={4} display={'flex'} justifyContent={'center'} overflowX={'auto'}>
         <MyPhotoView
           src={svgDataUrl}
+          onError={handleSvgImageError}
           alt={'Mermaid Diagram'}
           cursor={'pointer'}
           maxH={'600px'}

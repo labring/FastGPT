@@ -4,6 +4,7 @@ import { FlowNodeInputItemTypeSchema } from '../type/io';
 import { AgentToolInputModeEnum } from '../../app/tool/constants';
 import { NodeToolConfigTypeSchema, StoreNodeItemTypeSchema } from '../type/node';
 import { StoreEdgeItemTypeSchema } from '../type/edge';
+import { LanguageSchema } from '../../../common/i18n/type';
 
 /**
  * 当前工作流输入。该类型不包含任何历史字段。
@@ -31,6 +32,7 @@ const CanonicalAvailableAgentToolSchema = z.object({
   avatar: z.string().optional(),
   version: z.string().optional(),
   source: z.string().optional(),
+  metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(CanonicalAgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.unknown())

@@ -642,6 +642,9 @@ const Checkbox = checkBoxMultiStyle({
     control: {
       borderRadius: 'xs',
       bg: 'none',
+      '&:not([data-checked]):not([data-indeterminate]) svg': {
+        opacity: 0
+      },
       _checked: {
         bg: 'primary.50',
         borderColor: 'primary.600',
@@ -676,7 +679,10 @@ const Checkbox = checkBoxMultiStyle({
         borderColor: 'primary.400'
       },
       _disabled: {
+        bg: 'none',
+        borderColor: 'inherit',
         _hover: {
+          bg: 'none',
           borderColor: 'inherit'
         }
       }

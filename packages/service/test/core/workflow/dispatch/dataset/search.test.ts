@@ -59,7 +59,7 @@ vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
-    findOne: findDatasetMock
+    find: findDatasetMock
   }
 }));
 
@@ -705,7 +705,7 @@ describe('dispatchDatasetSearch', () => {
   });
 
   it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
-    findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
+    findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
     const result = await runSnapshotSearch();
     expect(result.error).toBeDefined();
     expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', {

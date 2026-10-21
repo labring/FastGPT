@@ -5,6 +5,7 @@
  */
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 
 /** 将调用用户收敛为 v2 Sandbox 逻辑身份使用的 userId。 */
 export const getSandboxUserId = ({
@@ -14,7 +15,7 @@ export const getSandboxUserId = ({
   sourceType: ChatSourceTypeEnum;
   userId: string;
 }) => {
-  if (sourceType === ChatSourceTypeEnum.app) {
+  if (isAppSandboxSourceType(sourceType)) {
     return userId;
   }
 

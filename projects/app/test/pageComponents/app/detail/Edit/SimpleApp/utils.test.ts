@@ -236,12 +236,14 @@ describe('form2AppWorkflow model reference', () => {
   });
 
   it('prioritizes pluginData name and avatar in appWorkflow2Form and falls back to node snapshot', () => {
-    const nodes = [
+    const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'tool-node-1',
+        position: { x: 0, y: 0 },
         pluginId: 'plugin-1',
         name: 'Snapshot Name 1',
         avatar: 'snapshot/avatar/1',
+        metadataLocale: 'en',
         flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [],
         outputs: [],
@@ -251,10 +253,12 @@ describe('form2AppWorkflow model reference', () => {
         }
       },
       {
+        position: { x: 0, y: 0 },
         nodeId: 'tool-node-2',
         pluginId: 'plugin-2',
         name: 'Snapshot Name 2',
         avatar: 'snapshot/avatar/2',
+        metadataLocale: 'zh-CN',
         flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [],
         outputs: [],
@@ -264,10 +268,16 @@ describe('form2AppWorkflow model reference', () => {
       }
     ];
 
-    const form = appWorkflow2Form({ nodes: nodes as any, chatConfig: {} });
+    const form = appWorkflow2Form({ nodes, chatConfig: {} });
     expect(form.selectedTools).toHaveLength(2);
     expect(form.selectedTools[0].name).toBe('Updated Live Name 1');
     expect(form.selectedTools[0].avatar).toBe('live/avatar/1');
+    expect(form.selectedTools[0].metadataLocale).toBe('en');
+    expect(form.selectedTools[1].metadataLocale).toBe('zh-CN');
+
+    const savedWorkflow = form2AppWorkflow(form, (key: string) => key);
+    const savedTools = savedWorkflow.nodes.filter((node) => node.pluginId);
+    expect(savedTools.map((node) => node.metadataLocale)).toEqual(['en', 'zh-CN']);
     expect(form.selectedTools[1].name).toBe('Snapshot Name 2');
     expect(form.selectedTools[1].avatar).toBe('snapshot/avatar/2');
   });

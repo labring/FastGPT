@@ -202,6 +202,7 @@ export const useChatGenerate = ({
         planStatus,
         sandboxStatus,
         skill,
+        workflowBuilderVersion,
         variables,
         nodeResponse,
         durationSeconds,
@@ -441,7 +442,7 @@ export const useChatGenerate = ({
           return item;
         }
         if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-          if (tool.response) {
+          if (typeof tool.response === 'string') {
             updateValue.tools = updateValue.tools.map((item) =>
               item.id === tool.id
                 ? { ...item, response: `${item.response || ''}${tool.response}` }
@@ -540,6 +541,12 @@ export const useChatGenerate = ({
           return {
             ...item,
             value: item.value.concat(val)
+          };
+        }
+        if (event === SseResponseEventEnum.workflowBuilderVersion && workflowBuilderVersion) {
+          return {
+            ...item,
+            value: item.value.concat({ workflowBuilderVersion })
           };
         }
 
@@ -665,6 +672,7 @@ export const useChatGenerate = ({
       files = [],
       history = chatRecords,
       interactive,
+      agentPlanAskResponse,
       autoTTSResponse = false,
       hideInUI = false,
       clearInput = false
@@ -803,7 +811,8 @@ export const useChatGenerate = ({
               ? rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
                   interactive,
-                  interactiveVal: text
+                  interactiveVal: text,
+                  agentPlanAskResponse
                 })
               : newChatList
           );
@@ -836,6 +845,7 @@ export const useChatGenerate = ({
               messages,
               responseChatItemId: responseChatId,
               interactive,
+              agentPlanAskResponse,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
