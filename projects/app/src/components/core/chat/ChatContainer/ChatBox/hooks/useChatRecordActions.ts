@@ -141,7 +141,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
           return {
             askId: finalInteractive.previewId,
             optionValue: finalInteractive.params.answerValue,
-            text: finalInteractive.params.answerText
+            text: finalInteractive.params.answerText ?? undefined
           };
         })();
 

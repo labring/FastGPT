@@ -26,6 +26,7 @@ import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputD
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { AgentPlanAskResponseSchema } from '@fastgpt/global/core/workflow/builder/type';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -386,6 +387,13 @@ describe('useChatGenerate.sendPrompt', () => {
       await act(async () => request.resolve({ responseText: 'Continued' }));
 
       const sourceAi = records[0];
+      if (sourceAi.obj === ChatRoleEnum.AI && sourceAi.value[0].interactive) {
+        const source = extractDeepestInteractive(sourceAi.value[0].interactive);
+        if (source.type === 'workflowBuilderPreview' && action !== 'revise') {
+          // MongoDB 会把 Mixed 字段里的 undefined 持久化为 null，重试仍需遵守请求契约。
+          Reflect.set(source.params, 'answerText', null);
+        }
+      }
       mocks.refreshRecords.mockResolvedValueOnce([sourceAi]);
       if (paginated) {
         mocks.getRecords.mockResolvedValueOnce({
@@ -416,12 +424,16 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(
         resent.messages.filter((message: { role: string }) => message.role === 'user')
       ).toEqual([expect.objectContaining({ role: 'user', content: text })]);
-      if (action !== 'agentAsk')
+      if (action !== 'agentAsk') {
+        expect(AgentPlanAskResponseSchema.safeParse(resent.agentPlanAskResponse).success).toBe(
+          true
+        );
         expect(resent.agentPlanAskResponse).toEqual({
           askId: 'preview-1',
           optionValue: action,
           text: action === 'revise' ? text : undefined
         });
+      }
       if (!paginated) {
         const originalAi = records[0];
         await act(async () => recordActions.delOneMessage(retried.dataId)());
