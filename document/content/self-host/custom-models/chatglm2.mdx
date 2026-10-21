@@ -1,7 +1,10 @@
 ---
-title: 接入 ChatGLM2-6B
+title: 接入 ChatGLM2-6B（旧版接入示例）
 description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 ---
+
+本页保留社区模型服务示例及历史 OneAPI/config.json 接入配置。当前部署请通过[模型配置](/zh-CN/self-host/config/model/intro)登记可访问的模型服务，并核对所用版本的模型类型、接口地址、权限和兼容性。
+
 
 import { Alert } from '@/components/docs/Alert';
 
@@ -53,7 +56,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 启动成功后应该会显示如下地址：
 
-![](../../../public/imgs/chatglm2.png)
+![源码部署：界面示例](/imgs/optimized/chatglm2.png.webp)
 
 > 这里的 `http://0.0.0.0:6006` 就是连接地址。
 
@@ -75,7 +78,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 为 chatglm2 添加一个渠道，参数如下：
 
-![](../../../public/imgs/model-m3e1.png)
+![接入 One API：界面示例](/imgs/optimized/model-m3e1.png.webp)
 
 这里我填入 chatglm2 作为语言模型
 

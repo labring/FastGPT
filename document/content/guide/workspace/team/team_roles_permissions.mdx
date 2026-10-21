@@ -12,7 +12,7 @@ FastGPT
 
 ## 团队
 
-每位用户可以同时归属于多个团队，系统默认为每位用户创建一个初始团队。目前暂不支持用户手动创建额外团队。
+团队归属由部署的[团队模式](/zh-CN/guide/admin/teamMode)决定。多团队模式下，用户可加入多个团队，创建用户时会建立其初始团队；单团队模式下，新用户加入 root 所在团队；同步模式按外部成员系统管理归属。当前界面提供加入已有团队的入口。
 
 ## 权限管理
 
@@ -24,15 +24,15 @@ FastGPT 提供三种权限管理维度：
 
 权限判定遵循以下逻辑：
 
-首先检查用户的个人成员权限
-
-其次检查用户所属部门和群组的权限（取并集）
-
-最终权限为上述结果的组合
+1. 存在个人权限记录时，直接使用该记录；显式设置为 `0` 也生效。
+2. 缺少个人记录时，查询成员组、默认全员组、所属部门及祖先部门的权限，并按位取并集。
+3. 所有来源均缺少匹配记录时，使用调用方指定的资源默认权限。
 
 鉴权逻辑如下：
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image1.jpeg)
+![单资源协作者权限解析](/imgs/diagrams/resource-permissions.zh-CN.light.svg)
+
+此图描述单资源的协作者权限解析。资源拥有者、文件夹继承及隐藏应用等规则由外围鉴权处理。
 
 ### 资源权限
 
@@ -118,19 +118,11 @@ FastGPT 提供三种权限管理维度：
 
 必须先添加**协作者**，才能对其进行权限管理：
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
-
 管理团队权限时，需先选择成员/组织/群组，再进行权限配置。
-
-![](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
 对于应用和知识库等资源，可直接修改成员权限。
 
-![](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
-
 团队权限在专门的权限页面进行设置
-
-![](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
 
 ## 特殊权限说明
 
@@ -223,3 +215,7 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 ```
+
+![团队权限页面按成员、部门、群组配置资源创建和管理能力](/imgs/optimized/current/team-permissions.png.webp)
+
+入口为“账号 → 团队管理 → 权限”。图中搜索演示成员，展示权限列与分类；具体授权项随当前角色和部署变化。应用或知识库的协作者入口负责对应资源权限，见[集合权限](/zh-CN/guide/dataset/collection_permission)。

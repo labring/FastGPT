@@ -15,4 +15,14 @@ The Specified Reply node is typically used for special-case responses. There are
 1. Manually enter fixed content.
 2. Use variable references.
 
-![Specified Reply node with fixed text and variable inputs](/imgs/specialreply.png)
+![Features — interface example](/imgs/optimized/current/node-reply.png.webp)
+
+## Configuration and boundaries
+
+Enter fixed **Response content** or use the variable selector to reference an upstream value. Text is displayed directly; objects and other values are formatted as JSON text. This node sends existing content, and its template declares no data-output fields. Reference the original upstream data for later processing.
+
+## Example
+
+Connect Start → Specified Reply and enter `Request received.` as the response. Debug with any question and expect that fixed reply. Then replace the content with a reference to the starting user question. Submit `Hello` and expect the response to contain `Hello`.
+
+For an empty reply, inspect its input reference. For duplicate replies, inspect the display settings of AI Chat and other reply nodes on the same execution path. Use [Text Concatenation](/en/guide/build/workflow/nodes/text_editor) to combine content before displaying it here.

@@ -1,0 +1,26 @@
+---
+title: Choose tools and Skills
+description: Choose system tools, workflow tools, HTTP tools, MCP tools, or Skills for a task.
+---
+
+A tool is a callable operation with defined inputs and outputs. A Skill versions instructions and supporting files together for an Agent to use in an execution environment.
+
+| Need | Choice | Verify |
+| --- | --- | --- |
+| Use an operation supplied by the platform | System tool | Installation, activation settings, and permissions |
+| Expose an existing flow to other applications | Workflow tool | Input/output parameters and published version |
+| Call an HTTP service | [HTTP tool](/en/guide/build/tools/http_tools) | Address, authentication, request, and response structure |
+| Connect external MCP capabilities | [MCP tool set](/en/guide/build/tools/mcp_tools) | Service address, transport, headers, and network |
+| Reuse a procedure and supporting files | [Skill](/en/guide/build/skill/intro) | Published version, execution environment, and model capabilities |
+
+## Workflow tools
+
+Create a workflow tool, declare caller-supplied parameters and types in its input, reference them in the flow, and declare returned values in its output. Run it independently with a known input and inspect the output structure. After publishing, select it from another application and verify argument mapping and execution results.
+
+Tool descriptions help models decide when to call an operation; parameter descriptions help them supply values. Describe external write operations clearly and verify permissions and business confirmation requirements before production use.
+
+## Use in applications
+
+Chat Agent and Chat Agent V2 need models supporting the selected tools and permission to call them. Workflows can invoke tools explicitly; Agent nodes can select tools for a task. Debug the tool itself first, then verify input, output, and errors through application debugging.
+
+See [team tool installation](/en/plugin/team-installation), [system tool development](/en/plugin/system-tool-development), and [Skill integration](/en/guide/build/skill/integration) for the two Agent integration surfaces.

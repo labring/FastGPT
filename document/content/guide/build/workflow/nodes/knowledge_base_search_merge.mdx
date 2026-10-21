@@ -4,7 +4,7 @@ description: FastGPT 知识库搜索引用合并模块介绍
 ---
 
 
-![](/imgs/knowledge_merge1.png)
+![知识库搜索引用合并：界面示例](/imgs/optimized/current/node-citation-merge.png.webp)
 
 ## 作用
 
@@ -12,13 +12,15 @@ description: FastGPT 知识库搜索引用合并模块介绍
 
 ## 使用方法
 
-AI对话只能接收一个知识库引用内容。因此，如果调用了多个知识库，无法直接引用所有知识库（如下图）
+AI 对话的知识库引用输入接收一个引用列表。多个搜索节点的结果可先送入**知识库搜索引用合并**，再把合并后的引用传给 AI 对话。
 
-![](/imgs/knowledge_merge2.png)
+以下实测使用两组演示引用，其中一条重复。合并后返回两条引用，并附带 RRF 排名分数：
 
-使用**知识库搜索引用合并**，可以把多个知识库的搜索结果合在一起。
+![三条输入引用去重为两条](/imgs/optimized/current/citation-merge-result.png.webp)
 
-![](/imgs/knowledge_merge3.png)
+在运行详情中选择知识库搜索引用合并节点，可以核对合并总数。本例显示 `2`：
+
+![合并总数与执行节点](/imgs/optimized/current/citation-merge-detail.png.webp)
 
 ## 可用例子：
 

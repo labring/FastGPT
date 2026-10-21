@@ -11,7 +11,7 @@ FastGPT's permission system combines **attribute-based** and **role-based** acce
 
 ## Teams
 
-Each user can belong to multiple teams. In the default multi-team mode, the system automatically creates an initial team for every user. Manual creation of additional teams is not currently supported.
+Membership follows the deployment's [team mode](/en/guide/admin/teamMode). In multi-team mode, users can join several teams and receive an initial team when created. In single-team mode, new users join the root user's team. Sync mode follows the external member system. The current interface provides an entrance for joining an existing team.
 
 ## Permission Management
 
@@ -23,13 +23,15 @@ FastGPT offers three permission management levels:
 
 Permission evaluation follows this logic:
 
-1. Use individually assigned member permissions when present.
-2. Otherwise, combine the permissions granted through the user's departments and groups.
-3. Use the default permissions when neither source has an explicit assignment.
+1. Use an individual permission record when present, including an explicit value of `0`.
+2. When the individual record is absent, combine matching permissions from member groups, the default all-members group, the member's departments, and ancestor departments using bitwise OR.
+3. When all sources lack matching records, use the resource default supplied by the caller.
 
 Authorization logic:
 
-![Member permissions take precedence over department and group permissions](/imgs/guide/team_permissions/team_roles_permissions/image1.jpeg)
+![Resolve resource collaborator access](/imgs/diagrams/resource-permissions.en.light.svg)
+
+This diagram covers collaborator permission resolution for one resource. Surrounding authorization handles resource owners, folder inheritance, and hidden applications.
 
 ### Resource Permissions
 
@@ -117,19 +119,11 @@ The table below shows the manageable permissions for different resources.
 
 Open **Add Collaborators**, select the members, departments, or groups, choose a permission level, and click **Confirm**. You can then manage their permissions on the resource.
 
-![Select collaborators and their permission level](/imgs/guide/team_permissions/team_roles_permissions/image2.png)
-
 When managing team permissions, first select members/organizations/groups, then configure permissions.
-
-![Choose members, departments, or groups for team permissions](/imgs/guide/team_permissions/team_roles_permissions/image3.png)
 
 For resources like apps and datasets, you can directly modify member permissions.
 
-![Change a resource collaborator permission](/imgs/guide/team_permissions/team_roles_permissions/image4.png)
-
-In team management, open the **Permissions** tab and click **Add Permissions** to choose members, departments, or groups. Use the checkboxes in their rows to assign the available team permissions.
-
-![Assign team permissions in the Permissions tab](/imgs/guide/team_permissions/team_roles_permissions/image5.png)
+Team permissions are set on a dedicated permissions page.
 
 ## Special Permissions
 
@@ -217,3 +211,7 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 ```
+
+![Team permissions grouped by members, departments, and groups](/imgs/optimized/current/team-permissions.png.webp)
+
+Open Account → Team management → Permissions. The screenshot filters for a demo member and shows columns for creating applications, Skills, knowledge bases, API keys, installing models, and administration. Available controls depend on your role and deployment. Application and knowledge-base collaborator dialogs manage their resource permissions; see [collection permissions](/en/guide/dataset/collection_permission).

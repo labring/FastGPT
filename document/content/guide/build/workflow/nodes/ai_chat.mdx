@@ -11,20 +11,45 @@ import { Alert } from '@/components/docs/Alert';
 - 触发执行
 - 核心模块
 
-![](/imgs/aichat.png)
+![特点：界面示例](/imgs/optimized/current/node-ai-chat.png.webp)
 
 ## 参数说明
 
 ## AI模型
 
-可以通过 [config.json](../../../../self-host/config/model/intro.mdx) 配置可选的对话模型。
+自部署可通过[模型配置](/zh-CN/self-host/config/model/intro) 配置可选的对话模型。
 
 点击AI模型后，可以配置模型的相关参数。
 
-![](/imgs/aichat02.png)
+![AI模型：界面示例](/imgs/optimized/current/ai-model-selector.png.webp)
 
-![](/imgs/aichat2.png)
+![AI模型：界面示例](/imgs/optimized/current/ai-settings-basic.png.webp)
 
 <Alert icon="🍅" context="success">
-  具体配置参数介绍可以参考: [AI参数配置说明](../../general/ai_settings.mdx)
+  具体配置参数介绍可以参考: [AI参数配置说明](/zh-CN/guide/build/general/ai_settings)
 </Alert>
+
+## 输入与输出
+
+AI 对话节点根据当前问题、提示词与所选上下文调用模型。需要可用模型、调用权限和额度。
+
+| 输入 | 配置方式 |
+| --- | --- |
+| 用户问题 | 输入文本，或引用开始节点、上游节点的输出 |
+| 提示词 | 规定任务、回答格式和依据范围 |
+| 聊天记录 | 设置需要保留的上下文，或引用聊天记录类型的上游输出 |
+| 知识库引用 | 引用知识库搜索节点的引用内容输出 |
+| 文件链接 | 引用可访问的文件 URL 列表；文档解析和多模态处理见[文件输入](/zh-CN/guide/build/general/fileInput) |
+
+主要输出为字符串类型的 **AI 回复内容** 和聊天记录类型的 **新的上下文**。支持推理的模型还可提供 **思考内容**，具体取决于模型能力与思考配置。错误信息用于节点错误处理。下游通过变量选择器引用需要的输出。
+
+“隐藏 AI 输出”控制回复是否直接展示给用户；隐藏后仍可将 AI 回复内容传给后续节点。图片、音频、视频需要模型支持对应能力，并在 AI 配置中开启。
+
+## 示例：生成摘要
+
+1. 连接开始节点与 AI 对话节点。选择可用模型，用户问题引用开始节点的用户输入。
+2. 提示词填写 `Summarize the text in one sentence. Preserve the time and location.`。
+3. 调试输入 `The meeting starts at 10:00 in Room 2.`。核对回复保留 `10:00` 和 `Room 2`。
+4. 查看运行详情中的输入与 AI 回复内容。需要继续加工时，把该输出引用到文本拼接或指定回复节点。
+
+输入为空时检查引用来源；模型失败时检查权限、额度和请求错误；回答缺少事实时检查传入的知识库引用、文件内容和上下文长度。完整创建及发布步骤见[首个工作流](/zh-CN/guide/getting-started/first-workflow)。

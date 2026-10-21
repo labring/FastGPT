@@ -1,0 +1,32 @@
+---
+title: Agent node
+description: Configure autonomous planning, knowledge retrieval, tools, and Skills inside a workflow.
+---
+
+An Agent node delegates a task requiring autonomous planning within a workflow. Its template is marked version 4.17.0. Your deployment must provide the node, a model supporting tool calls, and permission to use the selected resources.
+
+In the captured SaaS interface, Add node → Agent lists existing applications. Availability of the standalone Agent node depends on the node list exposed by your deployment. Confirm that it is available before following this guide. To try autonomous tasks and Skills, start with [your first Agent task](/en/guide/getting-started/first-agent) in Chat Agent V2.
+
+## Inputs and configuration
+
+| Setting | Purpose |
+| --- | --- |
+| Model and instructions | Select the model and define task, output requirements, and tool-use boundaries |
+| User question | Reference the task from the start node or an upstream node |
+| File links | Supply files accessible to the current task |
+| Tools | Select callable operations and verify arguments and permissions |
+| Knowledge bases | Select retrievable material and retrieval parameters |
+| Skills and virtual machine | Associate published Skills; execution requires configured services and available quota |
+| Response text | Control whether the result appears directly in the conversation |
+
+## Outputs and connections
+
+The primary output is AI response content as a string. The error output supports error handling. Reference the response in downstream text, branch, or reply nodes. Execution connections control order; value references carry content.
+
+## Example: policy checklist
+
+Connect the start node to an Agent node, reference the starting user input as its question, and associate the Travel Policy knowledge base. Instruct the Agent to retrieve the policy and list required documents and deadlines. Ask “Prepare a travel expense checklist” and inspect the returned documents, deadlines, and retrieved evidence. See [your first Agent task](/en/guide/getting-started/first-agent) for material and expected results.
+
+Put steps with a required order in workflow connections. Tool selection inside the node depends on model planning. External write operations need clear permissions and confirmation requirements. Investigate failures through execution details, model tool support, resource permissions, and virtual-machine status.
+
+Next: [Skill integration](/en/guide/build/skill/integration) and [published versions](/en/guide/build/publish/versions).

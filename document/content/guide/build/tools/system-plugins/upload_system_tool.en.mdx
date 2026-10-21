@@ -21,16 +21,15 @@ description: FastGPT System Tool Online Upload Guide
 
 ### 1. Access the Configuration Page
 
-Log in as `root` and open **Configuration** in the left sidebar to display the resource library and tool management controls.
+Log in as root, open **Configuration → Resource Library**, and choose **Add Resource**. The following screenshot shows that entry; the upload dialog labels can vary by version.
 
-
-![Configuration entry and resource library controls](/imgs/plugins/entry.png)
+![Configuration resource library and Add Resource entry](/imgs/optimized/plugins/entry.png.webp)
 
 ### 2. Prepare Tool Files
 
-Before uploading, make sure your `.pkg` files are from the `dist/pkgs` folder, built by running `bun run build:pkg` in the fastgpt-plugin project.
+Prepare a `.pkg` file from a trusted author and confirm compatibility with the target environment. For custom tools, follow [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack). See the [package and SDK reference](/en/plugin/package-reference) for artifact details.
 
-![Packaged system tools in the dist/pkgs directory](/imgs/plugins/files.png)
+![Packaged system tools in the dist/pkgs directory](/imgs/optimized/plugins/files.png.webp)
 
 ### 3. Upload
 
@@ -48,9 +47,22 @@ Before uploading, make sure your `.pkg` files are from the `dist/pkgs` folder, b
 
 ### Tool Management
 
-- **View tools**: All users can view installed system tools
+- **View tools**: Users see available system tools according to their status and permissions
 - **Upload tools**: Only root users can upload new tools or update existing ones
 - **Delete tools**: Only root users can delete uploaded tools
+
+## Configuration after installation
+
+Root administrators can manage status, system secrets, and [runtime parameters](/en/plugin/runtime) in the tool configuration page. Verify a call in a test App after installation or an update.
+
+| Status | New tool selection | Existing calls |
+| --- | --- | --- |
+| Normal | Available | Continue |
+| Hidden | Hidden from selectors | Continue |
+| Pending offline (`SoonOffline`) | Hidden from selectors | Continue |
+| Uninstalled (`Offline`) | Unavailable | Rejected |
+
+Root administrators configure system secrets centrally. The FastGPT server stores them and reads them when a call selects system secrets. [Team installations](/en/plugin/team-installation) keep their own configuration and secrets.
 
 ## FAQ
 

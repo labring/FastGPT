@@ -2,13 +2,18 @@
   "title": "Dataset",
   "root": false,
   "pages": [
-    "rag",
-    "dataset_engine",
-    "collection_tags",
-    "collection_permission",
+    "lifecycle",
+    "import-data",
+    "template",
     "websync",
     "third-party",
-    "template",
+    "dataset_engine",
+    "test-retrieval",
+    "rag",
+    "connect-application",
+    "update-data",
+    "collection_tags",
+    "collection_permission",
     "faq"
   ]
 }

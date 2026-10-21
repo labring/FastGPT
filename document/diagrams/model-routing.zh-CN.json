@@ -1,0 +1,95 @@
+{
+  "type": "architecture",
+  "title": "模型请求与渠道路由",
+  "nodes": [
+    {
+      "id": "app",
+      "label": "FastGPT 请求",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "sub": "指定 model ID",
+      "illustration": "core"
+    },
+    {
+      "id": "proxy",
+      "label": "AI Proxy",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "router"
+    },
+    {
+      "id": "pool",
+      "label": "可用渠道池",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "系统 / 成员私有范围",
+      "illustration": "workflow"
+    },
+    {
+      "id": "channel",
+      "label": "选定渠道",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "gateway"
+    },
+    {
+      "id": "model",
+      "label": "模型提供商",
+      "row": 4,
+      "col": 0,
+      "kind": "external",
+      "illustration": "model"
+    }
+  ],
+  "edges": [
+    [
+      "app",
+      "proxy",
+      "请求 / 响应",
+      "primary"
+    ],
+    [
+      "proxy",
+      "pool",
+      "按范围",
+      "primary"
+    ],
+    [
+      "pool",
+      "channel",
+      "选择",
+      "primary"
+    ],
+    [
+      "channel",
+      "model",
+      "调用",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "app",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 39
+    },
+    {
+      "id": "pool",
+      "file": "packages/service/core/ai/config.ts",
+      "line": 82
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -1,7 +1,10 @@
 ---
-title: Integrating ChatGLM2 and M3E Models
+title: Integrating ChatGLM2 and M3E Models (legacy integration)
 description: Integrating private ChatGLM2 and m3e-large models with FastGPT
 ---
+
+This page retains a community model-service example and its historical OneAPI/config.json integration. For current deployments, register the reachable model service through [Model configuration](/en/self-host/config/model/intro) and verify model type, endpoint, permissions, and compatibility for your release.
+
 
 ## Introduction
 
@@ -19,13 +22,13 @@ Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
 You can also set it via the environment variable: sk-key. Refer to Docker documentation for how to pass environment variables.
 ```
 
-## Connect to OneAPI
+<span id="connect-to-oneapi" />
 
 For the current AI Proxy setup, see the [Model Configuration Guide](/en/self-host/config/model/intro). The legacy One API screenshot below illustrates the equivalent channel settings.
 
 Add model connections for both models, using the deployed service URL and its security token. Register `m3e` for embeddings and `chatglm2` for chat. In the One API interface shown below, use **Custom Channel**, enter the service in **Base URL**, and add each name to the custom model list.
 
-![](../../../public/imgs/model-m3e1.png)
+![Connect to AI Proxy — interface example](/imgs/optimized/model-m3e1.png.webp)
 
 Here, m3e is used as the embedding model and chatglm2 as the language model.
 
@@ -98,18 +101,18 @@ Edit the config.json file. Add chatglm2 to `llmModels` and M3E to `vectorModels`
 
    Note: once selected, the embedding model for the Dataset cannot be changed.
 
-   ![](../../../public/imgs/model-m3e2.png)
+   ![Usage — interface example](/imgs/optimized/model-m3e2.png.webp)
 
 2. Import data
 3. Test search
 
-   ![](../../../public/imgs/model-m3e3.png)
+   ![Usage — interface example](/imgs/optimized/model-m3e3.png.webp)
 
 4. Bind the Dataset to an app
 
    Note: an app can only bind Datasets that use the same embedding model -- cross-model binding is not supported. You may also need to adjust the similarity threshold, as different embedding models produce different similarity (distance) scores. Test and tune accordingly.
 
-   ![](../../../public/imgs/model-m3e4.png)
+   ![Usage — interface example](/imgs/optimized/model-m3e4.png.webp)
 
 **ChatGLM2 model:**
 

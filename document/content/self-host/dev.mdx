@@ -71,7 +71,7 @@ cp .env.template .env.local
 
 **2. config.json 配置文件**
 
-复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](./config/model/intro.mdx)
+复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](/zh-CN/self-host/config/model/intro)
 
 ```bash
 cp data/config.json data/config.local.json
@@ -82,7 +82,7 @@ cp data/config.json data/config.local.json
 - `vectorMaxProcess` : 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
 - `qaMaxProcess` : QA 生成最大进程
 - `vlmMaxProcess` : 图片理解模型最大进程
-- `hnswEfSearch` : 向量搜索参数，仅对 PG 和 OB 生效，越大搜索精度越高但是速度越慢。
+- `hnswEfSearch` : 向量搜索参数，仅对 PG 和 OB 生效；数值越大搜索精度越高，相应检索延迟也会增加。
 
 ### 5. 运行
 
@@ -142,7 +142,7 @@ FastGPT 在 `pnpm i` 后会执行 `postinstall` 脚本，用于自动生成 `Cha
 
 ### TypeError: Cannot read properties of null (reading 'useMemo' )
 
-删除所有的 `node_modules`，用 Node18 重新 install 试试，可能最新的 Node.js 有问题。本地开发流程：
+核对仓库要求的 Node.js >=20 与 pnpm 10.x，检查 React 依赖版本是否一致，再按锁文件重新安装依赖。本地开发流程：
 
 1. 根目录: `pnpm i`
 2. 复制 `config.json` -> `config.local.json`
@@ -160,6 +160,7 @@ FastGPT 在 `pnpm i` 后会执行 `postinstall` 脚本，用于自动生成 `Cha
 
 <img
   width="400px"
+  alt="飞书社区交流群二维码"
   src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png"
   className="medium-zoom-image"
 />

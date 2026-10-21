@@ -1,0 +1,64 @@
+---
+title: "Data Maintenance and Incremental Updates"
+description: Master data chunk fine-tuning, whole-file overwriting, hash-based content diffing, and batch index rebuilding.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="choose-an-update-method" />
+<span id="edit-a-data-chunk" />
+<span id="replace-a-local-file" />
+<span id="reprocess-the-stored-source" />
+<span id="verify-the-update" />
+
+Enterprise knowledge assets evolve continuously as policies update and business workflows iterate. FastGPT supports inline chunk fine-tuning, file replacement, and full-library index rebuilding, keeping knowledge bases synchronized with production reality.
+
+## Scenario 1: Fine-Tune Individual Data Chunks Online
+
+When a specific policy clause requires minor phrasing adjustments or demands supplementary query variations, use inline chunk editing:
+
+1. Open your target knowledge base and click a collection to expand its data chunk list.
+2. Locate the chunk requiring edits and click "Edit" on the right side of the card.
+3. **Update Chunk Content**: Modify the primary text directly. The platform recalculates textual representations upon saving.
+4. **Add Supplementary Indexes (Query Variants)**: In the "Supplementary Indexes" area, enter alternative phrasing that end users frequently submit. These entries act as independent retrieval anchors in vector space.
+5. **Save Changes**: Click "Save". Wait for the save and indexing operations to complete, then verify the updated chunk in Search Test.
+
+![Edit individual chunk text and supplementary query variants](/imgs/optimized/current/citation-edit-data.png.webp)
+
+## Scenario 2: Whole-File Overwrites and Hash-Based Updates
+
+Choose the update path according to the source type:
+
+1. **Uploaded files**: Keep a copy of the previous document, import the revision, wait for processing, and verify it in Search Test. Review tags and permissions before retiring the old collection; overlapping versions can both appear in results.
+2. **Synchronizable web or API sources**: Trigger the collection's synchronization operation. The server reads the source text and compares its hash; unchanged text can retain its vectors while the title is updated.
+3. **Changed source text**: When a stored hash detects a change, synchronization deletes the old collection and recreates it with a new ID, carrying over tags and permission records. Training runs asynchronously, so plan for a retrieval gap and verify completion.
+
+Record collection IDs used by external integrations and update references after replacement.
+
+## Scenario 3: Batch Data Chunk State Management
+
+Knowledge bases support discrete operational toggles on every data chunk:
+
+- **Disable Chunks**: Toggle a chunk status to "Disabled". Disabled chunks exit the active retrieval candidate pool immediately while remaining visible in the admin console for later re-enablement.
+- **Delete Chunks**: For permanently obsolete clauses, click "Delete" to execute physical cleanup. The platform cascades removals through both the vector database and the full-text search index.
+
+## Scenario 4: Rebuild Vector and Supplementary Indexes
+
+Use the rebuild operation supported by the current knowledge base when refreshing vector or supplementary indexes. Follow the deployed version's migration instructions when changing embedding models or dimensions:
+
+1. Navigate to knowledge base settings and open the "Advanced Settings" tab.
+2. Select "Rebuild Vector Index" or "Rebuild Synonym Index".
+3. Confirm the operation. The platform generates batch task records in the background for all ready data chunks.
+4. Workers recompute and commit indexes per chunk, checking that source content still matches the task snapshot. Old vectors are cleaned up after each successful commit. Monitor partial completion and retry failed tasks.
+
+## Maintenance Checklist
+
+- [ ] After indexing completes, edited chunks match expected queries in Search Test.
+- [ ] Replacement collections finish processing; tags, permissions, and external IDs are verified.
+- [ ] Disabled chunks no longer appear in search testing results.
+- [ ] Full rebuild tasks display "Ready" with zero unhandled errors.
+
+## Next Steps
+
+- Multidimensional tagging: Explore [Collection Tag System](/en/guide/dataset/collection_tags).
+- Access governance: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Error recovery: Review [Knowledge Base Troubleshooting](/en/guide/dataset/faq).

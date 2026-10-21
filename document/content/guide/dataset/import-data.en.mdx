@@ -1,0 +1,70 @@
+---
+title: "Document Ingestion and Chunking"
+description: Master local file uploads, chunking configuration, direct chunking versus QA extraction modes, and preview validation.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="before-you-begin" />
+<span id="1-choose-a-source" />
+<span id="2-upload-and-preview" />
+<span id="3-confirm-retrieval-readiness" />
+<span id="recover-a-failure" />
+
+This guide walks you through importing enterprise local documents (such as policies, product manuals, and training materials) into a FastGPT knowledge base, optimizing chunking parameters to ensure high retrieval recall.
+
+## Supported Document Formats
+
+FastGPT natively parses the following document types:
+- **Plain Text and Lightweight Markup**: `.txt`, `.md`
+- **Office Documents**: `.pdf`, `.docx`, `.pptx`
+- **Web and Structured Exports**: `.html`, `.csv`
+
+Keep individual file sizes under 50 MB for optimal processing. For large scanned files, run local OCR prior to upload to ensure clean text extraction.
+
+## Step 1: Upload Local Files
+
+1. Open the target knowledge base and click "New / Import" in the upper right corner.
+2. Select "Text Dataset" as the data source, then click "Local Files".
+3. Drag and drop or browse local files. The platform supports batch uploading multiple files simultaneously.
+4. Wait until upload progress reaches 100%, then click "Next".
+
+![Previewing text chunks preserves core factual context](/imgs/optimized/current/knowledge-preview.png.webp)
+
+## Step 2: Choose Processing Mode
+
+FastGPT offers two core processing paradigms suited to different conversational requirements:
+
+### 1. Direct Chunking Mode
+- **Mechanism**: Splits source text into individual chunks based on paragraphs and token limits, generating vector and full-text indexes directly.
+- **Use Cases**: Policies, legal codes, academic papers, white papers, and long-form specifications.
+- **Recommended Parameters**:
+  - **Chunk Size**: Start with the current default and inspect complete clauses and table rows in the preview before adjusting.
+  - **Chunk Boundaries**: Check cross-paragraph references and duplicated text; available controls depend on the selected split mode.
+  - **Custom Delimiters**: Use `\n\n` or custom header markers to prioritize natural chapter breaks.
+
+### 2. QA Extraction Mode
+- **Mechanism**: Calls a language model in the background to read text segments and generate structured "Question-Answer" pairs, generating embeddings on the extracted questions.
+- **Use Cases**: Customer support FAQ lists, operational cheat sheets, and product feature lookup tables.
+- **Recommended Parameters**: Choose a reliable chat model and craft concise extraction instructions to ensure generated pairs remain faithful to source material.
+
+## Step 3: Preview Data and Verify Chunk Quality
+
+Click "Next" to open the data preview screen. Inspect chunk quality before writing records into the vector database:
+
+1. **Paragraph Coherence**: Click file items on the left and check whether sentences end naturally within chunks on the right.
+2. **Tables and Lists**: Confirm that Markdown tables, numbering sequences, and section headers remain aligned.
+3. **Parameter Tuning**: If chunks appear overly fragmented or excessively long, click "Back" in the lower left to modify token limits and recompute the preview instantly.
+
+## Step 4: Submit Training and Track Progress
+
+1. Once the preview meets your quality standards, click "Start Import".
+2. The platform queues asynchronous background tasks. Monitor progress in the collection list:
+   - "Processing (X%)" indicates active text extraction and vector generation.
+   - Status changing to "Ready" confirms that both vector and full-text indexes are persisted.
+3. If a collection reports an "Error" status, open "View Error Details" in the collection menu to troubleshoot model balance or network timeouts, then click "Retry".
+
+## Next Steps
+
+- Test retrieval accuracy: Read [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Attach to applications: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Structured tabular data: Review [Structured Dataset Template Specifications](/en/guide/dataset/template).

@@ -6,6 +6,10 @@ description: FastGPT WeCom Bot Integration Tutorial
 - Starting from version 4.12.4, FastGPT commercial edition supports direct WeCom bot integration without additional APIs.
 - Starting from version 4.14.4, FastGPT cloud service edition supports WeCom intelligent bot integration through custom domain configuration.
 
+![FastGPT wecom channel configuration with empty credentials](/imgs/optimized/current/publish-wecom.png.webp)
+
+The screenshot shows the FastGPT configuration form. Enter credentials from your own platform application. Follow the official platform console linked below for its current console layout.
+
 ## 1. (Required for Cloud Service Edition) Configure Custom Domain
 
 WeCom requires intelligent bot message push addresses to use the enterprise's primary domain, so cloud service edition users must configure a custom domain before using WeCom bots.
@@ -24,43 +28,29 @@ If you are a commercial edition user, continue using your enterprise domain.
 
 On the "Security & Management" - "Management Tools" page, click "Intelligent Bot" (Note: Only the enterprise creator or super admin has permission to see this entry)
 
-![WeCom Intelligent Bot management entry](/imgs/use-cases/external-integration/wecom/1.png)
-
 ### 2.3 Select "API Mode Creation" for the Intelligent Bot
 
 On the create bot page, scroll down and click "API Mode Creation"
-
-![Create a bot in API mode](/imgs/use-cases/external-integration/wecom/2.png)
 
 ### 2.4 Get Key Credentials
 
 Randomly generate or manually enter Token and Encoding-AESKey, and record them
 
-![Generate Token and Encoding-AESKey](/imgs/use-cases/external-integration/wecom/3.png)
-
 ### 2.5 Create WeCom Bot Publishing Channel
 
 In FastGPT, select the Agent you want to use. On the Publishing Channels page, select "WeCom Bot" and click "Create"
-
-![Create the WeCom publishing channel in FastGPT](/imgs/use-cases/external-integration/wecom/4.png)
 
 ### 2.6 Configure Publishing Channel Information
 
 Configure the publishing channel information. You need to enter the Token and AESKey recorded in step 2.4 (Token and Encoding-AESKey)
 
-![Enter the WeCom token and encryption key](/imgs/use-cases/external-integration/wecom/5.png)
-
 ### 2.7 Copy Callback URL
 
 After clicking "Confirm", select your configured custom domain, copy the callback URL, and paste it back into the WeCom intelligent bot configuration page.
 
-![Choose the custom domain and copy the callback URL](/imgs/use-cases/external-integration/wecom/6.png)
-
 ## 3. Use the Intelligent Bot
 
 In the WeCom platform's "Contacts", you can find the created bot and start sending messages
-
-![Published WeCom bot in Contacts](/imgs/use-cases/external-integration/wecom/7.png)
 
 ## FAQ
 

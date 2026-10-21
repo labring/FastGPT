@@ -5,16 +5,16 @@ description: FastGPT Self-Hosting General Troubleshooting
 
 ### Frontend Page Crash
 
-1. The troubleshooting guidance attributes 90% of cases to model configuration. Enable at least one model in each category, then check parameters that expect arrays or objects. Use an empty array or object where an empty value is required.
-2. Older browsers may lack support for JavaScript features used by FastGPT. Include the steps to reproduce the crash and browser console errors in a GitHub issue.
-3. Disable the browser's automatic translation, which can interfere with the page.
+1. Record reproduction steps, FastGPT version, console errors, and failed requests.
+2. Check Admin model configuration, service initialization logs, and network requests.
+3. Reproduce in a current stable browser with translation and relevant extensions disabled. Remove secrets and personal data before filing an issue.
 
 ---
 
 ### If deployed via sealos, are there no limitations of local deployment?
 
-![](../../../public/imgs/faq1.png)
-The screenshot shows an embedding model input-length limit. This limit applies to every deployment method. Each embedding model has its own settings, which you can adjust in the admin panel.
+![If deployed via sealos, are there no limitations of local deployment? — interface example](/imgs/optimized/faq1.png.webp)
+This is the length limit of the embedding model. It is the same regardless of the deployment method, but the configuration of different embedding models is different, and parameters can be modified in the background.
 
 ---
 
@@ -24,13 +24,13 @@ Mount the verification file to the specified location: /app/projects/app/public/
 
 Then restart. For example:
 
-![](../../../public/imgs/faq2.png)
+![How to mount the Mini Program configuration file — interface example](/imgs/optimized/faq2.png.webp)
 
 ---
 
 ### Database port 3306 is occupied, service startup failed
 
-![](../../../public/imgs/faq3.png)
+![Database port 3306 is occupied, service startup failed — interface example](/imgs/optimized/faq3.png.webp)
 
 Change the port mapping to 3307 or similar, for example 3307:3306.
 
@@ -38,59 +38,50 @@ Change the port mapping to 3307 or similar, for example 3307:3306.
 
 ### Can it run purely locally?
 
-Yes. You need to prepare the vector model and LLM model.
+Yes. Prepare local language and Embedding models together with the databases, object storage, AI Proxy, and plugin services required by the deployment template. Offline installations also need image archives, model files, and plugin packages prepared in advance. Verify each request path.
 
 ---
 
 ### Other models cannot perform question classification/content extraction
 
-1. Check the logs for errors such as `JSON invalid` or `not support tool`. For a model without tool or function calling support, set `toolChoice=false` and `functionCall=false` to use prompt mode. The built-in prompts have been tested with commercial model APIs; question classification generally works, while content extraction remains limited.
-2. If the configuration is correct and the logs show no errors, adapt the classification prompt to the model using `customCQPrompt`.
+Inspect Run Details and the model response. Confirm that the model and channel support the tool calling or structured output required by the node. JSON parsing errors can also result from response formatting, truncation, or prompts. Test the model in Admin, reproduce the node with a small input, and adjust model capabilities and prompts accordingly. See [Model Troubleshooting](/en/self-host/troubleshooting/model-errors).
 
 ---
 
 ### Page Crash
 
-1. Disable automatic browser translation.
-2. Check that the configuration file loaded successfully. Missing system settings can cause null-reference errors during some operations.
-
-- The troubleshooting guidance attributes 95% of these cases to configuration errors, often reported as `xxx undefined`.
-- For `URI malformed`, report the affected page and steps in a GitHub issue. This error indicates a problem decoding an encoded string.
-
-3. Check for API compatibility issues, which are a less common cause.
+Follow the Frontend Page Crash steps above. For `URI malformed`, record the affected URL and action, then inspect URL encoding. If configuration fails to load, resolve the related server error before refreshing.
 
 ---
 
 ### After enabling content completion, the response speed becomes slow
 
-1. Query rewriting requires an additional model call.
-2. It also performs 3–5 search queries, so database performance can significantly affect response time.
+Query expansion adds a model call and may produce multiple retrieval queries. Inspect the timing of expansion, recall, and reranking in Run Details, then adjust the expansion model, retrieval settings, and concurrency. Actual query counts depend on configuration and runtime results.
 
 ---
 
 ### Normal reply in the page, API error
 
-The chat page uses `stream=true`. Test the API with the same setting using `curl`, because some model APIs have limited support for non-streaming requests.
+Compare the app, identity, request body, and `stream` value in both calls. Test streaming and non-streaming separately and record HTTP status, error body, and server requestId. Trace the request through FastGPT, AI Proxy, and the upstream model. See [Chat API](/en/openapi/chat).
 
 ---
 
 ### Dataset indexing has no progress/indexing is very slow
 
-Check the error logs and identify the matching case:
-
-1. Chat works but indexing stalls: check that an embedding model is configured in `vectorModels`.
-2. Both chat and indexing fail: model API requests may be failing. Check connectivity to OneAPI or OpenAI.
-3. Indexing progresses slowly: check the API key's rate limits. The historical example in this guide cites free OpenAI account limits of 3 or 60 requests per minute and 200 per day; verify the limits that apply to your current account.
+1. Inspect Collection processing status and parsing/indexing errors.
+2. Test the Dataset’s Embedding model and channel in Admin.
+3. Check provider rate limits, balance, request latency, and parsing/vector queue concurrency.
+4. Resolve the error and use the available retry action. See [Dataset FAQ](/en/guide/dataset/faq).
 
 ---
 
 ### Connection error
 
-Check connectivity from the FastGPT server to the model API. A server in mainland China may be unable to reach OpenAI. For OneAPI, also check that its container and FastGPT can communicate on the same network.
+From the FastGPT service network, check the AI Proxy address, port, DNS, TLS, and proxy configuration. Then check AI Proxy connectivity to the model upstream. For containers on a shared network, use service names and container ports; for host services, use a host address reachable from the container.
 
 ---
 
-### Changes to vectorModels have no effect
+### Changes to vectorModels do not take effect
 
 1. Enable the new Embedding model in the admin panel's **Model Configuration**, then refresh the page. For older versions that configure models through `vectorModels` in `config.json`, restart the service after editing the file.
 2. Existing Datasets do not automatically switch models. As the Dataset owner, open its **Configuration** page, select the new **Embedding model**, and confirm reindexing. You do not need to delete the Dataset.
@@ -158,7 +149,7 @@ What to do: in Docker Desktop (version 4.34 or later, signed in), go to Settings
 
 Applies to: 4.15.2 and later. `MULTIPLE_DATA_TO_BASE64` defaults to `true` in 4.15.2 and to `false` from 4.15.3. When it is `false`, FastGPT passes file download short links that start with `http(s)://` to the model provider, which downloads them itself. The short link prefix is the first one set among `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`, `FILE_DOMAIN`, and `FE_DOMAIN`. If it is an internal address, the provider cannot reach it and the download times out (it may return `Download multimodal file timed out`).
 
-What to do (either one): set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT converts the file to base64 before sending it (larger requests); or set `FILE_DOMAIN` to a FastGPT address the provider can reach from the public internet, rather than changing `FE_DOMAIN`, which is the address your users use to access FastGPT.
+Solutions: either set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT transmits base64 data payloads directly; or set `FILE_DOMAIN` to a public FastGPT endpoint reachable by the upstream model provider, keeping `FE_DOMAIN` for user browser access.
 
 ---
 

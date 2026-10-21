@@ -1,0 +1,77 @@
+---
+title: "Choose Application Types"
+description: A deep dive into runtime mechanisms, architectural differences, and selection criteria across Chat Agent, Chat Agent V2, and Workflow.
+---
+
+FastGPT offers three core application types: Chat Agent, Chat Agent V2, and Workflow. Choosing the appropriate type balances execution determinism, builder velocity, and dynamic reasoning capacity.
+
+![Select application type in workspace modal](/imgs/optimized/current/app-types.png.webp)
+
+## Runtime Execution Mechanics
+
+### 1. Chat Agent
+
+Chat Agent operates on a single-inference execution model. When a user submits a message, the platform constructs the prompt in a predetermined sequence:
+- Injects the system prompt.
+- Appends historical conversation turns according to sliding-window context rules.
+- Retrieves matching knowledge base chunks and appends them as factual context.
+- Calls the language model to generate a streamed response directly.
+
+This design delivers low latency and transparent execution paths, making it ideal for policy Q&A, product manuals, and structured drafting assistants.
+
+### 2. Chat Agent V2
+
+Chat Agent V2 employs an autonomous ReAct (Reasoning + Acting) execution loop. In this architecture, the model functions as an active decision orchestrator:
+- **Goal Decomposition**: Analyzes incoming tasks and determines necessary information and tools.
+- **Tool Execution**: Generates structured arguments to invoke attached knowledge bases, web search engines, code sandboxes, or external APIs.
+- **Observation**: Ingests tool outputs and updates internal reasoning traces.
+- **Iteration**: Repeats the thought-action loop until achieving the target objective, returning the final conclusion to the user.
+
+This design enables dynamic environmental interaction, excelling in multi-source aggregation, live data analysis, and open-ended task handling.
+
+### 3. Workflow
+
+Workflow runs on a deterministic Directed Acyclic Graph (DAG) scheduling engine. Builders configure nodes and directional connections explicitly on the visual canvas:
+- **Explicit Control Flow**: Edges strictly determine execution sequences and parallel processing paths.
+- **Deterministic Data Flow**: Upstream node outputs map directly to downstream input ports through variable bindings.
+- **Logic Components**: Supports conditional branching (If-Else), loops, question intent classification, interactive form prompts, and parallel node runs.
+
+This design guarantees complete execution determinism and step-by-step auditability, fitting multi-step business approvals, multi-model verification, structured ETL extraction, and standard enterprise system integration.
+
+---
+
+## Decision Matrix
+
+Compare application types across determinism, construction cost, reasoning depth, and latency:
+
+| Dimension | Chat Agent | Chat Agent V2 | Workflow |
+| --- | --- | --- | --- |
+| **Execution Determinism** | Moderate (governed by prompt constraints) | Dynamic (governed by autonomous model decisions) | Strict (governed by visual canvas topology) |
+| **Authoring Complexity** | Minimal (requires prompt and knowledge base) | Moderate (requires toolsets and sandbox configuration) | Highly flexible (requires edge wiring and variable mapping) |
+| **Tool Extensibility** | Static knowledge attachment | Dynamic autonomous tool selection | Granular node-level tool invocation |
+| **Multi-Step Reasoning** | Single generation turn | Multi-turn reasoning loops | Multi-node sequential and conditional flow |
+| **Time to First Token** | Minimal (single round-trip model latency) | Variable (depends on tool execution rounds) | Staged (depends on predecessor node execution) |
+| **Typical Use Cases** | Customer support, knowledge FAQ | Smart analytical assistants, open tasks | Complex approval pipelines, data extraction, auditing |
+
+---
+
+## Hybrid Architecture Patterns
+
+In production systems, these application types combine seamlessly:
+
+### Embedding Agent Nodes in Workflows
+
+Add an [Agent Node](/en/guide/build/workflow/nodes/agent) into a workflow. This retains rigid process compliance across the overarching pipeline while delegating specialized exploratory reasoning or open synthesis to an agent.
+
+### Publishing Workflows as Tools
+
+Expose a specialized workflow as a [Workflow Tool](/en/guide/build/tools/overview). The workflow declares explicit input and output schemas and attaches directly to a Chat Agent V2, delivering dependable sub-routines inside an autonomous planning session.
+
+---
+
+## Next Steps
+
+Select a tutorial to begin implementation:
+- Build basic Q&A: [Quick Start Tutorial](/en/guide/getting-started/quick-start).
+- Explore autonomous agents: [Create Your First Agent Task](/en/guide/getting-started/first-agent).
+- Design visual logic: [Build Your First Workflow](/en/guide/getting-started/first-workflow).

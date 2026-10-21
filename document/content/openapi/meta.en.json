@@ -5,6 +5,8 @@
     "intro",
     "app",
     "chat",
-    "dataset"
+    "dataset",
+    "identity-proxy",
+    "legacy"
   ]
 }

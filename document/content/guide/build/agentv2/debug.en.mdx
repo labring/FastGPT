@@ -1,50 +1,64 @@
 ---
-title: Assisted Generation and Debugging
-description: Detailed guide to generating Prompts via the AI Helper Bot and testing and debugging the Agent using the Chat Preview window and run details.
+title: "Agent Debugging and Trace Inspection"
+description: Master Chat Agent V2 debugging panels, ReAct plan cards, tool arguments and return values tracking, and execution latency auditing.
 ---
 
-## Assisted generation
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="assisted-generation" />
+<span id="1-smart-analysis-and-scheme-optimization" />
+<span id="2-automatic-apply" />
+<span id="chat-preview" />
+<span id="1-general-debugging" />
+<span id="2-virtual-machine-debugging" />
 
-The **Assisted generation** tab contains an AI helper optimized for Agent V2. It is available only in the Commercial Edition. Its view of the app is currently limited, and the feature is still being improved.
+Before publishing a Chat Agent V2 to production channels, use the "Debug Preview" drawer on the right side of the workspace to simulate user interactions and inspect the model's reasoning trace, tool invocation arguments, and execution latency step by step.
 
-![AI Helper Bot](/imgs/agent_helper_bot.png)
+![Knowledge retrieval debug results and source citations](/imgs/optimized/current/agent-answer.png.webp)
 
-### 1. Smart Analysis and Scheme Optimization
+## Step 1: Initiate Interactive Testing and Session Management
 
-The AI Helper Bot automatically reads the current model, Datasets, and candidate tools configured in your left panel. You only need to describe your expectations in natural language (e.g., "I want an assistant that analyzes sales data uploaded in Excel and generates visual charts"), and the Helper Bot will automatically:
-
-- **Generate and Refine Structured System Prompts**, setting reasonable boundaries and execution rules.
-- **Recommend the Most Suitable Tools** or virtual machine commands for the task.
-- **Suggest Relevant Datasets** to supplement domain background knowledge.
-
-### 2. Automatic Apply
-
-Once the helper generates a configuration plan, the system will automatically write back the recommended prompts, tool list, associated Datasets, and sandbox toggles to the left configuration panel. The entire process is fully automated without requiring manual clicks, streamlining the setup workflow.
+1. Open your target Chat Agent V2 workspace; the right-hand panel provides a real-time conversational test environment.
+2. Click "Restart Chat" in the upper right corner to clear context history and initiate testing from a fresh, blank turn.
+3. Submit a realistic operational prompt, such as: `Analyze the attached sales report and calculate ROI by marketing channel.`.
 
 ---
 
-## Chat Preview
+## Step 2: Track Execution Progress with Plan Cards
 
-The "Chat Preview" tab provides a real-time conversational testing environment, allowing you to interact with the Agent as a real user and verify the app's effectiveness before publishing.
+For complex multi-step tasks, planning-enabled models output structured "Plan Cards" streamed in real time:
 
-### 1. General Debugging
+- **In Progress**: Highlights the active sub-action (such as calling a specific tool or running an inline Python script).
+- **Completed**: Marks successfully finalized steps that returned valid outputs.
+- **Pending**: Lists subsequent tasks queued for future evaluation.
+- **Blocked**: Appears when a tool throws errors, network connections time out, or parameters are missing. Use the diagnostic hint to locate bottlenecks and refine prompt instructions.
 
-Regardless of whether the virtual machine is enabled, you can use the following general debugging features:
+---
 
-![General Debugging](/imgs/agent_chat_debug.png)
+## Step 3: Expand Execution Details to Inspect Underlying Traces
 
-- **Restart**: Click the "Restart" button in the upper right corner of the chat preview window to clear the current chat history and state, allowing you to start a fresh round of testing.
-- **Bubble Action Bar and Run Details**: Below each generated AI chat bubble, a row of auxiliary debugging tools is provided:
-  - **Copy**: Click to copy the text content of this AI response.
-  - **Read Aloud**: Click to convert the response text into speech and play it back.
-  - **Annotation**: Lets developers annotate the question and expected answer, saving them to a designated Dataset to improve future responses.
-  - **Retry**: Triggers the AI to regenerate the response for the last user input.
-  - **Run Details**: Click to expand the tree-structured decision-making chain. This logs the complete LLM reasoning process, internal plan updates, and tool call logs. It also shows the unique Request ID, model name, response duration, and precise points consumed for performance auditing and cost control.
-  - **Response Duration** (e.g., `34.07 s`): Displays the total time in seconds spent from sending the request to receiving the full response.
-- **Plan Card**: If the Agent initiates planning for a complex task, the chat interface will stream a visual "Plan Card." Color-coded steps and animations indicate the progress of each step (In Progress, Completed, Pending, Blocked). If a step is blocked, the card displays the cause of the blockage, helping you optimize your System Prompt or troubleshoot tool configurations.
+Beneath each generated AI message bubble, click "Execution Details" to review the decision trace:
 
-  ![Plan Card](/imgs/agent_plan_card.png)
+1. **Reasoning Content**:
+   Inspect reasoning content returned by a supported model when reasoning display is enabled.
+2. **Tool Arguments**:
+   Verify that generated JSON payloads adhere strictly to target tool schemas, checking dates, IDs, and query terms.
+3. **Tool Output**:
+   Examine raw responses returned by tools or sandbox commands, confirming that outputs provide complete, valid factual evidence.
+4. **Performance and Quota Auditing**:
+   Inspect available model, latency, and usage fields. Record the request identifier when present and reconcile cost with usage records.
 
-### 2. Virtual Machine Debugging
+---
 
-For details on using the virtual machine sandbox for file management, uploaded-file injection, and runtime status, please refer to [Virtual Machine](/en/guide/build/agentv2/vm#virtual-machine-debugging).
+## Step 4: Diagnostic Utilities and Annotation
+
+The toolbar beneath each AI message offers quick utilities:
+- **Copy**: Copy raw generated Markdown text.
+- **Read Aloud**: Play text back using text-to-speech synthesis.
+- **Annotate**: Click the annotate button to save the current query and a corrected answer directly into a knowledge base, reinforcing factual accuracy in subsequent turns through RAG.
+- **Retry**: Re-run planning and generation independently against the preceding query.
+
+## Next Steps
+
+- Virtual machine testing: Review [Virtual Machine Sandbox Guide](/en/guide/build/agentv2/vm).
+- Refine instructions: Follow [Chat Agent V2 Dedicated Configuration](/en/guide/build/agentv2/settings).
+- Mount into pipelines: Study [Workflow Agent Node](/en/guide/build/workflow/nodes/agent).

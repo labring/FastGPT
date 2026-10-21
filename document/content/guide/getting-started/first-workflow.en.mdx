@@ -1,0 +1,83 @@
+---
+title: "Build Your First Workflow"
+description: Master visual canvas orchestration, node connections, input and output references, and end-to-end debugging.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="build-the-flow" />
+<span id="run-and-verify" />
+
+This tutorial guides you through building a multi-node workflow with model invocation and output formatting on the visual canvas, demonstrating the core execution model of the FastGPT workflow engine.
+
+## Learning Goals and Prerequisites
+
+By completing this tutorial, you will understand how execution edges and data references govern workflow runs, combining nodes into an operational pipeline: "User Input → Text Extraction → AI Generation → Custom Response".
+
+Before starting, confirm the following prerequisites:
+- Resource creation permissions in your current workspace team.
+- An active chat model configured in the team.
+- Basic familiarity with workspace navigation.
+
+## Step 1: Create a Blank Workflow
+
+1. Log in to the FastGPT console and navigate to the "Applications" section.
+2. Click "Create Application" in the upper right corner, then choose "Workflow".
+3. Name the application `Smart Text Summarizer` and click "Create".
+4. The canvas initializes with a "Workflow Start" node, representing the entry trigger for incoming chat messages.
+
+![Initial canvas state with workflow start node](/imgs/optimized/current/workflow-start-chat.png.webp)
+
+## Step 2: Add AI Chat Node and Establish Edges
+
+1. Open the node selection menu on the left side of the canvas and select "Core Nodes → AI Chat".
+2. Drag the "AI Chat" node onto the center canvas.
+3. **Connect execution edge**: Drag a line from the output execution port on the right side of the "Workflow Start" node to the input execution port on the left side of the "AI Chat" node. Execution edges determine execution order.
+4. **Configure node parameters**:
+   - Model selection: Pick an available chat model.
+   - System prompt: Enter `Summarize the input text into exactly 3 bullet points, preserving key names, dates, and quantitative data.`.
+   - User input reference: Click the reference selector beside the input field and select the "User Input" field from the "Workflow Start" node. Data references deliver upstream values into downstream node inputs.
+
+![Execution connections and user input reference configuration](/imgs/optimized/current/workflow-config.png.webp)
+
+## Step 3: Add Custom Response Node for Formatting
+
+1. Add a "Specified Response" node from the node menu.
+2. Connect the execution output port of the "AI Chat" node to the execution input port of the "Specified Response" node.
+3. In the content editor of the "Specified Response" node, type introductory text and insert the dynamic variable referencing "Generated Text" from the upstream "AI Chat" node.
+4. Disable direct output on the "AI Chat" node to let the "Specified Response" node govern the final message layout.
+
+## Step 4: Test in Workspace End-to-End
+
+Enter the following test text in the right-hand testing drawer:
+
+```text
+The FastGPT engineering team will hold an architecture review session this Friday at 10:00 AM in Conference Room 3. The session will last approximately 2 hours. Attendees must prepare their laptops and technical specifications in advance.
+```
+
+Click submit and monitor the canvas and output:
+1. Canvas nodes illuminate in sequence, indicating active execution states.
+2. The testing drawer renders three concise bullet points preserving Friday, 10:00 AM, Conference Room 3, and 2 hours.
+3. Click "Execution Details" to review input parameters, output values, execution status, and step latency (in milliseconds) for each node.
+
+![Summarizer workflow produces three structured key findings](/imgs/optimized/current/workflow-answer.png.webp)
+
+## Step 5: Save and Publish the Active Version
+
+1. After confirming the output quality, click the "Publish" button in the upper right corner.
+2. Enter a version description (such as `v1.0.0: Initial text summarizer workflow`) and confirm.
+3. The newly published configuration takes over public channel requests immediately, while draft modifications remain isolated in your workspace.
+
+## Orchestration Troubleshooting
+
+| Common Issue | Resolution Steps |
+| --- | --- |
+| Node remains pending and never runs | Inspect upstream execution edges leading to the node; confirm all predecessor dependencies triggered |
+| Downstream model receives empty input | Check variable reference bindings; ensure the input correctly maps to the upstream output field |
+| Canvas generates no chat response | Verify that your workflow contains output-enabled nodes (such as AI Chat direct output or Specified Response nodes) |
+| Variable updates fail to appear downstream | Ensure the variable write node executes earlier in time than the downstream reading node |
+
+## Next Steps
+
+- Conditional routing: Split execution paths based on logic in [Condition Switch Node](/en/guide/build/workflow/nodes/tfswitch).
+- Intent classification: Route messages by semantic category in [Question Classifier Node](/en/guide/build/workflow/nodes/question_classify).
+- Batch processing: Handle collections efficiently in [Loop Execution Node](/en/guide/build/workflow/nodes/loop_run) and [Parallel Execution Node](/en/guide/build/workflow/nodes/parallel_run).

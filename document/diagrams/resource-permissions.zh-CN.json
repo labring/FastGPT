@@ -1,0 +1,156 @@
+{
+  "type": "flowchart",
+  "title": "单资源协作者权限解析",
+  "nodes": [
+    {
+      "id": "start",
+      "label": "解析成员权限",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "shield"
+    },
+    {
+      "id": "personal",
+      "label": "存在个人记录？",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "user"
+    },
+    {
+      "id": "value",
+      "label": "使用个人权限",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "显式 0 同样生效",
+      "illustration": "key"
+    },
+    {
+      "id": "groups",
+      "label": "查询群组与组织",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "含默认组和祖先组织",
+      "illustration": "groups"
+    },
+    {
+      "id": "matches",
+      "label": "存在匹配记录？",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "illustration": "search"
+    },
+    {
+      "id": "union",
+      "label": "权限按位并集",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "fusion"
+    },
+    {
+      "id": "fallback",
+      "label": "调用方默认值",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "defaults"
+    },
+    {
+      "id": "return",
+      "label": "返回权限",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "ready"
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "personal",
+      "",
+      "primary"
+    ],
+    [
+      "personal",
+      "value",
+      "有",
+      "default"
+    ],
+    [
+      "personal",
+      "groups",
+      "无",
+      "primary"
+    ],
+    [
+      "groups",
+      "matches",
+      "",
+      "primary"
+    ],
+    [
+      "matches",
+      "union",
+      "有",
+      "primary"
+    ],
+    [
+      "matches",
+      "fallback",
+      "无",
+      "default"
+    ],
+    [
+      "value",
+      "return",
+      "",
+      "default"
+    ],
+    [
+      "union",
+      "return",
+      "",
+      "primary"
+    ],
+    [
+      "fallback",
+      "return",
+      "",
+      "default"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "personal",
+      "file": "packages/service/support/permission/controller.ts",
+      "line": 46
+    },
+    {
+      "id": "groups",
+      "file": "packages/service/support/permission/controller.ts",
+      "line": 62
+    },
+    {
+      "id": "union",
+      "file": "packages/global/support/permission/utils.ts",
+      "line": 13
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

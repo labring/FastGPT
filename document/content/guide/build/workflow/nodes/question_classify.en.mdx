@@ -11,7 +11,7 @@ description: FastGPT Question Classification node overview
 - Trigger-based execution
 - function_call node
 
-![Question Classification node configuration](/imgs/cq1.png)
+![Characteristics — interface example](/imgs/optimized/current/node-question-classify.png.webp)
 
 ## What It Does
 
@@ -60,7 +60,7 @@ const agentFunction = {
       properties: {
         type: {
           type: 'string',
-          description: `Greetings, return: abc; Billing FAQs, return: vvv; Other questions, return: aaa`
+          description: `Greetings, return: abc; Billing FAQs, return: vvv; Other questions, return: aaa`,
           enum: ["abc","vvv","aaa"]
         }
       },
@@ -69,4 +69,12 @@ const agentFunction = {
 };
 ```
 
-The Function above always returns one of `type = abc, vvv, aaa`, achieving the classification.
+This function description declares the allowed category keys. Verify the model result and selected branch in execution details.
+
+## Connections, output, and verification
+
+Choose an available model and configure background, history, and the user question. Give each category a clear, distinct description and connect it to its downstream branch. Successful classification returns the chosen category's display text in the string **Classification result** and runs that branch. If a model result fails to match a category key, the current implementation falls back to the last category. Put **Other questions** last.
+
+Example: configure **Greetings**, **Billing FAQs**, and **Other questions**, each connected to a Specified Reply containing `Hello`, `Billing help`, or `Please clarify`. Debug with “Hello,” “Where can I view my bill?”, and “What is tomorrow's weather?” Check both the classification output and the executed branch. Classification depends on model behavior; retain a fallback and test ambiguous and follow-up questions. Inspect execution errors for empty input or model failures.
+
+Use [Conditional](/en/guide/build/workflow/nodes/tfswitch) to branch on explicit values.

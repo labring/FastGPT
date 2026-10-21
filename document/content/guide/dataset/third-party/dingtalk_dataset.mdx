@@ -5,7 +5,7 @@ description: FastGPT 钉钉知识库功能介绍和使用方式
 
 |                                                                                                         |                                                                                                         |
 | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| ![alt text](/imgs/image-dd1.png) | ![alt text](/imgs/image-dd2.png) |
+| ![钉钉知识库：界面示例](/imgs/optimized/current/dingtalk-dataset-create.png.webp) | ![钉钉知识库：界面示例](/imgs/optimized/image-dd2.png.webp) |
 
 FastGPT 支持通过钉钉企业内部应用接入钉钉知识库。创建时只需要填写 `App Key`、`App Secret`、`User ID`，创建完成后进入知识库详情页点击`添加文件`，再选择要导入的钉钉知识库、在线文档或文件夹。
 
@@ -13,7 +13,7 @@ FastGPT 支持通过钉钉企业内部应用接入钉钉知识库。创建时只
 
 ## 1. 创建钉钉应用
 
-![创建钉钉应用](/imgs/image-dd3.png)
+![创建钉钉应用](/imgs/optimized/image-dd3.png.webp)
 
 打开 [钉钉开发者后台应用详情](https://open-dev.dingtalk.com/fe/app?hash=%23%2Fcorp%2Fapp#/corp/app)，选择目标企业下的企业内部应用。
 
@@ -21,7 +21,7 @@ FastGPT 支持通过钉钉企业内部应用接入钉钉知识库。创建时只
 
 ## 2. 获取 FastGPT 要填写的参数
 
-![获取 App Key 和 App Secret](/imgs/image-dd4.png)
+![获取 App Key 和 App Secret](/imgs/optimized/image-dd4.png.webp)
 
 | FastGPT 字段 | 钉钉里去哪里拿 |
 | --- | --- |
@@ -32,14 +32,14 @@ FastGPT 支持通过钉钉企业内部应用接入钉钉知识库。创建时只
 注意：
 
 - `App Secret` 是密钥，不要公开发送。
-- `User ID` 不是手机号、姓名，也不是 `unionId`。
+- `User ID` 必须填写钉钉系统分配的员工 User ID（字符串格式），确保与通讯录导出表格中的对应字段一致。
 - 如果成员详情页没有展示 `User ID`，让通讯录管理员在`通讯录`里导出成员列表，导出的表格中通常包含成员 `User ID`。
 - 建议使用一个专门的钉钉成员作为 FastGPT 同步账号，并给它目标知识库的只读权限。
 - 该成员没有权限访问的钉钉知识库，不会出现在 FastGPT 的添加文件列表里。
 
 ## 3. 配置钉钉应用权限
 
-![配置钉钉应用权限](/imgs/image-dd5.png)
+![配置钉钉应用权限](/imgs/optimized/image-dd5.png.webp)
 
 在钉钉应用详情页左侧进入`权限管理`，搜索并开通以下权限：
 

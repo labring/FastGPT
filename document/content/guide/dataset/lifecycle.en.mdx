@@ -1,0 +1,70 @@
+---
+title: "Knowledge Base Full Lifecycle"
+description: Understand the three-tier asset topology, asynchronous training pipeline, status transitions, and end-to-end lifecycle maintenance.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="create-and-choose-an-import-method" />
+<span id="segmentation-and-processing" />
+<span id="retrieval-and-application-association" />
+<span id="maintenance" />
+
+The knowledge base is FastGPT's core repository for structured and unstructured business information. Mastering its three-tier topology, background processing workflows, and status machines enables clean data organization and reliable question-answering quality.
+
+## Three-Tier Asset Topology
+
+The platform manages knowledge assets across three distinct layers:
+
+![Knowledge asset hierarchy](/imgs/diagrams/knowledge-hierarchy.en.light.svg)
+
+1. **Knowledge Base**: The top-level root configuring the embedding model, BM25 tokenizer settings, database persistence, and team-level collaborator permissions.
+2. **Collection**: The organizational container for assets. **Content Collections** store ingested files, scraped web pages, or synchronized platform records; **Folder Collections** establish nested hierarchical trees for batch authorization and tag categorization.
+3. **Data Chunk**: The granular unit produced by chunking algorithms. Each chunk preserves source text and index references such as index IDs and text. The vector backend stores embeddings, supporting standalone edits and index rebuilding.
+
+---
+
+## Five Lifecycle Stages
+
+Knowledge assets advance through five sequential lifecycle stages:
+
+| Stage | Core Responsibility | System Actions and Deliverables |
+| --- | --- | --- |
+| **1. Ingestion** | Upload files, import spreadsheets, crawl URLs, or connect external sources | Security checks, upload to S3 storage, create collection records |
+| **2. Text Parsing** | Extract unstructured text and segment content by semantic boundaries | Generate pending data chunk records for worker queue consumption |
+| **3. Indexing** | Invoke models to generate embeddings and build inverted full-text indexes | Persist to vector database and Mongo index store; mark status Ready |
+| **4. Retrieval** | Respond to user queries with multi-route recall and reranking | Retrieve top candidate chunks; deliver grounded context with citations |
+| **5. Maintenance** | Fine-tune chunks, overwrite updated files, filter by tags, and clean up obsolete data | Trigger localized vector rebuilding or cascade deletion to keep data fresh |
+
+---
+
+## Background Processing Pipeline and State Machine
+
+Once file upload succeeds, the system processes assets asynchronously using a distributed queue (BullMQ and Mongo task records):
+
+![File processing and retries](/imgs/diagrams/ingestion-pipeline.en.light.svg)
+
+### Processing Stages and Collection Status
+
+Waiting, parsing and chunking, optional enhancement, and indexing describe processing stages in the diagram. Queued tasks wait for consumption; processing failures enter retry or troubleshooting paths.
+
+The collection summary uses three status values:
+
+- **Processing (`running`)**: Tasks remain in progress, including waiting, parsing, enhancement, and indexing.
+- **Ready (`ready`)**: Processing is complete and chunks are available for retrieval.
+- **Error (`error`)**: Processing errors require inspection. Fix file, model balance, or network prerequisites using the recorded diagnostics, then retry.
+
+---
+
+## Stage Verification Checkpoints
+
+- [ ] **Ingestion Check**: Inspect preview chunks to verify that key rules and tables remain intact across boundaries.
+- [ ] **Readiness Check**: Collection status displays "Ready" and data chunk text is readable online.
+- [ ] **Retrieval Check**: Standalone "Search Test" places expected reference chunks at the top of the candidate list.
+- [ ] **Production Check**: Attached applications return grounded answers with verified citation pills in fresh sessions.
+
+## Next Steps
+
+- Import procedures: Read [Document Ingestion and Chunking](/en/guide/dataset/import-data).
+- Spreadsheet contracts: Read [Structured Dataset Template Specifications](/en/guide/dataset/template).
+- Search optimization: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Application integration: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).

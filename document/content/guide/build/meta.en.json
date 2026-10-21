@@ -1,14 +1,16 @@
 {
-  "title": "App Building",
+  "title": "Build Apps",
   "root": false,
   "pages": [
     "general",
+    "scheduled-triggers",
     "agentv2",
     "workflow",
-    "tools",
-    "skill",
-    "publish",
-    "evaluation",
-    "faq"
+    "!tools",
+    "!skill",
+    "!publish",
+    "!evaluation",
+    "!faq",
+    "!logs"
   ]
 }

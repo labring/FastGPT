@@ -1,12 +1,16 @@
 {
-  "title": "Plugin System",
-  "description": "FastGPT plugin system documentation",
-  "root": true,
+  "title": "Plugin development",
+  "description": "Develop, debug, and publish FastGPT plugins",
   "pages": [
     "intro",
-    "team-installation",
+    "quick-start",
+    "system-tool-development",
     "model-presets",
-    "system-tool-development"
+    "debugging-and-publishing",
+    "package-reference",
+    "!index",
+    "!team-installation",
+    "!runtime"
   ],
   "order": 2
 }

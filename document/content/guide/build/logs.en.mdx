@@ -1,0 +1,23 @@
+---
+title: Inspect conversation logs and execution details
+description: Trace user feedback to retrieval, node inputs and outputs, and runtime errors.
+---
+
+You need permission to view the application's logs. Open Logs in application details, locate the conversation using available filters, and inspect conversation and execution details. Filtering, statistics, feedback, and retention depend on the version and plan available in your environment.
+
+## Investigate one problem
+
+1. Record time, application, access channel, question, and expected answer, removing personal information and credentials.
+2. Locate the conversation and inspect the original input and reply.
+3. Expand execution details and follow node inputs, tool calls, retrieved material, model output, and errors in execution order.
+4. Debug the same input in the editor and record differences between the draft and published version.
+5. Change the configuration closest to the cause, verify, publish, and repeat through actual access.
+
+| Observation | Next check |
+| --- | --- |
+| Missing retrieved material | Processing status, retrieval scope, and parameters |
+| Tool call failure | Tool input, authentication, network, and error response |
+| Facts differ from expectations | Sources, model input, and instructions |
+| Difference occurs only in old conversations | Message history, variables, interaction state; verify in a new conversation |
+
+Feedback helps collect cases to investigate. Before using [evaluation](/en/guide/build/evaluation), prepare a fixed set of questions with expected results and confirm the environment's permissions and capabilities.

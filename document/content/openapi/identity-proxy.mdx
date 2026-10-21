@@ -1,0 +1,45 @@
+---
+title: API 与 MCP 身份代理
+description: 由可信服务端指定同团队成员，并按该成员的资源权限执行。
+---
+
+身份代理将本次执行归属到指定团队成员。集成服务先认证业务用户，再从可信身份映射中取得成员标识，并检查该用户可代理的范围。
+
+## 开启条件
+
+- 团队 Owner 可在本人管理的团队级 API Key 或 MCP 发布项上开启身份代理。创建者可以关闭本人凭证或发布项的代理能力。
+- 目标必须是同一团队中的 `active` 成员，并具有目标应用读取及相应会话权限。
+- API 代理需要启用 `authProxy` 的团队级 API Key。旧应用绑定密钥、登录 token 和分享链接凭证具有各自访问用途。
+
+## API 请求体
+
+对话接口在请求体中接受 `authProxy.username` 或 `authProxy.tmbId`：
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "authProxy": { "username": "member@example.com" },
+  "messages": [{ "role": "user", "content": "Summarize the travel policy." }],
+  "stream": false
+}
+```
+
+用户名是成员登录用户名。提供两种标识时，两者必须对应同一成员。省略代理字段时使用凭证所属成员。成员变更与会话归属由服务端权限检查决定。
+
+## MCP 请求头
+
+MCP 使用 transport 请求头：
+
+```json
+{
+  "x-fastgpt-auth-proxy-username": "member@example.com"
+}
+```
+
+也可使用 `x-fastgpt-auth-proxy-tmb-id`。同时提供两种头时应指向同一成员。SSE 在连接时保存身份，切换身份需要重新连接；Streamable HTTP 逐次读取头。完整连接示例见[MCP 服务发布](/zh-CN/guide/build/publish/mcp_server)。
+
+## 验证与排障
+
+先用具有读取权限的成员发起调用，核对会话归属；再用缺少权限的测试成员确认请求被拒绝。检查代理开关、团队、成员状态、两种标识的一致性及资源权限。MCP 工具列表显示只证明元数据可见，执行时还会检查权限。
+
+可信服务端持有凭证并生成代理字段。面向用户的客户端提交业务身份，由服务端完成授权映射。当前 MCP 生成参考的代理头声明可能存在缺口，本页保留已核验的头名；以部署实现及返回错误共同核对。

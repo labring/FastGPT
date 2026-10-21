@@ -9,20 +9,33 @@ description: FastGPT User Selection node usage guide
 - Can be added multiple times
 - Trigger-based execution
 
-![User Selection node options and branches](/imgs/user-selection1.png)
+![Features — interface example](/imgs/optimized/current/node-user-selection.png.webp)
 
 ## Function
 
 The "User Selection" node is an interactive node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
 
-![Chat pauses for a user choice](/imgs/user-selection2.png)
+![Function — interface example](/imgs/optimized/current/selection-await-input.png.webp)
 
 In the example above, when the User Selection node triggers, the chat input is hidden and the conversation enters interactive mode.
 
-![The selected option determines the next branch](/imgs/user-selection3.png)
+![Function — interface example](/imgs/optimized/current/selection-complete.png.webp)
 
 When the user makes a choice, the node evaluates the selection and executes the corresponding branch (e.g., the "Yes" branch).
 
 ## Use Cases
 
 The basic pattern is to present a question that requires a user decision, then route to different workflow paths based on the user's response.
+
+## Options and output
+
+Enter the user-facing description, add option text, and connect each option's execution handle to its branch. Each option has its own key. The chosen option text becomes the string **Selection result**; resumed execution follows the selected branch.
+
+## Example: confirm or cancel
+
+1. Connect Start to User Selection and enter `Continue this task?` as the description.
+2. Keep two options, `Confirm` and `Cancel`. Connect them to Specified Reply nodes containing `Confirmed` and `Cancelled`.
+3. Debug and choose `Confirm`. Expect selection result `Confirm` and reply `Confirmed`.
+4. Start a new conversation and choose `Cancel`. Verify that only the cancellation branch runs.
+
+The access channel must support interaction. Parallel Run containers restrict this node. If selection fails to resume execution, inspect option connections and the conversation used for resumption. Use [Form Input](/en/guide/build/workflow/nodes/form_input) to collect multiple structured fields.

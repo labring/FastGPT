@@ -1,0 +1,63 @@
+---
+title: "Search Testing and Retrieval Parameters"
+description: Master knowledge base search testing, hybrid search modes, similarity score analysis, and zero-recall troubleshooting.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="1-fix-the-questions-and-expected-passages" />
+<span id="2-record-a-baseline" />
+<span id="3-change-one-factor-at-a-time" />
+<span id="4-check-effective-settings" />
+<span id="recover-and-verify" />
+
+Before attaching a knowledge base to conversational applications, use the standalone "Search Test" interface to isolate prompt and generation noise, verifying vector and full-text retrieval precision directly.
+
+## Step 1: Open the Search Test Interface
+
+1. Navigate to your target knowledge base and click the "Search Test" tab in the top navigation bar.
+2. The view displays a test query input, search mode selectors, similarity score sliders, and candidate result cards.
+3. Enter a representative operational inquiry, such as: `How many days do I have to submit travel expenses after returning?`.
+
+![Search test returns original text containing reimbursement deadline](/imgs/optimized/current/knowledge-search.png.webp)
+
+## Step 2: Compare Retrieval Modes
+
+Switch between retrieval modes at the top of the testing panel to observe differences across candidate ranks:
+
+1. **Vector Search (Semantic Matching)**:
+   Enter a query with synonymous phrasing (e.g., `What is the deadline for filing trip expenses?`). The engine uses geometric distance in dense vector space to recall chunks containing "15 calendar days".
+2. **Full-Text Search (Keyword Matching)**:
+   Enter a query featuring specialized codes or exact references (e.g., `Policy Rule FIN-2026-03 Section 15`). Check whether full-text search retrieves the document section containing the identifier.
+3. **Hybrid Search (Recommended)**:
+   Combines semantic generalization and exact term matching. The engine merges multi-route candidates and optionally reranks them when a rerank model is configured.
+
+![Search mode selection and reranking scores](/imgs/optimized/current/dataset-result-scores.png.webp)
+
+## Step 3: Analyze Scores and Calibrate Similarity Floors
+
+Use scores to compare candidates within the same model and retrieval configuration. Build a labeled test set containing answerable questions, paraphrases, exact identifiers, and questions outside the knowledge base. Record the expected source chunk for each answerable question.
+
+### Calibration Guidelines
+
+1. Start with a low threshold and check whether expected chunks enter the candidate list.
+2. Adjust one setting at a time. Compare relevant hits, missed references, and irrelevant results before selecting a threshold.
+3. Repeat after changing the embedding model, rerank model, or chunking strategy. Inspect actual reranking and filtering status when the interface exposes it.
+
+![Search parameters and score threshold configuration](/imgs/optimized/current/dataset-search-filter.png.webp)
+
+## Step 4: Step-by-Step Zero-Recall Troubleshooting
+
+When an expected query fails to return target chunks, follow this four-step diagnostic procedure:
+
+| Step | Diagnostic Focus | Actionable Fix |
+| --- | --- | --- |
+| **1. Chunk Completeness** | Search for the clause in the collection's data chunk list | Confirm the fact is ingested and was not split awkwardly across boundaries |
+| **2. Index Readiness** | Inspect the collection's index status in the file list | Verify the collection status is "Ready"; if in "Error", click retry |
+| **3. Tokenization Coverage** | Check if proper nouns were fragmented during full-text tokenization | Query using complete standardized terms, or configure specialized dictionaries |
+| **4. Supplementary Indexes** | Add query variations to the target chunk | Edit the chunk and add 3 to 5 common user question patterns under "Supplementary Indexes" |
+
+## Next Steps
+
+- Integrate into chat: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Metadata-scoped search: Learn [Collection Tag System](/en/guide/dataset/collection_tags).
+- Data maintenance: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

@@ -1,5 +1,12 @@
 {
   "title": "Configuration",
   "description": "FastGPT self-hosting configuration",
-  "pages": ["model", "sandbox", "object-storage", "env", "signoz", "remote-debug-suite"]
+  "pages": [
+    "model",
+    "sandbox",
+    "object-storage",
+    "env",
+    "!signoz",
+    "!remote-debug-suite"
+  ]
 }

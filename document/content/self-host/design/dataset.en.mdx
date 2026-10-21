@@ -1,21 +1,26 @@
 ---
-title: Collection Design
-description: How FastGPT stores files and data in Collections
+title: Knowledge files, chunks, and retrieval indexes
+description: Understand collections, MongoDB data chunks, object-storage files, and vector indexes.
 ---
+
+This page explains current knowledge storage relationships for import and migration troubleshooting. For everyday operations, see [create and maintain a knowledge base](/en/guide/dataset/lifecycle).
 
 ## Relationship Between Files and Data
 
-In FastGPT, files are stored using MongoDB's GridFS, while the actual data is stored in PostgreSQL. Each row in PG has a `file_id` column that references the corresponding file. For backward compatibility and to support manual input and annotated data, `file_id` has some special values:
+- A **knowledge base** stores model and processing configuration and contains collections.
+- A **collection** stores source information, file identifiers, parent-folder relationships, and processing settings. Folder collections organize children; content collections contain chunks.
+- **Data chunks** store text, Q&A content, metadata, and index associations in MongoDB's `dataset_datas`, linked through `datasetId` and `collectionId`.
+- **Original files and parsed text** use object-storage services. The current file-reading path accepts S3 object keys and retains compatibility with legacy GridFS identifiers.
+- **Retrieval indexes** use the vector backend selected for the deployment, with PG among the supported choices. Identifiers connect chunks to indexes; physical storage depends on the backend.
 
-- manual: Manually entered data
-- mark: Manually annotated data
-
-Note: `file_id` is only written at data insertion time and cannot be modified afterward.
+Earlier documentation describing PG `file_id` and the special `manual` and `mark` values refers to an older storage design. Investigate current deployments using the collection, chunk, and index identifiers of the installed version.
 
 ## File Import Process
 
-1. Upload the file to MongoDB GridFS and obtain a `file_id`. The file is marked as `unused` at this point.
-2. The browser parses the file to extract text and chunks.
-3. Each chunk is tagged with the `file_id`.
-4. Click upload: the file status changes to `used`, and the data is pushed to the mongo `training` collection to await processing.
-5. The processing worker pulls data from MongoDB, generates vectors, and inserts them into PG.
+1. Upload a file or connect an external source, select processing options, and preview parsing and segmentation.
+2. Create the collection with its source and processing settings.
+3. The backend reads, parses, and segments material according to the selected mode. Processing tasks reference the knowledge base and collection.
+4. Processing creates chunks and retrieval indexes, calling language and embedding models as required by the mode.
+5. Inspect processing status and failures, then use a question with a known answer to verify retrieval and original-file access.
+
+Backups and migrations must cover MongoDB, the selected vector backend, and object storage while preserving consistency among them. See [Docker data migration](/en/self-host/migration/docker_db) and [object storage](/en/self-host/config/object-storage).

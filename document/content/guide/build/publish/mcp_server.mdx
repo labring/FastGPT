@@ -17,23 +17,17 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 ### 1. 创建 MCP server
 
-登录 FastGPT 后，打开 `工作台`，点击 `MCP server`，即可进入管理页面，这里可以看到你创建的所有 MCP server，以及他们管理的应用数量。
-
-![创建 MCP server](/imgs/mcp_server1.png)
+登录 FastGPT 后，打开 `工作台`，点击 `MCP 服务`，即可进入管理页面，这里可以看到你创建的所有 MCP server，以及他们管理的应用数量。
 
 可以自定义 MCP server 名称和选择关联的应用
 
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server2.png) | ![](/imgs/mcp_server3.png) |
+![MCP 服务创建表单与演示应用配置](/imgs/optimized/current/mcp-create.png.webp)
+
+在“暴露的应用 → 管理”中选择应用，填写清晰的工具名和描述。本图是填写后的创建表单，实际客户端调用需完成下方验证。
 
 ### 2. 获取 MCP server 地址
 
 创建好 MCP server 后，可以直接点击 `开始使用`，即可获取 MCP server 访问地址。
-
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server4.png) | ![](/imgs/mcp_server5.png) |
 
 ### 3. 使用 MCP server
 
@@ -43,16 +37,8 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 
 此时返回 Cursor 的 MCP 管理页面，即可看到你创建的 MCP server，记得设成 `enabled` 状态。
 
-|                            |                            |                            |
-| -------------------------- | -------------------------- | -------------------------- |
-| ![](/imgs/mcp_server6.png) | ![](/imgs/mcp_server7.png) | ![](/imgs/mcp_server8.png) |
-
-打开 Cursor 的对话框，切换成 `Agent` 模型，只有这个模型，cursor 才会调用 MCP server。  
+打开 Cursor 的对话框，切换成 `Agent` 模型，选择具备工具调用能力的模式和模型，并按当前客户端界面启用该服务。
 发送一个关于 `fastgpt` 的问题后，可以看到，cursor 调用了一个 MCP 工具（描述为：查询 fastgpt 知识库），也就是调用 FastGPT 应用去进行处理该问题，并返回了结果。
-
-|                            |                             |
-| -------------------------- | --------------------------- |
-| ![](/imgs/mcp_server9.png) | ![](/imgs/mcp_server10.png) |
 
 ## 配置身份代理
 
@@ -75,7 +61,7 @@ FastGPT 支持 `Streamable HTTP` 协议；私有化部署还可以通过独立�
 身份信息需要放在 MCP transport 请求头中，不要放入工具参数。支持以下请求头：
 
 | 请求头                          | 值                   | 说明                           |
-| ------------------------------- | -------------------- | ------------------------------ |
+| --- | --- | --- |
 | `x-fastgpt-auth-proxy-username` | 团队成员的登录用户名 | 推荐使用，通常为成员的登录邮箱 |
 | `x-fastgpt-auth-proxy-tmb-id`   | FastGPT 团队成员 ID  | 适合已经保存团队成员 ID 的系统 |
 

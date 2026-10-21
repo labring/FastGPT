@@ -27,7 +27,7 @@ PLUGIN_TOKEN=the AUTH_TOKEN value you just set
 
 - In the Sealos desktop **Object Storage**, create a bucket with `publicRead` permissions. Open **Access Keys** and copy the **Access Key**, **Secret Key**, **Internal** endpoint and **External** endpoint. Use these values and the bucket name in the environment variables below:
 
-![Sealos Object Storage access-key panel showing the bucket name, access keys and internal and external endpoints](../../../../public/imgs/sealos-s3.png)
+![Sealos Object Storage access-key panel showing the bucket name, access keys and internal and external endpoints](/imgs/optimized/sealos-s3.png.webp)
 
 - Deploy the `fastgpt-plugin` service using the image `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.1.0`. Expose internal port 3000 (no public access required) and set the following environment variables:
 

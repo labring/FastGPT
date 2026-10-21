@@ -1,46 +1,63 @@
 ---
-title: Dataset Collection Tags
-description: How to use collection tags in FastGPT Dataset
+title: "Collection Tag System and Scope Filtering"
+description: Master creating knowledge base tags, assigning multidimensional attributes, and filtering retrieval scopes in applications.
 ---
 
-Collection tags are a commercial-edition feature in FastGPT. They let you tag and categorize data collections within a Dataset for more efficient data management.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="collection-filtering-in-dataset-search" />
+<span id="basic-tag-operations" />
+<span id="collection-filtering-in-knowledge-search" />
+<span id="reproduce-the-finance--support-comparison" />
+<span id="legacy-json-conditions" />
 
-You can also use tags as collection filters during Dataset searches for more precise results.
+In complex knowledge bases containing documentation from different departments, product lines, or sensitivity levels, collection tags enable pre-retrieval filtering, isolating distinct business domains cleanly.
 
-|                                  |                                  |                                  |
-| -------------------------------- | -------------------------------- | -------------------------------- |
-| ![Manage collection tags](/imgs/collection-tags-1.png) | ![Assign tags to collections](/imgs/collection-tags-2.png) | ![Filter Dataset searches by collection tags](/imgs/collection-tags-3.png) |
+## Tag Architecture Planning
 
-## Basic Tag Operations
+Organize orthogonal tag dimensions around organizational governance:
+- **Organizational Structure**: `Finance`, `HR`, `Legal`, `Engineering`.
+- **Product Lines**: `Product-A`, `Product-B`, `Enterprise-Cloud`.
+- **Confidentiality Tiers**: `Public`, `Internal`, `Confidential`.
 
-On the Dataset detail page, you can manage tags with the following operations:
+![Assign department tags to processed collections](/imgs/optimized/current/tags-collections.png.webp)
 
-- Create a tag
-- Rename a tag
-- Delete a tag
-- Assign a tag to multiple collections
-- Add multiple tags to a single collection
+## Step 1: Create and Manage Tag Definitions
 
-You can also filter collections by tags.
+1. Open your target knowledge base and click "Tag Management" in the top navigation.
+2. Create a tag such as `Department` and choose its type: number, date, or option.
+3. For an option tag, create values such as `Finance` and `Support` when assigning the tag to collections.
 
-## Collection Filtering in Dataset search
+## Step 2: Assign Tags to Collections
 
-Tags can be used to filter collections during Dataset searches by filling in the "Collection Filter" field. Here's an example:
+1. In the knowledge base collection list, select the target file or folder collection.
+2. Click "Edit Tags" from the collection action menu.
+3. Check the tags applicable to this collection, such as tagging `travel-policy.txt` with `Department: Finance`.
+4. Click "Save". Retrieval uses collection metadata to select eligible chunks.
 
-```json
-{
-  "tags": {
-    "$and": ["Tag 1", "Tag 2"],
-    "$or": ["When $and tags are present, $and takes effect and $or is ignored"]
-  },
-  "createTime": {
-    "$gte": "YYYY-MM-DD HH:mm format, matches collections created after this time",
-    "$lte": "YYYY-MM-DD HH:mm format, matches collections created before this time. Can be used together with $gte"
-  }
-}
-```
+![Assign Finance tag to travel policy collection](/imgs/optimized/current/tags-finance.png.webp)
 
-Two important notes:
+## Step 3: Configure Tag Filtering in Applications
 
-- Tag values can be a `string` tag name or `null`, where `null` represents collections with no tags assigned
-- There are two filter condition types: `$and` and `$or`. When both are set, only `$and` takes effect
+By scoping searches with tags, applications isolate domain-specific queries accurately:
+
+### 1. Tag Filtering in Chat Agents
+In the application editor, find **Tag Filter** below the attached knowledge base cards. Add a condition row and select the tag, operator, value source, and comparison value. For example, use `Department → contains → Finance`. Combine conditions with AND or OR, and provide variable values matching the tag type.
+
+![Finance filter admits only travel policy citations](/imgs/optimized/current/tags-finance-result.png.webp)
+
+### 2. Dynamic Tag Routing in Workflows
+Pass a business category from a question classifier into the search node's filter to route topic-specific queries. User identity must come from a trusted backend authentication flow. Enforce sensitive-document access through member authentication and collection permissions; tags describe the retrieval scope.
+
+![Support filter admits only customer support material](/imgs/optimized/current/tags-support-result.png.webp)
+
+## Acceptance Checklist
+
+- [ ] Verify collection tag names, types, and assigned values.
+- [ ] Applications configured with a tag filter return chunks belonging exclusively to that tag.
+- [ ] Switch between Finance and Support filters, then verify the returned sources and the application's handling of insufficient evidence.
+
+## Next Steps
+
+- Access permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Connect to chat models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Maintain assets: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

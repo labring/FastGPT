@@ -13,11 +13,11 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ## Deployment Architecture
 
-![](../../../public/imgs/sealos-fastgpt.webp)
+![FastGPT core deployment](/imgs/diagrams/deployment-core.en.light.svg)
 
 <Alert icon="🤖" context="success">
 
-- MongoDB: Stores all data except vectors
+- MongoDB: Stores business metadata, Collections, and chunks; object storage holds source files and other assets.
 - PostgreSQL/Milvus/Oceanbase/SeekDB: Stores vector data
 - AI Proxy: Required for proxying model requests and managing providers in the Admin interface.
 
@@ -27,7 +27,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ### PgVector Version
 
-Very lightweight, suitable for a Dataset index capacity below 50 million.
+The following are historical sizing estimates. Actual requirements depend on vector dimensions, index settings, document size, concurrency, and other services on the host. Benchmark representative data and reserve capacity for backups and growth.
 
 | Environment                        | Minimum (Single Node) | Recommended  |
 | ---------------------------------- | --------------------- | ------------ |
@@ -37,7 +37,9 @@ Very lightweight, suitable for a Dataset index capacity below 50 million.
 
 ### Milvus Version
 
-Better performance for 100M+ vectors.
+Use Milvus when your deployment needs a separately managed vector-search service. Validate capacity and performance with a representative benchmark.
+
+**Milvus must be version 2.5.16 or later.** FastGPT uses BM25 full-text search in `modeldata_v2` with Milvus; startup rejects older Milvus versions.
 
 [View Milvus official recommended specs](https://milvus.io/docs/prerequisite-docker.md)
 
@@ -49,13 +51,13 @@ Better performance for 100M+ vectors.
 
 ### Zilliz Cloud Version
 
-Zilliz Cloud is built by the Milvus team — a fully managed SaaS vector database with better performance than Milvus and SLA guarantees. [Try Zilliz Cloud](https://zilliz.com.cn/).
+[Zilliz Cloud](https://zilliz.com.cn/) provides a managed vector database. Capacity, connectivity, SLA, and pricing depend on the selected plan.
 
-Since the vector database runs in the cloud, no local resources are needed.
+The vector service runs in the cloud. FastGPT, MongoDB, object storage, and other local components still need resources.
 
 ### SeekDB Version
 
-SeekDB is a high-performance vector database based on MySQL protocol, fully compatible with OceanBase, supporting efficient vector retrieval.
+SeekDB uses the MySQL protocol and has a FastGPT vector-store adapter. Treat the table as sizing estimates; verify the database version, model dimensions, and actual workload.
 
 | Environment                        | Minimum (Single Node) | Recommended  |
 | ---------------------------------- | --------------------- | ------------ |
@@ -65,9 +67,9 @@ SeekDB is a high-performance vector database based on MySQL protocol, fully comp
 
 <Alert icon="🤖" context="success">
 
-SeekDB uses MySQL protocol, fully compatible with OceanBase:
+The FastGPT SeekDB adapter provides the following capabilities, subject to the selected database version and model configuration:
 
-- Supports 1536-dimensional vector retrieval
+- Vector indexes configured for the model dimensions
 - Built-in HNSW index algorithm
 - Batch insertion and query optimization
 - Automatic retry and connection pool management
@@ -104,7 +106,7 @@ Or [download the installer](https://orbstack.dev/download) directly.
 
   </Tab>
   <Tab value="Windows">
-We recommend storing source code and data in the Linux filesystem when binding to Linux containers, not the Windows filesystem.
+We recommend storing source code and data in the WSL 2 Linux filesystem when binding to Linux containers to maintain optimal I/O throughput and correct file permissions.
 
 You can [install Docker Desktop with WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/).
 
@@ -145,8 +147,8 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.  
-Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;  
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.
+Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;
 Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
 
 Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
@@ -231,7 +233,7 @@ If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in th
 
 ### 2. Modify Environment Variables
 
-You must set `FE_DOMAIN` in `fastgpt-app` to the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. It must include a scheme, host, and optional port; do not leave it empty or use an internal container address.
+You must set `FE_DOMAIN` in `fastgpt-app` to the complete external URL accessible to client browsers, such as `https://fastgpt.example.com`. It includes a scheme, host, and optional port.
 
 When Agent/Skill Sandbox is enabled, also configure:
 
@@ -284,28 +286,19 @@ Starting from V4.14.0, the fastgpt-plugin image only provides the runtime enviro
 - If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
 - You can also sort tools, set default installations, and manage tags.
 
-![alt text](../../../public/imgs/image-121.png)
+![7. Install System Plugins as Needed — interface example](/imgs/optimized/image-121.png.webp)
 
 ## FAQ
 
 ### FastGPT and FastGPT-plugin Version Compatibility
 
-| FastGPT-plugin Version | FastGPT Main Service |
-| ---------------------- | -------------------- |
-| 1.x                    | 4.15.x               |
-| 0.6.x                  | >= 4.14.11, < 4.15.0 |
-| 0.5.x                  | >= 4.14.6, < 4.14.11 |
-| < 0.5.0                | < 4.14.6             |
+Use the component image versions bundled in the Compose template for your target FastGPT release. For upgrades, read the release notes and retain existing secrets and persistent data. Historical 0.x plugin mappings apply only to their corresponding old releases.
 
 ### S3 Connection Issues
 
-Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both the client and FastGPT service.
+Check the storage endpoint reachable from FastGPT first. With the default `short-proxy` mode, FastGPT validates short links and proxies private-file downloads. For `short-redirect` and directly served public resources such as plugin logos, configure an external address reachable by the required clients and services. Verify signing hosts and proxy paths when diagnosing 403 responses.
 
-**Important:**
-
-> Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
->
-> See [Object Storage Configuration & Common Issues](/en/self-host/config/object-storage)
+See [Object Storage Configuration](/en/self-host/config/object-storage).
 
 ### Browser Unresponsive After Login
 
@@ -313,77 +306,16 @@ Can't click anything, refresh doesn't help. Close the tab and reopen it.
 
 ### Mongo Replica Set Auto-Initialization Failed
 
-The latest docker-compose examples have fully automated Mongo replica set initialization. Tested on Ubuntu 20/22, CentOS 7, WSL2, macOS, and Windows. If it still won't start, the CPU likely doesn't support AVX instructions — switch to Mongo 4.x.
-
-To manually initialize the replica set:
-
-1. Create a mongo key in the terminal:
-
-```bash
-openssl rand -base64 756 > ./mongodb.key
-chmod 600 ./mongodb.key
-# Change key permissions — some systems use admin, others use root
-chown 999:root ./mongodb.key
-```
-
-2. Modify docker-compose.yml to mount the key:
-
-```yml
-mongo:
-  #  image: mongo:5.0.18
-  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # Alibaba Cloud
-  container_name: mongo
-  ports:
-    - 27017:27017
-  networks:
-    - fastgpt
-  command: mongod --keyFile /data/mongodb.key --replSet rs0
-  environment:
-    # Default username and password, only effective on first run
-    - MONGO_INITDB_ROOT_USERNAME=myusername
-    - MONGO_INITDB_ROOT_PASSWORD=mypassword
-  volumes:
-    - ./mongo/data:/data/db
-    - ./mongodb.key:/data/mongodb.key
-```
-
-3. Restart services:
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-4. Enter the container and initialize the replica set:
-
-```bash
-# Check if mongo container is running
-docker ps
-# Enter container
-docker exec -it mongo bash
-
-# Connect to database (use your Mongo username and password)
-mongo -u myusername -p mypassword --authenticationDatabase admin
-
-# Initialize replica set. For external access, add directConnection=true to the Mongo connection parameters
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongo:27017" }
-  ]
-})
-# Check status — if it shows rs0 status, it's running successfully
-rs.status()
-```
+Inspect `docker compose ps` and the MongoDB initialization logs. Verify the replica-set name, internal hostname, credentials, key-file permissions, and persistent-volume ownership against the selected template. Before manual initialization, connect with the shell supplied by your MongoDB image and run `rs.status()`; use `rs.initiate()` only for a new, uninitialized replica set. Preserve an existing replica-set configuration and follow the MongoDB recovery procedure for that version.
 
 ### How to Change API Address and Key
 
 Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
 
 - `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
-- `AIPROXY_API_TOKEN`: A nonempty AI Proxy administrator token that matches the administrator credentials configured on the AI Proxy server.
+- `AIPROXY_API_TOKEN`: The AI Proxy administrator token matching credentials configured on the AI Proxy server.
 
-Startup validation fails if either setting is missing. `OPENAI_BASE_URL` and `CHAT_API_KEY` do not replace these required settings. AI Proxy is still required when a model uses `requestUrl/requestAuth`. Configure model service endpoints and keys in the Admin provider settings.
+AI Proxy supplies model routing and channel management. Configure upstream provider endpoints and keys in the Admin channel interface; verify any model-specific request overrides separately.
 
 To update the AI Proxy connection, edit the FastGPT container's environment variables in `docker-compose.yml`. Commercial Admin services that share App/Service configuration also need both variables.
 
@@ -417,7 +349,7 @@ Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then ru
 
 ### Why Can't I Connect to Local Model Images
 
-`docker-compose.yml` uses bridge mode to create the `fastgpt` network. To access other images via 0.0.0.0 or image name, add those images to the same network.
+Join the model container to the FastGPT Docker network and use `http://service-name:container-port` as its upstream address. `0.0.0.0` is a listening address; clients need a reachable hostname or IP. For services on the host, use a host address reachable from the container and check the firewall.
 
 ### How to Resolve Port Conflicts?
 
@@ -439,21 +371,11 @@ PG database not connected or initialization failed — check logs. FastGPT initi
 
 ### Illegal instruction
 
-Possible causes:
-
-1. ARM architecture — use the official Mongo image: mongo:5.0.18
-2. CPU doesn't support AVX — switch to mongo4.x. Change the mongo image to: mongo:4.4.29
+Check the failing image, CPU architecture, and required instruction set against MongoDB’s requirements for that image version. Select a supported host/image combination. Database version changes require a validated backup and the documented upgrade or migration path; preserve existing volumes until restoration is verified.
 
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
-Mongo connection failed — check mongo's running status and **logs**.
-
-Possible causes:
-
-1. Mongo service didn't start (some CPUs don't support AVX — switch to mongo4.x, find the latest 4.x on Docker Hub, update the image version, and rerun)
-2. Database connection environment variables are wrong (username/password, check host and port — for non-container network connections, use public IP and add directConnection=true)
-3. Replica set startup failed, causing the container to keep restarting
-4. `Illegal instruction.... Waiting for MongoDB to start`: CPU doesn't support AVX — switch to mongo4.x
+This error means a MongoDB operation timed out while waiting for a usable connection. Check MongoDB startup logs, DNS and ports from the FastGPT container, credentials, TLS settings, replica-set health, and the advertised replica-set hostnames. Use the connection settings documented for your deployment topology. Preserve data volumes while diagnosing startup errors.
 
 ### First Deployment: Root User Shows Unregistered
 
@@ -461,14 +383,11 @@ Logs will show error messages. Most likely Mongo replica set mode wasn't started
 
 ### Can't Export Dataset / Can't Use Voice Input or Playback
 
-SSL certificate not configured — some features require it.
+For voice input, verify HTTPS, browser microphone permissions, and the configured speech model. For playback, check media requests and browser autoplay policy. For export, inspect the failed download request, file access configuration, and permissions. See [General Troubleshooting](/en/self-host/troubleshooting/faq).
 
 ### Login Shows Network Error
 
-Caused by service initialization errors triggering a restart.
-
-- 90% of cases: incorrect config file causing JSON parsing errors
-- The rest: usually because the vector database can't connect
+Inspect the failed browser request and FastGPT logs for its HTTP status and underlying error. Check service readiness, gateway routing, API domain, and database connections. Resolve the first initialization failure before retrying login.
 
 ### How to Change Password
 
@@ -478,7 +397,7 @@ Modify `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart — the password a
 
 Open [Zilliz Cloud](https://zilliz.com.cn/), create an instance, and get the credentials.
 
-![zilliz_key](../../../public/imgs/zilliz_key.png)
+![zilliz_key](/imgs/optimized/zilliz_key.png.webp)
 
 <Alert icon="🤖" context="success">
 

@@ -1,0 +1,31 @@
+---
+title: Create and debug HTTP tools
+description: Turn an HTTP service into a callable tool and verify authentication, input, and response.
+---
+
+You need tool creation or editing permission and an API reachable from the FastGPT server. Obtain the provider's contract and credentials. Start with a read-only endpoint.
+
+## Configure
+
+1. Create an HTTP tool set in the workspace. Add a tool manually or use the API Schema configuration offered by the interface.
+2. Enter the service address, tool name, and description. In manual mode, set method and path; in Schema mode, inspect the parsed tool list.
+3. Configure authentication headers, keeping fixed credentials in authentication settings. Define caller-supplied arguments, types, descriptions, and required fields.
+4. Inspect request parameters, body, and output structure, then save.
+5. Select a tool, supply known arguments in its debug panel, run it, and inspect the response or error.
+
+For example, configure the read-only `GET /status` endpoint of your own test service. Expect the status fields defined by that service's contract. First verify server access with the same credential, then compare the FastGPT debug result.
+
+## Connect an application
+
+Add the tool through the application's tool selector and describe when to use it. Test a question requiring the tool and inspect model-supplied arguments and returned content. See [HTTP Request node](/en/guide/build/workflow/nodes/http) for an explicitly configured request inside a workflow.
+
+## Troubleshoot
+
+| Error | Check |
+| --- | --- |
+| 401 / 403 | Authentication value, service authorization scope, and expiration |
+| 404 | Service address, path, and request method |
+| Timeout or network failure | DNS, egress, TLS, and target service status from the FastGPT server |
+| Argument or schema failure | Types, required values, body format, and actual response structure |
+
+Debugging can call the external service and produce its real effects. Verify target permissions and business confirmation requirements before using write operations. Remove authentication headers and personal data from troubleshooting material.

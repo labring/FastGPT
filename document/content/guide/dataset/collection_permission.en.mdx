@@ -1,118 +1,71 @@
 ---
-title: Collection-level Permission
-description: How to configure per-file (collection) permissions in FastGPT Datasets
+title: "Collection Permission Control"
+description: Master enabling independent collection permissions, directory inheritance trees, collaborator roles, and cross-team data isolation.
 ---
 
-Collection-level permission is a commercial-edition feature in FastGPT. By default every file and folder inside a Dataset shares the Dataset's own permissions. Once collection-level permission is enabled, you can assign collaborators to an individual file or folder for finer-grained control.
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="terminology" />
+<span id="overview" />
+<span id="enabling-and-disabling" />
+<span id="enable" />
+<span id="disable" />
+<span id="configuring-a-single-file-or-folder" />
+<span id="inherit-and-independent-states" />
+<span id="permission-requirements-per-operation" />
+<span id="search-recall" />
+<span id="special-identities" />
+<span id="faq" />
+<span id="there-is-no-permission-entry-in-the-file-row-menu" />
+<span id="collection-permission-is-not-enabled-for-this-knowledge-base" />
+<span id="my-configuration-disappeared-after-turning-the-switch-off" />
 
-## Terminology
+Collection-level permissions are a commercial capability. They control individual files and folders within a knowledge base. Access requires both knowledge base read permission and the applicable collection permission.
 
-| Concept               | Term used in the UI / docs                     | Notes                                                       |
-| --------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
-| dataset               | Knowledge base / Dataset                       | Resource type `dataset` in the permission system            |
-| collection            | File / Folder / Collection                     | A single file or folder; resource type `collection`         |
-| collection permission | Shown as "Collection permission configuration" | The per-file / per-folder permission described on this page |
+## Permission Inheritance
 
-## Overview
+With collection permissions disabled, files and folders use knowledge base permissions. Enabling the feature materializes permission snapshots for existing collections. Inheriting collections follow their parent; independently configured collections retain their own permissions.
 
-- **Disabled (default)**: a collection is readable exactly when its Dataset is. The system does not read any collection permission record, so every existing Dataset keeps its current behavior after upgrading.
-- **Enabled**: each file/folder gets a complete permission snapshot; lists, details, and search recall are all authorized per collection.
-- Dataset permission is always a **gate**: collection permission cannot bypass it. Granting a user access to a single file does not help unless that user can also read the Dataset.
+![Enable collection permissions](/imgs/optimized/current/collection-permission-enable.png.webp)
 
-## Enabling and disabling
+## Step 1: Enable Collection Permissions
 
-The switch is the only entry point for creating collection-level permissions. While it is disabled, every write path that would configure a single file's permission is rejected and asks you to enable it first.
+1. As a knowledge base administrator, open the target collection's action menu and select "Permissions".
+2. Confirm enabling collection permissions for the knowledge base. Snapshot creation can take time for large libraries.
+3. After initialization succeeds, open the collection's collaborator settings.
 
-### Enable
+The knowledge base information panel provides a disable action. Disabling deletes every collection collaborator configuration in that knowledge base and restores knowledge base inheritance. Record required grants before confirming; enabling again creates fresh inherited snapshots.
 
-- **Where**: Dataset detail page → file list → `···` menu on the target row → `Permission`. If collection permission is not enabled yet, a confirmation dialog appears first; after confirming, FastGPT materializes permission snapshots for all files/folders and then opens the permission dialog.
-- **Required permission**: Dataset `Manage`.
-- **Effect**: you can then assign permissions per file/folder. Permission-related operations become slower because snapshots must be maintained.
-- **Duration and safety**: materialization runs synchronously within the request and can take a while for large Datasets. The switch is flipped only after materialization succeeds; on failure it stays disabled and you can simply run it again (the operation is idempotent).
+## Step 2: Configure Collaborators
 
-Once enabled, the Dataset info panel shows the enabled notice and the disable entry:
+Choose members, groups, or organizations and assign roles:
 
-![](/imgs/collection-permission-1.png)
+| Role | Scope |
+|---|---|
+| Read | View collection content |
+| Write | Update content, synchronize, and adjust processing parameters |
+| Administrator | Manage collection settings and collaborators |
+| Creator | Own the collection; deletion and ownership transfer require this role |
 
-> The collaborators shown here are the Dataset-level ones; the disable entry is `Click to disable` after the notice.
+Collaborator updates replace the submitted list in full. Preserve the existing creator entry. Modifying inherited grants may require confirming a switch to independent permissions. Restoring inheritance retains grants unique to that collection and synchronizes its subtree.
 
-### Disable
+![Configure file and folder collaborators](/imgs/optimized/current/collection-collaborators.png.webp)
 
-- **Where**: Dataset detail page → file list → bottom of the right info panel → `Click to disable` after the enabled notice.
-- **Required permission**: Dataset `Manage`.
-- **Consequence**: deletes **all** collaborator configurations of files/folders under this Dataset and resets every one of them to inherit the Dataset permission. This cannot be undone, and the UI asks for a second confirmation.
+## Step 3: Verify Retrieval Identity and File Access
 
-> Enabling again after disabling is equivalent to enabling for the first time: all files/folders start from the inherit state again and derive their permissions from the Dataset.
+1. **Member-authenticated retrieval**: Search tests and application search configured to authenticate the current member compute readable collections and intersect them with metadata filters.
+2. **Application-selected knowledge**: A workflow using preselected knowledge bases with `authTmbId: false` follows application access settings and skips member-specific collection filtering. Configure member authentication and a trusted identity mapping when enforcing per-user document access.
+3. **Special identities**: Team owners and authorized system-root operations have elevated access. Team administrators still follow resource collaborator permissions.
+4. **Source file links**: Download and preview links use the storage service's authorization and signing rules. Signed links can grant access to their holders until expiry; handle them as sensitive credentials.
 
-## Configuring a single file or folder
+## Acceptance Checklist
 
-There are three equivalent entry points:
+- [ ] Test both an authorized member and a restricted member against the same source document.
+- [ ] Verify write, collaborator-management, deletion, and ownership-transfer controls separately.
+- [ ] Test published channels and API calls using their actual execution identities.
+- [ ] Confirm that returned citations, file links, and previous conversation history meet the intended disclosure scope.
 
-1. File list → `···` menu on the target row → `Permission`;
-2. Right sidebar after opening a file → `Collaborator`;
-3. Right sidebar after entering a folder → `Collaborator`.
+## Next Steps
 
-![](/imgs/collection-permission-2.webp)
-
-The dialog lets you pick members, member groups, or organizations and assign one of these roles (matching the UI wording):
-
-| Role   | Description                                                                        |
-| ------ | ---------------------------------------------------------------------------------- |
-| Read   | Can view collection content                                                        |
-| Write  | Can modify collection content (update / sync / adjust training params)             |
-| Manage | Can manage the whole collection and assign permissions                             |
-| Owner  | Each file/folder has a unique Owner, created on creation or via ownership transfer |
-
-Notes:
-
-- **Owner cannot be granted or changed through collaborator configuration.** The submitted collaborator list must include the current Owner, otherwise the request is rejected — a full replacement could otherwise delete the Owner record.
-- Collaborator configuration uses **full replacement** semantics: the submitted list becomes the final state.
-- The role descriptions say "collection" because they are shared wording; they describe the single file/folder being configured.
-
-### Inherit and independent states
-
-- **Inherit (default)**: the file/folder permission is derived from its parent (the parent folder, or the Dataset when it sits at the root) and follows parent changes automatically.
-- **Independent**: after an individual configuration, the node is no longer overwritten by parent changes, and its subtree stops propagating from it.
-- **Automatic switch to independent**: when you modify or remove collaborators that come from the parent while in the inherit state, FastGPT warns about the conflict; after you confirm, the node becomes independent. Parent permissions are never rewritten silently.
-- **Resume inheritance**: an independent node can resume inheritance from the permission dialog. Per-node permissions that differ from the parent are preserved and the subtree is synchronized.
-
-## Permission requirements per operation
-
-| Operation                                    | Requirement                                                                                                                                     |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| View file list / detail                      | Dataset `Read` + that file `Read`; the list is filtered per current member (unreadable files are removed, pagination stays correct)             |
-| Update file info                             | That file `Write`                                                                                                                               |
-| Move a file / folder                         | `Manage` on both the source and target locations; moving between the Dataset root and a folder also requires the team Dataset-create permission |
-| Configure collaborators / resume inheritance | That file `Manage`, and collection permission enabled for the Dataset                                                                           |
-| Delete a file / folder                       | **Owner only**. Collaborators with `Manage` or `Write` cannot delete; batch delete filters out non-owned items and tells you so                 |
-| Transfer ownership                           | Owner only; transfers to another team member and also transfers ownership of subfolders                                                         |
-| Transfer Dataset ownership                   | Cascades to files/folders under that Dataset that are owned by the previous owner                                                               |
-
-### Search recall
-
-With collection permission enabled, Dataset search filters by the files the current member can read, so unauthorized files are never recalled. This covers:
-
-- Dataset search nodes in Workflows / Agents;
-- Dataset search test.
-
-It applies only when authorization uses the **current member identity**. When a Workflow preselects Datasets without member-identity authorization, no per-file filtering happens and recall follows Dataset permission.
-
-### Special identities
-
-- **System root**: skips collection-level resolution and is treated as having full permission on every file.
-- **Team owner**: owns every resource in the team and is treated as having full permission on every file.
-- **Team admin**: does **not** bypass collection permission. Team-level manage only covers team-owned resources (member groups, organizations); Datasets and files are still authorized by their own collaborator configuration.
-
-## FAQ
-
-### There is no "Permission" entry in the file row menu
-
-That entry is only shown to members with `Manage` permission on the file. If you are not the Owner, ask the Owner or a Dataset admin to grant you manage permission.
-
-### "Collection permission is not enabled for this knowledge base"
-
-The Dataset is still in the disabled state. Enable collection permission first as described above, then configure collaborators for individual files.
-
-### My configuration disappeared after turning the switch off
-
-Disabling is destructive: it clears every collaborator configuration of files/folders under the Dataset and cannot be undone. Always review the impact before confirming.
+- [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
+- [Collection Tag Filtering](/en/guide/dataset/collection_tags).
+- [Connect a Knowledge Base to an Application](/en/guide/dataset/connect-application).

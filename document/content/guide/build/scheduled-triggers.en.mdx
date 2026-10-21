@@ -1,0 +1,21 @@
+---
+title: Configure scheduled triggers
+description: Set execution time, timezone, and default input, then verify the published schedule.
+---
+
+Scheduled triggers start application tasks according to a plan. You need editing and publishing permissions, a supported environment, and model/tool access and quota. Debug the same input manually first.
+
+## Configure and publish
+
+1. Open scheduled-trigger settings in application configuration and enable scheduled execution.
+2. Set the schedule, timezone, and default prompt. Explicitly select the business timezone and inspect the displayed time.
+3. Save and publish application changes. The current implementation updates the plan and next execution time on publishing.
+4. After the expected time, inspect conversation logs for input, tool calls, and output.
+
+To disable it, switch scheduled execution off and publish that configuration, then verify that the plan was removed. Scheduled tool calls can have real external effects; verify timing and output with a read-only task first.
+
+## Troubleshoot
+
+For missing runs, check published configuration, timezone, schedule, scheduling services, and quota. For execution failures, inspect model and tool errors. Account for daylight-saving changes where relevant and verify actual trigger times before making business processes depend on the result.
+
+Next: [log troubleshooting](/en/guide/build/logs) and [published versions](/en/guide/build/publish/versions).

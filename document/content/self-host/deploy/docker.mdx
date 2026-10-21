@@ -13,11 +13,11 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ## 部署架构图
 
-![](../../../public/imgs/sealos-fastgpt.webp)
+![FastGPT 核心部署拓扑](/imgs/diagrams/deployment-core.zh-CN.light.svg)
 
 <Alert icon="🤖" context="success">
 
-- MongoDB：用于存储除了向量外的各类数据
+- MongoDB：保存业务元数据、集合和数据块；原始文件等资源由对象存储保存。
 - PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
 - AI Proxy：必需的模型服务，负责模型请求代理和管理员渠道管理。
 
@@ -27,7 +27,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ### PgVector 版本
 
-非常轻量，适合知识库索引量在 5000 万以下。
+以下为历史容量估算，实际资源需求取决于向量维度、索引参数、文档大小、并发和其他同机服务。部署前用目标数据量压测，并为备份与增长预留空间。
 
 | 环境                             | 最低配置（单节点） | 推荐配置     |
 | -------------------------------- | ------------------ | ------------ |
@@ -37,7 +37,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ### Milvus 版本
 
-对于亿级以上向量性能更优秀。
+适合需要独立管理向量检索服务的部署，具体容量与性能需要压测验证。
 
 **Milvus 版本要求：≥ 2.5.16。** 使用 Milvus 作为向量库时，全文检索自动启用 Milvus BM25（`modeldata_v2` 单表）；低于 2.5.16 时 FastGPT 启动会直接报错退出。
 
@@ -51,13 +51,13 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 ### zilliz cloud 版本
 
-Zilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
+[Zilliz Cloud](https://zilliz.com.cn/) 提供托管向量数据库。容量、网络连通性、SLA 与费用以所选服务方案为准。
 
-由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
+向量服务由云端托管，本地仍需为 FastGPT、MongoDB、对象存储及其他组件配置资源。
 
 ### SeekDB 版本
 
-SeekDB 是基于 MySQL 协议的高性能向量数据库，与 OceanBase 协议完全兼容，支持高效的向量检索。
+SeekDB 使用 MySQL 协议接入，FastGPT 提供对应的向量库适配。以下为容量估算，部署前应验证所用版本、模型向量维度与实际负载。
 
 | 环境                             | 最低配置（单节点） | 推荐配置     |
 | -------------------------------- | ------------------ | ------------ |
@@ -67,9 +67,9 @@ SeekDB 是基于 MySQL 协议的高性能向量数据库，与 OceanBase 协议�
 
 <Alert icon="🤖" context="success">
 
-SeekDB 使用 MySQL 协议，与 OceanBase 完全兼容：
+FastGPT 的 SeekDB 适配包含以下能力，支持范围以所选数据库版本和模型配置为准：
 
-- 支持 1536 维向量检索
+- 按模型配置创建对应维度的向量索引
 - 内置 HNSW 索引算法
 - 提供批量插入和查询优化
 - 自动重试和连接池管理
@@ -106,7 +106,7 @@ brew install orbstack
 
   </Tab>
   <Tab value="Windows">
-我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 Linux 文件系统中，而不是 Windows 文件系统中。
+我们建议将源代码和其他数据绑定到 Linux 容器中时，将其存储在 WSL 2 的 Linux 文件系统中，确保最佳的文件 I/O 性能和文件权限兼容性。
 
 可以选择直接[使用 WSL 2 后端在 Windows 中安装 Docker Desktop](https://docs.docker.com/desktop/wsl/)。
 
@@ -139,8 +139,8 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。  
-启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；  
+非交互模式还必须通过 `FASTGPT_FE_DOMAIN` 指定用户访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。
+启用 Agent/Skill 沙盒的版本还需要通过 `FASTGPT_SANDBOX_PROXY_URL` 指定沙盒 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`；
 4.16 及以上版本还需要通过 `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` 指定 HTTP 预览地址。
 
 访问地址和宿主机端口是独立配置。需要直连时，可通过 `FASTGPT_PORT` 设置 FastGPT 宿主机端口（默认 `3000`），通过 `FASTGPT_SANDBOX_PROXY_PORT` 设置 Sandbox Proxy 宿主机端口（默认 `3006`）；容器端口仍分别为 `3000` 和 `1006`。如果使用反向代理，`FASTGPT_FE_DOMAIN`、`FASTGPT_SANDBOX_PROXY_URL` 及预览地址中的公网端口（例如 `443`）不会被当作宿主机端口，脚本会保留 Compose 中的默认映射。
@@ -213,11 +213,11 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-如果启用 Agent/Skill 沙盒，还需要同步替换 Compose 文件中的沙盒相关镜像，以及 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保沙盒 provider 可以拉取对应镜像。具体配置见 [OpenSandbox 配置](../config/sandbox/opensandbox)。
+如果启用 Agent/Skill 沙盒，还需要同步替换 Compose 文件中的沙盒相关镜像，以及 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，确保沙盒 provider 可以拉取对应镜像。具体配置见 [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox)。
 
 ### 2. 修改环境变量
 
-必须填写 `fastgpt-app` 中的 `FE_DOMAIN`，设置为用户实际访问 FastGPT 的完整地址，例如 `https://fastgpt.example.com`。该地址由协议、主机和可选端口组成，不能留空，也不要填写容器内部地址。
+必须填写 `fastgpt-app` 中的 `FE_DOMAIN`，设置为用户实际访问 FastGPT 的完整公网或局域网地址，例如 `https://fastgpt.example.com`。该地址必须由客户端浏览器直接访问，由协议、主机和可选端口组成。
 
 启用 Agent/Skill 沙盒时还必须配置：
 
@@ -258,7 +258,7 @@ docker compose up -d
 ### 6. 配置模型
 
 - 首次登录 FastGPT 后，系统会提示未配置 `语言模型` 和 `索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
-- 如果系统未正常跳转，可以在 `管理员-模型提供商` 页面进行模型配置。[点击查看相关教程](../config/model/intro.mdx)
+- 如果系统未正常跳转，可以在 `管理员-模型提供商` 页面进行模型配置。[点击查看相关教程](/zh-CN/self-host/config/model/intro)
 - 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该 tab，重新打开一次即可。
 
 ### 7. 按需安装系统插件
@@ -269,28 +269,19 @@ docker compose up -d
 - 如果你的 FastGPT 无法访问插件市场，则可以手动访问 [FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
 - 除了安装外，还可对工具进行排序、默认安装、标签管理等。
 
-![alt text](../../../public/imgs/image-121.png)
+![7. 按需安装系统插件：界面示例](/imgs/optimized/image-121.png.webp)
 
 ## FAQ
 
 ### FastGPT 和 FastGPT-plugin 版本对应
 
-| FastGPT-plugin 版本 | FastGPT 主服务       |
-| ------------------- | -------------------- |
-| 1.x                 | 4.15.x               |
-| 0.6.x               | >= 4.14.11, < 4.15.0 |
-| 0.5.x               | >= 4.14.6, < 4.14.11 |
-| < 0.5.0             | < 4.14.6             |
+使用目标 FastGPT 版本配套 Compose 模板中的各组件镜像版本。升级前核对发布说明，保留原密钥与持久化数据。历史 0.x 插件版本对应关系仅适用于相应旧版本。
 
 ### S3 无法正常连接
 
-检查 `STORAGE_EXTERNAL_ENDPOINT` 变量，需设置成客户端和 FastGPT 服务均可访问的地址。
+先核对 FastGPT 可访问的对象存储地址。默认 `short-proxy` 模式由 FastGPT 校验短链并代理私有文件下载；使用 `short-redirect` 或插件 Logo 等公开直连资源时，应配置相关客户端与服务可访问的外部地址。遇到 403 时核对签名主机名与代理路径。
 
-**重要：**
-
-> 填入的地址不可为 `127.0.0.1` 或者 `localhost` 等本地回环地址，可填 Docker 部署时的宿主机本地 IP，但是需要把宿主机固定为静态 IP；或者统一为一个固定域名；目的是为了避免对象存储签名 URL 时，签发与上传的 URL 不一致导致的 403 错误。
->
-> 具体查看 [对象存储配置及常见问题](../config/object-storage.mdx)
+详见[对象存储配置](/zh-CN/self-host/config/object-storage)。
 
 ### 登录系统后，浏览器无法响应
 
@@ -298,77 +289,16 @@ docker compose up -d
 
 ### Mongo 副本集自动初始化失败
 
-最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。仍无法正常启动，大部分是因为 cpu 不支持 AVX 指令集，可以切换 Mongo4.x 版本。
-
-如果是由于，无法自动初始化副本集合，可以手动初始化副本集：
-
-1. 终端中执行下面命令，创建 mongo 密钥：
-
-```bash
-openssl rand -base64 756 > ./mongodb.key
-chmod 600 ./mongodb.key
-# 修改密钥权限，部分系统是admin，部分是root
-chown 999:root ./mongodb.key
-```
-
-2. 修改 docker-compose.yml，挂载密钥
-
-```yml
-mongo:
-  #  image: mongo:5.0.18
-  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
-  container_name: mongo
-  ports:
-    - 27017:27017
-  networks:
-    - fastgpt
-  command: mongod --keyFile /data/mongodb.key --replSet rs0
-  environment:
-    # 默认的用户名和密码，只有首次允许有效
-    - MONGO_INITDB_ROOT_USERNAME=myusername
-    - MONGO_INITDB_ROOT_PASSWORD=mypassword
-  volumes:
-    - ./mongo/data:/data/db
-    - ./mongodb.key:/data/mongodb.key
-```
-
-3. 重启服务
-
-```bash
-docker compose down
-docker compose up -d
-```
-
-4. 进入容器执行副本集合初始化
-
-```bash
-# 查看 mongo 容器是否正常运行
-docker ps
-# 进入容器
-docker exec -it mongo bash
-
-# 连接数据库（这里要填Mongo的用户名和密码）
-mongo -u myusername -p mypassword --authenticationDatabase admin
-
-# 初始化副本集。如果需要外网访问，mongo:27017 。如果需要外网访问，需要增加Mongo连接参数：directConnection=true
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongo:27017" }
-  ]
-})
-# 检查状态。如果提示 rs0 状态，则代表运行成功
-rs.status()
-```
+检查 `docker compose ps` 与 MongoDB 初始化日志，按所选模板核对副本集名称、内网主机名、账号、key 文件权限和持久卷属主。手动初始化前，使用对应 MongoDB 镜像提供的客户端执行 `rs.status()`；只有新建且尚未初始化的副本集才执行 `rs.initiate()`。已有副本集应保留配置，并按对应版本的 MongoDB 恢复流程处理。
 
 ### 如何修改 API 地址和密钥
 
 从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
 
 - `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
-- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致，不能为空。
+- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致。
 
-缺少上述任一配置会导致启动校验失败。`OPENAI_BASE_URL` 和 `CHAT_API_KEY` 不能替代这两个必填项；即使模型配置了 `requestUrl/requestAuth`，也不能省略 AI Proxy。模型服务商的地址和密钥在管理员渠道配置中维护。
+AI Proxy 提供模型路由与渠道管理。模型服务商的地址和密钥在管理员渠道配置中维护；模型级请求覆盖配置应单独核对。
 
 可以通过修改 `docker-compose.yml` 中 FastGPT 容器的环境变量更新 AI Proxy 连接配置；商业版 Admin 服务若复用 App/Service 配置，也需要设置这两个变量。
 
@@ -381,7 +311,7 @@ docker compose up -d
 
 ### 如何更新版本？
 
-1. 查看[更新文档](../upgrading/upgrade-instruction.mdx)，确认要升级的版本，避免跨版本升级。
+1. 查看[更新文档](/zh-CN/self-host/upgrading/upgrade-instruction)，确认要升级的版本，避免跨版本升级。
 2. 修改镜像 tag 到指定版本
 3. 执行下面命令会自动拉取镜像：
 
@@ -393,7 +323,7 @@ docker compose up -d
 
 ### 如何自定义环境变量？
 
-修改 `docker-compose.yml` 中 `fastgpt-app` 的 `environment` 配置，并执行 `docker compose up -d` 重启容器。具体配置参考[环境变量说明](../config/env.mdx)。
+修改 `docker-compose.yml` 中 `fastgpt-app` 的 `environment` 配置，并执行 `docker compose up -d` 重启容器。具体配置参考[环境变量说明](/zh-CN/self-host/config/env)。
 
 ### 如何检查环境变量是否正常加载
 
@@ -402,13 +332,13 @@ docker compose up -d
 
 ### 为什么无法连接 `本地模型` 镜像
 
-`docker-compose.yml` 中使用了桥接的模式建立了 `fastgpt` 网络，如想通过 0.0.0.0 或镜像名访问其它镜像，需将其它镜像也加入到网络中。
+把模型服务容器加入 FastGPT 所在的 Docker 网络，使用 `http://服务名:容器端口` 配置上游地址。`0.0.0.0` 用于服务监听；客户端应使用可达主机名或 IP。宿主机上的服务应使用容器可达的宿主机地址，并检查防火墙。
 
 ### 端口冲突怎么解决？
 
 docker-compose 端口定义为：`映射端口:运行端口`。
 
-桥接模式下，容器运行端口不会有冲突，但是会有映射端口冲突，只需将映射端口修改成不同端口即可。
+在桥接网络模式下，只需调整 Compose 中的宿主机映射端口（左侧端口）即可规避宿主机端口冲突。
 
 如果 `容器1` 需要连接 `容器2`，使用 `容器2:运行端口` 来进行连接即可。
 
@@ -424,21 +354,11 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 
 ### Illegal instruction
 
-可能原因：
-
-1. arm 架构。需要使用 Mongo 官方镜像：mongo:5.0.18
-2. cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x。把 mongo 的 image 换成: mongo:4.4.29
+核对报错镜像、CPU 架构和该 MongoDB 版本要求的指令集，选择受支持的宿主机与镜像组合。数据库版本变更应先验证备份，再按官方升级或迁移路径操作，保留原数据卷直到恢复验收完成。
 
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
-mongo 连接失败，查看 mongo 的运行状态**对应日志**。
-
-可能原因：
-
-1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以 docker hub 找个最新的 4.x，修改镜像版本，重新运行）
-2. 连接数据库的环境变量填写错误（账号密码，注意 host 和 port，非容器网络连接，需要用公网 ip 并加上 directConnection=true）
-3. 副本集启动失败。导致容器一直重启。
-4. `Illegal instruction.... Waiting for MongoDB to start` : cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x
+该错误表示 MongoDB 操作等待可用连接超时。检查 MongoDB 启动日志、FastGPT 容器内的 DNS 与端口连通性、账号密码、TLS、副本集健康状态及成员广播地址。连接参数按实际部署拓扑配置；排查启动故障时保留数据卷。
 
 ### 首次部署，root 用户提示未注册
 
@@ -446,14 +366,11 @@ mongo 连接失败，查看 mongo 的运行状态**对应日志**。
 
 ### 无法导出知识库、无法使用语音输入/播报
 
-没配置 SSL 证书，无权使用部分功能。
+语音输入需要检查 HTTPS、浏览器麦克风权限和语音模型配置；播放问题需检查媒体请求与自动播放策略。导出失败应检查下载请求、文件访问地址与权限。参见[通用问题排查](/zh-CN/self-host/troubleshooting/faq)。
 
 ### 登录提示 Network Error
 
-由于服务初始化错误，系统重启导致。
-
-- 90%是由于配置文件写不对，导致 JSON 解析报错
-- 剩下的基本是因为向量数据库连不上
+检查浏览器失败请求的状态码与 FastGPT 日志，核对服务就绪状态、网关路由、API 域名和数据库连接。先解决最早的初始化错误，再重试登录。
 
 ### 如何修改密码
 
@@ -463,7 +380,7 @@ mongo 连接失败，查看 mongo 的运行状态**对应日志**。
 
 打开 [Zilliz Cloud](https://zilliz.com.cn/) , 创建实例并获取相关秘钥。
 
-![zilliz_key](../../../public/imgs/zilliz_key.png)
+![zilliz_key](/imgs/optimized/zilliz_key.png.webp)
 
 <Alert icon="🤖" context="success">
 

@@ -1,0 +1,121 @@
+{
+  "type": "architecture",
+  "title": "Knowledge asset hierarchy",
+  "nodes": [
+    {
+      "id": "dataset",
+      "label": "Knowledge base",
+      "row": 0,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "files"
+    },
+    {
+      "id": "config",
+      "label": "Settings and access",
+      "row": 0,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "settings"
+    },
+    {
+      "id": "folder",
+      "label": "Folder collection",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "Organize collections",
+      "illustration": "folder"
+    },
+    {
+      "id": "collection",
+      "label": "Content collection",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "document"
+    },
+    {
+      "id": "chunk",
+      "label": "Data chunk",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "sub": "Source and index refs",
+      "illustration": "chunk"
+    },
+    {
+      "id": "indexes",
+      "label": "Search indexes",
+      "row": 3,
+      "col": 0,
+      "kind": "store",
+      "sub": "Vector / full text",
+      "illustration": "vector"
+    }
+  ],
+  "edges": [
+    [
+      "dataset",
+      "config",
+      "",
+      "default"
+    ],
+    [
+      "dataset",
+      "folder",
+      "",
+      "default"
+    ],
+    [
+      "dataset",
+      "collection",
+      "",
+      "primary"
+    ],
+    [
+      "folder",
+      "collection",
+      "Contains",
+      "default"
+    ],
+    [
+      "collection",
+      "chunk",
+      "",
+      "primary"
+    ],
+    [
+      "chunk",
+      "indexes",
+      "References",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "collection",
+      "file": "packages/service/core/dataset/collection/schema.ts",
+      "line": 14
+    },
+    {
+      "id": "chunk",
+      "file": "packages/service/core/dataset/data/schema.ts",
+      "line": 39
+    },
+    {
+      "id": "indexes",
+      "file": "packages/service/core/dataset/data/schema.ts",
+      "line": 57
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

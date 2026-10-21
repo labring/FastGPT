@@ -22,13 +22,15 @@ description: FastGPT 系统工具在线上传指南
 ### 1. 进入配置页面
 
 
-![](/imgs/plugins/entry.png)
+使用 root 登录，进入 **配置 → 资源库**，点击 **添加资源**。下图标出入口，上传窗口的按钮名称随版本可能有所调整。
+
+![配置中的资源库与添加资源入口](/imgs/optimized/plugins/entry.png.webp)
 
 ### 2. 准备工具文件
 
-在上传之前，请确保您的 `.pkg` 文件是从 fastgpt-plugin 项目中通过 `bun run build:pkg` 命令打包后的 `dist/pkgs` 文件夹下得到的
+准备来自可信作者的 `.pkg` 文件，并确认版本与目标环境兼容。自行开发的工具按[构建、检查与打包](/zh-CN/plugin/debugging-and-publishing#构建检查和打包)生成安装包，产物说明见[插件包与 SDK 参考](/zh-CN/plugin/package-reference)。
 
-![](/imgs/plugins/files.png)
+![2. 准备工具文件：界面示例](/imgs/optimized/plugins/files.png.webp)
 
 ### 3. 执行上传
 
@@ -46,9 +48,22 @@ description: FastGPT 系统工具在线上传指南
 
 ### 工具管理
 
-- **查看工具**：所有用户都可以查看已安装的系统工具
+- **查看工具**：用户根据工具状态和权限查看可用的系统工具
 - **上传工具**：仅 root 用户可以上传新工具或更新现有工具
 - **删除工具**：仅 root 用户可以删除已上传的工具
+
+## 安装后配置
+
+root 管理员可以在工具配置页面管理状态、系统密钥和[运行参数](/zh-CN/plugin/runtime)。安装或更新后，在测试应用中验证一次调用。
+
+| 状态 | 新增工具选择 | 已有调用 |
+| --- | --- | --- |
+| 正常 | 可以选择 | 继续运行 |
+| 隐藏 | 选择器中隐藏 | 继续运行 |
+| 即将下线 (`SoonOffline`) | 选择器中隐藏 | 继续运行 |
+| 已卸载 (`Offline`) | 无法选择 | 调用被拒绝 |
+
+系统密钥由 root 统一配置，FastGPT 服务端保存，并在调用方选择使用系统密钥时读取。[团队安装](/zh-CN/plugin/team-installation)使用独立配置与密钥。
 
 ## 常见问题
 

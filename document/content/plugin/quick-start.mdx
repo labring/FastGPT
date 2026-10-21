@@ -1,0 +1,153 @@
+---
+title: 快速开始：开发首个工具插件
+description: 创建问候工具，验证输入与输出，并构建可安装的插件包
+---
+
+本文指导你使用 `@fastgpt-plugin/cli` 与 `@fastgpt-plugin/sdk-factory` 在本地完成首个系统工具插件的开发全流程。
+
+## 准备工作
+
+开始前请确认本地环境已具备：
+
+- **Node.js**：版本满足生成的插件项目要求。
+- **pnpm**：推荐使用 pnpm 管理依赖。
+- **Git**：用于版本控制与代码提交。
+
+## 步骤 1：创建插件骨架
+
+通过官方 CLI 初始化单工具插件：
+
+```bash
+pnpx @fastgpt-plugin/cli create hello-tool --type tool
+```
+
+命令执行后会在当前目录下生成 `hello-tool` 项目，包含如下标准目录结构：
+
+```text
+hello-tool/
+├── index.ts          # Plugin entry, default export is defineTool
+├── package.json      # Build and test scripts
+├── tsconfig.json     # TypeScript configuration
+├── vitest.config.ts  # Test configuration
+├── logo.svg          # Plugin icon
+└── README.md         # Plugin documentation
+```
+
+进入目录并安装依赖：
+
+```bash
+cd hello-tool
+pnpm install
+```
+
+## 步骤 2：编写工具逻辑与 Schema
+
+打开 `index.ts`，定义工具的元信息、输入 Schema、输出 Schema 以及执行处理函数：
+
+```ts
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const handler = createToolHandler({
+  inputSchema: z.object({
+    name: z
+      .string()
+      .min(1)
+      .default('FastGPT')
+      .meta({
+        title: '用户名称',
+        description: '输入需要问候的用户名称'
+      } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    greeting: z.string().meta({
+      title: '问候语'
+    } satisfies OutputSchemaMetaType)
+  }),
+  handler: async (input) => {
+    return {
+      greeting: `Hello, ${input.name}!`
+    };
+  }
+});
+
+export default defineTool({
+  manifest: {
+    pluginId: 'hello-tool',
+    version: '1.0.0',
+    name: {
+      en: 'Hello Tool',
+      'zh-CN': '问候工具'
+    },
+    description: {
+      en: 'Greet the user with a friendly message',
+      'zh-CN': '输出友好的问候信息'
+    },
+    versionDescription: {
+      en: 'Initial release',
+      'zh-CN': '初始版本'
+    },
+    tags: ['tools']
+  },
+  handler
+});
+```
+
+核心要素说明：
+
+- `manifest.pluginId`：全局唯一插件标识，命名建议保持全小写连字符形式。
+- `manifest.name` 与 `manifest.description`：支持中英文双语，FastGPT 工作台将根据当前用户语言自动展示对应文本。
+- `inputSchema` 与 `outputSchema`：通过 Zod 声明输入输出类型，并通过 `.meta()` 丰富 UI 显示属性。
+- `handler`：实际业务逻辑执行函数，返回值需与 `outputSchema` 结构严格匹配。
+
+## 步骤 3：验证输入
+
+<span id="步骤-3编写单元测试" />
+
+在插件目录运行以下命令，检查默认值和空字符串约束：
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{}'
+pnpx @fastgpt-plugin/cli debug . --run --input '{"name":""}'
+```
+
+第一次调用的结果应包含 `"greeting": "Hello, FastGPT!"`。第二次调用应报告输入校验错误，因为 `name` 至少需要一个字符。这两个用例分别覆盖 Schema 的默认值与无效输入行为。
+
+## 步骤 4：本地调试运行
+
+使用 CLI 本地调试命令，模拟参数输入并实时查看输出：
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{"name": "FastGPT User"}'
+```
+
+检查调试结果中包含以下输出：
+
+```json
+{
+  "greeting": "Hello, FastGPT User!"
+}
+```
+
+## 步骤 5：构建与打包
+
+测试通过后，执行标准构建与打包指令：
+
+```bash
+pnpm run build
+pnpx @fastgpt-plugin/cli check --entry . --output ./dist
+pnpm run pack
+```
+
+命令执行后会生成 `.pkg` 安装文件，输出位置以生成项目的 `pack` 脚本为准。产物内容见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
+
+## 下一步
+
+- 深入学习单工具与工具集的进阶开发规范：[系统工具开发指南](/zh-CN/plugin/system-tool-development)
+- 掌握本地联调、远程调试与打包发布渠道：[调试、打包与发布](/zh-CN/plugin/debugging-and-publishing)
+- 在团队工作台中安装已生成的插件包并接入工作流：[团队安装与管理插件](/zh-CN/plugin/team-installation)

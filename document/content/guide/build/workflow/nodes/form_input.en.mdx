@@ -9,20 +9,40 @@ description: FastGPT Form Input node overview
 - Can be added multiple times
 - Trigger-based execution
 
-![Form Input node configuration](/imgs/form_input1.png)
+![Characteristics — interface example](/imgs/optimized/current/node-form-input.png.webp)
 
 ## What It Does
 
 The Form Input node is a user interaction node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
 
-![Chat pauses while the form is displayed](/imgs/form_input2.png)
+![What It Does — interface example](/imgs/optimized/current/form-await-input.png.webp)
+
+The required test-name field is empty in the screenshot, so the form highlights it for validation.
 
 In the example above, when the Form Input node is triggered, the chat box is hidden and the conversation enters interactive mode.
 
-![Required fields and the form submission action](/imgs/form_input3.png)
+![What It Does — interface example](/imgs/optimized/current/form-submit-result.png.webp)
 
 After the user fills in the required fields and clicks submit, the node collects the form data and passes it to subsequent nodes.
 
 ## Use Cases
 
 Precisely collect specific user information, then perform follow-up operations based on that data.
+
+## Configuration and outputs
+
+Enter the form description and add input fields. For each field, set its display name, unique variable key, type, and required status. Configure defaults, length, numeric range, or options where supported by the type. The name appears in the form; the key identifies the output.
+
+After submission, **Form input result** is an object mapping field keys to values. Each field also has its own output. Downstream nodes use the variable selector to reference individual fields or the complete object. File fields provide file-link lists for subsequent nodes, subject to the deployment's file-type and count limits.
+
+## Example: collect a contact name
+
+1. Connect the start node to Form Input, then to Specified Reply.
+2. Set the description to `Enter the contact name.` Add a text field named `Contact name`, with key `contactName`, and mark it required.
+3. In Specified Reply, use the variable selector to reference the form node's `contactName` output.
+4. Start debugging. Confirm that the form appears and downstream execution waits. Enter `Alex` and submit.
+5. Expect the reply `Alex` and a form input result containing `{"contactName":"Alex"}` in execution details.
+
+The access channel must support interaction. Parallel Run containers restrict interactive nodes; interaction within a Loop pauses execution until resumption. If the form fails to appear, inspect execution connections. For an empty downstream value, check the key, required settings, and output reference. API integrations must follow the deployed generated contract for interactive submissions and retain the same conversation.
+
+Next: [User Selection](/en/guide/build/workflow/nodes/user-selection) or [publish and verify access](/en/guide/build/publish/versions).

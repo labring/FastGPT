@@ -130,7 +130,7 @@ function isValidRef(url, mdxPath) {
       const p = path.join(PUBLIC_DIR, target);
       return fileExists(p) ? { ok: true } : { ok: false, expected: p };
     }
-    const langMatch = target.match(/^\/(en|zh)\/(.+)$/);
+    const langMatch = target.match(/^\/(en|zh-CN|zh)\/(.+)$/);
     const subRaw = langMatch ? langMatch[2] : target.slice(1);
     const sub = normalizeRoutePath(subRaw);
     const base = path.join(CONTENT_DIR, sub);
@@ -224,7 +224,7 @@ function checkMetaCoverage() {
           wildcards.add(p.slice(3));
           continue;
         }
-        declared.add(p);
+        declared.add(p.startsWith('!') ? p.slice(1) : p);
       }
 
       const expected = collectExpectedSlugs(dir);

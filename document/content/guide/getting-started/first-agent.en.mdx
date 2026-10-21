@@ -1,0 +1,92 @@
+---
+title: "Create Your First Agent Task"
+description: Configure Chat Agent V2 to master system prompt authoring, tool and knowledge base attachment, and execution trace inspection.
+---
+
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="prerequisites" />
+<span id="configure-and-run" />
+<span id="expected-result" />
+
+This tutorial guides you through building a Chat Agent V2 capable of autonomous planning and tool invocation, completing an end-to-end task from knowledge retrieval to structured checklist output.
+
+## Learning Goals and Prerequisites
+
+After finishing this tutorial, you will understand the core execution model of Chat Agent V2, learn how to attach tools and knowledge bases, and analyze model reasoning steps through execution traces.
+
+Before starting, verify the following prerequisites:
+- Resource creation permissions and knowledge base read permissions in your active team.
+- An available chat model supporting Function Calling (tool use).
+- Completion of the [Quick Start Tutorial](/en/guide/getting-started/quick-start), ensuring the `Corporate Travel Policy` knowledge base exists in your team.
+
+## Step 1: Create a Chat Agent V2
+
+1. Log in to the FastGPT console and navigate to the "Applications" page.
+2. Click "Create Application" in the upper right corner.
+3. Select "Chat Agent V2" from the application types, name it `Expense Audit Agent`, and click "Create".
+4. In the application orchestration view, select a chat model with tool invocation capabilities.
+
+![Select Chat Agent V2 when creating an application](/imgs/optimized/current/app-types.png.webp)
+
+## Step 2: Write Structured System Instructions
+
+In the system prompt area, enter explicit operational instructions defining the agent's decision steps and output criteria:
+
+```text
+You are a corporate travel expense audit assistant.
+Before answering user queries, invoke the knowledge base retrieval tool to fetch relevant travel policies.
+
+Output requirements:
+1. Submission deadline: State the required timeframe in calendar days after returning.
+2. Mandatory documents: Enumerate required invoices and approval forms.
+3. Review SLA: Specify the finance department processing window.
+4. Additional notes: Highlight details that users must track.
+
+Maintain an objective tone and cite facts directly from the retrieved policy.
+```
+
+## Step 3: Attach Knowledge Base and External Tools
+
+1. Under the "Knowledge Base" section in the configuration panel, click "Add" and select `Corporate Travel Policy`.
+2. In the "Tools" section, click "Add Tool". FastGPT provides built-in tools for search, code execution, and data transformation. Ensure knowledge base retrieval capability is active.
+3. Retain the default execution step limits to allow adequate reasoning depth.
+
+![Attach tools and knowledge bases](/imgs/optimized/current/agent-prompt-reference.png.webp)
+
+## Step 4: Test in Workspace and Trace Execution
+
+Enter the following test inquiry in the right-hand preview panel:
+
+```text
+I just finished a business trip. Please outline the submission deadlines and mandatory documents.
+```
+
+Submit the query and observe the runtime sequence:
+1. **Reasoning**: The agent evaluates the query and decides to call the knowledge retrieval tool first.
+2. **Tool Invocation**: The agent generates parameters `travel expense deadline documents` and queries the knowledge base.
+3. **Observation**: The tool returns relevant travel policy chunks (including 15 calendar days and approved request forms).
+4. **Synthesis**: The agent synthesizes the retrieved facts into four structured bullet points with citations.
+
+Open "Execution Details" in the chat drawer to inspect tool inputs, raw tool outputs, and execution duration for each step.
+
+![Expense audit agent returns structured checklist with policy citations](/imgs/optimized/current/agent-answer.png.webp)
+
+## Step 5: Save and Publish the Active Version
+
+1. Once the test output satisfies your requirements, click "Publish" in the top right corner.
+2. Provide a release note (for example, `v1.0.0: Initial Expense Audit Agent`) and confirm publication.
+3. The platform points the active production pointer to this release, updating all external channels immediately.
+
+## Common Troubleshooting
+
+| Symptom | Primary Investigation Path |
+| --- | --- |
+| Model answers directly without calling tools | Confirm the chosen model supports Function Calling; strengthen explicit retrieval instructions in the prompt |
+| Retrieval returns empty results | Verify that knowledge base indexing is ready; confirm dataset read permissions |
+| Tool execution timeout | Check upstream model and network connectivity; examine error traces in execution logs |
+
+## Next Steps
+
+- Deterministic logic: Build predictable multi-step pipelines in [Build Your First Workflow](/en/guide/getting-started/first-workflow).
+- Advanced parameters: Discover full agent capabilities in [Agent V2 Settings](/en/guide/build/agentv2/settings).
+- Tools and extensions: Add custom operations in [Tools and Skills Overview](/en/guide/build/tools/overview).

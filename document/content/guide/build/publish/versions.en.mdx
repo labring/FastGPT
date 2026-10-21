@@ -1,0 +1,33 @@
+---
+title: Published versions and publishing channels
+description: Understand the initial published version, drafts, debugging, and when changes reach users.
+---
+
+A published version selects runtime configuration for actual access. Publishing channels provide shared links, API access, MCP access, and other entry points. You need application editing and the relevant publishing-management permissions.
+
+![Save and publish the Travel Policy v1 configuration](/imgs/optimized/current/app-publish.png.webp)
+
+## Drafts and the initial version
+
+Creating an application creates its initial published version. The editor saves the current draft; debugging uses the configuration being edited. Publish subsequent changes to make them available through shared links, APIs, and other actual access paths.
+
+The published snapshot contains workflow nodes, edges, and chat configuration. Current application metadata, such as its name and avatar, updates independently. Existing conversations also carry message history, variables, and execution state. Start a new conversation to assess the behavior of newly published configuration clearly.
+
+## Publish a change
+
+1. Debug a known input in the editor and check output and citations.
+2. Open **Save → Save and Publish** at the top right of the editor, enter a recognizable version name, and confirm. Continue after the success notification.
+3. Open Publishing Channels and choose a [shared link](/en/guide/build/publish/link), [API](/en/guide/build/publish/openapi), or [MCP service](/en/guide/build/publish/mcp_server).
+4. Start a new conversation through that channel, repeat the test, and inspect the logs. For the travel example, verify 15 calendar days, an invoice, and the approved travel request, supported by cited passages. The hotel-allowance question should receive a missing-information response.
+
+## Content updates and configuration publishing
+
+After editing material, follow [Update material](/en/guide/dataset/update-data) to wait for indexing and check the new clauses in retrieval and a new channel conversation. Publish Application configuration when changing the Knowledge base, retrieval settings, or prompt. Check citation visibility and access limits separately in the channel settings.
+
+## Investigate version differences
+
+When debug and actual access differ, check the last published version, the application selected by the channel, conversation history, model settings, and knowledge processing status. Model wording can vary; assess facts, format, and business rules. Correct the affected configuration, complete any required publishing, and verify the answer and citation in a new conversation through the same channel.
+
+When restoring configuration from version history, read the restore and publish prompts and verify actual access again. See [Skill versions and publishing](/en/guide/build/skill/version) for the separate Skill lifecycle.
+
+Next: [conversation logs](/en/guide/build/logs).

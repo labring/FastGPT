@@ -1,0 +1,82 @@
+---
+title: "Core Concepts"
+description: Master the FastGPT system topology, entity hierarchy, and domain definitions.
+---
+
+FastGPT is built upon a clean domain model. Understanding how applications, knowledge assets, external extensions, and access boundaries interact helps you build resilient, maintainable enterprise AI systems.
+
+## System Topology Overview
+
+FastGPT organizes operational entities into configuration, runtime, and persistent storage layers:
+
+| Layer | Primary Responsibility | Included Entities |
+| --- | --- | --- |
+| Configuration | Business assets authored and governed by builders | Application drafts, collections, skill packages, tool schemas, environment variables |
+| Runtime | Scheduling engine managing executions and transitions | Conversation turns, execution snapshots, sandbox containers, MCP connections, worker queues |
+| Storage | Infrastructure providing durability and search indexing | MongoDB operational store, vector databases, full-text indexes, S3 object storage, Redis caches and queues |
+
+---
+
+## Application Entity Hierarchy
+
+In FastGPT, an **Application** is the primary unit delivering a complete conversational or procedural experience to end users and external systems.
+
+### Application Types
+
+- **Chat Agent**: A conversational application configured around a single chat model, answering queries through system instructions, context history, and attached knowledge bases.
+- **Chat Agent V2**: An advanced agent equipped with dynamic planning and tool invocation capabilities, using a ReAct loop to evaluate goals, select tools, and perform multi-step reasoning.
+- **Workflow**: A deterministic execution pipeline orchestrated with nodes and directed edges on a visual canvas, governing data transformation, conditional branching, and batch execution.
+
+### Lifecycle and Snapshots
+
+- **Draft Version**: An active workspace configuration where builders edit and test changes. The platform supports automatic draft updates and explicit manual checkpoints.
+- **Published Version**: A validated baseline frozen for production use. Publishing updates the "active production pointer" and locks a read-only **Resource Authorization Snapshot** covering referenced models, datasets, and tools.
+- **Publishing Channel**: An external ingress point exposing application functionality, including public share links, embedded chat widgets, OpenAPI keys, and MCP service endpoints.
+
+---
+
+## Knowledge Asset System
+
+A **Knowledge Base** is a structured repository of source material prepared through an automated ingestion pipeline, providing verifiable ground truth for Retrieval-Augmented Generation (RAG).
+
+### Three-Tier Organization
+
+1. **Knowledge Base**: The top-level administrative boundary defining global embedding models, text search settings, and collaborator access control.
+2. **Collection**: The organizational unit within a knowledge base. **Content Collections** store ingested files, websites, or tabular tables; **Folder Collections** group nested child collections.
+3. **Data Chunk**: The granular, independently maintainable unit of information produced by segmentation. Each chunk links to one or more searchable indexes.
+
+### Dual-Engine Indexing
+
+FastGPT pairs semantic vector retrieval with keyword-based full-text indexing:
+- **Embedding Index**: Encodes semantic features into dense vector representations, excelling at semantic similarity and synonymous expressions.
+- **Full-Text Index**: Employs tokenization and BM25 ranking for exact keyword matches, ensuring high recall for proper nouns, serial numbers, and specialized codes.
+- **Reranker**: Evaluates multi-channel candidates through a unified relevance scoring pass, delivering the most accurate contextual chunks to the model.
+
+---
+
+## Tool and Extension Ecosystem
+
+FastGPT interfaces with external platforms and custom code through modular extension standards:
+
+- **Tool**: A callable operation with explicit input and output schemas. Related operations are organized under a **Tool Set** with shared configuration and connection credentials.
+- **Workflow Tool**: A standalone workflow with declared inputs and outputs that can run independently or be mounted onto an Agent as a sub-routine.
+- **Skill**: A versioned bundle containing instructions, templates, and script assets, loaded into execution sandboxes to supply specialized procedural guidance to agents.
+- **MCP Tool**: An external tool exposed to FastGPT through the standardized Model Context Protocol.
+- **MCP Service**: A published FastGPT gateway that presents internal applications and knowledge bases as callable tools to external clients.
+
+---
+
+## Security and Permission Context
+
+The system enforces strict access control across organizations and resources:
+
+- **Team Management**: Establishes tenant boundaries. Team members hold Owner, Administrator, or Member roles.
+- **Resource Collaborator Permissions (ACL)**: Controls granular access levels (View, Edit, Manage) on individual applications and knowledge bases.
+- **Platform Administration**: Managed by platform root administrators, governing global model catalogs, tenant resource quotas, and system infrastructure.
+- **Identity Proxy**: An authorization mode where an external integration executes requests on behalf of a designated active team member, resolving access rules using that member's credentials.
+
+## Next Steps
+
+- Selection guide: Read [Choosing Application Types](/en/guide/getting-started/application-types).
+- Hands-on tutorial: Start building in [Quick Start Guide](/en/guide/getting-started/quick-start).
+- Knowledge management: Explore [Knowledge Base Lifecycle](/en/guide/dataset/lifecycle).

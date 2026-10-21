@@ -5,7 +5,7 @@ description: FastGPT system tool development guide
 
 ## Introduction
 
-This document targets system tool development after FastGPT v4.15.0. The new FastGPT Plugin service unifies system tools, model presets, and similar capabilities as installable, updatable, runtime-isolated plugin packages. A plugin is eventually delivered to the FastGPT Plugin service as a `.pkg` file.
+This document targets system tool development after FastGPT v4.15.0. System tools use SDK definitions and are delivered to the FastGPT Plugin service as `.pkg` files for installation, updates, and runtime management. Model presets use a [static configuration contribution workflow](/en/plugin/model-presets).
 
 The currently stable system tool plugin types are:
 
@@ -20,7 +20,7 @@ System tool plugins run in the runtime provided by the FastGPT Plugin service. T
 2. The plugin package protocol upgrades from the old built-in system tool directory to a unified `.pkg` format, making installation, version management, hot updates, and future plugin type expansion easier.
 3. The plugin runtime is managed by the server. The current default runtime is `local-pool`, where each plugin version has its own process pool, queue, and runtime configuration.
 4. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in build artifacts for use by FastGPT pages, workflows, and Agents.
-5. Tool development uses `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory`. The legacy `config.ts`, `versionList`, and `bun run build:pkg` flow is no longer the primary development model.
+5. Tool development uses `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory` to define schemas and build packages.
 
 ## Information To Collect Before Development
 
@@ -306,197 +306,33 @@ Notes:
 
 ## 6. Local Debugging
 
-Install dependencies in the plugin directory first:
-
-```bash
-cd packages/tools/my-tool
-pnpm install
-```
-
-View plugin and debuggable tool information:
-
-```bash
-pnpx @fastgpt-plugin/cli debug .
-```
-
-Run one single-tool debug invocation:
-
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
-```
-
-Run a child tool in a Toolkit:
-
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --tool search --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
-```
-
-Use files when input, secrets, or system variables are large:
-
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file secrets.json --system-var-file system-var.json
-```
-
-Local debug boundaries:
-
-- `ctx.invoke.uploadFile()` uses a local mock implementation and defaults to `.fastgpt-plugin-debug/uploads`.
-- Local debug quickly validates plugin logic and schemas.
-- Local debug does not simulate the production child-process pool, real Node.js IPC, network environment, server timeout, or queue scheduling.
-- Before listing an official plugin, install it manually in a test environment and complete end-to-end testing.
+Follow [local debugging](/en/plugin/debugging-and-publishing#local-debugging) to inspect tool metadata, provide inputs and secrets, and call a child tool.
 
 ## 7. Remote Debugging
 
-Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the developer running that session.
+Follow [remote debugging](/en/plugin/debugging-and-publishing#remote-debugging) to connect a local plugin to FastGPT:
 
-Before using it, confirm that the test environment has deployed the FastGPT Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
-
-### 7.1 Generate A Debug Link
-
-1. Sign in to the FastGPT test environment.
-2. Go to the System Tools page and click Local Debug.
-
-![System Tools local debug entry](/imgs/plugins/system-tool-debug-entry.png)
-
-3. In the modal, click Generate Link and copy the debug link.
-4. If a debug session already exists, click Refresh Link to generate a new connection key; the old link becomes invalid.
-
-![Generate local debug link](/imgs/plugins/system-tool-debug-link.png)
-
-The debug link is only for connecting your local CLI to the test environment. Do not commit it to code repositories, documentation examples, or chat logs.
-
-### 7.2 Start A Local Remote-Debug Session
-
-Run this command in a plugin directory or a workspace that contains multiple plugin directories:
-
-```bash
-fastgpt-plugin dev
-```
-
-After startup, paste the debug link copied from FastGPT into the TUI. The CLI exchanges the connection key from the link for a short-lived WSS connect token, then mounts local plugins to the FastGPT debug channel.
-
-Scripts and Agents can use non-interactive mode:
-
-```bash
-fastgpt-plugin dev --no-interactive \
-  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fpg_dbg_..."
-```
-
-When passing only a raw connection key, tell the CLI where the exchange endpoint is:
-
-```bash
-FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange \
-  fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
-```
-
-After `--connect` connects successfully, it saves the connection key so later `fastgpt-plugin dev` runs can reuse the local config. In the TUI, press `c` to enter and save a new debug link or connection key.
-
-### 7.3 Specify Plugin Directories And Watch Changes
-
-When no plugin directory is passed, `dev` auto-discovers plugins from the current directory. If the current directory contains `index.ts`, it is used as the plugin entry; otherwise, the CLI scans one level of child directories for `index.ts`.
-
-You can also pass one or more plugin directories explicitly:
-
-```bash
-fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
-```
-
-`--watch` reloads local plugins and recreates the remote-debug session after local file changes. The CLI reconnects by default when disconnected; use `--no-reconnect` to disable automatic reconnect.
-
-### 7.4 Verify In FastGPT
-
-After the CLI reports that remote debugging is ready, return to the FastGPT test environment:
-
-1. Check the debug plugin on the System Tools page.
-2. Select the debug tool in an app, workflow, or Agent.
-3. Fill in secrets and input parameters, then start a real invocation.
-4. Check local handler logs and errors in the CLI terminal.
-
-The debug tool `source` is bound to the currently signed-in member, so other members do not see that debug plugin by default.
-
-### 7.5 End Debugging
-
-Press `Ctrl+C` in the local terminal to close the current CLI debug session; press `Ctrl+C` again to force exit.
-
-The End Debugging action in FastGPT revokes the current member's debug channel and removes the debug plugin entry from the page. If the debug link is exposed, the signed-in member changes, or authorization needs to be renewed, use Refresh Link to generate a new link.
+- <span id="71-generate-a-debug-link" />[Generate a debug link](/en/plugin/debugging-and-publishing#21-generate-a-debug-link).
+- <span id="72-start-a-local-remote-debug-session" />[Start the CLI session](/en/plugin/debugging-and-publishing#22-start-a-local-remote-debug-session).
+- <span id="73-specify-plugin-directories-and-watch-changes" />[Select and watch plugin directories](/en/plugin/debugging-and-publishing#watch-plugin-directories).
+- <span id="74-verify-in-fastgpt" />[Verify the tool in FastGPT](/en/plugin/debugging-and-publishing#23-verify-in-fastgpt).
+- <span id="75-end-debugging" />[End the debug session](/en/plugin/debugging-and-publishing#24-end-the-debug-session).
 
 ## 8. Build, Check, And Pack
 
-Generated plugin projects normally support these commands from the plugin directory:
-
-```bash
-pnpm run test
-pnpm run build
-pnpx @fastgpt-plugin/cli check --entry . --output ./dist
-pnpm run pack
-```
-
-You can also pass directories explicitly:
-
-```bash
-pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
-pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
-pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
-```
-
-Build artifacts should include:
-
-- `dist/index.js`
-- `dist/manifest.json`
-- icon files
-- optional `README.md`
-- optional `assets/**`
-
-Packaging produces a `.pkg` file. Uploading, installation, and listing should all use that `.pkg` file.
+Use the commands in [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack), then inspect the [package artifacts](/en/plugin/package-reference#build-artifacts).
 
 ## 9. Verification Checklist
 
-Before submitting, confirm:
-
-- `index.ts` default export is correct.
-- `manifest.pluginId`, `manifest.version`, Chinese and English names, and descriptions are complete.
-- Toolkit `children[].id` values are stable and unique.
-- `inputSchema` covers all user inputs and includes required type and range constraints.
-- `outputSchema` matches handler return values.
-- `secretSchema` covers all secret configuration and sensitive fields set `isSecret: true`.
-- External API success, failure, empty response, timeout, and auth failure are handled.
-- Error messages help locate issues and do not leak secrets or sensitive responses.
-- `pnpm run test` passes, or the reason it cannot be tested is documented.
-- `build`, `check`, and `pack` pass.
-- Icons and schemas in `dist/manifest.json` are as expected.
-- Remote debugging completes a real invocation in the test environment, or the reason remote debugging is not needed for this change is documented.
-- `.pkg` can be installed in a test environment and complete a real invocation.
+Complete the [publishing verification checklist](/en/plugin/debugging-and-publishing#verification-checklist), including invalid inputs, upstream errors, and a real installation in a test environment.
 
 ## 10. Publishing Workflow
 
-### Community Plugins
+Choose a [publishing workflow](/en/plugin/debugging-and-publishing#publishing-workflow):
 
-Community plugins usually start by creating and pushing an independent GitHub repository from the plugin directory:
-
-```bash
-cd packages/tools/my-tool
-git init
-git add .
-git commit -m "feat: add my-tool plugin"
-gh repo create --public --source=. --remote=origin --push
-```
-
-Then return to the `fastgpt-community-plugins` repository, submit the submodule or reference update, and open a PR to `labring/fastgpt-community-plugins`.
-
-### Official Plugins
-
-Official plugins require:
-
-1. Code review.
-2. Build, check, test, and package.
-3. Manual `.pkg` installation in a test environment.
-4. Complete functional testing, including external APIs, secret configuration, error paths, and concurrent calls.
-5. Pre-listing security checks, focusing on SSRF, secret leakage, arbitrary file access, command execution, and dependency risk.
-
-### Business Plugins
-
-Business plugins are released to private repositories. Manage versions, secrets, installation packages, and acceptance records according to the customer delivery process. Security boundaries for external APIs, customer private addresses, and account secrets should be recorded separately.
-
-If you do not need official inclusion, see [Upload System Tool](/en/guide/build/tools/system-plugins/upload_system_tool) to use the plugin in your own FastGPT deployment.
+- <span id="community-plugins" />[Community plugins](/en/plugin/debugging-and-publishing#community-plugins).
+- <span id="official-plugins" />[Official plugins](/en/plugin/debugging-and-publishing#official-plugins).
+- <span id="business-plugins" />[Business plugins](/en/plugin/debugging-and-publishing#business-plugins).
 
 ## FAQ
 

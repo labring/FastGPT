@@ -11,23 +11,20 @@ description: Diagnose object storage connection and upload errors in self-hosted
 
 Example
 
-- ![](../../../public/imgs/faq4.png)
+- ![1.1 Error Stack Display — interface example](/imgs/optimized/faq4.png.webp)
 
 ### Possible Errors
 
-- `STORAGE_S3_FORCE_PATH_STYLE` is configured incorrectly.
+- The endpoint hostname cannot be resolved, or the client uses a virtual-hosted bucket address unsupported by the service
 
 ### Solution
 
-- Set `STORAGE_S3_FORCE_PATH_STYLE=true` so the client can resolve the object storage service using path-style addressing.
+- Check endpoint DNS resolution and network access from the FastGPT container; correct the endpoint or DNS configuration.
+- For a service that uses path-style addressing, set `STORAGE_S3_FORCE_PATH_STYLE` to `true` so the client avoids an unresolvable bucket subdomain.
 
 ---
 
 ## 2. Upload conversation file / Dataset file error
-
-Example
-
-- ![](../../../public/imgs/faq5.png)
 
 ### 2.1 SignatureDoesNotMatched
 

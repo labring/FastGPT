@@ -1,5 +1,6 @@
 'use client';
 
+import { useCurrentLang } from '@/lib/localized-navigation';
 import { usePathname } from 'next/navigation';
 import {
   createContext,
@@ -16,7 +17,6 @@ import {
 } from 'fumadocs-ui/components/layout/sidebar';
 import { type SidebarComponents } from 'fumadocs-ui/components/layout/sidebar';
 import { type PageTree } from 'fumadocs-core/server';
-import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -53,8 +53,8 @@ const isInFolder = (folder: PageTree.Folder, pathname: string): boolean => {
 
 const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
   const pathname = usePathname();
-  const { locale } = useI18n();
   const level = useContext(NestingLevelContext);
+  const lang = useCurrentLang();
   const isActive = pathname === item.url;
   const { tags, isUpgradeTag } = getSidebarItemTags(item);
 
@@ -109,7 +109,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
         )}
         {item.external && (
           <ExternalLink
-            aria-label={locale === 'en' ? 'External link' : '外部链接'}
+            aria-label={lang === 'en' ? 'External link' : '外部链接'}
             className="!size-2.5 shrink-0 text-fd-muted-foreground/60 opacity-0 transition-opacity group-hover/sidebar-item:opacity-100 group-focus-visible/sidebar-item:opacity-100"
           />
         )}

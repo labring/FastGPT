@@ -1,7 +1,10 @@
 ---
-title: Integrating ChatGLM2-6B
+title: Integrating ChatGLM2-6B (legacy integration)
 description: Integrating the private ChatGLM2-6B model with FastGPT
 ---
+
+This page retains a community model-service example and its historical OneAPI/config.json integration. For current deployments, register the reachable model service through [Model configuration](/en/self-host/config/model/intro) and verify model type, endpoint, permissions, and compatibility for your release.
+
 
 import { Alert } from '@/components/docs/Alert';
 
@@ -53,7 +56,7 @@ Wait for the model to download and load. If you encounter errors, try asking GPT
 
 On successful startup, you should see an address like this:
 
-![](../../../public/imgs/chatglm2.png)
+![Source Code Deployment — interface example](/imgs/optimized/chatglm2.png.webp)
 
 > `http://0.0.0.0:6006` is the connection address.
 
@@ -75,7 +78,7 @@ You can also set it via the environment variable: sk-key. Refer to Docker docume
 
 In One API, add a **Custom Channel**, set **Base URL** to your ChatGLM2 service address, add `chatglm2` as the custom model, and enter the service's security token as the channel key. The shared screenshot illustrates these fields with an M3E example; use `chatglm2` for this integration.
 
-![](../../../public/imgs/model-m3e1.png)
+![Connect to One API — interface example](/imgs/optimized/model-m3e1.png.webp)
 
 Here, chatglm2 is used as the language model.
 
