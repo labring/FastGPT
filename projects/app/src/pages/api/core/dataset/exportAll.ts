@@ -4,13 +4,14 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import {
   checkExportDatasetLimit,
   updateExportDatasetLimit
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -48,29 +49,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     per: WritePermissionVal
   });
 
+  // 目录不支持导出：其子知识库可能有独立权限，目录权限无法代表子知识库的读权限。
+  if (dataset.type === DatasetTypeEnum.folder) {
+    return Promise.reject(DatasetErrEnum.exportFolderNotSupported);
+  }
+
   await checkExportDatasetLimit({
     teamId,
     limitMinutes: global.feConfigs?.limit?.exportDatasetLimitMinutes
   });
 
-  const datasets = await findDatasetAndAllChildren({
-    teamId,
-    datasetId,
-    fields: '_id'
-  });
-  const datasetIds = datasets.map((d) => String(d._id));
-
   // 文件级权限：只导出当前成员可读的 Collection；undefined 表示无需过滤（团队 owner /
-  // 全部 dataset 未启用 collection 权限）。folder 导出时按后代 dataset 各自的开关解析。
+  // 未启用 collection 权限）。
   const readableCollectionIds = await resolveReadableCollectionIds({
     teamId: String(teamId),
-    datasetIds,
+    datasetIds: [String(dataset._id)],
     tmbId: String(tmbId)
   });
 
   const match = {
     teamId: new Types.ObjectId(teamId),
-    datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+    datasetId: new Types.ObjectId(dataset._id),
     ...(readableCollectionIds
       ? { collectionId: { $in: readableCollectionIds.map((id) => new Types.ObjectId(id)) } }
       : {})

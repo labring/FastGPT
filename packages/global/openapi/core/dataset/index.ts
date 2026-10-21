@@ -393,7 +393,7 @@ export const DatasetPath: OpenAPIPath = {
   '/core/dataset/exportAll': {
     get: {
       summary: '导出知识库全部数据',
-      description: '以流式 CSV 格式导出知识库及其所有子知识库的数据',
+      description: '以流式 CSV 格式导出单个知识库的数据；目录不支持导出',
       tags: [DevApiTagsMap.datasetCommon],
       requestParams: {
         query: ExportDatasetQuerySchema

@@ -1,5 +1,6 @@
 import handler from '@/pages/api/core/dataset/exportAll';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -11,7 +12,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
-import { StreamCall } from '@test/utils/request';
+import { StreamCall, Call } from '@test/utils/request';
 import { describe, expect, it, vi } from 'vitest';
 
 // 全局 mock 把 responseWriteController 变成了返回 undefined 的空函数，流式导出需要真实实现。
@@ -204,42 +205,31 @@ describe('export dataset respects collection permission', () => {
     expect(res.raw).toContain('owner-file-q');
   });
 
-  it('filters each dataset under an exported folder by its own switch', async () => {
+  it('rejects exporting a folder', async () => {
     const users = await getFakeUsers(1);
     const owner = users.owner;
-    const member = users.members[0];
     const folder = await createDataset({
       name: 'export-folder',
       owner,
       type: DatasetTypeEnum.folder
     });
-    const dataset = await createDataset({
+    const child = await createDataset({
       name: 'folder-child',
       owner,
-      parentId: String(folder._id),
-      collectionPermissionEnabled: true
-    });
-    const allowed = await createFileCollection({
-      name: 'folder-allowed',
-      owner,
-      datasetId: String(dataset._id)
+      parentId: String(folder._id)
     });
     await createFileCollection({
-      name: 'folder-restricted',
+      name: 'folder-child-file',
       owner,
-      datasetId: String(dataset._id)
+      datasetId: String(child._id)
     });
-    await grantDataset({ datasetId: String(folder._id), user: member, permission: WriteRoleVal });
-    await grantDataset({ datasetId: String(dataset._id), user: member, permission: WriteRoleVal });
-    await grantCollection({ collectionId: String(allowed._id), user: member });
 
-    const res = await StreamCall(handler, {
-      auth: member,
+    const res = await Call(handler, {
+      auth: owner,
       query: { datasetId: String(folder._id) }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.raw).toContain('folder-allowed-q');
-    expect(res.raw).not.toContain('folder-restricted-q');
+    expect(res.code).toBe(500);
+    expect(res.error).toBe(DatasetErrEnum.exportFolderNotSupported);
   });
 });

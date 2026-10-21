@@ -469,6 +469,7 @@
   "core.dataset.error.unAuthDataset": "无权操作该知识库",
   "core.dataset.error.unAuthDatasetCollection": "无权操作该知识库集合",
   "core.dataset.error.collectionPermissionDisabled": "该知识库尚未开启数据集权限，请先开启",
+  "core.dataset.error.exportFolderNotSupported": "目录不支持导出，请选择具体知识库",
   "core.dataset.error.unAuthDatasetData": "无权操作该知识库数据",
   "core.dataset.error.unAuthDatasetFile": "知识库文件鉴权失败",
   "core.dataset.error.unCreateCollection": "无权创建知识库集合",
