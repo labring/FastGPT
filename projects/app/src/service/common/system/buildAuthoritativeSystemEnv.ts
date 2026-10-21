@@ -22,6 +22,7 @@ export const buildAuthoritativeSystemEnv = ({
     ...(legacySystemEnv || {}),
     openapiPrefix: instanceConfig.site.openApiPrefix,
     fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
+    agentSandboxMax: instanceConfig.subservice.agentSandbox.common.maxEditDebug,
     workflowHttpNode: {
       ...(legacySystemEnv?.workflowHttpNode || {}),
       ignoreHttpsCertificate: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate
@@ -49,6 +50,10 @@ export const buildAuthoritativeSystemEnv = ({
     fields: [
       { path: 'site.openApiPrefix', value: instanceConfig.site.openApiPrefix },
       { path: 'security.fileUrlWhitelist', value: instanceConfig.security.fileUrlWhitelist },
+      {
+        path: 'subservice.agentSandbox.common.maxEditDebug',
+        value: instanceConfig.subservice.agentSandbox.common.maxEditDebug
+      },
       {
         path: 'security.workflowHttpNode.ignoreHttpsCertificate',
         value: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate

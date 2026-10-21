@@ -294,9 +294,7 @@ describe('migration buildSparseLegacyOverrides', () => {
     // 空对象/空数组不写覆盖项；缺 authUrl 的条目丢弃
     expect(buildLegacyProOverrides({ fastLogin: {} }).auth?.fastLogin).toBeUndefined();
     expect(buildLegacyProOverrides({ fastLogin: [] }).auth?.fastLogin).toBeUndefined();
-    expect(
-      buildLegacyProOverrides({ fastLogin: { broken: {} } }).auth?.fastLogin
-    ).toBeUndefined();
+    expect(buildLegacyProOverrides({ fastLogin: { broken: {} } }).auth?.fastLogin).toBeUndefined();
 
     // 数组分支同样过滤 authUrl 为空/缺失的条目，与对象分支语义一致
     const mixedArrayPro = buildLegacyProOverrides({
@@ -334,6 +332,15 @@ describe('migration collectEnvRehomedWarnings', () => {
 describe('migration env wiring', () => {
   const pick = (target: unknown, path: string): unknown =>
     path.split('.').reduce<any>((acc, key) => (acc == null ? acc : acc[key]), target);
+
+  it('prefers the legacy systemEnv agent sandbox limit over the env fallback', () => {
+    const overrides = buildLegacyDomainOverrides({
+      feConfigs: {},
+      systemEnv: { agentSandboxMax: 42 }
+    });
+
+    expect(pick(overrides, 'subservice.agentSandbox.common.maxEditDebug')).toBe(42);
+  });
 
   /**
    * 客户的环境变量只在这条迁移链路上进入实例配置：任何一条映射断掉，
@@ -460,7 +467,7 @@ describe('migration env wiring', () => {
         'subservice.agentSandbox.common.archiveInactiveDays',
         serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
       ],
-      ['subservice.agentSandbox.common.maxEditDebug', serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG],
+      ['subservice.agentSandbox.common.maxEditDebug', serviceEnv.AGENT_SANDBOX_MAX],
       [
         'subservice.agentSandbox.common.entrypointTimeoutSeconds',
         serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS

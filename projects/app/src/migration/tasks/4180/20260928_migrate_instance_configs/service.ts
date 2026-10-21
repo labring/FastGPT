@@ -338,7 +338,8 @@ export const buildLegacyDomainOverrides = ({
         storageSizeGi: optionalNumber(serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI),
         suspendMinutes: optionalNumber(serviceEnv.AGENT_SANDBOX_SUSPEND_MINUTES),
         archiveInactiveDays: optionalNumber(serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS),
-        maxEditDebug: optionalNumber(serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG),
+        maxEditDebug:
+          optionalNumber(systemEnv.agentSandboxMax) ?? optionalNumber(serviceEnv.AGENT_SANDBOX_MAX),
         entrypointTimeoutSeconds: optionalNumber(
           serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
         ),

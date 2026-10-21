@@ -153,7 +153,6 @@ const request = async <T>({
 }): Promise<T> => {
   try {
     const response = await instance.request<T>({
-      baseURL: serviceEnv.DINGTALK_BASE_URL,
       url,
       method,
       headers: {

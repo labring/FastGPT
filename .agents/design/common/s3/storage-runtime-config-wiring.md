@@ -74,4 +74,3 @@ global schema，放在存储域保存的 API 边界（`update.ts`）中，复用
 - bucket 构造：`createDefaultStorageOptions` 接收运行时 endpoint。
 - 迁移 seed：从环境变量写入 externalEndpoint / cdnEndpoint。
 - 管理界面：核心配置页与存储页新增 external endpoint / CDN 字段与条件校验。
-
