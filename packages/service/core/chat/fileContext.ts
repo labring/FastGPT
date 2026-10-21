@@ -20,7 +20,6 @@ import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
 import {
   S3_ACCESS_LINK_ROUTES,
-  S3SignedDownloadAliasValueSchema,
   verifyS3DownloadAccess,
   type VerifiedS3DownloadAccess
 } from '../../common/s3/accessLink';
@@ -37,7 +36,7 @@ import {
   validateChatFileInput,
   type FilePreparationContext
 } from './file/service';
-import { getFileUrlIdentity, selectFileInputs } from './file/utils';
+import { getFileUrlIdentity, isSignedDownloadAlias, selectFileInputs } from './file/utils';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = FilePreparationContext & {
@@ -69,6 +68,7 @@ type GetFileProps = {
   fileContext?: FileReadContext;
 };
 
+/** 从下载 API 或公开短路径提取 signed alias；访问权限仍由后续签名校验或 HTTP 读取判断。 */
 export const resolveSignedDownloadAliasFromUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url, 'http://localhost:3000');
@@ -90,7 +90,7 @@ export const resolveSignedDownloadAliasFromUrl = (url: string) => {
       return decodeURIComponent(lastPathSegment);
     })();
 
-    return S3SignedDownloadAliasValueSchema.safeParse(signedAlias).success ? signedAlias : '';
+    return isSignedDownloadAlias(signedAlias) ? signedAlias : '';
   } catch {
     return '';
   }
