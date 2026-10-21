@@ -12,8 +12,11 @@ projects/app/src/web/core/workflow/check/message.ts
   s_f9d56302239928::t_56bc54cac6055c 52-59
   s_f9d56302239928::t_5e5e0a991fa911 158-171
   s_f9d56302239928::t_22b547d6fa0575 13-19
+  s_f9d56302239928::t_32c05bc9596042 256-257
 packages/web/i18n/ko-KR/common.json
   s_f9d56302239928::t_6be5bd076d518f 668-674
+projects/app/src/web/core/workflow/check/resource.ts
+  s_f9d56302239928::t_c0d236aa24ece8 11-14,38-50,52-86,88-99,107-111,120-128,132-141,156-161,164,169-170,175,177-182,189-190,203-212,214-219,248-252,258-262,268-272,286-287
 ---
 {
   "schema_version": "authorship/3.0.0",
