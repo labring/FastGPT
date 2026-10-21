@@ -1236,7 +1236,7 @@ describe('createLLMResponse', () => {
       const mockAI = {
         chat: {
           completions: {
-            create: vi.fn().mockResolvedValue(mockResponse)
+            create: vi.fn().mockResolvedValueOnce(mockResponse).mockResolvedValueOnce(mockResponse)
           }
         }
       };
@@ -1278,13 +1278,14 @@ describe('createLLMResponse', () => {
       expect(result.toolCalls).toBeUndefined();
       expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
       expect(result.assistantMessage).not.toHaveProperty('tool_calls');
+      expect(mockAI.chat.completions.create).toHaveBeenCalledTimes(2);
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           response: expect.objectContaining({
             finish_reason: 'tool_calls',
             usage: expect.objectContaining({
-              inputTokens: 20,
-              outputTokens: 5
+              inputTokens: 40,
+              outputTokens: 10
             }),
             error: 'chat:LLM_model_response_empty'
           })
@@ -1489,7 +1490,7 @@ describe('createLLMResponse', () => {
       const mockAI = {
         chat: {
           completions: {
-            create: vi.fn().mockResolvedValue(mockStreamResponse)
+            create: vi.fn().mockResolvedValueOnce(mockStreamResponse).mockResolvedValueOnce(mockStreamResponse)
           }
         }
       };
@@ -1551,13 +1552,14 @@ describe('createLLMResponse', () => {
       expect(result.toolCalls).toBeUndefined();
       expect(result.responseEmptyTip).toBe('chat:LLM_model_response_empty');
       expect(result.assistantMessage).not.toHaveProperty('tool_calls');
+      expect(mockAI.chat.completions.create).toHaveBeenCalledTimes(2);
       expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           response: expect.objectContaining({
             finish_reason: 'tool_calls',
             usage: expect.objectContaining({
-              inputTokens: 20,
-              outputTokens: 5
+              inputTokens: 40,
+              outputTokens: 10
             }),
             error: 'chat:LLM_model_response_empty'
           })
