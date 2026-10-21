@@ -10,7 +10,6 @@ import {
   ChatItemContext,
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
-import RenderAgentAskInteractive from './RenderAgentAskInteractive';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
 import RenderPlanStatus from './RenderPlanStatus';
@@ -22,7 +21,6 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
-import { adaptLegacyAgentPlanAskToReadonlyAgentAsk } from './utils';
 import RenderWorkflowBuilderPreviewInteractive from './WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
 import RenderWorkflowBuilderVersion from './WorkflowBuilder/RenderWorkflowBuilderVersion';
 import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
@@ -202,25 +200,6 @@ const AIResponseBox = ({
           interactive={interactive}
           responseData={responseData}
           isLastChild={isLastChild}
-        />
-      );
-    }
-    if (interactive.type === 'agentAsk') {
-      responseBlocks.push(
-        <RenderAgentAskInteractive
-          key="interactive"
-          interactive={interactive}
-          submitted={interactive.params.submitted || !isLastChild}
-        />
-      );
-    }
-    if (interactive.type === 'agentPlanAskQuery') {
-      // 旧 ask_user 仅适配展示，不能恢复为当前轮可提交的交互。
-      responseBlocks.push(
-        <RenderAgentAskInteractive
-          key="interactive"
-          interactive={adaptLegacyAgentPlanAskToReadonlyAgentAsk(interactive)}
-          submitted={true}
         />
       );
     }

@@ -141,4 +141,39 @@ describe('Workflow Builder AI chat content', () => {
       interactive.compareDocumentPosition(process) & window.Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
   });
+
+  it('uses Ask only as a boundary and leaves the reply to the user bubble', async () => {
+    await view.render(
+      React.createElement(
+        WorkflowBuilderContent,
+        contentProps({
+          chatValue: [
+            { text: { content: 'Intermediate output' } },
+            {
+              interactive: {
+                type: 'agentAsk',
+                askId: 'ask-1',
+                params: {
+                  description: '',
+                  questions: [{ question: 'Question', options: [], answer: 'Answer' }],
+                  submitted: true
+                },
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: []
+              }
+            }
+          ],
+          isChatting: true
+        })
+      )
+    );
+
+    expect(view.container.querySelector('[data-content="interactive"]')).toBeNull();
+    expect(view.container.textContent).not.toContain('Question');
+    const processes = view.container.querySelectorAll(processSelector);
+    expect(processes).toHaveLength(2);
+    expect(processes[0].textContent).toBe('Intermediate output');
+    expect(processes[1].getAttribute('data-active')).toBe('true');
+  });
 });
