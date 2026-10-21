@@ -16,7 +16,16 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', 
     React.createElement(
       'section',
       { 'data-ai-message': '' },
-      chatValue.map((value) => value.text?.content ?? '').join(''),
+      chatValue
+        .map((value) => {
+          if (value.interactive?.type === 'workflowBuilderPreview') {
+            return value.interactive.params.sections
+              .map((section) => `${section.title}${section.content}`)
+              .join('');
+          }
+          return value.text?.content ?? '';
+        })
+        .join(''),
       children
     )
 }));
@@ -63,7 +72,7 @@ const renderChatItem = (
       )
     )
   );
-  const dom = new JSDOM(markup);
+  const dom = new JSDOM(markup, { url: 'https://fastgpt.example' });
   dom.window.document.querySelectorAll('style').forEach((style) => style.remove());
   return dom;
 };
@@ -241,18 +250,20 @@ describe('ChatItem interactive replies', () => {
         }
       ]);
       const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
-      expect(cards).toHaveLength(2);
-      expect(cards[0].textContent).toBe(`确认工作流方案？${response.expected}`);
+      expect(cards.map((card) => card.textContent)).toEqual([
+        '工作流说明预览内容',
+        `确认工作流方案？${response.expected}`,
+        '继续搭建'
+      ]);
       expect(dom.window.document.querySelector('[data-chat-id="preview-reply"] .chakra-card')).toBe(
-        cards[0].querySelector('.chakra-card')
+        cards[1].querySelector('.chakra-card')
       );
       expect(dom.window.document.querySelector('[data-chat-id="ai-1"]')?.textContent).not.toContain(
         response.expected
       );
-      expect(cards[0].querySelector('.chakra-card')).not.toBeNull();
-      expect(cards[0].querySelector('[data-ai-message]')).toBeNull();
-      expect(cards[1].textContent).toBe('继续搭建');
-      expect(dom.window.document.body.textContent).not.toContain('预览内容');
+      expect(cards[0].querySelector('[data-ai-message]')).not.toBeNull();
+      expect(cards[1].querySelector('.chakra-card')).not.toBeNull();
+      expect(cards[1].querySelector('[data-ai-message]')).toBeNull();
       expect(dom.window.document.body.textContent).not.toContain(
         'interactive.user_select.selected'
       );
