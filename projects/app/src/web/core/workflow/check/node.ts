@@ -48,6 +48,27 @@ export const checkWorkflowNodeResourceRules = ({
   context: WorkflowCheckContext;
 }): WorkflowRuleIssue[] => {
   const issues: WorkflowRuleIssue[] = [];
+  const mcpToolSet = data.toolConfig?.mcpToolSet;
+  const httpToolSet = data.toolConfig?.httpToolSet;
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !data.pluginId &&
+    mcpToolSet &&
+    'toolList' in mcpToolSet &&
+    !mcpToolSet.toolList?.length
+  ) {
+    issues.push({ code: 'tool_set_not_configured' });
+  }
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !data.pluginId &&
+    httpToolSet &&
+    'toolList' in httpToolSet &&
+    !httpToolSet.toolList?.length
+  ) {
+    issues.push({ code: 'tool_set_not_configured' });
+  }
+
   const isToolNode = context.incomingEdgesMap
     .get(data.nodeId)
     ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);

@@ -686,6 +686,7 @@
   "core.workflow.check.status.pending_handle": "To handle",
   "core.workflow.check.status.pending_improve": "To complete",
   "core.workflow.check.tool_call_empty": "Configure a tool or enable virtual machine",
+  "core.workflow.check.tool_set_not_configured": "This tool set is not configured",
   "core.workflow.check.tool_inactive": "This tool is not activated yet, please activate it",
   "core.workflow.check.tool_load_failed": "Failed to load this tool, please try again later",
   "core.workflow.check.tool_missing": "This tool does not exist or has been deleted",
