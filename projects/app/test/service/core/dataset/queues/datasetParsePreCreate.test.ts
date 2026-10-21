@@ -1,5 +1,4 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -153,17 +152,20 @@ describe('datasetParseQueue creates index-ready data', () => {
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
   });
 
-  it('pauses an AI points failure through the shared lease', async () => {
+  /** 余额不足只跳过当前任务，锁定交给下一轮领取时的起始校验，避免重复锁团队任务。 */
+  it('skips an AI points failure without locking the task', async () => {
     const { task, collection } = await createTask();
     vi.mocked(checkDatasetIndexLimit).mockRejectedValueOnce(TeamErrEnum.aiPointsNotEnough);
     await datasetParseQueue();
-    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
-      retryCount: 4,
-      lockTime: BLOCKED_LOCK_TIME,
-      errorMsg: i18nT('common:code_error.team_error.ai_points_not_enough')
-    });
+
+    const saved = await MongoDatasetTraining.findById(task._id).lean();
+    expect(saved).toMatchObject({ retryCount: 5 });
+    expect(saved?.errorMsg).toBeUndefined();
+    // 任务保持被本次领取租住的状态，而非 BLOCKED_LOCK_TIME。
+    expect(new Date(saved!.lockTime).getTime()).toBeGreaterThan(Date.now() - 60_000);
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
-    expect(checkTeamAiPointsAndLock).toHaveBeenCalledWith(String(task.teamId), String(task._id));
+    // 只有任务开始时的团队校验，catch 分支不再重复锁定。
+    expect(checkTeamAiPointsAndLock).toHaveBeenCalledTimes(1);
   });
 
   /** CT-01：解析执行前数据列表不含本次分块。 */

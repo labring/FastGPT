@@ -394,24 +394,13 @@ export const datasetParseQueue = async (): Promise<any> => {
           }
 
           if (quotaErrorCode === TeamErrEnum.aiPointsNotEnough) {
-            logger.warn('Parse queue AI points limit exceeded, locking task', {
+            // 任务开始时已校验过团队余额；这里说明执行期间余额被其它任务消耗。
+            // 不再重复锁定，交由下一轮领取任务时的起始校验统一暂停该团队任务。
+            logger.warn('Parse queue AI points limit exceeded, skipping task', {
               trainingId: data._id,
               datasetId: data.datasetId,
               collectionId: data.collectionId
             });
-            await taskLease.fail(i18nT('common:code_error.team_error.ai_points_not_enough'), {
-              blocked: true
-            });
-            const pointsAvailable = await checkTeamAiPointsAndLock(data.teamId, String(data._id));
-            if (pointsAvailable) {
-              logger.warn(
-                'Parse queue AI points check mismatch: task blocked but team lock skipped',
-                {
-                  trainingId: data._id,
-                  teamId: data.teamId
-                }
-              );
-            }
 
             continue;
           }
