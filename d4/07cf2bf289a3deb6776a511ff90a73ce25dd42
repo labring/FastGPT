@@ -1,0 +1,23 @@
+projects/app/Dockerfile
+  433576241fe41354 48-55,89,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "d407cf2bf289a3deb6776a511ff90a73ce25dd42",
+  "prompts": {
+    "433576241fe41354": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5287081-ccf8-4baf-9797-c928239f5caf",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 1,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}

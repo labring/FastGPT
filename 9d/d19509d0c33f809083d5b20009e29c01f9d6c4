@@ -1,0 +1,70 @@
+packages/global/support/permission/constant.ts
+  s_d6c2054d7020f0::t_09d36cfd36aee5 26-29
+  s_d6c2054d7020f0::t_41e00f978c3116 25,30-32
+packages/service/support/permission/inheritPermission.ts
+  s_d6c2054d7020f0::t_4dd8f267d3dfa7 319
+  s_d6c2054d7020f0::t_53a720529744ca 291
+  s_d6c2054d7020f0::t_79959ee8ea23dc 304
+projects/app/src/pages/api/core/dataset/list.ts
+  s_d6c2054d7020f0::t_6c124ae4528bd5 116-124
+  s_d6c2054d7020f0::t_e35860cd217bee 18
+packages/global/support/permission/backfill/controller.schema.ts
+  s_d6c2054d7020f0::t_d6953544bb661b 81-83
+  s_d6c2054d7020f0::t_26de5e046e41db 1-51,56-71,73-77
+  s_d6c2054d7020f0::t_0608b77738ee9f 52-55
+  s_d6c2054d7020f0::t_7b808f2d293bfc 72
+  s_d6c2054d7020f0::t_aae3446f3be31e 78-80
+packages/service/test/support/permission/backfill.test.ts
+  s_d6c2054d7020f0::t_829337ebc6d283 1,3-229,231-246
+  s_d6c2054d7020f0::t_803c4c60dd89e3 2
+  s_d6c2054d7020f0::t_4830bcb66278ce 230
+packages/service/support/permission/backfill.ts
+  s_d6c2054d7020f0::t_2d867823ef997f 1-11,13-22,33,37,40-41,45-52,54-63,65-67,69-78,84-135,142-143,147-150,153-168,170-182,191-192,196-197
+  s_d6c2054d7020f0::t_23b15dcf23048f 12,23,25-32
+  s_d6c2054d7020f0::t_28a55adad177a7 24
+  s_d6c2054d7020f0::t_32613e6ad79fdb 34-36
+  s_d6c2054d7020f0::t_19a6b5823ad1e9 79-83,136-141,144-146,183-188,193-195,200-202
+  s_d6c2054d7020f0::t_7ec9b9ce7774ff 68
+  s_d6c2054d7020f0::t_544bcea5b91d19 189-190
+  s_d6c2054d7020f0::t_52189a63fda685 38-39,42-44
+  s_d6c2054d7020f0::t_2e4bbf65727ca8 203-217
+  s_d6c2054d7020f0::t_4810bde2b35753 151-152
+  s_d6c2054d7020f0::t_617adcfa52e214 53
+  s_d6c2054d7020f0::t_2cab5cfbddfc5f 169
+  s_d6c2054d7020f0::t_392b2c5fce8e3d 198-199
+  s_d6c2054d7020f0::t_b56f040131787b 64
+packages/service/support/permission/listQuery.ts
+  s_d6c2054d7020f0::t_1b6862fc5bfa97 4-7,32,55,59,63,66-80,124,126-155
+  s_d6c2054d7020f0::t_44fd5ffd4ad728 33-36
+  s_d6c2054d7020f0::t_02b18329e4a144 108
+packages/service/test/support/permission/listQuery.test.ts
+  s_d6c2054d7020f0::t_ce1e41b45bf296 3
+  s_d6c2054d7020f0::t_c648d0eb18e64a 182,184-189,192-207,209-210,212,215-216,219
+  s_d6c2054d7020f0::t_0b69d0d9768588 221-222
+  s_d6c2054d7020f0::t_f8177b6c87fbee 125-153,220
+packages/service/core/ai/skill/manage/list.ts
+  s_d6c2054d7020f0::t_1136f059052b16 13
+  s_d6c2054d7020f0::t_23bbbabe069363 157-165,176,181
+projects/app/src/pages/api/admin/dataClean/backfillResourcePermissions.ts
+  s_d6c2054d7020f0::t_711dea3046af32 1-35
+projects/app/src/pages/api/core/app/list.ts
+  s_d6c2054d7020f0::t_153277d9965f6b 140-142
+  s_d6c2054d7020f0::t_15b3c69994919c 18
+  s_d6c2054d7020f0::t_371b9394614668 136-139,143-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "9dd19509d0c33f809083d5b20009e29c01f9d6c4",
+  "prompts": {},
+  "sessions": {
+    "s_d6c2054d7020f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f9aeb27-7f8a-49e5-9e81-1bf72a832433",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": null
+    }
+  }
+}

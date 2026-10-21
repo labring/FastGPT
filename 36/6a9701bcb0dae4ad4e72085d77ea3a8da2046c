@@ -1,0 +1,113 @@
+projects/app/test/api/core/dataset/listV2.test.ts
+  s_e191a0c9697798::t_3a83bc113ddcac 48-50
+  s_e191a0c9697798::t_997d52372d597f 8
+  s_e191a0c9697798::t_cb975cdaf352a6 1,17,19-21,23-32,47
+  s_e191a0c9697798::t_8f0f83beb37749 230-234
+  s_e191a0c9697798::t_2764cf121dc722 22
+  s_e191a0c9697798::t_33ca963285d1ee 2-7,10-16,33-46,51-229
+  s_e191a0c9697798::t_3984508934b740 9
+  s_e191a0c9697798::t_0e40535c591587 18
+projects/app/src/pages/api/core/ai/skill/listV2.ts
+  s_e191a0c9697798::t_efe78e6444a15a 1-80,83-85
+  s_e191a0c9697798::t_6732d4d84f094d 81-82
+packages/global/openapi/core/app/common/index.ts
+  s_e191a0c9697798::t_9cb2f54ebe6485 50-76
+  s_e191a0c9697798::t_e8ec5a6faea1e8 16-17
+  s_e191a0c9697798::t_9dad693fa19bb1 77
+packages/service/core/dataset/schema.ts
+  s_e191a0c9697798::t_b5c0308d93561f 158-164
+packages/service/core/ai/skill/model/schema.ts
+  s_e191a0c9697798::t_0923ad5921666e 136-148
+projects/app/test/openapi/v2Pagination.test.ts
+  s_e191a0c9697798::t_91b3322aba16b9 6
+  s_e191a0c9697798::t_d9c11a0a2dd53d 13-16,61-66,89-91
+  s_e191a0c9697798::t_b18d2c201a7b0c 114-144,151,159,172,179,191,198,231,244-245
+  s_e191a0c9697798::t_23ce0b7562c1d7 1-5,7-12,17-60,67-88,92-113,145-150,152-158,160-171,173-178,180-190,192-197,199-230,232-243,246-252
+  s_e191a0c9697798::t_10699904e64bf8 253-259
+packages/global/openapi/core/dataset/api.ts
+  s_e191a0c9697798::t_d9c11a0a2dd53d 13
+  s_e191a0c9697798::t_cccf10d792dbf2 204-206
+  s_e191a0c9697798::t_9802068d75570d 12
+  s_e191a0c9697798::t_564bc8859fecd2 207-238
+  s_e191a0c9697798::t_49754dae52f838 14-15
+packages/global/common/error/code/common.ts
+  s_e191a0c9697798::t_df8c3b419f3eff 50-54
+  s_e191a0c9697798::t_45c2274637ab46 14-15
+projects/app/src/pages/api/core/dataset/listV2.ts
+  s_e191a0c9697798::t_257deec4dad4ab 201-202
+  s_e191a0c9697798::t_b3c8d330aafced 206-209
+  s_e191a0c9697798::t_3bdc807e94d5be 1-200,203-205
+packages/service/core/ai/skill/manage/listV2.ts
+  s_e191a0c9697798::t_96b9cd7de328ca 17-18,20
+  s_e191a0c9697798::t_0934a7c3ffc56b 253-258
+  s_e191a0c9697798::t_b7a608bcd8db94 70-74
+  s_e191a0c9697798::t_d3556ceeb3b954 1-16,19,21-69,75-252
+packages/service/common/api/paginationV2.ts
+  s_e191a0c9697798::t_159ead18b761e4 1-18
+packages/global/openapi/core/ai/skill/index.ts
+  s_e191a0c9697798::t_b903cefed42290 87
+  s_e191a0c9697798::t_956e583b15db05 22-23
+  s_e191a0c9697798::t_421a683564a45f 60-86
+projects/app/test/service/support/permission/resource/readable.test.ts
+  s_e191a0c9697798::t_c240bffc66241f 100
+  s_e191a0c9697798::t_6eec636eac3810 180
+  s_e191a0c9697798::t_b2b0ed88797834 14
+  s_e191a0c9697798::t_4fa0ab16c9c9c7 1-13,15-99,101-138,140-179,181-287
+  s_e191a0c9697798::t_ecd91a44a24768 139
+projects/app/test/api/core/ai/skill/listV2.test.ts
+  s_e191a0c9697798::t_092b6f3682d16b 1-138,140-181,187-244
+  s_e191a0c9697798::t_f73aad41eccaf3 139
+  s_e191a0c9697798::t_021d84f10441d3 245-248
+  s_e191a0c9697798::t_447a3dae794350 182-186
+packages/global/openapi/pagination.ts
+  s_e191a0c9697798::t_a8f3eb01e88e02 26
+  s_e191a0c9697798::t_1d539c6ba9f1e2 1-25,27-30
+packages/service/core/app/schema.ts
+  s_e191a0c9697798::t_1e8a2d50515bba 143-149
+projects/app/test/api/core/app/listV2.test.ts
+  s_e191a0c9697798::t_2ae606b78bb24e 311-315
+  s_e191a0c9697798::t_779b4994b4723d 1-310
+packages/global/openapi/core/ai/skill/api.ts
+  s_e191a0c9697798::t_a6bf0cfc8e49f5 16
+  s_e191a0c9697798::t_e736ce666c1377 17
+  s_e191a0c9697798::t_d9c11a0a2dd53d 18
+  s_e191a0c9697798::t_73398beed27257 63-111
+projects/app/src/pages/api/core/app/listV2.ts
+  s_e191a0c9697798::t_7b5314b9ea65c7 83
+  s_e191a0c9697798::t_aa53a86ebf376e 142,146-147,149
+  s_e191a0c9697798::t_e4fcd748cce642 14-15
+  s_e191a0c9697798::t_ca7924b0a1cace 1-13,16-82,84-141,143-145,148,150-212
+packages/service/support/permission/resource/readable.ts
+  s_e191a0c9697798::t_b6d336afb3bcef 17-19
+  s_e191a0c9697798::t_273c018c81151f 2-3
+  s_e191a0c9697798::t_2d9efb409b0f33 208-212
+  s_e191a0c9697798::t_a2547267f6863a 1,7
+  s_e191a0c9697798::t_a32c27b414542f 4-6,8-16,20-109,111-207
+  s_e191a0c9697798::t_8cde5d733bb130 110
+packages/global/openapi/core/app/common/api.ts
+  s_e191a0c9697798::t_d9b80e4c503ca2 263
+  s_e191a0c9697798::t_b321e5ca701806 18,20
+  s_e191a0c9697798::t_d9c11a0a2dd53d 19
+  s_e191a0c9697798::t_df1dcfce195767 262,264-311,313-318
+  s_e191a0c9697798::t_6b6cce25e15256 312
+packages/global/openapi/core/dataset/index.ts
+  s_e191a0c9697798::t_7e3660048fd784 103-129
+  s_e191a0c9697798::t_c0482dc6d9a69d 21-23
+  s_e191a0c9697798::t_73f38abf5e8d4d 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "366a9701bcb0dae4ad4e72085d77ea3a8da2046c",
+  "prompts": {},
+  "sessions": {
+    "s_e191a0c9697798": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b82278c-d851-45c6-a445-d85a4a84d089",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": null
+    }
+  }
+}

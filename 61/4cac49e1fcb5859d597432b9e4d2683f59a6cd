@@ -1,0 +1,60 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "614cac49e1fcb5859d597432b9e4d2683f59a6cd",
+  "prompts": {
+    "0095fa4d45e84850": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fff8dfe-abbb-4584-a3b2-e617f3325e79",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 70,
+      "total_deletions": 68,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    },
+    "10fbcc73372792ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9137ce80-78f7-411a-bd74-81311a56d586",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 6,
+      "accepted_lines": 30,
+      "overriden_lines": 0
+    },
+    "89f2c45095d57d7e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fc31e90-4931-4f3e-aacc-7c217a99cdbb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 2,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "b8ee9d78018280e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dee1577e-e74d-4d3c-a9f9-8b602bcc1ac1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 1,
+      "accepted_lines": 25,
+      "overriden_lines": 1
+    }
+  }
+}

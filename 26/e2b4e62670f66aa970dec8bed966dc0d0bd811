@@ -1,0 +1,836 @@
+packages/web/common/file/uploader/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-117
+packages/service/common/s3/accessLink/uploadSession/schema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 23,38-42
+projects/app/test/components/core/chat/components/AIResponseBox/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3-6,24-53
+  s_d6c2054d7020f0::t_a04d9183b72705 54-55
+packages/service/core/ai/llm/agentLoop/provider/piAgent/run.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 18-22,223-229,412
+packages/service/test/core/workflow/dispatch/tools/runTool.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10-26,42-44,71,78-79,85,133-139,220-252,273-320
+packages/web/i18n/zh-Hant/dataset.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,181
+sdk/storage/src/access-link/stores.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 22-38
+packages/global/core/app/tool/httpTool/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-10,13-17,21-62
+  s_d6c2054d7020f0::t_a512703076427f 63
+packages/service/common/file/read/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,76,134,275,285-286
+document/content/self-host/upgrading/4-15/meta.en.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 4
+sdk/storage/src/access-link/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 52
+document/content/guide/dataset/meta.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 4
+packages/service/test/core/app/tool/systemTool/systemTool.repo.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-5,13,222,231-232,245,447-637,1248-1334
+packages/service/common/s3/sources/avatar/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6,20,25,29-34,36-37,41
+projects/app/src/pageComponents/app/tool/SecretInputModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 107-109,113,187,368-375
+projects/app/test/components/core/chat/ChatContainer/ChatBox/interactive.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9-11,97-99,143,154-174,177-221,254-295,341,359-406,416,419-429,434,437-447,450-453,455-460,462,465-525,568-627
+  s_d6c2054d7020f0::t_d2ad8658132c02 628
+sdk/storage/src/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5-6
+document/content/self-host/upgrading/4-15/4155.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,6-12
+packages/service/core/app/tool/secretConfig.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-41
+.agents/design/core/ai/auxiliary-generation.md
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,5,51,53-55,58,60-85
+projects/app/public/imgs/skill/importActionIcon.svg
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-14
+packages/service/common/s3/sources/dataset/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8-9
+projects/app/src/pageComponents/dataset/detail/Import/diffSource/FileLocal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,17,52,55-61,77-78,80-85,87-88,90-112,114-131,133-134,146-147,178-182,188-192
+packages/service/core/ai/llm/agentLoop/domain/mainPrompt.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,3,5-8,10-13,15-36
+packages/service/test/common/s3/sources/dataset.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-77
+packages/service/test/common/s3/buckets/uploadAccess.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-70
+packages/service/common/api/frequencyLimit.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,78-80
+packages/service/test/core/ai/sandbox/infrastructure/provider/runtimeProfile.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8-9,33,79,123
+projects/app/src/pageComponents/app/detail/Edit/SimpleApp/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 441-445,550,607
+sdk/storage/src/adapters/aws-s3.adapter.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-3,9,19-24,27-37,39,45-47,50-55,61-62,66,74,81,95-97,102,108,126-127,136,140,163-279,285,305,310,322-324,336,340,357-359,363,369,386,407-409,433,464-466,474,491-493,530,534,540,567-569,580
+packages/service/common/s3/sources/chat/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 17,102-113,125
+projects/app/src/pageComponents/chat/ChatQuoteList/CollectionQuoteItem.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 16,30,51,107,123-126
+packages/service/core/app/controller.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-5,8-9,52,80,106-153
+packages/service/test/common/file/read/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 14-15,24-33,56-59,107-110,164,186-204,288,312-316
+packages/service/test/core/workflow/dispatch/ai/agent/adapter/userContext.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1050,1053-1062,1064
+packages/service/common/s3/buckets/base.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-13,17,19-28,30-37,43-49,55-61,63-65,180-259,266-270,274-293,298,316,356-357,384-938,978,984,997-998
+packages/web/common/file/uploader/types.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-33
+document/content/toc.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 61,170
+packages/global/core/app/tool/systemTool/codec.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,91-92,97,99-100
+packages/web/i18n/zh-Hant/chat.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 291-297
+packages/global/package.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 18
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/PluginInput.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 118,121-123,129,153,169
+projects/app/src/pages/api/core/dataset/exportAll.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 13,26-31,56-92,99-101,110,115-122
+packages/service/test/core/ai/llm/agentLoop/piAgentProvider.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 305,1463-1472
+packages/global/support/permission/dataClean/controller.schema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-113
+packages/service/worker/readFile/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 42-45
+projects/app/src/components/core/chat/components/AIResponseBox/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 13,24,175,177,180,184-194
+projects/app/public/imgs/skill/createActionIcon.svg
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-21
+projects/app/src/pageComponents/app/detail/Edit/FormComponent/ToolSelector/SkillSelectModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-3,16-22,26-79,92-99,106-107,112-122,124-128,130-150,152-208,210-212,214-218,220-305,349-356,371,388-389,408-409
+projects/app/src/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 20,22-26,73-74
+packages/global/core/chat/adapt.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 22,387-401
+packages/global/openapi/core/dataset/collection/createPath.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 236,240,242,263,267,269
+packages/service/worker/function.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 40
+projects/app/src/pages/api/core/plugin/admin/tool/detail.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 33-34
+projects/app/src/pageComponents/dashboard/skill/SkillEmptyActionCard.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-210
+projects/app/src/pages/api/core/plugin/admin/tool/update.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11-17,30-32,50-67,81,101-109,125
+projects/app/src/pages/api/system/file/u/[token].ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9-13,15-22,29,31,37-49
+  s_d6c2054d7020f0::t_8b7ca3baf00c15 50
+document/data/doc-last-modified.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 114-115,172-173,184-189
+  s_d6c2054d7020f0::t_6579e3893f15dc 334-335,476-477
+packages/service/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,58
+.agents/design/core/ai/sandbox/user-level-sandbox.md
+  s_d6c2054d7020f0::t_c19b910b2223d5 226-231,373
+projects/app/src/web/core/chat/context/useChatStore.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 13,69-83,135,303-312
+sdk/storage/src/adapters/r2.adapter.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-9
+packages/global/common/file/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9-13
+sdk/storage/test/unit/access-link.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 381-382,415-672,680,689,717
+sdk/storage/test/unit/mock.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,47-118
+  s_d6c2054d7020f0::t_69250c561a0501 119
+packages/service/test/core/ai/sandbox/application/runtime/client.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6
+packages/service/common/s3/config/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 20-30
+packages/service/test/core/ai/llm/agentLoop/mainPrompt.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,4-18,22,24-41,45-64
+packages/web/common/file/uploader/single.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-33
+projects/app/public/imgs/skill/createFirstSkillIcon.svg
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-9
+packages/service/core/dataset/search/defaultRecall/constant.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 15-16
+projects/app/src/pageComponents/dashboard/skill/List.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,48,186,190-191,200,236,246,263,281,315,416,527-528,542,592,595,598
+  s_d6c2054d7020f0::t_5caad3c4d504fc 197
+packages/service/core/dataset/search/defaultRecall/result.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 40
+document/content/self-host/config/env.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 75
+packages/global/openapi/core/dataset/collection/createApi.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 175,188-192,197,210-214
+packages/service/core/ai/auxiliaryGeneration/agentLoop.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-4,6,23-26,30,32-34,46-50,63,66,68-72,81-86,92-94,112
+document/content/self-host/config/sandbox/sealosdevbox.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 34,37
+document/content/self-host/config/sandbox/opensandbox.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 66
+projects/app/src/pageComponents/app/detail/components/QuickCreateDatasetModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,34,57-70,98-100,102-111,113-114,116-118,133,135-153,155-156,168-169,232,368
+projects/app/src/service/common/s3/proxy.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,16,36,111-112,152,417,453-624,678-690,693
+  s_d6c2054d7020f0::t_e54f2fd33a75c6 691-692,694
+sdk/storage/src/types.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 126-222
+  s_d6c2054d7020f0::t_0b7f5af5bcf36f 125
+sdk/storage/test/integration/providers.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 360
+packages/service/test/core/dataset/read.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3-4,7-10,19-33,42-43,82-138
+packages/web/i18n/zh-Hant/skill.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,27-28,37-38
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeSimple.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 47
+projects/app/src/pages/api/core/dataset/data/insertData.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 27,85-86
+projects/app/test/web/core/skill/createSkillBodySchema.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-27
+packages/service/test/core/ai/skill/controller.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 19,344,347-350,353-359,364-365,367,371-374,378-384,387-393
+packages/global/test/core/app/tool/httpTool/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5-7,23-61
+packages/service/common/s3/models/ttl.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-26,39-42
+packages/service/common/s3/sources/dataset/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 22,57-58,60-75,79
+projects/app/src/pageComponents/config/tool/SystemToolConfigModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 57-58,460-495
+  s_d6c2054d7020f0::t_fee52554d700c1 496
+packages/service/core/dataset/training/schema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 71-73
+packages/service/core/ai/skill/manage/import.ts
+  s_d6c2054d7020f0::t_7ce8c2cb630a1f 16-23
+  s_d6c2054d7020f0::t_c19b910b2223d5 3-6,9,14,26,28-32,34-42,45,61,65-66
+  s_d6c2054d7020f0::t_7b44e11318c3f4 15
+packages/web/i18n/zh-CN/skill.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,27-28,37-38
+projects/app/src/components/core/chat/ChatContainer/ChatBox/utils/interactive.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 7-11,17-51,54,56,66,71,74,83-117,129-133,284-285,317,333,344,412-428
+  s_d6c2054d7020f0::t_91546621a063d9 429
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/assistantResponses/fromEvents.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 139-140,144-152,167-168
+packages/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6,17-24
+packages/web/i18n/zh-Hant/app.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 139
+projects/app/src/pageComponents/chat/ChatQuoteList/CollectionQuoteReader.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 26,32,114-115,123-127,129-139,249,307,324,346-352
+document/content/self-host/config/sandbox/common.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 74-80
+projects/app/src/pages/api/core/ai/skill/import.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8-10,30-34,36-38,40-42,44-46,48-50,54,56-57,64-86,88,90
+projects/app/src/web/core/chat/context/chatItemContext.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 76,84
+packages/service/common/s3/accessLink/uploadSession/service.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,23-63
+  s_d6c2054d7020f0::t_5c7fa3c921ef5c 64
+packages/service/test/core/ai/sandbox/application/legacyMigration/service.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 121-122,134,420-461,479-482
+packages/global/core/chat/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 313-317
+packages/service/common/s3/accessLink/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-3,78-117,122-123,129-130,134-153,162-163
+projects/app/src/pageComponents/dataset/detail/Import/components/FileSourceSelector.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-3,20-21,35-57
+projects/app/src/pages/api/core/ai/sandbox/upload.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 7,9,19,21-27,29-33,35-37,39-50,52-53,55-59,61-62,64-76,78-82
+projects/app/src/web/core/skill/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,29-30,73-85
+projects/app/src/pageComponents/app/detail/Edit/component/ConfigToolModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,60,449-458,463-473
+packages/web/i18n/en/dataset.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,181
+sdk/storage/src/interface.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,71,102-110,112-117,234-235,255,258,266,278-312,321,329,338-340,353-355,368-370,378-380,385-387,399,404,413-415
+packages/service/test/worker/readFile/extension/xlsx.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,26-37,73-76,103-140
+projects/app/src/pageComponents/app/detail/Edit/HTTPTools/ManualToolModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 39-40,57-60,79,115,160,289
+projects/app/test/service/core/dataset/queues/parseLease.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-149
+projects/app/src/web/common/hooks/useEditTitle.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-3,80-81,85,90-103,105-116
+document/content/self-host/upgrading/4-16/41601.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,25-31,37-48,72-82,85-109,118-120,130,143-145,153-154
+projects/app/test/api/system/file/accessLink.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,11-12,89-90,95-98,104-126,128,424,433,460,492-740,747,794
+document/content/self-host/config/sandbox/opensandbox.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 67
+packages/service/test/core/ai/llm/agentLoop/fastAgentLoop.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 71,148,164,448-456,476-484,496,524-536
+packages/service/test/core/workflow/dispatch/ai/agent/sub/tool/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1060
+projects/app/src/components/Markdown/A.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 17,42,82,101-107,112-147,164
+sdk/storage/src/access-link/guards.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-5,15,56-112,162,297-309,314-316,324,342-350,354-356,367
+README.md
+  s_d6c2054d7020f0::t_c19b910b2223d5 16,48,71-72,89,95,101
+projects/app/src/pageComponents/app/detail/WorkflowComponents/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 77-82
+packages/service/test/core/chat/utils/prepare.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 293-349
+packages/service/core/ai/llm/agentLoop/domain/systemTool/ask/tool.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-5,8,10-13,16-38,64,66-68,70-98,102
+sdk/storage/src/assert.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,106-162
+packages/web/hooks/useLinkedScroll.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 11-14,25,32,255,269,289
+projects/app/src/pages/api/core/app/update.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 135
+packages/service/core/dataset/training/controller.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 196
+packages/service/core/ai/auxiliaryGeneration/service.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 25,73
+projects/app/src/pages/api/core/dataset/collection/create/template.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 16,45,48-52,54,81
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeExtract/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 176
+projects/app/test/pages/api/admin/4160/initUserSandbox.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 61-63,73-74
+packages/service/core/chat/saveChat.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 36,759,763-776
+packages/service/test/core/workflow/dispatch/ai/toolcall/toolProvider/createToolCallToolProvider.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3-6,27-33,75-77
+packages/global/core/workflow/template/system/interactive/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,99-116,118-124,171-187,207-208
+projects/app/src/pages/api/system/file/u/[token]/abort.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-28
+projects/app/src/pageComponents/dashboard/skill/ImportSkillModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 19,35,65,70,72-77,87,92-95,111,114-116,246
+projects/app/test/service/common/file/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-371
+sdk/storage/test/unit/adapters/cos.adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 15-187,246-250
+packages/global/core/app/tool/systemTool/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 35-37
+packages/service/core/ai/sandbox/application/runtime/skill/prepare.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,11-12,18-19,25,28,40-54
+packages/service/core/ai/sandbox/infrastructure/volume/config.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 25
+packages/service/core/dataset/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 15-19,21-22,25-28,44,100-101
+document/content/self-host/config/sandbox/common.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 74-80
+packages/global/core/ai/agent/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-28
+packages/global/openapi/core/ai/sandbox/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-7,46,48-50,53-54
+packages/service/test/core/ai/sandbox/application/skillEdit/runtime.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 24,114,119,299
+packages/web/i18n/en/app.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 143
+projects/app/src/components/core/chat/ChatContainer/ChatBox/components/ChatItem.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 13-16,208-212,214-248
+projects/app/src/pageComponents/chat/SandboxEditor/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9,13,30,127,132-139
+packages/service/common/s3/lifecycle/cleanup.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9-12,32-33,36-49,53,55-56,63-74
+packages/service/common/s3/sources/skill/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,46-47,50,56,59
+projects/app/src/pages/api/system/file/upload/[token].ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 34
+projects/app/test/pages/api/admin/dataClean/cleanupDanglingResourcePermissions.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-43
+packages/service/test/core/ai/sandbox/infrastructure/volume/config.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 19
+packages/web/components/common/EmptyTip/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 9,12,17
+projects/app/test/web/common/api/request.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,130-148
+  s_d6c2054d7020f0::t_17a6cbfad9c582 149-151
+packages/service/test/core/ai/sandbox/application/runtime/skill/prepare.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-82
+packages/global/openapi/core/ai/skill/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 15,139,141-143,146-151
+packages/service/test/core/app/tool/systemTool/secrets.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-78
+projects/app/src/components/core/chat/components/AIResponseBox/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-4,12-36
+packages/service/test/common/s3/buckets/base.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-8,10-12,14-22,24-28,30-34,36-389,391-409,411-422,424-446,449-562,564-753
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 203
+projects/app/src/pageComponents/chat/ChatQuoteList/QuoteItem.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 12,19,30,98,116
+projects/app/src/pages/chat/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 118
+packages/service/env.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 106-107,168-169
+  s_d6c2054d7020f0::t_923462698dced1 170
+packages/global/openapi/core/dataset/file/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 127-129,139-142,148,154-216,232-235
+packages/service/test/core/ai/sandbox/application/runtime/client.integration.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 46,67
+projects/app/src/service/core/dataset/queues/generateVector.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 360
+packages/global/openapi/admin/support/wallet/coupon/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 33,58-82
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 44,243,245-247,255,269-272,294
+projects/app/src/components/core/chat/ChatContainer/ChatBox/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 19,26-27,470-475,727-759
+packages/web/components/common/Icon/icons/common/edit-filled.svg
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-3
+packages/global/core/app/jsonschema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 19-20,272-277,287-293,297-320,420-426,434,436,455,468,507,509,517-522,529-530,720,764-765,767-768,860-876,891-893,910,921
+projects/app/src/pageComponents/dataset/detail/NavBar.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 101
+sdk/storage/test/integration/minio/minio.integration.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-2,33-101,213-250
+projects/app/test/service/common/s3/proxy.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4,183-229
+  s_d6c2054d7020f0::t_c1cad6237cc5dc 230-231
+packages/global/openapi/core/ai/skill/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 62,141-142,148
+packages/service/core/ai/llm/agentLoop/domain/systemTool/ask/parser.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-6,48-80
+  s_d6c2054d7020f0::t_1fb4a911a2bc47 81
+packages/web/i18n/zh-CN/app.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 143
+packages/service/core/ai/sandbox/application/skillEdit/runtime.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 60,328-329
+packages/service/core/ai/auxiliaryGeneration/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 20,35,56
+projects/app/src/pageComponents/dataset/detail/CollectionCard/BackupImportModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,4,45-64,66-93
+projects/app/src/pageComponents/chat/SandboxEditor/components/FileTree.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 345,520,526,531,541,840,909-912
+packages/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/eventCollector.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 157
+packages/service/common/s3/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 303-306
+packages/service/core/ai/skill/package/storage.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 13-14,31-35,63-91,132-155
+  s_d6c2054d7020f0::t_c026da58dc837c 156-157
+packages/service/common/file/parseTimeout.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-13
+projects/app/src/web/core/dataset/api/file.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10,15-23
+projects/app/src/web/support/wallet/bill/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 19-21
+projects/app/src/service/core/dataset/queues/datasetParse.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 37,117,124,129-131,134,136-137,191-199,213-237,293-299,360-361,391-396,406,413-416,428-431,434-435
+projects/app/test/service/core/app/controller.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,10,19-24,26-159,184,193,215,224,246,258,285,298,314,319,338,341,370
+document/content/self-host/upgrading/4-15/4156.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-15
+projects/app/src/pageComponents/dataset/EditFolderModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-3,47-52,56-64
+projects/app/.env.template
+  s_d6c2054d7020f0::t_c19b910b2223d5 57-58
+projects/app/src/pages/api/core/dataset/collection/create/backup.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 16,45,48-52,54
+projects/app/src/pages/api/admin/4160/initUserSandbox.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10-11,67-73,81,86
+projects/app/src/pages/api/core/dataset/file/presignSearchTestImage.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 13,24,46-53,57
+sdk/storage/src/adapters/cos.adapter.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,16-21,33,46-48,52,87-89,110,131,155,195-344,388,414-416,428,455-457,461,525-527,572-574,608-610,629,633,672-674
+packages/service/core/ai/sandbox/application/sourceGuard.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-13,30
+packages/service/test/thirdProvider/somark.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-11,15-19,46,69
+packages/service/test/core/ai/sandbox/application/runtime/skill/core.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 235,237-241,436-439,894
+projects/app/src/pageComponents/chat/ChatQuoteList/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,10,13,15-25,34,51,64-71
+  s_d6c2054d7020f0::t_f23cd7d70c7209 72
+packages/service/worker/readFile/extension/xlsx.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,56-57,69,91-95
+packages/global/core/ai/agent/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,6-39
+packages/global/openapi/core/ai/sandbox/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 37-48,51,57-60,71-73
+sdk/storage/src/access-link/upload.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 31,81-168
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/Label.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 17,34
+document/content/guide/dataset/template.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-80
+packages/service/core/dataset/data/schema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 41-43
+packages/service/test/core/ai/sandbox/infrastructure/provider/config.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 16,75,130,153,160-161,188,388
+packages/service/test/core/ai/sandbox/config.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6,13,18,23-28,30-36
+sdk/storage/src/adapters/minio.adapter.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-5,7,15,98,129,141-143,181-183,198,270,274,278,302,309,311
+sdk/storage/src/adapters/oss.adapter.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,16-21,29,51,74-76,82,106,120,134,154-256,272,284-286,298,330-332,336,374-376,413-415,434-436,460,464,498-500
+packages/web/i18n/en/skill.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 11,27-28,37-38
+packages/service/test/core/ai/auxiliaryGeneration/agentLoop.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-117
+packages/service/test/core/ai/sandbox/infrastructure/provider/adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 20
+packages/service/test/core/dataset/importFile.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-151
+projects/app/src/components/core/app/FileSelector/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 42,423,430,432-433,435-437,448
+packages/service/core/dataset/importFile.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-60
+projects/app/src/pageComponents/dashboard/skill/CreateSkillModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 10,27-29,32,34,54,68-110,126,158-161
+packages/service/test/core/workflow/dispatch/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 561,564-573,575,1002-1009
+projects/app/src/web/common/file/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 7-10,12-16,46-54
+packages/global/core/dataset/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 218-219,249-252,372-373,399-400,418-419,446-447,458-459
+packages/global/core/app/tool/runtime.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-269
+document/content/self-host/upgrading/4-15/4155.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,6-12
+packages/global/openapi/core/dataset/data/api.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 35-38,61
+packages/service/test/core/ai/skill/storage.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 4,6,12,71-78,101-102,105,119-172,201-227
+  s_d6c2054d7020f0::t_c073bef189303a 228
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/run.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 353-362
+packages/service/core/app/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 36,224-228,332
+  s_d6c2054d7020f0::t_1914d45e2b8674 333
+packages/service/test/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 39,72,84,94-95,181
+packages/service/core/ai/llm/agentLoop/provider/fastAgent/loop/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10-14,102,104-107,186-192,195
+packages/service/test/core/workflow/dispatch/variables.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 56,70-71,74-91
+packages/global/common/file/s3/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,4-10,17-45
+projects/app/src/pageComponents/app/detail/Edit/SimpleApp/ChatTest.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 115
+projects/app/src/pageComponents/dataset/detail/CollectionCard/Header.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 603
+sdk/storage/package.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 4,70
+sdk/storage/.env.example
+  s_d6c2054d7020f0::t_c19b910b2223d5 4-15,22-24,33-35,65
+packages/service/test/common/file/parseTimeout.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-32
+packages/service/test/env.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9,20,44,58,100-113,281,285,289,293
+packages/service/test/common/s3/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 161,323,392,428,432-458
+packages/global/test/core/app/formEdit/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1020-1035,1504-1516
+  s_d6c2054d7020f0::t_d79c45955d4915 1517
+packages/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 21,63-72,79,83
+packages/service/test/common/s3/accessLink.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 180,312,341-478,488,499
+document/content/self-host/config/env.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 75
+packages/service/core/workflow/dispatch/ai/toolcall/toolCall.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5,91-101,107-108
+packages/service/thirdProvider/somark/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5,32
+packages/web/components/common/Icon/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 424
+projects/app/src/pages/chat/share.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 473,488-496,521-523,525,538-540,544,548-549,551,561-570
+projects/app/test/api/core/ai/sandbox/upload.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 12,34-41,43-45,49-60,62-63,66,74-77,81,87,92,110-119,121,123-132
+projects/app/src/pages/api/system/file/u/[token]/complete.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-41
+packages/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive/ask.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,17-22
+packages/global/test/core/app/tool/runtime.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-360
+packages/global/test/core/chat/chatUtils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 585,601-637
+pnpm-workspace.yaml
+  s_d6c2054d7020f0::t_c19b910b2223d5 47,85
+projects/app/src/pageComponents/dashboard/skill/SkillDashboardEmptyHero.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-66
+packages/global/test/core/app/jsonschema.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 94-222,381,383-384,389,433,455,495,564,589,591,600,695,711,716,728,759,795,1077-1119,1127-1128
+packages/service/core/dataset/read.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 23,27-56,77-86,90,101,111,130,133-134,156-159,186-189,364,370-401,404-448,451
+packages/web/i18n/zh-CN/chat.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 295-301
+document/content/guide/dataset/template.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-80
+document/content/self-host/upgrading/4-15/4154.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 42-46,61
+packages/service/common/s3/contracts/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9,68,72,79-95,97-154,179
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/output/result.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 107-116,140,143-154
+packages/web/i18n/zh-CN/account_team.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 322
+packages/service/core/app/tool/systemTool/secrets.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-138
+projects/app/src/components/core/chat/components/AIResponseBox/RenderUserFormInteractive.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 47-52,54,60,64,130-143
+  s_d6c2054d7020f0::t_34c41f51762b0f 144
+projects/app/src/pages/api/common/file/presignAvatarPostUrl.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5-11,15-18,26-29,35
+projects/app/src/web/common/api/request.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 244-253,322-347
+  s_d6c2054d7020f0::t_c7de490ed02872 348-349
+projects/app/src/pageComponents/dataset/list/List.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 13,58-61
+  s_d6c2054d7020f0::t_4e6669c53774b1 417-421
+packages/service/test/common/s3/utils/assert.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-37
+projects/app/src/web/core/app/api/httpTools.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 30-32
+projects/app/src/web/core/app/api/mcpTools.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 26
+packages/global/openapi/core/dataset/file/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,10-13,17-19,85,95-165
+packages/global/test/core/chat/adapt.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1801-1887
+projects/app/test/pages/api/admin/4160/initHttpToolSchema.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-372
+packages/service/test/common/s3/lifecycle/cleanup.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-112
+projects/app/test/web/core/app/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 199-235
+packages/service/test/core/ai/llm/agentLoop/systemAskTool.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 15,24-46,57-79,103,123-131,136-140,142,144-147,152-207
+  s_d6c2054d7020f0::t_112af7209b9f7f 208
+packages/service/thirdProvider/doc2x/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,11-18,32,39,48,63,66,69,72,75,79,81-91,93,105,119-134,141-146,148,160,163,167,173-175,179-188,190-199,201-202,204-207,209-216,218-224,227-255,257,262-285,292,301-304
+sdk/storage/src/helper/mock.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5,7-10,24,31-38,41-43,47-50,63,89-91,94,101,107-140,142-158,160-166,168,170-176,178-238,241,249,261,271,282,289-298,300-309,311,314,338-341,354-359
+sdk/storage/src/access-link/crypto.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 18-19
+packages/service/core/ai/llm/agentLoop/domain/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5
+packages/web/i18n/zh-CN/common.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 403,1188
+projects/app/test/web/core/chat/context/useChatStore.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1,21-22,24-27,36,49-71
+  s_d6c2054d7020f0::t_b1ebea7104e73e 72
+sdk/storage/src/access-link/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 5
+packages/web/i18n/en/common.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 403,913,1188
+packages/service/test/core/workflow/dispatch/ai/toolcall/hooks/useToolNodeList.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 88,93,183
+projects/app/src/components/core/chat/ChatContainer/ChatBox/utils/resume.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 180,202-204,230,247-250,260
+packages/web/i18n/zh-Hant/common.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 398,1177
+packages/service/common/s3/validation/upload.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 30-31,42,50
+packages/service/test/thirdProvider/textin.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,5-11,15,22-25,43,72
+sdk/storage/test/unit/adapters/oss.adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 18-117
+projects/app/src/web/core/workflow/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 276-294
+packages/service/core/ai/sandbox/application/runtime/skill/core.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10,19,273-300,302-303,305-308,318-337,341,344
+packages/service/support/permission/dataClean/danglingPermission.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-301
+packages/service/test/common/s3/config/constants.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 55-70
+projects/app/src/components/core/chat/ChatContainer/ChatBox/components/ChatRecordsList.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 37
+sdk/storage/test/integration/common/storage.contract.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 57,129-201
+  s_d6c2054d7020f0::t_5756db23fc473c 202-203
+packages/global/common/file/s3TTL/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-10
+packages/service/core/ai/sandbox/infrastructure/provider/runtimeProfile/sealosdevbox.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10,35-37,46
+packages/service/core/workflow/dispatch/child/runTool.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 9-12,14-15,124-130,261-265,282,319-322,373
+packages/global/core/ai/sandbox/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 60,73-74
+projects/app/src/pages/api/core/app/version/publish.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 44
+projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useFileUpload.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 22,343,355,358-368,376,381
+packages/service/common/s3/accessLink/uploadSession/store.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 32-107
+packages/web/i18n/en/chat.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 295-301
+packages/web/common/file/uploader/multipart.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-187
+packages/web/i18n/zh-CN/dataset.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 14,181
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/interactive/ask.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6,13-29,33,36-55
+sdk/storage/src/access-link/types.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,49-60,123,130,142,145,152,155,199-214
+document/content/guide/dataset/meta.en.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 4
+document/content/self-host/upgrading/4-16/41601.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2-3,8,10,12-35,37-54,57,59,63,66,68,72,74-79,81,83,85,87,89,91,93-98,100,102-107,109,111,113-120,124-130,135-140,142-145,149-151,153-154
+packages/service/core/workflow/dispatch/ai/agent/sub/tool/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 39,41,466-467,473-474,482-483,496-502,616,622-623,635,637-638,705,711-712,724,726-727
+projects/app/src/service/core/dataset/queues/parseLease.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-123
+packages/service/core/workflow/dispatch/ai/agent/sub/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 18,215-218
+packages/service/test/thirdProvider/doc2x.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3,6-9,25-28,62-63,89-91,96-97,119-124,147-148,173-333
+sdk/storage/test/unit/factory.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 66-71
+packages/service/test/core/chat/saveChat.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1218,1230,1233-1251,1265,1301,1318,1321-1339,1363-1364,1367-1370
+projects/app/src/pageComponents/dashboard/ListCreateCard.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 5,8-21,23,65,75,79
+packages/web/common/file/uploader/constants.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-4
+projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useChatRecordActions.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 77,91
+packages/service/core/ai/sandbox/config.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 10,12-22,34-35,37-38
+packages/service/core/ai/sandbox/application/legacyMigration/service.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 35,86,88,90,141-147,162,352,354,553-558,578,594-596,657-659,663-668,673,685-688,706,715-717,724
+packages/service/test/core/ai/llm/agentLoop/fastAgentProvider.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 107-143
+packages/web/common/file/hooks/useUploadAvatar.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-2,8-11,14,55,57-58,61,65
+packages/service/core/dataset/delete/processor.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11-12,105-121
+projects/app/src/components/core/chat/components/AIResponseBox/RenderAgentAskInteractive.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-84
+packages/service/test/core/workflow/dispatch/ai/agent/index.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 435,452-454,504-505,919-986,1034-1042,1216
+packages/service/common/s3/utils/assert.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-99
+packages/service/test/core/app/mcp.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 498-514
+  s_d6c2054d7020f0::t_42035cc928c49a 497
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/nodeResponse/eventCollector.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 198-213,227
+projects/app/src/pageComponents/dataset/detail/Import/components/RenderFiles.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 23-24,28,90-98
+projects/app/src/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-710
+projects/app/src/pageComponents/dataset/detail/Test/hooks/useSearchTestImages.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 8,60-69,96-103,107
+projects/app/src/service/core/dataset/data/data.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 120,171,226,300-302
+.agents/design/app/tool-input-runtime.md
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-54
+packages/service/test/support/permission/dataClean/danglingPermission.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-255
+document/content/self-host/upgrading/4-15/4156.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-15
+packages/service/thirdProvider/textin/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 7,30
+packages/global/test/core/workflow/runtime/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 763-795,837,856-873,899-920,922-923
+  s_d6c2054d7020f0::t_f8b925a0c3294b 921
+projects/app/src/pageComponents/chat/ChatQuoteList/QuoteReader.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 26,32,137-143,153-154,201-260,262,265,267,283,285-291
+projects/app/src/pageComponents/dataset/detail/CollectionCard/TemplateImportModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 2,4,47-49,68-82,84-93,95-98,100-145,148-152
+packages/service/core/ai/sandbox/application/legacyMigration/types.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 6-9,96-97
+projects/app/src/pages/dashboard/skill/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 53,66,180-188,205-210,217
+sdk/storage/test/unit/adapters/minio.adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 85
+projects/app/src/pages/api/admin/dataClean/cleanupDanglingResourcePermissions.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-34
+sdk/storage/test/unit/adapters/r2.adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-29
+sdk/storage/test/unit/adapters/aws-s3.adapter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 19-36,97-340
+  s_d6c2054d7020f0::t_e723b19d45623a 341
+packages/service/test/core/workflow/dispatch/ai/toolcall/toolCall.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 191-225,288,518,781,858
+projects/app/src/components/core/app/DatasetSelectModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 168-175
+projects/app/src/pageComponents/dashboard/skill/context.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 32,46,124
+  s_d6c2054d7020f0::t_d1b10093e9f16e 94
+projects/app/src/pages/api/core/dataset/file/presignDatasetFilePostUrl.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 11-13,19-20,40,43,46-47
+sdk/storage/src/access-link/testing.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 26-45,159-235
+packages/service/test/core/dataset/delete/processor.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-126
+sdk/storage/src/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 23-31,59-60,112
+packages/service/common/s3/utils/uploadConstraints.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 7,15,65
+packages/service/core/app/tool/systemTool/systemTool.repo.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 43-47,333-334,365-366,373,501-518,530,824-828,838-840
+packages/service/test/core/workflow/dispatch/ai/agentLoopCore/context/messages.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 8
+projects/app/test/api/core/ai/skill/import.stream.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-91
+document/content/self-host/config/sandbox/sealosdevbox.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 33,36
+packages/service/test/core/dataset/textSplitter.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-2,441-761
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/ChatTest.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 169
+projects/app/src/pages/api/admin/4160/initHttpToolSchema.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-262
+projects/app/test/api/core/plugin/admin/tool/update.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-134
+packages/service/test/core/dataset/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 119-133
+packages/service/support/permission/dataset/auth.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 221
+packages/global/test/openapi/core/dataset/data/api.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-48
+document/content/self-host/upgrading/4-15/meta.json
+  s_d6c2054d7020f0::t_c19b910b2223d5 4
+document/content/toc.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 61,172
+document/content/self-host/upgrading/4-15/4154.en.mdx
+  s_d6c2054d7020f0::t_c19b910b2223d5 44-48
+packages/global/core/app/formEdit/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 170-171,311,526,528-536
+packages/service/core/workflow/dispatch/ai/toolcall/type.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 54
+packages/web/common/file/uploader/index.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-29
+projects/app/src/pageComponents/app/detail/Logs/DetailLogsModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 237
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 172
+projects/app/src/pages/api/common/file/presignTempFilePostUrl.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 3-7,15,17,22-25,44-45
+projects/app/test/web/core/app/workflow/utils.test.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 2210-2247
+sdk/storage/src/access-link/service.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 12-15,39-42,70-73
+projects/app/src/pageComponents/app/detail/Edit/ChatAgent/ChatTest.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 332
+packages/global/core/workflow/runtime/utils.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 29,174-203,221,225
+projects/app/src/pages/api/core/app/create.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 186
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeHttp/index.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 853
+packages/service/common/file/stream.ts
+  s_d6c2054d7020f0::t_c19b910b2223d5 1-31
+pnpm-lock.yaml
+  s_d6c2054d7020f0::t_8968c32a27c1e8 90-92,196-197,283,292,429-431,742,823,902,1043,1293,1452,1673,1718,1933-1934,6511-6512,6516-6517,6521-6522,6526-6527,6531-6532,6536-6537,6544-6545,13954-13955,16682,20885,20888,20891,20894,20897,20900,20908,24851,27277,30208,30210-30215
+pro
+  s_80cdd2542dc080::t_31e7a7d5b32be6 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "26e2b4e62670f66aa970dec8bed966dc0d0bd811",
+  "prompts": {},
+  "sessions": {
+    "s_80cdd2542dc080": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2bc17fe-7b52-44ed-84d5-7c75bc6eca6d",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_d6c2054d7020f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f9aeb27-7f8a-49e5-9e81-1bf72a832433",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

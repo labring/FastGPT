@@ -1,0 +1,23 @@
+projects/app/Dockerfile
+  4f05239d176421ff 74-75,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "5b889ef548f9273807c4724bbceebfa9cfe43fcc",
+  "prompts": {
+    "4f05239d176421ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f4ab259-d309-425b-b72d-733be8bbba9e",
+        "model": "glm-5.1"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}

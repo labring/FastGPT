@@ -1,0 +1,85 @@
+packages/global/openapi/core/plugin/admin/api.ts
+  s_85af33425a736e::t_427a8122362cb7 13
+packages/global/openapi/core/dataset/synonym/api.ts
+  s_85af33425a736e::t_427a8122362cb7 51,56
+packages/global/test/openapi/core/app.test.ts
+  s_85af33425a736e::t_427a8122362cb7 162
+  s_85af33425a736e::t_6338151d97fab3 159-161
+packages/global/openapi/core/chat/record/api.ts
+  s_85af33425a736e::t_427a8122362cb7 238
+packages/global/openapi/common/other/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 38
+packages/global/test/openapi/support/user/account/login/api.test.ts
+  s_85af33425a736e::t_0713b6a0461543 171,195,197,224,226,253,255
+packages/global/test/openapi/admin/settings/model.test.ts
+  s_85af33425a736e::t_6277e1ee18b1e4 71-74
+  s_85af33425a736e::t_8fd620f78df75f 10,69-70,75-76
+  s_85af33425a736e::t_944a4ec6d3568e 77-78
+packages/global/openapi/plugin/invoke.ts
+  s_85af33425a736e::t_4e2066eac08035 69
+packages/global/openapi/core/dataset/collection/createApi.ts
+  s_85af33425a736e::t_427a8122362cb7 104,173-174,195,218
+packages/global/openapi/core/plugin/marketplace/api.ts
+  s_85af33425a736e::t_427a8122362cb7 283
+packages/global/core/workflow/type/io.ts
+  s_85af33425a736e::t_6338151d97fab3 87-93,301-307,375-381,389-395
+packages/global/openapi/core/app/common/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 506-509,511
+  s_85af33425a736e::t_6338151d97fab3 505,510
+packages/global/openapi/support/user/account/login/api.ts
+  s_85af33425a736e::t_0713b6a0461543 13,18-21,29-32,37-40
+packages/global/core/workflow/runtime/type.ts
+  s_85af33425a736e::t_b2eebe5207f4be 217,223,227,248,252
+  s_85af33425a736e::t_6338151d97fab3 160-163,168-171,182-185,231-242,256-259,263-267,278-281,285-289
+packages/global/common/system/types/index.ts
+  s_85af33425a736e::t_72c1267375fad6 3,227-244
+packages/global/openapi/admin/settings/model/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 145-157
+packages/global/openapi/core/app/httpTools/api.ts
+  s_85af33425a736e::t_6338151d97fab3 161-167
+packages/global/openapi/support/wallet/bill/invoice/api.ts
+  s_85af33425a736e::t_6338151d97fab3 98-102
+packages/global/openapi/admin/support/user/login/api.ts
+  s_85af33425a736e::t_4e2066eac08035 12-13
+packages/global/core/workflow/template/system/interactive/type.ts
+  s_85af33425a736e::t_6338151d97fab3 7,71,99-105,173-176
+packages/global/openapi/core/plugin/team/pkg/api.ts
+  s_85af33425a736e::t_427a8122362cb7 14
+packages/global/openapi/core/app/evaluation/api.ts
+  s_85af33425a736e::t_427a8122362cb7 54
+packages/global/openapi/admin/common/license/api.ts
+  s_85af33425a736e::t_72c1267375fad6 2,7-17
+packages/global/openapi/api.ts
+  s_85af33425a736e::t_6338151d97fab3 77
+  s_85af33425a736e::t_4e2066eac08035 43,45
+packages/global/core/dataset/workflowTagFilter.ts
+  s_85af33425a736e::t_6338151d97fab3 82-85
+packages/global/openapi/admin/core/app/templates/api.ts
+  s_85af33425a736e::t_6338151d97fab3 2-5
+packages/global/openapi/core/chat/completion/api.ts
+  s_85af33425a736e::t_6338151d97fab3 183-190
+packages/global/openapi/admin/common/license/index.ts
+  s_85af33425a736e::t_72c1267375fad6 3,32-37
+packages/global/openapi/support/outLink/api.ts
+  s_85af33425a736e::t_6338151d97fab3 26-32
+packages/global/core/ai/auxiliaryGeneration/type.ts
+  s_85af33425a736e::t_6338151d97fab3 76-82
+packages/global/core/ai/llm/type.ts
+  s_85af33425a736e::t_6338151d97fab3 188-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bbe7330c2708bb68ad087ed720667dd35b929c62",
+  "prompts": {},
+  "sessions": {
+    "s_85af33425a736e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcf0-0a6a-7783-8746-c359b6af029f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

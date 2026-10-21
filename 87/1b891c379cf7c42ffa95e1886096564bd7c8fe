@@ -1,0 +1,136 @@
+projects/app/src/pageComponents/chat/ChatSetting/AppTree.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 8
+projects/app/src/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 32-34
+projects/app/src/pageComponents/dashboard/mcp/EditModal.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 97
+projects/app/src/pages/api/core/ai/skill/create.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 25,108-114
+  s_d6c2054d7020f0::t_2a31724e1e60fd 115
+packages/service/support/permission/listQuery.ts
+  s_d6c2054d7020f0::t_24767e734366aa 1-33,35-134
+  s_d2e59f53d238a6::t_f3457ddcc20946 34
+packages/global/openapi/core/app/common/api.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 18,225,256-257
+projects/app/src/pageComponents/dashboard/skill/List.tsx
+  s_d6c2054d7020f0::t_5caad3c4d504fc 197
+  s_d6c2054d7020f0::t_4564201706d0f5 198,202,205,546-561
+packages/global/openapi/core/dataset/api.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 12,181-194,196,199-200
+projects/app/src/pages/api/core/dataset/create.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 34,111-112,114-117
+  s_d6c2054d7020f0::t_d90d9181c18cb4 99-110
+projects/app/src/pageComponents/dashboard/skill/context.tsx
+  s_d2e59f53d238a6::t_3b2199188800a0 65
+  s_d6c2054d7020f0::t_4564201706d0f5 1-7,10,27-28,33,49,67-80,84-86,88,122,125
+  s_d6c2054d7020f0::t_d1b10093e9f16e 94
+packages/service/core/app/mcp.ts
+  s_d6c2054d7020f0::t_a7821378785b37 268
+packages/service/test/core/ai/skill/manage/list.test.ts
+  s_d6c2054d7020f0::t_e482498e1e50f4 1-37
+projects/app/src/pageComponents/app/tool/SecretInputModal.tsx
+  s_d6c2054d7020f0::t_c19b910b2223d5 113,187
+packages/service/core/ai/skill/manage/import.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 2,13,72-78
+  s_d6c2054d7020f0::t_15cdd0f57798e5 79
+packages/service/test/support/permission/syncResourceParentCollaborators.test.ts
+  s_d6c2054d7020f0::t_7f965f7abac6dc 1-150
+projects/app/src/pageComponents/chat/ChatHeader.tsx
+  s_d6c2054d7020f0::t_0b5c313d379400 224
+  s_d6c2054d7020f0::t_4564201706d0f5 131
+packages/web/hooks/useScrollPagination.tsx
+  s_d2e59f53d238a6::t_ee0b20a75af505 292
+projects/app/src/web/core/app/api/tool.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 58
+packages/service/test/support/permission/listQuery.test.ts
+  s_d6c2054d7020f0::t_9083681613abc2 1-151,165-178
+  s_d6c2054d7020f0::t_5d3071d3140d35 155-161
+  s_d6c2054d7020f0::t_a5a458f8f80379 162-164
+  s_d6c2054d7020f0::t_603a369ee87291 152-154
+projects/app/src/pages/api/core/dataset/list.ts
+  s_d6c2054d7020f0::t_5ee00397364849 121,126-127,138-140,151,174-179
+  s_d6c2054d7020f0::t_4564201706d0f5 16,18,25-32,58-67,75,87-88,90-94,108-120
+projects/app/src/pages/api/core/ai/skill/list.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 39,50-51
+projects/app/src/pageComponents/chat/ChatSetting/FavouriteAppSetting/AddFavouriteAppModal.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 49
+projects/app/src/components/Select/AppSelect.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 24
+projects/app/src/web/core/dataset/store/dataset.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 18,20
+projects/app/test/api/core/ai/skill/list.pagination.test.ts
+  s_d6c2054d7020f0::t_91cf5eb78d5517 72
+  s_d6c2054d7020f0::t_e0f87c8352b05e 1-71,73-99
+projects/app/test/api/core/dataset/list.test.ts
+  s_d6c2054d7020f0::t_91cf5eb78d5517 124-159
+  s_d6c2054d7020f0::t_a9793d114c3c8b 1-123,160-387
+document/data/doc-last-modified.json
+  s_d6c2054d7020f0::t_a1bd2a8f11a78a 330-333
+  s_d6c2054d7020f0::t_c19b910b2223d5 172-173,184-189
+  s_d6c2054d7020f0::t_6579e3893f15dc 334-335,476-477
+projects/app/test/api/core/app/list.test.ts
+  s_d6c2054d7020f0::t_91cf5eb78d5517 135-185
+  s_d6c2054d7020f0::t_03b08a4ba8e40b 1-134,186-568
+projects/app/src/pageComponents/dashboard/agent/List.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 70,444,459
+  s_d2e59f53d238a6::t_2e61e977919ad8 443
+projects/app/test/api/core/ai/skill/list.test.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 3,17,107,118-120,122-124,126,135-146,151,158
+projects/app/src/pageComponents/dataset/list/List.tsx
+  s_d6c2054d7020f0::t_4e6669c53774b1 416-420
+  s_d6c2054d7020f0::t_4564201706d0f5 52-53,397-415,421-424
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/SelectAppModal.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 34
+projects/app/src/pages/api/core/app/create.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 38,274-275,278-280
+  s_d6c2054d7020f0::t_1769d91adf39a2 262-273
+packages/service/support/permission/inheritPermission.ts
+  s_d2e59f53d238a6::t_258ec116e1d73b 360
+  s_d6c2054d7020f0::t_4564201706d0f5 358-359,361-392
+packages/service/core/ai/skill/manage/list.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 13,44-45,67-73,113,123,138-155,160,164-167,171-172,200-201
+projects/app/src/pageComponents/dashboard/agent/context.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 5,22-23,28,30,43,47,76-81,87,90,96,142,161,164-165
+projects/app/src/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 250-252,266-268
+  s_d6c2054d7020f0::t_8a17d14d713ba0 316-319
+projects/app/src/components/core/dataset/SelectModal.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 80
+projects/app/src/pageComponents/dataset/list/context.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 16,19,29-30,33,37,51,59,84-88,90,95,137,154
+projects/app/src/pages/api/core/app/list.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 16,18,33-40,66-75,87,108-109,111-113,126-140
+  s_d2e59f53d238a6::t_ac51db6a72dd2f 27-29
+  s_d6c2054d7020f0::t_59f5fa6fb065f3 141,147,155-157,169,195
+projects/app/src/pageComponents/chat/ChatSetting/HomepageSetting/AddQuickAppModal.tsx
+  s_d6c2054d7020f0::t_4564201706d0f5 58
+projects/app/src/web/core/skill/api.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 46-48
+projects/app/src/web/core/dataset/api.ts
+  s_d6c2054d7020f0::t_4564201706d0f5 13,23
+  s_d6c2054d7020f0::t_a5f14c19579fba 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "871b891c379cf7c42ffa95e1886096564bd7c8fe",
+  "prompts": {},
+  "sessions": {
+    "s_d2e59f53d238a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fcf7cf5d-7e7e-4595-9f3c-ec75c588da4e",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": null
+    },
+    "s_d6c2054d7020f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f9aeb27-7f8a-49e5-9e81-1bf72a832433",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

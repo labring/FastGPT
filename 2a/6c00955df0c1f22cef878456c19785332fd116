@@ -1,0 +1,19 @@
+packages/global/core/app/tool/runtime.ts
+  s_bd4c36dacf31f0::t_5096d8b44dd4ae 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2a6c00955df0c1f22cef878456c19785332fd116",
+  "prompts": {},
+  "sessions": {
+    "s_bd4c36dacf31f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4936c937-b4ca-4202-ad70-eef577cab281",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

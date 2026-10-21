@@ -1,0 +1,19 @@
+projects/app/test/pages/api/core/ai/model/test.test.ts
+  s_85af33425a736e::t_e1a1e1c1ca8aee 228-231,236,243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "620c935cc42724a47d22637f07aa4d0e5baf21b6",
+  "prompts": {},
+  "sessions": {
+    "s_85af33425a736e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcf0-0a6a-7783-8746-c359b6af029f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

@@ -1,0 +1,128 @@
+projects/app/src/pages/api/core/sandbox/proxyCSPassword.ts
+  07f709d5dad2cfb8 1-8,10-22
+  5869fb8a6344fb48 9
+projects/app/src/service/core/sandbox/proxyUtils.ts
+  317abb5c4658ab13 119,127-137,139-163,165-169,171-173,177-183,185-191,193-204,206-216,233
+  eb8902562314445c 184,205
+  07f709d5dad2cfb8 164,170,174-176
+  d4892fb72559be95 138,217-232
+projects/app/src/pageComponents/dashboard/skill/detail/config/SandboxIframe.tsx
+  abb005864b2bce04 14
+projects/app/server.ts
+  07f709d5dad2cfb8 47-61,90-92
+  317abb5c4658ab13 37-43,62,64-68,70,74-75,84-89,93-95,107-122,185-186,238,436
+  eb8902562314445c 63,69,71-73,76-83,177,179,184,236-237,434-435
+projects/app/src/service/core/sandbox/proxy.ts
+  07f709d5dad2cfb8 6-10,67-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "9a0930895fe1e7ea1b287b36561e39b21e249f78",
+  "prompts": {
+    "07f709d5dad2cfb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c75b7fbc-f5f8-4625-94d4-307be35cb722",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 14,
+      "accepted_lines": 73,
+      "overriden_lines": 0
+    },
+    "317abb5c4658ab13": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a714742e-5329-42b0-a0d1-684edd34393e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 154,
+      "total_deletions": 7,
+      "accepted_lines": 128,
+      "overriden_lines": 1
+    },
+    "5869fb8a6344fb48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6ad3c2f-fcd2-437d-b103-d440ef047d51",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "7be65c1fdf9f47cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "998b1a45-a162-4762-8395-e1be0aa020cf",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "8c8fe01ac6bfdb36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b8fcbf9b-26ad-45d2-870e-2041fbae9040",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "abb005864b2bce04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f94437ff-c4f5-4bb9-81e7-a0871d150f44",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "d4892fb72559be95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f35e8ca9-8610-472c-8af3-98a4f081e70b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 1,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    },
+    "eb8902562314445c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d61f31-f761-4ed8-b3da-c9320ae11bae",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 9,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}

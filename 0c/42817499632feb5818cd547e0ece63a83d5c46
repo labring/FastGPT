@@ -1,0 +1,141 @@
+packages/service/core/agentSkills/sandboxConfig.ts
+  ba1da625058b5ba1 343-374
+packages/service/core/ai/sandbox/controller.ts
+  d633070cb7d354c7 12-13,53,67-68,72-74,178
+packages/service/core/agentSkills/sandboxController.ts
+  03edece33706789d 332-334,336,404-405
+  55a22975e67226b2 382
+  b621bcf6469aeb26 32,262,272-287,290-292,294,303,312,324,335,337-346,348-365,367-370,372,400-401,403
+  66e6d24c27d2e91a 8
+  075ad0b77f76c124 174-176,196,202
+  ba1da625058b5ba1 22-23,198-201,326-328
+  d633070cb7d354c7 177-194
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  7d38daa6e473f1ea 11,27,272-273,278-298,300,311,320,326,328-348,350,356,371,373-374,378
+  03edece33706789d 323-325,327
+  d633070cb7d354c7 436-439,447,450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "0c42817499632feb5818cd547e0ece63a83d5c46",
+  "prompts": {
+    "03edece33706789d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7160b1b-624f-49a8-8a23-178913a59ac9",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 4,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    },
+    "075ad0b77f76c124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff49e877-7776-44ee-bfa8-5f3918e6c457",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "1ef37cd01160ac3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a06723b3-d509-44af-8a25-c942fb494a56",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "55a22975e67226b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9d29fde-cdd9-4cb2-bcbf-6e47f99398fc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "66e6d24c27d2e91a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ada8e54-54dd-49d3-959a-6264b0473dbb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 4,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "7d38daa6e473f1ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a589175-aae3-4d10-87a6-be37e7cca770",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 58,
+      "total_deletions": 72,
+      "accepted_lines": 56,
+      "overriden_lines": 0
+    },
+    "b621bcf6469aeb26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78dbe7ad-14c4-4e3e-a88c-ccd43eb15d97",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 82,
+      "accepted_lines": 63,
+      "overriden_lines": 0
+    },
+    "ba1da625058b5ba1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eacc43ab-f057-48fe-8ab8-c4e3c3838f9a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 43,
+      "total_deletions": 1,
+      "accepted_lines": 43,
+      "overriden_lines": 0
+    },
+    "d633070cb7d354c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca817937-bf4b-4a9e-942f-cf107be5383d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 52,
+      "total_deletions": 16,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    }
+  }
+}

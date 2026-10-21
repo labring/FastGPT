@@ -1,0 +1,20 @@
+.agents/skills/system/ci-workflow-sync/SKILL.md
+  s_4a439d2a4e0a12::t_3d26b93a6e5d03 295-302,316
+  s_4a439d2a4e0a12::t_4dc4babd2ec07d 1-294,303-315,317-533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ceba5f8018d2865568fbfad9fbcb10d9db70a7d3",
+  "prompts": {},
+  "sessions": {
+    "s_4a439d2a4e0a12": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0c057f358ffenlSoTVOxX6i5X3",
+        "model": "glm-5.2"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

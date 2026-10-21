@@ -1,0 +1,21 @@
+packages/global/openapi/plugin/invoke.ts
+  s_85af33425a736e::t_367a5fb3dadbff 35-39,45-48
+packages/global/openapi/admin/routes/settings/api.ts
+  s_85af33425a736e::t_367a5fb3dadbff 67-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "aab45d4662d8b92b4e5c788070bdae5510481454",
+  "prompts": {},
+  "sessions": {
+    "s_85af33425a736e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcf0-0a6a-7783-8746-c359b6af029f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

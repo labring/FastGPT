@@ -1,0 +1,55 @@
+packages/service/package.json
+  f29c1bae55bb4e29 11-12
+projects/app/next.config.ts
+  d34d58ebeee2cf8f 179-181
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  d34d58ebeee2cf8f 48,81-85
+packages/service/core/workflow/dispatch/ai/agent/piAgent/toolAdapter.ts
+  d34d58ebeee2cf8f 2-362
+  f29c1bae55bb4e29 1
+.npmrc
+  d34d58ebeee2cf8f 3
+packages/service/core/workflow/dispatch/ai/agent/piAgent/index.ts
+  f29c1bae55bb4e29 57-58,165
+  d34d58ebeee2cf8f 1-56,59-164,166-286
+projects/app/.env.template
+  d34d58ebeee2cf8f 186-187
+packages/service/env.ts
+  d34d58ebeee2cf8f 65-68
+packages/service/core/workflow/dispatch/ai/agent/piAgent/modelBridge.ts
+  d34d58ebeee2cf8f 1-10,12-26,28-46
+  f29c1bae55bb4e29 11,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "c51920bb73b2996b8de213cb7264000837da5c7c",
+  "prompts": {
+    "d34d58ebeee2cf8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c1d499c-2499-4d1a-b968-eb15ac5ccbcc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 713,
+      "total_deletions": 2,
+      "accepted_lines": 704,
+      "overriden_lines": 0
+    },
+    "f29c1bae55bb4e29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da18a966-e587-4cde-9af0-d22bad1b7725",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 9,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

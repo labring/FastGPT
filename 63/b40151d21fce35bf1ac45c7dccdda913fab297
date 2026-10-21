@@ -1,0 +1,21 @@
+packages/global/common/string/time.ts
+  s_d88c21bdb7f840::t_3546824dd7f6df 3-4
+packages/global/common/time/timezone.ts
+  s_d88c21bdb7f840::t_6392eb236c76ab 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "63b40151d21fce35bf1ac45c7dccdda913fab297",
+  "prompts": {},
+  "sessions": {
+    "s_d88c21bdb7f840": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "236b6878-baa2-44c1-9749-a9f4b94b6506",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

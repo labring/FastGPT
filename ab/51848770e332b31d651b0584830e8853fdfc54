@@ -1,0 +1,34 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "ab51848770e332b31d651b0584830e8853fdfc54",
+  "prompts": {
+    "075ad0b77f76c124": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff49e877-7776-44ee-bfa8-5f3918e6c457",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 13,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    },
+    "1ef37cd01160ac3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a06723b3-d509-44af-8a25-c942fb494a56",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 1,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}

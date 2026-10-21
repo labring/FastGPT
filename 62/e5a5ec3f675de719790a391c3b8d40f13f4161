@@ -1,0 +1,25 @@
+packages/service/core/ai/sandbox/config.ts
+  4c1371436b535e5d 48,51,60
+packages/service/core/ai/sandbox/controller.ts
+  4c1371436b535e5d 72-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "62e5a5ec3f675de719790a391c3b8d40f13f4161",
+  "prompts": {
+    "4c1371436b535e5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed8c320-046d-4aff-a5a6-e4f7c0ef8189",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 7,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

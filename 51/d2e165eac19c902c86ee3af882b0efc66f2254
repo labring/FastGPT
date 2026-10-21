@@ -1,0 +1,184 @@
+packages/global/openapi/admin/routes/teams/api.ts
+  s_85af33425a736e::t_c6581178132c90 20,36,41-43,45-46,57,64,69
+  s_85af33425a736e::t_e01ce2f0542286 44,60
+  s_85af33425a736e::t_a27466ed518581 3,37,52
+packages/global/openapi/admin/core/app/templates/api.ts
+  s_85af33425a736e::t_8481236cf81ac1 75
+  s_85af33425a736e::t_849ce81fbee041 9,45-56,58,66-74
+  s_85af33425a736e::t_6338151d97fab3 2-5
+packages/global/openapi/core/app/httpTools/api.ts
+  s_85af33425a736e::t_6338151d97fab3 161-167
+  s_85af33425a736e::t_d5f9f85fc6ffd9 2,97
+packages/global/test/openapi/admin/routes/settings.test.ts
+  s_85af33425a736e::t_db8f5c0474f96b 2-3,67-70
+packages/global/core/ai/auxiliaryGeneration/type.ts
+  s_85af33425a736e::t_6338151d97fab3 76-82
+  s_85af33425a736e::t_2af42f17a0afd3 8
+packages/global/openapi/admin/support/user/login/api.ts
+  s_85af33425a736e::t_4e2066eac08035 12-13
+projects/app/src/pages/api/invoke/userInfo.ts
+  s_85af33425a736e::t_6b203d88b22d8f 3-4,8
+packages/global/openapi/core/dataset/collection/createApi.ts
+  s_85af33425a736e::t_427a8122362cb7 104,173,195,218
+packages/global/openapi/admin/common/license/index.ts
+  s_85af33425a736e::t_72c1267375fad6 3,20,35
+packages/global/openapi/admin/core/app/templateType/api.ts
+  s_85af33425a736e::t_849ce81fbee041 8-13,25
+packages/global/openapi/api.ts
+  s_85af33425a736e::t_4e2066eac08035 43-45
+  s_85af33425a736e::t_6338151d97fab3 77
+  s_85af33425a736e::t_c287922f02ab5a 42
+packages/global/test/openapi/admin/settings/model.test.ts
+  s_85af33425a736e::t_6277e1ee18b1e4 71-74
+  s_85af33425a736e::t_8fd620f78df75f 10,50-70,75-76
+  s_85af33425a736e::t_944a4ec6d3568e 77-78
+  s_85af33425a736e::t_d5447bc6e19f48 134,140
+packages/global/openapi/admin/routes/users/api.ts
+  s_85af33425a736e::t_849ce81fbee041 40,45,54,60
+packages/global/openapi/admin/routes/datasets/api.ts
+  s_85af33425a736e::t_3ff0815f727591 13,16
+packages/global/openapi/plugin/invoke.ts
+  s_85af33425a736e::t_367a5fb3dadbff 35,37,45,47
+  s_85af33425a736e::t_4e2066eac08035 66
+packages/global/openapi/admin/routes/settings/api.ts
+  s_85af33425a736e::t_3ff0815f727591 37
+  s_85af33425a736e::t_367a5fb3dadbff 68-70
+  s_85af33425a736e::t_10885fa8b68859 2,13-31,33,35
+packages/global/core/dataset/workflowTagFilter.ts
+  s_85af33425a736e::t_6338151d97fab3 82-85
+  s_85af33425a736e::t_ee44ff2d61dd4f 2
+packages/global/core/workflow/template/system/interactive/type.ts
+  s_85af33425a736e::t_6338151d97fab3 7,36-40,53-56,71-75,91-97,99-105,170,173-176
+packages/global/openapi/admin/routes/plans/api.ts
+  s_85af33425a736e::t_849ce81fbee041 64,92
+packages/global/openapi/admin/common/log/api.ts
+  s_85af33425a736e::t_a27466ed518581 3,6
+  s_85af33425a736e::t_c6581178132c90 12,21,23
+  s_85af33425a736e::t_e01ce2f0542286 7
+  s_85af33425a736e::t_1e5327a3dd1f44 9-10
+packages/global/common/system/types/index.ts
+  s_85af33425a736e::t_72c1267375fad6 3,227-244
+packages/global/openapi/support/user/account/login/api.ts
+  s_85af33425a736e::t_0713b6a0461543 13,19-20,30-31,37-38,40
+packages/global/openapi/core/app/evaluation/api.ts
+  s_85af33425a736e::t_427a8122362cb7 54
+packages/global/core/ai/llm/type.ts
+  s_85af33425a736e::t_6338151d97fab3 188-194
+  s_85af33425a736e::t_deb9603881ef7c 5
+packages/global/test/openapi/core/app.test.ts
+  s_85af33425a736e::t_427a8122362cb7 162
+  s_85af33425a736e::t_6338151d97fab3 159-161
+packages/global/openapi/admin/core/app/templateType/index.ts
+  s_85af33425a736e::t_849ce81fbee041 3-7,24,35
+  s_85af33425a736e::t_f6e63c007ce69c 39,58
+packages/global/openapi/core/app/common/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 506-509,511
+  s_85af33425a736e::t_6338151d97fab3 505,510
+packages/global/openapi/core/chat/completion/api.ts
+  s_85af33425a736e::t_6338151d97fab3 183-190
+  s_85af33425a736e::t_8d207f449be8f1 147-150
+packages/global/openapi/core/plugin/admin/api.ts
+  s_85af33425a736e::t_427a8122362cb7 13
+  s_85af33425a736e::t_d9433d6b0c6830 14
+packages/global/openapi/admin/settings/model/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 145-157,252
+  s_85af33425a736e::t_cd7299063b3c02 249-251
+  s_85af33425a736e::t_a5b96741cc8133 253-255
+  s_85af33425a736e::t_2810346e3b8368 244,246-248,256
+packages/global/openapi/admin/core/app/templates/index.ts
+  s_85af33425a736e::t_849ce81fbee041 5-6,27,42,63,74
+  s_85af33425a736e::t_69ba3598ce92d5 78,97,116
+packages/global/openapi/admin/routes/settings/index.ts
+  s_85af33425a736e::t_3ff0815f727591 3,37
+packages/global/openapi/admin/common/license/api.ts
+  s_85af33425a736e::t_72c1267375fad6 2,7-17
+packages/global/core/workflow/type/io.ts
+  s_85af33425a736e::t_6338151d97fab3 87-93,301-307,375-381,389-395
+  s_85af33425a736e::t_af15fc23f35a98 7
+projects/app/test/pages/api/core/ai/model/test.test.ts
+  s_85af33425a736e::t_e1a1e1c1ca8aee 228-231,236,243
+packages/global/openapi/admin/support/wallet/bill/invoice/api.ts
+  s_85af33425a736e::t_997cc097dd7a3b 12-13,15,17-18
+  s_85af33425a736e::t_3ff0815f727591 9
+  s_85af33425a736e::t_1e5327a3dd1f44 2,5
+  s_85af33425a736e::t_7f8614728f7bea 3
+  s_85af33425a736e::t_849ce81fbee041 8,10,19,21
+  s_85af33425a736e::t_5f8205a6c4a7c3 6
+packages/global/openapi/core/plugin/team/pkg/api.ts
+  s_85af33425a736e::t_427a8122362cb7 14
+  s_85af33425a736e::t_043a8ba624f356 15
+packages/global/test/openapi/admin/support/wallet/invoice.test.ts
+  s_85af33425a736e::t_bf2cef45cd9366 53
+  s_85af33425a736e::t_eff0dc3086eb65 1-52
+packages/global/openapi/core/dataset/synonym/api.ts
+  s_85af33425a736e::t_427a8122362cb7 51,56
+packages/global/openapi/common/other/api.ts
+  s_85af33425a736e::t_5702658ca7ff32 38
+packages/global/openapi/core/plugin/marketplace/api.ts
+  s_85af33425a736e::t_427a8122362cb7 283
+packages/global/openapi/core/chat/record/api.ts
+  s_85af33425a736e::t_427a8122362cb7 238
+  s_85af33425a736e::t_303b231cb4de14 179-181
+packages/global/openapi/support/wallet/bill/invoice/api.ts
+  s_85af33425a736e::t_6338151d97fab3 98-102
+  s_85af33425a736e::t_7080a351f350da 97
+packages/global/openapi/admin/routes/teams/index.ts
+  s_85af33425a736e::t_c6581178132c90 6,43
+packages/global/openapi/support/outLink/api.ts
+  s_85af33425a736e::t_6338151d97fab3 26-32
+  s_85af33425a736e::t_0f3a216606c3e6 2,24-25
+packages/global/core/workflow/runtime/type.ts
+  s_85af33425a736e::t_6338151d97fab3 159-163,168-171,179-185,216,230-242,247,256-259,263-267,273,275-281,285-289,292
+  s_85af33425a736e::t_b2eebe5207f4be 217,220-227,248-252
+  s_85af33425a736e::t_e5667769a38c80 11,157-158,214-215,228-229,245-246,290-291,293,326
+packages/global/common/zod/openapi.ts
+  s_85af33425a736e::t_9e4df74be441ab 3-19
+packages/global/openapi/admin/routes/datasets/index.ts
+  s_1d562813eae871::t_715b42d3fba8e1 3,12,16
+packages/global/openapi/admin/routes/plans/index.ts
+  s_85af33425a736e::t_210320ca874e0b 49,68
+packages/global/openapi/admin/routes/users/index.ts
+  s_85af33425a736e::t_1716f29fc8b84d 75,94
+packages/global/openapi/admin/support/user/inform/index.ts
+  s_85af33425a736e::t_89450559c28812 28,64,100,136
+packages/global/openapi/admin/support/wallet/bill/invoice/index.ts
+  s_85af33425a736e::t_0b007c1ea71c61 44
+packages/global/openapi/admin/support/wallet/coupon/api.ts
+  s_85af33425a736e::t_0e479320eb085f 2,28
+packages/global/openapi/core/ai/api.ts
+  s_85af33425a736e::t_6a9273b5548c11 115
+packages/global/openapi/core/app/mcpTools/api.ts
+  s_85af33425a736e::t_06ea831f4f13ad 2,159-160
+packages/global/openapi/core/app/template/api.ts
+  s_85af33425a736e::t_2d956815d024c2 2,77-81,83-86,88-93
+packages/global/openapi/core/plugin/debug/api.ts
+  s_85af33425a736e::t_9dbf21ca1956ed 2,122,133
+packages/global/support/wallet/sub/coupon/type.ts
+  s_85af33425a736e::t_e8501d3bd1c846 5
+packages/global/test/openapi/schemaCoverage.test.ts
+  s_85af33425a736e::t_750a9e818084c8 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "51d2e165eac19c902c86ee3af882b0efc66f2254",
+  "prompts": {},
+  "sessions": {
+    "s_1d562813eae871": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02d107a0-8fd4-4ce2-99bc-4fa556623eac",
+        "model": "deepseek-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_85af33425a736e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcf0-0a6a-7783-8746-c359b6af029f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

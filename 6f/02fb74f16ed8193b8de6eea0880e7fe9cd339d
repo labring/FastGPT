@@ -1,0 +1,61 @@
+packages/global/openapi/admin/core/app/templates/api.ts
+  s_85af33425a736e::t_849ce81fbee041 9,66-74
+  s_85af33425a736e::t_8481236cf81ac1 75
+packages/global/openapi/admin/routes/teams/api.ts
+  s_85af33425a736e::t_a27466ed518581 3,37,52
+  s_85af33425a736e::t_c6581178132c90 20,36,41-43,45-46,57,64,69
+  s_85af33425a736e::t_e01ce2f0542286 44,60
+packages/global/openapi/admin/routes/teams/index.ts
+  s_85af33425a736e::t_c6581178132c90 6,43
+packages/global/openapi/admin/core/app/templates/index.ts
+  s_85af33425a736e::t_849ce81fbee041 5-6,42,74
+packages/global/openapi/admin/support/wallet/bill/invoice/api.ts
+  s_85af33425a736e::t_3ff0815f727591 9
+  s_85af33425a736e::t_849ce81fbee041 8,10,19,21
+  s_85af33425a736e::t_1e5327a3dd1f44 2,5
+  s_85af33425a736e::t_997cc097dd7a3b 12-13,15,17-18
+  s_85af33425a736e::t_7f8614728f7bea 3
+  s_85af33425a736e::t_5f8205a6c4a7c3 6
+packages/global/openapi/admin/core/app/templateType/api.ts
+  s_85af33425a736e::t_849ce81fbee041 8-13,25
+packages/global/openapi/admin/routes/users/api.ts
+  s_85af33425a736e::t_849ce81fbee041 40,45,54,60
+packages/global/openapi/admin/routes/plans/api.ts
+  s_85af33425a736e::t_849ce81fbee041 64,92
+packages/global/test/openapi/admin/routes/settings.test.ts
+  s_85af33425a736e::t_db8f5c0474f96b 2-3,67-70
+packages/global/openapi/admin/routes/datasets/api.ts
+  s_85af33425a736e::t_3ff0815f727591 13,16
+packages/global/openapi/admin/routes/settings/index.ts
+  s_85af33425a736e::t_3ff0815f727591 3,37
+packages/global/test/openapi/admin/support/wallet/invoice.test.ts
+  s_85af33425a736e::t_eff0dc3086eb65 1-52
+  s_85af33425a736e::t_bf2cef45cd9366 53
+packages/global/openapi/admin/core/app/templateType/index.ts
+  s_85af33425a736e::t_849ce81fbee041 3-7,35
+projects/app/src/pages/api/invoke/userInfo.ts
+  s_85af33425a736e::t_6b203d88b22d8f 3-4,8
+packages/global/openapi/admin/routes/settings/api.ts
+  s_85af33425a736e::t_3ff0815f727591 37
+packages/global/openapi/admin/common/log/api.ts
+  s_85af33425a736e::t_c6581178132c90 12,21,23
+  s_85af33425a736e::t_a27466ed518581 3,6
+  s_85af33425a736e::t_1e5327a3dd1f44 9-10
+  s_85af33425a736e::t_e01ce2f0542286 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f02fb74f16ed8193b8de6eea0880e7fe9cd339d",
+  "prompts": {},
+  "sessions": {
+    "s_85af33425a736e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0bcf0-0a6a-7783-8746-c359b6af029f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

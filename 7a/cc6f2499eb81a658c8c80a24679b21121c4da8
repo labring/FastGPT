@@ -1,0 +1,80 @@
+optimize-agent/src/tools.ts
+  faf9652d68f6945a 1-78
+optimize-agent/tsconfig.json
+  faf9652d68f6945a 1-9
+optimize-agent/src/agent-loop.ts
+  faf9652d68f6945a 1,3-6,8-9,21-24,34-61
+  6efbc044a3cdd0c1 2,7,10-20,25-33
+optimize-agent/src/index.ts
+  faf9652d68f6945a 2-3,17-19
+  6efbc044a3cdd0c1 1,16
+  1d1d18923c1724a6 5,11
+optimize-agent/package.json
+  6efbc044a3cdd0c1 6-7,12-13
+  faf9652d68f6945a 1-5,8-11,14-19
+optimize-agent/src/bootstrap.ts
+  6efbc044a3cdd0c1 5-6,21,29-102
+  faf9652d68f6945a 1-4,7-20,22-28
+optimize-agent/.env.example
+  faf9652d68f6945a 1-5,9-16
+  6efbc044a3cdd0c1 6,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "7acc6f2499eb81a658c8c80a24679b21121c4da8",
+  "prompts": {
+    "1d1d18923c1724a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c7d6177-732b-486b-94f7-7ce62a369a59",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 9,
+      "accepted_lines": 2,
+      "overriden_lines": 8
+    },
+    "3324d4515f27bef7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "442ec3d8-81f4-441b-9ee6-f69b5ad37d7a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 197,
+      "overriden_lines": 0
+    },
+    "6efbc044a3cdd0c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48bbcdb7-0c14-4e67-98de-9572ed8dee40",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 384,
+      "total_deletions": 92,
+      "accepted_lines": 107,
+      "overriden_lines": 3
+    },
+    "faf9652d68f6945a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e9fb168-d52b-44e9-a480-cfd9ebf93857",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 185,
+      "overriden_lines": 0
+    }
+  }
+}

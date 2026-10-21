@@ -1,0 +1,23 @@
+packages/service/core/agentSkills/sandboxController.ts
+  2af2afa146255f5f 132-133,143,169,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "d81d2f3832b61f797976c18ccefaecd9d156bb31",
+  "prompts": {
+    "2af2afa146255f5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c477ecc-94c3-4072-be8b-9fd0fa3ca7b6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 38,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}

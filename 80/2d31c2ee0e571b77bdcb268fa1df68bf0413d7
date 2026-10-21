@@ -1,0 +1,95 @@
+projects/app/src/pages/api/core/agentSkills/create.ts
+  58a28b3bb1f9f875 35,69,72,75,78,81,86,89,95
+projects/app/src/pages/api/core/agentSkills/copy.ts
+  58a28b3bb1f9f875 55
+  3934f3d2cba88a4f 21
+projects/app/src/pages/api/core/agentSkills/detail.ts
+  58a28b3bb1f9f875 12,20
+packages/web/i18n/zh-CN/common.json
+  2669b8d2aa4ae8f6 147-148
+  3934f3d2cba88a4f 142
+  58a28b3bb1f9f875 143-146,149-152
+packages/global/common/error/code/agentSkill.ts
+  3934f3d2cba88a4f 7-8,32-37,62-63
+  58a28b3bb1f9f875 9-18,38-61,64-75
+packages/web/i18n/zh-Hant/common.json
+  3934f3d2cba88a4f 141
+  58a28b3bb1f9f875 142-145,148-151
+  2669b8d2aa4ae8f6 146-147
+packages/web/i18n/en/common.json
+  58a28b3bb1f9f875 142-152
+projects/app/src/pages/api/core/agentSkills/edit.ts
+  58a28b3bb1f9f875 11,36,42,58
+projects/app/src/pages/api/core/agentSkills/update.ts
+  3934f3d2cba88a4f 114
+  58a28b3bb1f9f875 102,105,119,125,130,141
+projects/app/src/pages/api/core/agentSkills/delete.ts
+  58a28b3bb1f9f875 11,17
+projects/app/src/pages/api/core/agentSkills/apps.ts
+  58a28b3bb1f9f875 21,29
+projects/app/src/pages/api/core/agentSkills/save-deploy.ts
+  6945709ed6832eb6 1,32,37-40,42-44,46-65,67-71,73-77,79-83,85-89,91-99,101-108,110-114,116,118-122,124-125,128-129,131,134-150,152-167,169-171,173-174
+  58a28b3bb1f9f875 30-31
+projects/app/src/pages/api/core/agentSkills/import.ts
+  6945709ed6832eb6 1,26,34,61,97-101,109-111,114,164,167,169,174-175
+  58a28b3bb1f9f875 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "802d31c2ee0e571b77bdcb268fa1df68bf0413d7",
+  "prompts": {
+    "2669b8d2aa4ae8f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec9d3d49-b9b9-4793-a4b1-57e5901602c1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "3934f3d2cba88a4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9792703-edf6-49a1-ba57-ab28c199a213",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 21,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    },
+    "58a28b3bb1f9f875": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48ff225f-4de4-4eb8-bdad-3aa63f054d4f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 130,
+      "total_deletions": 61,
+      "accepted_lines": 103,
+      "overriden_lines": 0
+    },
+    "6945709ed6832eb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81e50ac8-b058-4e40-95d1-4914e663c96d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon",
+      "messages": [],
+      "total_additions": 139,
+      "total_deletions": 159,
+      "accepted_lines": 139,
+      "overriden_lines": 0
+    }
+  }
+}

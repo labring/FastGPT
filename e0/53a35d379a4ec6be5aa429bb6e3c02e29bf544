@@ -1,0 +1,29 @@
+packages/service/env.ts
+  s_5c6c5e4c7421da::t_efac221fb72add 91-96
+packages/service/core/ai/sandbox/infrastructure/provider/runtimeProfile/opensandbox.ts
+  s_46b5b285a2b7fb::t_36d1a177b020c0 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e053a35d379a4ec6be5aa429bb6e3c02e29bf544",
+  "prompts": {},
+  "sessions": {
+    "s_46b5b285a2b7fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1b0a482-24de-428e-94e6-6a765604ff15",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_5c6c5e4c7421da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "527ef786-12f4-4083-b78b-044ac20acda4",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}

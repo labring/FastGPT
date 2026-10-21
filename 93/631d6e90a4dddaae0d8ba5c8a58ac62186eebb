@@ -1,0 +1,34 @@
+packages/service/package.json
+  s_2809939550f5e2::t_943fa08d6d7064 86
+projects/app/package.json
+  s_2809939550f5e2::t_08af2d255009ce 115
+packages/global/package.json
+  s_2809939550f5e2::t_0f80b4d9699e50 37
+projects/app/src/pages/api/core/ai/agent/createQuestionGuide.ts
+  s_2809939550f5e2::t_b006c3b21709dc 72
+  s_2809939550f5e2::t_0213175cd515aa 73
+pnpm-workspace.yaml
+  s_2809939550f5e2::t_053ce874ab0123 36
+projects/code-sandbox/package.json
+  s_2809939550f5e2::t_141025cbbd05a5 40
+packages/web/package.json
+  s_2809939550f5e2::t_9035ef621cd851 56
+pnpm-lock.yaml
+  s_2809939550f5e2::t_4df246836b468d 60,62,466,468,677,679,852,854,1099,1101,1471-1473,1508,1510,1605-1607,6752-6754,21180-21183,22693-22694
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "93631d6e90a4dddaae0d8ba5c8a58ac62186eebb",
+  "prompts": {},
+  "sessions": {
+    "s_2809939550f5e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "233c3734-735b-4020-983d-b4327f28acad",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
