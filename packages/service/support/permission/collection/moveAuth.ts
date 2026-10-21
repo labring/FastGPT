@@ -26,7 +26,10 @@ import { getTmbPermissionMap } from '../controller';
 import { assertDatasetPermission } from '../dataset/utils';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
 import type { AuthModeType } from '../type';
 
 export type CollectionMoveAuthItem = { collectionId: string; targetParentId: string | null };
@@ -156,10 +159,13 @@ export const authDatasetCollectionMoves = async ({
     tmbId,
     isRoot,
     isTeamOwner,
+    // 父级 owner 在子级只能是 manage：不能用父目录的原始 owner role 通过 owner 级校验。
     role:
       sumPer(
         datasetPermissions.get(String(dataset._id)) ?? 0,
-        inheritedDatasetParent ? (datasetPermissions.get(inheritedDatasetParent) ?? 0) : 0
+        inheritedDatasetParent
+          ? toInheritedPermissionValue(datasetPermissions.get(inheritedDatasetParent) ?? 0)
+          : 0
       ) ?? 0,
     per: creationParentIds.includes(null) ? WritePermissionVal : ReadPermissionVal
   });
