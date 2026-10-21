@@ -6,6 +6,7 @@ import {
   ModalBody,
   ModalFooter,
   Switch,
+  Textarea,
   useDisclosure
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
@@ -125,7 +126,7 @@ const EditForm = ({
 
         <MyBox mt={3} isLoading={isDeletingTool}>
           {toolList && toolList.length > 0 ? (
-            toolList.map((tool, index) => {
+            toolList.map((tool) => {
               return (
                 <MyBox
                   key={tool.name}
@@ -278,7 +279,7 @@ const EditForm = ({
 
       {isOpenConfigModal && <SchemaConfigModal onClose={onCloseConfigModal} />}
       {toolDetail && (
-        <ToolDetailModal
+        <HttpToolDetailModal
           tool={toolDetail}
           onClose={() => setToolDetail(null)}
           toolList={toolList || []}
@@ -300,14 +301,16 @@ const EditForm = ({
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({
+export const HttpToolDetailModal = ({
   tool,
   onClose,
   toolList,
   baseUrl,
   apiSchemaStr,
   headerSecret,
-  customHeaders
+  customHeaders,
+  onSaveToolList,
+  isCustomToolSet = false
 }: {
   tool: HttpToolConfigType;
   onClose: () => void;
@@ -316,10 +319,13 @@ const ToolDetailModal = ({
   apiSchemaStr: string;
   headerSecret: StoreSecretValueType;
   customHeaders: string;
+  onSaveToolList?: (toolList: HttpToolConfigType[]) => void;
+  isCustomToolSet?: boolean;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
+  const [description, setDescription] = useState(tool.description ?? '');
 
   const [enabledParams, setEnabledParams] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -347,7 +353,7 @@ const ToolDetailModal = ({
   return (
     <MyModal
       isOpen={true}
-      iconSrc="common/detail"
+      iconSrc={isCustomToolSet ? undefined : 'common/detail'}
       iconColor={'primary.600'}
       title={t('app:tool_detail')}
       onClose={onClose}
@@ -355,14 +361,25 @@ const ToolDetailModal = ({
     >
       <ModalBody pt={0}>
         <Flex py={6} borderBottom={'1px solid'} borderColor={'myGray.200'}>
-          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'40px'} />
-          <Box ml={'14px'}>
+          <Box ml={'14px'} flex={1} minW={0}>
             <Box fontSize={'16px'} color={'myGray.900'}>
               {tool.name}
             </Box>
-            <Box fontSize={'12px'} color={'myGray.500'}>
-              {tool.description}
-            </Box>
+            {isCustomToolSet ? (
+              <Textarea
+                mt={1}
+                rows={3}
+                resize={'vertical'}
+                fontSize={'12px'}
+                value={description}
+                placeholder={t('app:tools_no_description')}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            ) : (
+              <Box fontSize={'12px'} color={'myGray.500'}>
+                {tool.description}
+              </Box>
+            )}
           </Box>
         </Flex>
 
@@ -390,25 +407,27 @@ const ToolDetailModal = ({
           {t('common:Params')}
         </Box>
 
-        <Flex
-          justifyContent={'space-between'}
-          my={2}
-          py={'10px'}
-          px={3}
-          borderRadius={'6px'}
-          bg={'myGray.100'}
-          color={'myGray.600'}
-          fontSize={'12px'}
-          fontWeight={'500'}
-        >
-          <Box>{t('workflow:tool_params.params_description')}</Box>
-          <Box display={'flex'} alignItems={'center'} gap={1}>
-            {t('workflow:field_used_as_tool_input')}
-            <QuestionTip label={t('app:tool_tip')} />
-          </Box>
-        </Flex>
+        {!isCustomToolSet && (
+          <Flex
+            justifyContent={'space-between'}
+            my={2}
+            py={'10px'}
+            px={3}
+            borderRadius={'6px'}
+            bg={'myGray.100'}
+            color={'myGray.600'}
+            fontSize={'12px'}
+            fontWeight={'500'}
+          >
+            <Box>{t('workflow:tool_params.params_description')}</Box>
+            <Box display={'flex'} alignItems={'center'} gap={1}>
+              {t('workflow:field_used_as_tool_input')}
+              <QuestionTip label={t('app:tool_tip')} />
+            </Box>
+          </Flex>
+        )}
 
-        <Box mt={3} px={3}>
+        <Box mt={isCustomToolSet ? 2 : 3} px={isCustomToolSet ? 0 : 3}>
           {Object.entries(tool.inputSchema?.properties || {}).map(
             ([paramName, paramInfo]: [string, any]) => (
               <Box
@@ -448,21 +467,23 @@ const ToolDetailModal = ({
                     {paramInfo.description}
                   </Box>
                 </Box>
-                <Switch
-                  isChecked={enabledParams.has(paramName)}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setEnabledParams((prev) => {
-                      const next = new Set(prev);
-                      if (checked) {
-                        next.add(paramName);
-                      } else {
-                        next.delete(paramName);
-                      }
-                      return next;
-                    });
-                  }}
-                />
+                {!isCustomToolSet && (
+                  <Switch
+                    isChecked={enabledParams.has(paramName)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setEnabledParams((prev) => {
+                        const next = new Set(prev);
+                        if (checked) {
+                          next.add(paramName);
+                        } else {
+                          next.delete(paramName);
+                        }
+                        return next;
+                      });
+                    }}
+                  />
+                )}
               </Box>
             )
           )}
@@ -472,31 +493,41 @@ const ToolDetailModal = ({
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        {Object.keys(tool.inputSchema?.properties || {}).length > 0 && (
+        {(Object.keys(tool.inputSchema?.properties || {}).length > 0 || isCustomToolSet) && (
           <Button
             size={'md'}
             isLoading={isUpdating}
             onClick={() => {
+              const properties = Object.entries(tool.inputSchema?.properties || {});
               const updatedTool = {
                 ...tool,
-                inputSchema: {
-                  ...tool.inputSchema,
-                  properties: Object.fromEntries(
-                    Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => [
-                      key,
-                      updateHttpToolInputProperty({
+                ...(isCustomToolSet ? { description } : {}),
+                ...(properties.length > 0 && {
+                  inputSchema: {
+                    ...tool.inputSchema,
+                    properties: Object.fromEntries(
+                      properties.map(([key, value]) => [
                         key,
-                        property: value,
-                        enabled: enabledParams.has(key)
-                      })
-                    ])
-                  )
-                }
+                        updateHttpToolInputProperty({
+                          key,
+                          property: value,
+                          enabled: isCustomToolSet || enabledParams.has(key)
+                        })
+                      ])
+                    )
+                  }
+                })
               };
 
               const updatedToolList = toolList.map((item) =>
                 item.name === tool.name ? updatedTool : item
               );
+
+              if (onSaveToolList) {
+                onSaveToolList(updatedToolList);
+                onClose();
+                return;
+              }
 
               runUpdateHttpPlugin({
                 appId: appDetail._id,

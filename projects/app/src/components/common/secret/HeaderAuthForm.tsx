@@ -23,7 +23,8 @@ const getShowInput = ({
   return !hasSecret || hasValue || isEditing;
 };
 
-const AuthValueDisplay = ({
+/** 编辑前隐藏已保存的密钥，避免明文回显。 */
+export const AuthValueDisplay = ({
   showInput,
   index = 0,
   onEdit,
@@ -41,12 +42,15 @@ const AuthValueDisplay = ({
   const { t } = useTranslation();
 
   return (
-    <Flex>
+    <Flex flex={1} minW={0}>
       {showInput ? (
         <Input
           placeholder={'Value'}
           bg={bg}
           h={8}
+          w="full"
+          flex={1}
+          minW={0}
           maxLength={50000}
           onFocus={() => onEdit(index)}
           onBlur={() => onEdit(undefined)}
