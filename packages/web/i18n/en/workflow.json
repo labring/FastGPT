@@ -369,6 +369,7 @@
   "workflow_builder_version_applied": "Applied",
   "workflow_builder_version_expired": "Expired",
   "workflow_builder_version_expired_toast": "This workflow has expired and cannot be applied. Generate a new one.",
+  "workflow_builder_version_not_found_toast": "Workflow file not found",
   "workflow_builder_version_json_ready": "Workflow JSON generated and validated",
   "workflow_builder_version_ready_suffix": " generated",
   "workflow_builder_process_details": "Process details",
