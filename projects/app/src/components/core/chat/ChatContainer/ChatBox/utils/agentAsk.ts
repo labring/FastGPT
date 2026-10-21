@@ -11,7 +11,7 @@ export type AIChatDisplayGroup = { type: 'ai'; values: AIChatItemValueItemType[]
 /**
  * 按交互边界拆分 AI 记录，Ask 和方案确认的回复均由独立 user 记录承载。
  *
- * 各段沿用普通 AI 分组，提问仅由底部输入区展示，不创建空白 AI 气泡。
+ * 各段沿用普通 AI 分组，提问仅由底部输入区展示，方案仍保留 Mermaid 和说明正文。
  * 恢复生成但尚未收到新事件时保留空的 AI 占位，供加载提示使用。
  */
 export const getAIChatDisplayGroups = ({
@@ -52,7 +52,9 @@ export const getAIChatDisplayGroups = ({
           (hasAiAnswerContent(value) ||
             hasAiProcessingContent(value) ||
             value.workflowBuilderVersion ||
-            (value.interactive && !isReplyInteractive(value)))
+            (value.interactive &&
+              (!isReplyInteractive(value) ||
+                extractDeepestInteractive(value.interactive).type === 'workflowBuilderPreview')))
       );
       if (!hasVisibleContent && (!isLastSegment || hasReplyBoundary)) return;
       groups.push({ type: 'ai', values });

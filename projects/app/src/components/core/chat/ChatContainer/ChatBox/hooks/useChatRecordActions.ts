@@ -50,6 +50,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -77,7 +78,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    *
    * 重试不是简单地重新发送当前文本，而是先定位目标 `dataId`：
    * 1. 删除该消息以及它之后的所有服务端记录，避免新回答和旧后续历史并存。
-   * 2. 将本地 records 裁剪到目标消息之前，让生成链路看到正确的 history。
+   * 2. 重新加载删除后的历史窗口及分页锚点，避免继续用已删除的消息查询上下页。
    * 3. 从被删除的第一条记录恢复 text/files，并交给 `sendPrompt` 重新发送。
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
@@ -145,12 +146,12 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
         })();
 
         await onDelMessages(delHistory.map((item) => item.dataId));
-        setChatRecords(history);
+        const refreshedHistory = await refreshChatRecords();
 
         sendPrompt({
           ...formatChatValue2InputType(user.value),
           hideInUI: hideInUI || user.hideInUI,
-          history,
+          history: refreshedHistory,
           interactive,
           agentPlanAskResponse
         });
@@ -184,12 +185,12 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
         if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
 
         await onDelMessages(delHistory.map((item) => item.dataId));
-        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
+        const history = await refreshChatRecords();
 
         sendPrompt({
           ...formatChatValue2InputType(delHistory[0].value),
           ...input,
-          history: chatRecords.slice(0, index)
+          history
         });
       } catch (error) {
         toast({

@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   scroll: vi.fn(),
   deleteRecords: vi.fn(),
   getRecords: vi.fn(),
+  refreshRecords: vi.fn(),
   system: { isPc: false }
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
@@ -190,9 +191,15 @@ describe('useChatGenerate.sendPrompt', () => {
       setChatBoxData,
       resetVariables: () => {}
     } as unknown as React.ComponentProps<typeof ChatItemContext.Provider>['value'];
-    const record = { chatRecords, setChatRecords } as unknown as React.ComponentProps<
-      typeof ChatRecordContext.Provider
-    >['value'];
+    const record = {
+      chatRecords,
+      setChatRecords,
+      refreshChatRecords: async () => {
+        const history = await mocks.refreshRecords();
+        setChatRecords(history);
+        return history;
+      }
+    } as unknown as React.ComponentProps<typeof ChatRecordContext.Provider>['value'];
     const chat = {
       variableList: [],
       startSegmentedAudio: mocks.startAudio,
@@ -379,6 +386,7 @@ describe('useChatGenerate.sendPrompt', () => {
       await act(async () => request.resolve({ responseText: 'Continued' }));
 
       const sourceAi = records[0];
+      mocks.refreshRecords.mockResolvedValueOnce([sourceAi]);
       if (paginated) {
         mocks.getRecords.mockResolvedValueOnce({
           list: [sourceAi],
@@ -391,12 +399,19 @@ describe('useChatGenerate.sendPrompt', () => {
       await act(async () => recordActions.retryInput(user.dataId)?.());
       expect(mocks.getRecords).toHaveBeenCalledTimes(paginated ? 1 : 0);
       expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+        mocks.deleteRecords.mock.invocationCallOrder[0]
+      );
       const retried = records.at(-2);
       if (retried?.obj !== ChatRoleEnum.Human) throw new Error('Expected the retried user message');
       expect(retried.dataId).not.toBe(user.dataId);
       expect(retried.hideInUI).toBe(false);
       expect(retried.value[0].interactiveReply).toEqual(user.value[0].interactiveReply);
       expect(mocks.start).toHaveBeenCalledTimes(2);
+      expect(mocks.start.mock.invocationCallOrder[1]).toBeGreaterThan(
+        mocks.refreshRecords.mock.invocationCallOrder[0]
+      );
       const resent = mocks.start.mock.calls[1][0];
       expect(
         resent.messages.filter((message: { role: string }) => message.role === 'user')
@@ -469,6 +484,48 @@ describe('useChatGenerate.sendPrompt', () => {
     );
   });
 
+  it.each([true, false])(
+    'reloads the history window before sending an edited message (refresh succeeds: %s)',
+    async (succeeds) => {
+      await render();
+      await act(async () =>
+        setRecords([
+          {
+            id: 'old-user',
+            dataId: 'old-user',
+            obj: ChatRoleEnum.Human,
+            status: ChatStatusEnum.finish,
+            value: [{ text: { content: 'Old prompt' } }]
+          }
+        ])
+      );
+      if (succeeds) mocks.refreshRecords.mockResolvedValueOnce([]);
+      else mocks.refreshRecords.mockRejectedValueOnce(new Error('Refresh failed'));
+
+      await act(async () =>
+        recordActions.editInput('old-user')?.({ text: 'Edited prompt', files: [] })
+      );
+
+      expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+        mocks.deleteRecords.mock.invocationCallOrder[0]
+      );
+      expect(recordActions.isRecordActionLoading).toBe(false);
+      if (succeeds) {
+        expect(mocks.start).toHaveBeenCalledTimes(1);
+        expect(mocks.start.mock.calls[0][0].messages).toEqual([
+          expect.objectContaining({ role: 'user', content: 'Edited prompt' })
+        ]);
+      } else {
+        expect(mocks.start).not.toHaveBeenCalled();
+        expect(mocks.toast).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'warning', title: 'Refresh failed' })
+        );
+      }
+    }
+  );
+
   it('finishes a tool activity when its completion signal contains an empty response', async () => {
     const request = Promise.withResolvers<{ responseText: string }>();
     mocks.start.mockReturnValueOnce(request.promise);
@@ -504,6 +561,64 @@ describe('useChatGenerate.sendPrompt', () => {
       })
     );
     expect(getActivity()).toEqual({ ...tool, response: '' });
+    await act(async () => request.resolve({ responseText: '' }));
+  });
+
+  it('ignores orphan tool deltas and merges later results by tool ID without touching other values', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await send();
+    const tool = { id: 'resumed-tool', toolName: 'Plan preview', toolAvatar: '', params: '' };
+    // 刷新恢复或新交互轮次可能只有数据库预创建的空 AI 占位。
+    await act(async () =>
+      setRecords((state) =>
+        state.map((item) => (item.obj === ChatRoleEnum.AI ? { ...item, value: [] } : item))
+      )
+    );
+
+    for (const event of [SseResponseEventEnum.toolParams, SseResponseEventEnum.toolResponse]) {
+      await act(async () =>
+        generate.generatingMessage({
+          event,
+          tool: { ...tool, params: 'orphan', response: 'orphan' }
+        })
+      );
+    }
+    expect(records.at(-1)?.value).toEqual([]);
+
+    await act(async () =>
+      generate.generatingMessage({ event: SseResponseEventEnum.toolCall, tool })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.answer,
+        responseValueId: 'answer-after-tool',
+        text: 'Keep this answer'
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolParams,
+        responseValueId: 'unrelated-value',
+        tool: { ...tool, params: '{}' }
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolResponse,
+        responseValueId: 'unrelated-value',
+        tool: { ...tool, response: 'confirmed' }
+      })
+    );
+
+    const response = records.at(-1);
+    expect(response?.obj).toBe(ChatRoleEnum.AI);
+    if (response?.obj !== ChatRoleEnum.AI) throw new Error('Expected AI response');
+    expect(response.value).toEqual([
+      { id: tool.id, tools: [{ ...tool, params: '{}', response: 'confirmed' }] },
+      { id: 'answer-after-tool', text: { content: 'Keep this answer' } }
+    ]);
     await act(async () => request.resolve({ responseText: '' }));
   });
 

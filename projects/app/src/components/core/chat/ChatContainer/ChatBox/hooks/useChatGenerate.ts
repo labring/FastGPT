@@ -224,14 +224,6 @@ export const useChatGenerate = ({
           splitText2Audio(formatChatValue2InputType(item.value).text || '');
         }
 
-        const updateIndex = (() => {
-          if (!responseValueId) return item.value.length - 1;
-          const index = item.value.findIndex((item) => item.id === responseValueId);
-          if (index !== -1) return index;
-          return item.value.length - 1;
-        })();
-        const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
-
         if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
           return {
             ...item,
@@ -420,45 +412,31 @@ export const useChatGenerate = ({
             value: [...item.value, val]
           };
         }
-        if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
-          if (tool.params) {
-            updateValue.tools = updateValue.tools.map((item) => {
-              if (item.id !== tool.id) return item;
+        if (
+          (event === SseResponseEventEnum.toolParams ||
+            event === SseResponseEventEnum.toolResponse) &&
+          tool
+        ) {
+          const field = event === SseResponseEventEnum.toolParams ? 'params' : 'response';
+          const delta = tool[field];
+          if (typeof delta !== 'string' || (field === 'params' && !delta)) return item;
+
+          // 仅按工具 ID 合并；孤立增量不能落到最后一个正文或尚为空的新 AI 占位上。
+          return {
+            ...item,
+            value: item.value.map((value) => {
+              if (!value.tools?.some((currentTool) => currentTool.id === tool.id)) return value;
 
               return {
-                ...item,
-                params: `${item.params || ''}${tool.params}`
+                ...value,
+                tools: value.tools.map((currentTool) =>
+                  currentTool.id === tool.id
+                    ? { ...currentTool, [field]: `${currentTool[field] || ''}${delta}` }
+                    : currentTool
+                )
               };
-            });
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          }
-          return item;
-        }
-        if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-          if (typeof tool.response === 'string') {
-            updateValue.tools = updateValue.tools.map((item) =>
-              item.id === tool.id
-                ? { ...item, response: `${item.response || ''}${tool.response}` }
-                : item
-            );
-
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          }
-          return item;
+            })
+          };
         }
 
         if (event === SseResponseEventEnum.planStatus && planStatus) {

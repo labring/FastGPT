@@ -65,20 +65,42 @@ describe('getAIChatDisplayGroups', () => {
     ]);
   });
 
-  it.each([askValue, previewValue])(
-    'never projects a user bubble or a waiting label from $interactive.type',
-    (value) => {
-      const original = structuredClone(value);
+  it('never projects a user bubble or a waiting label from Agent Ask', () => {
+    const value = askValue;
+    const original = structuredClone(value);
+    for (const isLastChild of [true, false]) {
+      for (const isChatting of [true, false]) {
+        expect(getGroups([value], { isLastChild, isChatting })).toEqual([]);
+        expect(getGroups([before, value, after], { isLastChild, isChatting })).toEqual([
+          { type: 'ai', values: [before] },
+          { type: 'ai', values: [after] }
+        ]);
+      }
+    }
+    expect(value).toEqual(original);
+  });
+
+  it.each([undefined, 'confirm', 'revise', 'cancel'] as const)(
+    'preserves the workflow plan body when its answer is %s',
+    (answerValue) => {
+      const value: AIChatItemValueItemType = {
+        interactive: {
+          ...previewValue.interactive,
+          params: { ...preview.params, answerValue }
+        }
+      };
       for (const isLastChild of [true, false]) {
         for (const isChatting of [true, false]) {
-          expect(getGroups([value], { isLastChild, isChatting })).toEqual([]);
+          expect(getGroups([value], { isLastChild, isChatting })).toEqual([
+            { type: 'ai', values: [value] }
+          ]);
           expect(getGroups([before, value, after], { isLastChild, isChatting })).toEqual([
             { type: 'ai', values: [before] },
+            { type: 'ai', values: [value] },
             { type: 'ai', values: [after] }
           ]);
         }
       }
-      expect(value).toEqual(original);
     }
   );
 
@@ -88,7 +110,7 @@ describe('getAIChatDisplayGroups', () => {
     };
     expect(getGroups([pending])).toEqual([]);
     expect(getGroups([pending], { isLastChild: false })).toEqual([]);
-    expect(getGroups([askValue, previewValue])).toEqual([]);
+    expect(getGroups([askValue, askValue])).toEqual([]);
     expect(getGroups([pending, { text: { content: '' } }], { isChatting: true })).toEqual([]);
   });
 
@@ -112,7 +134,7 @@ describe('getAIChatDisplayGroups', () => {
   });
 
   it.each([askValue, previewValue])(
-    'hides nested $interactive.type without hiding generated text',
+    'preserves nested $interactive.type plan bodies while hiding Ask interactions',
     (value) => {
       const nested: AIChatItemValueItemType = {
         interactive: {
@@ -121,9 +143,14 @@ describe('getAIChatDisplayGroups', () => {
           params: { childrenResponse: value.interactive }
         }
       };
-      expect(getGroups([nested])).toEqual([]);
+      const previewGroups =
+        value.interactive.type === 'workflowBuilderPreview'
+          ? [{ type: 'ai', values: [nested] }]
+          : [];
+      expect(getGroups([nested])).toEqual(previewGroups);
       expect(getGroups([before, nested, after])).toEqual([
         { type: 'ai', values: [before] },
+        ...previewGroups,
         { type: 'ai', values: [after] }
       ]);
     }
