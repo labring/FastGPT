@@ -9,7 +9,7 @@ import InteractiveTerminal from './InteractiveTerminal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import ParticleLoading from '@fastgpt/web/components/common/MyLoading/ParticleLoading';
+import DotLoading from '@fastgpt/web/components/common/MyLoading/DotLoading';
 import RandomGridBackground from './RandomGridBackground';
 import type { TreeNode } from './FileTree';
 import type { SandboxEditorInstance } from '../types';
@@ -163,7 +163,7 @@ const EditorWorkspace = ({
         >
           <RandomGridBackground />
           <Box zIndex={1} display="flex" flexDirection="column" alignItems="center">
-            <ParticleLoading size="lg" />
+            <DotLoading size="lg" />
             {loadingLines[0] && (
               <Box position="relative" mt="20px" w="full" textAlign="center">
                 <Text fontSize="14px" color="myGray.500" fontWeight="400" lineHeight="21px">
