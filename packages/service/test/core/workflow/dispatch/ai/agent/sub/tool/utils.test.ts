@@ -678,7 +678,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
     expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
@@ -699,7 +699,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
   });
 
   it('does not persist runtime MCP connection data in expanded Agent tools', async () => {
@@ -718,7 +718,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ]
     });
 
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -731,7 +731,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tools[0].version).toBe('');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
   });
 
@@ -774,7 +774,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('mcp_slash_apptest');
     expect(tools[0].name).toBe('/test');
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_slash_app//test');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -860,7 +860,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads a selected legacy MCP tool with its input schema', async () => {
@@ -882,7 +882,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
-    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-legacy_mcp_app/search' });
   });
 
   it('loads an MCP tool without isToolParam as an agent tool', async () => {
@@ -990,9 +990,10 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
 
     expect(tools).toHaveLength(1);
-    expect(tools[0].toolConfig?.mcpTool?.toolId ?? tools[0].toolConfig?.httpTool?.toolId).toContain(
-      `/${tool.name}`
-    );
+    const mcpTool = tools[0].toolConfig?.mcpTool;
+    const toolId =
+      mcpTool && 'toolId' in mcpTool ? mcpTool.toolId : tools[0].toolConfig?.httpTool?.toolId;
+    expect(toolId).toContain(`/${tool.name}`);
     expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 
