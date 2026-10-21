@@ -79,8 +79,12 @@ const agentModelSettingProps = {
   showMultimodalConfig: true
 };
 
-// 聊天记录轮数不在节点上配置，与 Agent V2 表单保持一致；存量节点若仍有该输入也不展示。
-const hiddenInputKeys = new Set<NodeInputKeyEnum>([NodeInputKeyEnum.history]);
+// 聊天记录轮数与文件链接均不在节点上配置，与 Agent V2 表单保持一致：
+// 文件链接是内置输入，由流程开始节点自动引用 userFiles；存量节点若仍有这些输入也不展示。
+const hiddenInputKeys = new Set<NodeInputKeyEnum>([
+  NodeInputKeyEnum.history,
+  NodeInputKeyEnum.fileUrlList
+]);
 
 // AI 配置弹窗会读写这些输入。hidden 输入不渲染，但必须一并传给设置组件，否则修改无法写回节点。
 const aiSettingInputKeys = new Set<NodeInputKeyEnum>([
@@ -114,6 +118,44 @@ const ManualInputLabel = React.memo(function ManualInputLabel({
     </Flex>
   );
 });
+
+// 与 dashboard/ListCreateCard 的新建卡片保持同一虚线规范（#7895FE、6/6 圆头、12px 圆角）。
+const CREATE_CARD_DASHED_BORDER = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%237895FE' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
+
+/**
+ * 技能 / 工具 / 知识库统一的添加态按钮。
+ * 保持 40px 紧凑高度，视觉 token 对齐 dashboard 的 ListCreateCard。
+ */
+const ResourceSelectButton = ({
+  onClick,
+  children
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+}) => (
+  <Button
+    variant={'transparentBase'}
+    h={10}
+    w={'100%'}
+    bg={'white'}
+    color={'myGray.900'}
+    border={'none'}
+    borderRadius={'10px'}
+    boxShadow={'none'}
+    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} color={'#7895FE'} />}
+    _hover={{ bg: 'primary.50' }}
+    _active={{ bg: 'primary.50' }}
+    sx={{
+      backgroundImage: CREATE_CARD_DASHED_BORDER,
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+      backgroundSize: '100% 100%'
+    }}
+    onClick={onClick}
+  >
+    {children}
+  </Button>
+);
 
 // TODO: 待优化，不一定需要重写，用模板渲染也可以
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -239,11 +281,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => commonInputs.filter((i) => aiSettingInputKeys.has(i.key as NodeInputKeyEnum)),
     [commonInputs]
   );
-  // Inputs rendered before skills/tools (fileLink, userChatInput)
-  const chatInputKeys = useMemo(
-    () => new Set([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput]),
-    []
-  );
+  // Inputs rendered after the dataset section (userChatInput)
+  const chatInputKeys = useMemo(() => new Set([NodeInputKeyEnum.userChatInput]), []);
   const chatInputs = useMemo(
     () => commonInputs.filter((i) => chatInputKeys.has(i.key as NodeInputKeyEnum)),
     [commonInputs, chatInputKeys]
@@ -528,9 +567,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Box>
         )}
 
-        {/* 3. Chat inputs (fileLink, userChatInput) */}
-        {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
-
+        {/* 3. Sandbox config */}
         <WorkflowSandboxConfig
           nodeId={nodeId}
           sandboxInput={sandboxInput}
@@ -565,13 +602,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 minW={'350px'}
                 w={'100%'}
               >
-                <Button
-                  h={10}
-                  leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-                  onClick={openSkillSelect}
-                >
-                  {t('common:Choose')}
-                </Button>
+                <ResourceSelectButton onClick={openSkillSelect}>
+                  {t('workflow:agent.add_skill')}
+                </ResourceSelectButton>
                 {selectedAgentSkills.map((item) => (
                   <SkillCard
                     key={item.skillId}
@@ -610,13 +643,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 minW={'350px'}
                 w={'100%'}
               >
-                <Button
-                  h={10}
-                  leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-                  onClick={onOpenToolSelect}
-                >
-                  {t('common:Choose')}
-                </Button>
+                <ResourceSelectButton onClick={onOpenToolSelect}>
+                  {t('app:Add_tool')}
+                </ResourceSelectButton>
                 {selectedTools.map((item) => (
                   <MyTooltip
                     key={getToolIdentityKey(item.pluginId || item.id, item.source)}
@@ -691,83 +720,86 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
 
         {/* 6. Dataset inputs (datasetSelectList, datasetParams, etc.) */}
-        {datasetSelectInput && (
-          <Box>
-            <Flex className="nodrag" cursor={'default'} alignItems={'center'}>
-              <FormLabel color={'myGray.600'}>{t('common:core.dataset.Dataset')}</FormLabel>
-              {feConfigs?.isPlus && authTmbIdInput && (
-                <Flex ml={2} alignItems={'center'}>
-                  <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
-                    {t('workflow:auth_tmb_id')}
-                  </Box>
-                  <QuestionTip ml={1} label={t('workflow:auth_tmb_id_tip')} />
-                  <Switch
-                    ml={1}
-                    size={'sm'}
-                    isChecked={!!authTmbIdInput.value}
-                    onChange={(e) => onChangeAuthTmbId(e.target.checked)}
-                  />
+        {(datasetSelectInput || datasetOtherInputs.length > 0) && (
+          <Box mb={5}>
+            {datasetSelectInput && (
+              <Box>
+                <Flex className="nodrag" cursor={'default'} alignItems={'center'}>
+                  <FormLabel color={'myGray.600'}>{t('common:core.dataset.Dataset')}</FormLabel>
+                  {feConfigs?.isPlus && authTmbIdInput && (
+                    <Flex ml={2} alignItems={'center'}>
+                      <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
+                        {t('workflow:auth_tmb_id')}
+                      </Box>
+                      <QuestionTip ml={1} label={t('workflow:auth_tmb_id_tip')} />
+                      <Switch
+                        ml={1}
+                        size={'sm'}
+                        isChecked={!!authTmbIdInput.value}
+                        onChange={(e) => onChangeAuthTmbId(e.target.checked)}
+                      />
+                    </Flex>
+                  )}
+                  <MyTooltip label={t('workflow:params_setting')}>
+                    <Box
+                      ml={2}
+                      display={'inline-flex'}
+                      alignItems={'center'}
+                      cursor={'pointer'}
+                      color={'myGray.500'}
+                      _hover={{ color: 'primary.600' }}
+                      onClick={onOpenDatasetParams}
+                    >
+                      <MyIcon name={'common/settingLight'} w={'16px'} />
+                    </Box>
+                  </MyTooltip>
                 </Flex>
-              )}
-              <MyTooltip label={t('workflow:params_setting')}>
-                <Box
-                  ml={2}
-                  display={'inline-flex'}
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  color={'myGray.500'}
-                  _hover={{ color: 'primary.600' }}
-                  onClick={onOpenDatasetParams}
-                >
-                  <MyIcon name={'common/settingLight'} w={'16px'} />
+                <Box mt={2} className={'nodrag'}>
+                  <Grid
+                    gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
+                    gridGap={4}
+                    minW={'350px'}
+                    w={'100%'}
+                  >
+                    <ResourceSelectButton onClick={onOpenDatasetSelect}>
+                      {t('common:core.chat.Select dataset')}
+                    </ResourceSelectButton>
+                    {selectedDatasets.map((dataset) => (
+                      <DatasetCard key={dataset.datasetId} dataset={dataset} />
+                    ))}
+                  </Grid>
+                  {isOpenDatasetSelect && (
+                    <DatasetSelectModal
+                      defaultSelectedDatasets={selectedDatasets.map((d) => ({
+                        datasetId: d.datasetId,
+                        name: d.name,
+                        avatar: d.avatar,
+                        vectorModel: d.vectorModel,
+                        error: d.error
+                      }))}
+                      onChange={(e) => {
+                        if (!datasetSelectInput) return;
+                        onChangeNode({
+                          nodeId,
+                          key: NodeInputKeyEnum.datasetSelectList,
+                          type: 'updateInput',
+                          value: { ...datasetSelectInput, value: e }
+                        });
+                      }}
+                      onClose={onCloseDatasetSelect}
+                    />
+                  )}
                 </Box>
-              </MyTooltip>
-            </Flex>
-            <Box mt={2} className={'nodrag'}>
-              <Grid
-                gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-                gridGap={4}
-                minW={'350px'}
-                w={'100%'}
-              >
-                <Button
-                  h={10}
-                  leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-                  onClick={onOpenDatasetSelect}
-                >
-                  {t('common:Choose')}
-                </Button>
-                {selectedDatasets.map((dataset) => (
-                  <DatasetCard key={dataset.datasetId} dataset={dataset} />
-                ))}
-              </Grid>
-              {isOpenDatasetSelect && (
-                <DatasetSelectModal
-                  defaultSelectedDatasets={selectedDatasets.map((d) => ({
-                    datasetId: d.datasetId,
-                    name: d.name,
-                    avatar: d.avatar,
-                    vectorModel: d.vectorModel,
-                    error: d.error
-                  }))}
-                  onChange={(e) => {
-                    if (!datasetSelectInput) return;
-                    onChangeNode({
-                      nodeId,
-                      key: NodeInputKeyEnum.datasetSelectList,
-                      type: 'updateInput',
-                      value: { ...datasetSelectInput, value: e }
-                    });
-                  }}
-                  onClose={onCloseDatasetSelect}
-                />
-              )}
-            </Box>
+              </Box>
+            )}
+            {datasetOtherInputs.length > 0 && (
+              <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} isTool={isTool} />
+            )}
           </Box>
         )}
-        {datasetOtherInputs.length > 0 && (
-          <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} isTool={isTool} />
-        )}
+
+        {/* 7. Chat input (userChatInput) */}
+        {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
       </Container>
 
       {successOutputs.length > 0 && (
