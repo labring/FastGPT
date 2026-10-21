@@ -7,6 +7,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import type {
   AdminAuditEventEnum,
   AuditEventEnum,
+  DatasetAuditEvent,
   AdminAuditEventParamsType,
   AuditEventParamsType
 } from '@fastgpt/global/support/user/audit/constants';
@@ -94,26 +95,38 @@ export function addAuditLog<T extends AdminAuditEventEnum>({
   event: T;
   params?: AdminAuditEventParamsType[T];
 }): Promise<void>;
-export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
+export function addAuditLog<T extends DatasetAuditEvent>({
   teamId,
-  tmbId,
   event,
   params
 }: {
-  tmbId: string;
   teamId: string;
+  scope: 'system';
+  event: T;
+  params?: AuditEventParamsType[T];
+}): Promise<void>;
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
+  teamId,
+  tmbId,
+  scope,
+  event,
+  params
+}: {
+  tmbId?: string;
+  teamId: string;
+  scope?: 'member' | 'system';
   event: T;
   params?: any;
 }): Promise<void> {
   return retryFn(async () => {
     await MongoTeamAudit.create({
-      tmbId: tmbId,
-      teamId: teamId,
+      ...(scope === 'system' ? { scope } : { ...(scope ? { scope } : {}), tmbId }),
+      teamId,
       event,
       metadata: params
     });
   }).catch((error) => {
-    logger.error('Audit log write failed', { error, teamId, tmbId, event });
+    logger.error('Audit log write failed', { error, teamId, tmbId, scope, event });
   });
 }
 

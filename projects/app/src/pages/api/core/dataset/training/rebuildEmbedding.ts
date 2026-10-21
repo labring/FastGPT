@@ -25,6 +25,8 @@ import {
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -124,6 +126,17 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     tmbId,
     datasetId,
     billId: String(usageId)
+  });
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.REBUILD_DATASET_INDEX,
+    params: {
+      datasetName: dataset.name,
+      oldModel: dataset.vectorModel ?? dataset.vectorModelId ?? '',
+      newModel: vectorModelData.model ?? vectorModelData.modelId ?? ''
+    }
   });
 
   return RebuildEmbeddingResponseSchema.parse(undefined);

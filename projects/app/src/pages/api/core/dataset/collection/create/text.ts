@@ -11,6 +11,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { name, text, ...body } = parseApiInput({
@@ -53,6 +55,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     }
   });
   await removeS3TTL({ key, bucketName: 'private' });
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+    params: { datasetName: dataset.name, count: '1' }
+  });
   return res;
 }
 

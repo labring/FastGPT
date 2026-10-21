@@ -9,6 +9,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { link, ...body } = parseApiInput({ req, bodySchema: CreateLinkCollectionBodySchema }).body;
@@ -27,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     insertLen: 1
   });
 
-  return createCollectionAndInsertData({
+  const result = await createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       ...body,
@@ -42,6 +44,13 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       rawLink: link
     }
   });
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+    params: { datasetName: dataset.name, count: '1' }
+  });
+  return result;
 }
 
 export default NextAPI(handler);

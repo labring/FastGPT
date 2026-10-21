@@ -11,8 +11,11 @@ export const TeamAuditCollectionName = 'operationLogs';
 const TeamAuditSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
-    ref: TeamMemberCollectionName,
-    required: true
+    ref: TeamMemberCollectionName
+  },
+  scope: {
+    type: String,
+    enum: ['member', 'system']
   },
   teamId: {
     type: Schema.Types.ObjectId,

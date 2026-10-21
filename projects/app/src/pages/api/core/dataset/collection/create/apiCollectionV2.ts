@@ -10,6 +10,8 @@ import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/team
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /** V2 入口先校验知识库，再由远端树生成实际创建/移动计划逐项鉴权。 */
 async function handler(req: ApiRequestProps): Promise<CreateApiCollectionV2ResponseType> {
@@ -21,23 +23,35 @@ async function handler(req: ApiRequestProps): Promise<CreateApiCollectionV2Respo
     datasetId: body.datasetId
   });
   await checkDatasetIndexLimit({ teamId, insertLen: 1 });
-  return CreateApiCollectionV2ResponseSchema.parse(
-    await createApiDatasetCollection({
-      ...body,
-      parentId: undefined,
-      teamId,
+  const result = await createApiDatasetCollection({
+    ...body,
+    parentId: undefined,
+    teamId,
+    tmbId,
+    dataset,
+    authorizeChanges: (changes) =>
+      authApiFileImportChanges({
+        req,
+        authToken: true,
+        authApiKey: true,
+        datasetId: body.datasetId,
+        ...changes
+      })
+  });
+
+  if (result.successCount > 0) {
+    void addAuditLog({
       tmbId,
-      dataset,
-      authorizeChanges: (changes) =>
-        authApiFileImportChanges({
-          req,
-          authToken: true,
-          authApiKey: true,
-          datasetId: body.datasetId,
-          ...changes
-        })
-    })
-  );
+      teamId,
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      params: {
+        datasetName: dataset.name,
+        count: String(result.successCount)
+      }
+    });
+  }
+
+  return CreateApiCollectionV2ResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

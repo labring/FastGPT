@@ -24,6 +24,9 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -31,9 +34,9 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
   // 不传 dataId 时是批量重试：collectionId 和 datasetId 分别限定不同的重试范围。
   if (!body.dataId) {
-    const retryMatch = await (async () => {
+    const { retryScope, tmbId, datasetName } = await (async () => {
       if (body.collectionId) {
-        const { collection } = await authDatasetCollection({
+        const { collection, tmbId } = await authDatasetCollection({
           req,
           authToken: true,
           authApiKey: true,
@@ -42,13 +45,17 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         });
 
         return {
-          teamId: collection.teamId,
-          datasetId: collection.datasetId,
-          collectionId: collection._id
+          retryScope: {
+            teamId: collection.teamId,
+            datasetId: collection.datasetId,
+            collectionId: collection._id
+          },
+          tmbId,
+          datasetName: collection.dataset?.name ?? ''
         };
       }
 
-      const { teamId, dataset } = await authDataset({
+      const { teamId, tmbId, dataset } = await authDataset({
         req,
         authToken: true,
         authApiKey: true,
@@ -57,12 +64,32 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       });
 
       return {
-        teamId,
-        datasetId: dataset._id
+        retryScope: {
+          teamId,
+          datasetId: dataset._id
+        },
+        tmbId,
+        datasetName: dataset.name
       };
     })();
 
-    await retryFailedTrainingTasks(retryMatch);
+    const retriableCount = await MongoDatasetTraining.countDocuments({
+      ...retryScope,
+      ...finalErrorTrainingMatch
+    });
+    await retryFailedTrainingTasks(retryScope);
+    const retriedCount = retriableCount;
+    if (retriedCount > 0) {
+      void addAuditLog({
+        tmbId,
+        teamId: retryScope.teamId,
+        event: AuditEventEnum.RETRY_TRAINING,
+        params: {
+          datasetName,
+          count: String(retriedCount)
+        }
+      });
+    }
 
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
@@ -146,6 +173,16 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       },
       { session }
     );
+  });
+
+  void addAuditLog({
+    tmbId: collection.tmbId,
+    teamId: collection.teamId,
+    event: AuditEventEnum.RETRY_TRAINING,
+    params: {
+      datasetName: collection.dataset?.name ?? '',
+      count: '1'
+    }
   });
 
   return UpdateTrainingDataResponseSchema.parse(undefined);

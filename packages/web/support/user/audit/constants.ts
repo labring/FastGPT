@@ -417,6 +417,31 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  [AuditEventEnum.IMPORT_DATASET_CONTENT]: {
+    content: i18nT('account_team:log_import_dataset_content'),
+    typeLabel: i18nT('account_team:import_dataset_content'),
+    params: {} as { name?: string; datasetName: string; count: string }
+  },
+  [AuditEventEnum.SYNC_DATASET]: {
+    content: i18nT('account_team:log_sync_dataset'),
+    typeLabel: i18nT('account_team:sync_dataset'),
+    params: {} as { name?: string; datasetName: string }
+  },
+  [AuditEventEnum.REBUILD_DATASET_INDEX]: {
+    content: i18nT('account_team:log_rebuild_dataset_index'),
+    typeLabel: i18nT('account_team:rebuild_dataset_index'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      oldModel: string;
+      newModel: string;
+    }
+  },
+  [AuditEventEnum.RETRY_TRAINING]: {
+    content: i18nT('account_team:log_retry_training'),
+    typeLabel: i18nT('account_team:retry_training'),
+    params: {} as { name?: string; datasetName: string; count: string }
+  },
   [AuditEventEnum.UPDATE_COLLECTION]: {
     content: i18nT('account_team:log_update_collection'),
     typeLabel: i18nT('account_team:update_collection'),

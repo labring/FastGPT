@@ -203,6 +203,15 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
           datasetType: getI18nDatasetType(DatasetTypeEnum.dataset)
         }
       });
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+        params: {
+          datasetName: name,
+          count: String(files.length)
+        }
+      });
     })();
 
     return CreateDatasetWithFilesResponseSchema.parse(result);

@@ -76,6 +76,10 @@ export enum AuditEventEnum {
   CREATE_DATASET_FOLDER = 'CREATE_DATASET_FOLDER',
   //Collection
   CREATE_COLLECTION = 'CREATE_COLLECTION',
+  IMPORT_DATASET_CONTENT = 'IMPORT_DATASET_CONTENT',
+  SYNC_DATASET = 'SYNC_DATASET',
+  REBUILD_DATASET_INDEX = 'REBUILD_DATASET_INDEX',
+  RETRY_TRAINING = 'RETRY_TRAINING',
   UPDATE_COLLECTION = 'UPDATE_COLLECTION',
   DELETE_COLLECTION = 'DELETE_COLLECTION',
   RETRAIN_COLLECTION = 'RETRAIN_COLLECTION',
@@ -124,3 +128,9 @@ export type AuditEventParamsType = {
 export type AdminAuditEventParamsType = {
   [K in AdminAuditEventEnum]: (typeof adminAuditLogMap)[K]['params'];
 };
+
+export type DatasetAuditEvent =
+  | AuditEventEnum.IMPORT_DATASET_CONTENT
+  | AuditEventEnum.SYNC_DATASET
+  | AuditEventEnum.REBUILD_DATASET_INDEX
+  | AuditEventEnum.RETRY_TRAINING;

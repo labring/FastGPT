@@ -9,6 +9,8 @@ import {
   CreateApiCollectionV2ResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps) {
   const { apiFileId, ...body } = parseApiInput({
@@ -36,24 +38,34 @@ async function handler(req: ApiRequestProps) {
   }
   const fileDetail = fileDetailRes.data;
 
-  return CreateApiCollectionV2ResponseSchema.parse(
-    await createApiDatasetCollection({
-      apiFiles: [fileDetail],
-      teamId,
-      tmbId,
-      dataset,
-      targetParentId: body.parentId,
-      authorizeChanges: (changes) =>
-        authApiFileImportChanges({
-          req,
-          authToken: true,
-          authApiKey: true,
-          datasetId: body.datasetId,
-          ...changes
-        }),
-      ...body
-    })
-  );
+  const result = await createApiDatasetCollection({
+    apiFiles: [fileDetail],
+    teamId,
+    tmbId,
+    dataset,
+    targetParentId: body.parentId,
+    authorizeChanges: (changes) =>
+      authApiFileImportChanges({
+        req,
+        authToken: true,
+        authApiKey: true,
+        datasetId: body.datasetId,
+        ...changes
+      }),
+    ...body
+  });
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+    params: {
+      datasetName: dataset.name,
+      count: '1'
+    }
+  });
+
+  return CreateApiCollectionV2ResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

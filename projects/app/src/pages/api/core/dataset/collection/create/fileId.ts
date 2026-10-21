@@ -12,6 +12,8 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { fileId, customPdfParse, ...body } = parseApiInput({
@@ -43,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     insertLen: 1
   });
 
-  return createCollectionAndInsertData({
+  const result = await createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       ...body,
@@ -55,6 +57,13 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       customPdfParse
     }
   });
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+    params: { datasetName: dataset.name, count: '1' }
+  });
+  return result;
 }
 
 export default NextAPI(handler);

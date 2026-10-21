@@ -17,6 +17,8 @@ import {
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
@@ -89,6 +91,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       }
     });
     promoted = true;
+    void addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      params: { datasetName: dataset.name, count: '1' }
+    });
 
     return collectionResult;
   } catch (error) {

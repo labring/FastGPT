@@ -28,6 +28,8 @@ import path from 'node:path';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -105,7 +107,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       })
     );
 
-    return createCollectionAndInsertData({
+    const collectionResult = await createCollectionAndInsertData({
       dataset,
       imageIds,
       createCollectionParams: {
@@ -121,6 +123,13 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
           : DatasetCollectionDataProcessModeEnum.chunk
       }
     });
+    void addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      params: { datasetName: dataset.name, count: String(imageIds.length) }
+    });
+    return collectionResult;
   } catch (error) {
     return Promise.reject(error);
   } finally {
