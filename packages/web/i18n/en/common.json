@@ -469,6 +469,7 @@
   "core.dataset.error.unAuthDataset": "Unauthorized to operate this dataset",
   "core.dataset.error.unAuthDatasetCollection": "Unauthorized to operate this dataset collection",
   "core.dataset.error.collectionPermissionDisabled": "Collection permission is not enabled for this knowledge base. Please enable it first",
+  "core.dataset.error.exportFolderNotSupported": "Folders cannot be exported. Please select a specific knowledge base",
   "core.dataset.error.unAuthDatasetData": "Unauthorized to operate this dataset data",
   "core.dataset.error.unAuthDatasetFile": "Dataset file authentication failed",
   "core.dataset.error.unCreateCollection": "Unauthorized to create dataset collection",
