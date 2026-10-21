@@ -1,10 +1,17 @@
 ---
 title: 开发者
-description: 从首次 API 请求进入应用、对话、知识库集成和扩展开发。
+description: 选择 API 集成或扩展开发，连接 FastGPT 并开发插件、模型预设与 Skill。
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="扩展能力" />
+
+## 选择开发任务
+
+<Cards>
+  <Card title="API 集成" href="/zh-CN/openapi/intro">完成首次请求，再接入应用、对话与知识库。</Card>
+  <Card title="扩展开发" href="#扩展开发与生态">开发工具插件、增加模型预设，或接入 Skill 与外部知识库。</Card>
+</Cards>
 
 ## 开发者集成全景
 
@@ -34,7 +41,7 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 
 ## 扩展开发与生态
 
-- [插件系统概览](/zh-CN/plugin/intro)：FastGPT Plugin 独立微服务架构与 `.pkg` 插件包标准化规范。
+- [插件开发专题](/zh-CN/plugin/intro)：了解插件类型与开发路径，从[首个工具教程](/zh-CN/plugin/quick-start)开始，继续完成[调试与发布](/zh-CN/plugin/debugging-and-publishing)。
 - [系统工具开发](/zh-CN/plugin/system-tool-development)：使用 `@fastgpt-plugin/cli` 研发单工具（`defineTool`）与工具集（`defineToolSet`）。
 - [模型预设扩展](/zh-CN/plugin/model-presets)：为新模型供应商添加静态配置与 AIProxy 渠道映射。
 - [Skill 技能研发](/zh-CN/guide/build/skill/development)：在沙箱环境中实现带持久上下文的 Agent 技能。

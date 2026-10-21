@@ -1,12 +1,16 @@
 {
-  "title": "插件系统",
-  "description": "FastGPT 插件系统文档",
-  "root": true,
+  "title": "插件开发",
+  "description": "开发、调试和发布 FastGPT 插件",
   "pages": [
     "intro",
-    "team-installation",
+    "quick-start",
+    "system-tool-development",
     "model-presets",
-    "system-tool-development"
+    "debugging-and-publishing",
+    "package-reference",
+    "!index",
+    "!team-installation",
+    "!runtime"
   ],
   "order": 2
 }

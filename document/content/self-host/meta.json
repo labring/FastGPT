@@ -21,6 +21,7 @@
     "---运维与排障---",
     "...troubleshooting",
     "config/signoz",
+    "../plugin/runtime",
     "config/remote-debug-suite",
     "migration",
     "milvus-bm25",

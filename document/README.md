@@ -1,6 +1,6 @@
 # FastGPT documentation
 
-The documentation uses Next.js, Fumadocs, and paired Chinese/English MDX content. The reader entrances are **Use FastGPT**, **Developers**, and **Deploy and Operate**.
+The documentation uses Next.js, Fumadocs, and paired Chinese/English MDX content. The reader entrances are **Use FastGPT**, **Developers**, and **Deploy and Operate**. Plugin development belongs to Developers, team installation to Use FastGPT, and plugin service configuration to Deploy and Operate.
 
 ## Run locally
 

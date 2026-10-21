@@ -1,0 +1,212 @@
+---
+title: 调试、打包与发布
+description: 在本地验证工具插件，接入 FastGPT 联调，并构建可分发的插件包
+---
+
+本文适用于通过 `@fastgpt-plugin/cli` 与 `@fastgpt-plugin/sdk-factory` 开发的工具插件。开始前请先完成[单工具或工具集实现](/zh-CN/plugin/system-tool-development)。模型预设按各自的[验证流程](/zh-CN/plugin/model-presets#校验)提交变更。
+
+远程联调需要当前 FastGPT 环境已开放插件调试能力。自部署环境由管理员按[远程调试功能套件配置](/zh-CN/self-host/config/remote-debug-suite)准备服务。CLI 版本应与目标插件服务兼容。
+
+## 1. 本地模拟调试
+
+<span id="本地调试" />
+
+先进入插件目录安装依赖：
+
+```bash
+cd packages/tools/my-tool
+pnpm install
+```
+
+查看插件和可调试工具信息：
+
+```bash
+pnpx @fastgpt-plugin/cli debug .
+```
+
+<span id="交互式与直接传参调试" />
+
+执行一次单工具调试：
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
+```
+
+执行工具集中的某个子工具：
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --tool search --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
+```
+
+输入、密钥和系统变量较大时，使用文件传入：
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file secrets.json --system-var-file system-var.json
+```
+
+本地 debug 的边界：
+
+- `ctx.invoke.uploadFile()` 使用本地虚拟实现，默认输出到 `.fastgpt-plugin-debug/uploads`。
+- 本地 debug 用于快速验证插件逻辑和 schema。
+- 本地 debug 不模拟生产子进程池、真实 Node.js IPC、网络环境、服务端超时和队列调度。
+- 上架官方插件前仍需在测试环境中手动安装插件并完成端到端测试。
+
+## 2. FastGPT 远程联调
+
+<span id="远程调试" />
+
+远程调试用于把本地正在开发的插件接入 FastGPT 测试环境。FastGPT 页面负责鉴权并生成调试链接，CLI 通过该链接建立 WSS 调试通道；调试插件仅对当前调试者本人可见。
+
+使用前确认测试环境已部署 FastGPT Plugin 服务和 Connection Gateway，并且本地开发机可以访问测试环境返回的 Gateway WSS 地址。
+
+### 2.1 生成调试链接
+
+1. 登录 FastGPT 测试环境。
+2. 进入工作台的「工具」页面，点击「本地调试」。
+
+![系统工具本地调试入口](/imgs/optimized/current/system-tool-debug-entry.png.webp)
+
+3. 在弹窗中点击「生成链接」，复制生成的调试链接。
+4. 已有调试会话时，可点击「刷新链接」生成新的 connection key；旧链接会失效。
+
+![本地调试弹窗：生成链接前](/imgs/optimized/current/system-tool-debug-dialog.png.webp)
+
+调试链接只用于本地 CLI 连接测试环境，不应提交到代码仓库、文档示例或聊天记录中。
+
+### 2.2 启动本地联调会话
+
+在插件目录或包含多个插件目录的工作区中运行：
+
+```bash
+pnpx @fastgpt-plugin/cli dev
+```
+
+启动后，将 FastGPT 页面复制的调试链接粘贴到 TUI 中。CLI 会用链接中的 connection key 换取短期 WSS connect token，并把本地插件挂载到 FastGPT 的调试通道。
+
+脚本或 Agent 场景可以使用非交互模式：
+
+```bash
+pnpx @fastgpt-plugin/cli dev --no-interactive \
+  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fpg_dbg_..."
+```
+
+如果只传入裸 connection key，需要让 CLI 知道 exchange 接口地址：
+
+```bash
+FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange \
+  pnpx @fastgpt-plugin/cli dev --no-interactive --connect "fpg_dbg_..."
+```
+
+`--connect` 成功连接后会保存 connection key，后续可直接运行 `pnpx @fastgpt-plugin/cli dev` 复用本地配置。TUI 中按 `c` 可重新输入并保存新的调试链接或 connection key。
+
+### 指定插件目录和监听变化
+
+`dev` 未传插件目录时会自动探测当前目录：当前目录存在 `index.ts` 时使用当前目录；否则扫描下一层子目录中的 `index.ts`。
+
+也可以手动传入一个或多个插件目录：
+
+```bash
+pnpx @fastgpt-plugin/cli dev ./plugins/getTime ./plugins/dbops --watch
+```
+
+`--watch` 会在本地文件变化后重新加载插件并重建远程调试会话。CLI 默认开启断线重连；如需关闭自动重连，可加 `--no-reconnect`。
+
+### 2.3 在 FastGPT 中验证与使用
+
+CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
+
+1. 在「工具」页面查看调试插件。
+2. 在应用、工作流或 Agent 中选择该调试工具。
+3. 填写密钥和输入参数，发起真实调用。
+4. 在 CLI 终端查看本地 handler 日志和错误信息。
+
+调试工具的 `source` 会绑定到当前登录成员，其他成员默认看不到该调试插件。
+
+### 2.4 结束联调会话
+
+本地终端按 `Ctrl+C` 会关闭当前 CLI 调试会话；再次按 `Ctrl+C` 会强制退出。
+
+FastGPT 页面中的「结束调试」会撤销当前成员的 debug channel，并清理页面上的调试插件入口。调试链接泄露、成员切换或需要重新授权时，优先使用「刷新链接」生成新链接。
+
+## 3. 构建、检查与打包
+
+<span id="构建检查和打包" />
+
+插件目录中通常可以直接运行：
+
+```bash
+pnpm run test
+pnpm run build
+pnpx @fastgpt-plugin/cli check --entry . --output ./dist
+pnpm run pack
+```
+
+也可以显式传入目录：
+
+```bash
+pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
+pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
+pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
+```
+
+打包后生成用于安装与分发的 `.pkg` 文件，按[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)检查产物。
+
+## 4. 提交前验证清单
+
+<span id="验证清单" />
+
+提交前至少确认：
+
+- `index.ts` 默认导出正确。
+- `manifest.pluginId`、`manifest.version`、中英文名称和描述完整。
+- 工具集的 `children[].id` 稳定且没有重复。
+- `inputSchema` 覆盖所有用户输入，并有必要的类型和范围约束。
+- `outputSchema` 与 handler 返回值一致。
+- `secretSchema` 覆盖全部密钥配置，敏感字段设置 `isSecret: true`。
+- 外部 API 的成功、失败、空响应、超时和鉴权失败都有处理。
+- 错误信息可定位问题，并且不会泄露密钥或敏感响应。
+- `pnpm run test` 通过，或明确说明无法测试的原因。
+- `build`、`check`、`pack` 通过。
+- `dist/manifest.json` 中图标和 schema 符合预期。
+- 使用远程调试完成测试环境真实调用，或明确说明本次无需远程调试的原因。
+- `.pkg` 能在测试环境中安装并完成真实调用。
+
+## 5. 发布渠道与工作流
+
+<span id="发布流程" />
+
+### 社区插件
+
+<span id="社区插件-community-plugins" />
+
+社区插件通常先在插件目录创建并推送独立 GitHub 仓库：
+
+```bash
+cd packages/tools/my-tool
+git init
+git add .
+git commit -m "feat: add my-tool plugin"
+gh repo create --public --source=. --remote=origin --push
+```
+
+然后回到 `fastgpt-community-plugins` 仓库，提交 submodule 或引用更新，并向 `labring/fastgpt-community-plugins` 提 PR。
+
+### 官方插件
+
+<span id="官方插件-official-plugins" />
+
+官方插件需要完成：
+
+1. 代码 review。
+2. 构建、检查、测试和打包。
+3. 在测试环境手动安装 `.pkg`。
+4. 完整功能测试，包括外部 API、密钥配置、错误路径和并发调用。
+5. 上架前安全检查，重点关注 SSRF、密钥泄露、任意文件访问、命令执行和依赖风险。
+
+### 商业插件
+
+<span id="私有与商业插件-business-plugins" />
+
+商业插件发布到私有仓库，按客户交付流程管理版本、密钥、安装包和验收记录。对外部 API、客户私有地址和账号密钥的处理需要单独记录安全边界。
+
+私有交付可以通过[团队安装](/zh-CN/plugin/team-installation)完成，也可以交给 root 管理员[安装系统工具](/zh-CN/guide/build/tools/system-plugins/upload_system_tool)。

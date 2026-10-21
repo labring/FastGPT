@@ -1,10 +1,17 @@
 ---
 title: Developers
-description: Start with an API request, then integrate applications, conversations, knowledge, and extensions.
+description: Choose API integration or extension development to connect FastGPT and build plugins, model presets, and Skills.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
 <span id="extend-capabilities" />
+
+## Choose a development task
+
+<Cards>
+  <Card title="API integration" href="/en/openapi/intro">Make your first request, then integrate Apps, conversations, and Datasets.</Card>
+  <Card title="Extension development" href="#extension-development">Build tool plugins, contribute model presets, or connect Skills and external Datasets.</Card>
+</Cards>
 
 ## Developer Integration Architecture
 
@@ -34,7 +41,7 @@ Each endpoint declares the credentials it accepts. Use the generated contract to
 
 ## Extension Development
 
-- [Plugin System Overview](/en/plugin/intro): FastGPT Plugin microservice architecture and standardized `.pkg` bundles.
+- [Plugin development](/en/plugin/intro): Explore plugin types and development paths, start with [your first tool](/en/plugin/quick-start), and continue to [debugging and publishing](/en/plugin/debugging-and-publishing).
 - [System Tool Development](/en/plugin/system-tool-development): Build single tools (`defineTool`) and tool suites (`defineToolSet`) with `@fastgpt-plugin/cli`.
 - [Model Presets](/en/plugin/model-presets): Register new model providers and map AIProxy channels.
 - [Skill Development](/en/guide/build/skill/development): Create persistent Agent skills in isolated sandbox environments.

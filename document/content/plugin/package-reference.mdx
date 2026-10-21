@@ -1,0 +1,56 @@
+---
+title: 插件包与 SDK 参考
+description: 工具插件的构建产物、作者侧元信息与 Schema 声明，以及 SDK 和 CLI 入口
+---
+
+本文面向工具插件作者，说明交付文件与代码中的声明位置。执行命令见[调试、打包与发布](/zh-CN/plugin/debugging-and-publishing)，服务容量和环境变量见[插件运行时配置](/zh-CN/plugin/runtime)。模型预设采用[静态配置贡献流程](/zh-CN/plugin/model-presets)。
+
+## 构建产物
+
+工具插件的 `index.ts` 默认导出 `defineTool()` 或 `defineToolSet()` 定义。CLI 构建后通常生成：
+
+| 文件 | 作用 |
+| --- | --- |
+| `dist/index.js` | 工具的可执行构建产物 |
+| `dist/manifest.json` | 构建生成的元信息与 Schema |
+| 图标文件 | 主工具图标，以及工具集可选的子工具图标 |
+| `README.md` | 可选的插件说明 |
+| `assets/**` | 可选的静态资源 |
+
+`pack` 命令生成用于安装的 `.pkg` 文件，实际输出位置以插件项目的 `pack` 脚本或 CLI `--output` 参数为准。需要调整元信息或 Schema 时，修改源码后重新构建和打包。
+
+## 元信息与 Schema
+
+以下是作者在 SDK 定义中维护的字段。构建生成的 Manifest 结构由所用 CLI 与 SDK 版本决定。
+
+| 声明位置 | 作用 |
+| --- | --- |
+| `manifest.pluginId` | 稳定的插件标识，用于识别同一插件的不同版本 |
+| `manifest.version` | 语义化版本号，供安装和更新时识别版本 |
+| `manifest.name`、`manifest.description` | 中英文显示名称与功能说明 |
+| `manifest.versionDescription` | 本版本的变更说明 |
+| `manifest.tags` | 插件分类标签 |
+| `createToolHandler({ inputSchema })` | 输入类型、约束、默认值与界面字段说明 |
+| `createToolHandler({ outputSchema })` | handler 返回值的类型与字段说明 |
+| `defineTool({ secretSchema })`、`defineToolSet({ secretSchema })` | 密钥配置与敏感字段声明 |
+| `defineToolSet({ children })` | 工具集的子工具 ID、名称、说明与 handler |
+
+工具集的子工具 ID 应保持稳定，保证已配置的工作流可以继续引用。密钥通过 `secretSchema` 声明，handler 从 `ctx.secrets` 读取；图标命名见[工具开发指南](/zh-CN/plugin/system-tool-development#5-图标规范)。
+
+CLI 的 `tool` 与 `tool-suite` 用于选择项目骨架。安装后的工具类型、子工具关系和展示信息由构建产物与插件服务共同提供。
+
+## SDK 与 CLI 入口
+
+| 组件 | 使用者 | 职责 |
+| --- | --- | --- |
+| `@fastgpt-plugin/sdk-factory` | 插件作者 | 定义工具、工具集、handler、Schema 和宿主能力调用 |
+| `@fastgpt-plugin/cli` | 插件作者 | 创建项目、本地调试、联调、构建、检查与打包 |
+| `@fastgpt-plugin/sdk-client` | FastGPT 服务集成开发者 | 调用插件服务的管理和运行接口 |
+
+使用目标项目声明的兼容版本。完整接口参考对应版本的 [SDK Factory 文档](https://github.com/labring/fastgpt-plugin/blob/main/sdk/factory/README.md)与 [CLI 文档](https://github.com/labring/fastgpt-plugin/blob/main/apps/cli/README.md)。
+
+## 交付与安装
+
+- 作者按[验证清单](/zh-CN/plugin/debugging-and-publishing#验证清单)检查构建、输入输出和测试环境真实调用。
+- 团队管理员按[团队安装指南](/zh-CN/plugin/team-installation)安装、更新与删除插件。
+- root 管理员按[系统工具管理指南](/zh-CN/guide/build/tools/system-plugins/upload_system_tool)进行全系统交付。

@@ -12,9 +12,7 @@
     "../openapi/dataset",
     "../guide/dataset/third-party/third_dataset",
     "---扩展开发---",
-    "../plugin/intro",
-    "../plugin/system-tool-development",
-    "../plugin/model-presets",
+    "../plugin",
     "../guide/build/skill/development",
     "---历史参考---",
     "../openapi/legacy"

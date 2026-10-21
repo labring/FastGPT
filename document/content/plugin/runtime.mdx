@@ -1,0 +1,66 @@
+---
+title: 插件运行时配置
+description: 面向部署管理员的 local-pool 运行参数、调度边界与环境变量参考
+---
+
+本文面向 FastGPT 自部署管理员。插件服务负责工具安装、进程管理和请求分发；FastGPT 主服务通过插件服务调用工具。安装入口见[系统工具管理](/zh-CN/guide/build/tools/system-plugins/upload_system_tool)，开发联调环境见[远程调试功能套件配置](/zh-CN/self-host/config/remote-debug-suite)。
+
+## `.pkg` 插件包协议
+
+系统工具通过 `.pkg` 文件安装与更新。管理员接收作者交付的安装包，并检查来源、版本与目标环境兼容性。
+
+### 产物目录结构
+
+构建产物与输出位置由插件项目的构建和打包流程决定，详见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
+
+### Manifest 元数据规范
+
+Manifest 由构建流程生成。作者维护的字段与 Schema 声明见[元信息与 Schema](/zh-CN/plugin/package-reference#元信息与-schema)；调整这些定义后需要重新构建并交付安装包。
+
+## local-pool 运行时
+
+FastGPT Plugin 默认使用本地进程池运行时 `local-pool`，按插件服务维护 Pod 进程组和请求队列。此处 Pod 指插件运行时管理的工作进程。
+
+### 请求调度流水线
+
+1. 优先把请求派发给已就绪且具有可用并发容量的 Pod。
+2. 容量不足且 Pod 数量低于 `maxPods` 时，按需启动工作进程。
+3. 达到容量上限或处于启动退避期间时，请求进入服务等待队列。
+4. Pod 释放容量或新进程就绪后，继续处理排队请求。
+5. 队列达到 `maxQueueSize` 或等待超过 `queueTimeout` 时，请求可能被拒绝或超时失败。
+
+### 单服务运行参数
+
+FastGPT 的工具配置接口接受以下四个字段。当前值以配置页面读取到的插件服务配置为准；调整前应结合宿主机资源与工具的外部 API 限流进行测试。
+
+| 参数 | 约束 | 说明 |
+| --- | --- | --- |
+| 最小工作节点数 (`minPods`) | 非负整数 | 服务保留的最小 Pod 数量 |
+| 最大工作节点数 (`maxPods`) | 正整数 | 服务可运行的 Pod 数量上限 |
+| 节点超时时间 (`podTimeout`) | 正整数，毫秒 | Pod 超时配置；触发与回收行为以部署的插件服务版本为准 |
+| 每节点最大并发数 (`maxConcurrentRequestsPerPod`) | 正整数 | 单个 Pod 同时处理的请求数量上限 |
+
+`minPods` 必须小于或等于 `maxPods`。增加 Pod 数量和单节点并发会增加资源消耗，也可能更快触发外部服务的限流。
+
+## 全局环境变量配置
+
+以下变量由插件服务进程读取。它们用于全局容量与服务默认配置，实际支持范围和默认值以所部署的 FastGPT Plugin 版本为准。
+
+| 环境变量 | 说明 |
+| --- | --- |
+| `POOL_HEALTH_CHECK_INTERVAL` | Pod 健康检查间隔，单位毫秒 |
+| `POOL_MAX_TOTAL_PODS` | 当前 Server 进程中所有插件 Pod 的总数上限 |
+| `POOL_SERVICE_MIN_PODS` | 单插件服务的默认最小工作节点数 |
+| `POOL_SERVICE_MAX_PODS` | 单插件服务的默认最大工作节点数 |
+| `POOL_SERVICE_IDLE_TIMEOUT` | 空闲 Pod 回收等待时间，单位毫秒 |
+| `POOL_SERVICE_POD_TIMEOUT` | 默认 Pod 超时配置，单位毫秒；行为以插件服务版本为准 |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | 单个 Pod 的默认最大并发请求数 |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | 单个 Pod 累计处理的请求数上限 |
+| `POOL_SERVICE_MAX_QUEUE_SIZE` | 单插件服务的请求队列容量上限 |
+| `POOL_SERVICE_QUEUE_TIMEOUT` | 请求等待可用 Pod 的超时时间，单位毫秒 |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Pod 启动重试的基础退避延迟，单位毫秒 |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Pod 启动重试的最大退避延迟，单位毫秒 |
+
+## 错误处理与启动熔断
+
+插件服务管理工作进程故障、启动重试与退避。排查时先检查服务日志，区分工具执行错误、进程启动失败、队列等待超时和宿主机容量不足。连续启动失败时，应先修复依赖、插件代码或运行环境，再验证恢复情况；具体重试与熔断策略以部署版本为准。

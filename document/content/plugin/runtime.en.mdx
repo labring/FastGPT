@@ -1,0 +1,68 @@
+---
+title: Plugin runtime configuration
+description: local-pool parameters, scheduling boundaries, and environment variables for deployment administrators
+---
+
+This reference is for FastGPT self-hosted administrators. The plugin service manages tool installation, worker processes, and request dispatch. The FastGPT server calls tools through that service. See [system tool management](/en/guide/build/tools/system-plugins/upload_system_tool) for installation and [remote debug suite configuration](/en/self-host/config/remote-debug-suite) for a development environment.
+
+## `.pkg` Package Protocol
+
+<span id="pkg-plugin-package-protocol" />
+
+System tools are installed and updated through `.pkg` files. Administrators receive the author's package and check its source, version, and compatibility with the target environment.
+
+### Artifact Layout
+
+The plugin project's build and packaging workflow determines its artifacts and output location. See the [package and SDK reference](/en/plugin/package-reference#build-artifacts).
+
+### Manifest Specification
+
+The build generates the Manifest. See [metadata and schemas](/en/plugin/package-reference#metadata-and-schemas) for author-maintained declarations. Changes to those declarations require a new build and installation package.
+
+## local-pool Runtime
+
+FastGPT Plugin uses the `local-pool` process pool runtime by default. It manages Pod worker processes and request queues per plugin service. A Pod here means a worker process managed by the plugin runtime.
+
+### Scheduling Pipeline
+
+1. Dispatch requests to ready Pods with available concurrency capacity.
+2. Start workers on demand when capacity is insufficient and the Pod count is below `maxPods`.
+3. Queue requests when capacity is reached or startup backoff is active.
+4. Continue processing queued requests as Pods release capacity or new workers become ready.
+5. Requests can be rejected or time out when the queue reaches `maxQueueSize` or the wait exceeds `queueTimeout`.
+
+### Per-Service Parameters
+
+FastGPT's tool configuration API accepts these four fields. Use the current plugin service values shown in the configuration page. Test changes against host resources and the tool's external API rate limits.
+
+| Parameter | Constraint | Description |
+| --- | --- | --- |
+| Minimum worker nodes (`minPods`) | Nonnegative integer | Minimum Pods retained for the service |
+| Maximum worker nodes (`maxPods`) | Positive integer | Maximum Pods allowed for the service |
+| Node timeout (`podTimeout`) | Positive integer, milliseconds | Pod timeout configuration; triggering and recycling behavior follow the deployed plugin service version |
+| Maximum concurrent requests per node (`maxConcurrentRequestsPerPod`) | Positive integer | Maximum simultaneous requests handled by one Pod |
+
+`minPods` must be less than or equal to `maxPods`. Raising Pod counts and per-Pod concurrency increases resource use and can reach external service rate limits sooner.
+
+## Global Environment Variables
+
+The plugin service process reads these variables for global capacity and service defaults. Supported variables and default values depend on the deployed FastGPT Plugin version.
+
+| Variable | Description |
+| --- | --- |
+| `POOL_HEALTH_CHECK_INTERVAL` | Interval between Pod health checks in milliseconds |
+| `POOL_MAX_TOTAL_PODS` | Total Pod limit across plugin services in the server process |
+| `POOL_SERVICE_MIN_PODS` | Default minimum worker nodes per plugin service |
+| `POOL_SERVICE_MAX_PODS` | Default maximum worker nodes per plugin service |
+| `POOL_SERVICE_IDLE_TIMEOUT` | Idle Pod recycling wait time in milliseconds |
+| `POOL_SERVICE_POD_TIMEOUT` | Default Pod timeout in milliseconds; behavior follows the plugin service version |
+| `POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD` | Default maximum concurrent requests per Pod |
+| `POOL_SERVICE_MAX_REQUESTS_PER_POD` | Maximum cumulative requests handled by one Pod |
+| `POOL_SERVICE_MAX_QUEUE_SIZE` | Maximum request queue capacity per plugin service |
+| `POOL_SERVICE_QUEUE_TIMEOUT` | Timeout for requests waiting for an available Pod, in milliseconds |
+| `POOL_SERVICE_STARTUP_RETRY_BASE_DELAY` | Base delay for Pod startup retry backoff, in milliseconds |
+| `POOL_SERVICE_STARTUP_RETRY_MAX_DELAY` | Maximum delay for Pod startup retry backoff, in milliseconds |
+
+## Failure Isolation and Circuit Breaking
+
+The plugin service manages worker failures, startup retries, and backoff. Begin troubleshooting with service logs to distinguish tool execution errors, worker startup failures, queue timeouts, and host capacity limits. For repeated startup failures, fix dependencies, plugin code, or the runtime environment before verifying recovery. The deployed service version determines retry and circuit-breaking policies.
