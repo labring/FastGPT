@@ -1,0 +1,43 @@
+packages/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/index.tsx
+  s_d810470cdcf640::t_c4209afc3eeec9 1518
+  s_d810470cdcf640::t_450ad9d1481659 1514
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/useAgentSkillManager.ts
+  s_d810470cdcf640::t_9814c6eb3208c9 7-10,12-17,21,26-28,33-36,38-39,51-69
+  s_d810470cdcf640::t_318f10976fcccb 145-146
+  s_d810470cdcf640::t_ef421d93c4d023 183-185
+  s_d810470cdcf640::t_0d4b20dec6a835 132-144,147-182,186-191,194-195,204-232,235,237,243-244
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/utils.ts
+  s_d810470cdcf640::t_f5d9796cff6636 2-3,6-11
+  s_d810470cdcf640::t_76441fb8549adc 33-85
+  s_d810470cdcf640::t_27cac77384645b 12
+projects/app/test/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/utils.test.ts
+  s_d810470cdcf640::t_b8328576f880e4 2-5,8-103
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/index.tsx
+  s_d810470cdcf640::t_d72f858ae2e82f 291-294,300,311,313-315,335,355,364-392,403,407,420,423,434,437
+  s_d810470cdcf640::t_e0c8493a1e616f 594
+  s_d810470cdcf640::t_1a5d3528d9b821 393-395,400-402
+  s_d810470cdcf640::t_afe3802a4776c4 404-406
+  s_d810470cdcf640::t_d0b0d1ab3639fd 408-410,417-419
+  s_d810470cdcf640::t_0ad6b966af7f66 421-422
+  s_d810470cdcf640::t_b198dab5a65e7e 424-426,431-433
+  s_d810470cdcf640::t_b0ee15a2d5c004 435-436
+  s_d810470cdcf640::t_43f4b41d864670 438-440
+  s_d810470cdcf640::t_3b26b99bc6fa5d 593
+  s_d810470cdcf640::t_dbdf78c4c76be5 396-399,411-416,427-430,441-450,586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2977ad93f619265d5f5348b5fc02921ce18f9fa",
+  "prompts": {},
+  "sessions": {
+    "s_d810470cdcf640": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bded94b9-de30-45c6-9dcc-254955f91400",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
