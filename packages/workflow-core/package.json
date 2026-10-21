@@ -72,6 +72,10 @@
       "types": "./dist/reference/type.d.ts",
       "import": "./dist/reference/type.js"
     },
+    "./reference/validation": {
+      "types": "./dist/reference/validation.d.ts",
+      "import": "./dist/reference/validation.js"
+    },
     "./nesting/query": {
       "types": "./dist/nesting/query.d.ts",
       "import": "./dist/nesting/query.js"

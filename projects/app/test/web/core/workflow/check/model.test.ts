@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import { describe, it, expect } from 'vitest';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -37,7 +38,7 @@ describe('workflow model validation', () => {
     }) as any;
     expect(
       getWorkflowCheckIssueMessage({
-        issueCode: 'model_required',
+        issueCode: WorkflowCheckIssueCodeEnum.modelRequired,
         t,
         params: {
           nodeName: '知识库搜索',
@@ -47,7 +48,7 @@ describe('workflow model validation', () => {
     ).toBe('未配置[问题优化]模型');
     expect(
       getWorkflowCheckIssueMessage({
-        issueCode: 'model_required',
+        issueCode: WorkflowCheckIssueCodeEnum.modelRequired,
         params: {
           nodeName: '知识库搜索',
           inputName: '问题优化'
@@ -77,7 +78,7 @@ describe('workflow model validation', () => {
 
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({
-      code: 'model_unavailable',
+      code: WorkflowCheckIssueCodeEnum.modelUnavailable,
       inputKey: 'Question Guide',
       message: 'Question Guide model unavailable'
     });
@@ -99,7 +100,7 @@ describe('workflow model validation', () => {
     });
 
     expect(issues).toHaveLength(1);
-    expect(issues[0].code).toBe('model_required');
+    expect(issues[0].code).toBe(WorkflowCheckIssueCodeEnum.modelRequired);
   });
 
   it('does not treat team models as valid default fallback or legacy model matches in workflowCheck', () => {
@@ -112,13 +113,13 @@ describe('workflow model validation', () => {
         chatConfig: { questionGuide: { open: true } },
         modelData: createModelCheckData(teamModels)
       })[0]?.code
-    ).toBe('model_required');
+    ).toBe(WorkflowCheckIssueCodeEnum.modelRequired);
     expect(
       checkWorkflowChatConfigModelIssues({
         chatConfig: { questionGuide: { open: true, model: 'gpt-4o' } },
         modelData: createModelCheckData(teamModels)
       })[0]?.code
-    ).toBe('model_unavailable');
+    ).toBe(WorkflowCheckIssueCodeEnum.modelUnavailable);
     expect(
       checkWorkflowChatConfigModelIssues({
         chatConfig: { questionGuide: { open: true, modelId: 'team-llm' } },
@@ -171,8 +172,8 @@ describe('workflow model validation', () => {
         ],
         FlowNodeTypeEnum.agent
       );
-      expect(getModelIssueCodes(node)).not.toContain('model_unavailable');
-      expect(getModelIssueCodes(node)).not.toContain('model_required');
+      expect(getModelIssueCodes(node)).not.toContain(WorkflowCheckIssueCodeEnum.modelUnavailable);
+      expect(getModelIssueCodes(node)).not.toContain(WorkflowCheckIssueCodeEnum.modelRequired);
 
       const staticNode = makeModelNode([
         {
@@ -181,7 +182,7 @@ describe('workflow model validation', () => {
           renderTypeList: [FlowNodeInputTypeEnum.hidden]
         }
       ]);
-      expect(getModelIssueCodes(staticNode)).toContain('model_unavailable');
+      expect(getModelIssueCodes(staticNode)).toContain(WorkflowCheckIssueCodeEnum.modelUnavailable);
     }
   );
 
@@ -213,8 +214,12 @@ describe('workflow model validation', () => {
       }
     ]);
 
-    expect(getModelIssueCodes(canonicalNode)).not.toContain('model_unavailable');
-    expect(getModelIssueCodes(legacyNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(canonicalNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(legacyNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 
   it('reports an unavailable canonical model without repairing it from legacy model', () => {
@@ -236,9 +241,9 @@ describe('workflow model validation', () => {
       edges: [],
       modelData: createModelCheckData(models)
     })['model-node'];
-    expect(issues?.find((issue) => issue.code === 'model_unavailable')?.message).toBe(
-      'common:core.workflow.check.model_unavailable'
-    );
+    expect(
+      issues?.find((issue) => issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)?.message
+    ).toBe('common:core.workflow.check.model_unavailable');
   });
 
   it('validates all duplicate model inputs on a node in checkWorkflowNodeIssues', () => {
@@ -267,8 +272,12 @@ describe('workflow model validation', () => {
       }
     ]);
 
-    expect(getModelIssueCodes(duplicateFirstInvalid)).toContain('model_unavailable');
-    expect(getModelIssueCodes(duplicateSecondInvalid)).toContain('model_unavailable');
+    expect(getModelIssueCodes(duplicateFirstInvalid)).toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(duplicateSecondInvalid)).toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 
   it('does not statically validate reference model inputs', () => {
@@ -280,7 +289,9 @@ describe('workflow model validation', () => {
       }
     ]);
 
-    expect(getModelIssueCodes(referenceNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(referenceNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 
   it.each([undefined, null, '', '   '])(
@@ -316,14 +327,16 @@ describe('workflow model validation', () => {
       expect(issues).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            code: 'model_required',
+            code: WorkflowCheckIssueCodeEnum.modelRequired,
             nodeId: 'model-node',
             inputKey: NodeInputKeyEnum.datasetDeepSearchModelId,
             message: '未配置[深度搜索模型]模型'
           })
         ])
       );
-      expect(issues?.some((issue) => issue.code === 'model_unavailable')).toBe(false);
+      expect(
+        issues?.some((issue) => issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+      ).toBe(false);
     }
   );
 
@@ -339,9 +352,11 @@ describe('workflow model validation', () => {
       ],
       FlowNodeTypeEnum.datasetSearchNode
     );
-    expect(getModelIssueCodes(disabledNode)).not.toContain('model_required');
+    expect(getModelIssueCodes(disabledNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelRequired
+    );
     const missingSlot = makeModelNode([]);
-    expect(getModelIssueCodes(missingSlot)).toContain('model_required');
+    expect(getModelIssueCodes(missingSlot)).toContain(WorkflowCheckIssueCodeEnum.modelRequired);
   });
 
   it.each([undefined, null, '', '   '])(
@@ -375,9 +390,11 @@ describe('workflow model validation', () => {
         edges: [],
         modelData: createModelCheckData(models)
       });
-      expect(result.issueMap['model-node']?.some((issue) => issue.code === 'model_required')).toBe(
-        false
-      );
+      expect(
+        result.issueMap['model-node']?.some(
+          (issue) => issue.code === WorkflowCheckIssueCodeEnum.modelRequired
+        )
+      ).toBe(false);
       expect(
         node.data.inputs.find(
           (input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
@@ -406,7 +423,7 @@ describe('workflow model validation', () => {
         ],
         FlowNodeTypeEnum.datasetSearchNode
       );
-      expect(getModelIssueCodes(node)).not.toContain('model_required');
+      expect(getModelIssueCodes(node)).not.toContain(WorkflowCheckIssueCodeEnum.modelRequired);
     }
   );
 
@@ -422,7 +439,7 @@ describe('workflow model validation', () => {
       ],
       FlowNodeTypeEnum.datasetSearchNode
     );
-    expect(getModelIssueCodes(node)).not.toContain('model_required');
+    expect(getModelIssueCodes(node)).not.toContain(WorkflowCheckIssueCodeEnum.modelRequired);
   });
 
   it('does not treat a hidden defaultValue as an actual query extension model selection', () => {
@@ -443,7 +460,7 @@ describe('workflow model validation', () => {
       ],
       FlowNodeTypeEnum.datasetSearchNode
     );
-    expect(getModelIssueCodes(node)).not.toContain('model_required');
+    expect(getModelIssueCodes(node)).not.toContain(WorkflowCheckIssueCodeEnum.modelRequired);
     expect(
       node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId)
         ?.value
@@ -468,8 +485,12 @@ describe('workflow model validation', () => {
         FlowNodeTypeEnum.datasetSearchNode
       );
 
-    expect(getModelIssueCodes(makeRerankNode(false))).not.toContain('model_unavailable');
-    expect(getModelIssueCodes(makeRerankNode(true))).toContain('model_unavailable');
+    expect(getModelIssueCodes(makeRerankNode(false))).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(makeRerankNode(true))).toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 
   it('validates enabled nested Agent dataset model references', () => {
@@ -488,7 +509,7 @@ describe('workflow model validation', () => {
       FlowNodeTypeEnum.agent
     );
 
-    expect(getModelIssueCodes(node)).toContain('model_unavailable');
+    expect(getModelIssueCodes(node)).toContain(WorkflowCheckIssueCodeEnum.modelUnavailable);
   });
 
   it('ignores dataset model parameters when no dataset is selected', () => {
@@ -527,8 +548,12 @@ describe('workflow model validation', () => {
       FlowNodeTypeEnum.agent
     );
 
-    expect(getModelIssueCodes(searchNode)).not.toContain('model_unavailable');
-    expect(getModelIssueCodes(agentNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(searchNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(agentNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 
   it('validates WorkflowTool model selector defaults with arbitrary input keys', () => {
@@ -563,8 +588,14 @@ describe('workflow model validation', () => {
       FlowNodeTypeEnum.pluginInput
     );
 
-    expect(getModelIssueCodes(availableNode)).not.toContain('model_unavailable');
-    expect(getModelIssueCodes(legacyNode)).not.toContain('model_unavailable');
-    expect(getModelIssueCodes(unavailableNode)).toContain('model_unavailable');
+    expect(getModelIssueCodes(availableNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(legacyNode)).not.toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
+    expect(getModelIssueCodes(unavailableNode)).toContain(
+      WorkflowCheckIssueCodeEnum.modelUnavailable
+    );
   });
 });

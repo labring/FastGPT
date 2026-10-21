@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
@@ -88,11 +89,17 @@ export const checkAppFormResourceIssues = ({
   ];
 
   for (const item of resourceItems) {
-    if (item.error === 'resource_no_permission') {
-      return getWorkflowCheckIssueMessage({ issueCode: 'resource_no_permission', t });
+    if (item.error === WorkflowCheckIssueCodeEnum.resourceNoPermission) {
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceNoPermission,
+        t
+      });
     }
     if (item.error) {
-      return getWorkflowCheckIssueMessage({ issueCode: 'resource_missing', t });
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceMissing,
+        t
+      });
     }
   }
 

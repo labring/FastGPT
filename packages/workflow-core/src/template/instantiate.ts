@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -38,7 +39,7 @@ export const instantiateNodeFromTemplate = async ({
 }): Promise<{ node: StoreNodeItemType; warnings: WorkflowDiagnostic[] }> => {
   if (document.nodes.some((node) => node.nodeId === nodeId)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_ID_DUPLICATED', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeIdDuplicated, severity: 'error', nodeId }
     ]);
   }
 
@@ -48,7 +49,7 @@ export const instantiateNodeFromTemplate = async ({
   if (automationMeta?.availableForWorkflowBuilder === false) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER',
+        code: WorkflowDiagnosticCodeEnum.templateNotAvailableForBuilder,
         severity: 'error',
         params: { template: formatNodeTemplateRef(templateRef) }
       }
@@ -62,7 +63,7 @@ export const instantiateNodeFromTemplate = async ({
   ) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_UNIQUE_NODE_EXISTS',
+        code: WorkflowDiagnosticCodeEnum.uniqueNodeExists,
         severity: 'error',
         params: { flowNodeType: template.flowNodeType }
       }

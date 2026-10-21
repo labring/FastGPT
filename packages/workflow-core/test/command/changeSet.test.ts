@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
 import { WORKFLOW_CHANGESET_SCHEMA_VERSION, type WorkflowChangeSet } from '../../src/command/type';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
@@ -66,7 +67,9 @@ describe('WorkflowChangeSet', () => {
     await expect(
       applyWorkflowChangeSet({ document, changeSet, dependencies })
     ).rejects.toMatchObject({
-      diagnostics: [expect.objectContaining({ code: 'WORKFLOW_BASE_CHECKSUM_MISMATCH' })]
+      diagnostics: [
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.baseChecksumMismatch })
+      ]
     });
     expect(document.app.name).not.toBe('Changed');
   });
@@ -85,7 +88,7 @@ describe('WorkflowChangeSet', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_NODE_NOT_FOUND',
+          code: WorkflowDiagnosticCodeEnum.nodeNotFound,
           path: ['commands', 1],
           params: expect.objectContaining({
             commandIndex: 1,
@@ -193,7 +196,7 @@ describe('WorkflowChangeSet', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_NODE_NOT_FOUND',
+          code: WorkflowDiagnosticCodeEnum.nodeNotFound,
           path: ['commands', 0],
           params: expect.objectContaining({
             commandIndex: 0,
@@ -233,7 +236,7 @@ describe('WorkflowChangeSet', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
+          code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
           params: expect.objectContaining({
             nodeId: 'text',
             outputKey: 'system_text',

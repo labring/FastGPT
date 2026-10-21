@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import {
   FlowNodeTypeEnum,
@@ -26,7 +27,7 @@ export const planNodeRemoval = ({
     isNestedChildSystemNodeType(node.flowNodeType)
   ) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_DELETE_FORBIDDEN', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeDeleteForbidden, severity: 'error', nodeId }
     ]);
   }
   if (node.flowNodeType === FlowNodeTypeEnum.loopRunBreak && parentNodeId) {
@@ -39,7 +40,7 @@ export const planNodeRemoval = ({
     if (mode === 'conditional' && breakCount <= 1) {
       throw new WorkflowCommandError([
         {
-          code: 'WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED',
+          code: WorkflowDiagnosticCodeEnum.conditionalLoopBreakRequired,
           severity: 'error',
           nodeId: parentNodeId
         }

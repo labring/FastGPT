@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { createWorkflowDocument } from '../../src/domain/document';
@@ -11,7 +12,7 @@ describe('cloneNode', () => {
       expect(
         () => cloneNode({ document, sourceNodeId: 'system', nodeId: 'copy' }),
         template.flowNodeType
-      ).toThrow('WORKFLOW_UNIQUE_NODE_CLONE_FORBIDDEN');
+      ).toThrow(WorkflowDiagnosticCodeEnum.uniqueNodeCloneForbidden);
       expect(document).toEqual(before);
     }
   });

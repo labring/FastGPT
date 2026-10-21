@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
@@ -168,7 +169,7 @@ describe('mergeWorkflowChangeSetChunks', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(WorkflowChangeSetMergeError);
       expect(error).toMatchObject({
-        code: 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
+        code: WorkflowDiagnosticCodeEnum.changesetCommandConflict,
         params: {
           target: 'config:x',
           existing: {
@@ -217,7 +218,7 @@ describe('mergeWorkflowChangeSetChunks', () => {
       })
     ).toThrowError(
       expect.objectContaining({
-        code: 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
+        code: WorkflowDiagnosticCodeEnum.changesetCommandConflict,
         params: {
           target: 'input:answer:text',
           existing: {
@@ -322,7 +323,7 @@ describe('mergeWorkflowChangeSetChunks', () => {
         })
       ).toThrowError(
         expect.objectContaining({
-          code: 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
+          code: WorkflowDiagnosticCodeEnum.changesetCommandConflict,
           params: expect.objectContaining({
             existing: {
               chunkId: conflictingChunkId,

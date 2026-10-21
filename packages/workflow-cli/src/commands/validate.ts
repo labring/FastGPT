@@ -13,7 +13,7 @@ export const validateDocument = async (
   context: CliContext
 ): Promise<CliResult> => {
   const document = await readWorkflowFile(context.dir);
-  const diagnostics = validateWorkflow(document);
+  const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
   assertNoValidationErrors(diagnostics);
   const bindings = collectWorkflowBindings(document);
   const bindingDiagnostics = getWorkflowBindingDiagnostics(bindings);

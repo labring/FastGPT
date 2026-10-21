@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
@@ -20,7 +21,7 @@ describe('planNodeRemoval', () => {
         executionEdges: []
       });
       expect(() => planNodeRemoval({ document, nodeId: 'system' }), template.flowNodeType).toThrow(
-        'WORKFLOW_NODE_DELETE_FORBIDDEN'
+        WorkflowDiagnosticCodeEnum.nodeDeleteForbidden
       );
     }
   });
@@ -71,7 +72,7 @@ describe('planNodeRemoval', () => {
     });
     const before = structuredClone(document);
     expect(() => planNodeRemoval({ document, nodeId: 'break' })).toThrow(
-      'WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED'
+      WorkflowDiagnosticCodeEnum.conditionalLoopBreakRequired
     );
     expect(document).toEqual(before);
     document.nodes.push({ ...structuredClone(document.nodes.at(-1)!), nodeId: 'another-break' });

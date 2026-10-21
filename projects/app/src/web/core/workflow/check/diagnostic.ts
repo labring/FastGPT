@@ -1,3 +1,7 @@
+import {
+  WorkflowDiagnosticCodeEnum,
+  WorkflowCheckIssueCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -9,75 +13,130 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowRuleIssue } from '../type';
 import { formatWorkflowRuleIssue } from './message';
 
-const legacyIssueCodes: Record<string, string> = {
-  WORKFLOW_REQUIRED_INPUT_MISSING: 'required_input_empty',
-  WORKFLOW_EXTRACT_FIELDS_REQUIRED: 'context_extract_empty',
-  WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING: 'required_input_empty',
-  WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING: 'required_input_empty',
-  WORKFLOW_VARIABLE_UPDATE_ITEM_INVALID: 'variable_update_incomplete',
-  WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED: 'loop_run_missing_break',
-  WORKFLOW_TOOL_REQUIRED: 'tool_call_empty',
-  WORKFLOW_CODE_INPUT_INCOMPLETE: 'code_input_incomplete',
-  WORKFLOW_TOOL_INPUT_CONFIGURATION_MISSING: 'tool_waiting_config',
-  WORKFLOW_NODE_NOT_REACHABLE: 'no_upstream',
-  WORKFLOW_NODE_ISOLATED: 'isolated_node',
-  WORKFLOW_REFERENCE_FORMAT_INVALID: 'invalid_reference',
-  WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND: 'invalid_reference',
-  WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM: 'invalid_reference',
-  WORKFLOW_REFERENCE_TYPE_MISMATCH: 'invalid_reference',
-  WORKFLOW_MODEL_REQUIRED: 'model_required',
-  WORKFLOW_MODEL_UNAVAILABLE: 'model_unavailable'
+const legacyIssueCodes: Partial<Record<WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum>> = {
+  [WorkflowDiagnosticCodeEnum.requiredInputMissing]: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+  [WorkflowDiagnosticCodeEnum.extractFieldsRequired]:
+    WorkflowCheckIssueCodeEnum.contextExtractEmpty,
+  [WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing]:
+    WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+  [WorkflowDiagnosticCodeEnum.variableUpdateValueMissing]:
+    WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+  [WorkflowDiagnosticCodeEnum.variableUpdateItemInvalid]:
+    WorkflowCheckIssueCodeEnum.variableUpdateIncomplete,
+  [WorkflowDiagnosticCodeEnum.conditionalLoopBreakRequired]:
+    WorkflowCheckIssueCodeEnum.loopRunMissingBreak,
+  [WorkflowDiagnosticCodeEnum.toolRequired]: WorkflowCheckIssueCodeEnum.toolCallEmpty,
+  [WorkflowDiagnosticCodeEnum.codeInputIncomplete]: WorkflowCheckIssueCodeEnum.codeInputIncomplete,
+  [WorkflowDiagnosticCodeEnum.toolInputConfigurationMissing]:
+    WorkflowCheckIssueCodeEnum.toolWaitingConfig,
+  [WorkflowDiagnosticCodeEnum.nodeNotReachable]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowDiagnosticCodeEnum.nodeIsolated]: WorkflowCheckIssueCodeEnum.isolatedNode,
+  [WorkflowDiagnosticCodeEnum.referenceFormatInvalid]: WorkflowCheckIssueCodeEnum.invalidReference,
+  [WorkflowDiagnosticCodeEnum.referenceOutputNotFound]: WorkflowCheckIssueCodeEnum.invalidReference,
+  [WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]:
+    WorkflowCheckIssueCodeEnum.invalidReference,
+  [WorkflowDiagnosticCodeEnum.referenceTypeMismatch]: WorkflowCheckIssueCodeEnum.invalidReference,
+  [WorkflowDiagnosticCodeEnum.modelRequired]: WorkflowCheckIssueCodeEnum.modelRequired,
+  [WorkflowDiagnosticCodeEnum.modelUnavailable]: WorkflowCheckIssueCodeEnum.modelUnavailable
 };
 
 // 仅为 Core 额外严格规则增加具体文案；已有 Web 规则继续使用原来的错误码、翻译和字段标签。
-const coreMessageKeys: Record<string, ParseKeys> = {
-  WORKFLOW_SCHEMA_INVALID: i18nT('common:core.workflow.check.schema_invalid'),
-  WORKFLOW_NODE_ID_DUPLICATED: i18nT('common:core.workflow.check.node_id_duplicated'),
-  WORKFLOW_INPUT_KEY_DUPLICATED: i18nT('common:core.workflow.check.input_key_duplicated'),
-  WORKFLOW_OUTPUT_KEY_DUPLICATED: i18nT('common:core.workflow.check.output_key_duplicated'),
-  WORKFLOW_INPUT_MODE_INVALID: i18nT('common:core.workflow.check.input_mode_invalid'),
-  WORKFLOW_INPUT_VALUE_TYPE_INVALID: i18nT('common:core.workflow.check.input_type_invalid'),
-  WORKFLOW_REFERENCE_TYPE_MISMATCH: i18nT('common:core.workflow.check.reference_type_mismatch'),
-  WORKFLOW_INPUT_VALUE_SCHEMA_INVALID: i18nT('common:core.workflow.check.input_schema_invalid'),
-  WORKFLOW_TEMPLATE_PARAMETER_SCHEMA_MISSING: i18nT(
+const coreMessageKeys: Partial<Record<WorkflowDiagnosticCodeEnum, ParseKeys>> = {
+  [WorkflowDiagnosticCodeEnum.schemaInvalid]: i18nT('common:core.workflow.check.schema_invalid'),
+  [WorkflowDiagnosticCodeEnum.nodeIdDuplicated]: i18nT(
+    'common:core.workflow.check.node_id_duplicated'
+  ),
+  [WorkflowDiagnosticCodeEnum.inputKeyDuplicated]: i18nT(
+    'common:core.workflow.check.input_key_duplicated'
+  ),
+  [WorkflowDiagnosticCodeEnum.outputKeyDuplicated]: i18nT(
+    'common:core.workflow.check.output_key_duplicated'
+  ),
+  [WorkflowDiagnosticCodeEnum.inputModeInvalid]: i18nT(
+    'common:core.workflow.check.input_mode_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.inputValueTypeInvalid]: i18nT(
+    'common:core.workflow.check.input_type_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.referenceTypeMismatch]: i18nT(
+    'common:core.workflow.check.reference_type_mismatch'
+  ),
+  [WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]: i18nT(
+    'common:core.workflow.check.input_schema_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.templateParameterSchemaMissing]: i18nT(
     'common:core.workflow.check.input_schema_missing'
   ),
-  WORKFLOW_START_COUNT_INVALID: i18nT('common:core.workflow.check.start_count_invalid'),
-  WORKFLOW_PARENT_NODE_NOT_FOUND: i18nT('common:core.workflow.check.parent_missing'),
-  WORKFLOW_PARENT_NOT_CONTAINER: i18nT('common:core.workflow.check.parent_not_container'),
-  WORKFLOW_NODE_NOT_ALLOWED_IN_CONTAINER: i18nT(
+  [WorkflowDiagnosticCodeEnum.startCountInvalid]: i18nT(
+    'common:core.workflow.check.start_count_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.parentNodeNotFound]: i18nT(
+    'common:core.workflow.check.parent_missing'
+  ),
+  [WorkflowDiagnosticCodeEnum.parentNotContainer]: i18nT(
+    'common:core.workflow.check.parent_not_container'
+  ),
+  [WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer]: i18nT(
     'common:core.workflow.check.node_not_allowed_in_container'
   ),
-  WORKFLOW_INTERACTIVE_NODE_NOT_ALLOWED_IN_PARALLEL: i18nT(
+  [WorkflowDiagnosticCodeEnum.interactiveNodeNotAllowedInParallel]: i18nT(
     'common:core.workflow.check.interactive_not_allowed_in_parallel'
   ),
-  WORKFLOW_LOOP_BREAK_PARENT_INVALID: i18nT('common:core.workflow.check.loop_break_parent_invalid'),
-  WORKFLOW_LOOP_BREAK_PARENT_REQUIRED: i18nT('common:core.workflow.check.system_parent_required'),
-  WORKFLOW_SYSTEM_OR_BREAK_PARENT_REQUIRED: i18nT(
+  [WorkflowDiagnosticCodeEnum.loopBreakParentInvalid]: i18nT(
+    'common:core.workflow.check.loop_break_parent_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.loopBreakParentRequired]: i18nT(
     'common:core.workflow.check.system_parent_required'
   ),
-  WORKFLOW_SYSTEM_CHILD_MOVE_FORBIDDEN: i18nT('common:core.workflow.check.system_parent_required'),
-  WORKFLOW_CONTAINER_CHILDREN_OUT_OF_SYNC: i18nT(
+  [WorkflowDiagnosticCodeEnum.systemOrBreakParentRequired]: i18nT(
+    'common:core.workflow.check.system_parent_required'
+  ),
+  [WorkflowDiagnosticCodeEnum.systemChildMoveForbidden]: i18nT(
+    'common:core.workflow.check.system_parent_required'
+  ),
+  [WorkflowDiagnosticCodeEnum.containerChildrenOutOfSync]: i18nT(
     'common:core.workflow.check.container_children_out_of_sync'
   ),
-  WORKFLOW_CONTAINER_SYSTEM_CHILD_INVALID: i18nT(
+  [WorkflowDiagnosticCodeEnum.containerSystemChildInvalid]: i18nT(
     'common:core.workflow.check.container_system_child_invalid'
   ),
-  WORKFLOW_EDGE_DUPLICATED: i18nT('common:core.workflow.check.edge_duplicated'),
-  WORKFLOW_EDGE_INVALID: i18nT('common:core.workflow.check.edge_invalid'),
-  WORKFLOW_EDGE_HANDLE_UNSUPPORTED: i18nT('common:core.workflow.check.edge_handle_unsupported'),
-  WORKFLOW_EDGE_CROSS_SCOPE: i18nT('common:core.workflow.check.edge_cross_scope'),
-  WORKFLOW_EDGE_SELF_CONNECTION: i18nT('common:core.workflow.check.edge_self_connection'),
-  WORKFLOW_TOOL_EDGE_INVALID: i18nT('common:core.workflow.check.tool_edge_invalid'),
-  WORKFLOW_TOOL_EDGE_NODE_INVALID: i18nT('common:core.workflow.check.tool_edge_invalid'),
-  WORKFLOW_EDGE_TARGET_KIND_INVALID: i18nT('common:core.workflow.check.tool_edge_invalid'),
-  WORKFLOW_CATCH_NOT_ENABLED: i18nT('common:core.workflow.check.catch_not_enabled'),
-  WORKFLOW_NEXT_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.next_port_unsupported'),
-  WORKFLOW_TARGET_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.target_port_unsupported'),
-  WORKFLOW_BRANCH_PORT_UNSUPPORTED: i18nT('common:core.workflow.check.branch_port_unsupported'),
-  WORKFLOW_BRANCH_KEY_NOT_FOUND: i18nT('common:core.workflow.check.branch_key_missing'),
-  WORKFLOW_SOURCE_OUTPUT_NOT_FOUND: i18nT('common:core.workflow.check.source_output_missing'),
-  WORKFLOW_NODE_NOT_FOUND: i18nT('common:core.workflow.check.node_missing')
+  [WorkflowDiagnosticCodeEnum.edgeDuplicated]: i18nT('common:core.workflow.check.edge_duplicated'),
+  [WorkflowDiagnosticCodeEnum.edgeInvalid]: i18nT('common:core.workflow.check.edge_invalid'),
+  [WorkflowDiagnosticCodeEnum.edgeHandleUnsupported]: i18nT(
+    'common:core.workflow.check.edge_handle_unsupported'
+  ),
+  [WorkflowDiagnosticCodeEnum.edgeCrossScope]: i18nT('common:core.workflow.check.edge_cross_scope'),
+  [WorkflowDiagnosticCodeEnum.edgeSelfConnection]: i18nT(
+    'common:core.workflow.check.edge_self_connection'
+  ),
+  [WorkflowDiagnosticCodeEnum.toolEdgeInvalid]: i18nT(
+    'common:core.workflow.check.tool_edge_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.toolEdgeNodeInvalid]: i18nT(
+    'common:core.workflow.check.tool_edge_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.edgeTargetKindInvalid]: i18nT(
+    'common:core.workflow.check.tool_edge_invalid'
+  ),
+  [WorkflowDiagnosticCodeEnum.catchNotEnabled]: i18nT(
+    'common:core.workflow.check.catch_not_enabled'
+  ),
+  [WorkflowDiagnosticCodeEnum.nextPortUnsupported]: i18nT(
+    'common:core.workflow.check.next_port_unsupported'
+  ),
+  [WorkflowDiagnosticCodeEnum.targetPortUnsupported]: i18nT(
+    'common:core.workflow.check.target_port_unsupported'
+  ),
+  [WorkflowDiagnosticCodeEnum.branchPortUnsupported]: i18nT(
+    'common:core.workflow.check.branch_port_unsupported'
+  ),
+  [WorkflowDiagnosticCodeEnum.branchKeyNotFound]: i18nT(
+    'common:core.workflow.check.branch_key_missing'
+  ),
+  [WorkflowDiagnosticCodeEnum.sourceOutputNotFound]: i18nT(
+    'common:core.workflow.check.source_output_missing'
+  ),
+  [WorkflowDiagnosticCodeEnum.nodeNotFound]: i18nT('common:core.workflow.check.node_missing')
 };
 
 /** 将 Core 的原始诊断转为具体 UI 错误，保留旧 Web 文案与 severity；未知诊断也完整展示原因和参数。 */
@@ -106,7 +165,7 @@ export const formatWorkflowDiagnostic = ({
     model: typeof params.model === 'string' ? params.model : undefined
   };
 
-  if (diagnostic.code === 'WORKFLOW_REQUIRED_INPUT_MISSING') {
+  if (diagnostic.code === WorkflowDiagnosticCodeEnum.requiredInputMissing) {
     if (
       diagnostic.inputKey === NodeInputKeyEnum.userInputForms &&
       typeof params.fieldLabel === 'string'
@@ -119,7 +178,7 @@ export const formatWorkflowDiagnostic = ({
       node?.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
       diagnostic.inputKey === NodeInputKeyEnum.httpReqUrl
     ) {
-      issue.code = 'http_url_empty';
+      issue.code = WorkflowCheckIssueCodeEnum.httpUrlEmpty;
     } else if (
       node?.flowNodeType === FlowNodeTypeEnum.datasetConcatNode &&
       diagnostic.inputKey === NodeInputKeyEnum.datasetQuoteList
@@ -128,26 +187,36 @@ export const formatWorkflowDiagnostic = ({
     }
   }
   if (
-    diagnostic.code === 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING' ||
-    diagnostic.code === 'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING'
+    diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing ||
+    diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateValueMissing
   ) {
     issue.fieldLabel =
-      diagnostic.code === 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING' ? 'variable' : 'value';
+      diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing
+        ? 'variable'
+        : 'value';
   }
-  if (diagnostic.code === 'WORKFLOW_CODE_INPUT_INCOMPLETE') issue.inputKey = undefined;
-  if (diagnostic.code === 'WORKFLOW_TOOL_REQUIRED')
+  if (diagnostic.code === WorkflowDiagnosticCodeEnum.codeInputIncomplete)
+    issue.inputKey = undefined;
+  if (diagnostic.code === WorkflowDiagnosticCodeEnum.toolRequired)
     issue.inputKey = NodeInputKeyEnum.useAgentSandbox;
   if (
-    diagnostic.code === 'WORKFLOW_NODE_NOT_REACHABLE' &&
-    params.reason === 'unreachable_from_start'
+    diagnostic.code === WorkflowDiagnosticCodeEnum.nodeNotReachable &&
+    params.reason === WorkflowCheckIssueCodeEnum.unreachableFromStart
   )
-    issue.code = 'unreachable_from_start';
-  if (diagnostic.code === 'WORKFLOW_BRANCH_CONFIGURATION_INVALID') {
-    if (node?.flowNodeType === FlowNodeTypeEnum.ifElseNode) issue.code = 'if_else_incomplete';
+    issue.code = WorkflowCheckIssueCodeEnum.unreachableFromStart;
+  if (diagnostic.code === WorkflowDiagnosticCodeEnum.branchConfigurationInvalid) {
+    if (node?.flowNodeType === FlowNodeTypeEnum.ifElseNode)
+      issue.code = WorkflowCheckIssueCodeEnum.ifElseIncomplete;
     else {
-      const prefix =
-        node?.flowNodeType === FlowNodeTypeEnum.userSelect ? 'user_select' : 'classify_question';
-      issue.code = `${prefix}_${params.reason === 'empty' ? 'empty' : 'value_empty'}`;
+      const isEmpty = params.reason === 'empty';
+      issue.code =
+        node?.flowNodeType === FlowNodeTypeEnum.userSelect
+          ? isEmpty
+            ? WorkflowCheckIssueCodeEnum.userSelectEmpty
+            : WorkflowCheckIssueCodeEnum.userSelectValueEmpty
+          : isEmpty
+            ? WorkflowCheckIssueCodeEnum.classifyQuestionEmpty
+            : WorkflowCheckIssueCodeEnum.classifyQuestionValueEmpty;
       if (params.reason === 'invalid_keys') {
         const key = i18nT('common:core.workflow.check.option_keys_invalid');
         issue.code = diagnostic.code;
@@ -155,8 +224,8 @@ export const formatWorkflowDiagnostic = ({
       }
     }
   }
-  if (diagnostic.code === 'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID') {
-    issue.code = 'form_input_empty';
+  if (diagnostic.code === WorkflowDiagnosticCodeEnum.formInputConfigurationInvalid) {
+    issue.code = WorkflowCheckIssueCodeEnum.formInputEmpty;
     if (params.reason !== 'empty') {
       const key = i18nT('common:core.workflow.check.form_configuration_invalid');
       issue.code = diagnostic.code;
@@ -167,8 +236,8 @@ export const formatWorkflowDiagnostic = ({
   }
   if (diagnostic.path?.[0] === 'chatConfig') {
     issue.fieldLabel = diagnostic.path[1] === 'questionGuide' ? 'question_guide' : 'tts';
-    if (diagnostic.code === 'WORKFLOW_MODEL_UNAVAILABLE')
-      issue.messageCode = 'model_unavailable_short';
+    if (diagnostic.code === WorkflowDiagnosticCodeEnum.modelUnavailable)
+      issue.messageCode = WorkflowCheckIssueCodeEnum.modelUnavailableShort;
   }
   // Agent 的 datasetParams 本身不是模型选择器，使用具体槽位的标签。
   if (diagnostic.inputKey === NodeInputKeyEnum.datasetParams && slot) issue.input = undefined;
@@ -200,8 +269,8 @@ export const formatWorkflowDiagnostic = ({
     issue.message = t ? t(messageKey, values) : messageKey;
   } else if (
     !legacyIssueCodes[diagnostic.code] &&
-    diagnostic.code !== 'WORKFLOW_BRANCH_CONFIGURATION_INVALID' &&
-    diagnostic.code !== 'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID'
+    diagnostic.code !== WorkflowDiagnosticCodeEnum.branchConfigurationInvalid &&
+    diagnostic.code !== WorkflowDiagnosticCodeEnum.formInputConfigurationInvalid
   ) {
     // 保留未映射的新错误内容，不能把阻断错误转成空提示或笼统的“检查失败”。
     issue.message =

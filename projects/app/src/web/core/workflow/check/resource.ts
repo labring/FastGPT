@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   FlowNodeInputTypeEnum,
@@ -21,7 +22,7 @@ export const checkWorkflowNodeResourceRules = ({
   const issues: WorkflowRuleIssue[] = [];
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
-    issues.push({ code: 'tool_offline' });
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
   } else if (data.pluginData?.error) {
     issues.push({ code: resolvePluginDataErrorIssueCode(data.pluginData.error) });
   }
@@ -29,11 +30,15 @@ export const checkWorkflowNodeResourceRules = ({
   /** 资源删除/权限标记来自服务端快照，不根据客户端身份重新鉴权。 */
   const addResourceIssues = (value: unknown, inputKey: string) => {
     if (!Array.isArray(value)) return;
-    if (value.some((item) => item?.error === 'resource_no_permission')) {
-      issues.push({ code: 'resource_no_permission', inputKey });
+    if (value.some((item) => item?.error === WorkflowCheckIssueCodeEnum.resourceNoPermission)) {
+      issues.push({ code: WorkflowCheckIssueCodeEnum.resourceNoPermission, inputKey });
     }
-    if (value.some((item) => item?.error && item.error !== 'resource_no_permission')) {
-      issues.push({ code: 'resource_missing', inputKey });
+    if (
+      value.some(
+        (item) => item?.error && item.error !== WorkflowCheckIssueCodeEnum.resourceNoPermission
+      )
+    ) {
+      issues.push({ code: WorkflowCheckIssueCodeEnum.resourceMissing, inputKey });
     }
   };
   for (const key of [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills]) {
@@ -59,7 +64,11 @@ export const checkWorkflowNodeResourceRules = ({
     const renderType = getSelectedInputRenderType(input);
     if (renderType === FlowNodeInputTypeEnum.hidden || renderType === FlowNodeInputTypeEnum.off)
       continue;
-    issues.push({ code: 'required_input_empty', inputKey: input.key, input });
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+      inputKey: input.key,
+      input
+    });
   }
   return issues;
 };
