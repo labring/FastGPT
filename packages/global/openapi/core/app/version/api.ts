@@ -7,6 +7,7 @@ import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
+import type { StoreNodeItemType } from '../../../../core/workflow/type/node';
 
 export const PublishAppQuerySchema = z.object({
   appId: ObjectIdSchema.meta({
@@ -90,7 +91,9 @@ export const PublishAppBodySchema = z.object({
     description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
   })
 });
-export type PublishAppBodyType = z.infer<typeof PublishAppBodySchema>;
+export type PublishAppBodyType = Omit<z.input<typeof PublishAppBodySchema>, 'nodes'> & {
+  nodes?: StoreNodeItemType[];
+};
 
 /* ============================================================================
  * API: 发布或保存应用版本
