@@ -21,7 +21,6 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
@@ -122,9 +121,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res,
     readStream: cursor
   });
-  let exportedCount = 0;
   let auditFinished = false;
-  const recordExportAudit = (result: 'success' | 'failed', failureReason?: string) => {
+  const recordExportAudit = () => {
     if (auditFinished) return;
 
     auditFinished = true;
@@ -137,10 +135,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         datasetName: collection.dataset.name,
         collectionName: collection.name,
         exportScope: 'chatItemDataId' in parseBody ? 'chat_quote' : 'collection',
-        objectType: 'data',
-        result,
-        count: String(exportedCount),
-        ...(failureReason ? { failureReason } : {})
+        objectType: 'data'
       }
     });
   };
@@ -160,10 +155,9 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       );
 
       write(`\n${sanitizedQ},${sanitizedA}`);
-      exportedCount += 1;
     } catch (error) {
       logger.error(`export usage error`, { error });
-      recordExportAudit('failed', getErrText(error));
+      recordExportAudit();
       cursor.destroy();
       return;
     }
@@ -173,13 +167,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   cursor.on('end', () => {
     cursor.close();
-    recordExportAudit('success');
+    recordExportAudit();
     res.end();
   });
 
   cursor.on('error', (err) => {
     logger.error(`export usage error`, { error: err });
-    recordExportAudit('failed', getErrText(err));
+    recordExportAudit();
     res.status(500);
     res.end();
   });

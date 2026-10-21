@@ -424,9 +424,6 @@ export const auditLogMap = {
       collectionName: string;
       exportScope: string;
       objectType: string;
-      result: string;
-      count: string;
-      failureReason?: string;
     }
   },
   [AuditEventEnum.CREATE_DATASET_FOLDER]: {
@@ -506,8 +503,6 @@ export const auditLogMap = {
       datasetId: string;
       datasetName: string;
       collectionName: string;
-      count: string;
-      result: string;
     }
   },
   [AuditEventEnum.CREATE_DATASET_TAG]: {
@@ -541,7 +536,6 @@ export const auditLogMap = {
       datasetName: string;
       tagId: string;
       tagName: string;
-      collectionCount: string;
     }
   },
   [AuditEventEnum.ADD_DATASET_TAGS]: {
@@ -553,7 +547,6 @@ export const auditLogMap = {
       datasetName: string;
       tagName: string;
       count: string;
-      result: string;
     }
   },
   [AuditEventEnum.REMOVE_DATASET_TAGS]: {
@@ -565,7 +558,6 @@ export const auditLogMap = {
       datasetName: string;
       tagName: string;
       count: string;
-      result: string;
     }
   },
   //Data

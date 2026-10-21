@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
-  const parentPaths = await getParents(parentId ?? undefined);
+  const parentPaths = await getParents(parentId ?? undefined).catch(() => []);
   const location = parentPaths.map((path) => path.parentName).join('/') || 'root';
   const objectType = getI18nDatasetType(DatasetTypeEnum.folder);
 

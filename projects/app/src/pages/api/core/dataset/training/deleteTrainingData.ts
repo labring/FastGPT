@@ -38,7 +38,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
-  let deletedCount = 0;
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
@@ -67,8 +66,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
           session
         );
       }
-      const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
-      deletedCount = result.deletedCount;
+      await MongoDatasetTraining.deleteOne(trainingMatch, { session });
       return;
     }
 
@@ -92,11 +90,10 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       );
     }
 
-    const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
-    deletedCount = result.deletedCount;
+    await MongoDatasetTraining.deleteOne(trainingMatch, { session });
   });
 
-  // 删除事务提交后记录最终结果；审计写入失败不影响已经完成的清理操作。
+  // 删除事务提交后记录操作；审计写入失败不影响已经完成的清理操作。
   void addAuditLog({
     teamId,
     tmbId,
@@ -104,9 +101,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     params: {
       datasetId: String(collection.datasetId),
       datasetName: collection.dataset.name,
-      collectionName: collection.name,
-      count: String(deletedCount),
-      result: deletedCount > 0 ? 'success' : 'skipped'
+      collectionName: collection.name
     }
   });
 
