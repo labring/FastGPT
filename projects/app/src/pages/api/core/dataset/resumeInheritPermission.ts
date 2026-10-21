@@ -16,18 +16,25 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getParents } from './paths';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
   const { datasetId } = parseApiInput({
     req,
     bodySchema: ResumeDatasetInheritPermissionBodySchema
   }).body;
-  const { dataset, teamId } = await authDataset({
+  const { dataset, teamId, tmbId } = await authDataset({
     datasetId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
+
+  // 复用已有的祖先链查询，一次拿到目标路径和直接上级名称。
+  const parentPaths = await getParents(dataset.parentId ?? undefined);
+  const parentResourceName = parentPaths.at(-1)?.parentName;
 
   if (dataset.parentId) {
     await mongoSessionRun(async (session) => {
@@ -70,5 +77,16 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
       }
     );
   }
+
+  // 权限恢复成功后才写入事件
+  addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    params: {
+      targetResource: [...parentPaths.map((path) => path.parentName), dataset.name].join('/'),
+      parentResource: parentResourceName ?? '-'
+    }
+  });
 }
 export default NextAPI(handler);
