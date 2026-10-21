@@ -689,6 +689,7 @@
   "core.workflow.check.status.pending_handle": "待处理",
   "core.workflow.check.status.pending_improve": "待完善",
   "core.workflow.check.tool_call_empty": "需配置工具或开启虚拟机",
+  "core.workflow.check.tool_set_not_configured": "工具集尚未配置",
   "core.workflow.check.tool_inactive": "该工具尚未激活，请激活使用",
   "core.workflow.check.tool_load_failed": "工具加载失败，请稍后重试",
   "core.workflow.check.tool_missing": "该工具不存在或已被删除",
