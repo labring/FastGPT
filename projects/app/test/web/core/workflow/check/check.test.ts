@@ -44,6 +44,7 @@ import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/syste
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -76,6 +77,74 @@ describe('checkWorkflowNodeIssues', () => {
         valueType: WorkflowIOValueTypeEnum.string
       }
     ]
+  });
+
+  it('accepts legacy start inputs after loading while preserving dataset search checks', () => {
+    const source = storeNode2FlowNode({
+      item: {
+        ...startNode.data,
+        inputs: [
+          {
+            ...WorkflowStart.inputs[0],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: ['', '']
+          }
+        ]
+      },
+      t: ((key: string) => key) as TFunction
+    });
+    const search = makeNode('search', FlowNodeTypeEnum.datasetSearchNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: 'Dataset',
+          valueType: WorkflowIOValueTypeEnum.selectDataset,
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          value: [{ datasetId: 'dataset-id' }]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchInput,
+          label: 'Search query',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          required: true,
+          selectedType: FlowNodeInputTypeEnum.reference,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [[source.id, NodeOutputKeyEnum.userChatInput]]
+        }
+      ]
+    });
+    const graph = {
+      nodes: [source, search],
+      edges: [{ id: 'edge', source: source.id, target: search.id }]
+    };
+    const before = structuredClone(source.data.inputs);
+
+    expect(checkWorkflowNodeIssues(graph)).toEqual({});
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    search.data.inputs[1].value = [['deleted', NodeOutputKeyEnum.userChatInput]];
+    const invalidReference = checkWorkflowBeforeRunOrPublish(graph);
+    expect(invalidReference.hasError).toBe(true);
+    expect(invalidReference.firstErrorNodeId).toBe(search.id);
+    expect(invalidReference.issueMap.search).toEqual([
+      expect.objectContaining({
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.datasetSearchInput
+      })
+    ]);
+
+    search.data.inputs[1].value = [[source.id, NodeOutputKeyEnum.userChatInput]];
+    search.data.inputs[0].value = [];
+    const missingDataset = checkWorkflowBeforeRunOrPublish(graph);
+    expect(missingDataset.hasError).toBe(true);
+    expect(missingDataset.issueMap.search).toEqual([
+      expect.objectContaining({
+        code: 'required_input_empty',
+        inputKey: NodeInputKeyEnum.datasetSelectList
+      })
+    ]);
+    expect(source.data.inputs).toEqual(before);
   });
 
   it('runs saved HTTP, extraction, boolean-update and form configurations through the shared check', () => {
