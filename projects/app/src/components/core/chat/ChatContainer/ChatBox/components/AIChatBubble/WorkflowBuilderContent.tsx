@@ -2,6 +2,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import AIResponseBox from '../../../../components/AIResponseBox';
 import RenderProcessingCollapse from '../../../../components/AIResponseBox/RenderProcessingCollapse';
 import RenderProcessingPreview, {
@@ -137,6 +138,13 @@ const WorkflowBuilderContent = (props: AIChatBubbleContentProps) => {
         const { valueIndex } = block;
         const value = chatValue[valueIndex];
         if (!value) return null;
+        if (block.type === 'interactive' && value.interactive) {
+          const interactive = extractDeepestInteractive(value.interactive);
+          // Ask 仅保留为过程分界，用户回答由 ChatItem 在独立气泡中展示。
+          if (interactive.type === 'agentAsk' || interactive.type === 'agentPlanAskQuery') {
+            return null;
+          }
+        }
 
         return (
           <Box key={`${dataId}-workflow-builder-${block.type}-${valueIndex}`}>

@@ -345,6 +345,7 @@
   "workflow_builder_version_applied": "적용됨",
   "workflow_builder_version_expired": "만료됨",
   "workflow_builder_version_expired_toast": "이 워크플로는 만료되어 적용할 수 없습니다. 새로 생성해 주세요.",
+  "workflow_builder_version_not_found_toast": "워크플로 파일을 찾을 수 없습니다",
   "workflow_builder_version_json_ready": "워크플로 JSON 생성 및 검증 완료",
   "workflow_builder_version_ready_suffix": " 생성 완료",
   "workflow_builder_process_details": "처리 세부 정보",

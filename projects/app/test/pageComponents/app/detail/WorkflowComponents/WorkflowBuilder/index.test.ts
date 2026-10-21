@@ -126,7 +126,6 @@ const deferred = <T>() => {
 describe('WorkflowBuilder applyVersion', () => {
   let dom: JSDOM;
   let root: Root;
-  let toastRoot: Root;
   let canvas: ReturnType<typeof compileStoreWorkflow>;
   const document = parseCompatibleWorkflowDocument(workflowFixture);
   const version: WorkflowBuilderVersion = {
@@ -162,23 +161,16 @@ describe('WorkflowBuilder applyVersion', () => {
     });
     mocks.requestAutoLayout.mockResolvedValue('applied');
     mocks.latestVersion = version;
-    dom = new JSDOM(
-      '<!doctype html><html><body><div id="root"></div><div id="toast"></div></body></html>'
-    );
+    dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>');
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     root = createRoot(dom.window.document.getElementById('root')!);
-    toastRoot = createRoot(dom.window.document.getElementById('toast')!);
-    mocks.toast.mockImplementation(({ render }) => toastRoot.render(render()));
     await act(async () => root.render(React.createElement(WorkflowBuilder)));
   });
 
   afterEach(async () => {
-    await act(async () => {
-      root.unmount();
-      toastRoot.unmount();
-    });
+    await act(async () => root.unmount());
     dom.window.close();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -209,6 +201,11 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(canvas).toEqual({ nodes: [], edges: [], chatConfig: { welcomeText: 'original' } });
     expect(mocks.actions!.isApplying).toBe(false);
     expect(mocks.pushPastSnapshot).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'error',
+      title: 'workflow_builder_apply_failed',
+      description: 'commit failed'
+    });
 
     // 失败后可从横幅重新应用，与卡片共用同一把锁。
     await act(async () => dom.window.document.querySelector('button')!.click());
@@ -216,6 +213,10 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.pushPastSnapshot).toHaveBeenCalledOnce();
     expect(mocks.actions!.isApplying).toBe(false);
     expect(dom.window.document.querySelector('button')!.disabled).toBe(false);
+    expect(mocks.toast).toHaveBeenLastCalledWith({
+      status: 'success',
+      title: 'workflow_builder_applied'
+    });
     const updateActivity = mocks.setActivity.mock.lastCall![0];
     const activity = { latestVersion: { version, responseChatItemId: 'response-2' } };
     expect(updateActivity(activity).latestVersion.version).toHaveProperty('appliedAt');
@@ -261,7 +262,10 @@ describe('WorkflowBuilder applyVersion', () => {
     const archivedDocument = structuredClone(document);
     archivedDocument.chatConfig.questionGuide = { open: true, modelId: 'removed-model' };
     const workflowConfig = compileStoreWorkflow(archivedDocument);
-    workflowConfig.chatConfig.questionGuide = { open: true, modelId: 'available-model' };
+    workflowConfig.chatConfig = {
+      ...workflowConfig.chatConfig,
+      questionGuide: { open: true, modelId: 'available-model' }
+    };
     mocks.load.mockResolvedValueOnce({ document: archivedDocument, checksum: version.checksum });
     mocks.parseImport.mockResolvedValueOnce(workflowConfig);
     mocks.appDetail = { ...mocks.appDetail, name: 'My app', intro: 'User description' };
@@ -371,9 +375,33 @@ describe('WorkflowBuilder applyVersion', () => {
     });
 
     expect(mocks.initData).not.toHaveBeenCalled();
-    expect(mocks.toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'workflow_builder_version_expired_toast' })
-    );
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'error',
+      title: 'workflow_builder_version_expired_toast'
+    });
+    expect(mocks.actions!.isApplying).toBe(false);
+  });
+
+  it('shows the API message below the apply failure title when loading a version fails', async () => {
+    const error = {
+      code: 500,
+      statusText: 'error',
+      message: 'Workflow Builder version not found',
+      data: null,
+      errorType: 'UserError'
+    };
+    mocks.load.mockRejectedValueOnce(error);
+    await act(async () => {
+      await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toBe(error);
+    });
+
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'error',
+      title: 'workflow_builder_apply_failed',
+      description: error.message
+    });
+    expect(mocks.initData).not.toHaveBeenCalled();
+    expect(mocks.commit).not.toHaveBeenCalled();
     expect(mocks.actions!.isApplying).toBe(false);
   });
 });

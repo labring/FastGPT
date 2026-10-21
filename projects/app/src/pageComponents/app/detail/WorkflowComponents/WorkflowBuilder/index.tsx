@@ -6,6 +6,7 @@ import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { getModelList } from '@/web/core/ai/model/modelData';
@@ -27,54 +28,9 @@ import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
-const WorkflowBuilderApplyToast = ({
-  status,
-  message
-}: {
-  status: 'success' | 'error';
-  message: string;
-}) => {
-  const isSuccess = status === 'success';
-
-  return (
-    <Flex
-      h="48px"
-      maxW="calc(100vw - 32px)"
-      px="20px"
-      alignItems="center"
-      gap="12px"
-      bg={isSuccess ? '#EDFBF3' : '#FEF3F2'}
-      borderRadius="6px"
-      boxShadow="0 0 1px rgba(19, 51, 107, 0.1), 0 4px 10px rgba(19, 51, 107, 0.1)"
-    >
-      <Flex
-        boxSize="24px"
-        flexShrink={0}
-        alignItems="center"
-        justifyContent="center"
-        bg={isSuccess ? '#039855' : '#D92D20'}
-        borderRadius="50%"
-      >
-        <MyIcon name={isSuccess ? 'check' : 'common/closeLight'} boxSize="16px" color="white" />
-      </Flex>
-      <Text
-        minW={0}
-        color="#111824"
-        fontSize="14px"
-        fontWeight={400}
-        lineHeight="20px"
-        letterSpacing="0.25px"
-        noOfLines={1}
-      >
-        {message}
-      </Text>
-    </Flex>
-  );
-};
-
 const WorkflowBuilder = () => {
   const { t } = useTranslation('workflow');
-  const { toast } = useToast();
+  const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
@@ -111,28 +67,13 @@ const WorkflowBuilder = () => {
     const workflow = flowData2StoreData();
     return workflow ? { ...workflow, chatConfig: appDetail.chatConfig } : undefined;
   });
-  const showApplyResultToast = useCallback(
-    ({ status, message }: { status: 'success' | 'error'; message: string }) =>
-      toast({
-        id: 'workflow-builder-apply-result',
-        title: message,
-        position: 'top',
-        containerStyle: {
-          minWidth: 0,
-          maxWidth: 'none',
-          marginTop: '80px'
-        },
-        render: () => <WorkflowBuilderApplyToast status={status} message={message} />
-      }),
-    [toast]
-  );
   const notifyVersionExpired = useCallback(
     () =>
-      showApplyResultToast({
+      myToast({
         status: 'error',
-        message: t('workflow_builder_version_expired_toast')
+        title: t('workflow_builder_version_expired_toast')
       }),
-    [showApplyResultToast, t]
+    [myToast, t]
   );
 
   /** 同一画布串行应用版本；锁覆盖加载、写入和失败恢复，避免旧请求回滚较新的版本。 */
@@ -213,9 +154,9 @@ const WorkflowBuilder = () => {
             }
           };
         });
-        showApplyResultToast({
+        myToast({
           status: 'success',
-          message: t('workflow_builder_applied', { name: version.name })
+          title: t('workflow_builder_applied', { name: version.name })
         });
         return archivedVersion;
       } catch (error) {
@@ -223,9 +164,10 @@ const WorkflowBuilder = () => {
           notifyVersionExpired();
         } else {
           console.error('[Workflow Builder] Apply failed', error);
-          showApplyResultToast({
+          myToast({
             status: 'error',
-            message: t('workflow_builder_apply_failed')
+            title: t('workflow_builder_apply_failed'),
+            description: getErrText(error)
           });
         }
         try {
@@ -256,7 +198,7 @@ const WorkflowBuilder = () => {
       setAppDetail,
       setActivity,
       notifyVersionExpired,
-      showApplyResultToast,
+      myToast,
       t
     ]
   );
