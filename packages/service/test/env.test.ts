@@ -591,7 +591,6 @@ describe('serviceEnv', () => {
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
     vi.stubEnv('AGENT_SANDBOX_MAX', undefined);
-    vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', undefined);
     vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', undefined);
     const defaultEnv = await importServiceEnv();
     expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MAX).toBe(100);
@@ -602,21 +601,24 @@ describe('serviceEnv', () => {
     const customEnv = await importServiceEnv();
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MAX).toBe(50);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM).toBe(10);
+
+    vi.stubEnv('AGENT_SANDBOX_MAX', '0');
+    await expect(importServiceEnv()).rejects.toThrow('AGENT_SANDBOX_MAX');
   });
 
-  it('falls back to the legacy sandbox limit and prioritizes the new variable', async () => {
+  it('ignores the removed legacy sandbox limit', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
     vi.stubEnv('AGENT_SANDBOX_MAX', undefined);
     vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', '20');
-    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(20);
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(100);
     vi.stubEnv('AGENT_SANDBOX_MAX', '30');
     expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(30);
     vi.stubEnv('AGENT_SANDBOX_MAX', '');
-    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(20);
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(100);
     vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', '0');
-    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(100);
   });
 
   it.each(['AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR', 'AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR'])(

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -83,9 +87,10 @@ import {
   getFileInfoFromUrl,
   type FileReadContext
 } from '@fastgpt/service/core/chat/fileContext';
-import type {
-  WorkflowFileContext,
-  WorkflowFileRef
+import {
+  prepareWorkflowFileContext,
+  type WorkflowFileContext,
+  type WorkflowFileRef
 } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
   createExternalHttpFileSource,
@@ -669,6 +674,90 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       name: 'report.pdf',
       url: shortUrl
     });
+  });
+
+  it.each(['/api/system/file/d/', '/f/'])(
+    '工作流未登记的 %s 短链使用真实文件名解析，不把签名后缀登记为外链格式',
+    async (prefix) => {
+      const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+      const shortUrl = `https://files.example.com${prefix}${signedAlias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: S3Buckets.private,
+        objectKey: 'chat/app/app1/u1/c1/opaque-key',
+        filename: 'test_file.txt'
+      });
+      const { fileContext } = await prepareWorkflowFileContext({
+        query: [],
+        histories: [],
+        scope: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app1', uid: 'u1', chatId: 'c1' },
+        maxFileAmount: 20,
+        getPreviewUrl: async () => shortUrl
+      });
+
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext
+      });
+
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({ extension: 'txt' })
+      );
+      expect(result).toEqual([
+        { success: true, name: 'test_file.txt', url: shortUrl, content: 'parsed text' }
+      ]);
+      expect(fileContext.resolve(shortUrl)).toBeUndefined();
+      expect(mockAxiosGet).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['image.png', 'audio.mp3', 'video.mp4'])(
+    '未登记的短链按真实媒体文件 %s 过滤，不进入文档解析',
+    async (filename) => {
+      const shortUrl =
+        'https://files.example.com/itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: S3Buckets.private,
+        objectKey: 'chat/app/app1/u1/c1/opaque-key',
+        filename
+      });
+
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext: createEmptyWorkflowFileContext()
+      });
+
+      expect(result).toEqual([]);
+      expect(mockReadFileContentBySource).not.toHaveBeenCalled();
+      expect(mockAxiosGet).not.toHaveBeenCalled();
+    }
+  );
+
+  it('未登记的短链签名校验失败时不读取正文或解析缓存', async () => {
+    const shortUrl =
+      'https://files.example.com/itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+    mockVerifyS3DownloadAccess.mockRejectedValue(new Error('Invalid download signature'));
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1',
+      fileContext: createEmptyWorkflowFileContext()
+    });
+
+    expect(result).toEqual([
+      { success: false, name: '', url: shortUrl, content: 'Invalid download signature' }
+    ]);
+    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
+    expect(mockReadFileContentBySource).not.toHaveBeenCalled();
+    expect(mockAxiosGet).not.toHaveBeenCalled();
   });
 
   it('nginx 根路径短链解析时也使用 alias 文件名，不把签名最后一段当后缀', async () => {
