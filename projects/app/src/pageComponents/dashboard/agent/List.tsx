@@ -214,6 +214,7 @@ const List = () => {
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
+    const isNavigableItem = app.folderAccessMode === 'navigate';
     const isSelected = selectedAppIds.includes(app._id);
     const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
 
@@ -294,13 +295,22 @@ const List = () => {
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <MyTooltip label={app.intro || t('common:no_intro')} showOnlyWhenOverflow>
+          <MyTooltip
+            label={isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
+            showOnlyWhenOverflow
+          >
             <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-              {app.intro || t('common:no_intro')}
+              {isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
             </Box>
           </MyTooltip>
         </Box>
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+        <HStack
+          h={'24px'}
+          fontSize={'mini'}
+          color={'myGray.500'}
+          w="full"
+          display={isNavigableItem ? 'none' : 'flex'}
+        >
           <HStack flex={'1 0 0'}>
             <UserBox
               sourceMember={app.sourceMember}

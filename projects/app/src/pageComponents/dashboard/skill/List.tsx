@@ -420,22 +420,23 @@ const List = ({
           )}
         </Grid>
 
-        {!isNavigableItem && (
-          <Box
-            flex={'1 0 56px'}
-            mt={3}
-            textAlign={'justify'}
-            wordBreak={'break-all'}
-            fontSize={'xs'}
-            color={'myGray.500'}
+        <Box
+          flex={'1 0 56px'}
+          mt={3}
+          textAlign={'justify'}
+          wordBreak={'break-all'}
+          fontSize={'xs'}
+          color={'myGray.500'}
+        >
+          <MyTooltip
+            label={isNavigableItem ? t('common:no_intro') : skill.description}
+            showOnlyWhenOverflow
           >
-            <MyTooltip label={skill.description} showOnlyWhenOverflow>
-              <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-                {skill.description}
-              </Box>
-            </MyTooltip>
-          </Box>
-        )
+            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+              {isNavigableItem ? t('common:no_intro') : skill.description}
+            </Box>
+          </MyTooltip>
+        </Box>
 
         {!isNavigableItem && (
           <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">

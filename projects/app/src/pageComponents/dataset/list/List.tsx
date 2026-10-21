@@ -183,6 +183,7 @@ function List() {
       updateTime: dataset.updateTime
     });
     const isSelected = selectedDatasetIds.includes(dataset._id);
+    const isNavigableItem = dataset.folderAccessMode === 'navigate';
     const canBatchOperate = Boolean(
       dataset.permission?.hasManagePer || dataset.permission?.isOwner
     );
@@ -273,10 +274,12 @@ function List() {
 
         <MyTooltip
           label={
-            dataset.intro ||
-            (dataset.type === DatasetTypeEnum.folder
-              ? t('common:core.dataset.Folder placeholder')
-              : t('common:core.dataset.Intro Placeholder'))
+            isNavigableItem
+              ? t('common:no_intro')
+              : dataset.intro ||
+                (dataset.type === DatasetTypeEnum.folder
+                  ? t('common:core.dataset.Folder placeholder')
+                  : t('common:core.dataset.Intro Placeholder'))
           }
           showOnlyWhenOverflow
         >
@@ -288,10 +291,12 @@ function List() {
             fontSize={'xs'}
             color={'myGray.500'}
           >
-            {dataset.intro ||
-              (dataset.type === DatasetTypeEnum.folder
-                ? t('common:core.dataset.Folder placeholder')
-                : t('common:core.dataset.Intro Placeholder'))}
+            {isNavigableItem
+              ? t('common:no_intro')
+              : dataset.intro ||
+                (dataset.type === DatasetTypeEnum.folder
+                  ? t('common:core.dataset.Folder placeholder')
+                  : t('common:core.dataset.Intro Placeholder'))}
           </Box>
         </MyTooltip>
 
@@ -302,6 +307,7 @@ function List() {
           fontSize={'sm'}
           fontWeight={500}
           color={'myGray.500'}
+          display={isNavigableItem ? 'none' : 'flex'}
         >
           <HStack spacing={3.5}>
             <UserBox
