@@ -18,13 +18,6 @@ import {
   signS3DownloadAlias
 } from '@fastgpt/service/common/s3/accessLink';
 
-const originalStorageEnv = {
-  STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
-  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS,
-  STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
-  STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT
-};
-
 const makeMockRes = () => {
   const headers: Record<string, string | number> = {};
   const chunks: Buffer[] = [];
@@ -290,7 +283,6 @@ describe('s3 short access link api', () => {
   });
 
   it('redirects a valid short download alias to a short-lived presigned S3 URL in short-redirect mode', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
     vi.resetModules();
     setupDynamicResponseMock();
 
@@ -298,11 +290,13 @@ describe('s3 short access link api', () => {
       const [
         { default: redirectDownloadAccessHandler },
         { createS3DownloadAccessUrl },
-        { applyRuntimeStorageConfig }
+        { applyRuntimeStorageConfig },
+        { getSystemInstanceConfig }
       ] = await Promise.all([
         import('@/pages/api/system/file/d/[signedAlias]'),
         import('@fastgpt/service/common/s3/accessLink'),
-        import('@fastgpt/service/common/s3/config/constants')
+        import('@fastgpt/service/common/s3/config/constants'),
+        import('@fastgpt/service/common/system/systemInstanceConfig/controller')
       ]);
       // 下载模式与公开地址以实例配置为唯一来源，不再读环境变量
       applyRuntimeStorageConfig({
@@ -310,6 +304,7 @@ describe('s3 short access link api', () => {
         externalEndpoint: 'https://s3.example.com',
         cdnEndpoint: 'https://cdn.example.com/files'
       });
+      getSystemInstanceConfig().storage.redirectTtlSeconds = 120;
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/page%20one.md',
@@ -346,10 +341,6 @@ describe('s3 short access link api', () => {
         responseContentType: 'text/markdown; charset=utf-8'
       });
     } finally {
-      vi.stubEnv(
-        'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
-        originalStorageEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
-      );
       vi.resetModules();
     }
   });
