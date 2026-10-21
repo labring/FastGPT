@@ -250,7 +250,9 @@ describe('checkWorkflowNodeIssues', () => {
       [NodeInputKeyEnum.aiModelId, 'llm-id'],
       [NodeInputKeyEnum.selectedTools, [{ id: 'systemTool-search', config: {} }]],
       [NodeInputKeyEnum.skills, [{ skillId: 'skill-id' }]],
-      [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]]
+      [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]],
+      // 技能依赖虚拟机；补齐开关后，稀疏快照本身不应再产生配置类错误。
+      [NodeInputKeyEnum.useAgentSandbox, true]
     ]);
     const agent = makeNode('agent', FlowNodeTypeEnum.agent, {
       inputs: AgentNode.inputs
@@ -1116,6 +1118,168 @@ describe('checkWorkflowNodeIssues', () => {
     });
 
     expect((result.agent ?? []).some((issue) => issue.code === 'tool_waiting_config')).toBe(false);
+  });
+
+  it('uses Agent resource names and distinct copy for tool check issues', () => {
+    const namedT = ((key: string, params?: { name?: string }) =>
+      params?.name ? `${key}|${params.name}` : key) as unknown as Parameters<
+      typeof checkWorkflowNodeIssues
+    >[0]['t'];
+
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '工具',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            { id: 'missing-tool', name: '缺失工具', pluginData: { error: 'tool_missing' } },
+            { id: 'offline-tool', name: '停用工具', status: PluginStatusEnum.Offline },
+            {
+              id: 'inactive-tool',
+              name: '未激活工具',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.systemInputConfig,
+                  label: '',
+                  renderTypeList: [FlowNodeInputTypeEnum.hidden]
+                }
+              ],
+              config: {}
+            },
+            {
+              id: 'waiting-tool',
+              name: '未配置工具',
+              inputs: [
+                {
+                  key: 'query',
+                  label: 'Query',
+                  required: true,
+                  renderTypeList: [FlowNodeInputTypeEnum.input],
+                  value: ''
+                }
+              ],
+              config: {}
+            }
+          ]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }],
+      t: namedT
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'tool_missing',
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: 'common:core.workflow.check.agent_tool_missing|缺失工具'
+        }),
+        expect.objectContaining({
+          code: 'tool_offline',
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: 'common:core.workflow.check.agent_tool_offline|停用工具'
+        }),
+        expect.objectContaining({
+          code: 'tool_inactive',
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: 'common:core.workflow.check.agent_tool_inactive|未激活工具'
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.selectedTools,
+          message: 'common:core.workflow.check.agent_tool_waiting_config|未配置工具'
+        })
+      ])
+    );
+  });
+
+  it('uses Agent resource names and skill sandbox copy for resource issues', () => {
+    const namedT = ((key: string, params?: { name?: string }) =>
+      params?.name ? `${key}|${params.name}` : key) as unknown as Parameters<
+      typeof checkWorkflowNodeIssues
+    >[0]['t'];
+
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ datasetId: 'd1', name: '缺失知识库', error: 'resource_missing' }]
+        },
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '技能',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ skillId: 's1', name: '缺失技能', description: '', error: 'resource_missing' }]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }],
+      t: namedT
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'resource_missing',
+          inputKey: NodeInputKeyEnum.datasetSelectList,
+          message: 'common:core.workflow.check.agent_dataset_missing|缺失知识库'
+        }),
+        expect.objectContaining({
+          code: 'resource_missing',
+          inputKey: NodeInputKeyEnum.skills,
+          message: 'common:core.workflow.check.agent_skill_missing|缺失技能'
+        }),
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.skills,
+          message: 'common:core.workflow.check.agent_skill_sandbox_required'
+        })
+      ])
+    );
+  });
+
+  it('uses the selected system tool name for Agent context prerequisite messages', () => {
+    const namedT = ((key: string, params?: { name?: string }) =>
+      params?.name ? `${key}|${params.name}` : key) as unknown as Parameters<
+      typeof checkWorkflowNodeIssues
+    >[0]['t'];
+
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          label: '工具',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ id: SubAppIds.datasetSearch, name: '知识库搜索' }]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }],
+      t: namedT
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'tool_waiting_config',
+          inputKey: NodeInputKeyEnum.datasetSelectList,
+          message: 'common:core.workflow.check.agent_tool_waiting_config|知识库搜索'
+        })
+      ])
+    );
   });
 
   /**
