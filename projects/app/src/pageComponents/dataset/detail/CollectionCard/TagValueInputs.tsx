@@ -39,7 +39,8 @@ export const tagInputBaseStyles: InputProps = {
     boxShadow: 'focus'
   },
   _placeholder: {
-    color: 'myGray.500'
+    color: 'myGray.500',
+    fontSize: 'sm'
   }
 };
 const StringTagInput = ({

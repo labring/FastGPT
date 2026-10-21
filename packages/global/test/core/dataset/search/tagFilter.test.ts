@@ -10,14 +10,15 @@ import {
   createEmptyTagFilterValue,
   formatCollectionFilterMatchParam,
   getTagFilterOpsByCondition,
-  hasEffectiveDatasetTagFilter,
   intersectWorkflowTagOptions,
+  isDatasetTagFilterOpen,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   pruneTagFilterConditions,
   resolveDatasetTagFilterVersion,
   serializeDatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { hasEffectiveDatasetTagFilter } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
 
 describe('dataset tag filter version', () => {
   it('uses structured only when explicitly marked and does not infer from the filter value', () => {
@@ -285,43 +286,83 @@ describe('pruneTagFilterConditions', () => {
 });
 
 describe('hasEffectiveDatasetTagFilter', () => {
-  it('returns false for empty or incomplete filter configs and true for effective conditions', () => {
-    expect(hasEffectiveDatasetTagFilter(undefined)).toBe(false);
-    expect(hasEffectiveDatasetTagFilter('')).toBe(false);
-    expect(hasEffectiveDatasetTagFilter('   ')).toBe(false);
-    expect(hasEffectiveDatasetTagFilter(createEmptyTagFilterValue())).toBe(false);
-    expect(
-      hasEffectiveDatasetTagFilter({
-        logic: DatasetTagFilterLogicEnum.AND,
-        conditions: [{ tag: 'status', tagType: DatasetCollectionTagTypeEnum.array, op: '$in' }]
-      })
-    ).toBe(false);
+  it.each([
+    undefined,
+    null,
+    '',
+    '   ',
+    '{"tags":{"$and":["legacy"]}}',
+    {},
+    createEmptyTagFilterValue()
+  ])('keeps empty or non-structured configuration disabled: %j', (value) => {
+    expect(hasEffectiveDatasetTagFilter(value)).toBe(false);
+  });
 
-    expect(hasEffectiveDatasetTagFilter('{"tags":{"$and":["legacy"]}}')).toBe(true);
-    expect(
-      hasEffectiveDatasetTagFilter({
-        logic: DatasetTagFilterLogicEnum.AND,
-        conditions: [
-          {
-            tag: 'status',
-            tagType: DatasetCollectionTagTypeEnum.array,
-            op: '$empty'
-          }
-        ]
-      })
-    ).toBe(true);
-    expect(
-      hasEffectiveDatasetTagFilter({
-        logic: DatasetTagFilterLogicEnum.AND,
-        conditions: [
-          {
-            field: DatasetTagFilterFieldEnum.collectionId,
-            op: '$in',
-            valueMode: DatasetTagFilterValueModeEnum.reference,
-            value: ['VARIABLE_NODE_ID', 'collectionIds']
-          }
-        ]
-      })
-    ).toBe(true);
+  it.each([
+    { condition: { op: '$empty' }, enabled: false },
+    { condition: { tag: 'status', op: '$in', value: [] }, enabled: false },
+    { condition: { tag: 'status', op: '$empty' }, enabled: true },
+    { condition: { tag: 'price', op: '$gte', value: 0 }, enabled: true },
+    { condition: { field: 'createTime', op: '$gte', value: Date.UTC(2026, 9, 21) }, enabled: true },
+    { condition: { field: 'createTime', op: '$gte', value: 'invalid' }, enabled: false },
+    {
+      condition: { field: 'collectionId', op: '$in', valueMode: 'input', value: ['id'] },
+      enabled: true
+    },
+    {
+      condition: {
+        field: 'collectionId',
+        op: '$in',
+        valueMode: 'reference',
+        value: ['node', 'ids']
+      },
+      enabled: true
+    },
+    {
+      condition: { field: 'collectionId', op: '$in', valueMode: 'reference', value: ['', 'ids'] },
+      enabled: false
+    },
+    {
+      condition: { tag: 'status', op: '$in', valueMode: 'reference', value: ['node'] },
+      enabled: false
+    }
+  ])('checks structured conditions: $condition', ({ condition, enabled }) => {
+    const filter = { logic: DatasetTagFilterLogicEnum.AND, conditions: [condition] };
+    expect(hasEffectiveDatasetTagFilter(filter)).toBe(enabled);
+  });
+
+  it('handles open state correctly in serialization and helpers', () => {
+    const activeFilter = {
+      logic: DatasetTagFilterLogicEnum.AND,
+      conditions: [{ tag: 'status', op: '$empty' }]
+    };
+    expect(serializeDatasetTagFilterValue(activeFilter)).toBeDefined();
+    expect(hasEffectiveDatasetTagFilter(activeFilter)).toBe(true);
+    expect(isDatasetTagFilterOpen(activeFilter)).toBe(true);
+
+    const closedFilter = {
+      ...activeFilter,
+      open: false
+    };
+    expect(serializeDatasetTagFilterValue(closedFilter)).toBeUndefined();
+    expect(hasEffectiveDatasetTagFilter(closedFilter)).toBe(false);
+    expect(isDatasetTagFilterOpen(closedFilter)).toBe(false);
+
+    const explicitOpenFilter = {
+      ...activeFilter,
+      open: true
+    };
+    expect(isDatasetTagFilterOpen(explicitOpenFilter)).toBe(true);
+
+    // Empty filter with open: true is open in UI
+    const emptyOpenFilter = {
+      ...createEmptyTagFilterValue(),
+      open: true
+    };
+    expect(isDatasetTagFilterOpen(emptyOpenFilter)).toBe(true);
+
+    // Empty filter without open is closed by default
+    expect(isDatasetTagFilterOpen(createEmptyTagFilterValue())).toBe(false);
+    expect(isDatasetTagFilterOpen(undefined)).toBe(false);
   });
 });

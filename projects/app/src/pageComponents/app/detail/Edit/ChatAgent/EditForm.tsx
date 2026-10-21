@@ -37,12 +37,10 @@ import { useContextSelector } from 'use-context-selector';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { cardStyles } from '../../constants';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { useAppDatasetTagFilter } from '../FormComponent/useAppDatasetTagFilter';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
-import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
-import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -78,39 +76,10 @@ const EditForm = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
-  const formatVariables = useMemo(
-    () =>
-      formatEditorVariablePickerIcon([
-        ...workflowSystemVariables.filter(
-          (variable) =>
-            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
-        ),
-        ...(appForm.chatConfig.variables ?? [])
-      ]).map((item) => ({
-        ...item,
-        label: t(item.label as any),
-        parent: {
-          id: VARIABLE_NODE_ID,
-          label: t('common:core.module.Variable'),
-          avatar: 'core/workflow/template/variable'
-        }
-      })),
-    [appForm.chatConfig.variables, t]
-  );
-  const tagFilterReferenceList = useMemo(
-    () => [
-      {
-        label: t('common:core.module.Variable'),
-        value: VARIABLE_NODE_ID,
-        children: formatVariables.map((item) => ({
-          label: item.label,
-          value: item.key,
-          valueType: item.valueType
-        }))
-      }
-    ],
-    [formatVariables, t]
-  );
+  const { datasetIds, formatVariables, tagFilterReferenceList } = useAppDatasetTagFilter({
+    appForm,
+    setAppForm
+  });
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appId);
 
   const {
@@ -699,7 +668,7 @@ const EditForm = ({
           {...appForm.dataset}
           maxTokens={tokenLimit}
           showTagFilter={!!feConfigs?.isPlus}
-          datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
+          datasetIds={datasetIds}
           tagFilterReferenceList={tagFilterReferenceList}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {

@@ -1,9 +1,13 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { useContextSelector } from 'use-context-selector';
+import { Button } from '@chakra-ui/react';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   createEmptyTagFilterValue,
+  isDatasetTagFilterOpen,
+  isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
@@ -100,6 +104,9 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
     );
   }
 
+  const isOpen = isDatasetTagFilterOpen(item.value);
+  if (!isOpen) return null;
+
   return (
     <DatasetTagFilterRows
       value={item.value}
@@ -110,12 +117,13 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
   );
 };
 
-/** 标题右侧组件：旧版显示「已弃用，升级到最新版本」；新版逻辑切换已内聚到 DatasetTagFilterRows 自定义标签边框 */
+/** 标题右侧组件：旧版显示升级按钮；新版显示开启/关闭按钮 */
 export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   inputs = [],
   item,
   nodeId
 }: RenderInputProps) {
+  const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
   const { appDetail, onSaveApp } = useContextSelector(AppContext, (v) => v);
@@ -138,7 +146,10 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
             description:
               DatasetSearchModule.inputs.find((input) => input.key === item.key)?.description ??
               item.description,
-            value: createEmptyTagFilterValue()
+            value: {
+              ...createEmptyTagFilterValue(),
+              open: true
+            }
           };
           const workflow = flowData2StoreData();
           if (!workflow) throw new Error('Workflow data is unavailable');
@@ -166,7 +177,46 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
     );
   }
 
-  return null;
+  const isOpen = isDatasetTagFilterOpen(item.value);
+
+  const handleToggle = () => {
+    const nextOpen = !isOpen;
+    const baseValue = isDatasetTagFilterValue(item.value)
+      ? item.value
+      : createEmptyTagFilterValue();
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: item.key,
+      value: {
+        ...item,
+        value: {
+          ...baseValue,
+          open: nextOpen
+        }
+      }
+    });
+  };
+
+  return (
+    <MyTooltip
+      label={
+        isOpen ? t('workflow:tag_filter_close_tooltip') : t('workflow:tag_filter_open_tooltip')
+      }
+    >
+      <Button
+        className={'nodrag'}
+        variant={'transparentBase'}
+        iconSpacing={1}
+        size={'sm'}
+        mr={'-5px'}
+        color={'myGray.600'}
+        onClick={handleToggle}
+      >
+        {isOpen ? t('common:Open') : t('common:Close')}
+      </Button>
+    </MyTooltip>
+  );
 });
 
 export default React.memo(DatasetTagFilterRender);

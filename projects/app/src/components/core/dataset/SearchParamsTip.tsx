@@ -2,11 +2,8 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
 import { Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import {
-  DatasetSearchModeEnum,
-  DatasetSearchModeMap
-} from '@fastgpt/global/core/dataset/constants';
-import { hasEffectiveDatasetTagFilter } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { hasEffectiveDatasetTagFilter } from '@fastgpt/global/core/dataset/search/tagFilter/normalizer';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
@@ -45,6 +42,11 @@ const SearchParamsTip = ({
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
   const isTagFilterEnabled = hasEffectiveDatasetTagFilter(collectionFilterMatch);
+  const searchModeLabel = {
+    [DatasetSearchModeEnum.embedding]: t('common:core.dataset.search.mode.embedding'),
+    [DatasetSearchModeEnum.fullTextRecall]: t('common:core.dataset.search.mode.fullTextRecall'),
+    [DatasetSearchModeEnum.mixedRecall]: t('common:core.dataset.search.mode.mixedRecall')
+  }[searchMode];
 
   return (
     <FixedTableContainer
@@ -82,7 +84,7 @@ const SearchParamsTip = ({
         <Tbody>
           <Tr color={'myGray.800'}>
             <Td pt={0} pb={2}>
-              <Flex alignItems={'center'}>{t(DatasetSearchModeMap[searchMode]?.title as any)}</Flex>
+              <Flex alignItems={'center'}>{searchModeLabel}</Flex>
             </Td>
             <Td pt={0} pb={2}>
               {limit}

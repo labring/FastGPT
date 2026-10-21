@@ -13,14 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
-import {
-  DatasetSearchModeEnum,
-  DatasetTagFilterVersionEnum
-} from '@fastgpt/global/core/dataset/constants';
-import {
-  createEmptyTagFilterValue,
-  normalizeLegacyDatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/search/tagFilter';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
@@ -28,8 +21,6 @@ import { useForm } from 'react-hook-form';
 
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import DatasetTagFilterRows, {
-  DatasetTagFilterDeprecated,
-  DatasetTagFilterUpgradeButton,
   type TagFilterReferenceList
 } from '@/components/core/dataset/DatasetTagFilterRows';
 import SelectAiModel from '@/components/Select/AIModelSelector';
@@ -42,7 +33,6 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 enum SearchSettingTabEnum {
@@ -66,13 +56,9 @@ const DatasetParamsModal = ({
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   collectionFilterMatch,
-  [NodeInputKeyEnum.collectionFilterVersion]: collectionFilterVersion,
   showTagFilter = false,
   datasetIds = [],
   tagFilterReferenceList = [],
-  isLegacyCollectionFilter = false,
-  legacyVariables = [],
-  onUpgradeLegacyFilter,
   maxTokens,
   onClose,
   onSuccess
@@ -80,9 +66,6 @@ const DatasetParamsModal = ({
   showTagFilter?: boolean;
   datasetIds?: string[];
   tagFilterReferenceList?: TagFilterReferenceList;
-  isLegacyCollectionFilter?: boolean;
-  legacyVariables?: EditorVariablePickerType[];
-  onUpgradeLegacyFilter?: () => Promise<void>;
   maxTokens?: number; // limit max tokens
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
@@ -92,31 +75,30 @@ const DatasetParamsModal = ({
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
+  // 固定本次弹窗的初始值；values 接受完整业务类型，避免 DeepPartial 将 unknown 条件值收窄成对象。
+  const [initialValues] = useState<AppDatasetSearchParamsType>(() => ({
+    searchMode,
+    embeddingWeight: embeddingWeight ?? 0.5,
+    usingReRank: !!usingReRank,
+    // 只恢复已保存的引用，不在初始化阶段选择默认模型。
+    rerankModelId,
+    rerankModel,
+    rerankWeight: rerankWeight ?? 0.5,
+    limit,
+    similarity,
+    datasetSearchUsingExtensionQuery,
+    datasetSearchExtensionModelId,
+    datasetSearchExtensionModel,
+    datasetSearchExtensionBg,
+    ...(showTagFilter ? { collectionFilterMatch } : {})
+  }));
   const { register, setValue, getValues, handleSubmit, watch } =
-    useForm<AppDatasetSearchParamsType>({
-      defaultValues: {
-        searchMode,
-        embeddingWeight: embeddingWeight || 0.5,
-        usingReRank: !!usingReRank,
-        // 只恢复已保存的引用，不在初始化阶段选择默认模型。
-        rerankModelId,
-        rerankModel,
-        rerankWeight: rerankWeight || 0.5,
-        limit,
-        similarity,
-        datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId,
-        datasetSearchExtensionModel,
-        datasetSearchExtensionBg,
-        collectionFilterMatch,
-        [NodeInputKeyEnum.collectionFilterVersion]: collectionFilterVersion
-      }
-    });
+    useForm<AppDatasetSearchParamsType>({ values: initialValues });
 
   const searchModeWatch = watch('searchMode');
   const embeddingWeightWatch = watch('embeddingWeight');
   const fullTextWeightWatch = useMemo(() => {
-    const val = 1 - (embeddingWeightWatch || 0.5);
+    const val = 1 - (embeddingWeightWatch ?? 0.5);
     return Number(val.toFixed(2));
   }, [embeddingWeightWatch]);
 
@@ -127,10 +109,6 @@ const DatasetParamsModal = ({
   const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
   const collectionFilterMatchWatch = watch('collectionFilterMatch');
-  const collectionFilterVersionWatch = watch(NodeInputKeyEnum.collectionFilterVersion);
-  const isLegacyFilter =
-    isLegacyCollectionFilter &&
-    collectionFilterVersionWatch !== DatasetTagFilterVersionEnum.structured;
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -502,47 +480,15 @@ const DatasetParamsModal = ({
       )}
       {currentTabType === SearchSettingTabEnum.tagFilter && showTagFilter && (
         <Box pt={1}>
-          {isLegacyFilter ? (
-            <Box>
-              <Flex alignItems={'center'} mb={2}>
-                <FormLabel color={'myGray.600'}>
-                  {t('workflow:collection_metadata_filter')}
-                </FormLabel>
-                <QuestionTip ml={1} label={t('workflow:filter_description')} />
-                <Box flex={1} />
-                <DatasetTagFilterUpgradeButton
-                  onUpgrade={async () => {
-                    await onUpgradeLegacyFilter?.();
-                    setValue(
-                      NodeInputKeyEnum.collectionFilterVersion,
-                      DatasetTagFilterVersionEnum.structured,
-                      { shouldDirty: true }
-                    );
-                    setValue('collectionFilterMatch', createEmptyTagFilterValue(), {
-                      shouldDirty: true
-                    });
-                  }}
-                />
-              </Flex>
-              <DatasetTagFilterDeprecated
-                value={normalizeLegacyDatasetTagFilterValue(collectionFilterMatchWatch)}
-                onChange={(value) => {
-                  setValue('collectionFilterMatch', value, { shouldDirty: true });
-                }}
-                variables={legacyVariables}
-                variableLabels={legacyVariables}
-              />
-            </Box>
-          ) : (
-            <DatasetTagFilterRows
-              value={collectionFilterMatchWatch}
-              onChange={(value) => {
-                setValue('collectionFilterMatch', value, { shouldDirty: true });
-              }}
-              datasetIds={datasetIds}
-              referenceList={tagFilterReferenceList}
-            />
-          )}
+          {/* 仅 SimpleApp 与 ChatAgent 在弹窗内展示标签过滤；二者自接入起即为结构化格式，且不支持工作流转回简易应用，无旧版字符串历史数据 */}
+          <DatasetTagFilterRows
+            value={collectionFilterMatchWatch}
+            onChange={(value) => {
+              setValue('collectionFilterMatch', value, { shouldDirty: true });
+            }}
+            datasetIds={datasetIds}
+            referenceList={tagFilterReferenceList}
+          />
         </Box>
       )}
     </MyModal>

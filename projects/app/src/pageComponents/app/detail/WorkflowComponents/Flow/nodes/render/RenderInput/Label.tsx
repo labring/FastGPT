@@ -30,11 +30,10 @@ type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
   RightComponent?: React.JSX.Element;
-  rightInline?: boolean;
   isTool?: boolean;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Props) => {
+const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useSafeTranslation();
 
   const labelText = t(input.label as any);
@@ -50,8 +49,6 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
     input.key === NodeInputKeyEnum.userSelectOptions;
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
-  const shouldRenderRightInline =
-    rightInline ?? renderType === FlowNodeInputTypeEnum.datasetTagFilter;
   const displayRenderTypeList = useMemo(
     () =>
       getToolInputDisplayRenderTypeList({
@@ -181,8 +178,8 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
       {/* Right Component */}
       {!input.deprecated && RightComponent && (
         <>
-          {!shouldRenderRightInline && <Box flex={'1'} />}
-          {shouldRenderRightInline ? <Box ml={2}>{RightComponent}</Box> : RightComponent}
+          <Box flex={'1'} />
+          {RightComponent}
         </>
       )}
     </Box>

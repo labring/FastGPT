@@ -89,24 +89,4 @@ describe('SearchParamsTip', () => {
     expect(render('active')).toContain('common:model_detail_load_failed');
     expect(render('active')).not.toContain('该模型已下架');
   });
-  it('renders tag filter open/close state when showTagFilter is enabled', () => {
-    const closedHtml = renderToStaticMarkup(
-      React.createElement(SearchParamsTip, {
-        searchMode: DatasetSearchModeEnum.embedding,
-        showTagFilter: true
-      })
-    );
-    expect(closedHtml).toContain('workflow:tag_filter');
-    expect(closedHtml).toContain('common:core.app.whisper.Close');
-
-    const openHtml = renderToStaticMarkup(
-      React.createElement(SearchParamsTip, {
-        searchMode: DatasetSearchModeEnum.embedding,
-        showTagFilter: true,
-        collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
-      })
-    );
-    expect(openHtml).toContain('workflow:tag_filter');
-    expect(openHtml).toContain('common:core.app.whisper.Open');
-  });
 });
