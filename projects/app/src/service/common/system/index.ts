@@ -256,7 +256,6 @@ async function doInitSystemConfig() {
         legacySystemEnv: fastgptConfig.systemEnv,
         instanceConfig
       }),
-      agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
       agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM
     },
     subPlans: fastgptConfig.subPlans

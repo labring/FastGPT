@@ -7,6 +7,7 @@ describe('buildAuthoritativeSystemEnv', () => {
     const instanceConfig = resolveSystemInstanceConfig({
       performance: { dataset: { parseMaxProcess: 42 } },
       vector: { hnswEfSearch: 200 },
+      subservice: { agentSandbox: { common: { maxEditDebug: 12 } } },
       providers: { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
     });
 
@@ -22,6 +23,7 @@ describe('buildAuthoritativeSystemEnv', () => {
     // 新 UI 编辑的值不能被旧库值覆盖
     expect(result.datasetParseMaxProcess).toBe(42);
     expect(result.hnswEfSearch).toBe(200);
+    expect(result.agentSandboxMax).toBe(12);
     expect(result.customPdfParse?.url).toBe('https://pdf.example.com');
   });
 

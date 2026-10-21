@@ -13,10 +13,8 @@ import {
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
 import { createProxyAxios, axiosWithoutSSRF } from '../../../../common/api/axios';
+import { getFeishuBaseUrl } from '../../../../common/feishu/endpoint';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
-import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
-import { serviceEnv } from '../../../../env';
 
 type ResponseDataType = {
   code: number;
@@ -39,17 +37,6 @@ type FeishuFileListResponse = {
   next_page_token: string;
 };
 
-// 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
-const getFeishuBaseUrl = () => {
-  const configured = getSystemInstanceConfig().providers.dataSource.feishuBaseUrl;
-  const value = configured || serviceEnv.FEISHU_BASE_URL;
-  logInstanceConfigRead({
-    callsite: 'runtime.dataset.apiDataset.feishu.getFeishuBaseUrl',
-    source: configured ? 'instance-config' : 'env-fallback',
-    fields: [{ path: 'providers.dataSource.feishuBaseUrl', value: configured || value }]
-  });
-  return value;
-};
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
 export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServerType }) => {

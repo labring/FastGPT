@@ -8,12 +8,12 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import { isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getMultipleDataToBase64 } from '@fastgpt/service/common/system/constants';
 import {
   isImageEmbeddingIndex,
@@ -164,9 +164,9 @@ const buildEmbeddingSafeIndexTexts = async ({
  * 这些步骤需要放在一起维护，因为 Mongo 索引里的 `dataId` 必须和向量库 id 保持一致。
  */
 export class DatasetDataIndexOperation {
-  private readonly model?: EmbeddingSystemModelDataType;
+  private readonly model?: EmbeddingModelDataType;
 
-  constructor(model?: EmbeddingSystemModelDataType) {
+  constructor(model?: EmbeddingModelDataType) {
     this.model = model;
   }
 
@@ -174,7 +174,7 @@ export class DatasetDataIndexOperation {
     return this.getEmbeddingModel().config.maxToken;
   }
 
-  private getEmbeddingModel(): EmbeddingSystemModelDataType {
+  private getEmbeddingModel(): EmbeddingModelDataType {
     return this.model!;
   }
 
@@ -905,7 +905,7 @@ export const createDatasetDataIndex = async ({
   data: DatasetDataItemType;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
@@ -931,7 +931,7 @@ export const updateDatasetDataIndex = async ({
   indexDataId: string;
   type: DatasetDataIndexTypeEnum;
   text: string;
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
 }) => {
   return new DatasetDataIndexOperation(model).writeDatasetDataIndex({
     data,
