@@ -206,7 +206,8 @@ function List() {
         canSelect={canBatchOperate}
         dragProps={getBoxProps({
           dataId: dataset._id,
-          isFolder: dataset.type === DatasetTypeEnum.folder
+          isFolder: dataset.type === DatasetTypeEnum.folder,
+          isDisabled: isNavigableItem
         })}
         onClick={() => {
           if (isBatchMode) {

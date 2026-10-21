@@ -229,7 +229,8 @@ const List = () => {
         canSelect={canBatchOperate}
         dragProps={getBoxProps({
           dataId: app._id,
-          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder,
+          isDisabled: isNavigableItem
         })}
         onClick={() => {
           if (isBatchMode) {
