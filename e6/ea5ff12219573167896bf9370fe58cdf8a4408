@@ -76,6 +76,9 @@ packages/service/core/workflow/types/summary.ts
   s_c1db842a72b21d::t_acedef4ce4b9e7 23
 packages/service/test/core/workflow/dispatch/ai/agent/adapter/runtime.test.ts
   s_c1db842a72b21d::t_139d4ecf7cc3ac 58,126-169
+projects/app/src/web/core/workflow/check/resource.ts
+  s_f9d56302239928::t_c7bf87181e3ef6 58-176
+  s_f9d56302239928::t_c9b9aac045179c 7-13
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -87,6 +90,14 @@ packages/service/test/core/workflow/dispatch/ai/agent/adapter/runtime.test.ts
       "agent_id": {
         "tool": "claude",
         "id": "0d192b3e-2692-4b40-88fe-00d20c616da1",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_f9d56302239928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6bf872a-d37b-4d2f-862e-8f82a722d42f",
         "model": "deepseek-v4-flash"
       },
       "human_author": "Jon <ljp@sangfor.com.cn>"
