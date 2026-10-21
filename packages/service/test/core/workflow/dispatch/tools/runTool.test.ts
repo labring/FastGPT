@@ -7,8 +7,11 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { MCPClient } from '@fastgpt/service/core/app/mcp';
-import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
+import { assertMCPUrlNotInternal, MCPClient } from '@fastgpt/service/core/app/mcp';
+import {
+  getWorkflowContext,
+  getWorkflowResourceContext
+} from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const {
@@ -345,6 +348,44 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
+  it('uses tool-set auth for external HTTP tools', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'get',
+      headerSecret: { Authorization: { value: 'tool-token', secret: '' } }
+    };
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                baseUrl: 'https://api.example.com',
+                headerSecret: { Authorization: { value: 'set-token', secret: '' } },
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getHTTPToolListMock.mockResolvedValueOnce([tool]);
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
+
+    await dispatchRunTool(
+      createRunToolProps({ httpTool: { toolId: 'http-victim-toolset/search' } }, {})
+    );
+
+    expect(runHTTPToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headerSecret: { Authorization: { value: 'set-token', secret: '' } }
+      })
+    );
+  });
+
   it.each([
     { name: 'scalar string', requestSchema: { type: 'string' } },
     { name: 'scalar number', requestSchema: { type: 'number' } },
@@ -462,6 +503,77 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
   });
 
+  it('executes inline HTTP tools without external authorization', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search documents',
+      path: '/search',
+      method: 'get',
+      inputSchema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query']
+      },
+      requestSchema: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query']
+      },
+      outputSchema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+      baseUrl: 'https://api.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{"X-Trace":"enabled"}',
+      headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
+    };
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ httpTool: tool }, { query: 'fastgpt' })
+    );
+
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+    expect(getHTTPToolListMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith({
+      apiSchemaStr: tool.apiSchemaStr,
+      baseUrl: tool.baseUrl,
+      toolPath: tool.path,
+      method: tool.method,
+      params: { query: 'fastgpt' },
+      headerSecret: tool.headerSecret,
+      customHeaders: { 'X-Trace': 'enabled' },
+      staticParams: undefined,
+      staticHeaders: undefined,
+      staticBody: undefined
+    });
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true }, ok: true });
+  });
+
+  it('rejects invalid inline HTTP params before making the request', async () => {
+    const result = await dispatchRunTool(
+      createRunToolProps(
+        {
+          httpTool: {
+            name: 'search',
+            description: 'Search documents',
+            path: '/search',
+            method: 'get',
+            requestSchema: {
+              type: 'object',
+              properties: { query: { type: 'string' } },
+              required: ['query']
+            },
+            inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
+            baseUrl: 'https://api.example.com'
+          }
+        },
+        { query: 123 }
+      )
+    );
+
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
+  });
+
   it('should reject MCP tool execution when running app tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
@@ -528,6 +640,104 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
+  });
+
+  it('executes inline MCP tools without external resource authorization', async () => {
+    const url = 'https://mcp.example.com';
+    const props = createRunToolProps(
+      {
+        mcpTool: {
+          name: 'search',
+          description: 'Search documents',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          },
+          url,
+          headerSecret: { 'X-API-Key': { value: 'inline-token', secret: '' } }
+        }
+      },
+      { query: 'fastgpt' }
+    );
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(props);
+
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+    expect(getMCPChildrenMock).not.toHaveBeenCalled();
+    expect(assertMCPUrlNotInternal).toHaveBeenCalledWith(url);
+    expect(MCPClient).toHaveBeenCalledWith({
+      url,
+      headers: { 'X-API-Key': 'inline-token' }
+    });
+    expect(mcpToolCallMock).toHaveBeenCalledWith({
+      toolName: 'search',
+      params: { query: 'fastgpt' },
+      closeConnection: false
+    });
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true } });
+  });
+
+  it('validates inline MCP params before making the tool call', async () => {
+    const result = await dispatchRunTool(
+      createRunToolProps(
+        {
+          mcpTool: {
+            name: 'search',
+            description: 'Search documents',
+            inputSchema: {
+              type: 'object',
+              properties: { query: { type: 'string' } },
+              required: ['query']
+            },
+            url: 'https://mcp.example.com'
+          }
+        },
+        { query: 1 }
+      )
+    );
+
+    expect(mcpToolCallMock).not.toHaveBeenCalled();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
+  });
+
+  it('keeps MCP clients separate when toolsets share a URL but use different credentials', async () => {
+    const url = 'https://mcp.example.com';
+    const mcpClientMemory = {};
+    vi.mocked(getWorkflowContext).mockReturnValue({
+      mcpClientMemory
+    } as ReturnType<typeof getWorkflowContext>);
+    mcpToolCallMock.mockResolvedValue({ ok: true });
+
+    for (const token of ['first-token', 'second-token']) {
+      await dispatchRunTool(
+        createRunToolProps(
+          {
+            mcpTool: {
+              name: 'search',
+              description: 'Search documents',
+              inputSchema: { type: 'object', properties: {} },
+              url,
+              headerSecret: { 'X-API-Key': { value: token, secret: '' } }
+            }
+          },
+          {}
+        )
+      );
+    }
+
+    expect(MCPClient).toHaveBeenCalledTimes(2);
+    expect(MCPClient).toHaveBeenNthCalledWith(1, {
+      url,
+      headers: { 'X-API-Key': 'first-token' }
+    });
+    expect(MCPClient).toHaveBeenNthCalledWith(2, {
+      url,
+      headers: { 'X-API-Key': 'second-token' }
+    });
+    expect(Object.keys(mcpClientMemory)).toHaveLength(2);
+    expect(Object.keys(mcpClientMemory).every((key) => !key.includes(url))).toBe(true);
   });
 
   it.each(['toolData', 'system_toolData'] as const)(
