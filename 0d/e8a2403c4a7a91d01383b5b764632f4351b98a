@@ -1,0 +1,44 @@
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/index.tsx
+  s_9a73c6b4b96e67::t_ca9c43f4766e2f 552
+  s_5241cdc9327b2b::t_aa41a27c1cd502 81-86
+  s_9a73c6b4b96e67::t_fa01292e87a130 705-737,739-745,749-773,775-779,782,784
+  s_9a73c6b4b96e67::t_4e340954851187 587-589
+  s_9a73c6b4b96e67::t_03a0179827d20e 121-123,126,136,139-142,144-152
+  s_5241cdc9327b2b::t_6596407b72f221 283-284
+  s_9a73c6b4b96e67::t_e72d1c9f326da1 746-748
+  s_9a73c6b4b96e67::t_fb35b69e402ba4 124-125,127-135,137-138,143,153-158
+  s_5241cdc9327b2b::t_661fe1a558ac0a 783
+  s_9a73c6b4b96e67::t_f642632fbfb872 628-630
+packages/web/i18n/ko-KR/workflow.json
+  s_9a73c6b4b96e67::t_cbb0aa29e7eb10 17
+packages/web/i18n/en/workflow.json
+  s_9a73c6b4b96e67::t_2ffd739da11859 17
+packages/web/i18n/zh-Hant/workflow.json
+  s_9a73c6b4b96e67::t_4d1ea842456025 17
+packages/web/i18n/zh-CN/workflow.json
+  s_9a73c6b4b96e67::t_50accefc36a657 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0de8a2403c4a7a91d01383b5b764632f4351b98a",
+  "prompts": {},
+  "sessions": {
+    "s_5241cdc9327b2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa8ec931-ae21-4aff-b103-f24bfb2e5ba6",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    },
+    "s_9a73c6b4b96e67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41d25bf2-dd21-424a-bcf0-9925b4ad7285",
+        "model": "deepseek-v4-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>"
+    }
+  }
+}
