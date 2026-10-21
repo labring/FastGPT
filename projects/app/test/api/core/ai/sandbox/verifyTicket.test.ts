@@ -30,7 +30,12 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => ({
   resolveSandboxPreviewSession: mocks.resolveSandboxPreviewSession
 }));
 
-import handler from '@/pages/api/core/ai/sandbox/verifyTicket';
+import apiHandler from '@/pages/api/core/ai/sandbox/verifyTicket';
+
+// NextAPI 在本文件中返回原始业务 handler，调用时无需 HTTP response 参数。
+const handler = apiHandler as (
+  req: Parameters<typeof apiHandler>[0]
+) => ReturnType<typeof apiHandler>;
 
 const secret = 'preview-secret-1234567890-1234567890';
 
@@ -76,16 +81,21 @@ describe('sandbox verifyTicket API', () => {
     });
   });
 
-  it('resolves preview sessions to the read-only HTTP listener', async () => {
-    await expect(handler(createPreviewReq())).resolves.toMatchObject({
-      sandbox_url: 'http://sandbox.internal',
-      agent_token: 'agent-password'
-    });
+  it.each([previewSessionId, `${previewSandboxId}:${previewSessionId}`])(
+    'resolves preview credential %s to the read-only HTTP listener',
+    async (credential) => {
+      const req = createPreviewReq();
+      req.headers['x-sandbox-preview-session'] = credential;
+      await expect(handler(req)).resolves.toMatchObject({
+        sandbox_url: 'http://sandbox.internal',
+        agent_token: 'agent-password'
+      });
 
-    expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(previewSessionId);
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(previewContext);
-    expect(mocks.getEndpoint).toHaveBeenCalledWith(1319);
-  });
+      expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(credential);
+      expect(mocks.getSandboxClient).toHaveBeenCalledWith(previewContext);
+      expect(mocks.getEndpoint).toHaveBeenCalledWith(1319);
+    }
+  );
 
   it('keeps WebSocket tickets on the existing IDE Agent listener', async () => {
     await handler(createReq(createTicket('fs')));
