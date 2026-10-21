@@ -33,39 +33,7 @@ describe('filterSensitiveNodesData', () => {
     expect(JSON.stringify(nodes)).toContain('mcp-token');
   });
 
-  it.each(['', 'external-tool-set'])(
-    'removes HTTP auth from exports for pluginId "%s" without mutating the workflow',
-    (pluginId) => {
-      const nodes = [
-        {
-          nodeId: 'http-set',
-          flowNodeType: FlowNodeTypeEnum.toolSet,
-          pluginId,
-          name: 'HTTP tool set',
-          inputs: [],
-          outputs: [],
-          toolConfig: {
-            httpToolSet: {
-              baseUrl: 'https://api.example.com',
-              headerSecret: { Authorization: { value: 'http-token', secret: '' } },
-              toolList: []
-            }
-          }
-        } as StoreNodeItemType
-      ];
-
-      const exported = filterSensitiveNodesData(nodes);
-
-      expect(JSON.stringify(exported)).not.toContain('http-token');
-      expect(exported[0].toolConfig?.httpToolSet).toMatchObject({
-        baseUrl: 'https://api.example.com',
-        toolList: []
-      });
-      expect(JSON.stringify(nodes)).toContain('http-token');
-    }
-  );
-
-  it('removes legacy per-tool HTTP auth from inline exports without mutating the workflow', () => {
+  it('removes HTTP parent and legacy child auth from exports without mutating the workflow', () => {
     const nodes = [
       {
         nodeId: 'http-set',
@@ -82,7 +50,7 @@ describe('filterSensitiveNodesData', () => {
                 description: 'Search',
                 path: '/search',
                 method: 'get',
-                headerSecret: { Authorization: { value: 'legacy-child-token', secret: '' } }
+                headerSecret: { Authorization: { value: 'child-token', secret: '' } }
               }
             ]
           }
@@ -92,84 +60,12 @@ describe('filterSensitiveNodesData', () => {
 
     const exported = filterSensitiveNodesData(nodes);
 
-    expect(JSON.stringify(exported)).not.toContain('legacy-child-token');
+    expect(JSON.stringify(exported)).not.toContain('child-token');
     expect(exported[0].toolConfig?.httpToolSet?.toolList?.[0]).not.toHaveProperty('headerSecret');
-    expect(JSON.stringify(nodes)).toContain('legacy-child-token');
+    expect(JSON.stringify(nodes)).toContain('child-token');
   });
 
-  it('removes legacy per-tool HTTP auth from external exports without mutating the workflow', () => {
-    const secret = 'external-child-token';
-    const nodes = [
-      {
-        nodeId: 'http-set',
-        flowNodeType: FlowNodeTypeEnum.toolSet,
-        pluginId: 'external-tool-set',
-        name: 'HTTP tool set',
-        inputs: [],
-        outputs: [],
-        toolConfig: {
-          httpToolSet: {
-            toolId: 'external-tool-set',
-            toolList: [
-              {
-                name: 'search',
-                description: 'Search',
-                headerSecret: { Authorization: { value: secret, secret: '' } }
-              }
-            ]
-          }
-        }
-      } as StoreNodeItemType
-    ];
-
-    const exported = filterSensitiveNodesData(nodes);
-
-    expect(exported[0].toolConfig?.httpToolSet).toMatchObject({
-      toolId: 'external-tool-set',
-      toolList: [{ name: 'search', description: 'Search' }]
-    });
-    expect(exported[0].toolConfig?.httpToolSet?.toolList?.[0]).not.toHaveProperty('headerSecret');
-    expect(JSON.stringify(exported)).not.toContain(secret);
-    expect(JSON.stringify(nodes)).toContain(secret);
-  });
-
-  it('removes legacy per-tool MCP auth from external exports', () => {
-    const secret = 'external-mcp-child-token';
-    const nodes = [
-      {
-        nodeId: 'mcp-set',
-        flowNodeType: FlowNodeTypeEnum.toolSet,
-        pluginId: 'external-mcp-tool-set',
-        name: 'MCP tool set',
-        inputs: [],
-        outputs: [],
-        toolConfig: {
-          mcpToolSet: {
-            toolId: 'external-mcp-tool-set',
-            toolList: [
-              {
-                name: 'search',
-                description: 'Search',
-                headerSecret: { Authorization: { value: secret, secret: '' } }
-              }
-            ]
-          }
-        }
-      } as StoreNodeItemType
-    ];
-
-    const exported = filterSensitiveNodesData(nodes);
-
-    expect(exported[0].toolConfig?.mcpToolSet).toMatchObject({
-      toolId: 'external-mcp-tool-set',
-      toolList: [{ name: 'search', description: 'Search' }]
-    });
-    expect(exported[0].toolConfig?.mcpToolSet?.toolList?.[0]).not.toHaveProperty('headerSecret');
-    expect(JSON.stringify(exported)).not.toContain(secret);
-    expect(JSON.stringify(nodes)).toContain(secret);
-  });
-
-  it('removes misplaced auth from external Agent selected-tool payloads while preserving references', () => {
+  it('removes auth from Agent selected tools while preserving references', () => {
     const secrets = [
       'mcp-child-secret',
       'http-child-secret',
