@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CanonicalFlowNodeInputItemSchema,
   LegacyFlowNodeInputItemSchema,
+  LegacyStoreNodeItemSchema,
   migrateWorkflowToCurrent,
   isLegacyV1Workflow
 } from '@fastgpt/global/core/workflow/migration';
@@ -12,6 +13,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  McpToolSetRuntimeConfigSchema,
+  StoreNodeItemTypeSchema
+} from '@fastgpt/global/core/workflow/type/node';
+import { PersistedOpenAPIStoreNodeItemTypeSchema } from '@fastgpt/global/openapi/core/workflow/node';
 
 const inputWithLegacyIndex = {
   key: 'query',
@@ -44,6 +51,243 @@ describe('workflow input schema boundaries', () => {
 
     expect(input.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
+  });
+});
+
+describe('legacy MCP and HTTP ToolSet migration', () => {
+  it('rejects nodes that configure both protocols at current, migration, and API boundaries', () => {
+    const node = {
+      nodeId: 'dual-tool-set',
+      flowNodeType: 'toolSet',
+      pluginId: 'external-tool-set',
+      name: 'Dual ToolSet',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpToolSet: { toolId: 'mcp-tool-set', toolList: [] },
+        httpToolSet: { toolId: 'http-tool-set', toolList: [] }
+      }
+    };
+
+    expect(StoreNodeItemTypeSchema.safeParse(node).success).toBe(false);
+    expect(LegacyStoreNodeItemSchema.safeParse(node).success).toBe(false);
+    expect(PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success).toBe(false);
+    expect(() => migrateWorkflowToCurrent({ nodes: [node], edges: [] })).toThrow();
+  });
+
+  it.each([
+    {
+      protocol: 'MCP',
+      toolSetKey: 'mcpToolSet',
+      toolConfig: {
+        mcpToolSet: {
+          toolId: 'mcp-tool-set-id',
+          url: 'https://mcp.example.com',
+          headerSecret: { Authorization: { value: 'parent-secret', secret: '' } },
+          toolList: [
+            {
+              name: 'search',
+              description: 'MCP search',
+              inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
+              headerSecret: { Authorization: { value: 'child-secret', secret: '' } }
+            }
+          ]
+        }
+      },
+      expected: {
+        toolId: 'mcp-tool-set-id',
+        toolList: [{ name: 'search', description: 'MCP search' }]
+      }
+    },
+    {
+      protocol: 'HTTP',
+      toolSetKey: 'httpToolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolId: '',
+          baseUrl: 'https://api.example.com',
+          apiSchemaStr: '{"openapi":"3.0.0"}',
+          customHeaders: '{"X-Test":"true"}',
+          headerSecret: { Authorization: { value: 'parent-secret', secret: '' } },
+          toolList: [
+            {
+              name: 'search',
+              description: 'HTTP search',
+              path: '/search',
+              method: 'GET',
+              headerSecret: { Authorization: { value: 'child-secret', secret: '' } }
+            }
+          ]
+        }
+      },
+      expected: {
+        toolId: 'external-tool-set-id',
+        toolList: [{ name: 'search', description: 'HTTP search' }]
+      }
+    }
+  ] as const)(
+    'projects legacy external $protocol runtime snapshots to summaries',
+    ({ toolSetKey, toolConfig, expected }) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'external-tool-set',
+            flowNodeType: 'toolSet',
+            pluginId: 'external-tool-set-id',
+            name: 'External ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual(expected);
+    }
+  );
+
+  it.each([
+    {
+      protocol: 'MCP',
+      toolSetKey: 'mcpToolSet',
+      toolSetConfig: { url: 'https://mcp.example.com' }
+    },
+    {
+      protocol: 'HTTP',
+      toolSetKey: 'httpToolSet',
+      toolSetConfig: { baseUrl: 'https://api.example.com' }
+    }
+  ] as const)(
+    'fills a missing $protocol reference ID from pluginId',
+    ({ protocol, toolSetKey, toolSetConfig }) => {
+      for (const toolId of [undefined, ''] as const) {
+        const result = migrateWorkflowToCurrent({
+          nodes: [
+            {
+              nodeId: `external-${protocol.toLowerCase()}-tool-set`,
+              flowNodeType: 'toolSet',
+              pluginId: 'external-tool-set-id',
+              name: `External ${protocol} ToolSet`,
+              inputs: [],
+              outputs: [],
+              toolConfig: {
+                [toolSetKey]: {
+                  ...(toolId === undefined ? {} : { toolId }),
+                  ...toolSetConfig,
+                  toolList: []
+                }
+              }
+            }
+          ],
+          edges: []
+        });
+
+        expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual({
+          toolId: 'external-tool-set-id',
+          toolList: []
+        });
+      }
+    }
+  );
+
+  it.each([
+    {
+      protocol: 'MCP',
+      toolSetKey: 'mcpToolSet',
+      inputConfig: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'inline-secret', secret: '' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'MCP search',
+            inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
+            runtimeOnly: true
+          }
+        ]
+      }
+    },
+    {
+      protocol: 'HTTP',
+      toolSetKey: 'httpToolSet',
+      inputConfig: {
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        customHeaders: '{"X-Test":"true"}',
+        headerSecret: { Authorization: { value: 'inline-secret', secret: '' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'HTTP search',
+            path: '/search',
+            method: 'GET',
+            requestSchema: { type: 'object', properties: { query: { type: 'string' } } },
+            runtimeOnly: true
+          }
+        ]
+      }
+    }
+  ] as const)(
+    'normalizes legacy inline $protocol config to the current schema shape',
+    ({ protocol, toolSetKey, inputConfig }) => {
+      const toolConfig = { [toolSetKey]: inputConfig };
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'inline-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Inline ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig
+          }
+        ],
+        edges: []
+      });
+
+      const currentInlineSchema =
+        protocol === 'MCP'
+          ? McpToolSetRuntimeConfigSchema.strict()
+          : HttpToolSetRuntimeConfigSchema.strict();
+      expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual(
+        currentInlineSchema.parse(inputConfig)
+      );
+    }
+  );
+
+  it.each([
+    {
+      protocol: 'MCP',
+      toolConfig: {
+        mcpToolSet: {
+          toolId: 'nested-mcp-id',
+          url: 'https://mcp.example.com',
+          toolList: []
+        }
+      }
+    },
+    {
+      protocol: 'HTTP',
+      toolConfig: {
+        httpToolSet: {
+          toolId: 'nested-http-id',
+          baseUrl: 'https://api.example.com',
+          toolList: []
+        }
+      }
+    }
+  ])('rejects legacy inline $protocol config with an unparented nested ID', ({ toolConfig }) => {
+    const result = LegacyStoreNodeItemSchema.safeParse({
+      nodeId: 'inline-tool-set',
+      flowNodeType: 'toolSet',
+      name: 'Inline ToolSet',
+      inputs: [],
+      outputs: [],
+      toolConfig
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
@@ -142,7 +386,6 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
     expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
   });
-
 
   it('keeps legacy file inputs manual', async () => {
     const result = await migrateWorkflowToCurrent({
