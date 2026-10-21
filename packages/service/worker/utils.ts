@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
   | 'success'
@@ -220,14 +220,13 @@ export const isExpectedWorkerTaskError = (error: unknown): boolean => {
       typeof error === 'object' && error !== null
         ? (error as {
             code?: unknown;
-            message?: unknown;
             name?: unknown;
             cause?: unknown;
           })
         : undefined;
 
-    // 只接受字符串形态的 message：Worker 可能回传 { message: 123 } 这类脏数据
-    const message = typeof error === 'string' ? error : toSafeString(errObj?.message);
+    // getErrText 统一兼容字符串、Error、axios 响应等错误形态；脏数据会由下方 catch 兜底
+    const message = getErrText(error);
 
     const cause =
       typeof errObj?.cause === 'object' && errObj.cause !== null
