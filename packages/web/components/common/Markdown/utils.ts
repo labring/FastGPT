@@ -47,7 +47,8 @@ export const escapeCsvCell = (cell: string): string => {
 };
 
 /**
- * 将 HTML table 元素解析为二维矩阵网格。
+ * 将 HTML table 元素解析为二维矩阵网格，单元格保留原始文本（不做 CSV 转义），
+ * 由各导出格式（CSV / Markdown）在写出时按自己的语法转义。
  * 针对合并单元格（rowspan / colspan），采用方案 B（值复制填充）：
  * 将合并单元格的值复制填充到其所覆盖的每一个二维虚拟网格中，
  * 保证导出的 CSV 结构绝对对齐、不发生行/列串位，且对数据分析与透视表筛选友好。
@@ -89,7 +90,7 @@ export const parseTableToGrid = (tableElement: HTMLTableElement): string[][] => 
         colIndex++;
       }
 
-      const cellText = escapeCsvCell(cell.textContent || '');
+      const cellText = cell.textContent || '';
       const rowspan = Math.max(parseInt(cell.getAttribute('rowspan') || '1', 10) || 1, 1);
       const colspan = Math.max(parseInt(cell.getAttribute('colspan') || '1', 10) || 1, 1);
 
@@ -124,6 +125,9 @@ export const parseTableToGrid = (tableElement: HTMLTableElement): string[][] => 
   return grid;
 };
 
+/** 按 CSV 语法写出一行：只有需要在 CSV 中转义的单元格才加引号。 */
+const stringifyCsvRow = (row: string[]) => row.map((cell) => escapeCsvCell(cell)).join(',');
+
 /**
  * Export table data to CSV format
  * @param tableElement - HTML table element to export
@@ -134,7 +138,7 @@ export const exportTableToCSV = (tableElement: HTMLTableElement, filename: strin
   if (grid.length === 0) return;
 
   // Convert to CSV format
-  const csvContent = grid.map((row) => row.join(',')).join('\n');
+  const csvContent = grid.map((row) => stringifyCsvRow(row)).join('\n');
 
   // Add BOM for Excel UTF-8 compatibility
   const BOM = '\uFEFF';
@@ -158,11 +162,13 @@ export const exportTableToCSV = (tableElement: HTMLTableElement, filename: strin
 export const parseTableToCSVString = (tableElement: HTMLTableElement): string => {
   const grid = parseTableToGrid(tableElement);
   if (grid.length === 0) return '';
-  return grid.map((row) => row.join(',')).join('\n');
+  return grid.map((row) => stringifyCsvRow(row)).join('\n');
 };
 
 /**
- * 将 HTML table 元素解析为 Markdown 表格字符串
+ * 将 HTML table 元素解析为 Markdown 表格字符串。
+ * 单元格文本保持原文，只按 Markdown 表格语法转义 `|` 并把换行折叠成空格，
+ * 不能复用 CSV 的引号转义，否则复制出来的 Markdown 里会出现 `"1,234"` 这类多余引号。
  */
 export const parseTableToMarkdownString = (tableElement: HTMLTableElement): string => {
   const grid = parseTableToGrid(tableElement);
