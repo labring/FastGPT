@@ -4,6 +4,7 @@
   "add_file": "添加文件",
   "api_file": "API 文件库",
   "api_url": "接口地址",
+  "api_url_invalid": "请输入完整地址，需以 http:// 或 https:// 开头",
   "apidataset_configuration": "配置信息",
   "auto_indexes": "自动生成补充索引",
   "auto_indexes_tips": "通过文本理解模型，进行额外索引生成，提高语义丰富度，可提高检索的精度。",

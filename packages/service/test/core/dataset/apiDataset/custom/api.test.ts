@@ -3,12 +3,16 @@ import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/c
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
+  createProxyAxios: vi.fn(),
   read: vi.fn(),
   getBuffer: vi.fn(),
   addBuffer: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  createProxyAxios: () => ({ request: mocks.request })
+  createProxyAxios: (options: unknown) => {
+    mocks.createProxyAxios(options);
+    return { request: mocks.request };
+  }
 }));
 vi.mock('@fastgpt/service/core/dataset/read', () => ({ readFileRawTextByUrl: mocks.read }));
 vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
@@ -33,6 +37,39 @@ beforeEach(() => {
   Object.values(mocks).forEach((mock) => mock.mockReset());
   mocks.getBuffer.mockResolvedValue(undefined);
   mocks.read.mockResolvedValue({ rawText: 'parsed' });
+});
+
+describe('useApiDatasetRequest baseUrl normalization', () => {
+  it('prepends https for legacy bare domains so they no longer throw ERR_INVALID_URL', () => {
+    // 历史配置常见只填域名；不补协议时 axios/URL 解析会在发请求前抛 ERR_INVALID_URL
+    useApiDatasetRequest({
+      apiServer: { baseUrl: 'api.example.com', authorization: 'token' } as any
+    });
+
+    expect(mocks.createProxyAxios).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: 'https://api.example.com' })
+    );
+  });
+
+  it('trims surrounding whitespace', () => {
+    useApiDatasetRequest({
+      apiServer: { baseUrl: '  api.example.com  ', authorization: 'token' } as any
+    });
+
+    expect(mocks.createProxyAxios).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: 'https://api.example.com' })
+    );
+  });
+
+  it('keeps an explicit http prefix', () => {
+    useApiDatasetRequest({
+      apiServer: { baseUrl: 'http://api.example.com', authorization: 'token' } as any
+    });
+
+    expect(mocks.createProxyAxios).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: 'http://api.example.com' })
+    );
+  });
 });
 
 describe('listFiles', () => {

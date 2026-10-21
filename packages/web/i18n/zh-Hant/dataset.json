@@ -4,6 +4,7 @@
   "add_file": "新增文件",
   "api_file": "API 檔案庫",
   "api_url": "介面位址",
+  "api_url_invalid": "請輸入完整位址，需以 http:// 或 https:// 開頭",
   "apidataset_configuration": "配寘資訊",
   "auto_indexes": "自動生成補充索引",
   "auto_indexes_tips": "透過文本理解模型進行額外索引生成，提高語義豐富度，可提升檢索精度。",
