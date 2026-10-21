@@ -94,19 +94,11 @@ export function addAuditLog<T extends AdminAuditEventEnum>(
   input: AddAuditLogInput<T, AdminAuditEventParamsType[T]>
 ): Promise<void>;
 
-export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
-  teamId,
-  tmbId,
-  scope,
-  event,
-  params
-}: {
-  tmbId?: string;
-  teamId: string;
-  scope?: 'member' | 'system';
-  event: T;
-  params?: any;
-}): Promise<void> {
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>(
+  input: AddAuditLogInput<T, any>
+): Promise<void> {
+  const { teamId, tmbId, scope, event, params } = input;
+
   return retryFn(async () => {
     await MongoTeamAudit.create({
       ...(scope === 'system' ? { scope } : { ...(scope ? { scope } : {}), tmbId }),
