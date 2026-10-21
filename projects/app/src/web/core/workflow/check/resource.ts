@@ -121,6 +121,27 @@ export const checkWorkflowNodeResourceRules = ({
   checkAgentResources?: boolean;
 }): WorkflowRuleIssue[] => {
   const issues: WorkflowRuleIssue[] = [];
+  const mcpToolSet = data.toolConfig?.mcpToolSet;
+  const httpToolSet = data.toolConfig?.httpToolSet;
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !data.pluginId &&
+    mcpToolSet &&
+    'toolList' in mcpToolSet &&
+    !mcpToolSet.toolList?.length
+  ) {
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolSetNotConfigured });
+  }
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !data.pluginId &&
+    httpToolSet &&
+    'toolList' in httpToolSet &&
+    !httpToolSet.toolList?.length
+  ) {
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolSetNotConfigured });
+  }
+
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
     issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
