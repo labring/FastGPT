@@ -448,11 +448,11 @@ const ChatBox = ({
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
     const chatContent = chatRecords[chatRecords.length - 1];
-    if (!chatContent) return;
+    if (!chatContent?.moduleName) return;
 
     return {
       status: chatContent.status || ChatStatusEnum.loading,
-      name: t(chatContent.moduleName || ('' as any)) || t('common:Loading')
+      name: t(chatContent.moduleName)
     };
   }, [chatRecords, isChatting, t]);
 

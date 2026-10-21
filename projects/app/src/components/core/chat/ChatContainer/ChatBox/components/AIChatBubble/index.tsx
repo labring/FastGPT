@@ -144,7 +144,7 @@ const AIChatBubble = ({
         {children}
         {showLoading && (
           <Box mt={3}>
-            <AIChatLoading text={loadingText} size={'md'} />
+            <AIChatLoading text={loadingText} />
           </Box>
         )}
       </Box>
