@@ -13,6 +13,7 @@ import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
+import type { StoreNodeItemType } from '../../../../core/workflow/type/node';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
@@ -273,7 +274,9 @@ export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
   CreateAppBodySchema
 );
-export type CreateAppBodyType = z.infer<typeof CreateAppBodySchema>;
+export type CreateAppBodyType = Omit<z.input<typeof CreateAppBodySchema>, 'nodes'> & {
+  nodes?: StoreNodeItemType[];
+};
 
 export const CreateAppResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',

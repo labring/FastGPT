@@ -14,6 +14,11 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import {
+  McpToolSetRuntimeConfigSchema,
+  NodeToolConfigTypeSchema
+} from '@fastgpt/global/core/workflow/type/node';
+import { OpenAPIStoreNodeItemTypeSchema } from '@fastgpt/global/openapi/core/workflow/node';
 
 describe('mcpTool utils', () => {
   describe('getMCPToolSetRuntimeNode', () => {
@@ -87,9 +92,9 @@ describe('mcpTool utils', () => {
       expect(result.avatar).toBe('core/app/type/mcpToolsFill');
       expect(result.intro).toBe('Search for information');
       expect(result.name).toBe('toolsetName/searchTool');
-      expect(result.toolConfig?.mcpTool?.toolId).toBe(
-        `${AppToolSourceEnum.mcp}-toolset-456/searchTool`
-      );
+      expect(result.toolConfig?.mcpTool).toMatchObject({
+        toolId: `${AppToolSourceEnum.mcp}-toolset-456/searchTool`
+      });
       expect(result.inputs[0]).toMatchObject({ defaultToAgentGenerated: true });
     });
 
@@ -147,7 +152,62 @@ describe('mcpTool utils', () => {
         toolsetName: 'toolsetName'
       });
 
-      expect(result.toolConfig?.mcpTool?.toolId).toBe('mcp-parent-123/myTool');
+      expect(result.toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-parent-123/myTool' });
+    });
+
+    it('should create an inline runtime node without a toolId', () => {
+      const tool: McpToolConfigType = {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: {} }
+      };
+
+      const result = getMCPToolRuntimeNode({
+        tool,
+        nodeId: 'node-inline',
+        toolsetName: 'Local MCP',
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'token' } }
+      });
+
+      expect(result.toolConfig?.mcpTool).toEqual({
+        ...tool,
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'token' } }
+      });
+      expect(result.toolConfig?.mcpTool).not.toHaveProperty('toolId');
+    });
+  });
+
+  describe('MCP toolset schemas', () => {
+    const validTool = {
+      name: 'search',
+      description: 'Search',
+      inputSchema: { type: 'object', properties: {} }
+    } satisfies McpToolConfigType;
+
+    it('keeps empty local toolsets and external references schema-compatible', () => {
+      const inlineTool = {
+        name: validTool.name,
+        description: validTool.description,
+        inputSchema: validTool.inputSchema,
+        url: 'https://mcp.example.com'
+      };
+      expect(McpToolSetRuntimeConfigSchema.safeParse({ url: '', toolList: [] }).success).toBe(true);
+      expect(
+        NodeToolConfigTypeSchema.safeParse({ mcpTool: { toolId: 'mcp-app/search' } }).success
+      ).toBe(true);
+      expect(NodeToolConfigTypeSchema.safeParse({ mcpTool: inlineTool }).success).toBe(true);
+      expect(
+        OpenAPIStoreNodeItemTypeSchema.safeParse({
+          nodeId: 'mcp-tool',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: 'MCP tool',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpTool: inlineTool }
+        }).success
+      ).toBe(true);
     });
   });
 

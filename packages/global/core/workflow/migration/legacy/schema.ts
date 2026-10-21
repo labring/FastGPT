@@ -118,8 +118,9 @@ export const LegacyStoreNodeItemSchema = z
     }
     if (value.pluginId) return;
 
+    const toolConfig = value.toolConfig;
     (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
-      const toolSet = value.toolConfig[key];
+      const toolSet = toolConfig[key];
       if (!isRecord(toolSet) || CurrentInlineToolSetSchemas[key].safeParse(toolSet).success) return;
       ctx.addIssue({
         code: 'custom',

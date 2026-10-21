@@ -7,7 +7,6 @@ import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../../jsonschema';
 import { getNanoid } from '../../../../common/string/tools';
 import { AppToolSourceEnum } from '../constants';
-import type { NodeToolConfigType } from '../../../workflow/type/node';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -41,19 +40,19 @@ export const getMCPToolSetRuntimeNode = ({
   };
 };
 
-export const getMCPToolRuntimeNode = ({
-  tool,
-  avatar = 'core/app/type/mcpToolsFill',
-  nodeId,
-  toolsetName,
-  toolSetId
-}: {
-  nodeId: string;
-  tool: McpToolConfigType;
-  toolSetId: string;
-  toolsetName: string;
-  avatar?: string;
-}): RuntimeNodeItemType => {
+/** 按外部资源引用或节点内配置构造 MCP runtime 子工具，IO 始终取自工具 Schema。 */
+export const getMCPToolRuntimeNode = (
+  params: {
+    nodeId: string;
+    tool: McpToolConfigType;
+    toolsetName: string;
+    avatar?: string;
+  } & (
+    | { toolSetId: string; url?: never; headerSecret?: never }
+    | { toolSetId?: never; url: string; headerSecret?: StoreSecretValueType }
+  )
+): RuntimeNodeItemType => {
+  const { tool, avatar = 'core/app/type/mcpToolsFill', nodeId, toolsetName } = params;
   const inputs = jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }).map(
     (input) => ({
       ...input,
@@ -68,9 +67,16 @@ export const getMCPToolRuntimeNode = ({
     avatar,
     intro: tool.description,
     toolConfig: {
-      mcpTool: {
-        toolId: `${AppToolSourceEnum.mcp}-${toolSetId}/${tool.name}` // When runtool is used, parentId and toolname will be employed
-      }
+      mcpTool:
+        params.toolSetId !== undefined
+          ? {
+              toolId: `${AppToolSourceEnum.mcp}-${params.toolSetId}/${tool.name}`
+            }
+          : {
+              ...tool,
+              url: params.url,
+              ...(params.headerSecret ? { headerSecret: params.headerSecret } : {})
+            }
     },
     jsonSchema: tool.inputSchema,
     inputs,
@@ -90,9 +96,9 @@ export const getMCPToolRuntimeNode = ({
   };
 };
 
-export const parsetMcpToolConfig = (
-  config: NonNullable<NodeToolConfigType['mcpTool']>
-):
+export const parsetMcpToolConfig = (config: {
+  toolId: string;
+}):
   | {
       toolsetId: string;
       toolName: string;

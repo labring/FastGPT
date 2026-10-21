@@ -17,6 +17,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
@@ -38,6 +39,75 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it('encrypts inline MCP auth and preserves encrypted values on repeat saves', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          mcpToolSet: {
+            url: 'https://mcp.example.com',
+            headerSecret: { 'X-API-Key': { value: 'temporary-secret', secret: '' } },
+            toolList: []
+          }
+        }
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const mcpToolSet = nodes[0].toolConfig?.mcpToolSet;
+    if (!mcpToolSet || !('url' in mcpToolSet)) throw new Error('MCP toolset config is missing');
+    const encryptedValue = mcpToolSet.headerSecret?.['X-API-Key'];
+    expect(encryptedValue).toMatchObject({ value: '', secret: expect.any(String) });
+    expect(getSecretValue({ storeSecret: mcpToolSet.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'temporary-secret'
+    });
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const savedAgain = nodes[0].toolConfig?.mcpToolSet;
+    if (!savedAgain || !('url' in savedAgain)) throw new Error('MCP toolset config is missing');
+    expect(savedAgain.headerSecret?.['X-API-Key']?.secret).toBe(encryptedValue?.secret);
+  });
+
+  it('encrypts inline HTTP auth and preserves encrypted values on repeat saves', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          httpToolSet: {
+            baseUrl: 'https://api.example.com',
+            customHeaders: '{}',
+            headerSecret: { 'X-API-Key': { value: 'temporary-secret', secret: '' } },
+            toolList: []
+          }
+        }
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const httpToolSet = nodes[0].toolConfig?.httpToolSet;
+    if (!httpToolSet || !('baseUrl' in httpToolSet)) {
+      throw new Error('HTTP toolset config is missing');
+    }
+    const encryptedValue = httpToolSet.headerSecret?.['X-API-Key'];
+    expect(encryptedValue).toMatchObject({ value: '', secret: expect.any(String) });
+    expect(getSecretValue({ storeSecret: httpToolSet.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'temporary-secret'
+    });
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const savedAgain = nodes[0].toolConfig?.httpToolSet;
+    if (!savedAgain || !('baseUrl' in savedAgain)) {
+      throw new Error('HTTP toolset config is missing');
+    }
+    expect(savedAgain.headerSecret?.['X-API-Key']?.secret).toBe(encryptedValue?.secret);
+  });
+
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
     async (type) => {

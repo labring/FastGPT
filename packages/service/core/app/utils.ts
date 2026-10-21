@@ -1,6 +1,7 @@
 import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -44,12 +45,14 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
 
 /**
- * 重写应用工作流节点，填充详细的元数据信息（如工具详情、技能详情、知识库详情）。
+ * 重写应用工作流节点并填充资源详情；工作流外部引用只返回摘要，ToolSet source app 保留自有鉴权配置。
  */
 export async function rewriteAppWorkflowToDetail({
   nodes,
@@ -57,6 +60,7 @@ export async function rewriteAppWorkflowToDetail({
   isRoot,
   ownerTmbId,
   viewerTmbId,
+  appType,
   lang,
   resources = []
 }: {
@@ -64,6 +68,7 @@ export async function rewriteAppWorkflowToDetail({
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
+  appType?: AppTypeEnum;
   /** 当前请求操作者；仅对快照外新增资源做 UI 侧权限提示。 */
   viewerTmbId?: string;
   lang?: localeType;
@@ -372,6 +377,15 @@ export async function rewriteAppWorkflowToDetail({
     };
   };
 
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const getToolSetReferenceId = (value: unknown) =>
+    isRecord(value) && typeof value.toolId === 'string' && value.toolId ? value.toolId : undefined;
+  type ExternalToolSetReferenceIds = Record<'mcpToolSet' | 'httpToolSet', string | undefined>;
+  const externalToolSetReferenceIds = new Map<DetailWorkflowNode, ExternalToolSetReferenceIds>();
+  const isToolSetSourceApp =
+    appType === AppTypeEnum.mcpToolSet || appType === AppTypeEnum.httpToolSet;
+
   await Promise.all(
     nodes.map(async (node) => {
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
@@ -381,16 +395,29 @@ export async function rewriteAppWorkflowToDetail({
       }
 
       // Tool node
-      const toolId =
-        node.pluginId ??
-        node.toolConfig?.mcpTool?.toolId ??
-        node.toolConfig?.httpTool?.toolId ??
-        (node.toolConfig?.mcpToolSet && 'toolId' in node.toolConfig.mcpToolSet
-          ? node.toolConfig.mcpToolSet.toolId
-          : undefined) ??
-        (node.toolConfig?.httpToolSet && 'toolId' in node.toolConfig.httpToolSet
-          ? node.toolConfig.httpToolSet.toolId
-          : undefined);
+      const mcpTool = node.toolConfig?.mcpTool;
+      const httpTool = node.toolConfig?.httpTool;
+      const mcpToolSet = node.toolConfig?.mcpToolSet;
+      const httpToolSet = node.toolConfig?.httpToolSet;
+      const mcpToolSetId = getToolSetReferenceId(mcpToolSet);
+      const httpToolSetId = getToolSetReferenceId(httpToolSet);
+      if (node.pluginId) {
+        externalToolSetReferenceIds.set(node, {
+          mcpToolSet: mcpToolSetId,
+          httpToolSet: httpToolSetId
+        });
+      }
+      const toolId = (() => {
+        if (node.pluginId) {
+          if (mcpToolSet) return mcpToolSetId;
+          if (httpToolSet) return httpToolSetId;
+          return node.pluginId;
+        }
+        return (
+          (mcpTool && 'toolId' in mcpTool ? mcpTool.toolId : undefined) ??
+          (httpTool && 'toolId' in httpTool ? httpTool.toolId : undefined)
+        );
+      })();
       if (toolId) {
         const result = await loadToolNode({
           id: toolId,
@@ -634,6 +661,93 @@ export async function rewriteAppWorkflowToDetail({
       }
     })
   );
+
+  // 外部引用只保留资源 ID 与展示摘要；inline ToolSet parent auth 则由本节点持有。
+  const stripHeaderSecret = (value: unknown) => {
+    if (!isRecord(value) || !('headerSecret' in value)) return value;
+    const sanitized = { ...value };
+    delete sanitized.headerSecret;
+    return sanitized;
+  };
+  const projectToolSetSummary = (toolSet: Record<string, unknown>, toolId?: string) => ({
+    ...(toolId ? { toolId } : {}),
+    ...(Array.isArray(toolSet.toolList)
+      ? {
+          toolList: toolSet.toolList.flatMap((tool) =>
+            isRecord(tool) && typeof tool.name === 'string' && typeof tool.description === 'string'
+              ? [{ name: tool.name, description: tool.description }]
+              : []
+          )
+        }
+      : {})
+  });
+  const clearToolCredentials = ({
+    toolConfig,
+    externalNodeReference = false,
+    referenceIds
+  }: {
+    toolConfig: unknown;
+    externalNodeReference?: boolean;
+    referenceIds?: ExternalToolSetReferenceIds;
+  }) => {
+    if (!isRecord(toolConfig)) return;
+
+    (['mcpTool', 'httpTool'] as const).forEach((key) => {
+      const tool = toolConfig[key];
+      if (isRecord(tool)) toolConfig[key] = stripHeaderSecret(tool);
+    });
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+      if (externalNodeReference) {
+        const toolId =
+          referenceIds && Object.prototype.hasOwnProperty.call(referenceIds, key)
+            ? referenceIds[key]
+            : getToolSetReferenceId(toolSet);
+        toolConfig[key] = projectToolSetSummary(toolSet, toolId);
+        return;
+      }
+      const sanitizedToolSet = { ...toolSet };
+      if (Array.isArray(toolSet.toolList)) {
+        sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
+      }
+      toolConfig[key] = sanitizedToolSet;
+    });
+  };
+
+  nodes.forEach((node) => {
+    if (!isToolSetSourceApp) {
+      clearToolCredentials({
+        toolConfig: node.toolConfig,
+        externalNodeReference: Boolean(node.pluginId),
+        referenceIds: externalToolSetReferenceIds.get(node)
+      });
+    }
+
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (mcpToolSet && 'headerSecret' in mcpToolSet && mcpToolSet.headerSecret != null) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (httpToolSet && 'headerSecret' in httpToolSet && httpToolSet.headerSecret != null) {
+      httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
+    }
+
+    if (
+      isToolSetSourceApp &&
+      httpToolSet &&
+      'baseUrl' in httpToolSet &&
+      Array.isArray(httpToolSet.toolList)
+    ) {
+      httpToolSet.toolList.forEach((tool) => {
+        if (tool.headerSecret != null) {
+          tool.headerSecret = storeSecretValue(StoreSecretValueTypeSchema.parse(tool.headerSecret));
+        }
+      });
+    }
+  });
 
   return nodes;
 }

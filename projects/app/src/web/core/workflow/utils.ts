@@ -260,13 +260,15 @@ export const storeNode2FlowNode = ({
         const toolDescription = isPluginNode
           ? (storeInput.toolDescription ?? inputTemplate.toolDescription)
           : (inputTemplate.toolDescription ?? storeInput.toolDescription);
-        const label = usesLegacyDatasetSearchFilter &&
+        const label =
+          usesLegacyDatasetSearchFilter &&
           inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
             ? 'workflow:collection_metadata_filter'
             : isPluginNode
               ? (storeInput.label ?? inputTemplate.label)
               : inputTemplate.label;
-        const description = usesLegacyDatasetSearchFilter &&
+        const description =
+          usesLegacyDatasetSearchFilter &&
           inputTemplate.key === NodeInputKeyEnum.collectionFilterMatch
             ? 'workflow:filter_description'
             : isPluginNode
@@ -387,10 +389,47 @@ export const storeNode2FlowNode = ({
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
-  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
+  // 只清理 MCP/HTTP 工具配置的鉴权字段，不递归处理普通 value/defaultValue。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  const stripHeaderSecret = (value: unknown) => {
+    if (!isRecord(value) || !('headerSecret' in value)) return value;
+    const sanitized = { ...value };
+    delete sanitized.headerSecret;
+    return sanitized;
+  };
+  const clearToolCredentials = (toolConfig: unknown) => {
+    if (!isRecord(toolConfig)) return;
+
+    (['mcpTool', 'httpTool'] as const).forEach((key) => {
+      const tool = toolConfig[key];
+      if (isRecord(tool)) toolConfig[key] = stripHeaderSecret(tool);
+    });
+
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+      const sanitizedToolSet = stripHeaderSecret(toolSet);
+      if (!isRecord(sanitizedToolSet)) return;
+      if (Array.isArray(toolSet.toolList)) {
+        sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
+      }
+      toolConfig[key] = sanitizedToolSet;
+    });
+  };
 
   cloneNodes.forEach((node) => {
+    clearToolCredentials(node.toolConfig);
+
+    const selectedToolsInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    if (Array.isArray(selectedToolsInput?.value)) {
+      selectedToolsInput.value.forEach((selectedTool) => {
+        if (isRecord(selectedTool)) clearToolCredentials(selectedTool.toolConfig);
+      });
+    }
     // selected dataset
     if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       node.inputs.forEach((input) => {

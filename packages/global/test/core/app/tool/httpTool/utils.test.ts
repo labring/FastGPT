@@ -12,6 +12,7 @@ import {
   pathData2ToolList,
   updateHttpToolInputProperty
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import {
   FlowNodeTypeEnum,
   FlowNodeOutputTypeEnum
@@ -22,6 +23,39 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { HttpToolConfigType, PathDataType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { NodeToolConfigTypeSchema } from '@fastgpt/global/core/workflow/type/node';
+
+const openApiSchemaStr = JSON.stringify({
+  openapi: '3.0.0',
+  info: { title: 'Example API', version: '1.0.0' },
+  servers: [{ url: 'https://api.example.com' }],
+  paths: {
+    '/search': {
+      get: {
+        operationId: 'search',
+        parameters: [{ in: 'query', name: 'query', schema: { type: 'string' } }],
+        responses: { '200': { description: 'OK' } }
+      }
+    },
+    '/items': {
+      post: {
+        operationId: 'createItem',
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { name: { type: 'string' } },
+                required: ['name']
+              }
+            }
+          }
+        },
+        responses: { '201': { description: 'Created' } }
+      }
+    }
+  }
+});
 
 describe('HTTP request schema compatibility', () => {
   it('preserves an explicit request schema without adding editor fields or empty required', () => {
@@ -114,6 +148,55 @@ describe('HTTP request schema compatibility', () => {
         parameters: [{ in: 'query', name: 'q', schema: { type: 'string' } }]
       })
     ).toBeUndefined();
+  });
+});
+
+describe('node-local HTTP toolset schemas', () => {
+  it('accepts inline runtime config and keeps external HTTP references valid', () => {
+    const inlineTool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'get',
+      inputSchema: { type: 'object', properties: {} },
+      requestSchema: { type: 'object', properties: {} },
+      baseUrl: 'https://api.example.com',
+      apiSchemaStr: openApiSchemaStr,
+      customHeaders: '{}'
+    };
+
+    expect(NodeToolConfigTypeSchema.safeParse({ httpTool: inlineTool }).success).toBe(true);
+    expect(
+      NodeToolConfigTypeSchema.safeParse({ httpTool: { toolId: 'http-app/search' } }).success
+    ).toBe(true);
+  });
+
+  it('accepts per-tool secrets in shared HTTP runtime config and external references', () => {
+    const childTool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'get',
+      headerSecret: { Authorization: { value: 'cleartext-token', secret: '' } }
+    };
+
+    expect(
+      NodeToolConfigTypeSchema.safeParse({
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          customHeaders: '{}',
+          toolList: [childTool]
+        }
+      }).success
+    ).toBe(true);
+    expect(
+      NodeToolConfigTypeSchema.safeParse({
+        httpToolSet: {
+          toolId: '507f1f77bcf86cd799439011',
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }).success
+    ).toBe(true);
   });
 });
 
@@ -327,9 +410,9 @@ describe('httpTool utils', () => {
       expect(result.avatar).toBe('core/app/type/httpToolsFill');
       expect(result.intro).toBe('Search for items');
       expect(result.name).toBe('toolsetName/searchTool');
-      expect(result.toolConfig?.httpTool?.toolId).toBe(
-        `${AppToolSourceEnum.http}-toolset-456/searchTool`
-      );
+      expect(result.toolConfig?.httpTool).toMatchObject({
+        toolId: `${AppToolSourceEnum.http}-toolset-456/searchTool`
+      });
     });
 
     it('should create tool runtime node with custom avatar', () => {

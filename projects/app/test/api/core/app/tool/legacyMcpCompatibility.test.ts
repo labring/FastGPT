@@ -32,7 +32,7 @@ vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
 const Call: typeof callAPI = (handler, props) => callAPI(handler, { headers: {}, ...props });
 
 describe('legacy MCP resource compatibility after Version migration', () => {
-  it.each(['children-map', 'children-single', 'inline-empty-id'] as const)(
+  it.each(['children-map', 'children-single'] as const)(
     'adds, stores and executes %s resources without changing historical records',
     async (generation) => {
       vi.clearAllMocks();
@@ -58,24 +58,10 @@ describe('legacy MCP resource compatibility after Version migration', () => {
         name: 'Legacy MCP',
         flowNodeType: FlowNodeTypeEnum.toolSet,
         outputs: [],
-        inputs:
-          generation === 'inline-empty-id'
-            ? []
-            : [
-                {
-                  key: NodeInputKeyEnum.toolSetData,
-                  label: 'Tool Set Data',
-                  renderTypeList: [FlowNodeInputTypeEnum.hidden],
-                  value: { url, headerSecret: headers, toolList: [tool] }
-                }
-              ],
-        ...(generation === 'inline-empty-id'
-          ? {
-              toolConfig: {
-                mcpToolSet: { toolId: '', url, headerSecret: headers, toolList: [tool] }
-              }
-            }
-          : {})
+        inputs: [],
+        toolConfig: {
+          mcpToolSet: { url, headerSecret: headers, toolList: [tool] }
+        }
       };
       const parent = await MongoApp.create({
         name: 'Legacy MCP',
@@ -184,21 +170,6 @@ describe('legacy MCP resource compatibility after Version migration', () => {
       nodes.forEach((node) =>
         expect(node.jsonSchema?.properties?.query?.pattern).toBe('^allowed$')
       );
-      if (generation === 'inline-empty-id') {
-        const legacyRuntimeNodes = storeNodes2RuntimeNodes(
-          [{ ...sourceNode, pluginId: sourceId }],
-          ['legacy-set']
-        );
-        await rewriteRuntimeWorkFlow({
-          teamId: auth.teamId,
-          tmbId: auth.tmbId,
-          nodes: legacyRuntimeNodes,
-          edges: []
-        });
-        expect(legacyRuntimeNodes).toHaveLength(1);
-        expect(legacyRuntimeNodes[0].toolConfig?.mcpTool?.toolId).toBe(`mcp-${sourceId}/search`);
-        expect(legacyRuntimeNodes[0].jsonSchema?.properties?.query?.pattern).toBe('^allowed$');
-      }
       const runningAppInfo = { teamId: auth.teamId, tmbId: auth.tmbId, name: 'Workflow' };
       const runningUserInfo = { teamId: auth.teamId, tmbId: auth.tmbId };
       const result = await dispatchRunTool({

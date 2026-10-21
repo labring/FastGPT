@@ -158,6 +158,26 @@ describe('extractAppResources', () => {
     ]);
   });
 
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'extracts the runtime-selected resource ID for external %s nodes',
+    (toolSetKey) => {
+      const parentPluginId = '507f1f77bcf86cd799439012';
+      const referencedToolSetId = '507f1f77bcf86cd799439011';
+      const toolSetConfig = { toolId: referencedToolSetId, toolList: [] };
+      const node = {
+        ...createNode({ flowNodeType: FlowNodeTypeEnum.toolSet, pluginId: parentPluginId }),
+        toolConfig:
+          toolSetKey === 'mcpToolSet'
+            ? { mcpToolSet: toolSetConfig }
+            : { httpToolSet: toolSetConfig }
+      } as StoreNodeItemType;
+
+      expect(extractAppResources({ nodes: [node] })).toEqual([
+        { type: 'tool', id: referencedToolSetId }
+      ]);
+    }
+  );
+
   it('extracts agent, dataset, skill and model resources with stable deduplication', () => {
     const resources = extractAppResources({
       nodes: [
