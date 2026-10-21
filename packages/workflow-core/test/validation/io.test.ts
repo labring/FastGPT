@@ -19,6 +19,7 @@ import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http4
 import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 
 type Input = StoreNodeItemType['inputs'][number];
@@ -339,6 +340,72 @@ describe('validateNodeIO', () => {
     'does not require runtime/editor inputs on %s',
     (flowNodeType) => {
       expect(check(makeNode({ flowNodeType, inputs: [makeInput()] }))).toEqual([]);
+    }
+  );
+
+  it.each([
+    {},
+    { value: ['', ''] },
+    { value: ['deleted', 'userChatInput'] },
+    { value: ['target', 'userChatInput'] },
+    { value: '历史调试问题' },
+    { defaultValue: ['deleted', 'userChatInput'] }
+  ])('ignores stored runtime question values on workflowStart: %j', (config) => {
+    const node = makeNode({
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      outputs: WorkflowStart.outputs,
+      inputs: [
+        {
+          ...WorkflowStart.inputs[0],
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.reference,
+            FlowNodeInputTypeEnum.textarea
+          ],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          ...config
+        }
+      ]
+    });
+    const before = structuredClone(node);
+
+    expect(check(node)).toEqual([]);
+    expect(node).toEqual(before);
+  });
+
+  it('keeps IO uniqueness checks on workflowStart runtime inputs and outputs', () => {
+    const input = {
+      ...WorkflowStart.inputs[0],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: ['', '']
+    };
+    const node = makeNode({
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      inputs: [input, { ...input }],
+      outputs: [...WorkflowStart.outputs, ...WorkflowStart.outputs]
+    });
+
+    expect(check(node).map((item) => item.code)).toEqual([
+      'WORKFLOW_INPUT_KEY_DUPLICATED',
+      'WORKFLOW_OUTPUT_KEY_DUPLICATED'
+    ]);
+  });
+
+  it.each([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.pluginInput])(
+    'still validates configured user question references on %s',
+    (flowNodeType) => {
+      const node = makeNode({
+        flowNodeType,
+        inputs: [
+          {
+            ...WorkflowStart.inputs[0],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: ['deleted', 'userChatInput']
+          }
+        ]
+      });
+
+      expect(check(node).map((item) => item.code)).toEqual(['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND']);
     }
   );
 

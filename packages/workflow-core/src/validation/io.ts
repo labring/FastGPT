@@ -37,6 +37,7 @@ import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 
 /**
  * 按 Web 的默认值、输入方式及工具生成策略校验必填项；保留 Core 的 IO 唯一性、类型和 Schema 检查。
+ * 流程开始的用户问题由运行时提供，保留历史输入声明但跳过其静态输入检查。
  * JSON 编辑器复用运行时转换，动态表达式延后校验；密钥按存储结构校验，不读取或输出密文内容。
  * 只读取文档，归一化输入时不改写调用方配置；远端资源绑定继续由绑定诊断及调用方校验。
  */
@@ -179,6 +180,15 @@ export const validateNodeIO = ({
       });
     }
     inputKeys.add(input.key);
+
+    // 流程开始不提供用户问题的配置界面，输入来自运行时 query 或调用参数。
+    // 旧节点可能保留占位、失效引用或调试值；兼容这些存量值，不按普通输入预检。
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.workflowStart &&
+      input.key === NodeInputKeyEnum.userChatInput
+    ) {
+      continue;
+    }
 
     const normalizedInput =
       isToolNode || input.key === NodeInputKeyEnum.userChatInput
