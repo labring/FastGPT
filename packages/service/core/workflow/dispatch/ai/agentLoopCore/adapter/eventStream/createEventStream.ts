@@ -9,8 +9,8 @@ const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
  * 创建 agent-loop 到 workflow SSE 的共享流式适配器。
  *
  * 这里只负责前端实时事件，不维护 assistantResponses 或 nodeResponses。
- * ToolCall 通过 streamAnswer 开关控制是否把模型内容作为聊天回答输出；
- * Workflow Agent 通常始终开启 answer，只用 streamReasoning 控制思考过程展示。
+ * ToolCall 与 Workflow Agent 都通过 streamAnswer 开关控制是否把模型内容作为聊天回答输出；
+ * streamReasoning 独立控制思考过程展示。
  */
 export const createAgentLoopCoreEventStream = ({
   workflowStreamResponse,

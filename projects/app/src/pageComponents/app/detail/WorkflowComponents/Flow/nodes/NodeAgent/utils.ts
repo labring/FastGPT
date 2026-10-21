@@ -1,5 +1,14 @@
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+export type AgentSkillInputUpdate = {
+  nodeId: string;
+  key: string;
+  type: 'updateInput';
+  value: FlowNodeInputItemType;
+};
 
 /** 从节点恢复知识库参数，包括当前为空的模型 ID；忽略非参数输入，未改变时保留引用。 */
 export const restoreDatasetParams = ({
@@ -20,4 +29,57 @@ export const restoreDatasetParams = ({
     changed = true;
   }
   return changed ? next : state;
+};
+
+/**
+ * 生成“新增关联技能”需要写回节点的批量更新。
+ * 新技能按 skillId 去重并置顶；虚拟机开关原本关闭时追加开启更新，
+ * 同时返回 sandboxAutoEnabled 供调用方决定是否提示用户。
+ */
+export const buildAgentSkillInputUpdates = ({
+  nodeId,
+  skillsInput,
+  sandboxInput,
+  selectedAgentSkills,
+  skill
+}: {
+  nodeId: string;
+  skillsInput: FlowNodeInputItemType;
+  sandboxInput?: FlowNodeInputItemType;
+  selectedAgentSkills: SelectedAgentSkillItemType[];
+  skill: SelectedAgentSkillItemType;
+}): {
+  updates: AgentSkillInputUpdate[];
+  sandboxAutoEnabled: boolean;
+} => {
+  const nextSkills = [
+    skill,
+    ...selectedAgentSkills.filter((item) => item.skillId !== skill.skillId)
+  ];
+  const sandboxAutoEnabled = !!sandboxInput && !sandboxInput.value;
+  const updates: AgentSkillInputUpdate[] = [
+    {
+      nodeId,
+      key: NodeInputKeyEnum.skills,
+      type: 'updateInput',
+      value: {
+        ...skillsInput,
+        value: nextSkills
+      }
+    }
+  ];
+
+  if (sandboxAutoEnabled) {
+    updates.push({
+      nodeId,
+      key: NodeInputKeyEnum.useAgentSandbox,
+      type: 'updateInput',
+      value: {
+        ...sandboxInput,
+        value: true
+      }
+    });
+  }
+
+  return { updates, sandboxAutoEnabled };
 };

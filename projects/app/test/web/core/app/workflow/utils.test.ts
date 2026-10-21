@@ -301,6 +301,10 @@ describe('storeNode2FlowNode', () => {
     ).toBe('workflow:tag_filter');
   });
 
+  it('does not expose Agent history input from the template', () => {
+    expect(AgentNode.inputs.some((input) => input.key === NodeInputKeyEnum.history)).toBe(false);
+  });
+
   it('restores tool set nodes without a source handle', () => {
     const storeNode = {
       nodeId: 'tool-set-node',

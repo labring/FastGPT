@@ -15,6 +15,7 @@
   "add_new_input": "add_new Input",
   "add_new_output": "New output",
   "agent.prompt_placeholder": "Type “/” to insert a variable reference; type “@” to insert a capability, including Skills, apps, tools, and Datasets.",
+  "agent.add_skill": "Add skill",
   "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
   "agent.select_skill": "Select Skill",
   "agent.select_tool": "Select Tool",

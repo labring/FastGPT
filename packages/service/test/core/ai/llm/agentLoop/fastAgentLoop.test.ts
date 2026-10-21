@@ -243,6 +243,27 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
   });
 
+  it('marks the result when the agent loop reaches maxRunAgentTimes with pending tool calls', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'call_search', name: 'search', args: {} })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ maxRunAgentTimes: 1 }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(result.reachedMaxRunTimes).toBe(true);
+  });
+
   it('creates an active plan through set_plan', async () => {
     const events: any[] = [];
     mockCreateLLMResponseQueue(createLLMResponseMock, [

@@ -21,6 +21,8 @@ export type WorkflowRuleIssue = Pick<WorkflowCheckIssue, 'code' | 'inputKey'> & 
   fallbackLabel?: string;
   fieldLabel?: 'variable' | 'value' | 'dataset_quote' | 'question_guide' | 'tts';
   model?: string;
+  /** Agent 内部资源名称，用于「工具（name）...」这类资源级提示。 */
+  resourceName?: string;
   messageCode?: string;
   message?: string;
   level?: WorkflowCheckIssue['level'];

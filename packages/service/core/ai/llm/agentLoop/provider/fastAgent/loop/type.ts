@@ -97,6 +97,7 @@ export type FastAgentLoopResultBase = {
   finishReason?: CompletionFinishReason;
   requestIds: string[];
   contextCheckpoint?: string;
+  reachedMaxRunTimes?: boolean;
 };
 
 export type FastAgentLoopResult<TChildrenResponse = unknown> =

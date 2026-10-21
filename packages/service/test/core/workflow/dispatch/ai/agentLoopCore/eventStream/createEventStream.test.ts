@@ -140,6 +140,38 @@ describe('createAgentLoopCoreEventStream', () => {
     });
   });
 
+  it('keeps reasoning streaming when only answer output is disabled', () => {
+    const workflowStreamResponse = vi.fn();
+    const stream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      streamAnswer: false,
+      streamReasoning: true,
+      getToolInfo: () => ({
+        name: 'Search'
+      })
+    });
+
+    stream.streamReasoning('reasoning');
+    stream.streamAnswer('answer');
+    stream.streamToolCall(createCall());
+
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: SseResponseEventEnum.answer,
+        data: expect.objectContaining({
+          choices: [
+            expect.objectContaining({
+              delta: expect.objectContaining({
+                reasoning_content: 'reasoning'
+              })
+            })
+          ]
+        })
+      })
+    );
+  });
+
   it('respects disabled stream channels and slices tool response preview when requested', () => {
     const workflowStreamResponse = vi.fn();
     const disabled = createAgentLoopCoreEventStream({
