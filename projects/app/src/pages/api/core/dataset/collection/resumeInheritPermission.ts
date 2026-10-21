@@ -8,6 +8,8 @@ import {
   type ResumeCollectionInheritPermissionBody
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBody>) {
   const { collectionId } = parseApiInput({
@@ -15,7 +17,7 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     bodySchema: ResumeCollectionInheritPermissionBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     collectionId,
     req,
     authToken: true,
@@ -32,6 +34,19 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
       teamId: String(collection.teamId)
     }
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId: String(tmbId),
+      teamId: String(teamId),
+      event: AuditEventEnum.RESUME_COLLECTION_INHERIT_PERMISSION,
+      params: {
+        collectionName: collection.name,
+        datasetName: collection.dataset?.name || '',
+        datasetType: getI18nDatasetType(collection.dataset?.type || '')
+      }
+    });
+  })();
 }
 
 export default NextAPI(handler);

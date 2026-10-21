@@ -406,6 +406,31 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:create_dataset_folder'),
     params: {} as { name?: string; folderName: string }
   },
+  [AuditEventEnum.ENABLE_COLLECTION_PERMISSION]: {
+    content: i18nT('account_team:log_enable_collection_permission'),
+    typeLabel: i18nT('account_team:enable_collection_permission'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      datasetType: string;
+      collectionCount: number;
+    }
+  },
+  [AuditEventEnum.DISABLE_COLLECTION_PERMISSION]: {
+    content: i18nT('account_team:log_disable_collection_permission'),
+    typeLabel: i18nT('account_team:disable_collection_permission'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      datasetType: string;
+      collectionCount: number;
+    }
+  },
+  [AuditEventEnum.RESUME_DATASET_INHERIT_PERMISSION]: {
+    content: i18nT('account_team:log_resume_dataset_inherit_permission'),
+    typeLabel: i18nT('account_team:resume_dataset_inherit_permission'),
+    params: {} as { name?: string; datasetName: string; datasetType: string }
+  },
   //Collection
   [AuditEventEnum.CREATE_COLLECTION]: {
     content: i18nT('account_team:log_create_collection'),
@@ -427,6 +452,17 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  [AuditEventEnum.MOVE_COLLECTION]: {
+    content: i18nT('account_team:log_move_collection'),
+    typeLabel: i18nT('account_team:move_collection'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      datasetName: string;
+      datasetType: string;
+      targetFolderName: string;
+    }
+  },
   [AuditEventEnum.DELETE_COLLECTION]: {
     content: i18nT('account_team:log_delete_collection'),
     typeLabel: i18nT('account_team:delete_collection'),
@@ -440,6 +476,54 @@ export const auditLogMap = {
   [AuditEventEnum.RETRAIN_COLLECTION]: {
     content: i18nT('account_team:log_retrain_collection'),
     typeLabel: i18nT('account_team:retrain_collection'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      datasetName: string;
+      datasetType: string;
+    }
+  },
+  [AuditEventEnum.UPDATE_COLLECTION_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_collection_collaborator'),
+    typeLabel: i18nT('account_team:update_collection_collaborator'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      datasetName: string;
+      datasetType: string;
+      tmbList: string[];
+      groupList: string[];
+      orgList: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_COLLECTION_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_collection_collaborator'),
+    typeLabel: i18nT('account_team:delete_collection_collaborator'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      datasetName: string;
+      datasetType: string;
+      itemName: string;
+      itemValueName: string;
+    }
+  },
+  [AuditEventEnum.TRANSFER_COLLECTION_OWNERSHIP]: {
+    content: i18nT('account_team:log_transfer_collection_ownership'),
+    typeLabel: i18nT('account_team:transfer_collection_ownership'),
+    params: {} as {
+      name?: string;
+      collectionName: string;
+      datasetName: string;
+      datasetType: string;
+      oldOwnerName: string;
+      newOwnerName: string;
+    }
+  },
+  [AuditEventEnum.RESUME_COLLECTION_INHERIT_PERMISSION]: {
+    content: i18nT('account_team:log_resume_collection_inherit_permission'),
+    typeLabel: i18nT('account_team:resume_collection_inherit_permission'),
     params: {} as {
       name?: string;
       collectionName: string;

@@ -16,13 +16,15 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
   const { datasetId } = parseApiInput({
     req,
     bodySchema: ResumeDatasetInheritPermissionBodySchema
   }).body;
-  const { dataset, teamId } = await authDataset({
+  const { dataset, teamId, tmbId } = await authDataset({
     datasetId,
     req,
     authToken: true,
@@ -70,5 +72,17 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
       }
     );
   }
+
+  (async () => {
+    addAuditLog({
+      tmbId: String(tmbId),
+      teamId: String(teamId),
+      event: AuditEventEnum.RESUME_DATASET_INHERIT_PERMISSION,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type)
+      }
+    });
+  })();
 }
 export default NextAPI(handler);

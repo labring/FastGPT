@@ -9,7 +9,9 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 describe('resume dataset inherit permission api', () => {
   it('restores inheritance for a root dataset and persists the flag', async () => {
@@ -22,12 +24,19 @@ describe('resume dataset inherit permission api', () => {
       inheritPermission: false
     });
 
+    vi.mocked(addAuditLog).mockClear();
     const res = await Call(handler, {
       auth: users.owner,
       body: { datasetId: String(dataset._id) }
     });
 
     expect(res.code).toBe(200);
+    expect(addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: AuditEventEnum.RESUME_DATASET_INHERIT_PERMISSION,
+        params: expect.objectContaining({ datasetName: 'resume-dataset' })
+      })
+    );
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
       inheritPermission: true
     });

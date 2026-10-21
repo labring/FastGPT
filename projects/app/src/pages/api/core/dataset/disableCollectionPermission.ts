@@ -4,6 +4,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { disableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   DisableCollectionPermissionBodySchema,
   DisableCollectionPermissionResponseSchema,
@@ -26,7 +28,7 @@ async function handler(
     bodySchema: DisableCollectionPermissionBodySchema
   }).body;
 
-  const { teamId } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     datasetId,
@@ -37,6 +39,19 @@ async function handler(
     teamId: String(teamId),
     datasetId: String(datasetId)
   });
+
+  (async () => {
+    addAuditLog({
+      tmbId: String(tmbId),
+      teamId: String(teamId),
+      event: AuditEventEnum.DISABLE_COLLECTION_PERMISSION,
+      params: {
+        datasetName: dataset.name,
+        datasetType: getI18nDatasetType(dataset.type),
+        collectionCount
+      }
+    });
+  })();
 
   return DisableCollectionPermissionResponseSchema.parse({ collectionCount });
 }

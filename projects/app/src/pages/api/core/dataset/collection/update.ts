@@ -178,16 +178,34 @@ async function handler(req: ApiRequestProps) {
   });
 
   (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_COLLECTION,
-      params: {
-        collectionName: collection.name,
-        datasetName: collection.dataset?.name || '',
-        datasetType: getI18nDatasetType(collection.dataset?.type || '')
-      }
-    });
+    const auditBase = {
+      collectionName: collection.name,
+      datasetName: collection.dataset?.name || '',
+      datasetType: getI18nDatasetType(collection.dataset?.type || '')
+    };
+
+    if (isMove) {
+      // Move 会改变继承来源，单独记录目标目录，避免与普通字段更新混为一条日志。
+      const targetFolder = targetParentId
+        ? await MongoDatasetCollection.findById(targetParentId, 'name').lean()
+        : null;
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.MOVE_COLLECTION,
+        params: {
+          ...auditBase,
+          targetFolderName: targetFolder?.name || 'root'
+        }
+      });
+    } else {
+      addAuditLog({
+        tmbId,
+        teamId,
+        event: AuditEventEnum.UPDATE_COLLECTION,
+        params: auditBase
+      });
+    }
   })();
 }
 

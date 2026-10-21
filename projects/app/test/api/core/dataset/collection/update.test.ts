@@ -14,6 +14,8 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const defaultSessionRun = vi.mocked(mongoSessionRun).getMockImplementation()!;
 afterEach(() => vi.mocked(mongoSessionRun).mockImplementation(defaultSessionRun));
@@ -142,6 +144,43 @@ describe('update collection', () => {
     });
     expect(result.code).not.toBe(200);
     expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
+  });
+  it('移动与普通更新分别记录 MOVE_COLLECTION / UPDATE_COLLECTION 审计', async () => {
+    const { actor, file, source, target } = await fixture();
+
+    vi.mocked(addAuditLog).mockClear();
+    const moved = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(moved.code).toBe(200);
+    // 审计在后台异步写入，需等待其完成。
+    await vi.waitFor(() =>
+      expect(addAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AuditEventEnum.MOVE_COLLECTION,
+          params: expect.objectContaining({
+            collectionName: 'file',
+            targetFolderName: 'target'
+          })
+        })
+      )
+    );
+
+    vi.mocked(addAuditLog).mockClear();
+    const updated = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(source._id), name: 'renamed-folder' }
+    });
+    expect(updated.code).toBe(200);
+    await vi.waitFor(() =>
+      expect(addAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: AuditEventEnum.UPDATE_COLLECTION,
+          params: expect.objectContaining({ collectionName: 'source' })
+        })
+      )
+    );
   });
   it('parentId 为空串移回根目录时校验团队创建权限并落库为 null', async () => {
     const { actor, owner, file, source } = await fixture();
