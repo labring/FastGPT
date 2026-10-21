@@ -180,6 +180,34 @@ describe('GET /api/core/dataset/paths', () => {
     );
     expect(denied.error).toBe(DatasetErrEnum.unAuthDataset);
   });
+
+  it('returns the containing folder path for a non-folder Dataset source in parent mode', async () => {
+    const { owner } = await getFakeUsers(1);
+    const folder = await MongoDataset.create({
+      name: 'Datasets folder',
+      type: DatasetTypeEnum.folder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const dataset = await MongoDataset.create({
+      name: 'Dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      parentId: folder._id
+    });
+
+    const response = await Call<
+      Record<string, never>,
+      GetDatasetPathsQuery,
+      GetDatasetPathsResponse
+    >(handler, { auth: owner, query: { sourceId: String(dataset._id), type: 'parent' } });
+
+    expect(response.code).toBe(200);
+    expect(response.data).toEqual([
+      { parentId: String(folder._id), parentName: 'Datasets folder' }
+    ]);
+  });
 });
 
 describe('ParentIdSchema', () => {

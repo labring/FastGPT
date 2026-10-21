@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { getVisibleChildren } from '@fastgpt/global/common/parentFolder/visibleChildren';
 import { AppTypeEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
@@ -55,6 +56,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     req,
     bodySchema: ListAppV2BodySchema
   }).body;
+  const currentFolderId = normalizeParentId(parentId);
 
   const {
     tmbId,
@@ -95,7 +97,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
 
   const folderScope =
     parentId || !teamPer.isOwner || searchKey
-      ? await getAppFolderListScope({ teamId, currentFolderId: parentId ?? null })
+      ? await getAppFolderListScope({ teamId, currentFolderId })
       : { folders: [], folderIds: [] };
   if (parentId) {
     const currentFolder = folderScope.folders.find(({ _id }) => _id === parentId);
@@ -185,7 +187,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
         )
       : [AppTypeEnum.folder, AppTypeEnum.toolFolder];
     const visibleChildren = getVisibleChildren({
-      currentFolderId: parentId ?? null,
+      currentFolderId,
       readableResources: readableResources.map((app) => ({
         _id: String(app._id),
         parentId: app.parentId ? String(app.parentId) : null,

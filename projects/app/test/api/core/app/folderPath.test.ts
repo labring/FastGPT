@@ -105,4 +105,31 @@ describe('GET /api/core/app/folder/path', () => {
     >(handler, { auth: members[0], query: { sourceId: String(hiddenFolder._id) } });
     expect(denied.error).toBe(AppErrEnum.unAuthApp);
   });
+
+  it('returns the containing folder path for a non-folder App source in parent mode', async () => {
+    const { owner } = await getFakeUsers(1);
+    const folder = await MongoApp.create({
+      name: 'Apps folder',
+      type: AppTypeEnum.folder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const app = await MongoApp.create({
+      name: 'Application',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      parentId: folder._id
+    });
+
+    const response = await Call<
+      Record<string, never>,
+      GetAppFolderPathQueryType,
+      GetAppFolderPathResponseType
+    >(handler, { auth: owner, query: { sourceId: String(app._id), type: 'parent' } });
+
+    expect(response.error).toBeUndefined();
+    expect(response.code).toBe(200);
+    expect(response.data).toEqual([{ parentId: String(folder._id), parentName: 'Apps folder' }]);
+  });
 });

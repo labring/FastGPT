@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -63,6 +64,8 @@ async function handler(
     req,
     bodySchema: GetDatasetListV2BodySchema
   }).body;
+  const currentFolderId = normalizeParentId(parentId);
+
   const {
     tmbId,
     teamId,
@@ -101,7 +104,7 @@ async function handler(
 
   const folderScope =
     parentId || !teamPer.isOwner || searchKey
-      ? await getDatasetFolderListScope({ teamId, currentFolderId: parentId ?? null })
+      ? await getDatasetFolderListScope({ teamId, currentFolderId })
       : { folders: [], folderIds: [] };
   if (parentId) {
     const currentFolder = folderScope.folders.find(({ _id }) => _id === parentId);
@@ -179,7 +182,7 @@ async function handler(
       ? (Array.isArray(type) ? type : [type]).filter((item) => item === DatasetTypeEnum.folder)
       : [DatasetTypeEnum.folder];
     const visibleChildren = getVisibleChildren({
-      currentFolderId: parentId ?? null,
+      currentFolderId,
       readableResources: readableResources.map((dataset) => ({
         _id: String(dataset._id),
         parentId: dataset.parentId ? String(dataset.parentId) : null,

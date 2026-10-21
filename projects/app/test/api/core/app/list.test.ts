@@ -425,6 +425,16 @@ describe('POST /api/core/app/list', () => {
       rootItems.find(({ _id }) => String(_id) === String(readableEmptyFolder._id))?.folderAccessMode
     ).toBe('read');
 
+    const emptyRootResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { parentId: '' } });
+    expect(emptyRootResponse.data.total).toBe(2);
+    expect(emptyRootResponse.data.list.map(({ _id }) => String(_id))).toContain(
+      String(rootFolder._id)
+    );
+
     const nestedResponse = await Call<
       ListAppV2BodyType,
       Record<string, never>,

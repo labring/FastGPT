@@ -537,6 +537,14 @@ describe('POST /api/core/dataset/list', () => {
       rootItems.find(({ _id }) => String(_id) === String(readableEmptyFolder._id))?.folderAccessMode
     ).toBe('read');
 
+    const emptyRootPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, { auth: members[0], body: { parentId: '' } });
+    expect(emptyRootPage.data.total).toBe(2);
+    expect(emptyRootPage.data.list.map(({ _id }) => String(_id))).toContain(String(rootFolder._id));
+
     const childPage = await Call<
       GetDatasetListV2Body,
       Record<string, never>,

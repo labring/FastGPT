@@ -9,6 +9,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -37,6 +38,40 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
     authToken: true,
     per: ReadPermissionVal
   });
+  if (type === 'parent') {
+    // 编辑页传入的是资源 ID；先校验资源读取权限，再根据它的 parentId 回溯目录路径。
+    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    const sourceApp = await MongoApp.findOne({ _id: appId, teamId, deleteTime: null })
+      .select('parentId')
+      .lean();
+    const parentFolderId = sourceApp?.parentId ? String(sourceApp.parentId) : null;
+    if (!parentFolderId) return GetAppFolderPathResponseSchema.parse([]);
+
+    const parentFolder = await MongoApp.findOne({
+      _id: parentFolderId,
+      teamId,
+      deleteTime: null,
+      type: { $in: [AppTypeEnum.folder, AppTypeEnum.toolFolder] }
+    })
+      .select('type')
+      .lean();
+    if (!parentFolder) return GetAppFolderPathResponseSchema.parse([]);
+
+    const parentPaths = await getFolderParentPathItems({
+      folderId: parentFolderId,
+      findFolder: (id) =>
+        MongoApp.findOne({
+          _id: id,
+          teamId,
+          deleteTime: null,
+          type: parentFolder.type
+        })
+          .select('_id name parentId')
+          .lean()
+    });
+    return GetAppFolderPathResponseSchema.parse(parentPaths);
+  }
+
   const folderScope = await getAppFolderListScope({ teamId, currentFolderId: appId });
   const folder = folderScope.folders.find(({ _id }) => _id === appId);
   if (!folder) {

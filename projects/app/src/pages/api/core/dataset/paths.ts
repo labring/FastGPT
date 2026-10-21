@@ -40,6 +40,40 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetPathsResponse> {
     authToken: true,
     per: ReadPermissionVal
   });
+  if (type === 'parent') {
+    // 详情页传入的是 Dataset ID；确认资源可读后，沿它的 parentId 返回目录路径。
+    await authDataset({ req, authToken: true, datasetId, per: ReadPermissionVal });
+    const sourceDataset = await MongoDataset.findOne({ _id: datasetId, teamId, deleteTime: null })
+      .select('parentId')
+      .lean();
+    const parentFolderId = sourceDataset?.parentId ? String(sourceDataset.parentId) : null;
+    if (!parentFolderId) return GetDatasetPathsResponseSchema.parse([]);
+
+    const parentFolder = await MongoDataset.findOne({
+      _id: parentFolderId,
+      teamId,
+      deleteTime: null,
+      type: DatasetTypeEnum.folder
+    })
+      .select('_id')
+      .lean();
+    if (!parentFolder) return GetDatasetPathsResponseSchema.parse([]);
+
+    const parentPaths = await getFolderParentPathItems({
+      folderId: parentFolderId,
+      findFolder: (id) =>
+        MongoDataset.findOne({
+          _id: id,
+          teamId,
+          deleteTime: null,
+          type: DatasetTypeEnum.folder
+        })
+          .select('_id name parentId')
+          .lean()
+    });
+    return GetDatasetPathsResponseSchema.parse(parentPaths);
+  }
+
   const folderScope = await getDatasetFolderListScope({ teamId, currentFolderId: datasetId });
   const folder = folderScope.folders.find(({ _id }) => _id === datasetId);
   if (!folder) {
