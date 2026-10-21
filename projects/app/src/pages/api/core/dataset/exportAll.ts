@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import {
@@ -40,7 +41,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { datasetId } = parseApiInput({ req, querySchema: ExportDatasetQuerySchema }).query;
 
   // 凭证校验
-  const { teamId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     datasetId,
@@ -57,10 +58,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     datasetId,
     fields: '_id'
   });
+  const datasetIds = datasets.map((d) => String(d._id));
+
+  // 文件级权限：只导出当前成员可读的 Collection；undefined 表示无需过滤（团队 owner /
+  // 全部 dataset 未启用 collection 权限）。folder 导出时按后代 dataset 各自的开关解析。
+  const readableCollectionIds = await resolveReadableCollectionIds({
+    teamId: String(teamId),
+    datasetIds,
+    tmbId: String(tmbId)
+  });
 
   const match = {
     teamId: new Types.ObjectId(teamId),
-    datasetId: { $in: datasets.map((d) => new Types.ObjectId(d._id)) }
+    datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+    ...(readableCollectionIds
+      ? { collectionId: { $in: readableCollectionIds.map((id) => new Types.ObjectId(id)) } }
+      : {})
   };
 
   const [exportSchema] = await MongoDatasetData.aggregate<ExportSchemaType>(
