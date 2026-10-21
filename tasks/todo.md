@@ -267,11 +267,53 @@
 
 **规模：**小，2 个文件
 
+## 任务 11：Agent Skill 目录导航和子树搜索
+
+**说明：**Skill 列表沿用现有 `parentId` 树，不新增 `ancestorIds` 字段或迁移。用户只拥有后代 Skill 读取权限时，可以从上层目录逐级导航；搜索限定在当前目录及后代目录，并且只返回 ACL 可读的 Skill。
+
+**验收标准：**
+- [x] 非所有者列表合并真实可读资源与通往可读后代的首层 folder，并在 folder 上返回 `read` / `navigate`。
+- [x] 面包屑和列表允许进入仅导航目录，Skill 详情仍使用原有 ACL；仅导航卡片不显示说明、创建者、权限或时间信息。
+- [x] 有目录时的搜索限定当前目录子树，不返回同名的其他分支资源；搜索结果不合成导航 folder。
+- [x] Skill 页面在仅导航目录隐藏创建、导入等操作入口及创建卡片。
+
+**验证：**
+- [x] `projects/app/test/api/core/ai/skill/list.test.ts` 通过，覆盖可导航 folder、面包屑和跨分支同名搜索。
+- [x] `pnpm --filter @fastgpt/app typecheck` 通过。
+- [ ] 浏览器手工验收尚未执行。
+
+**依赖：**任务 9、任务 10
+
+**预计涉及文件：**
+- `packages/service/core/ai/skill/manage/{folder,list}.ts`
+- `projects/app/src/pages/api/core/ai/skill/{listV2.ts,folder/path.ts}`
+- `projects/app/src/pageComponents/dashboard/skill/{context.tsx,List.tsx}`
+- `projects/app/src/pages/dashboard/skill/index.tsx`
+- `packages/global/openapi/core/ai/skill/api.ts`
+- `projects/app/test/api/core/ai/skill/list.test.ts`
+
+**规模：**中
+
+## 任务 12：兼容 Workflow Core/CLI 测试 workspace
+
+**说明：**当前 CI 的 `test-workflow-core` 和 `test-workflow-cli` 会传入新的 `FASTGPT_TEST_SCOPE`；测试 checkout 仍可能是尚未包含这些 workspace 的 PR 分支。已知 scope 在 workspace 尚不存在时应当安全跳过，而不能被解析器拒绝或传给 Turborepo 导致失败。
+
+**验收标准：**
+- [x] `workflow-core` 和 `workflow-cli` 是合法测试 scope；workspace 存在时转成对应 Turborepo filter，不存在时不执行不存在的 package。
+- [x] GitHub 与 Forgejo workflow 文件保持未改动；这是测试 runner 的兼容处理。
+
+**验证：**
+- [x] `test/testRunner.test.ts` 覆盖新 scope。
+- [x] `FASTGPT_TEST_SCOPE=workflow-core pnpm test` 和 `FASTGPT_TEST_SCOPE=workflow-cli pnpm test` 均通过。
+- [x] 原 CI 上 `report-coverage` 的失败来自 `Check Test Results` 汇总两个 test scope 失败；覆盖率评论权限错误只是 warning。
+
+**规模：**小
+
 ## 检查点：完成
 
 - [x] 任务 1–9 已实现并通过对应局部测试；任务 10 的权限回退和类型检查已完成
-- [x] App 与 Dataset V2 的列表、搜索、分页、browse 授权与面包屑满足确认后的契约
+- [x] App、Dataset 与 Skill 的 V2 列表、搜索、browse 授权与面包屑已实现
 - [x] 仅导航能力不会授予详情读取权限；App 和 Dataset 详情拒绝场景已有 API 覆盖
-- [x] Collection、Agent Skill 和 V1 列表接口未修改
+- [x] Collection 和 V1 列表接口未修改
 - [x] 实现前的范围与行为契约已确认
 - [ ] 浏览器手工验收尚未执行：逐层打开仅导航目录并检查菜单、创建操作及详情拒绝

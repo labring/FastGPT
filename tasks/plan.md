@@ -2,7 +2,7 @@
 
 ## 概述
 
-为 App 和 Dataset 的目录列表增加只存在 folder 上的 `ancestorIds` 路径，使用户能逐层进入自己真正可读的资源，同时不把这条路径当成 ACL 的读权限。`ancestorIds` 只保存在 folder 文档上，顺序为从根 folder 到直接父 folder，不包含 folder 自身。非 folder 资源继续只使用现有的 `parentId`。本计划只覆盖 App 的 `folder`、`toolFolder` 和 Dataset 的 `folder`。Collection 与 Agent Skill 保持不变。
+为 App 和 Dataset 的目录列表增加只存在 folder 上的 `ancestorIds` 路径，使用户能逐层进入自己真正可读的资源，同时不把这条路径当成 ACL 的读权限。`ancestorIds` 只保存在 folder 文档上，顺序为从根 folder 到直接父 folder，不包含 folder 自身。非 folder 资源继续只使用现有的 `parentId`。路径存储与迁移覆盖 App 的 `folder`、`toolFolder` 和 Dataset 的 `folder`；Agent Skill 不新增路径字段，沿用 `parentId` 解析目录、导航权限和子树搜索。Collection 行为保持不变。
 
 行为契约见飞书文档《[Folder-only ancestorIds：目录列表与搜索行为设计](https://fael3z0zfze.feishu.cn/docx/CUCCdVcOEoZrXfx0Yi2cvCAsnHc)》。
 
@@ -10,7 +10,7 @@
 
 - 路径元数据不是权限。资源是否可读仍由现有协作者 ACL 判定。folder 本身有真实读权限时，即使没有可读后代，也返回 `folderAccessMode: "read"`。没有读权限的 folder 只有在它是通往可读后代的下一层时，才以 `folderAccessMode: "navigate"` 返回。详情、编辑、删除和移动仍使用现有权限校验。
 - 团队所有者可以看到所有直接子资源，不需要派生仅导航项。所有者的列表和搜索继续由 MongoDB 分页。非所有者的目录列表要先合并直接可读子资源与仅导航 folder，再排序、分页和计算 `total`。
-- 搜索范围是当前 folder 及其后代 folder，不包括祖先和子树之外的同级资源。搜索结果仍只包含通过 ACL 的可读命中，不向搜索页插入仅导航 folder。App V2 搜索目前忽略 `parentId`，需要补上这个范围；Dataset V2 已有该范围，可以把 folder 查找改为使用 `ancestorIds`。
+- 搜索范围是当前 folder 及其后代 folder，不包括祖先和子树之外的同级资源。搜索结果仍只包含通过 ACL 的可读命中，不向搜索页插入仅导航 folder。App V2 搜索目前忽略 `parentId`，需要补上这个范围；Dataset V2 已有该范围，可以把 folder 查找改为使用 `ancestorIds`。Skill 没有 `ancestorIds`，从现有 `parentId` 树确定子树范围。
 - folder 创建或移动时，`ancestorIds` 必须在同一个 Mongo session 中维护。移动叶子资源仍只改 `parentId`。后代 folder 使用现有的 `parentId` 链路遍历查找，不依赖当时的 `ancestorIds`，因此历史数据尚未回填完成时移动仍然正确。
 - 列表读取优先使用 `ancestorIds`，再按 `parentId` 逐层补齐，直到没有新的子 folder。数据健康时一次查询即可完成。路径缺失或过期时，当次请求仍能解析结果，但读路径不回写修复。
 - 历史数据清洗必须幂等，且不阻塞启动。脚本只以 `parentId` 为权威来源，重算 folder 的 `ancestorIds`，并清除非 folder 上的该字段；不修改 `parentId`、权限或业务内容。由于列表有 `parentId` 兜底，清洗失败不阻止服务进入业务就绪。脚本仍必须注册到系统迁移框架。
@@ -63,10 +63,14 @@
 ### 阶段四：浏览界面
 - 任务 9：面包屑授权
 - 任务 10：App 与 Dataset 列表页容忍仅导航 folder
+- 任务 11：Agent Skill 目录导航和子树搜索
+
+### 阶段五：CI 测试兼容
+- 任务 12：兼容尚未包含 Workflow Core/CLI workspace 的测试分支
 
 ### 检查点：完成
 - `tasks/todo.md` 中的 API 与界面检查通过
-- Collection、Agent Skill 和 V1 列表行为保持不变
+- Collection 和 V1 列表行为保持不变
 
 ## 数据清洗迁移脚本
 

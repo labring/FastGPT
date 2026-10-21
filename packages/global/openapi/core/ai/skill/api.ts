@@ -23,7 +23,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
 import { BoolSchema, IntSchema } from '../../../../common/zod';
-import { ParentIdSchema } from '../../../../common/parentFolder/type';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
 import { PaginationPageSizeSchema } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
@@ -81,6 +81,7 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   createTime: z.string(),
   updateTime: z.string(),
   permission: SkillPermissionSchema,
+  folderAccessMode: FolderAccessModeSchema.optional(),
   sourceMember: z
     .object({
       name: z.string(),
@@ -403,7 +404,8 @@ export type GetSkillFolderPathQuery = z.infer<typeof GetSkillFolderPathQuerySche
 export const GetSkillFolderPathResponseSchema = z.array(
   z.object({
     parentId: z.string().nullable(),
-    parentName: z.string()
+    parentName: z.string(),
+    folderAccessMode: FolderAccessModeSchema.optional()
   })
 );
 export type GetSkillFolderPathResponse = z.infer<typeof GetSkillFolderPathResponseSchema>;

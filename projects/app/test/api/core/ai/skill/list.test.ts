@@ -2,11 +2,17 @@ import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catal
 
 import handler from '@/pages/api/core/ai/skill/list';
 import handlerV2 from '@/pages/api/core/ai/skill/listV2';
+import detailHandler from '@/pages/api/core/ai/skill/detail';
+import folderPathHandler from '@/pages/api/core/ai/skill/folder/path';
 import { onCreateApp } from '@/pages/api/core/app/create';
 import publishHandler from '@/pages/api/core/app/version/publish';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
+  GetSkillDetailQuery,
+  GetSkillFolderPathQuery,
+  GetSkillFolderPathResponse,
   ListSkillsQuery,
   ListSkillsResponse,
   ListSkillsV2Query
@@ -688,5 +694,169 @@ describe('POST /api/core/ai/skill/list', () => {
       publishedRes.data.list.find((item) => String(item._id) === skillId)?.appCount;
     expect(getPublishedCount(String(publishedSkill._id))).toBe(0);
     expect(getPublishedCount(String(draftSkill._id))).toBe(1);
+  });
+
+  it('lists navigable folders and limits a search to the current folder subtree', async () => {
+    const owner = await getUser(`agent-skill-navigation-owner-${getNanoid(6)}`);
+    const member = await getUser(`agent-skill-navigation-member-${getNanoid(6)}`, owner.teamId);
+    const rootFolder = await MongoAgentSkills.create({
+      name: 'Accessible tree',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const childFolder = await MongoAgentSkills.create({
+      name: 'Nested folder',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      parentId: rootFolder._id
+    });
+    const otherFolder = await MongoAgentSkills.create({
+      name: 'Other tree',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const hiddenFolder = await MongoAgentSkills.create({
+      name: 'Hidden empty',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const [nestedSkill, unrelatedSkill] = await MongoAgentSkills.create([
+      {
+        name: 'Shared needle',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        parentId: childFolder._id
+      },
+      {
+        name: 'Shared needle elsewhere',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        parentId: otherFolder._id
+      }
+    ]);
+    await MongoResourcePermission.create(
+      [nestedSkill, unrelatedSkill].map((skill) => ({
+        resourceType: PerResourceTypeEnum.agentSkill,
+        teamId: owner.teamId,
+        resourceId: skill._id,
+        tmbId: member.tmbId,
+        permission: ReadPermissionVal
+      }))
+    );
+
+    const rootList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      { auth: member, body: { source: 'mine', parentId: null, withAppCount: false } }
+    );
+    expect(rootList.code).toBe(200);
+    expect(
+      rootList.data.list
+        .filter((item) => item.folderAccessMode === 'navigate')
+        .map((item) => item.name)
+    ).toEqual(expect.arrayContaining(['Accessible tree', 'Other tree']));
+    expect(rootList.data.list.map((item) => item.name)).not.toContain('Hidden empty');
+
+    const emptyRootList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      { auth: member, body: { source: 'mine', parentId: '', withAppCount: false } }
+    );
+    expect(emptyRootList.code).toBe(200);
+    expect(emptyRootList.data.list.map((item) => String(item._id))).toEqual(
+      rootList.data.list.map((item) => String(item._id))
+    );
+
+    const legacyRootList = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(
+      handler,
+      { auth: member, body: { source: 'mine', parentId: null, withAppCount: false } }
+    );
+    expect(legacyRootList.code).toBe(200);
+    expect(legacyRootList.data.list).toEqual([]);
+
+    const skillsOnlyList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: member,
+        body: {
+          source: 'mine',
+          parentId: null,
+          type: AgentSkillTypeEnum.skill,
+          withAppCount: false
+        }
+      }
+    );
+    expect(skillsOnlyList.data.list.every((item) => item.folderAccessMode === undefined)).toBe(
+      true
+    );
+
+    const nestedList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: member,
+        body: {
+          source: 'mine',
+          parentId: String(rootFolder._id),
+          searchKey: 'Shared needle',
+          withAppCount: false
+        }
+      }
+    );
+    expect(nestedList.code).toBe(200);
+    expect(nestedList.data.list.map((item) => String(item._id))).toEqual([String(nestedSkill._id)]);
+
+    const folderPath = await Call<
+      Record<string, never>,
+      GetSkillFolderPathQuery,
+      GetSkillFolderPathResponse
+    >(folderPathHandler, {
+      auth: member,
+      query: { sourceId: String(childFolder._id), type: 'current' }
+    });
+    expect(folderPath.code).toBe(200);
+    expect(folderPath.data.at(-1)).toEqual({
+      parentId: String(childFolder._id),
+      parentName: 'Nested folder',
+      folderAccessMode: 'navigate'
+    });
+
+    const deniedList = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: member,
+        body: { source: 'mine', parentId: String(hiddenFolder._id), withAppCount: false }
+      }
+    );
+    expect(deniedList.error).toBe(SkillErrEnum.unAuthSkill);
+
+    const deniedPath = await Call<
+      Record<string, never>,
+      GetSkillFolderPathQuery,
+      GetSkillFolderPathResponse
+    >(folderPathHandler, {
+      auth: member,
+      query: { sourceId: String(hiddenFolder._id), type: 'current' }
+    });
+    expect(deniedPath.error).toBe(SkillErrEnum.unAuthSkill);
+
+    const deniedDetail = await Call<
+      Record<string, never>,
+      GetSkillDetailQuery,
+      Record<string, never>
+    >(detailHandler, {
+      auth: member,
+      query: { skillId: String(childFolder._id) }
+    });
+    expect(deniedDetail.error).toBe(SkillErrEnum.unAuthSkill);
   });
 });

@@ -82,6 +82,7 @@ const List = ({
     columnCount,
     pageSize,
     parentId,
+    paths,
     isBatchMode,
     selectedSkillIds,
     onToggleSelectSkill,
@@ -98,6 +99,7 @@ const List = ({
     columnCount: v.columnCount,
     pageSize: v.pageSize,
     parentId: v.parentId,
+    paths: v.paths,
     isBatchMode: v.isBatchMode,
     selectedSkillIds: v.selectedSkillIds,
     onToggleSelectSkill: v.onToggleSelectSkill,
@@ -108,6 +110,8 @@ const List = ({
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   const hasActiveFilter = hasResourceListActiveFilter({
     searchKey,
     creatorMode: listFilters.creator.mode,
@@ -235,6 +239,7 @@ const List = ({
       updateTime: skill.updateTime
     });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
+    const isNavigableItem = skill.folderAccessMode === 'navigate';
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
     const isSkillReady =
       isFolder ||
@@ -415,75 +420,79 @@ const List = ({
           )}
         </Grid>
 
-        <Box
-          flex={'1 0 56px'}
-          mt={3}
-          textAlign={'justify'}
-          wordBreak={'break-all'}
-          fontSize={'xs'}
-          color={'myGray.500'}
-        >
-          <MyTooltip label={skill.description} showOnlyWhenOverflow>
-            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-              {skill.description}
-            </Box>
-          </MyTooltip>
-        </Box>
+        {!isNavigableItem && (
+          <Box
+            flex={'1 0 56px'}
+            mt={3}
+            textAlign={'justify'}
+            wordBreak={'break-all'}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            <MyTooltip label={skill.description} showOnlyWhenOverflow>
+              <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+                {skill.description}
+              </Box>
+            </MyTooltip>
+          </Box>
+        )
 
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-          <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
-            <UserBox
-              sourceMember={skill.sourceMember}
-              fontSize="xs"
-              avatarSize="1rem"
-              spacing={0.5}
-              minW={0}
-            />
-            <PermissionIconText
-              flexShrink={0}
-              private={skill.private}
-              color={'myGray.500'}
-              iconColor={'myGray.400'}
-            />
-            {!isFolder && isSkillReady && (
-              <>
-                {typeof skill.appCount === 'number' && (
-                  <ReferencedAppsPopover
-                    resourceId={skill._id}
-                    resourceType="skill"
-                    count={skill.appCount}
-                    trigger={'hover'}
-                  />
-                )}
-              </>
-            )}
-          </HStack>
-          <HStack>
-            {isPc && (
-              <HStack className="time" spacing={0.5}>
-                <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
-              </HStack>
-            )}
-            {!isBatchMode &&
-              isPersonal &&
-              (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
-                <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
-                  <MyMenu
-                    Button={
-                      <IconButton
-                        size={'xsSquare'}
-                        variant={'transparentBase'}
-                        icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                        aria-label={''}
-                      />
-                    }
-                    menuList={menuList}
-                  />
-                </Box>
+        {!isNavigableItem && (
+          <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+            <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
+              <UserBox
+                sourceMember={skill.sourceMember}
+                fontSize="xs"
+                avatarSize="1rem"
+                spacing={0.5}
+                minW={0}
+              />
+              <PermissionIconText
+                flexShrink={0}
+                private={skill.private}
+                color={'myGray.500'}
+                iconColor={'myGray.400'}
+              />
+              {!isFolder && isSkillReady && (
+                <>
+                  {typeof skill.appCount === 'number' && (
+                    <ReferencedAppsPopover
+                      resourceId={skill._id}
+                      resourceType="skill"
+                      count={skill.appCount}
+                      trigger={'hover'}
+                    />
+                  )}
+                </>
               )}
+            </HStack>
+            <HStack>
+              {isPc && (
+                <HStack className="time" spacing={0.5}>
+                  <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
+                  <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
+                </HStack>
+              )}
+              {!isBatchMode &&
+                isPersonal &&
+                (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
+                  <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
+                    <MyMenu
+                      Button={
+                        <IconButton
+                          size={'xsSquare'}
+                          variant={'transparentBase'}
+                          icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
+                          aria-label={''}
+                        />
+                      }
+                      menuList={menuList}
+                    />
+                  </Box>
+                )}
+            </HStack>
           </HStack>
-        </HStack>
+        )}
       </ResourceListCard>
     );
   };
@@ -532,6 +541,7 @@ const List = ({
             alignItems={'stretch'}
           >
             {!isBatchMode &&
+              !isNavigableFolder &&
               (onClickCreate ? (
                 <ListCreateCard onClick={onClickCreate} />
               ) : (
