@@ -43,7 +43,6 @@ import DatasetCard from '@/components/core/app/DatasetCard';
 import SkillCard from '@/components/core/app/SkillCard';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
@@ -277,18 +276,119 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
     onOpenDatasetSelect();
   }, [onOpenDatasetParams, onOpenDatasetSelect, selectedDatasets.length]);
+
+  // ---- Skills ----
+  const {
+    isOpen: isOpenSkillSelect,
+    onOpen: onOpenSkillSelect,
+    onClose: onCloseSkillSelect
+  } = useDisclosure();
+  const {
+    isOpen: isOpenRecharge,
+    onOpen: onOpenRecharge,
+    onClose: onCloseRecharge
+  } = useDisclosure();
+  const hasSelectedAgentSkills = Array.isArray(skillsInput?.value) && skillsInput.value.length > 0;
+
+  /** 技能运行依赖虚拟机：系统未配置或套餐不支持时给出提示并中止。 */
+  const checkSkillSandboxAvailable = useCallback(() => {
+    if (!showSandbox) {
+      toast({
+        status: 'warning',
+        title: t('skill:sandbox_skill_system_not_configured_toast')
+      });
+      return false;
+    }
+    if (!enableSandbox) {
+      openConfirm({
+        title: t('skill:sandbox_plan_not_supported_title'),
+        customContent: t('skill:sandbox_skill_plan_not_supported_content'),
+        onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+        confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+        cancelText: t('common:Close'),
+        showCancel: isTeamAdmin
+      })();
+      return false;
+    }
+    return true;
+  }, [enableSandbox, isTeamAdmin, onOpenRecharge, openConfirm, showSandbox, t, toast]);
+
+  const onChangeAgentSandbox = useCallback(
+    (checked: boolean) => {
+      if (!sandboxInput) return;
+      if (checked) {
+        if (!showSandbox) {
+          toast({
+            status: 'warning',
+            title: t('skill:sandbox_system_not_configured_toast')
+          });
+          return;
+        }
+        if (!enableSandbox) {
+          toast({
+            status: 'warning',
+            title: t('app:sandbox_free_not_support')
+          });
+          return;
+        }
+      }
+      if (!checked && enableSandbox && hasSelectedAgentSkills) {
+        toast({
+          status: 'warning',
+          title: t('skill:sandbox_disable_blocked_toast')
+        });
+        return;
+      }
+
+      onChangeNode({
+        nodeId,
+        key: NodeInputKeyEnum.useAgentSandbox,
+        type: 'updateInput',
+        value: {
+          ...sandboxInput,
+          value: checked
+        }
+      });
+    },
+    [
+      enableSandbox,
+      hasSelectedAgentSkills,
+      nodeId,
+      onChangeNode,
+      sandboxInput,
+      showSandbox,
+      t,
+      toast
+    ]
+  );
+
   // Skill manager (for PromptEditor @ integration)
   const {
     selectedTools,
     skillOption,
     selectedSkills,
+    selectedAgentSkills,
     canUploadFile,
     onClickSkill,
     onRemoveSkill,
     onUpdateOrAddTool,
     onDeleteTool,
+    onAddAgentSkill,
+    onRemoveAgentSkill,
     SkillModal
-  } = useAgentSkillManager({ nodeId, inputs, onClickDatasetSearch });
+  } = useAgentSkillManager({
+    nodeId,
+    inputs,
+    onClickDatasetSearch,
+    checkSkillSandboxAvailable,
+    onChangeAgentSandbox
+  });
+
+  const openSkillSelect = useCallback(() => {
+    if (!checkSkillSandboxAvailable()) return;
+    onOpenSkillSelect();
+  }, [checkSkillSandboxAvailable, onOpenSkillSelect]);
+
   const datasetOtherInputs = useMemo(
     () =>
       datasetInputs.filter(
@@ -359,99 +459,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [promptInput?.value, onPromptChange]
   );
 
-  // ---- Skills ----
-  const selectedAgentSkills: SelectedAgentSkillItemType[] = useMemo(
-    () => (Array.isArray(skillsInput?.value) ? skillsInput!.value : []),
-    [skillsInput]
-  );
-  const {
-    isOpen: isOpenSkillSelect,
-    onOpen: onOpenSkillSelect,
-    onClose: onCloseSkillSelect
-  } = useDisclosure();
-  const {
-    isOpen: isOpenRecharge,
-    onOpen: onOpenRecharge,
-    onClose: onCloseRecharge
-  } = useDisclosure();
-  const openSkillSelect = useCallback(() => {
-    if (!showSandbox) {
-      toast({
-        status: 'warning',
-        title: t('skill:sandbox_skill_system_not_configured_toast')
-      });
-      return;
-    }
-    if (!enableSandbox) {
-      openConfirm({
-        title: t('skill:sandbox_plan_not_supported_title'),
-        customContent: t('skill:sandbox_skill_plan_not_supported_content'),
-        onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
-        confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
-        cancelText: t('common:Close'),
-        showCancel: isTeamAdmin
-      })();
-      return;
-    }
-    onOpenSkillSelect();
-  }, [
-    enableSandbox,
-    onOpenSkillSelect,
-    showSandbox,
-    t,
-    toast,
-    isTeamAdmin,
-    onOpenRecharge,
-    openConfirm
-  ]);
-  const onChangeAgentSandbox = useCallback(
-    (checked: boolean) => {
-      if (!sandboxInput) return;
-      if (checked) {
-        if (!showSandbox) {
-          toast({
-            status: 'warning',
-            title: t('skill:sandbox_system_not_configured_toast')
-          });
-          return;
-        }
-        if (!enableSandbox) {
-          toast({
-            status: 'warning',
-            title: t('app:sandbox_free_not_support')
-          });
-          return;
-        }
-      }
-      if (!checked && enableSandbox && selectedAgentSkills.length > 0) {
-        toast({
-          status: 'warning',
-          title: t('skill:sandbox_disable_blocked_toast')
-        });
-        return;
-      }
-
-      onChangeNode({
-        nodeId,
-        key: NodeInputKeyEnum.useAgentSandbox,
-        type: 'updateInput',
-        value: {
-          ...sandboxInput,
-          value: checked
-        }
-      });
-    },
-    [
-      enableSandbox,
-      nodeId,
-      onChangeNode,
-      sandboxInput,
-      selectedAgentSkills.length,
-      showSandbox,
-      t,
-      toast
-    ]
-  );
   // ---- Tools ----
   const {
     isOpen: isOpenToolSelect,
@@ -576,69 +583,15 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       px: 2,
                       boxShadow: 'sm'
                     }}
-                    onDelete={() => {
-                      if (!skillsInput) return;
-                      onChangeNode({
-                        nodeId,
-                        key: NodeInputKeyEnum.skills,
-                        type: 'updateInput',
-                        value: {
-                          ...skillsInput,
-                          value: selectedAgentSkills.filter((s) => s.skillId !== item.skillId)
-                        }
-                      });
-                    }}
+                    onDelete={() => onRemoveAgentSkill(item.skillId)}
                   />
                 ))}
               </Grid>
               {isOpenSkillSelect && (
                 <SkillSelectModal
                   selectedSkills={selectedAgentSkills}
-                  onAddSkill={(skill: SelectedAgentSkillItemType) => {
-                    if (!skillsInput) return;
-                    onChangeNode([
-                      {
-                        nodeId,
-                        key: NodeInputKeyEnum.skills,
-                        type: 'updateInput',
-                        value: {
-                          ...skillsInput,
-                          value: [skill, ...selectedAgentSkills]
-                        }
-                      },
-                      ...(sandboxInput
-                        ? [
-                            {
-                              nodeId,
-                              key: NodeInputKeyEnum.useAgentSandbox,
-                              type: 'updateInput' as const,
-                              value: {
-                                ...sandboxInput,
-                                value: true
-                              }
-                            }
-                          ]
-                        : [])
-                    ]);
-                    if (sandboxInput && !sandboxInput.value) {
-                      toast({
-                        status: 'success',
-                        title: t('skill:sandbox_auto_enabled_for_skill')
-                      });
-                    }
-                  }}
-                  onRemoveSkill={(skillId: string) => {
-                    if (!skillsInput) return;
-                    onChangeNode({
-                      nodeId,
-                      key: NodeInputKeyEnum.skills,
-                      type: 'updateInput',
-                      value: {
-                        ...skillsInput,
-                        value: selectedAgentSkills.filter((s) => s.skillId !== skillId)
-                      }
-                    });
-                  }}
+                  onAddSkill={onAddAgentSkill}
+                  onRemoveSkill={onRemoveAgentSkill}
                   onClose={onCloseSkillSelect}
                 />
               )}
