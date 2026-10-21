@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -144,7 +145,12 @@ export const storeNode2FlowNode = ({
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType> => {
   // init some static data
   const nodeTemplate =
-    moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType) ||
+    (storeNode.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    !storeNode.pluginId &&
+    storeNode.toolConfig?.httpToolSet &&
+    !('toolId' in storeNode.toolConfig.httpToolSet)
+      ? HttpToolSetNode
+      : moduleTemplatesFlat.find((template) => template.flowNodeType === storeNode.flowNodeType)) ||
     EmptyNode;
 
   const storedInputs = storeNode.inputs;

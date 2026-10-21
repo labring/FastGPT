@@ -427,6 +427,7 @@
   "tool_input_agent_generated_tip": "執行時由模型填寫，會進入工具呼叫參數。",
   "tool_input_param_tip": "該工具正常運行需要配置相關信息",
   "tool_not_active": "該工具尚未激活",
+  "tool_not_configured": "該工具尚未配置",
   "tool_not_desc": "工具缺少描述～",
   "tool_offset_tips": "該工具已卸載，將中斷應用運行，請立即替換",
   "tool_param_config": "參數配置",

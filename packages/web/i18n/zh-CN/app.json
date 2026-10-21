@@ -427,6 +427,7 @@
   "tool_input_agent_generated_tip": "运行时由模型填写，会进入工具调用参数。",
   "tool_input_param_tip": "该工具正常运行需要配置相关信息",
   "tool_not_active": "该工具尚未激活",
+  "tool_not_configured": "该工具尚未配置",
   "tool_not_desc": "工具缺少描述～",
   "tool_offset_tips": "该工具已卸载，将中断应用运行，请立即替换",
   "tool_param_config": "参数配置",

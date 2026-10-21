@@ -511,12 +511,9 @@ describe('NodeToolSet HTTP configuration', () => {
   it('imports edited OpenAPI into an empty node and saves parsed operations', async () => {
     await renderHttpNode({ toolList: [] });
 
-    expect(
-      Array.from(container.querySelectorAll('button'))
-        .find((button) => button.textContent === 'app:toolset_config')
-        ?.querySelector('[data-button-icon]')
-    ).not.toBeNull();
-    await openConfig();
+    expect(container.textContent).toContain('app:tool_not_configured');
+    expect(container.textContent).not.toContain('app:toolset_config');
+    await click(container, 'app:click_to_config');
     const schemaInput = container.querySelector('textarea');
     if (!schemaInput) throw new Error('Missing OpenAPI editor');
     await setFieldValue(schemaInput, httpApiSchemaStr);

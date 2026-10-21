@@ -157,19 +157,40 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'350px'} maxW={'520px'} selected={selected} {...data}>
       <Container>
-        {localMcpToolSet && (
-          <McpToolSetForm initialConfig={localMcpToolSet} onParse={onParseMcpTools} />
+        {localHttpToolSet && toolList.length === 0 ? (
+          <Flex
+            minH={'120px'}
+            alignItems={'center'}
+            justifyContent={'center'}
+            flexDirection={'column'}
+            gap={3}
+          >
+            <Box color={'myGray.500'} fontSize={'sm'}>
+              {t('app:tool_not_configured')}
+            </Box>
+            <Button size={'sm'} variant={'primary'} onClick={() => setIsConfigOpen(true)}>
+              {t('app:click_to_config')}
+            </Button>
+          </Flex>
+        ) : (
+          <>
+            {localMcpToolSet && (
+              <McpToolSetForm initialConfig={localMcpToolSet} onParse={onParseMcpTools} />
+            )}
+            <ToolSetList
+              toolList={toolList}
+              onSaveDescription={data.pluginId ? onSaveDescription : undefined}
+              onOpenTool={
+                localMcpToolSet || localHttpToolSet
+                  ? (index) => setToolDetailIndex(index)
+                  : undefined
+              }
+              emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : t('app:tools_no_data')}
+              emptyMinH={localMcpToolSet ? '160px' : '120px'}
+              title={title}
+            />
+          </>
         )}
-        <ToolSetList
-          toolList={toolList}
-          onSaveDescription={data.pluginId ? onSaveDescription : undefined}
-          onOpenTool={
-            localMcpToolSet || localHttpToolSet ? (index) => setToolDetailIndex(index) : undefined
-          }
-          emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : t('app:tools_no_data')}
-          emptyMinH={localMcpToolSet ? '160px' : '120px'}
-          title={title}
-        />
       </Container>
       {isConfigOpen && localHttpToolSet && (
         <HttpSchemaConfigModal

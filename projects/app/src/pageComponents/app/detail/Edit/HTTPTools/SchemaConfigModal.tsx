@@ -49,7 +49,6 @@ export type HttpToolsType = {
   avatar: string;
   name: string;
   intro?: string;
-  baseUrl?: string;
   apiSchemaStr?: string;
   customHeaders?: string;
   headerSecret?: StoreSecretValueType;
@@ -97,7 +96,6 @@ const SchemaConfigModal = ({
       avatar: '',
       name: appDetail?.name || '',
       intro: '',
-      baseUrl: currentConfig?.baseUrl || '',
       apiSchemaStr: currentConfig?.apiSchemaStr || '',
       customHeaders:
         currentConfig?.customHeaders ||
@@ -188,9 +186,7 @@ const SchemaConfigModal = ({
 
       const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);
-      const baseUrl = isWorkflowNodeConfig
-        ? data.baseUrl?.trim() || apiData.serverPath
-        : apiData.serverPath;
+      const baseUrl = apiData.serverPath;
 
       if (onSaveConfig) {
         const previousToolByOperation = new Map(
@@ -255,7 +251,7 @@ const SchemaConfigModal = ({
 
       return putUpdateHttpTool({
         appId: appDetail._id,
-        baseUrl: apiData.serverPath,
+        baseUrl,
         toolList,
         apiSchemaStr: data.apiSchemaStr || '',
         headerSecret: nextHeaderSecret,
@@ -285,14 +281,6 @@ const SchemaConfigModal = ({
       w={600}
     >
       <ModalBody px={9}>
-        {onSaveConfig && (
-          <Box mb={4}>
-            <Box mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
-              {t('common:core.dataset.website.Base Url')}
-            </Box>
-            <Input {...register('baseUrl')} placeholder="https://api.example.com" fontSize={'sm'} />
-          </Box>
-        )}
         <Box mt={2}>
           <Box
             color={'myGray.800'}

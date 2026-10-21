@@ -427,6 +427,7 @@
   "tool_input_agent_generated_tip": "Filled by the model at runtime and included in the Tool call parameters.",
   "tool_input_param_tip": "Configure the required information for this Tool to run correctly",
   "tool_not_active": "This tool has not been activated yet",
+  "tool_not_configured": "This tool is not configured",
   "tool_not_desc": "The tool lacks a description ~",
   "tool_offset_tips": "This Tool has been uninstalled and will prevent the App from running. Replace it immediately.",
   "tool_param_config": "Parameter configuration",

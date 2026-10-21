@@ -427,6 +427,7 @@
   "tool_input_agent_generated_tip": "실행 시 모델이 값을 입력하며 도구 호출 파라미터에 포함됩니다.",
   "tool_input_param_tip": "이 도구는 정상적으로 작동하려면 관련 정보 설정이 필요합니다.",
   "tool_not_active": "이 도구는 아직 활성화되지 않았습니다",
+  "tool_not_configured": "이 도구는 아직 설정되지 않았습니다",
   "tool_not_desc": "이 도구에는 설명이 없습니다~",
   "tool_offset_tips": "이 도구는 제거되었으며 앱 실행이 중단될 수 있습니다. 즉시 교체해 주세요.",
   "tool_param_config": "파라미터 설정",
