@@ -236,7 +236,10 @@ describe('dataset training error list test', () => {
       getDatasetTrainingErrorBody,
       EmptyQuery,
       getDatasetTrainingErrorResponse
-    >(handler, { auth: root, body: { datasetId: dataset._id, pageSize: 21, offset: 0 } });
+    >(handler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: PaginationPageSizeLimit + 1, offset: 0 }
+    });
     expect(largerPage.code).toBe(200);
     expect(largerPage.data.total).toBe(21);
     expect(largerPage.data.list).toHaveLength(21);
@@ -267,15 +270,6 @@ describe('dataset training error list test', () => {
       body: {
         datasetId: '507f1f77bcf86cd799439011',
         pageSize: 'not-a-number',
-        offset: 0,
-        itemPageSize: 1
-      }
-    },
-    {
-      name: 'oversized pageSize',
-      body: {
-        datasetId: '507f1f77bcf86cd799439011',
-        pageSize: PaginationPageSizeLimit + 1,
         offset: 0,
         itemPageSize: 1
       }

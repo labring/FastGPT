@@ -230,11 +230,11 @@ describe('exclusive pagination', () => {
       pageSize: 10
     });
     expect(
-      GetDatasetTrainingErrorBodySchema.safeParse({
+      GetDatasetTrainingErrorBodySchema.parse({
         datasetId,
         pageSize: PaginationPageSizeLimit + 1
-      }).success
-    ).toBe(false);
+      }).pageSize
+    ).toBe(PaginationPageSizeLimit);
 
     const { schema: document } = createSchema(GetDatasetTrainingErrorBodySchema, {
       io: 'input',

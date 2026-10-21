@@ -200,7 +200,7 @@ describe('POST /api/core/dataset/list', () => {
       datasetIds: [String(res.data.list[0]._id)]
     });
   });
-  it('always returns owner app counts without a request flag', async () => {
+  it('returns owner app counts when requested', async () => {
     const user = await getUser(`dataset-list-app-count-${getNanoid(6)}`);
     const dataset = await MongoDataset.create({
       name: 'Dataset without references',
@@ -215,7 +215,7 @@ describe('POST /api/core/dataset/list', () => {
       GetDatasetListV2Response
     >(handlerV2, {
       auth: user,
-      body: { type: DatasetTypeEnum.dataset }
+      body: { type: DatasetTypeEnum.dataset, withAppCount: true }
     });
     expect(response.code).toBe(200);
     const countedDataset = response.data.list.find(
@@ -273,7 +273,7 @@ describe('POST /api/core/dataset/list', () => {
       GetDatasetListV2Response
     >(handlerV2, {
       auth: user,
-      body: { parentId: null }
+      body: { parentId: null, withAppCount: true }
     });
     const folder = folderResponse.data.list.find((item) => String(item._id) === String(folderId));
     expect(folder).toBeDefined();
@@ -285,7 +285,7 @@ describe('POST /api/core/dataset/list', () => {
       GetDatasetListV2Response
     >(handlerV2, {
       auth: user,
-      body: { parentId: String(folderId) }
+      body: { parentId: String(folderId), withAppCount: true }
     });
     expect(
       childResponse.data.list.find((item) => String(item._id) === String(datasetId))

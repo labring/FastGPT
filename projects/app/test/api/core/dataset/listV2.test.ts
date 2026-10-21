@@ -1,6 +1,6 @@
 import handler from '@/pages/api/core/dataset/listV2';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   GetDatasetListV2Body,
   GetDatasetListV2Response
@@ -12,6 +12,7 @@ import {
 import { Types } from '@fastgpt/service/common/mongo';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import * as resourceLookup from '@fastgpt/service/core/app/resourceLookup';
 import { getFakeUsers, getUser } from '@test/datas/users';
@@ -74,6 +75,13 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
         parentId: index % 2 ? parentId : null
       }))
     );
+    await MongoDatasetCollection.create({
+      name: 'Selected file',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      datasetId: datasets[1]._id
+    });
     const [deleted] = await MongoDataset.create([
       {
         name: 'Deleted',
@@ -92,7 +100,8 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
         pageNum: 3,
         pageSize: 1,
         offset: 1000,
-        withAppCount: true
+        withAppCount: true,
+        withFileCount: true
       }
     });
 
@@ -108,6 +117,12 @@ describe('POST /api/core/dataset/listV2 - datasetIds', () => {
       appCount: 0,
       sourceMember: { name: expect.any(String) }
     });
+    expect(
+      response.data.list.find((dataset) => String(dataset._id) === String(datasets[1]._id))
+    ).toMatchObject({ fileCount: 1 });
+    expect(
+      response.data.list.find((dataset) => dataset.type === DatasetTypeEnum.folder)
+    ).not.toHaveProperty('fileCount');
   });
 
   it('指定 ID 与团队及读取权限取交集，权限撤销后返回空列表', async () => {

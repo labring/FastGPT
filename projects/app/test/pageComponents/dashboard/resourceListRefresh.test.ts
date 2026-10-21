@@ -182,6 +182,9 @@ describe('resource list ID refresh integration', () => {
       if (idField !== 'appIds') {
         expect(body.withAppCount).toBe(true);
       }
+      if (idField === 'datasetIds') {
+        expect(body.withFileCount).toBe(true);
+      }
 
       await loadPage({ offset: 20, pageSize: 50 }, controller);
       expect(api.mock.lastCall?.[0]).toMatchObject({
@@ -192,6 +195,9 @@ describe('resource list ID refresh integration', () => {
       expect(api.mock.lastCall?.[0]).not.toHaveProperty(idField);
       if (idField !== 'appIds') {
         expect(api.mock.lastCall?.[0].withAppCount).toBe(true);
+      }
+      if (idField === 'datasetIds') {
+        expect(api.mock.lastCall?.[0].withFileCount).toBe(true);
       }
       expect(api.mock.lastCall?.[1]).toBe(controller);
     }
