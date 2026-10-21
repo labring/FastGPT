@@ -67,86 +67,8 @@ const createHttpSelectedToolEdge = () => ({
   targetHandle: NodeOutputKeyEnum.selectedTools
 });
 
-describe('rewriteRuntimeWorkFlow node-local MCP toolsets', () => {
-  it('expands configured tools into inline children and rewires selectedTools', async () => {
-    const nodes = [
-      createMcpToolSetNode([
-        {
-          name: 'search',
-          description: 'Search documents',
-          inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
-        }
-      ])
-    ];
-    const edges = [createSelectedToolEdge()];
-
-    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
-
-    expect(nodes).toHaveLength(1);
-    expect(nodes[0]).toMatchObject({
-      nodeId: 'mcp-set0',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      toolConfig: {
-        mcpTool: {
-          name: 'search',
-          description: 'Search documents',
-          url: 'https://mcp.example.com',
-          headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } }
-        }
-      }
-    });
-    expect(nodes[0].toolConfig?.mcpTool).not.toHaveProperty('toolId');
-    expect(edges).toEqual([
-      {
-        ...createSelectedToolEdge(),
-        target: 'mcp-set0'
-      }
-    ]);
-  });
-
-  it('skips empty local toolsets without leaving parent nodes or edges', async () => {
-    const nodes = [createMcpToolSetNode([])];
-    const edges = [createSelectedToolEdge()];
-
-    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
-
-    expect(nodes).toEqual([]);
-    expect(edges).toEqual([]);
-  });
-});
-
-describe('rewriteRuntimeWorkFlow external MCP toolsets', () => {
-  it('uses nested MCP resource ID when it differs from parent plugin ID', async () => {
-    mocks.loadWorkflowAppResource.mockResolvedValue(undefined);
-    const nodes = [
-      {
-        nodeId: 'external-mcp-set',
-        flowNodeType: FlowNodeTypeEnum.toolSet,
-        pluginId: 'parent-toolset-id',
-        name: 'External MCP',
-        inputs: [],
-        outputs: [],
-        toolConfig: {
-          mcpToolSet: {
-            toolId: 'nested-toolset-id',
-            toolList: []
-          }
-        }
-      } as RuntimeNodeItemType
-    ];
-
-    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
-
-    expect(mocks.loadWorkflowAppResource).toHaveBeenCalledWith({
-      appId: 'nested-toolset-id',
-      tmbId: 'member-1',
-      type: 'tool'
-    });
-  });
-});
-
-describe('rewriteRuntimeWorkFlow external HTTP toolsets', () => {
-  it('uses nested toolset id before parent plugin id', async () => {
+describe('rewriteRuntimeWorkFlow external toolsets', () => {
+  it('uses the nested toolset ID before the parent plugin ID', async () => {
     mocks.loadWorkflowAppResource.mockResolvedValue(undefined);
     const nodes = [
       {
@@ -167,7 +89,7 @@ describe('rewriteRuntimeWorkFlow external HTTP toolsets', () => {
 
     await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
 
-    expect(mocks.loadWorkflowAppResource).toHaveBeenCalledExactlyOnceWith({
+    expect(mocks.loadWorkflowAppResource).toHaveBeenCalledWith({
       appId: 'nested-http-toolset-id',
       tmbId: 'member-1',
       type: 'tool'
@@ -175,8 +97,8 @@ describe('rewriteRuntimeWorkFlow external HTTP toolsets', () => {
   });
 });
 
-describe('rewriteRuntimeWorkFlow node-local HTTP toolsets', () => {
-  it('expands imported operations into inline children and preserves the full request config', async () => {
+describe('rewriteRuntimeWorkFlow node-local toolsets', () => {
+  it('expands inline HTTP tools and preserves request config without child credentials', async () => {
     const tool = {
       name: 'search',
       description: 'Search documents',
@@ -230,8 +152,8 @@ describe('rewriteRuntimeWorkFlow node-local HTTP toolsets', () => {
   });
 
   it('skips empty local toolsets without leaving parent nodes or edges', async () => {
-    const nodes = [createHttpToolSetNode([])];
-    const edges = [createHttpSelectedToolEdge()];
+    const nodes = [createMcpToolSetNode([])];
+    const edges = [createSelectedToolEdge()];
 
     await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges });
 

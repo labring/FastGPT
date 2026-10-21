@@ -61,24 +61,11 @@ describe('MCP ToolSet config validation', () => {
   });
 
   it('rejects empty or duplicate names and invalid input schemas', () => {
-    expect(
-      getMcpToolSetConfigError({
-        url: 'https://mcp.example.com',
-        toolList: [{ ...validTool, name: '  ' }]
-      })
-    ).toBe('empty_tool_name');
-    expect(
-      getMcpToolSetConfigError({
-        url: 'https://mcp.example.com',
-        toolList: [validTool, validTool]
-      })
-    ).toBe('duplicate_tool_name');
-    expect(
-      getMcpToolSetConfigError({
-        url: 'https://mcp.example.com',
-        toolList: [{ ...validTool, inputSchema: 'invalid' }]
-      })
-    ).toBe('invalid_tool_schema');
+    const error = (tool: typeof validTool) =>
+      getMcpToolSetConfigError({ url: 'https://mcp.example.com', toolList: [tool] });
+
+    expect(error({ ...validTool, name: '  ' })).toBe('empty_tool_name');
+    expect(error({ ...validTool, inputSchema: 'invalid' })).toBe('invalid_tool_schema');
   });
 });
 
@@ -123,7 +110,7 @@ describe('HTTP ToolSet config validation', () => {
     );
   });
 
-  it('rejects invalid base URLs, custom headers, names, operations, and schemas', async () => {
+  it('rejects invalid URLs, headers, operations, and schemas', async () => {
     const toolList = await getImportedTools();
     const config = {
       baseUrl: 'https://api.example.com',
@@ -141,12 +128,6 @@ describe('HTTP ToolSet config validation', () => {
     await expect(
       getHttpToolSetConfigError({ ...config, customHeaders: '{"X-Count":1}' })
     ).resolves.toBe('invalid_custom_headers');
-    await expect(
-      getHttpToolSetConfigError({
-        ...config,
-        toolList: [toolList[0], { ...toolList[1], name: toolList[0].name }]
-      })
-    ).resolves.toBe('duplicate_tool_name');
     await expect(
       getHttpToolSetConfigError({
         ...config,

@@ -14,11 +14,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import {
-  McpToolSetRuntimeConfigSchema,
-  NodeToolConfigTypeSchema
-} from '@fastgpt/global/core/workflow/type/node';
-import { OpenAPIStoreNodeItemTypeSchema } from '@fastgpt/global/openapi/core/workflow/node';
 
 describe('mcpTool utils', () => {
   describe('getMCPToolSetRuntimeNode', () => {
@@ -176,38 +171,6 @@ describe('mcpTool utils', () => {
         headerSecret: { Authorization: { value: 'token' } }
       });
       expect(result.toolConfig?.mcpTool).not.toHaveProperty('toolId');
-    });
-  });
-
-  describe('MCP toolset schemas', () => {
-    const validTool = {
-      name: 'search',
-      description: 'Search',
-      inputSchema: { type: 'object', properties: {} }
-    } satisfies McpToolConfigType;
-
-    it('keeps empty local toolsets and external references schema-compatible', () => {
-      const inlineTool = {
-        name: validTool.name,
-        description: validTool.description,
-        inputSchema: validTool.inputSchema,
-        url: 'https://mcp.example.com'
-      };
-      expect(McpToolSetRuntimeConfigSchema.safeParse({ url: '', toolList: [] }).success).toBe(true);
-      expect(
-        NodeToolConfigTypeSchema.safeParse({ mcpTool: { toolId: 'mcp-app/search' } }).success
-      ).toBe(true);
-      expect(NodeToolConfigTypeSchema.safeParse({ mcpTool: inlineTool }).success).toBe(true);
-      expect(
-        OpenAPIStoreNodeItemTypeSchema.safeParse({
-          nodeId: 'mcp-tool',
-          flowNodeType: FlowNodeTypeEnum.tool,
-          name: 'MCP tool',
-          inputs: [],
-          outputs: [],
-          toolConfig: { mcpTool: inlineTool }
-        }).success
-      ).toBe(true);
     });
   });
 

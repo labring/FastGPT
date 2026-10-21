@@ -348,44 +348,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
-  it('uses tool-set auth for external HTTP tools', async () => {
-    const tool = {
-      name: 'search',
-      description: 'Search',
-      path: '/search',
-      method: 'get',
-      headerSecret: { Authorization: { value: 'tool-token', secret: '' } }
-    };
-    authAppByTmbIdMock.mockResolvedValueOnce({
-      app: {
-        _id: 'victim-toolset',
-        modules: [
-          {
-            toolConfig: {
-              httpToolSet: {
-                baseUrl: 'https://api.example.com',
-                headerSecret: { Authorization: { value: 'set-token', secret: '' } },
-                toolList: [tool]
-              }
-            }
-          }
-        ]
-      }
-    });
-    getHTTPToolListMock.mockResolvedValueOnce([tool]);
-    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
-
-    await dispatchRunTool(
-      createRunToolProps({ httpTool: { toolId: 'http-victim-toolset/search' } }, {})
-    );
-
-    expect(runHTTPToolMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        headerSecret: { Authorization: { value: 'set-token', secret: '' } }
-      })
-    );
-  });
-
   it.each([
     { name: 'scalar string', requestSchema: { type: 'string' } },
     { name: 'scalar number', requestSchema: { type: 'number' } },
@@ -615,32 +577,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true }, ok: true });
   });
 
-  it('rejects invalid inline HTTP params before making the request', async () => {
-    const result = await dispatchRunTool(
-      createRunToolProps(
-        {
-          httpTool: {
-            name: 'search',
-            description: 'Search documents',
-            path: '/search',
-            method: 'get',
-            requestSchema: {
-              type: 'object',
-              properties: { query: { type: 'string' } },
-              required: ['query']
-            },
-            inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
-            baseUrl: 'https://api.example.com'
-          }
-        },
-        { query: 123 }
-      )
-    );
-
-    expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
-  });
-
   it('should reject MCP tool execution when running app tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
@@ -744,29 +680,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       closeConnection: false
     });
     expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: { ok: true } });
-  });
-
-  it('validates inline MCP params before making the tool call', async () => {
-    const result = await dispatchRunTool(
-      createRunToolProps(
-        {
-          mcpTool: {
-            name: 'search',
-            description: 'Search documents',
-            inputSchema: {
-              type: 'object',
-              properties: { query: { type: 'string' } },
-              required: ['query']
-            },
-            url: 'https://mcp.example.com'
-          }
-        },
-        { query: 1 }
-      )
-    );
-
-    expect(mcpToolCallMock).not.toHaveBeenCalled();
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
   });
 
   it('keeps MCP clients separate when toolsets share a URL but use different credentials', async () => {

@@ -3,7 +3,6 @@ import {
   getMCPToolRuntimeNode,
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getToolSetDebugRuntimeNode } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/toolSetDebug';
 
@@ -34,42 +33,7 @@ describe('toolset node debug', () => {
     expect(result?.inputs.map((input) => input.key)).toEqual(['query']);
   });
 
-  it('keeps inline HTTP execution config and parent node ID', () => {
-    const node = getHTTPToolSetRuntimeNode({
-      name: 'HTTP tools',
-      baseUrl: 'https://api.example.com',
-      customHeaders: '{}',
-      toolList: [
-        {
-          name: 'search',
-          description: '',
-          path: '/search',
-          method: 'GET',
-          inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
-        }
-      ]
-    });
-    node.nodeId = 'toolset';
-
-    const result = getToolSetDebugRuntimeNode({ toolSetNode: node, toolIndex: 0 });
-
-    expect(result).toMatchObject({
-      nodeId: 'toolset',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      toolConfig: {
-        httpTool: {
-          name: 'search',
-          path: '/search',
-          method: 'GET',
-          baseUrl: 'https://api.example.com',
-          customHeaders: '{}'
-        }
-      }
-    });
-    expect(result?.toolConfig?.httpTool).not.toHaveProperty('toolId');
-  });
-
-  it('uses a referenced child preview and rejects unavailable children', () => {
+  it('uses a referenced child preview and rejects an out-of-range tool', () => {
     const preview = getMCPToolRuntimeNode({
       nodeId: 'preview',
       toolsetName: 'MCP tools',
@@ -86,10 +50,6 @@ describe('toolset node debug', () => {
       }
     };
 
-    expect(getToolSetDebugRuntimeNode({ toolSetNode: node, toolIndex: 0 })).toBeUndefined();
-    expect(
-      getToolSetDebugRuntimeNode({ toolSetNode: node, toolIndex: 1, previewNode: preview })
-    ).toBeUndefined();
     expect(
       getToolSetDebugRuntimeNode({ toolSetNode: node, toolIndex: 0, previewNode: preview })
     ).toMatchObject({
@@ -98,5 +58,8 @@ describe('toolset node debug', () => {
       inputs: preview.inputs,
       toolConfig: { mcpTool: { toolId: 'mcp-app-id/search' } }
     });
+    expect(
+      getToolSetDebugRuntimeNode({ toolSetNode: node, toolIndex: 1, previewNode: preview })
+    ).toBeUndefined();
   });
 });

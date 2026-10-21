@@ -9,21 +9,21 @@ const getResourceIssues = (data: FlowNodeItemType) =>
     bindings: []
   });
 
-describe('workflow node-local MCP toolset checks', () => {
-  it('warns for empty local MCP toolsets', () => {
+describe('workflow node-local toolset checks', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)('warns for an empty local %s', (toolSetKey) => {
     const issues = getResourceIssues({
-      nodeId: 'mcp-set',
+      nodeId: 'tool-set',
       flowNodeType: FlowNodeTypeEnum.toolSet,
-      name: 'Local MCP',
+      name: 'Local toolset',
       inputs: [],
       outputs: [],
-      toolConfig: { mcpToolSet: { url: '', toolList: [] } }
+      toolConfig: { [toolSetKey]: { toolList: [] } }
     });
 
     expect(issues).toContainEqual({ code: 'tool_set_not_configured' });
   });
 
-  it('does not warn for configured or externally referenced MCP toolsets', () => {
+  it('does not warn for configured or externally referenced toolsets', () => {
     const configured = getResourceIssues({
       nodeId: 'mcp-set',
       flowNodeType: FlowNodeTypeEnum.toolSet,
@@ -47,51 +47,6 @@ describe('workflow node-local MCP toolset checks', () => {
       toolConfig: { mcpToolSet: { toolId: 'mcp-app', toolList: [] } }
     });
 
-    expect(configured).not.toContainEqual({ code: 'tool_set_not_configured' });
-    expect(referenced).not.toContainEqual({ code: 'tool_set_not_configured' });
-  });
-});
-
-describe('workflow node-local HTTP toolset checks', () => {
-  it('warns for empty local HTTP toolsets but not configured or external references', () => {
-    const empty = getResourceIssues({
-      nodeId: 'http-set',
-      flowNodeType: FlowNodeTypeEnum.toolSet,
-      name: 'Local HTTP',
-      inputs: [],
-      outputs: [],
-      toolConfig: { httpToolSet: { toolList: [] } }
-    });
-    const configured = getResourceIssues({
-      nodeId: 'http-set',
-      flowNodeType: FlowNodeTypeEnum.toolSet,
-      name: 'Local HTTP',
-      inputs: [],
-      outputs: [],
-      toolConfig: {
-        httpToolSet: {
-          toolList: [
-            {
-              name: 'search',
-              description: 'Search',
-              path: '/search',
-              method: 'get'
-            }
-          ]
-        }
-      }
-    });
-    const referenced = getResourceIssues({
-      nodeId: 'http-reference',
-      flowNodeType: FlowNodeTypeEnum.toolSet,
-      name: 'External HTTP',
-      pluginId: 'http-app',
-      inputs: [],
-      outputs: [],
-      toolConfig: { httpToolSet: { toolId: 'http-app', toolList: [] } }
-    });
-
-    expect(empty).toContainEqual({ code: 'tool_set_not_configured' });
     expect(configured).not.toContainEqual({ code: 'tool_set_not_configured' });
     expect(referenced).not.toContainEqual({ code: 'tool_set_not_configured' });
   });

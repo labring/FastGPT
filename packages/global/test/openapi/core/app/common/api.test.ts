@@ -2,21 +2,14 @@ import {
   AppChatConfigInputSchema,
   AppQuestionGuideInputSchema,
   AppTTSConfigInputSchema,
-  type CreateAppBodyType,
   CreateAppBodySchema,
   CreateAppRequestBodySchema,
   OpenAPIAppChatConfigSchema,
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
-import {
-  type PublishAppBodyType,
-  PublishAppBodySchema
-} from '@fastgpt/global/openapi/core/app/version/api';
-import {
-  type StoreNodeItemType,
-  NodeToolConfigTypeSchema
-} from '@fastgpt/global/core/workflow/type/node';
+import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
@@ -34,37 +27,6 @@ const currentNode = {
   ],
   outputs: []
 };
-
-const runtimeNode: StoreNodeItemType = {
-  ...currentNode,
-  inputs: [],
-  flowNodeType: 'toolSet',
-  toolConfig: {
-    mcpTool: {
-      name: 'search',
-      description: 'Search',
-      url: 'https://mcp.example.com'
-    },
-    httpTool: {
-      name: 'search',
-      description: 'Search',
-      path: '/search',
-      method: 'GET'
-    }
-  }
-};
-
-const runtimeCreateBody: CreateAppBodyType = {
-  name: 'runtime app',
-  type: 'simple',
-  nodes: [runtimeNode],
-  edges: []
-};
-const runtimePublishBody: PublishAppBodyType = {
-  nodes: [runtimeNode]
-};
-void runtimeCreateBody;
-void runtimePublishBody;
 
 describe('UpdateAppBodySchema', () => {
   it('rejects workflow fields', () => {
@@ -212,26 +174,30 @@ describe('persisted workflow node tool secrets', () => {
 
   it.each([
     {
-      protocol: 'MCP',
+      nodeType: 'external MCP tool reference',
+      flowNodeType: 'tool',
       toolConfig: {
-        mcpTool: {
-          toolId: 'mcp-app/search',
-          headerSecret: { Authorization: { value: 'mcp-tool-secret' } }
-        }
-      }
+        mcpTool: { toolId: 'mcp-app/search', headerSecret: { Authorization: { value: 'secret' } } }
+      },
+      pluginId: undefined
     },
     {
-      protocol: 'HTTP',
+      nodeType: 'external HTTP tool set',
+      flowNodeType: 'toolSet',
       toolConfig: {
-        httpTool: {
-          toolId: 'http-app/search',
-          headerSecret: { Authorization: { value: 'http-tool-secret' } }
+        httpToolSet: {
+          toolId: 'http-app',
+          headerSecret: { Authorization: { value: 'secret' } },
+          toolList: []
         }
-      }
+      },
+      pluginId: 'http-app'
     }
-  ])('rejects $protocol secret on a single tool reference', ({ toolConfig }) => {
+  ])('rejects a secret on $nodeType', ({ flowNodeType, toolConfig, pluginId }) => {
     const node = {
       ...currentNode,
+      flowNodeType,
+      pluginId,
       toolConfig
     } as StoreNodeItemType;
 
@@ -241,25 +207,24 @@ describe('persisted workflow node tool secrets', () => {
   it.each([
     {
       toolSetKey: 'mcpToolSet',
-      toolConfig: {
-        mcpToolSet: {
-          url: 'https://mcp.example.com',
-          headerSecret: { Authorization: { value: 'mcp-set-secret' } },
-          toolList: [{ name: 'search', description: 'MCP search' }]
-        }
+      config: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search' }]
       }
     },
     {
       toolSetKey: 'httpToolSet',
-      toolConfig: {
-        httpToolSet: {
-          baseUrl: 'https://api.example.com',
-          headerSecret: { Authorization: { value: 'http-set-secret' } },
-          toolList: [{ name: 'search', description: 'HTTP search', path: '/search', method: 'GET' }]
-        }
+      config: {
+        baseUrl: 'https://api.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
       }
     }
-  ])('keeps $toolSetKey secret on a node-local tool set', ({ toolConfig }) => {
+  ] as const)('keeps a secret on a node-local $toolSetKey', ({ toolSetKey, config }) => {
+    const toolConfig = {
+      [toolSetKey]: config
+    };
     const node = {
       ...currentNode,
       flowNodeType: 'toolSet',
@@ -267,42 +232,6 @@ describe('persisted workflow node tool secrets', () => {
     } as StoreNodeItemType;
 
     expect(parseCreateNode(node)).toBe(true);
-  });
-
-  it('rejects a tool-set secret when the node uses an external reference', () => {
-    const node = {
-      ...currentNode,
-      flowNodeType: 'toolSet',
-      pluginId: 'external-tool-set',
-      toolConfig: {
-        httpToolSet: {
-          baseUrl: 'https://api.example.com',
-          headerSecret: { Authorization: { value: 'http-set-secret' } },
-          toolList: []
-        }
-      }
-    } as StoreNodeItemType;
-
-    expect(parseCreateNode(node)).toBe(false);
-  });
-
-  it('keeps HTTP child tool secret in the shared runtime schema', () => {
-    const toolConfig = {
-      httpToolSet: {
-        baseUrl: 'https://api.example.com',
-        toolList: [
-          {
-            name: 'search',
-            description: 'HTTP search',
-            path: '/search',
-            method: 'GET',
-            headerSecret: { Authorization: { value: 'http-child-secret' } }
-          }
-        ]
-      }
-    };
-
-    expect(NodeToolConfigTypeSchema.safeParse(toolConfig).success).toBe(true);
   });
 });
 

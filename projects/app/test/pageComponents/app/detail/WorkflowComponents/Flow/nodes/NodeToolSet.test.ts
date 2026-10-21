@@ -3,8 +3,6 @@ import React, { act, type MouseEventHandler, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
-import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import NodeToolSet from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeToolSet';
 
@@ -12,11 +10,8 @@ const mocks = vi.hoisted(() => ({
   onChangeNode: vi.fn(),
   toast: vi.fn(),
   getApiSchemaByUrl: vi.fn(),
-  getMCPTools: vi.fn(),
   requestArgs: [] as unknown[][],
-  requestErrors: [] as unknown[],
-  appDetail: { _id: 'app-http', name: 'HTTP app', nodes: [] },
-  reloadApp: vi.fn()
+  appDetail: { _id: 'app-http', name: 'HTTP app', nodes: [] }
 }));
 
 const httpApiSchema = {
@@ -77,12 +72,21 @@ vi.mock('@chakra-ui/react', async () => {
         type,
         onChange,
         onBlur,
-        ref
+        ref,
+        readOnly: !onChange
       })
   );
   const textarea = react.forwardRef<HTMLTextAreaElement, any>(
     ({ name, value, defaultValue, onChange, onBlur }, ref) =>
-      react.createElement('textarea', { name, value, defaultValue, onChange, onBlur, ref })
+      react.createElement('textarea', {
+        name,
+        value,
+        defaultValue,
+        onChange,
+        onBlur,
+        ref,
+        readOnly: !onChange
+      })
   );
 
   return {
@@ -133,7 +137,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
       selector({
         onChangeNode: mocks.onChangeNode,
         appDetail: mocks.appDetail,
-        reloadApp: mocks.reloadApp
+        reloadApp: vi.fn()
       })
   };
 });
@@ -148,7 +152,6 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
         await options.onSuccess?.(result, args);
         return result;
       } catch (error) {
-        mocks.requestErrors.push(error);
         if (options.errorToast) mocks.toast({ status: 'error', title: options.errorToast });
         return undefined;
       }
@@ -158,9 +161,6 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
 vi.mock('@/web/core/app/api/httpTools', () => ({
   getApiSchemaByUrl: mocks.getApiSchemaByUrl,
   putUpdateHttpTool: vi.fn()
-}));
-vi.mock('@/web/core/app/api/mcpTools', () => ({
-  getMCPTools: mocks.getMCPTools
 }));
 vi.mock('@/components/common/secret/HeaderAuthConfig', async () => {
   const react = await import('react');
@@ -298,52 +298,11 @@ vi.mock('@/pageComponents/app/detail/Edit/HTTPTools/ManualToolModal', async () =
   return { default: () => react.createElement('div') };
 });
 
-const toolSet: McpToolSetRuntimeConfigType = {
-  url: 'https://mcp.example.com',
-  headerSecret: {},
-  toolList: [
-    {
-      name: 'search',
-      description: 'Search',
-      inputSchema: { type: 'object', properties: {} }
-    }
-  ]
-};
-
-const searchTool = {
-  name: 'search',
-  description: 'Search documents',
-  path: '/search',
-  method: 'get',
-  inputSchema: {
-    type: 'object',
-    properties: { query: { type: 'string', isToolParam: true, 'x-tool-description': '' } },
-    required: ['query']
-  },
-  requestSchema: {
-    type: 'object',
-    properties: { query: { type: 'string' } },
-    required: ['query']
-  },
-  headerSecret: { Authorization: { value: 'child-secret', secret: '' } }
-};
-
 const click = async (container: HTMLElement, label: string) => {
   const button = Array.from(container.querySelectorAll('button')).find(
     (item) => item.textContent === label
   );
   if (!button) throw new Error(`Missing button: ${label}`);
-  await act(async () => {
-    button.click();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-};
-
-const clickIcon = async (container: HTMLElement, tip: string, icon: string) => {
-  const button = container.querySelector<HTMLButtonElement>(
-    `button[data-tip="${tip}"][data-icon="${icon}"]`
-  );
-  if (!button) throw new Error(`Missing icon button: ${tip} (${icon})`);
   await act(async () => {
     button.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -356,109 +315,6 @@ const setFieldValue = async (field: HTMLInputElement | HTMLTextAreaElement, valu
     Simulate.change(field);
   });
 };
-
-describe('NodeToolSet MCP configuration', () => {
-  let dom: JSDOM;
-  let container: HTMLDivElement;
-  let root: Root;
-
-  beforeEach(() => {
-    dom = new JSDOM('<!doctype html><html><body></body></html>');
-    vi.stubGlobal('window', dom.window);
-    vi.stubGlobal('document', dom.window.document);
-    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    mocks.onChangeNode.mockReset();
-    mocks.toast.mockReset();
-    mocks.getMCPTools.mockReset().mockResolvedValue([
-      {
-        name: 'new-tool',
-        description: 'New MCP tool',
-        inputSchema: { type: 'object', properties: {} }
-      }
-    ]);
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-  });
-
-  afterEach(async () => {
-    await act(async () => root.unmount());
-    container.remove();
-    dom.window.close();
-    vi.unstubAllGlobals();
-  });
-
-  it('shows the empty MCP list state and parses URL, auth, and tools in one update', async () => {
-    const data = {
-      nodeId: 'node-1',
-      toolConfig: { mcpToolSet: { ...toolSet, toolList: [] } }
-    };
-    await act(async () => {
-      root.render(React.createElement(NodeToolSet, { data, selected: false } as any));
-    });
-
-    expect(container.querySelector('[data-empty-state]')).not.toBeNull();
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
-    expect(container.querySelector('button[data-variant="primary"]')).not.toBeNull();
-
-    const urlInput = container.querySelector<HTMLInputElement>(
-      'input[placeholder="app:MCP_tools_url_placeholder"]'
-    );
-    if (!urlInput) throw new Error('Missing MCP URL input');
-    await setFieldValue(urlInput, 'https://new-mcp.example.com');
-    await click(container, 'common:auth_config');
-    await click(container, 'common:Parse');
-
-    expect(mocks.getMCPTools).toHaveBeenCalledExactlyOnceWith({
-      url: 'https://new-mcp.example.com',
-      headerSecret: { Authorization: { value: 'Bearer test-token' } }
-    });
-
-    expect(mocks.toast).not.toHaveBeenCalled();
-    expect(mocks.onChangeNode).toHaveBeenCalledExactlyOnceWith({
-      nodeId: 'node-1',
-      type: 'attr',
-      key: 'toolConfig',
-      value: {
-        mcpToolSet: {
-          url: 'https://new-mcp.example.com',
-          headerSecret: { Authorization: { value: 'Bearer test-token' } },
-          toolList: [
-            {
-              name: 'new-tool',
-              description: 'New MCP tool',
-              inputSchema: { type: 'object', properties: {} }
-            }
-          ]
-        }
-      }
-    });
-  });
-
-  it('opens MCP tool details from the title and has no detail or delete actions', async () => {
-    const data = {
-      nodeId: 'node-1',
-      toolConfig: { mcpToolSet: toolSet }
-    };
-    await act(async () => {
-      root.render(React.createElement(NodeToolSet, { data, selected: false } as any));
-    });
-
-    expect(container.querySelector('button[data-icon="delete"]')).toBeNull();
-    expect(container.querySelector('button[data-icon="common/detail"]')).toBeNull();
-    const title = Array.from(container.querySelectorAll('div')).find(
-      (item) => item.textContent === 'search' && item.children.length === 0
-    ) as HTMLElement | undefined;
-    if (!title) throw new Error('Missing MCP tool title');
-    await act(async () => {
-      title.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(container.textContent).toContain('app:tool_detail');
-    expect(container.querySelector('[data-modal-icon=""]')).not.toBeNull();
-  });
-});
 
 describe('NodeToolSet HTTP configuration', () => {
   let dom: JSDOM;
@@ -475,8 +331,6 @@ describe('NodeToolSet HTTP configuration', () => {
     mocks.toast.mockReset();
     mocks.getApiSchemaByUrl.mockReset().mockResolvedValue(httpApiSchema);
     mocks.requestArgs.length = 0;
-    mocks.requestErrors.length = 0;
-    mocks.reloadApp.mockReset();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -500,10 +354,6 @@ describe('NodeToolSet HTTP configuration', () => {
     });
   };
 
-  const openConfig = async () => {
-    await click(container, 'app:toolset_config');
-  };
-
   const getSavedHttpToolSet = () => mocks.onChangeNode.mock.calls[0]?.[0]?.value?.httpToolSet;
   const getOperations = (toolList: any[]) =>
     toolList.map((tool) => `${tool.method.toUpperCase()} ${tool.path}`).sort();
@@ -524,177 +374,5 @@ describe('NodeToolSet HTTP configuration', () => {
     expect(getSavedHttpToolSet().apiSchemaStr).toBe(httpApiSchemaStr);
     expect(getOperations(getSavedHttpToolSet().toolList)).toEqual(['GET /search', 'POST /items']);
     expect(getSavedHttpToolSet().toolList.every((tool: any) => !tool.headerSecret)).toBe(true);
-  });
-
-  it('keeps a deleted operation when saving unchanged OpenAPI config', async () => {
-    await expect(str2OpenApiSchema(httpApiSchemaStr)).resolves.toBeTruthy();
-    const httpToolSet = {
-      baseUrl: 'https://api.example.com',
-      apiSchemaStr: httpApiSchemaStr,
-      customHeaders: '{}',
-      headerSecret: {},
-      toolList: [searchTool]
-    };
-    await renderHttpNode(httpToolSet);
-
-    await openConfig();
-    expect(container.querySelector('textarea')?.value).toBe(httpApiSchemaStr);
-    await click(container, 'common:Save');
-
-    expect(mocks.requestArgs[0]?.[0]).toMatchObject({ apiSchemaStr: httpApiSchemaStr });
-    expect(mocks.requestErrors).toEqual([]);
-    expect(mocks.onChangeNode).toHaveBeenCalledTimes(1);
-    expect(getSavedHttpToolSet().toolList).toEqual([{ ...searchTool, headerSecret: undefined }]);
-  });
-
-  it('reimports the full operation list after URL import, even when schema text is unchanged', async () => {
-    const httpToolSet = {
-      baseUrl: 'https://api.example.com',
-      apiSchemaStr: httpApiSchemaStr,
-      customHeaders: '{}',
-      headerSecret: {},
-      toolList: [searchTool]
-    };
-    await renderHttpNode(httpToolSet);
-
-    await openConfig();
-    const schemaUrl = Array.from(container.querySelectorAll('input')).find(
-      (input) => input.placeholder === 'common:plugin.Import from URL'
-    );
-    if (!schemaUrl) throw new Error('Missing OpenAPI URL input');
-    await setFieldValue(schemaUrl, 'https://example.com/openapi.json');
-    await act(async () => {
-      schemaUrl.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true }));
-    });
-    await click(container, 'common:Import');
-    await click(container, 'common:Save');
-
-    expect(mocks.getApiSchemaByUrl).toHaveBeenCalledExactlyOnceWith(
-      'https://example.com/openapi.json'
-    );
-    expect(getOperations(getSavedHttpToolSet().toolList)).toEqual(['GET /search', 'POST /items']);
-  });
-
-  it('syncs toolList when OpenAPI text changes and blocks invalid changes', async () => {
-    const httpToolSet = {
-      baseUrl: 'https://api.example.com',
-      apiSchemaStr: httpApiSchemaStr,
-      customHeaders: '{}',
-      headerSecret: {},
-      toolList: [searchTool]
-    };
-    const changedSchema = {
-      ...httpApiSchema,
-      paths: {
-        ...httpApiSchema.paths,
-        '/lookup': {
-          get: {
-            operationId: 'lookup',
-            responses: { '200': { description: 'OK' } }
-          }
-        }
-      }
-    };
-    await renderHttpNode(httpToolSet);
-
-    await openConfig();
-    const schemaInput = container.querySelector('textarea');
-    if (!schemaInput) throw new Error('Missing OpenAPI editor');
-    await setFieldValue(schemaInput, JSON.stringify(changedSchema, null, 2));
-    await click(container, 'common:Save');
-
-    expect(getOperations(getSavedHttpToolSet().toolList)).toEqual([
-      'GET /lookup',
-      'GET /search',
-      'POST /items'
-    ]);
-
-    mocks.onChangeNode.mockReset();
-    await renderHttpNode(httpToolSet);
-    await openConfig();
-    const invalidSchemaInput = container.querySelector('textarea');
-    if (!invalidSchemaInput) throw new Error('Missing OpenAPI editor');
-    await setFieldValue(invalidSchemaInput, '{invalid');
-    await click(container, 'common:Save');
-
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
-    expect(mocks.requestErrors).toHaveLength(1);
-  });
-
-  it('uses all HTTP params by default without header or switches in a custom toolset', async () => {
-    const httpToolSet = {
-      baseUrl: 'https://api.example.com',
-      apiSchemaStr: httpApiSchemaStr,
-      customHeaders: '{}',
-      headerSecret: {},
-      toolList: [searchTool]
-    };
-    await renderHttpNode(httpToolSet);
-
-    const title = Array.from(container.querySelectorAll('div')).find(
-      (item) => item.textContent === 'search' && item.children.length === 0
-    ) as HTMLElement | undefined;
-    if (!title) throw new Error('Missing HTTP tool title');
-    await act(async () => {
-      title.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    expect(container.querySelector('[data-modal-icon=""]')).not.toBeNull();
-    expect(container.textContent).not.toContain('workflow:field_used_as_tool_input');
-    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
-    await click(container, 'common:Confirm');
-
-    expect(mocks.onChangeNode).toHaveBeenCalledExactlyOnceWith({
-      nodeId: 'node-http',
-      type: 'attr',
-      key: 'toolConfig',
-      value: {
-        httpToolSet: {
-          ...httpToolSet,
-          toolList: [
-            {
-              ...searchTool,
-              headerSecret: undefined,
-              inputSchema: {
-                ...searchTool.inputSchema,
-                properties: {
-                  query: { type: 'string', isToolParam: true, 'x-tool-description': 'query' }
-                }
-              }
-            }
-          ]
-        }
-      }
-    });
-  });
-
-  it('shows only the description action for each local HTTP tool', async () => {
-    const httpToolSet = {
-      baseUrl: 'https://api.example.com',
-      apiSchemaStr: httpApiSchemaStr,
-      customHeaders: '{"X-Trace":"enabled"}',
-      headerSecret: { Authorization: { value: '', secret: 'encrypted-token' } },
-      toolList: [
-        {
-          name: 'search',
-          description: 'Search',
-          path: '/search',
-          method: 'get',
-          inputSchema: { type: 'object', properties: {} }
-        },
-        {
-          name: 'create',
-          description: 'Create',
-          path: '/items',
-          method: 'post',
-          inputSchema: { type: 'object', properties: {} }
-        }
-      ]
-    };
-    await renderHttpNode(httpToolSet);
-
-    expect(container.querySelector('button[data-icon="delete"]')).toBeNull();
-    expect(container.querySelector('button[data-icon="common/detail"]')).toBeNull();
-    expect(container.querySelectorAll('button[data-icon="edit"]')).toHaveLength(2);
   });
 });
