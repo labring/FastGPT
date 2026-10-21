@@ -14,6 +14,7 @@ import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema } from '../template/valueSchema';
+import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
 export type WorkflowReferenceValue = [string, string];
 
@@ -157,7 +158,7 @@ const setSelectedInputRenderType = (
   input.selectedType = selectedType;
 };
 
-/** 更新固定值并同步 Web 输入模式；普通对象只检查类型，显式声明 Schema 时再检查结构。 */
+/** 更新固定值并同步 Web 输入模式；按输入的实际协议检查，保留标签过滤等编辑器的原始存储结构。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -171,7 +172,18 @@ export const setInputValue = ({
 }) => {
   const { input, inputModes } = getInput({ document, nodeId, inputKey });
   assertInputMode({ inputKey, inputModes, nodeId, mode: 'literal' });
-  if (!valueMatchesType(value, input.valueType)) {
+  const currentSelectedType = getSelectedInputRenderType(input);
+  const literalType =
+    currentSelectedType &&
+    input.renderTypeList.includes(currentSelectedType) &&
+    isLiteralInputRenderType(currentSelectedType)
+      ? currentSelectedType
+      : input.renderTypeList.find(isLiteralInputRenderType)!;
+  const effectiveValue = getWorkflowInputValueForValidation({
+    input: { ...input, selectedType: literalType },
+    value
+  });
+  if (!valueMatchesType(effectiveValue, input.valueType)) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.inputValueTypeInvalid,
@@ -187,16 +199,10 @@ export const setInputValue = ({
       document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
       inputKey
     )?.valueSchema ?? input.customJsonSchema;
-  if (valueSchema) assertValueSchema({ value, schema: valueSchema, nodeId, inputKey });
+  if (valueSchema)
+    assertValueSchema({ value: effectiveValue, schema: valueSchema, nodeId, inputKey });
 
   input.value = structuredClone(value);
-  const currentSelectedType = getSelectedInputRenderType(input);
-  const literalType =
-    currentSelectedType &&
-    input.renderTypeList.includes(currentSelectedType) &&
-    isLiteralInputRenderType(currentSelectedType)
-      ? currentSelectedType
-      : input.renderTypeList.find(isLiteralInputRenderType)!;
   setSelectedInputRenderType(input, literalType);
 };
 

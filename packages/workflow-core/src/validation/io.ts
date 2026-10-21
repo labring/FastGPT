@@ -26,11 +26,12 @@ import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/mode
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import { getWorkflowInputReferenceDiagnostics } from '../reference/validation';
+import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
 /**
  * 按 Web 的默认值、输入方式及工具生成策略校验必填项；保留 Core 的 IO 唯一性、类型和 Schema 检查。
  * 流程开始的用户问题由运行时提供，保留历史输入声明但跳过其静态输入检查。
- * JSON 编辑器复用运行时转换，动态表达式延后校验；密钥按存储结构校验，不读取或输出密文内容。
+ * JSON 编辑器和标签过滤复用运行时转换；动态表达式延后校验，密钥按存储结构校验。
  * 只读取文档，归一化输入时不改写调用方配置；远端资源绑定继续由绑定诊断及调用方校验。
  */
 export const validateNodeIO = ({
@@ -150,7 +151,7 @@ export const validateNodeIO = ({
     const effectiveValue =
       selectedType === FlowNodeInputTypeEnum.JSONEditor && !isDynamicJson
         ? valueTypeFormat(storedValue, input.valueType)
-        : storedValue;
+        : getWorkflowInputValueForValidation({ input: normalizedInput, value: storedValue });
     // 历史明文字符串继续兼容；当前密码组件使用 { value, secret } 存储结构。
     const secretValueResult =
       selectedType === FlowNodeInputTypeEnum.password &&

@@ -49,6 +49,8 @@ import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comme
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -81,6 +83,39 @@ describe('checkWorkflowNodeIssues', () => {
         valueType: WorkflowIOValueTypeEnum.string
       }
     ]
+  });
+
+  it('accepts the blank tag-filter row shown by the dataset-search editor under both checker policies', () => {
+    const search = makeNode('search', FlowNodeTypeEnum.datasetSearchNode, {
+      ...DatasetSearchModule,
+      inputs: DatasetSearchModule.inputs.map((input) => ({
+        ...input,
+        value:
+          input.key === NodeInputKeyEnum.collectionFilterMatch
+            ? createEmptyTagFilterValue()
+            : input.key === NodeInputKeyEnum.datasetSelectList
+              ? [{ datasetId: 'dataset-id' }]
+              : input.key === NodeInputKeyEnum.datasetSearchInput
+                ? [['start', NodeOutputKeyEnum.userChatInput]]
+                : input.value
+      }))
+    });
+    const graph = {
+      nodes: [startNode, search],
+      edges: [{ id: 'e1', source: 'start', target: 'search' }]
+    };
+    const before = structuredClone(search.data.inputs);
+    const { document } = createWorkflowCheckDocument(graph);
+
+    expect(
+      workflowValidation.validateWorkflow(document, { invalidReferencePolicy: 'error' })
+    ).toEqual([]);
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: false,
+      diagnostics: [],
+      issueMap: {}
+    });
+    expect(search.data.inputs).toEqual(before);
   });
 
   it('accepts legacy start inputs after loading while preserving dataset search checks', () => {

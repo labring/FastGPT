@@ -20,12 +20,50 @@ import { addNodeFromTemplate } from '../../src/node/add';
 import { assertExecutionEdge } from '../../src/edge/validation';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
+import { DatasetTagFilterLogicEnum } from '@fastgpt/global/core/dataset/constants';
 
 describe('input mutation services', () => {
   let document: ReturnType<typeof WorkflowDocumentSchema.parse>;
 
   beforeEach(() => {
     document = WorkflowDocumentSchema.parse(aiWorkflow);
+  });
+
+  it.each([
+    createEmptyTagFilterValue(),
+    { logic: DatasetTagFilterLogicEnum.AND, conditions: [{ tag: 'price', op: '$gte', value: 10 }] }
+  ])('sets structured tag filters without converting the stored editor value: %j', (value) => {
+    const input: FlowNodeInputItemType = {
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      label: 'Tag filter',
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.datasetTagFilter],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType: WorkflowIOValueTypeEnum.string,
+      customJsonSchema: { type: 'string' }
+    };
+    document.nodes.find((node) => node.nodeId === 'ai')!.inputs.push(input);
+    const before = structuredClone(value);
+    setInputValue({ document, nodeId: 'ai', inputKey: input.key, value });
+
+    expect(input.value).toEqual(value);
+    expect(input.value).not.toBe(value);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.datasetTagFilter);
+    expect(value).toEqual(before);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.inputKey === input.key
+      )
+    ).toEqual([]);
+    expect(() =>
+      setInputValue({
+        document,
+        nodeId: 'ai',
+        inputKey: input.key,
+        value: { logic: 'invalid', conditions: [] }
+      })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueTypeInvalid);
+    expect(input.value).toEqual(value);
   });
 
   it('validates node, input, configurability, mode and scalar type', () => {

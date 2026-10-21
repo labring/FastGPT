@@ -22,6 +22,12 @@ import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/int
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
+import {
+  DatasetCollectionTagTypeEnum,
+  DatasetTagFilterLogicEnum,
+  DatasetTagFilterValueModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 type Input = StoreNodeItemType['inputs'][number];
 
@@ -77,6 +83,85 @@ const check = (node: StoreNodeItemType, isTool = false) => {
 };
 
 describe('validateNodeIO', () => {
+  it.each([
+    { value: createEmptyTagFilterValue() },
+    { defaultValue: createEmptyTagFilterValue() },
+    {
+      value: {
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [
+          { tag: 'price', tagType: DatasetCollectionTagTypeEnum.number, op: '$gte', value: 10 }
+        ]
+      },
+      customJsonSchema: { type: 'string', pattern: '"tags"' }
+    },
+    {
+      value: {
+        logic: DatasetTagFilterLogicEnum.OR,
+        conditions: [
+          {
+            tag: 'price',
+            op: '$gte',
+            valueMode: DatasetTagFilterValueModeEnum.reference,
+            value: [VARIABLE_NODE_ID, 'price']
+          }
+        ]
+      }
+    },
+    { value: '{"tags":{"$and":["legacy"]}}' }
+  ])('checks tag-filter storage values using the runtime string contract: %j', (values) => {
+    const node = makeNode({
+      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+      inputs: [
+        makeInput({
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+          required: false,
+          ...values
+        })
+      ]
+    });
+    const before = structuredClone(node);
+    expect(check(node)).toEqual([]);
+    expect(node).toEqual(before);
+  });
+
+  it.each([
+    { value: { logic: 'invalid', conditions: [] } },
+    { value: { logic: DatasetTagFilterLogicEnum.AND, conditions: 'invalid' } },
+    { value: createEmptyTagFilterValue(), selectedType: FlowNodeInputTypeEnum.textarea }
+  ])('retains type checks outside valid tag-filter storage: %j', (values) => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.textarea],
+          ...values
+        })
+      ]
+    });
+    expect(check(node).map((item) => item.code)).toEqual([
+      WorkflowDiagnosticCodeEnum.inputValueTypeInvalid
+    ]);
+  });
+
+  it('treats empty tag-filter rows as missing when the input is required', () => {
+    const node = makeNode({
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        makeInput({
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+          value: createEmptyTagFilterValue()
+        })
+      ]
+    });
+    expect(check(node).map((item) => item.code)).toEqual([
+      WorkflowDiagnosticCodeEnum.requiredInputMissing
+    ]);
+    node.inputs[0].required = false;
+    expect(check(node)).toEqual([]);
+  });
+
   it.each([
     {
       schema: { type: 'object', required: true, properties: { name: { type: 'string' } } },
