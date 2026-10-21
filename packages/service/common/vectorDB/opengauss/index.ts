@@ -4,6 +4,7 @@ import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -136,9 +137,15 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
+    const hnswEfSearch = global.systemEnv?.hnswEfSearch || 100;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.vectorDB.opengauss.search',
+      source: 'bridged-system-env',
+      fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
+    });
     const results: any = await OgClient.query(
       `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SET LOCAL hnsw.ef_search = ${hnswEfSearch};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
             WHERE dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})

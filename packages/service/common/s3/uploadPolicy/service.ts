@@ -1,6 +1,8 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
+import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 import { serviceEnv } from '../../../env';
 import type { UploadConstraintsInput } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeType } from '../utils/mime';
@@ -307,13 +309,34 @@ export const resolveUploadFile = ({
   hint,
   policy,
   evidence,
-  skipFileTypeCheck = serviceEnv.SKIP_FILE_TYPE_CHECK
+  skipFileTypeCheck
 }: {
   hint: UploadFileHint;
   policy: UploadPolicy;
   evidence: UploadFileEvidence;
   skipFileTypeCheck?: boolean;
 }): ResolvedUploadFile => {
+  // skipFileTypeCheck 权威来源为实例配置（blockStartup 迁移已回填 env 初值），
+  // 调用方显式传值优先；?? 兜底仅覆盖叶子缺省的部分快照（测试种子）场景。
+  const configuredSkipFileTypeCheck = getSystemInstanceConfig().security.skipFileTypeCheck;
+  const effectiveSkipFileTypeCheck =
+    skipFileTypeCheck ?? configuredSkipFileTypeCheck ?? serviceEnv.SKIP_FILE_TYPE_CHECK;
+  logInstanceConfigRead({
+    callsite: 'runtime.common.s3.uploadPolicy.resolveUploadFile',
+    source:
+      skipFileTypeCheck !== undefined
+        ? 'caller-override'
+        : configuredSkipFileTypeCheck === undefined
+          ? 'env-fallback'
+          : 'instance-config',
+    fields: [
+      {
+        path: 'security.skipFileTypeCheck',
+        value: skipFileTypeCheck ?? configuredSkipFileTypeCheck ?? effectiveSkipFileTypeCheck
+      }
+    ]
+  });
+
   const normalizedHint = normalizeUploadHint(hint);
   const filename = normalizedHint.declaredFilename || normalizedHint.filename;
   const filenameExtension = getFilenameExtension(filename);
@@ -340,7 +363,7 @@ export const resolveUploadFile = ({
     policy
   });
 
-  if (skipFileTypeCheck) {
+  if (effectiveSkipFileTypeCheck) {
     const resolvedExtension = explicitExtension || policy.fallbackExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),

@@ -1,3 +1,12 @@
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// commit 94ae033d7 起 loadRequestMessages 的 shouldLoadMediaAsBase64 改为
+// `getSystemInstanceConfig().feature.multipleDataToBase64 ?? serviceEnv.MULTIPLE_DATA_TO_BASE64`：
+// 生产快照的叶子字段被 schema 默认值填满，`?? serviceEnv` 兜底分支永不触发。
+// 本文件通过改写 serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
+// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import {
   loadRequestMessages,
   filterGPTMessageByMaxContext

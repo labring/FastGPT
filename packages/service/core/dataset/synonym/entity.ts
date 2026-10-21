@@ -9,6 +9,8 @@ import {
   type DatasetSynonymMatcherMapping
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../env';
 
 type DatasetSynonymMatcherSnapshot = DatasetSynonymMatcher & { hasMappings: boolean };
@@ -24,7 +26,16 @@ const transformConfigCache = new Map<
 >();
 
 /** 判断服务端是否启用知识库同义词能力，默认关闭。 */
-export const isDatasetSynonymEnabled = () => serviceEnv.DATASET_SYNONYM_ENABLED;
+export const isDatasetSynonymEnabled = () => {
+  const configured = getSystemInstanceConfig().feature.datasetSynonymEnabled;
+  const value = configured ?? serviceEnv.DATASET_SYNONYM_ENABLED;
+  logInstanceConfigRead({
+    callsite: 'runtime.dataset.synonym.isDatasetSynonymEnabled',
+    source: configured === undefined ? 'env-fallback' : 'instance-config',
+    fields: [{ path: 'feature.datasetSynonymEnabled', value: configured ?? value }]
+  });
+  return value;
+};
 
 /** 阻止关闭状态下的同义词管理操作进入解析、鉴权和数据访问链路。 */
 export const assertDatasetSynonymEnabled = () => {

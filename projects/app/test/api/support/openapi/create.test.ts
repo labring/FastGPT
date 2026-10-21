@@ -1,3 +1,39 @@
+// openapi 数量上限已接管实例配置（94ae033d7）：getSystemInstanceConfig().auth.openApiKeyMaxCount
+// ?? appEnv.OPENAPI_KEY_MAX_COUNT。本文件通过 mock appEnv 驱动限额行为，预置"域存在、叶子缺省"
+// 种子快照走 ?? appEnv 兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';

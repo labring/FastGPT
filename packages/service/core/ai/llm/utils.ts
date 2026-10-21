@@ -17,7 +17,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { serviceEnv } from '../../../env';
+import { getMultipleDataToBase64 } from '../../../common/system/constants';
 import {
   ACTIVE_PLAN_END_TAG,
   ACTIVE_PLAN_START_TAG,
@@ -286,10 +286,14 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
+   * 本地路径只有服务端能读取；multipleDataToBase64 用于兼容不支持远程 URL 的模型。
+   * 开关在本次请求入口只取一次：若逐条媒体求值，管理员中途保存配置会触发快照
+   * 重载，导致同一次请求部分图片转 base64、部分保留远程 URL 的混合形态。
    */
-  const shouldLoadMediaAsBase64 = (url: string) =>
-    url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+  const multipleDataToBase64 = getMultipleDataToBase64();
+  const shouldLoadMediaAsBase64 = (url: string) => {
+    return url.startsWith('/') || multipleDataToBase64;
+  };
 
   /**
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。

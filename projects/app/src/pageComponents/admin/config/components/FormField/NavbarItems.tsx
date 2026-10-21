@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import FormLabel from '../FormLabel';
@@ -32,6 +33,7 @@ const NavbarItems = ({
   title: string;
   description: string;
 }) => {
+  const { t } = useSafeTranslation();
   const [currentNavbarItem, setCurrentNavbarItem] = useState<NavbarItemType>();
 
   const onSubmit = (data: NavbarItemType) => {
@@ -62,7 +64,7 @@ const NavbarItems = ({
           leftIcon={<MyIcon name={'common/addLight'} width={4} />}
           onClick={() => setCurrentNavbarItem(defaultNavbarItem)}
         >
-          新增
+          {t('admin:add')}
         </Button>
       </Flex>
 
@@ -76,12 +78,12 @@ const NavbarItems = ({
         fontSize={'mini'}
         fontWeight={'medium'}
       >
-        <Box w={3 / 10}>名称</Box>
+        <Box w={3 / 10}>{t('admin:name')}</Box>
         <Box w={1 / 10} pl={4}>
-          启用
+          {t('admin:enable')}
         </Box>
-        <Box w={4 / 10}>跳转链接</Box>
-        <Box w={2 / 10}>操作</Box>
+        <Box w={4 / 10}>{t('admin:redirect_link')}</Box>
+        <Box w={2 / 10}>{t('admin:actions')}</Box>
       </Flex>
       <Box mt={2}>
         <DndDrag<NavbarItemType>
@@ -227,6 +229,7 @@ const NavbarItemModal = ({
   onClose: () => void;
   onSubmit: (data: NavbarItemType) => void;
 }) => {
+  const { t } = useSafeTranslation();
   const { register, setValue, watch, handleSubmit } = useForm({
     defaultValues: currentNavbarItem
   });
@@ -248,21 +251,21 @@ const NavbarItemModal = ({
 
   return (
     <MyModal
-      title={'新增侧边项'}
+      title={t('admin:add_sidebar_item')}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确定</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('admin:ok')}</Button>
         </>
       }
     >
       <Box color={'myGray.800'} fontWeight={'bold'} mb={2}>
-        头像 & 名称
+        {t('admin:avatar_name')}
       </Box>
       <Flex>
-        <MyTooltip label={'点击上传头像'}>
+        <MyTooltip label={t('admin:click_to_upload_avatar')}>
           {avatar ? (
             <Avatar
               flexShrink={0}
@@ -296,22 +299,22 @@ const NavbarItemModal = ({
           flex={1}
           ml={3}
           autoFocus
-          placeholder={'侧边项名'}
+          placeholder={t('admin:navbar_item_name_placeholder')}
           bg={'myWhite.600'}
           {...register('name', {
-            required: '侧边项名不能为空'
+            required: t('admin:navbar_item_name_required')
           })}
         />
       </Flex>
       <Box color={'myGray.800'} fontWeight={'bold'} mt={6} mb={2}>
-        跳转链接
+        {t('admin:redirect_link')}
       </Box>
       <Input
         flex={1}
         bg={'myWhite.600'}
-        placeholder={'跳转链接'}
+        placeholder={t('admin:navbar_item_url_placeholder')}
         {...register('url', {
-          required: '跳转链接不能为空'
+          required: t('admin:navbar_item_url_required')
         })}
       />
 

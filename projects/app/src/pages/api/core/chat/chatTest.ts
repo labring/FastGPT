@@ -26,7 +26,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -282,7 +282,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: newHistories,
       stream: true,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      maxRunTimes: getWorkflowMaxRunTimes(),
       workflowStreamResponse: streamResponseContext.responseWrite,
       responseDetail: true,
       showSkillReferences: true,

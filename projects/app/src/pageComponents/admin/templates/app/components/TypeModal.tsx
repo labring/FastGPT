@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -32,7 +33,7 @@ const TemplateTypeModal = ({
   onSuccess: () => void;
   typeList: TemplateTypeSchemaType[];
 }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const [editType, setEditType] = useState<TemplateTypeSchemaType>();
   const [localTypes, setLocalTypes] = useState<TemplateTypeSchemaType[]>(typeList);
@@ -43,7 +44,7 @@ const TemplateTypeModal = ({
   });
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: '删除后，其下资源将同步删除且不可恢复。是否确认删除？'
+    content: t('admin:delete_warning_nested_resources')
   });
 
   useEffect(() => {
@@ -58,7 +59,7 @@ const TemplateTypeModal = ({
       onClose={onClose}
       w={'580px'}
       h={'600px'}
-      footer={<Button onClick={onClose}>完成</Button>}
+      footer={<Button onClick={onClose}>{t('admin:done')}</Button>}
     >
       <Flex
         alignItems={'center'}
@@ -80,7 +81,7 @@ const TemplateTypeModal = ({
             setEditType({ ...defaultEmptyType, typeOrder: localTypes.length });
           }}
         >
-          添加
+          {t('admin:add_2')}
         </Button>
       </Flex>
       <DndDrag<TemplateTypeSchemaType>
@@ -207,6 +208,8 @@ const TemplateTypeItemModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
+  const { t } = useSafeTranslation();
+
   const isEdit = !!type?.typeId;
 
   const { register, handleSubmit } = useForm({
@@ -235,16 +238,16 @@ const TemplateTypeItemModal = ({
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
           <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
-            确认
+            {t('admin:confirm')}
           </Button>
         </>
       }
     >
       <Box color={'myGray.800'} fontWeight={'bold'}>
-        分类名
+        {t('admin:category_name')}
       </Box>
       <Flex mt={2} alignItems={'center'}>
         <Input

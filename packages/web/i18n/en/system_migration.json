@@ -123,5 +123,16 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "Backfills teamId for legacy agent sandbox instances from their App/Skill source. Orphan records whose source was deleted are skipped and counted; records whose source exists without a teamId are reported as failed records for repair and retry.",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "Backfill sandbox team ownership",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "Validate sandbox team ownership backfill",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records."
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records.",
+  "migrations.20260928_migrate_instance_configs.name": "Migrate instance configs to new collection",
+  "migrations.20260928_migrate_instance_configs.description": "Migrate the legacy systemConfigs collection and DB-backed environment variables into the system_instance_configs document model. Nodes stay unready until the migration succeeds.",
+  "migrations.20260928_migrate_instance_configs.inspect": "Inspect legacy config sources",
+  "migrations.20260928_migrate_instance_configs.migrate": "Write instance configs",
+  "migrations.20260928_migrate_instance_configs.validate": "Validate migration result",
+  "migrations.20260928_migrate_instance_configs.result": "Migrated {{migratedDomainCount}} config domains to the new collection.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.name": "Clean up deprecated instance config fields",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.description": "Remove instance config fields that moved to environment variables or are no longer used, so the new schema can resolve every domain.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.result": "Scanned {{scannedDocuments}} config documents and removed {{removedFieldCount}} deprecated fields across {{updatedDomains}} domains.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup": "Clean up deprecated fields",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.validation": "Verify cleanup result"
 }

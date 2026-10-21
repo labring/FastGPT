@@ -9,6 +9,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type SynonymRebuildContext = Pick<
   DatasetTrainingSchemaType,
@@ -105,6 +106,11 @@ export const seedDatasetSynonymRebuildTasks = async (
 ) => {
   const seed = async (session: ClientSession) => {
     const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+    logInstanceConfigRead({
+      callsite: 'runtime.app.dataset.queue.rebuildSynonym',
+      source: 'bridged-system-env',
+      fields: [{ path: 'performance.dataset.vectorMaxProcess', value: seedCount / 2 }]
+    });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
       if (!(await enqueueNextDatasetSynonymRebuildTask(context, session))) break;

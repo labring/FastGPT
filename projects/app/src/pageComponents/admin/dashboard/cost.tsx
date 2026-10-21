@@ -10,6 +10,7 @@ import {
   getStartTime,
   useDashboardFilters
 } from '@/pageComponents/admin/dashboard/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ChartsBoxStyles = {
   px: 5,
@@ -23,6 +24,7 @@ const ChartsBoxStyles = {
 
 export default function CostPage(): JSX.Element {
   const theme = useTheme();
+  const { t } = useSafeTranslation();
 
   const { dateRange, granularity } = useDashboardFilters();
 
@@ -62,7 +64,11 @@ export default function CostPage(): JSX.Element {
                 }
               ]}
               tooltipItems={[
-                { label: '积分消耗', dataKey: 'totalCount', color: theme.colors.blue['500'] }
+                {
+                  label: t('admin:points_consumption'),
+                  dataKey: 'totalCount',
+                  color: theme.colors.blue['500']
+                }
               ]}
             />
           </Box>
