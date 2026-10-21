@@ -129,7 +129,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(invalidReference.firstErrorNodeId).toBe(search.id);
     expect(invalidReference.issueMap.search).toEqual([
       expect.objectContaining({
-        code: 'invalid_reference',
+        code: 'required_input_empty',
         inputKey: NodeInputKeyEnum.datasetSearchInput
       })
     ]);
@@ -459,7 +459,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.orphan.map((issue) => issue.code)).toContain('no_upstream');
   });
 
-  it('reports invalid references through Core without clearing the configured value', () => {
+  it('treats optional invalid references as unset without clearing the canvas value', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -477,11 +477,136 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result.ref).toEqual([
-      expect.objectContaining({ code: 'invalid_reference', inputKey: NodeInputKeyEnum.answerText })
-    ]);
+    expect(result).toEqual({});
     expect(node.data.inputs[0].value).toEqual(['deleted', 'output']);
   });
+
+  it('does not block run or publish for invalid global and node expressions in text', () => {
+    const node = makeNode('answer', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'Answer',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          selectedType: FlowNodeInputTypeEnum.textarea,
+          renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+          value: '{{deletedGlobal}} {{$deletedNode.output$}} {{$start.deletedOutput$}}'
+        }
+      ]
+    });
+    const graph = {
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'answer' }]
+    };
+    const before = structuredClone(node.data.inputs);
+
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: false,
+      diagnostics: [],
+      issueMap: {}
+    });
+    expect(node.data.inputs).toEqual(before);
+  });
+
+  it('uses effective references for client checks while AI validation retains the original errors', () => {
+    const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiChatDatasetQuote,
+          label: '知识库引用',
+          valueType: WorkflowIOValueTypeEnum.datasetQuote,
+          renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+          value: ['deleted', 'quoteQA']
+        },
+        {
+          key: NodeInputKeyEnum.fileUrlList,
+          label: '文件链接',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [
+            ['start', NodeOutputKeyEnum.userChatInput],
+            ['deleted', 'files']
+          ]
+        }
+      ]
+    });
+    const graph = {
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'ref' }]
+    };
+    const before = structuredClone(node.data.inputs);
+    const { document } = createWorkflowCheckDocument(graph);
+    expect(
+      workflowValidation
+        .validateWorkflow(document, { invalidReferencePolicy: 'error' })
+        .map((issue) => issue.code)
+    ).toEqual(['WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND', 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND']);
+    expect(checkWorkflowNodeIssues(graph)).toEqual({});
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: false,
+      diagnostics: []
+    });
+    expect(node.data.inputs).toEqual(before);
+  });
+
+  it.each([
+    { required: false, resourceValue: ['deleted', 'datasets'] },
+    { required: true, resourceValue: [{ datasetId: 'old', error: 'resource_no_permission' }] }
+  ])(
+    'uses the same empty-reference snapshot for model and resource requirements (model required: $required)',
+    ({ required, resourceValue }) => {
+      const model = makeNode('model', FlowNodeTypeEnum.chatNode, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: '模型',
+            required,
+            valueType: WorkflowIOValueTypeEnum.string,
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            value: ['deleted', 'model']
+          }
+        ]
+      });
+      const dataset = makeNode('dataset', FlowNodeTypeEnum.datasetSearchNode, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            label: '知识库',
+            required: true,
+            valueType: WorkflowIOValueTypeEnum.selectDataset,
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+            value: resourceValue
+          }
+        ]
+      });
+      const result = checkWorkflowBeforeRunOrPublish({
+        nodes: [startNode, model, dataset],
+        edges: [
+          { id: 'model', source: 'start', target: 'model' },
+          { id: 'dataset', source: 'start', target: 'dataset' }
+        ]
+      });
+      expect(result.hasError).toBe(true);
+      expect(result.issueMap.model).toEqual([
+        expect.objectContaining({ code: 'model_required', inputKey: NodeInputKeyEnum.aiModelId })
+      ]);
+      expect(result.issueMap.dataset).toEqual([
+        expect.objectContaining({
+          code: 'required_input_empty',
+          inputKey: NodeInputKeyEnum.datasetSelectList
+        })
+      ]);
+      expect(model.data.inputs[0].value).toEqual(['deleted', 'model']);
+      expect(dataset.data.inputs[0].value).toEqual(resourceValue);
+    }
+  );
 
   it('filters unselectable single and multiple references when storing workflow data', () => {
     const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
@@ -1122,7 +1247,7 @@ describe('checkWorkflowNodeIssues', () => {
     });
   });
 
-  it('keeps configured references when the upstream node or output was deleted', () => {
+  it('reports required inputs as missing when the upstream node or output was deleted without changing the canvas', () => {
     const nodeWithDeletedNodeRef = makeNode('deleted-node', FlowNodeTypeEnum.chatNode, {
       inputs: [
         {
@@ -1161,7 +1286,7 @@ describe('checkWorkflowNodeIssues', () => {
     for (const node of [nodeWithDeletedNodeRef, nodeWithDeletedOutputRef]) {
       expect(
         result[node.id]?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput) ?? []
-      ).toEqual([expect.objectContaining({ code: 'invalid_reference' })]);
+      ).toEqual([expect.objectContaining({ code: 'required_input_empty' })]);
     }
     expect(nodeWithDeletedNodeRef.data.inputs[0].value).toEqual([
       'deleted-node-id',
@@ -1965,7 +2090,9 @@ describe('Core validation and Web extension contract', () => {
       ]);
       expect(result.diagnostics.map((issue) => issue.code)).toEqual(['WORKFLOW_MODEL_REQUIRED']);
       const { document } = createWorkflowCheckDocument(graph);
-      expect(workflowValidation.validateWorkflow(document)).toEqual([]);
+      expect(
+        workflowValidation.validateWorkflow(document, { invalidReferencePolicy: 'error' })
+      ).toEqual([]);
       expect(modelsSpy).toHaveBeenCalledTimes(1);
     } finally {
       coreSpy.mockRestore();

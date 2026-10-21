@@ -190,7 +190,9 @@ describe('input mutation services', () => {
 
       expect(input).toMatchObject({ value, selectedType: FlowNodeInputTypeEnum.JSONEditor });
       expect(
-        validateWorkflow(document).filter((diagnostic) => diagnostic.inputKey === input.key)
+        validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+          (diagnostic) => diagnostic.inputKey === input.key
+        )
       ).toEqual([]);
     }
   );
@@ -295,9 +297,11 @@ describe('input mutation services', () => {
         value: [VARIABLE_NODE_ID, 'fileUrl']
       })
     );
-    expect(validateWorkflow(document).map((diagnostic) => diagnostic.code)).not.toContain(
-      'WORKFLOW_REFERENCE_TYPE_MISMATCH'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map(
+        (diagnostic) => diagnostic.code
+      )
+    ).not.toContain('WORKFLOW_REFERENCE_TYPE_MISMATCH');
     expect(() =>
       setInputValue({ document, nodeId: 'ai', inputKey: 'fileUrlList', value: 'not-an-array' })
     ).toThrow(WorkflowCommandError);
@@ -352,7 +356,7 @@ describe('system variable references', () => {
     ).toContainEqual(expect.objectContaining({ ref, valueType }));
     setInputReference({ document, nodeId: 'ai', inputKey: input.key, ref });
     expect(input.value).toEqual([VARIABLE_NODE_ID, key]);
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('uses runtime system types over colliding user variables and rejects invalid references', () => {
@@ -380,7 +384,7 @@ describe('system variable references', () => {
       inputKey: input.key,
       ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'chatId' }
     });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     for (const [key, error] of [
       ['histories', 'WORKFLOW_REFERENCE_TYPE_MISMATCH'],
@@ -395,7 +399,9 @@ describe('system variable references', () => {
         })
       ).toThrow(error);
       input.value = [VARIABLE_NODE_ID, key];
-      expect(validateWorkflow(document).map((item) => item.code)).toContain(error);
+      expect(
+        validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+      ).toContain(error);
     }
   });
 });
@@ -465,7 +471,7 @@ describe('container reference scopes', () => {
           expect.objectContaining({ ref })
         );
         setInputReference({ ...params, ref });
-        expect(validateWorkflow(document)).toEqual([]);
+        expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
       }
       expect(() =>
         assertExecutionEdge(document, {
@@ -491,7 +497,7 @@ describe('container reference scopes', () => {
     const ref = { nodeId: 'child', outputKey: 'answerText' };
     expect(getAvailableInputReferences(params)).toContainEqual(expect.objectContaining({ ref }));
     setInputReference({ ...params, ref });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     resultInput.canEdit = false;
     expect(
@@ -501,9 +507,9 @@ describe('container reference scopes', () => {
         inputKey: NodeInputKeyEnum.loopRunInputArray
       })
     ).not.toContainEqual(expect.objectContaining({ ref }));
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain('WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM');
     resultInput.canEdit = true;
 
     await addNodeFromTemplate({
@@ -518,7 +524,7 @@ describe('container reference scopes', () => {
       target: { kind: 'target', nodeId: 'next' }
     });
     setInputReference({ document, nodeId: 'next', inputKey: 'userChatInput', ref });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('inherits reference-only parent inputs without exposing other containers or self references', async () => {
@@ -560,7 +566,11 @@ describe('container reference scopes', () => {
       expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'userChatInput' } })
     );
     setInputReference({ ...params, ref: { nodeId: 'ai', outputKey: 'answerText' } });
-    expect(validateWorkflow(document).filter((item) => item.nodeId === 'child')).toEqual([]);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (item) => item.nodeId === 'child'
+      )
+    ).toEqual([]);
 
     for (const sourceNodeId of ['unrelated', 'foreign', 'child']) {
       const ref = { nodeId: sourceNodeId, outputKey: 'answerText' };
@@ -574,7 +584,7 @@ describe('container reference scopes', () => {
         sourceNodeId,
         'answerText'
       ];
-      expect(validateWorkflow(document)).toContainEqual(
+      expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
         expect.objectContaining({
           code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
           nodeId: 'child'

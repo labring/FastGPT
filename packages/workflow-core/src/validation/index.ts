@@ -17,6 +17,10 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
 import { getWorkflowReferenceValues } from '../reference/service';
+import {
+  resolveWorkflowReferenceDocument,
+  type WorkflowInvalidReferencePolicy
+} from '../reference/validation';
 import { hasConfiguredValue } from '../template/defaultValue';
 import { validateNodeIO } from './io';
 import { checkWorkflowModels } from './model';
@@ -449,12 +453,19 @@ const validateSpecialNode = ({
  * CLI、辅助生成及运行/发布入口统一执行完整检查，包括主入口与嵌套入口的孤立检查。
  * 返回诊断供调用方决定阻断或展示；保存草稿不调用此检查。
  * 仅显式传入 modelCheck 时检查模型；CLI 生成不传，Web 注入目录和模板。资源状态由 Web/服务端补充。
+ * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除失效项后再执行必填及模型检查。
  */
 export const validateWorkflow = (
-  document: WorkflowDocument,
-  { modelCheck }: { modelCheck?: Omit<Parameters<typeof checkWorkflowModels>[0], 'document'> } = {}
+  sourceDocument: WorkflowDocument,
+  {
+    modelCheck,
+    invalidReferencePolicy
+  }: {
+    modelCheck?: Omit<Parameters<typeof checkWorkflowModels>[0], 'document'>;
+    invalidReferencePolicy: WorkflowInvalidReferencePolicy;
+  }
 ): WorkflowDiagnostic[] => {
-  const schemaResult = WorkflowDocumentSchema.safeParse(document);
+  const schemaResult = WorkflowDocumentSchema.safeParse(sourceDocument);
   if (!schemaResult.success) {
     return schemaResult.error.issues.map((issue) => ({
       code: 'WORKFLOW_SCHEMA_INVALID',
@@ -464,6 +475,10 @@ export const validateWorkflow = (
     }));
   }
 
+  const document = resolveWorkflowReferenceDocument({
+    document: sourceDocument,
+    invalidReferencePolicy
+  });
   const diagnostics: WorkflowDiagnostic[] = [];
   const nodeIds = new Set<string>();
   for (const node of document.nodes) {

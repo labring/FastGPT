@@ -16,7 +16,8 @@ import { assertValueSchema } from '../template/valueSchema';
 
 export type WorkflowReferenceValue = [string, string];
 
-const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
+/** 判断单个引用元组的结构；来源是否存在由引用校验统一判断。 */
+export const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
   Array.isArray(value) &&
   value.length === 2 &&
   typeof value[0] === 'string' &&

@@ -149,7 +149,7 @@ describe('additional builtin nodes', () => {
       name: '保留的历史问题优化',
       flowNodeType: 'cfr'
     });
-    expect(validateWorkflow(result.document)).toEqual([]);
+    expect(validateWorkflow(result.document, { invalidReferencePolicy: 'error' })).toEqual([]);
     const workflow = compileStoreWorkflow(result.document);
     expect(compileStoreWorkflow(decompileStoreWorkflow({ workflow }))).toEqual(workflow);
   });

@@ -26,7 +26,7 @@ describe('StoreWorkflow round-trip', () => {
     const document = decompileStoreWorkflow({ workflow: parsedStore, app: parsedWorkflow.app });
     expect(compileStoreWorkflow(document)).toEqual(parsedStore);
     expect(normalizeWorkflowDocument(document)).toEqual(normalizeWorkflowDocument(parsedWorkflow));
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('compiles semantic output keys to Store output ids and decompiles them back', () => {

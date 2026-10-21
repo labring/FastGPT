@@ -7,6 +7,7 @@ import type {
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { validateWorkflow } from '@fastgpt/workflow-core/validation';
+import { resolveWorkflowReferenceDocument } from '@fastgpt/workflow-core/reference/validation';
 import { checkWorkflowModels } from '@fastgpt/workflow-core/validation/model';
 import { collectWorkflowBindings } from '@fastgpt/workflow-core/binding/service';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
@@ -30,12 +31,19 @@ type WorkflowCheckInput = {
 /**
  * 所有 Web 场景共用一次 Core 扫描；Web 只补资源状态和展示，不维护另一套输入、模型或图规则。
  * 无节点归属的诊断单独保留，避免“已阻断但没有具体提示”；原始诊断原样返回供调用方排查。
+ * 客户端把失效引用视为未引用，输入、模型和资源检查共用有效值快照，不改写画布。
  */
 const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: WorkflowCheckInput) => {
   const projected = createWorkflowCheckDocument({ nodes, edges, chatConfig });
+  const document = resolveWorkflowReferenceDocument({
+    document: projected.document,
+    invalidReferencePolicy: 'asEmpty'
+  });
   const diagnostics = [
     ...projected.diagnostics,
-    ...validateWorkflow(projected.document, {
+    // 快照已按 asEmpty 收敛；Core 直接校验有效值，不再次清理引用。
+    ...validateWorkflow(document, {
+      invalidReferencePolicy: 'error',
       modelCheck: { modelData, templates: moduleTemplatesFlat }
     })
   ];
@@ -88,17 +96,17 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
   }
 
   const bindingsByNode = new Map<string, WorkflowBindingRequirement[]>();
-  for (const binding of collectWorkflowBindings(projected.document)) {
+  for (const binding of collectWorkflowBindings(document)) {
     const bindings = bindingsByNode.get(binding.nodeId) ?? [];
     bindings.push(binding);
     bindingsByNode.set(binding.nodeId, bindings);
   }
-  for (const { data } of nodes) {
+  for (const [index, { data }] of nodes.entries()) {
     if (nodeId && nodeId !== data.nodeId) continue;
     const entries = issueEntries.get(data.nodeId) ?? [];
     entries.push(
       ...checkWorkflowNodeResourceRules({
-        data,
+        data: { ...data, inputs: document.nodes[index].inputs },
         bindings: bindingsByNode.get(data.nodeId) ?? []
       }).map((issue) => ({
         issue: formatWorkflowRuleIssue({ issue, node: data, t }),

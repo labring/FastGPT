@@ -79,7 +79,7 @@ export const applyWorkflowChangeSet = async ({
     }
   }
 
-  const diagnostics = validateWorkflow(nextDocument);
+  const diagnostics = validateWorkflow(nextDocument, { invalidReferencePolicy: 'error' });
   return {
     document: nextDocument,
     changes,

@@ -116,6 +116,27 @@ describe('checkWorkflowModels', () => {
   });
 
   it.each([
+    { value: undefined, required: false },
+    { value: [], required: false },
+    { value: undefined, required: true }
+  ])(
+    'requires an empty dynamic system model after reference normalization: %j',
+    ({ value, required }) => {
+      const document = makeDocument([
+        makeInput(NodeInputKeyEnum.aiModelId, {
+          selectedType: FlowNodeInputTypeEnum.reference,
+          renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel, FlowNodeInputTypeEnum.reference],
+          value,
+          required
+        })
+      ]);
+      expect(check(document)).toEqual([
+        expect.objectContaining({ code: 'WORKFLOW_MODEL_REQUIRED' })
+      ]);
+    }
+  );
+
+  it.each([
     { defaultValue: 'gpt-4o', expected: [] },
     { value: 'llm-id', expected: [] },
     { value: '', expected: [] },
