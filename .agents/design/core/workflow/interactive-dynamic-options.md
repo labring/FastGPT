@@ -178,4 +178,3 @@ export const DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES: WorkflowIOValueTypeEnum[] = [
 - [x] 重构 `InputTypeConfig` 单选/多选配置布局、内联默认值禁用态与弹窗变量引用选择
 - [x] 实现 `MySelect` / `MultipleSelect` 大选项量搜索过滤（`> 10`）与多选「全部」选项（`>= 5`）
 - [x] 对齐 `upstream/main` 引用清理与工作流静态检查并补充单元测试
-

@@ -21,7 +21,10 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
@@ -36,6 +39,8 @@ import {
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
+import { HttpToolSetNode } from '@fastgpt/global/core/workflow/template/system/httpToolSet';
+import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -73,6 +78,26 @@ export type TemplateListProps = {
   ScrollData?: ScrollListType;
 };
 
+/** 内置 MCP/HTTP 节点可从侧栏创建；工具选择器继续允许直接添加所有工具集引用。 */
+export const canDirectAddToolSet = ({
+  template,
+  isPopover,
+  isToolSelector
+}: {
+  template: Pick<NodeTemplateListItemType, 'id' | 'flowNodeType' | 'templateType'>;
+  isPopover?: boolean;
+  isToolSelector: boolean;
+}) => {
+  const isLocalToolSet =
+    template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
+    (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
+
+  return (
+    template.flowNodeType === FlowNodeTypeEnum.toolSet &&
+    (isToolSelector || (!isPopover && isLocalToolSet))
+  );
+};
+
 const NodeTemplateListItem = ({
   template,
   templateType,
@@ -97,12 +122,20 @@ const NodeTemplateListItem = ({
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  // 工具集（系统工具、团队 HTTP/MCP 工具）只有在工具调用的工具选择器里才允许直接创建节点；
-  // 侧边栏等其他场景点击卡片一律进入工具集内部，选择单个工具。
-  const allowDirectAddToolSet = isToolSet && isToolSelector;
+  const isLocalToolSet = canDirectAddToolSet({
+    template,
+    isPopover: false,
+    isToolSelector: false
+  });
+  // 外部工具集在侧栏中下钻选择子工具；内置 MCP 节点则创建为本地工具集。
+  const allowDirectAddToolSet = canDirectAddToolSet({
+    template,
+    isPopover,
+    isToolSelector
+  });
   const canDragCreateNode =
     !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
-  const showExpandArrow = template.isFolder || isToolSet;
+  const showExpandArrow = (template.isFolder || isToolSet) && !isLocalToolSet;
   const isDebugTool = isDebugToolSource(template.source);
   const isSystemSource = template.source === 'system';
 
@@ -271,6 +304,14 @@ const NodeTemplateList = ({
       try {
         const templateNode = await (async () => {
           try {
+            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+            const isLocalToolSet = canDirectAddToolSet({
+              template,
+              isPopover: false,
+              isToolSelector: false
+            });
+            if (isLocalToolSet && baseTemplate) return { ...baseTemplate };
+
             const shouldLoadPreviewNode = [
               FlowNodeTypeEnum.tool,
               FlowNodeTypeEnum.toolSet,
@@ -294,11 +335,9 @@ const NodeTemplateList = ({
               };
             }
 
-            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
-            if (!baseTemplate) {
-              throw new Error('baseTemplate not found');
-            }
-            return { ...baseTemplate };
+            if (baseTemplate) return { ...baseTemplate };
+
+            throw new Error('baseTemplate not found');
           } catch (e) {
             toast({
               status: 'error',

@@ -327,9 +327,9 @@ describe('httpTool utils', () => {
       expect(result.avatar).toBe('core/app/type/httpToolsFill');
       expect(result.intro).toBe('Search for items');
       expect(result.name).toBe('toolsetName/searchTool');
-      expect(result.toolConfig?.httpTool?.toolId).toBe(
-        `${AppToolSourceEnum.http}-toolset-456/searchTool`
-      );
+      expect(result.toolConfig?.httpTool).toMatchObject({
+        toolId: `${AppToolSourceEnum.http}-toolset-456/searchTool`
+      });
     });
 
     it('should create tool runtime node with custom avatar', () => {

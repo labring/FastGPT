@@ -9,6 +9,7 @@ import {
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
@@ -159,6 +160,78 @@ describe('PublishAppBodySchema', () => {
 
     expect(result).not.toHaveProperty('nodes.0.unsupportedNodeField');
     expect(result).not.toHaveProperty('nodes.0.inputs.0.unsupportedInputField');
+  });
+});
+
+describe('persisted workflow node tool secrets', () => {
+  const parseCreateNode = (node: StoreNodeItemType) =>
+    CreateAppRequestBodySchema.safeParse({
+      name: 'tool secret app',
+      type: 'simple',
+      nodes: [node],
+      edges: []
+    }).success;
+
+  it.each([
+    {
+      nodeType: 'external MCP tool reference',
+      flowNodeType: 'tool',
+      toolConfig: {
+        mcpTool: { toolId: 'mcp-app/search', headerSecret: { Authorization: { value: 'secret' } } }
+      },
+      pluginId: undefined
+    },
+    {
+      nodeType: 'external HTTP tool set',
+      flowNodeType: 'toolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolId: 'http-app',
+          headerSecret: { Authorization: { value: 'secret' } },
+          toolList: []
+        }
+      },
+      pluginId: 'http-app'
+    }
+  ])('rejects a secret on $nodeType', ({ flowNodeType, toolConfig, pluginId }) => {
+    const node = {
+      ...currentNode,
+      flowNodeType,
+      pluginId,
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(false);
+  });
+
+  it.each([
+    {
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search' }]
+      }
+    },
+    {
+      toolSetKey: 'httpToolSet',
+      config: {
+        baseUrl: 'https://api.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+      }
+    }
+  ] as const)('keeps a secret on a node-local $toolSetKey', ({ toolSetKey, config }) => {
+    const toolConfig = {
+      [toolSetKey]: config
+    };
+    const node = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(true);
   });
 });
 

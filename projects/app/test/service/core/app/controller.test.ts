@@ -17,6 +17,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
@@ -38,6 +39,43 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/tool/utils/client', () => mocks);
 
 describe('beforeUpdateAppFormat', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'encrypts node-local %s auth and preserves it on repeat saves',
+    async (toolSetKey) => {
+      const nodes = [
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          inputs: [],
+          toolConfig: {
+            [toolSetKey]: {
+              ...(toolSetKey === 'mcpToolSet'
+                ? { url: 'https://mcp.example.com' }
+                : { baseUrl: 'https://api.example.com', customHeaders: '{}' }),
+              headerSecret: { 'X-API-Key': { value: 'temporary-secret', secret: '' } },
+              toolList: []
+            }
+          }
+        } as StoreNodeItemType
+      ];
+
+      await beforeUpdateAppFormat({ nodes });
+
+      const toolSet = nodes[0].toolConfig?.[toolSetKey];
+      if (!toolSet) throw new Error('Toolset config is missing');
+      const encryptedValue = toolSet.headerSecret?.['X-API-Key'];
+      expect(encryptedValue).toMatchObject({ value: '', secret: expect.any(String) });
+      expect(getSecretValue({ storeSecret: toolSet.headerSecret ?? undefined })).toEqual({
+        'X-API-Key': 'temporary-secret'
+      });
+
+      await beforeUpdateAppFormat({ nodes });
+
+      const savedAgain = nodes[0].toolConfig?.[toolSetKey];
+      if (!savedAgain) throw new Error('Toolset config is missing');
+      expect(savedAgain.headerSecret?.['X-API-Key']?.secret).toBe(encryptedValue?.secret);
+    }
+  );
+
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',
     async (type) => {

@@ -20,6 +20,16 @@ export const checkWorkflowNodeResourceRules = ({
 }): WorkflowRuleIssue[] => {
   const issues: WorkflowRuleIssue[] = [];
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
+  if (data.flowNodeType === FlowNodeTypeEnum.toolSet && !data.pluginId) {
+    const mcpToolSet = data.toolConfig?.mcpToolSet;
+    const httpToolSet = data.toolConfig?.httpToolSet;
+    if (
+      (mcpToolSet && 'toolList' in mcpToolSet && !mcpToolSet.toolList?.length) ||
+      (httpToolSet && 'toolList' in httpToolSet && !httpToolSet.toolList?.length)
+    ) {
+      issues.push({ code: 'tool_set_not_configured' });
+    }
+  }
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
     issues.push({ code: 'tool_offline' });
   } else if (data.pluginData?.error) {

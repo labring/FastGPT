@@ -47,6 +47,96 @@ describe('workflow input schema boundaries', () => {
   });
 });
 
+describe('legacy ToolSet migration', () => {
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'projects a legacy external %s snapshot to its referenced summary',
+    (toolSetKey) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'external-tool-set',
+            flowNodeType: 'toolSet',
+            pluginId: 'external-tool-set-id',
+            name: 'External ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              [toolSetKey]: {
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://mcp.example.com' }
+                  : { baseUrl: 'https://api.example.com' }),
+                headerSecret: { Authorization: { value: 'secret', secret: '' } },
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.nodes[0].toolConfig?.[toolSetKey]).toEqual({
+        toolId: 'external-tool-set-id',
+        toolList: [{ name: 'search', description: 'Search' }]
+      });
+    }
+  );
+
+  it('keeps a node-local HTTP toolset inline and strips editor-only fields', () => {
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'inline-tool-set',
+          flowNodeType: 'toolSet',
+          name: 'Inline ToolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://api.example.com',
+              toolList: [
+                {
+                  name: 'search',
+                  description: 'Search',
+                  path: '/search',
+                  method: 'GET',
+                  runtimeOnly: true
+                }
+              ]
+            }
+          }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual({
+      baseUrl: 'https://api.example.com',
+      toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+    });
+  });
+
+  it('rejects a toolset configuring both protocols', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'dual-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Dual ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: { toolId: 'mcp-tool-set', toolList: [] },
+              httpToolSet: { toolId: 'http-tool-set', toolList: [] }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+});
+
 describe('workflow migration boundary', () => {
   it.each(['legacyDatasetTagFilter', 'unknownInputType', 123, null])(
     'cleans invalid selected types before schema validation: %j',
@@ -142,7 +232,6 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
     expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
   });
-
 
   it('keeps legacy file inputs manual', async () => {
     const result = await migrateWorkflowToCurrent({

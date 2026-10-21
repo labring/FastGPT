@@ -35,6 +35,7 @@ const workflowCheckMessageKeys = {
   http_url_empty: i18nT('common:core.workflow.check.http_url_empty'),
   context_extract_empty: i18nT('common:core.workflow.check.context_extract_empty'),
   tool_call_empty: i18nT('common:core.workflow.check.tool_call_empty'),
+  tool_set_not_configured: i18nT('common:core.workflow.check.tool_set_not_configured'),
   tool_inactive: i18nT('common:core.workflow.check.tool_inactive'),
   tool_missing: i18nT('common:core.workflow.check.tool_missing'),
   tool_load_failed: i18nT('common:core.workflow.check.tool_load_failed'),
@@ -124,6 +125,8 @@ export const getWorkflowCheckIssueMessage = ({
       return t('common:core.workflow.check.context_extract_empty', params);
     case 'tool_call_empty':
       return t('common:core.workflow.check.tool_call_empty', params);
+    case 'tool_set_not_configured':
+      return t('common:core.workflow.check.tool_set_not_configured', params);
     case 'tool_inactive':
       return t('common:core.workflow.check.tool_inactive', params);
     case 'tool_missing':

@@ -7,6 +7,7 @@ import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { formatToolInputSecrets } from './tool/secretConfig';
+import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -45,7 +46,7 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
  * 主要职责：
  * 1. 知识库：仅保存 datasetId，展示信息由应用详情接口实时补全。
  * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
- * 3. 密钥输入：清理敏感信息。
+ * 3. 密钥输入与 MCP/HTTP 工具集鉴权：使用服务级密钥加密。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
@@ -74,6 +75,20 @@ export const beforeUpdateAppFormat = async ({
   };
 
   nodes.forEach((node) => {
+    const mcpToolSet = node.toolConfig?.mcpToolSet;
+    if (mcpToolSet && 'url' in mcpToolSet && mcpToolSet.headerSecret != null) {
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+    }
+    const httpToolSet = node.toolConfig?.httpToolSet;
+    if (httpToolSet && 'baseUrl' in httpToolSet) {
+      if (httpToolSet.headerSecret != null) {
+        httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
+      }
+      httpToolSet.toolList.forEach((tool) => {
+        if (tool.headerSecret != null) tool.headerSecret = storeSecretValue(tool.headerSecret);
+      });
+    }
+
     const isDatasetNode =
       node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
       node.flowNodeType === FlowNodeTypeEnum.agent;

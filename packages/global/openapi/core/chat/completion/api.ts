@@ -37,7 +37,7 @@ const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((
   });
 });
 
-const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.safeExtend({
   inputs: z.array(ChatTestNodeInputSchema)
 });
 

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -103,6 +104,77 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     });
 
     return source;
+  };
+
+  const getMcpClient = ({
+    url,
+    headerSecret
+  }: {
+    url: string;
+    headerSecret?: StoreSecretValueType;
+  }) => {
+    const headers = getSecretValue({ storeSecret: headerSecret });
+    // 同一 URL 可对应不同工具集凭据；缓存按鉴权区分，但不把明文请求头放进缓存键。
+    const cacheKey = createHash('sha256').update(JSON.stringify({ url, headers })).digest('hex');
+    const context = getWorkflowContext();
+    const mcpClient = context.mcpClientMemory[cacheKey] ?? new MCPClient({ url, headers });
+    context.mcpClientMemory[cacheKey] = mcpClient;
+    return mcpClient;
+  };
+
+  const callHttpTool = async ({
+    tool,
+    baseUrl,
+    apiSchemaStr,
+    customHeaders,
+    headerSecret
+  }: {
+    tool: HttpToolConfigType;
+    baseUrl?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string | Record<string, string>;
+    headerSecret?: StoreSecretValueType | null;
+  }) => {
+    toolInput = params;
+    const { requestSchema } = getHTTPToolRuntimeSchemas(tool);
+    assertToolRuntimeParams({ jsonSchema: requestSchema, params });
+    const { data, errorMsg } = await runHTTPTool({
+      apiSchemaStr,
+      baseUrl: baseUrl || '',
+      toolPath: tool.path,
+      method: tool.method,
+      params,
+      headerSecret,
+      customHeaders: customHeaders
+        ? typeof customHeaders === 'string'
+          ? JSON.parse(customHeaders)
+          : customHeaders
+        : undefined,
+      staticParams: tool.staticParams,
+      staticHeaders: tool.staticHeaders,
+      staticBody: tool.staticBody
+    });
+
+    if (errorMsg) {
+      return getNodeErrResponse({
+        error: errorMsg,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
+          toolRes: errorMsg,
+          moduleLogo: avatar
+        }
+      });
+    }
+
+    return {
+      data: { [NodeOutputKeyEnum.rawResponse]: data, ...(typeof data === 'object' ? data : {}) },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        toolInput,
+        toolRes: data,
+        moduleLogo: avatar
+      },
+      [DispatchNodeResponseKeyEnum.toolResponse]: data
+    };
   };
 
   try {
@@ -270,43 +342,53 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         },
         [DispatchNodeResponseKeyEnum.toolResponse]: result
       };
-    } else if (toolConfig?.mcpTool?.toolId) {
-      // pluginId: toolSetAppId/toolsetName/toolName
-      const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
-      if (!parentId || !toolName) {
-        throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
-      }
-      const app = await authRuntimeToolset(parentId, toolName);
-      const workflow = await getAppVersionById({ appId: parentId, app });
-      const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
-        workflow.nodes[0]?.toolConfig?.mcpToolSet
-      ).data;
-      const mcpToolList = await getMCPChildren(app, workflow);
-      if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
-      const mcpTool = getToolNameCandidates(toolName)
-        .map((name) => mcpToolList.find((tool) => tool.name === name))
-        .find(Boolean);
-      if (!mcpTool) throw new Error(`MCP tool ${toolName} not found`);
-      const url = mcpToolSet?.url ?? mcpTool.url;
-      const headerSecret = mcpToolSet?.headerSecret ?? mcpTool.headerSecret;
-      if (!url) throw new Error('MCP tool set URL is missing');
+    } else if (toolConfig?.mcpTool) {
+      const mcpTool = toolConfig.mcpTool;
+      if ('toolId' in mcpTool) {
+        // pluginId: toolSetAppId/toolsetName/toolName
+        const { parentId, toolName } = parseToolId(mcpTool.toolId);
+        if (!parentId || !toolName) {
+          throw new Error(`Invalid MCP tool id: ${mcpTool.toolId}`);
+        }
+        const app = await authRuntimeToolset(parentId, toolName);
+        const workflow = await getAppVersionById({ appId: parentId, app });
+        const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
+          workflow.nodes[0]?.toolConfig?.mcpToolSet
+        ).data;
+        const mcpToolList = await getMCPChildren(app, workflow);
+        if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
+        const referencedTool = getToolNameCandidates(toolName)
+          .map((name) => mcpToolList.find((tool) => tool.name === name))
+          .find(Boolean);
+        if (!referencedTool) throw new Error(`MCP tool ${toolName} not found`);
+        const url = mcpToolSet?.url ?? referencedTool.url;
+        const headerSecret = mcpToolSet?.headerSecret ?? referencedTool.headerSecret;
+        if (!url) throw new Error('MCP tool set URL is missing');
 
+        await assertMCPUrlNotInternal(url);
+
+        const mcpClient = getMcpClient({ url, headerSecret: headerSecret ?? undefined });
+        toolInput = params;
+        assertToolRuntimeParams({ jsonSchema: referencedTool.inputSchema, params });
+        const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
+        return {
+          data: { [NodeOutputKeyEnum.rawResponse]: result },
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            toolInput,
+            toolRes: result,
+            moduleLogo: avatar
+          },
+          [DispatchNodeResponseKeyEnum.toolResponse]: result
+        };
+      }
+
+      const { name: toolName, url, headerSecret, inputSchema } = mcpTool;
+      if (!url) throw new Error('MCP tool set URL is missing');
       await assertMCPUrlNotInternal(url);
 
-      const context = getWorkflowContext();
-      // Buffer mcpClient in this workflow
-      const mcpClient =
-        context.mcpClientMemory?.[url] ??
-        new MCPClient({
-          url,
-          headers: getSecretValue({
-            storeSecret: headerSecret ?? undefined
-          })
-        });
-      context.mcpClientMemory[url] = mcpClient;
-
+      const mcpClient = getMcpClient({ url, headerSecret: headerSecret ?? undefined });
       toolInput = params;
-      assertToolRuntimeParams({ jsonSchema: mcpTool?.inputSchema, params });
+      assertToolRuntimeParams({ jsonSchema: inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
@@ -317,78 +399,50 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         },
         [DispatchNodeResponseKeyEnum.toolResponse]: result
       };
-    } else if (toolConfig?.httpTool?.toolId) {
-      const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
-      if (!parentId || !toolName) {
-        throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
-      }
-      const app = await authRuntimeToolset(parentId, toolName);
-      const workflow = await getAppVersionById({
-        appId: parentId,
-        versionId: version,
-        app
-      });
-      const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
-        workflow.nodes[0]?.toolConfig?.httpToolSet
-      ).data;
-      const toolList = await getHTTPToolList(app, workflow);
-      if (!toolSetData || !toolList.length) {
-        throw new Error('HTTP tool set not found');
-      }
+    } else if (toolConfig?.httpTool) {
+      const httpToolConfig = toolConfig.httpTool;
+      if ('toolId' in httpToolConfig) {
+        const { parentId, toolName } = parseToolId(httpToolConfig.toolId);
+        if (!parentId || !toolName) {
+          throw new Error(`Invalid HTTP tool id: ${httpToolConfig.toolId}`);
+        }
+        const app = await authRuntimeToolset(parentId, toolName);
+        const workflow = await getAppVersionById({
+          appId: parentId,
+          versionId: version,
+          app
+        });
+        const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
+          workflow.nodes[0]?.toolConfig?.httpToolSet
+        ).data;
+        const toolList = await getHTTPToolList(app, workflow);
+        if (!toolSetData || !toolList.length) {
+          throw new Error('HTTP tool set not found');
+        }
 
-      const { headerSecret, baseUrl, customHeaders } = toolSetData ?? {};
+        const httpTool = getToolNameCandidates(toolName)
+          .map((name) => toolList.find((tool: HttpToolConfigType) => tool.name === name))
+          .find(Boolean);
+        if (!httpTool) {
+          throw new Error(`HTTP tool ${toolName} not found`);
+        }
 
-      const httpTool = getToolNameCandidates(toolName)
-        .map((name) => toolList?.find((tool: HttpToolConfigType) => tool.name === name))
-        .find(Boolean);
-      if (!httpTool) {
-        throw new Error(`HTTP tool ${toolName} not found`);
-      }
-
-      toolInput = params;
-      // 最新定义先兼容旧标量/缺失 requestSchema，与运行节点构建使用同一套解析逻辑。
-      const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
-      assertToolRuntimeParams({
-        jsonSchema: requestSchema,
-        params
-      });
-      const { data, errorMsg } = await runHTTPTool({
-        apiSchemaStr: toolSetData?.apiSchemaStr,
-        baseUrl: baseUrl || '',
-        toolPath: httpTool.path,
-        method: httpTool.method,
-        params,
-        headerSecret: httpTool.headerSecret || headerSecret,
-        customHeaders: customHeaders
-          ? typeof customHeaders === 'string'
-            ? JSON.parse(customHeaders)
-            : customHeaders
-          : undefined,
-        staticParams: httpTool.staticParams,
-        staticHeaders: httpTool.staticHeaders,
-        staticBody: httpTool.staticBody
-      });
-
-      if (errorMsg) {
-        return getNodeErrResponse({
-          error: errorMsg,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            toolInput,
-            toolRes: errorMsg,
-            moduleLogo: avatar
-          }
+        return await callHttpTool({
+          tool: httpTool,
+          apiSchemaStr: toolSetData.apiSchemaStr,
+          baseUrl: toolSetData.baseUrl,
+          headerSecret: toolSetData.headerSecret,
+          customHeaders: toolSetData.customHeaders
         });
       }
 
-      return {
-        data: { [NodeOutputKeyEnum.rawResponse]: data, ...(typeof data === 'object' ? data : {}) },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolInput,
-          toolRes: data,
-          moduleLogo: avatar
-        },
-        [DispatchNodeResponseKeyEnum.toolResponse]: data
-      };
+      return await callHttpTool({
+        tool: httpToolConfig,
+        apiSchemaStr: httpToolConfig.apiSchemaStr,
+        baseUrl: httpToolConfig.baseUrl,
+        headerSecret: httpToolConfig.headerSecret,
+        customHeaders: httpToolConfig.customHeaders
+      });
     } else {
       // mcp tool (old version compatible)
       const { toolData, system_toolData, ...restParams } = params;

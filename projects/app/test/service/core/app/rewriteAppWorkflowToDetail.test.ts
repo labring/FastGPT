@@ -843,15 +843,17 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
       description: '',
       value: ''
     });
-    expect(nodes[1].inputs[0].value).toEqual([
-      expect.objectContaining({ name: '' })
-    ]);
+    expect(nodes[1].inputs[0].value).toEqual([expect.objectContaining({ name: '' })]);
     expect(nodes[1].inputs[0].value).not.toHaveProperty('0.metadataLocale');
   });
-
 });
 
 describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
+  beforeEach(() => {
+    getClientToolPreviewNodeMock.mockReset();
+    authAppByTmbIdMock.mockReset();
+  });
+
   it('保留工具集节点已编辑的子工具描述', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'systemTool-toolset',
@@ -907,6 +909,84 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
       { toolId: 'blank', name: 'Blank', description: '' },
       { toolId: 'new', name: 'New', description: 'New definition description' }
     ]);
+  });
+
+  it('encrypts inline HTTP parent auth before returning a detail response', async () => {
+    const secret = 'http-detail-secret';
+    const httpToolSet = {
+      baseUrl: 'https://api.example.com',
+      headerSecret: { Authorization: { value: secret, secret: '' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET'
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: { httpToolSet }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
+    const resultToolSet = nodes[0].toolConfig?.httpToolSet;
+    if (!resultToolSet || !('headerSecret' in resultToolSet)) {
+      throw new Error('HTTP toolset auth is missing');
+    }
+    expect(resultToolSet.headerSecret?.Authorization).toMatchObject({
+      value: '',
+      secret: expect.any(String)
+    });
+    expect(JSON.stringify(nodes)).not.toContain(secret);
+  });
+
+  it('removes historical child auth from inline HTTP tool-set detail responses', async () => {
+    const secret = 'legacy-inline-child-secret';
+    const httpToolSet = {
+      baseUrl: 'https://api.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET',
+          headerSecret: { Authorization: { value: secret, secret: '' } }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        outputs: [],
+        toolConfig: { httpToolSet }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[0]).not.toHaveProperty('headerSecret');
+    expect(JSON.stringify(nodes)).not.toContain(secret);
   });
 });
 

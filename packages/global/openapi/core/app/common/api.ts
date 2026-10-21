@@ -13,10 +13,11 @@ import { VariableItemTypeSchema } from '../../../../core/app/variable/type';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { AppPermissionSchema } from '../../../../support/permission/app/controller.schema';
 import { SourceMemberSchema } from '../../../../support/user/type';
+import type { StoreNodeItemType } from '../../../../core/workflow/type/node';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
-  OpenAPIStoreNodeItemTypeSchema
+  PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
@@ -206,7 +207,7 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
   }
 };
 
-const CreateAppNodeSchema = OpenAPIStoreNodeItemTypeSchema.extend({
+const CreateAppNodeSchema = PersistedOpenAPIStoreNodeItemTypeSchema.safeExtend({
   inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
@@ -273,7 +274,9 @@ export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
   CreateAppBodySchema
 );
-export type CreateAppBodyType = z.infer<typeof CreateAppBodySchema>;
+export type CreateAppBodyType = Omit<z.input<typeof CreateAppBodySchema>, 'nodes'> & {
+  nodes?: StoreNodeItemType[];
+};
 
 export const CreateAppResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
@@ -439,7 +442,10 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '创建应用时使用的模板 ID'
   }),
   updateTime: z.coerce.date().meta({ description: '最后更新时间' }),
-  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).default([]).meta({ description: '应用节点配置' }),
+  nodes: z
+    .array(PersistedOpenAPIStoreNodeItemTypeSchema)
+    .default([])
+    .meta({ description: '应用节点配置' }),
   edges: z.array(StoreEdgeItemTypeSchema).default([]).meta({
     description: '应用连线'
   }),
@@ -477,9 +483,7 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     deprecated: true
   }),
   permission: AppPermissionSchema
-}).meta({
-  description: '应用详情'
-}) as z.ZodType<AppDetailType>;
+}).meta({ description: '应用详情' }) as z.ZodType<AppDetailType>;
 export type GetAppDetailResponseType = z.infer<typeof GetAppDetailResponseSchema>;
 
 /* ============================================================================

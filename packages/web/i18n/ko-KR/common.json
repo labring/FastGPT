@@ -679,6 +679,7 @@
   "core.workflow.check.status.pending_handle": "처리 대기",
   "core.workflow.check.status.pending_improve": "보완 필요",
   "core.workflow.check.tool_call_empty": "도구를 설정하거나 가상 머신을 활성화하세요",
+  "core.workflow.check.tool_set_not_configured": "도구 모음이 구성되지 않았습니다",
   "core.workflow.check.tool_inactive": "이 도구는 아직 활성화되지 않았습니다. 활성화 후 사용하세요",
   "core.workflow.check.tool_load_failed": "도구를 불러오지 못했습니다. 잠시 후 다시 시도하세요",
   "core.workflow.check.tool_missing": "이 도구는 존재하지 않습니다. 삭제하세요",
