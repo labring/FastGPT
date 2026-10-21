@@ -1,10 +1,6 @@
 import React from 'react';
 import { Box, Flex, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
-import {
-  getDatasetCollectionPathById,
-  postDatasetCollection,
-  putDatasetCollectionById
-} from '@/web/core/dataset/api/collection';
+import { postDatasetCollection, putDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
@@ -71,6 +67,14 @@ const Header = ({
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const paths = useContextSelector(DatasetPageContext, (v) => v.collectionPaths);
+  const collectionFolderAccessMode = useContextSelector(
+    DatasetPageContext,
+    (v) => v.collectionFolderAccessMode
+  );
+  // 导航目录没有真实权限，不展示任何创建/导入/标签管理入口
+  const canWriteCurrentFolder =
+    datasetDetail.permission.hasWritePer && collectionFolderAccessMode === 'read';
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -84,11 +88,6 @@ const Header = ({
     onOpenWebsiteModal,
     openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
-
-  const { data: paths = [] } = useRequest(() => getDatasetCollectionPathById(parentId), {
-    refreshDeps: [parentId],
-    manual: false
-  });
 
   const { editFolderData, setEditFolderData } = useEditFolder();
   const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
@@ -247,7 +246,7 @@ const Header = ({
         </Button>
       )}
       {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
-        datasetDetail.permission.hasWritePer &&
+        canWriteCurrentFolder &&
         feConfigs?.isPlus && (
           <Button
             h={'36px'}
@@ -262,7 +261,7 @@ const Header = ({
         )}
 
       {/* diff collection button */}
-      {datasetDetail.permission.hasWritePer && (
+      {canWriteCurrentFolder && (
         <Box mt={[3, 0]}>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu

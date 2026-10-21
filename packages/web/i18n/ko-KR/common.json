@@ -976,6 +976,7 @@
   "no": "아니오",
   "no_child_folder": "하위 디렉터리가 없습니다. 여기에 배치하세요",
   "no_intro": "소개가 없습니다",
+  "no_operation_permission": "작업 권한이 없습니다",
   "no_more_data": "더 이상 데이터가 없습니다",
   "no_error_logs": "오류 로그가 없습니다",
   "no_pay_way": "시스템에 적합한 결제 채널이 없습니다",

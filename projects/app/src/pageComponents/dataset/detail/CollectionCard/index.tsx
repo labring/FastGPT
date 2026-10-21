@@ -137,6 +137,8 @@ const CollectionCard = () => {
 
         return {
           ...collection,
+          // 导航目录仅用于通往可读后代，没有真实权限，行内只展示名称
+          isNavigableFolder: collection.folderAccessMode === 'navigate',
           icon,
           canOpenTrainingStates: canOpenCollectionTrainingStates(collection),
           statusText,
@@ -144,6 +146,11 @@ const CollectionCard = () => {
         };
       }),
     [collections]
+  );
+
+  const selectableCollections = useMemo(
+    () => formatCollections.filter((collection) => !collection.isNavigableFolder),
+    [formatCollections]
   );
 
   const {
@@ -156,7 +163,8 @@ const CollectionCard = () => {
     isSelecteAll,
     selectAllTrigger
   } = useTableMultipleSelect({
-    list: formatCollections,
+    // 导航目录不参与多选，全选也不应包含它们
+    list: selectableCollections,
     getItemId: (e) => e._id
   });
 
@@ -466,13 +474,16 @@ const CollectionCard = () => {
               {formatCollections.map((collection) => (
                 <Tr
                   key={collection._id}
-                  _hover={{ bg: 'myGray.50' }}
+                  _hover={collection.isNavigableFolder ? undefined : { bg: 'myGray.50' }}
                   {...getBoxProps({
                     dataId: collection._id,
-                    isFolder: collection.type === DatasetCollectionTypeEnum.folder
+                    isFolder: collection.type === DatasetCollectionTypeEnum.folder,
+                    isDisabled: collection.isNavigableFolder
                   })}
                   draggable={false}
                   {...getRowSelectionProps(collection, {
+                    // 导航目录不能被多选切换，点击始终进入目录
+                    forceClick: collection.isNavigableFolder,
                     onClick: () => {
                       if (collection.type === DatasetCollectionTypeEnum.folder) {
                         router.push({
@@ -493,13 +504,26 @@ const CollectionCard = () => {
                     }
                   })}
                 >
-                  <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
+                  <Td
+                    minW={'150px'}
+                    maxW={['200px', '300px']}
+                    draggable={!collection.isNavigableFolder}
+                    py={2}
+                  >
                     <HStack minW={0}>
                       <HStack onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          isChecked={isSelected(collection)}
-                          onChange={() => toggleSelect(collection)}
-                        />
+                        {collection.isNavigableFolder ? (
+                          <MyTooltip label={t('common:no_operation_permission')}>
+                            <Box display="inline-flex" cursor="not-allowed">
+                              <Checkbox isChecked={false} isDisabled />
+                            </Box>
+                          </MyTooltip>
+                        ) : (
+                          <Checkbox
+                            isChecked={isSelected(collection)}
+                            onChange={() => toggleSelect(collection)}
+                          />
+                        )}
                       </HStack>
                       <Flex flexDirection={'column'} gap={'6px'} minW={0} flex={1}>
                         <Flex alignItems={'center'} minW={0}>
@@ -509,7 +533,10 @@ const CollectionCard = () => {
                             mr={2}
                             flexShrink={0}
                           />
-                          <MyTooltip label={collection.name} showOnlyWhenOverflow>
+                          <MyTooltip
+                            label={collection.isNavigableFolder ? undefined : collection.name}
+                            showOnlyWhenOverflow
+                          >
                             <Box
                               color={'myGray.900'}
                               fontWeight={'500'}
@@ -527,7 +554,7 @@ const CollectionCard = () => {
                       </Flex>
                     </HStack>
                   </Td>
-                  <Td py={2}>
+                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
                     {collection.trainingType
                       ? t(
                           (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
@@ -535,12 +562,19 @@ const CollectionCard = () => {
                         )
                       : '-'}
                   </Td>
-                  <Td py={2}>{collection.dataAmount || '-'}</Td>
-                  <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                    {collection.dataAmount || '-'}
+                  </Td>
+                  <Td
+                    fontSize={'xs'}
+                    py={2}
+                    color={'myGray.500'}
+                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
+                  >
                     <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
-                  <Td py={2}>
+                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
                     <MyTooltip
                       label={
                         !collection.canOpenTrainingStates ? undefined : t('common:Click_to_expand')
@@ -571,7 +605,11 @@ const CollectionCard = () => {
                       </MyTag>
                     </MyTooltip>
                   </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                  <Td
+                    py={2}
+                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Switch
                       isChecked={!collection.forbid}
                       isDisabled={!collection.permission.hasWritePer}
@@ -584,7 +622,11 @@ const CollectionCard = () => {
                       }
                     />
                   </Td>
-                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                  <Td
+                    py={2}
+                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {collection.permission.hasWritePer && (
                       <MyMenu
                         strategy="fixed"
