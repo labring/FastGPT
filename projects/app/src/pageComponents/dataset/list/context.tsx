@@ -175,6 +175,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         offset,
         pageSize,
         withAppCount: true,
+        withFileCount: true,
         ...(listType ? { type: listType } : {}),
         ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
         ...(tmbIds !== undefined ? { tmbIds } : {})

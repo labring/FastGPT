@@ -69,12 +69,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// `invalidCondition` in FlowNodeOutputItemTypeSchema is a Zod function schema used only
-// by the editor to validate outputs; function schemas cannot be represented in JSON
-// Schema, so we strip it before exposing via OpenAPI.
-export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
-  invalidCondition: true
-}).meta({
+export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
 

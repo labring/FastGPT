@@ -171,6 +171,25 @@ describe('useDoc2xServer', () => {
     expect(result.text).toBe('hello ![](https://img.example.com/a.png)');
   });
 
+  it('文本清理后再转换表格，避免反斜杠清理重新破坏列结构', async () => {
+    requestMock.mockReset();
+    mockDoc2xSuccess(
+      String.raw`<table><tr><th>选项|类型</th><th>备注</th></tr><tr><td>A\\\|B</td><td>$|x|$</td></tr></table>`
+    );
+
+    const resultPromise = useDoc2xServer({ apiKey: 'api-key' }).parsePDF(Buffer.from('pdf'));
+    await vi.runAllTimersAsync();
+    const result = await resultPromise;
+
+    expect(result.text).toBe(
+      [
+        '| 选项&#124;类型 | 备注 |',
+        '| --- | --- |',
+        String.raw`| A\\&#124;B | $&#124;x&#124;$ |`
+      ].join('\n')
+    );
+  });
+
   it('Doc2x 返回 failed 状态时立即失败，不继续轮询', async () => {
     requestMock.mockReset();
     requestMock

@@ -43,13 +43,6 @@ const InputRender = (props: InputRenderProps) => {
     );
   }, [inputType, props.list, props.enums]);
 
-  const isSelectAll = useMemo(() => {
-    if (inputType !== InputTypeEnum.multipleSelect) return false;
-    if (!Array.isArray(value) || multipleSelectList.length === 0) return false;
-    const valueSet = new Set(value);
-    return multipleSelectList.every((item) => valueSet.has(item.value));
-  }, [inputType, value, multipleSelectList]);
-
   const commonProps = useMemoEnhance(
     () => ({
       value,
@@ -185,7 +178,15 @@ const InputRender = (props: InputRenderProps) => {
       description:
         typeof item.description === 'string' ? t(item.description as any) : item.description
     }));
-    return <MySelect {...commonProps} list={list} h={10} menuPlacement={props.menuPlacement} />;
+    return (
+      <MySelect
+        {...commonProps}
+        list={list}
+        h={10}
+        isSearch={list.length > 10}
+        menuPlacement={props.menuPlacement}
+      />
+    );
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {
@@ -196,7 +197,8 @@ const InputRender = (props: InputRenderProps) => {
         list={multipleSelectList}
         value={value}
         onSelect={(e) => onChange?.(e)}
-        isSelectAll={isSelectAll}
+        isSearch={multipleSelectList.length > 10}
+        showSelectAll={multipleSelectList.length >= 5}
         itemWrap
       />
     );

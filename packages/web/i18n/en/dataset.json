@@ -4,6 +4,7 @@
   "add_file": "Import",
   "api_file": "API Dataset",
   "api_url": "API Url",
+  "api_url_invalid": "Enter a complete URL starting with http:// or https://",
   "apidataset_configuration": "Configuration",
   "auto_indexes": "Auto-generate supplementary indexes",
   "auto_indexes_tips": "Uses a text understanding model to generate additional indexes, enriching semantic coverage and potentially improving retrieval accuracy.",

@@ -22,4 +22,6 @@ export type WorkflowRuleIssue = Pick<WorkflowCheckIssue, 'code' | 'inputKey'> & 
   fieldLabel?: 'variable' | 'value' | 'dataset_quote' | 'question_guide' | 'tts';
   model?: string;
   messageCode?: string;
+  message?: string;
+  level?: WorkflowCheckIssue['level'];
 };

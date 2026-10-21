@@ -12,6 +12,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
+
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
@@ -115,8 +116,8 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
-      checkWorkflowBeforeRunOrPublish({
+    const { issueMap, hasError, firstErrorNodeId, errorMessages } = checkWorkflowBeforeRunOrPublish(
+      {
         nodes,
         edges,
         modelData: await getWorkflowModelCheckData({
@@ -126,7 +127,8 @@ export const useDebug = () => {
         }),
         chatConfig: appDetail.chatConfig,
         t: workflowT
-      });
+      }
+    );
 
     if (!hasError) {
       onRemoveError();
@@ -138,7 +140,6 @@ export const useDebug = () => {
 
       return JSON.stringify(storeNodes);
     }
-
     onSyncWorkflowCheckIssues(issueMap);
 
     if (firstErrorNodeId) {
@@ -155,11 +156,7 @@ export const useDebug = () => {
     toast({
       status: 'warning',
       title: t('common:core.workflow.Check Failed'),
-      description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-        .filter((issue) => issue.level === 'error')
-        .map((issue) => issue.message)
-        .filter(Boolean)
-        .join('\n')
+      description: errorMessages.join('\n')
     });
     return Promise.reject();
   }, [

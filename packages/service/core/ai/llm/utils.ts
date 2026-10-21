@@ -286,7 +286,7 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
+   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
    */
   const shouldLoadMediaAsBase64 = (url: string) =>
     url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;

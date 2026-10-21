@@ -1,3 +1,4 @@
+import { workflowBuilderTemplateIds } from './automationMeta';
 import { AiChatModule } from './system/aiChat';
 import { AssignedAnswerModule } from './system/assignedAnswer';
 import { ClassifyQuestionModule } from './system/classifyQuestion/index';
@@ -98,3 +99,11 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunToolSetNode,
   AiQueryExtension
 ];
+
+/** Builder 复用现有系统模板清单，保留已发布的模板标识、顺序及内部容器节点。 */
+export const workflowBuilderSystemTemplates = Object.entries(workflowBuilderTemplateIds).map(
+  ([flowNodeType, templateRef]) => ({
+    templateId: templateRef.slice('builtin:'.length),
+    template: moduleTemplatesFlat.find((template) => template.flowNodeType === flowNodeType)!
+  })
+);

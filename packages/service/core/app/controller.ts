@@ -44,7 +44,7 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 /**
  * 在更新应用前，对工作流节点数据进行格式化和安全处理。
  * 主要职责：
- * 1. 知识库：移除编辑态状态并保留展示快照（datasetId, avatar, name, vectorModel）。
+ * 1. 知识库：仅保存 datasetId，展示信息由应用详情接口实时补全。
  * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
  * 3. 密钥输入与 MCP/HTTP 工具集鉴权：使用服务级密钥加密。
  */
@@ -58,7 +58,7 @@ export const beforeUpdateAppFormat = async ({
   if (!nodes) return;
 
   /**
-   * 格式化数据集选择值，保存阶段保留展示快照（datasetId, avatar, name, vectorModel），移除编辑态临时字段。
+   * 格式化知识库选择值，仅保留 datasetId；详情接口实时补全展示信息，编辑态临时字段不落库。
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
    * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
@@ -66,17 +66,12 @@ export const beforeUpdateAppFormat = async ({
   const formatDatasetSelectValue = (value: unknown) => {
     if (value === undefined || value === null) return [];
 
+    const datasetReferenceSchema = StoredSelectedDatasetSchema.pick({ datasetId: true });
     const datasets = z
-      .union([StoredSelectedDatasetSchema, z.array(StoredSelectedDatasetSchema)])
+      .union([datasetReferenceSchema, z.array(datasetReferenceSchema)])
       .parse(value);
 
-    const datasetList = Array.isArray(datasets) ? datasets : [datasets];
-    return datasetList.map(({ datasetId, avatar, name, vectorModel }) => ({
-      datasetId,
-      ...(avatar ? { avatar } : {}),
-      ...(name ? { name } : {}),
-      ...(vectorModel ? { vectorModel } : {})
-    }));
+    return Array.isArray(datasets) ? datasets : [datasets];
   };
 
   nodes.forEach((node) => {

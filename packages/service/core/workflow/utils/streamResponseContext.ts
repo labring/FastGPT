@@ -171,37 +171,33 @@ export async function createWorkflowStreamResponseContext({
     }
   };
 
-  if (!shouldEnableStreamResume) {
-    return {
-      ...context,
-      async flushResume() {
-        // no-op — stream resume is disabled
-      }
-    };
-  }
-
+  let flushPromise: Promise<void> | undefined;
   return {
     ...context,
-    async flushResume() {
-      // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
-      await mirror?.flush().catch((error) => {
-        logger.error('Failed to flush workflow stream resume cache', {
-          teamId,
-          sourceType,
-          sourceId,
-          chatId,
-          error
+    flushResume() {
+      // 完成与 finally 可重复调用，共享同一次缓存写入等待与 TTL 收尾。
+      flushPromise ??= (async () => {
+        // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
+        await mirror?.flush().catch((error) => {
+          logger.error('Failed to flush workflow stream resume cache', {
+            teamId,
+            sourceType,
+            sourceId,
+            chatId,
+            error
+          });
         });
-      });
-      await mirror?.shrinkTTLAfterComplete().catch((error) => {
-        logger.error('Failed to shrink workflow stream resume cache TTL', {
-          teamId,
-          sourceType,
-          sourceId,
-          chatId,
-          error
+        await mirror?.shrinkTTLAfterComplete().catch((error) => {
+          logger.error('Failed to shrink workflow stream resume cache TTL', {
+            teamId,
+            sourceType,
+            sourceId,
+            chatId,
+            error
+          });
         });
-      });
+      })();
+      return flushPromise;
     }
   };
 }

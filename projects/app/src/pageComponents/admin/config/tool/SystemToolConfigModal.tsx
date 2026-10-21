@@ -39,12 +39,14 @@ import {
 } from '@/web/core/plugin/admin/tool/api';
 import { i18nT, parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { PluginStatusEnum, type PluginStatusType, type PluginTextType } from '@fastgpt/global/core/plugin/type';
+import {
+  PluginStatusEnum,
+  type PluginStatusType,
+  type PluginTextType
+} from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsSchema } from '@fastgpt/global/support/user/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
@@ -261,10 +263,7 @@ const SystemToolConfigModal = ({
   const isFolder = tool?.isToolSet;
   const modalWidth = isFolder ? TOOL_SET_MODAL_WIDTH : SINGLE_TOOL_MODAL_WIDTH;
 
-  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>(
-    tool?.tags ?? [],
-    false
-  );
+  const [selectedTags, setSelectedTags] = useState<string[]>(tool?.tags ?? []);
 
   useEffect(() => {
     setValue('tags', selectedTags);
@@ -340,10 +339,7 @@ const SystemToolConfigModal = ({
   const versionSelectList = useMemo(
     () =>
       toolVersions.map((item) => ({
-        label:
-          item.versionDescription !== undefined
-            ? selectPluginText(item.versionDescription, i18n.language)
-            : item.version,
+        label: item.version,
         value: item.version
       })),
     [toolVersions]

@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import * as workflowValidation from '@fastgpt/workflow-core/validation';
+import * as workflowModelValidation from '@fastgpt/workflow-core/validation/model';
+import { createWorkflowCheckDocument } from '@/web/core/workflow/check/document';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
+import type { TFunction } from 'next-i18next';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType
@@ -16,7 +22,7 @@ import {
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   checkWorkflowNodeIssues,
   checkWorkflowBeforeRunOrPublish,
@@ -32,6 +38,13 @@ import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/syst
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract';
+import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
+import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 describe('checkWorkflowNodeIssues', () => {
   const makeNode = (
@@ -44,6 +57,7 @@ describe('checkWorkflowNodeIssues', () => {
       type: flowNodeType,
       position: { x: 0, y: 0 },
       data: {
+        id: flowNodeType,
         nodeId,
         flowNodeType,
         name: nodeId,
@@ -63,6 +77,196 @@ describe('checkWorkflowNodeIssues', () => {
         valueType: WorkflowIOValueTypeEnum.string
       }
     ]
+  });
+
+  it('accepts legacy start inputs after loading while preserving dataset search checks', () => {
+    const source = storeNode2FlowNode({
+      item: {
+        ...startNode.data,
+        inputs: [
+          {
+            ...WorkflowStart.inputs[0],
+            selectedType: FlowNodeInputTypeEnum.reference,
+            value: ['', '']
+          }
+        ]
+      },
+      t: ((key: string) => key) as TFunction
+    });
+    const search = makeNode('search', FlowNodeTypeEnum.datasetSearchNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: 'Dataset',
+          valueType: WorkflowIOValueTypeEnum.selectDataset,
+          required: true,
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+          value: [{ datasetId: 'dataset-id' }]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchInput,
+          label: 'Search query',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          required: true,
+          selectedType: FlowNodeInputTypeEnum.reference,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: [[source.id, NodeOutputKeyEnum.userChatInput]]
+        }
+      ]
+    });
+    const graph = {
+      nodes: [source, search],
+      edges: [{ id: 'edge', source: source.id, target: search.id }]
+    };
+    const before = structuredClone(source.data.inputs);
+
+    expect(checkWorkflowNodeIssues(graph)).toEqual({});
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    search.data.inputs[1].value = [['deleted', NodeOutputKeyEnum.userChatInput]];
+    const invalidReference = checkWorkflowBeforeRunOrPublish(graph);
+    expect(invalidReference.hasError).toBe(true);
+    expect(invalidReference.firstErrorNodeId).toBe(search.id);
+    expect(invalidReference.issueMap.search).toEqual([
+      expect.objectContaining({
+        code: 'invalid_reference',
+        inputKey: NodeInputKeyEnum.datasetSearchInput
+      })
+    ]);
+
+    search.data.inputs[1].value = [[source.id, NodeOutputKeyEnum.userChatInput]];
+    search.data.inputs[0].value = [];
+    const missingDataset = checkWorkflowBeforeRunOrPublish(graph);
+    expect(missingDataset.hasError).toBe(true);
+    expect(missingDataset.issueMap.search).toEqual([
+      expect.objectContaining({
+        code: 'required_input_empty',
+        inputKey: NodeInputKeyEnum.datasetSelectList
+      })
+    ]);
+    expect(source.data.inputs).toEqual(before);
+  });
+
+  it('runs saved HTTP, extraction, boolean-update and form configurations through the shared check', () => {
+    const http = makeNode('http', FlowNodeTypeEnum.httpRequest468, {
+      ...HttpNode468,
+      inputs: HttpNode468.inputs.map((input) => ({
+        ...input,
+        value:
+          input.key === NodeInputKeyEnum.httpReqUrl
+            ? 'https://example.com/api'
+            : [
+                  NodeInputKeyEnum.httpHeaders,
+                  NodeInputKeyEnum.httpParams,
+                  NodeInputKeyEnum.httpFormBody
+                ].includes(input.key as NodeInputKeyEnum)
+              ? [{ key: 'name', type: 'string', value: 'Alice' }]
+              : input.value
+      }))
+    });
+    const extract = makeNode('extract', FlowNodeTypeEnum.contentExtract, {
+      ...ContextExtractModule,
+      inputs: ContextExtractModule.inputs.map((input) => ({
+        ...input,
+        selectedType:
+          input.key === NodeInputKeyEnum.contextExtractInput
+            ? FlowNodeInputTypeEnum.textarea
+            : input.selectedType,
+        value:
+          input.key === NodeInputKeyEnum.aiModelId
+            ? 'llm-id'
+            : input.key === NodeInputKeyEnum.contextExtractInput
+              ? 'Status is open'
+              : input.key === NodeInputKeyEnum.extractKeys
+                ? [
+                    {
+                      key: 'status',
+                      desc: 'Status',
+                      valueType: WorkflowIOValueTypeEnum.string,
+                      required: false,
+                      defaultValue: 'open',
+                      enum: 'open\nclosed'
+                    }
+                  ]
+                : input.value
+      }))
+    });
+    const update = makeNode('update', FlowNodeTypeEnum.variableUpdate, {
+      ...VariableUpdateNode,
+      inputs: [
+        {
+          ...VariableUpdateNode.inputs[0],
+          value: [
+            {
+              variable: ['extract', NodeOutputKeyEnum.success],
+              renderType: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              booleanMode: 'false',
+              value: ['', false]
+            }
+          ]
+        }
+      ]
+    });
+    const form = makeNode('form', FlowNodeTypeEnum.formInput, {
+      ...FormInputNode,
+      inputs: [
+        {
+          ...FormInputNode.inputs[1],
+          value: [
+            {
+              type: FlowNodeInputTypeEnum.input,
+              key: 'name',
+              label: 'Name',
+              required: false,
+              valueType: WorkflowIOValueTypeEnum.string,
+              defaultValue: 'Alice'
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          id: 'name',
+          key: 'name',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    });
+    const nodes = [startNode, http, extract, update, form];
+    const edges = nodes
+      .slice(1)
+      .map((node, index) => ({ id: `edge-${index}`, source: nodes[index].id, target: node.id }));
+    const result = checkWorkflowBeforeRunOrPublish({ nodes, edges });
+    expect(result.errorMessages).toEqual([]);
+    expect(result.hasError).toBe(false);
+  });
+
+  it('accepts sparse Agent tool and Skill snapshots and preserves explicit resource errors', () => {
+    const values = new Map<string, unknown>([
+      [NodeInputKeyEnum.aiModelId, 'llm-id'],
+      [NodeInputKeyEnum.selectedTools, [{ id: 'systemTool-search', config: {} }]],
+      [NodeInputKeyEnum.skills, [{ skillId: 'skill-id' }]],
+      [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'dataset-id' }]]
+    ]);
+    const agent = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: AgentNode.inputs
+        .filter((input) => values.has(input.key))
+        .map((input) => ({ ...input, value: values.get(input.key) }))
+    });
+    const graph = {
+      nodes: [startNode, agent],
+      edges: [{ id: 'edge', source: 'start', target: 'agent' }]
+    };
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    agent.data.inputs.find((input) => input.key === NodeInputKeyEnum.skills)!.value = [
+      { skillId: 'skill-id', error: 'resource_no_permission' }
+    ];
+    expect(checkWorkflowBeforeRunOrPublish(graph).issueMap.agent).toEqual([
+      expect.objectContaining({ code: 'resource_no_permission', inputKey: NodeInputKeyEnum.skills })
+    ]);
   });
 
   it('collects multiple node errors in one pass', () => {
@@ -132,6 +336,121 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
+  it('reports empty or all-stale reference issues for userSelect and formInput dynamic options without duplicate required errors', () => {
+    const emptySelect = makeNode('select-empty', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          required: true,
+          value: [['deleted-node', 'out']]
+        }
+      ]
+    });
+    const formNode = makeNode('form-ref', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            {
+              key: 'city',
+              label: 'City',
+              type: FlowNodeInputTypeEnum.select,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: '',
+              required: false,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: [['deleted-node', 'out']]
+            },
+            {
+              key: 'tags',
+              label: 'Tags',
+              type: FlowNodeInputTypeEnum.multipleSelect,
+              valueType: WorkflowIOValueTypeEnum.arrayString,
+              value: [],
+              required: false,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference: []
+            }
+          ]
+        }
+      ],
+      outputs: ['city', 'tags'].map((key) => ({
+        id: key,
+        key,
+        label: key,
+        type: FlowNodeOutputTypeEnum.static
+      }))
+    });
+
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, emptySelect, formNode],
+      t: ((key: string, params?: { inputName?: string }) =>
+        `${key}:${params?.inputName ?? ''}`) as TFunction,
+      edges: [
+        { id: 'e1', source: 'start', target: 'select-empty', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form-ref', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(
+      issues['select-empty']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
+    expect(
+      issues['form-ref']
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userInputForms)
+        .map((i) => i.code)
+    ).toEqual(['required_input_empty', 'required_input_empty']);
+    expect(issues['form-ref'].map((issue) => issue.message)).toEqual([
+      expect.stringContaining('City'),
+      expect.stringContaining('Tags')
+    ]);
+  });
+
+  it('flags excluded variable types (e.g. arrayBoolean) as empty dynamic options in static check', () => {
+    const source = makeNode('source', FlowNodeTypeEnum.workflowStart, {
+      outputs: [
+        {
+          id: 'boolArr',
+          key: 'boolArr',
+          label: 'boolArr',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.arrayBoolean
+        }
+      ]
+    });
+    const select = makeNode('select', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.any,
+          value: [['source', 'boolArr']]
+        }
+      ]
+    });
+
+    const issues = checkWorkflowNodeIssues({
+      nodes: [startNode, source, select],
+      edges: [{ id: 'e1', source: 'source', target: 'select', type: EDGE_TYPE }]
+    });
+
+    expect(
+      issues.select
+        ?.filter((i) => i.inputKey === NodeInputKeyEnum.userSelectOptions)
+        .map((i) => i.code)
+    ).toEqual(['user_select_empty']);
+  });
+
   it('reports nodes without upstream connections', () => {
     const node = makeNode('orphan', FlowNodeTypeEnum.answerNode);
 
@@ -140,7 +459,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.orphan.map((issue) => issue.code)).toContain('no_upstream');
   });
 
-  it('does not report unselectable references', () => {
+  it('reports invalid references through Core without clearing the configured value', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
         {
@@ -158,7 +477,9 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
     });
 
-    expect(result).toEqual({});
+    expect(result.ref).toEqual([
+      expect.objectContaining({ code: 'invalid_reference', inputKey: NodeInputKeyEnum.answerText })
+    ]);
     expect(node.data.inputs[0].value).toEqual(['deleted', 'output']);
   });
 
@@ -315,7 +636,7 @@ describe('checkWorkflowNodeIssues', () => {
   });
 
   it('uses fixed design copy for mapped issue codes', () => {
-    const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.answerNode);
+    const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.textEditor);
     const unreachableNode = makeNode('unreachable', FlowNodeTypeEnum.answerNode);
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
       inputs: [
@@ -840,7 +1161,7 @@ describe('checkWorkflowNodeIssues', () => {
     for (const node of [nodeWithDeletedNodeRef, nodeWithDeletedOutputRef]) {
       expect(
         result[node.id]?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput) ?? []
-      ).toEqual([]);
+      ).toEqual([expect.objectContaining({ code: 'invalid_reference' })]);
     }
     expect(nodeWithDeletedNodeRef.data.inputs[0].value).toEqual([
       'deleted-node-id',
@@ -1066,6 +1387,7 @@ describe('workflow check helpers', () => {
         type: flowNodeType,
         position: { x: 0, y: 0 },
         data: {
+          id: flowNodeType,
           nodeId,
           flowNodeType,
           name: nodeId,
@@ -1169,159 +1491,117 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
   });
 
   describe('loopRun conditional mode', () => {
-    const makeLoopRunNode = (
-      mode: LoopRunModeEnum | undefined,
-      children: string[]
-    ): Node<FlowNodeItemType> => ({
-      id: 'loop1',
-      type: FlowNodeTypeEnum.loopRun,
-      data: {
-        nodeId: 'loop1',
-        flowNodeType: FlowNodeTypeEnum.loopRun,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.loopRunMode,
-            value: mode,
-            valueType: WorkflowIOValueTypeEnum.string,
-            renderTypeList: [FlowNodeInputTypeEnum.select]
-          } as any,
-          {
-            // 模板里这个字段永远 required: true + value: []，
-            // 条件循环模式下不该因此被判无效
-            key: NodeInputKeyEnum.loopRunInputArray,
-            value: [],
-            required: true,
-            valueType: WorkflowIOValueTypeEnum.arrayAny,
-            renderTypeList: [FlowNodeInputTypeEnum.reference]
-          } as any,
-          {
-            key: NodeInputKeyEnum.childrenNodeIdList,
-            value: children,
-            renderTypeList: [FlowNodeInputTypeEnum.hidden]
-          } as any
-        ],
-        outputs: []
-      } as any,
-      position: { x: 0, y: 0 }
-    });
-
-    const makeChild = (id: string, flowNodeType: FlowNodeTypeEnum): Node<FlowNodeItemType> => ({
-      id,
-      type: flowNodeType,
-      data: {
-        nodeId: id,
-        flowNodeType,
-        inputs: [],
-        outputs: []
-      } as any,
-      position: { x: 0, y: 0 }
-    });
-
-    const workflowStart: Node<FlowNodeItemType> = {
-      id: 'ws',
-      type: FlowNodeTypeEnum.workflowStart,
-      data: {
-        nodeId: 'ws',
-        flowNodeType: FlowNodeTypeEnum.workflowStart,
-        inputs: [],
-        outputs: []
-      } as any,
-      position: { x: 0, y: 0 }
+    /** 使用实际父子关系与连线，避免旧占位边掩盖 Core 的容器或悬空连线错误。 */
+    const makeGraph = (mode: LoopRunModeEnum, withBreak = false) => {
+      const child = (id: string, flowNodeType: FlowNodeTypeEnum): Node<FlowNodeItemType> =>
+        ({
+          id,
+          position: { x: 0, y: 0 },
+          data: {
+            id: flowNodeType,
+            nodeId: id,
+            name: id,
+            parentNodeId: 'loop1',
+            flowNodeType,
+            inputs: [],
+            outputs: []
+          }
+        }) as Node<FlowNodeItemType>;
+      const children = [
+        child('start1', FlowNodeTypeEnum.loopRunStart),
+        child('body1', FlowNodeTypeEnum.textEditor),
+        ...(withBreak ? [child('break1', FlowNodeTypeEnum.loopRunBreak)] : [])
+      ];
+      const nodes: Node<FlowNodeItemType>[] = [
+        {
+          id: 'ws',
+          position: { x: 0, y: 0 },
+          data: {
+            id: FlowNodeTypeEnum.workflowStart,
+            nodeId: 'ws',
+            name: 'Start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            inputs: [],
+            outputs: [
+              {
+                id: 'items',
+                key: 'items',
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.arrayAny
+              }
+            ]
+          }
+        } as Node<FlowNodeItemType>,
+        {
+          id: 'loop1',
+          position: { x: 0, y: 0 },
+          data: {
+            id: FlowNodeTypeEnum.loopRun,
+            nodeId: 'loop1',
+            name: 'Loop',
+            flowNodeType: FlowNodeTypeEnum.loopRun,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.loopRunMode,
+                label: 'Mode',
+                renderTypeList: [FlowNodeInputTypeEnum.select],
+                value: mode
+              },
+              {
+                key: NodeInputKeyEnum.loopRunInputArray,
+                label: 'Array',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                required: true,
+                valueType: WorkflowIOValueTypeEnum.arrayAny,
+                value: mode === LoopRunModeEnum.array ? [['ws', 'items']] : []
+              },
+              {
+                key: NodeInputKeyEnum.childrenNodeIdList,
+                label: 'Children',
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                value: children.map(({ id }) => id)
+              }
+            ],
+            outputs: []
+          }
+        } as Node<FlowNodeItemType>,
+        ...children
+      ];
+      const edges: Edge[] = [
+        { id: 'outer', source: 'ws', target: 'loop1' },
+        { id: 'inner', source: 'start1', target: 'body1' },
+        ...(withBreak ? [{ id: 'break', source: 'body1', target: 'break1' }] : [])
+      ];
+      return { nodes, edges };
     };
-    const wsToLoop: Edge = {
-      id: 'e-ws-loop',
-      source: 'ws',
-      target: 'loop1',
-      type: EDGE_TYPE
-    };
-    // 通用「节点必须有边」校验针对画布上的每个节点，给循环子节点挂上占位边
-    const stubEdge = (nodeId: string): Edge => ({
-      id: `e-stub-${nodeId}`,
-      source: nodeId,
-      target: '__stub__',
-      type: EDGE_TYPE
-    });
 
     it('条件循环无 loopRunBreak → 返回该 loopRun 为无效', () => {
-      const nodes = [
-        workflowStart,
-        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1']),
-        makeChild('start1', FlowNodeTypeEnum.loopRunStart)
-      ];
-      const result = getErrorNodeIds({
-        nodes,
-        edges: [wsToLoop, stubEdge('start1')]
-      });
-      expect(result).toEqual(['loop1']);
+      expect(getErrorNodeIds(makeGraph(LoopRunModeEnum.conditional))).toEqual(['loop1']);
     });
 
-    it('条件循环含 loopRunBreak → 有效', () => {
-      const nodes = [
-        workflowStart,
-        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1', 'break1']),
-        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
-        makeChild('break1', FlowNodeTypeEnum.loopRunBreak)
-      ];
-      const startToBreak: Edge = {
-        id: 'e-start-break',
-        source: 'start1',
-        target: 'break1',
-        type: EDGE_TYPE
-      };
-      const result = getErrorNodeIds({
-        nodes,
-        edges: [wsToLoop, startToBreak]
-      });
-      expect(result).toBeUndefined();
-    });
-
-    it('break 节点不在 childrenNodeIdList 内 → 视为无 break', () => {
-      const nodes = [
-        workflowStart,
-        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1']),
-        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
-        makeChild('break1', FlowNodeTypeEnum.loopRunBreak) // 属于别的 loopRun
-      ];
-      const result = getErrorNodeIds({
-        nodes,
-        edges: [wsToLoop, stubEdge('start1'), stubEdge('break1')]
-      });
-      expect(result).toEqual(['loop1', 'break1']);
+    it('rejects an out-of-sync child list even when the break has a valid parent', () => {
+      const graph = makeGraph(LoopRunModeEnum.conditional, true);
+      graph.nodes[1].data.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.childrenNodeIdList
+      )!.value = ['start1', 'body1'];
+      const result = checkWorkflowBeforeRunOrPublish(graph);
+      expect(result.errorNodeIds).toEqual(['loop1']);
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({ code: 'WORKFLOW_CONTAINER_CHILDREN_OUT_OF_SYNC' })
+      );
     });
 
     it('数组模式不强制要求 loopRunBreak', () => {
-      const loop = makeLoopRunNode(LoopRunModeEnum.array, ['start1']);
-      // 数组模式下 loopRunInputArray 必填，填个非空 value 走通用校验
-      const arrInput = loop.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunInputArray)!;
-      arrInput.value = [[VARIABLE_NODE_ID, 'bar']];
-      const nodes = [workflowStart, loop, makeChild('start1', FlowNodeTypeEnum.loopRunStart)];
-      const result = getErrorNodeIds({
-        nodes,
-        edges: [wsToLoop, stubEdge('start1')]
-      });
-      expect(result).toBeUndefined();
+      expect(getErrorNodeIds(makeGraph(LoopRunModeEnum.array))).toBeUndefined();
     });
 
-    it('条件循环下 loopRunInputArray 必填标记被忽略', () => {
-      // 模板静态定义里 loopRunInputArray 永远 required: true + value: []；
-      // 条件循环模式下这个字段被 UI 隐藏，不应该因此拦校验。
-      const nodes = [
-        workflowStart,
-        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1', 'break1']),
-        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
-        makeChild('break1', FlowNodeTypeEnum.loopRunBreak)
-      ];
-      const startToBreak: Edge = {
-        id: 'e-start-break-2',
-        source: 'start1',
-        target: 'break1',
-        type: EDGE_TYPE
-      };
-      const result = getErrorNodeIds({
-        nodes,
-        edges: [wsToLoop, startToBreak]
-      });
-      expect(result).toBeUndefined();
+    it('条件循环含 Break 时忽略隐藏数组输入的必填标记', () => {
+      const graph = makeGraph(LoopRunModeEnum.conditional, true);
+      expect(
+        graph.nodes[1].data.inputs.find((input) => input.key === NodeInputKeyEnum.loopRunInputArray)
+          ?.value
+      ).toEqual([]);
+      expect(getErrorNodeIds(graph)).toBeUndefined();
     });
   });
   describe('variableUpdate node', () => {
@@ -1331,6 +1611,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.variableUpdate,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.variableUpdate,
           nodeId: 'u1',
           flowNodeType: FlowNodeTypeEnum.variableUpdate,
           name: 'update',
@@ -1338,6 +1619,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
           inputs: [
             {
               key: NodeInputKeyEnum.updateList,
+              label: 'Variable updates',
               valueType: WorkflowIOValueTypeEnum.any,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               value: updateList
@@ -1354,6 +1636,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
       type: FlowNodeTypeEnum.workflowStart,
       position: { x: 0, y: 0 },
       data: {
+        id: FlowNodeTypeEnum.workflowStart,
         nodeId: 's1',
         flowNodeType: FlowNodeTypeEnum.workflowStart,
         name: 'start',
@@ -1512,6 +1795,33 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
     });
   });
 
+  describe('workflowStart isolation check', () => {
+    it.each([
+      { nodeId: 'start-1', flowNodeType: FlowNodeTypeEnum.workflowStart, issue: 'isolated_node' },
+      { nodeId: 'node-2', flowNodeType: FlowNodeTypeEnum.textEditor, issue: 'no_upstream' }
+    ])('keeps $flowNodeType isolation visible as $issue', ({ nodeId, flowNodeType, issue }) => {
+      const node: Node<FlowNodeItemType> = {
+        id: nodeId,
+        type: 'custom',
+        position: { x: 0, y: 0 },
+        data: {
+          id: flowNodeType,
+          nodeId,
+          name: nodeId,
+          flowNodeType,
+          avatar: 'avatar',
+          inputs: [],
+          outputs: []
+        }
+      };
+      const result = checkWorkflowBeforeRunOrPublish({ nodes: [node], edges: [] });
+
+      expect(result.hasError).toBe(true);
+      expect(result.firstErrorNodeId).toBe(nodeId);
+      expect(result.issueMap[nodeId]?.some((item) => item.code === issue)).toBe(true);
+    });
+  });
+
   describe('getToolErrorMessage and non-system input label boundary', () => {
     const mockT = ((key: string) => `translated:${key}`) as unknown as Parameters<
       typeof getToolErrorMessage
@@ -1543,6 +1853,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.workflowStart,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.workflowStart,
           nodeId: 'start',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
           name: 'start',
@@ -1558,6 +1869,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         type: FlowNodeTypeEnum.pluginModule,
         position: { x: 0, y: 0 },
         data: {
+          id: FlowNodeTypeEnum.pluginModule,
           nodeId: 'tool-1',
           flowNodeType: FlowNodeTypeEnum.pluginModule,
           name: 'tool',
@@ -1595,5 +1907,325 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         })
       ]);
     });
+  });
+});
+
+describe('Core validation and Web extension contract', () => {
+  const t = ((key: string, params?: Record<string, unknown>) => {
+    const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+    return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+  }) as TFunction;
+  const modelData = {
+    references: [{ modelId: 'llm-id', type: ModelTypeEnum.llm }],
+    defaultModelIds: {}
+  };
+  const makeGraph = (inputs: FlowNodeItemType['inputs'] = []) => ({
+    nodes: ['start', 'target'].map(
+      (id) =>
+        ({
+          id,
+          position: { x: 0, y: 0 },
+          data: {
+            id,
+            nodeId: id,
+            name: id === 'target' ? '目标' : 'Start',
+            flowNodeType:
+              id === 'start' ? FlowNodeTypeEnum.workflowStart : FlowNodeTypeEnum.pluginModule,
+            inputs: id === 'target' ? inputs : [],
+            outputs: []
+          }
+        }) as Node<FlowNodeItemType>
+    ),
+    edges: [{ id: 'edge', source: 'start', target: 'target' }] as Edge[]
+  });
+
+  it('runs Core static and injected model checks once, reports one missing-model error, and skips models without context', () => {
+    const graph = makeGraph([
+      {
+        key: 'customModel',
+        label: '自定义模型',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        valueType: WorkflowIOValueTypeEnum.string,
+        required: true
+      }
+    ]);
+    const coreSpy = vi.spyOn(workflowValidation, 'validateWorkflow');
+    const modelsSpy = vi.spyOn(workflowModelValidation, 'checkWorkflowModels');
+    try {
+      const result = checkWorkflowBeforeRunOrPublish({ ...graph, modelData, t });
+      expect(coreSpy).toHaveBeenCalledTimes(1);
+      expect(modelsSpy).toHaveBeenCalledTimes(1);
+      expect(modelsSpy.mock.calls[0][0].modelData).toBe(modelData);
+      expect(result.issueMap.target).toEqual([
+        expect.objectContaining({
+          code: 'model_required',
+          inputKey: 'customModel',
+          message: '未配置[自定义模型]模型'
+        })
+      ]);
+      expect(result.diagnostics.map((issue) => issue.code)).toEqual(['WORKFLOW_MODEL_REQUIRED']);
+      const { document } = createWorkflowCheckDocument(graph);
+      expect(workflowValidation.validateWorkflow(document)).toEqual([]);
+      expect(modelsSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      coreSpy.mockRestore();
+      modelsSpy.mockRestore();
+    }
+  });
+
+  it('does not treat editor-only comment fields as runtime inputs', () => {
+    const graph = makeGraph();
+    graph.nodes.push(
+      storeNode2FlowNode({
+        item: {
+          ...CommentNode,
+          nodeId: 'comment',
+          inputs: CommentNode.inputs.map((input) =>
+            input.key === NodeInputKeyEnum.commentText
+              ? { ...input, value: 'A canvas note' }
+              : input
+          )
+        },
+        t: ((key: string) => key) as TFunction
+      })
+    );
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({ hasError: false });
+  });
+
+  it('still rejects domain errors after the graph has been projected', () => {
+    const graph = makeGraph();
+    graph.edges.push({ ...graph.edges[0], id: 'duplicate-edge' });
+
+    expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({
+      hasError: true,
+      errorNodeIds: expect.arrayContaining(['start', 'target']),
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error' })
+      ])
+    });
+  });
+
+  it('keeps resource status exclusively in Web and reports a plugin error once', () => {
+    const graph = makeGraph();
+    graph.nodes[1].data.pluginData = { error: 'resource_no_permission' };
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.issueMap.target).toEqual([
+      expect.objectContaining({
+        code: 'resource_no_permission',
+        message: '无权限访问该资源，请检查权限'
+      })
+    ]);
+    expect(result.errorMessages).toEqual(['无权限访问该资源，请检查权限']);
+  });
+
+  it('shows the concrete Core-only input type error and retains its original diagnostic', () => {
+    const graph = makeGraph([
+      {
+        key: 'count',
+        label: '数量',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        valueType: WorkflowIOValueTypeEnum.number,
+        value: 'wrong-type'
+      }
+    ]);
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(result.hasError).toBe(true);
+    expect(result.firstErrorNodeId).toBe('target');
+    expect(result.errorMessages).toEqual(['输入项 数量 的值类型错误，应为 number']);
+    expect(result.diagnostics).toEqual([
+      {
+        code: 'WORKFLOW_INPUT_VALUE_TYPE_INVALID',
+        severity: 'error',
+        nodeId: 'target',
+        inputKey: 'count',
+        params: { expected: WorkflowIOValueTypeEnum.number }
+      }
+    ]);
+  });
+
+  it('keeps specific field errors and raw unsupported handles after an edge projection failure', () => {
+    const graph = makeGraph([
+      {
+        key: 'text',
+        label: '文本',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        valueType: WorkflowIOValueTypeEnum.string,
+        required: true
+      }
+    ]);
+    graph.edges[0].sourceHandle = 'legacy-invalid-handle';
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(result.issueMap.target).toContainEqual(
+      expect.objectContaining({
+        code: 'required_input_empty',
+        message: '需填写必填项 文本'
+      })
+    );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
+        params: expect.objectContaining({
+          edge: expect.objectContaining({ sourceHandle: 'legacy-invalid-handle' })
+        })
+      })
+    );
+    expect(result.errorMessages.some((message) => message.includes('legacy-invalid-handle'))).toBe(
+      true
+    );
+    expect(result.errorMessages.every(Boolean)).toBe(true);
+    expect(new Set(result.errorMessages).size).toBe(result.errorMessages.length);
+  });
+
+  it('surfaces global entry-count errors even when there are no nodes to highlight', () => {
+    const result = checkWorkflowBeforeRunOrPublish({ nodes: [], edges: [], t });
+    expect(result).toMatchObject({
+      hasError: true,
+      errorNodeIds: [],
+      firstErrorNodeId: undefined,
+      firstErrorIssue: { code: 'WORKFLOW_START_COUNT_INVALID', nodeId: '__workflow__' },
+      errorMessages: ['工作流必须有且仅有一个入口节点，当前有 0 个']
+    });
+  });
+
+  it('accepts a plain object without requiring a custom schema or reporting a warning', () => {
+    const graph = makeGraph([
+      {
+        key: 'payload',
+        label: '结构化参数',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: { arbitrary: true }
+      }
+    ]);
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    expect(result.hasError).toBe(false);
+    expect(result.errorMessages).toEqual([]);
+    expect(result.issueMap.target).toBeUndefined();
+  });
+
+  it('reports schema errors with their exact validation reason instead of an empty generic failure', () => {
+    const graph = makeGraph([
+      {
+        key: 'payload',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        value: 'hi'
+      } as FlowNodeItemType['inputs'][number]
+    ]);
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+    const diagnostic = result.diagnostics.find(
+      (issue) => issue.code === 'WORKFLOW_SCHEMA_INVALID'
+    )!;
+    expect(result.hasError).toBe(true);
+    expect(result.errorMessages[0]).toContain(String(diagnostic.params?.reason));
+    expect(result.errorMessages[0]).toContain('nodes.1.inputs.0.label');
+  });
+
+  it('uses the exact model field label when a duplicated slot has an unavailable second value', () => {
+    const graph = makeGraph([
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        label: '第一个模型',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'llm-id'
+      },
+      {
+        key: NodeInputKeyEnum.aiModelId,
+        label: '第二个模型',
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+        value: 'missing-id'
+      }
+    ]);
+    graph.nodes[1].data.flowNodeType = FlowNodeTypeEnum.chatNode;
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, modelData, t });
+    expect(
+      result.issueMap.target.find((issue) => issue.code === 'model_unavailable')?.message
+    ).toBe('「目标」的「第二个模型」模型不可用');
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'WORKFLOW_MODEL_UNAVAILABLE',
+        path: ['nodes', 1, 'inputs', 1, 'value']
+      })
+    );
+  });
+});
+
+describe('Web external resource bindings', () => {
+  it('requires visible external resources using Core binding diagnostics and skips hidden bindings', () => {
+    const start: Node<FlowNodeItemType> = {
+      id: 'start',
+      position: { x: 0, y: 0 },
+      data: {
+        id: FlowNodeTypeEnum.workflowStart,
+        nodeId: 'start',
+        name: 'Start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        inputs: [],
+        outputs: []
+      }
+    } as Node<FlowNodeItemType>;
+    const target: Node<FlowNodeItemType> = {
+      id: 'target',
+      position: { x: 0, y: 0 },
+      data: {
+        id: FlowNodeTypeEnum.datasetSearchNode,
+        nodeId: 'target',
+        name: 'Search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            label: '知识库',
+            required: true,
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
+            valueType: WorkflowIOValueTypeEnum.arrayObject,
+            value: []
+          }
+        ],
+        outputs: []
+      }
+    } as Node<FlowNodeItemType>;
+    const graph = {
+      nodes: [start, target],
+      edges: [{ id: 'edge', source: 'start', target: 'target' }]
+    };
+    const missing = checkWorkflowBeforeRunOrPublish(graph);
+    expect(missing.diagnostics).toEqual([]);
+    expect(missing.issueMap.target).toEqual([
+      expect.objectContaining({
+        code: 'required_input_empty',
+        inputKey: NodeInputKeyEnum.datasetSelectList
+      })
+    ]);
+    target.data.inputs[0].selectedType = FlowNodeInputTypeEnum.hidden;
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+    target.data.inputs[0].selectedType = FlowNodeInputTypeEnum.off;
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+    target.data.inputs[0].selectedType = FlowNodeInputTypeEnum.selectDataset;
+    target.data.inputs[0].required = false;
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+    target.data.inputs[0].required = true;
+    target.data.inputs[0].value = [
+      {
+        datasetId: 'selected',
+        name: 'Selected',
+        avatar: '',
+        vectorModel: { model: 'embedding-model' }
+      }
+    ];
+    expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+
+    // 旧 ChatAgent/持久化数据只保证 ID；向量模型也可能仅保存新的 modelId。
+    for (const value of [
+      [{ datasetId: 'selected' }],
+      [{ datasetId: 'selected', vectorModel: { modelId: 'embedding-id' } }]
+    ]) {
+      target.data.inputs[0].value = value;
+      expect(checkWorkflowBeforeRunOrPublish(graph).hasError).toBe(false);
+    }
+    target.data.inputs[0].value = [{ datasetId: 'selected', error: 'resource_no_permission' }];
+    expect(checkWorkflowBeforeRunOrPublish(graph).issueMap.target).toEqual([
+      expect.objectContaining({ code: 'resource_no_permission' })
+    ]);
   });
 });

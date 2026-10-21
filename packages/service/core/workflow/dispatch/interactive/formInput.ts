@@ -4,6 +4,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -15,6 +16,8 @@ import {
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 const DEFAULT_FORM_FILE_INPUT_MAX_FILES = 5;
@@ -77,13 +80,16 @@ const formatFileSelectRuntimeValue = async ({
   return urls.filter((url): url is string => typeof url === 'string' && !!url);
 };
 
-/* 
-  用户输入都内容，将会以 JSON 字符串格式进入工作流，可以从 query 的 text 中获取。
-*/
+/**
+ * 首次执行时解析表单动态选项并返回交互；空选项交由工作流异常链路处理。
+ * 恢复执行时从 query 的 JSON 文本读取用户提交内容，并转换文件和密码字段。
+ */
 export const dispatchFormInput = async (props: Props): Promise<FormInputResponse> => {
   const {
     histories,
     node,
+    runtimeNodesMap,
+    variableState,
     params: { description, userInputForms },
     query,
     lastInteractive
@@ -92,12 +98,44 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userInput') {
+    let runtimeVariables: Record<string, unknown> | undefined;
+    const getRuntimeVariables = () => {
+      runtimeVariables ??= variableState?.toRuntimeRecord?.() ?? {};
+      return runtimeVariables;
+    };
+
+    const resolvedInputForms = userInputForms.map((item) => {
+      if (!isReferenceOptionFormItem(item)) {
+        return item;
+      }
+
+      const list = resolveDynamicOptionStrings({
+        value: item.listReference,
+        runtimeNodesMap,
+        variables: getRuntimeVariables()
+      }).map((value) => ({
+        label: value,
+        value
+      }));
+
+      // 与用户选择节点一致，避免返回没有可选值、用户无法完成的交互表单。
+      if (list.length === 0) {
+        throw new Error(i18nT('workflow:form_input_no_available_options'));
+      }
+
+      return {
+        ...item,
+        defaultValue: undefined,
+        list
+      };
+    });
+
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',
         params: {
           description,
-          inputForm: userInputForms
+          inputForm: resolvedInputForms
         }
       }
     };

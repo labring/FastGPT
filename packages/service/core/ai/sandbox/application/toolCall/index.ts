@@ -31,7 +31,7 @@ import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
-import { createToolRunner } from './type';
+import { createToolRunner, type SandboxToolCallValidator } from './type';
 
 const ToolMap = {
   [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
@@ -56,18 +56,31 @@ export type SandboxToolCallResult = {
  *
  * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用准备阶段创建的
  * SandboxClient。source/user/chat 上下文由 client 自身持有，单次工具调用不再重复传递。
+ * 调用方可注入执行前校验，拒绝的调用直接返回错误，不接触沙箱。
  */
 export const runSandboxTools = async ({
   toolName,
   args,
-  sandboxClient
+  sandboxClient,
+  validate
 }: {
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
+  validate?: SandboxToolCallValidator;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
+
+  const validationError = validate?.({ toolName, args });
+  if (validationError) {
+    return {
+      success: false,
+      input: {},
+      response: validationError,
+      durationSeconds: getDuration()
+    };
+  }
 
   const tool = ToolMap[toolName as keyof typeof ToolMap];
 

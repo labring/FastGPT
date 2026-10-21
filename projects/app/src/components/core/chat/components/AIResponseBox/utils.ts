@@ -2,13 +2,6 @@ import type {
   AgentAskInteractive,
   AgentPlanAskQueryInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-
-export const onSendPrompt = (text: string) =>
-  eventBus.emit(EventNameEnum.sendQuestion, {
-    text,
-    focus: true
-  });
 
 /**
  * 把历史单题 ask_user 记录适配成已提交的 Agent Ask，仅用于只读展示。

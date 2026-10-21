@@ -19,9 +19,9 @@ import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
-import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
+import AIChatBubble from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
-import { hasAiAnswerContent } from './AIChatBubble/utils';
+import { groupAIChatResponseValues, shouldFilterAiValue } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
@@ -81,6 +81,10 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const collapseIntermediateAgentResponses = useContextSelector(
+    ChatBoxContext,
+    (v) => v.collapseIntermediateAgentResponses ?? false
+  );
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
   const { isPc } = useSystem();
@@ -106,13 +110,11 @@ const ChatItem = (props: Props) => {
   const inlineErrorInfo = useMemo(() => {
     if (!chat.errorMsg && !errorText) return;
 
-    const moduleName =
-      errorText?.moduleName ||
-      chat.moduleName ||
-      t('common:core.module.template.ai_chat', { defaultValue: 'AI 对话' });
+    const moduleName = errorText?.moduleName || chat.moduleName;
+    const errorPrefix = t('chat:log.error.error_prefix');
 
     return {
-      title: `${t('chat:log.error.error_prefix')} - ${t(moduleName)}`,
+      title: moduleName ? `${errorPrefix} - ${t(moduleName)}` : errorPrefix,
       message: t(errorText?.errorText || chat.errorMsg || 'Unknow error')
     };
   }, [chat.errorMsg, chat.moduleName, errorText, t]);
@@ -137,68 +139,16 @@ const ChatItem = (props: Props) => {
     if (chat.obj === ChatRoleEnum.Human) return [chat.value];
 
     if (chat.obj === ChatRoleEnum.AI) {
-      // Remove empty text node
-      const filterList = chat.value.filter((item) => !shouldFilterAiValue(item));
-
-      const groupedValues: AIChatItemValueItemType[][] = [];
-      let currentGroup: AIChatItemValueItemType[] = [];
-
-      filterList.forEach((value) => {
-        if (value.interactive) {
-          if (currentGroup.length > 0) {
-            groupedValues.push(currentGroup);
-            currentGroup = [];
-          }
-
-          groupedValues.push([value]);
-          return;
-        }
-
-        currentGroup.push(value);
-
-        if (hasAiAnswerContent(value)) {
-          groupedValues.push(currentGroup);
-          currentGroup = [];
-        }
+      return groupAIChatResponseValues({
+        chatValue: chat.value,
+        isLastChild,
+        isChatting,
+        collapseIntermediateAgentResponses
       });
-
-      if (currentGroup.length > 0) {
-        groupedValues.push(currentGroup);
-      }
-
-      // Check last group is interactive, Auto add a empty text node(animation)
-      const lastGroup = groupedValues[groupedValues.length - 1];
-      if (isLastChild && (isChatting || groupedValues.length === 0)) {
-        if (
-          (lastGroup &&
-            lastGroup[lastGroup.length - 1] &&
-            lastGroup[lastGroup.length - 1].interactive) ||
-          groupedValues.length === 0
-        ) {
-          groupedValues.push([
-            {
-              text: {
-                content: ''
-              }
-            }
-          ]);
-        }
-      } else if (groupedValues.length === 0) {
-        // 对于非最后一条的空 AI 消息，也补充一个空节点，避免消息"消失"
-        groupedValues.push([
-          {
-            text: {
-              content: ''
-            }
-          }
-        ]);
-      }
-
-      return groupedValues;
     }
 
     return [];
-  }, [chat.obj, chat.value, isChatting, isLastChild]);
+  }, [chat.obj, chat.value, collapseIntermediateAgentResponses, isChatting, isLastChild]);
   const hasValidAiContent = useMemo(() => {
     if (chat.obj !== ChatRoleEnum.AI) return false;
 

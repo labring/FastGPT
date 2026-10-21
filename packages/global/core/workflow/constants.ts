@@ -383,7 +383,7 @@ export enum VariableInputEnum {
   internal = 'internal'
 }
 
-type VariableConfigType = {
+export type VariableConfigType = {
   icon: string;
   label: string;
   value: VariableInputEnum;

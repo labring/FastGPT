@@ -1,6 +1,10 @@
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { parseI18nString, selectPluginText, selectReadmeUrl } from '@fastgpt/global/common/i18n/utils';
+import {
+  parseI18nString,
+  selectPluginText,
+  selectReadmeUrl
+} from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
@@ -205,7 +209,11 @@ export async function getClientSystemToolPreviewNode({
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: displayStatus,
     // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
-    inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
+    // 与普通工作流工具保持一致的 userChatInput 处理，避免该入参被固化为手动输入而误显示引用数组。
+    inputs: initToolInputsTypeByDefaultMode(inputs, {
+      forceDefaultMode: true,
+      allowUserChatInputAgentGenerated: true
+    }),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)

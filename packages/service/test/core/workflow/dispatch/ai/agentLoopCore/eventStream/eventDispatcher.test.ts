@@ -26,6 +26,61 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreEventDispatcher', () => {
+  it('streams internal tool activity once without collecting tool run details', () => {
+    const workflowStreamResponse = vi.fn();
+    const appendToolNodeResponse = vi.fn();
+    const dispatcher = createAgentLoopCoreEventDispatcher({
+      eventStream: createAgentLoopCoreEventStream({
+        workflowStreamResponse,
+        getToolInfo: () => ({ name: 'Read file', avatar: 'file-avatar' })
+      }),
+      toolRunCollector: {
+        appendToolNodeResponse,
+        appendContextCompressNodeResponse: vi.fn()
+      }
+    });
+
+    for (const status of ['running', 'running', 'done', 'done'] as const) {
+      dispatcher.emitEvent({
+        type: 'tool_activity',
+        callId: 'skill-reference',
+        toolName: 'sandbox_read_file',
+        status
+      });
+    }
+
+    expect(workflowStreamResponse.mock.calls.map(([event]) => event)).toEqual([
+      {
+        id: 'skill-reference',
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: {
+            id: 'skill-reference',
+            toolName: 'Read file',
+            toolAvatar: 'file-avatar',
+            functionName: 'sandbox_read_file',
+            params: '',
+            hideDetails: true
+          }
+        }
+      },
+      {
+        id: 'skill-reference',
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            id: 'skill-reference',
+            toolName: '',
+            toolAvatar: '',
+            params: '',
+            response: ''
+          }
+        }
+      }
+    ]);
+    expect(appendToolNodeResponse).not.toHaveBeenCalled();
+  });
+
   it('routes model, tool and compression events to stream and tool run collector', () => {
     const workflowStreamResponse = vi.fn();
     const eventStream = createAgentLoopCoreEventStream({

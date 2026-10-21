@@ -218,17 +218,19 @@ export const formatWorkflowRuleIssue = ({
     nodeId: node?.nodeId ?? '__chat_config__',
     nodeName: node?.name,
     nodeType: node?.flowNodeType ?? FlowNodeTypeEnum.workflowStart,
-    level: 'error',
+    level: issue.level ?? 'error',
     code: issue.code,
     inputKey: node ? issue.inputKey : inputName,
-    message: getWorkflowCheckIssueMessage({
-      issueCode: issue.messageCode ?? issue.code,
-      t,
-      params: {
-        inputName,
-        model: issue.model,
-        nodeName: node?.name
-      }
-    })
+    message:
+      issue.message ??
+      getWorkflowCheckIssueMessage({
+        issueCode: issue.messageCode ?? issue.code,
+        t,
+        params: {
+          inputName,
+          model: issue.model,
+          nodeName: node?.name
+        }
+      })
   };
 };

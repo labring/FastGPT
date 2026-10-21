@@ -4,7 +4,7 @@ import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/con
 import { ChatBatchDeleteBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { deleteChatResourcesBySource } from '@fastgpt/service/core/chat/delete';
 
@@ -21,6 +21,10 @@ const getBatchDeletePermission = (sourceType: ChatSourceTypeEnum) => {
     return AppReadChatLogPerVal;
   }
 
+  if (sourceType === ChatSourceTypeEnum.workflowBuilder) {
+    return WritePermissionVal;
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };
@@ -31,7 +35,7 @@ async function handler(req: ApiRequestProps) {
     bodySchema: ChatBatchDeleteBodySchema
   }).body;
 
-  await authChatTargetCrud({
+  const authResult = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
@@ -43,7 +47,8 @@ async function handler(req: ApiRequestProps) {
   await deleteChatResourcesBySource({
     sourceType,
     sourceId,
-    chatIds
+    chatIds,
+    scope: authResult.scope
   });
 
   return;

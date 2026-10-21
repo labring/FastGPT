@@ -17,15 +17,23 @@ import { SearchDatasetSynonymMappingsBodySchema } from '../../openapi/core/datas
 import z from 'zod';
 
 describe('shared API schemas', () => {
-  it.each([500, '500'])(
-    'accepts the shared page-size limit %j for offset and cursor pagination',
+  it.each([1, '20', 500, '500'])(
+    'keeps valid page size %j for offset and cursor pagination',
+    (pageSize) => {
+      expect(PaginationSchema.parse({ pageSize }).pageSize).toBe(Number(pageSize));
+      expect(LinkedPaginationSchema().parse({ pageSize }).pageSize).toBe(Number(pageSize));
+    }
+  );
+
+  it.each([501, '501', 1000, '1000', Number.MAX_SAFE_INTEGER])(
+    'caps shared page size %j at 500 for offset and cursor pagination',
     (pageSize) => {
       expect(PaginationSchema.parse({ pageSize }).pageSize).toBe(500);
       expect(LinkedPaginationSchema().parse({ pageSize }).pageSize).toBe(500);
     }
   );
 
-  it.each([501, '501', 0, -1, 1.5, 'invalid'])(
+  it.each([0, -1, 1.5, 501.5, NaN, Infinity, 'invalid'])(
     'rejects invalid shared page sizes %j',
     (pageSize) => {
       expect(PaginationSchema.safeParse({ pageSize }).success).toBe(false);
@@ -47,30 +55,32 @@ describe('shared API schemas', () => {
     ).toBe(false);
   });
 
-  it('applies the common limit to standalone list APIs and their OpenAPI metadata', () => {
+  it('caps standalone list APIs and preserves their OpenAPI limit metadata', () => {
     const query = Object.fromEntries(
       new URLSearchParams(
         'pageNum=1&pageSize=500&channelType=system&requestId=&codeType=all&startTimestamp=1791734400000&endTimestamp=1791907199999'
       )
     );
     expect(GetChannelLogsQuerySchema.parse(query).pageSize).toBe(500);
-    expect(GetChannelLogsQuerySchema.safeParse({ ...query, pageSize: '501' }).success).toBe(false);
+    expect(GetChannelLogsQuerySchema.parse({ ...query, pageSize: '501' }).pageSize).toBe(500);
     expect(ListChannelsQuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(ListChannelsQuerySchema.safeParse({ pageSize: '501' }).success).toBe(false);
+    expect(ListChannelsQuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
     expect(ListChannelsQuerySchema.parse({}).pageSize).toBeUndefined();
     expect(ListSkillsQuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(ListSkillsQuerySchema.safeParse({ pageSize: '501' }).success).toBe(false);
+    expect(ListSkillsQuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
     expect(ListSkillVersionsBodySchema.parse({ skillId: 'skill-1', pageSize: 500 }).pageSize).toBe(
       500
     );
-    expect(
-      ListSkillVersionsBodySchema.safeParse({ skillId: 'skill-1', pageSize: 501 }).success
-    ).toBe(false);
+    expect(ListSkillVersionsBodySchema.parse({ skillId: 'skill-1', pageSize: 501 }).pageSize).toBe(
+      500
+    );
     expect(InvoiceListBodySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(InvoiceListBodySchema.safeParse({ pageSize: '501' }).success).toBe(false);
+    expect(InvoiceListBodySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
     const document = z.toJSONSchema(GetChannelLogsQuerySchema);
-    expect(document.properties?.pageSize.maximum).toBe(500);
-    expect(document.properties?.pageSize.description).toContain('500');
+    expect(document.properties?.pageSize).toMatchObject({
+      maximum: 500,
+      description: expect.stringContaining('超出自动按 500 处理')
+    });
   });
 
   it('keeps legacy JSON cursor anchors compatible', () => {

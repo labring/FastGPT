@@ -152,7 +152,7 @@ export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema
 export const ListChannelsQuerySchema = z.object({
   pageNum: NumSchema.optional().meta({ description: '页码，从 1 开始' }),
   pageSize: PaginationPageSizeSchema.optional().meta({
-    description: `每页条数，最大 ${PaginationPageSizeLimit}；不传返回全量`
+    description: `每页条数，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理；不传返回全量`
   }),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
   channelType: ChannelTypeSchema.optional().meta({

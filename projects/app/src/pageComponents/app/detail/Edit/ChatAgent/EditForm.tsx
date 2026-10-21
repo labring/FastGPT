@@ -44,7 +44,7 @@ import DatasetTagFilterRows, {
   TagFilterLogicToggle
 } from '@/components/core/dataset/DatasetTagFilterRows';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   isDatasetTagFilterValue,
@@ -93,7 +93,15 @@ const EditForm = ({
             !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
         ),
         ...(appForm.chatConfig.variables ?? [])
-      ]).map((item) => ({ ...item, label: t(item.label as any) })),
+      ]).map((item) => ({
+        ...item,
+        label: t(item.label as any),
+        parent: {
+          id: VARIABLE_NODE_ID,
+          label: t('common:core.module.Variable'),
+          avatar: 'core/workflow/template/variable'
+        }
+      })),
     [appForm.chatConfig.variables, t]
   );
   const tagFilterReferenceList = useMemo(
@@ -338,6 +346,8 @@ const EditForm = ({
                 bg={'myGray.50'}
                 title={t('common:core.ai.Prompt')}
                 isRichText={true}
+                placeholder={t('workflow:agent.prompt_placeholder')}
+                variableLabels={formatVariables}
                 skillOption={promptSkillOption}
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}

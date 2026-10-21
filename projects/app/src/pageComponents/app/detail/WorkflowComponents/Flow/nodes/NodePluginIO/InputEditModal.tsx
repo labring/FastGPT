@@ -199,11 +199,13 @@ const FieldEditModal = ({
             inputTypeList={inputTypeList}
             selectedType={inputType}
             onTypeChange={(type) => {
+              if (type === inputType) return;
+
               const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
                 setValue('selectedType', type as FlowNodeInputTypeEnum);
-                setValue('defaultValue', '');
+                setValue('defaultValue', type === FlowNodeInputTypeEnum.multipleSelect ? [] : '');
                 if (
                   (type === FlowNodeInputTypeEnum.select ||
                     type === FlowNodeInputTypeEnum.multipleSelect) &&

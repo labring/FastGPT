@@ -20,7 +20,10 @@ export const Code = (e: any) => {
     children,
     showAnimation,
     autoPreviewHtmlCodeBlock,
-    markdownClassName
+    markdownClassName,
+    onSendQuestion,
+    onEditQuestion,
+    onQuickReplyClick
   } = e;
   const match = /language-([\w-]+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
@@ -30,10 +33,18 @@ export const Code = (e: any) => {
     return <MermaidCodeBlock code={strChildren} />;
   }
   if (codeType === CodeClassNameEnum.guide) {
-    return <ChatGuide text={strChildren} className={markdownClassName} />;
+    return (
+      <ChatGuide text={strChildren} className={markdownClassName} onSendQuestion={onSendQuestion} />
+    );
   }
   if (codeType === CodeClassNameEnum.questionguide) {
-    return <QuestionGuide text={strChildren} />;
+    return (
+      <QuestionGuide
+        text={strChildren}
+        onSendQuestion={onSendQuestion}
+        onEditQuestion={onEditQuestion}
+      />
+    );
   }
   if (codeType === CodeClassNameEnum.echarts) {
     return <EChartsCodeBlock code={strChildren} />;
@@ -65,7 +76,7 @@ export const Code = (e: any) => {
     return <AudioBlock code={strChildren} />;
   }
   if (codeType === CodeClassNameEnum.quickReplies) {
-    return <QuickReplies text={strChildren} />;
+    return <QuickReplies text={strChildren} onQuickReplyClick={onQuickReplyClick} />;
   }
 
   return (

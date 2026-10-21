@@ -15,6 +15,7 @@ import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopToolExecutionResult,
   AgentLoopUsage
@@ -26,6 +27,7 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
@@ -192,6 +194,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  completionPolicy,
   batchToolSize = 1,
   body: { model, messages, max_tokens, ...body },
 
@@ -713,7 +716,31 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
 
-    if (toolCalls.length === 0 || !!toolChildPause || stopAgentLoop || isAborted?.()) {
+    // 暂停、工具显式停止和取消优先于业务完成判断。
+    if (toolChildPause || stopAgentLoop || isAborted?.()) {
+      break;
+    }
+    if (toolCalls.length > 0) {
+      continue;
+    }
+
+    // 只有模型自然结束时，才由业务策略决定是否追加指令继续。
+    try {
+      const decision = await completionPolicy?.({ requestIndex: runTimes });
+      // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
+      if (isAborted?.() || !decision || decision.action === 'complete') {
+        break;
+      }
+      if (runTimes >= maxRunAgentTimes) {
+        requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+        break;
+      }
+      await appendRequestMessages({
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: decision.message
+      });
+    } catch (error) {
+      requestError = error;
       break;
     }
   }

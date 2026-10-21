@@ -42,6 +42,29 @@ afterEach(() => {
 });
 
 describe('parseUrlToChatFileType', () => {
+  it.each(['/api/system/file/d/', '/f/', '/'])(
+    '短链 %s 使用响应元数据分类，不把签名中的点号当成文件后缀',
+    async (prefix) => {
+      const shortUrl = `https://files.example.com${prefix}workflowFileAlias.hscf3.ExampleSignatureValue1234`;
+      vi.mocked(axios.head).mockResolvedValueOnce({
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'content-disposition': 'inline; filename="test_file.txt"'
+        }
+      });
+
+      expect(
+        await parseUrlToChatFileType({ url: shortUrl, name: shortUrl, type: FileType.file })
+      ).toEqual({
+        url: shortUrl,
+        name: shortUrl,
+        type: FileType.file,
+        filename: 'test_file.txt'
+      });
+      expect(axios.head).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it.each([
     ['data:IMAGE/PNG;base64,abc', undefined, FileType.image, 'image.png'],
     ['data:image/jpeg;base64,abc', '头像', FileType.image, '头像'],

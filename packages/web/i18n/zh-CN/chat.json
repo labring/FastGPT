@@ -63,7 +63,7 @@
   "is_chatting": "正在聊天中...请等待结束",
   "chat_generating_resumed": "有正在运行的对话，已恢复。",
   "llm_request_detail": "LLM 请求详情",
-  "log.error.error_prefix": "报错信息",
+  "log.error.error_prefix": "运行错误",
   "log.feedback.hide_feedback": "隐藏反馈",
   "log.feedback.mark_as_read": "标为已读",
   "log.feedback.read": "已读",

@@ -24,6 +24,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { countDatasetCollectionsByDatasetIds } from '@fastgpt/service/core/dataset/collection/entity';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -96,6 +97,10 @@ const findSubtreeDatasetFolderIds = async ({
   return ids;
 };
 
+/**
+ * 分页读取可见知识库，仅为当前页按需计算文件数和应用引用数。
+ * 文件数不按 collection 权限过滤；应用引用数仍仅返回给 Owner。
+ */
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
 ): Promise<GetDatasetListV2Response> {
@@ -108,7 +113,8 @@ async function handler(
     pageNum = 1,
     pageSize = 50,
     offset,
-    withAppCount
+    withAppCount,
+    withFileCount
   } = parseApiInput({
     req,
     bodySchema: GetDatasetListV2BodySchema
@@ -259,12 +265,21 @@ async function handler(
     };
   });
 
-  const appCountMap = withAppCount
-    ? await countTeamAppsByPublishedResourceGroups({
-        teamId,
-        resourceGroups: formatDatasets
-          .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
-          .map((dataset) => {
+  const nonFolderDatasets = formatDatasets.filter(
+    (dataset) => dataset.type !== DatasetTypeEnum.folder
+  );
+  // 文件数需要扫描库内 collection，仅在调用方显式请求时计算。
+  const [fileCountMap, appCountMap] = await Promise.all([
+    withFileCount
+      ? countDatasetCollectionsByDatasetIds({
+          teamId,
+          datasetIds: nonFolderDatasets.map((dataset) => String(dataset._id))
+        })
+      : undefined,
+    withAppCount
+      ? countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: nonFolderDatasets.map((dataset) => {
             const id = String(dataset._id);
             return {
               id,
@@ -272,11 +287,15 @@ async function handler(
               resources: [{ type: 'dataset', id }]
             };
           })
-      })
-    : undefined;
+        })
+      : undefined
+  ]);
   const list = await addSourceMember({
     list: formatDatasets.map((dataset) => ({
       ...dataset,
+      ...(dataset.type !== DatasetTypeEnum.folder && fileCountMap
+        ? { fileCount: fileCountMap.get(String(dataset._id)) ?? 0 }
+        : {}),
       ...(dataset.permission.isOwner && appCountMap?.has(String(dataset._id))
         ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 }
         : {})

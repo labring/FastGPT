@@ -158,7 +158,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       {isTool && hasDynamicToolInput(data) && (
         <>
           <Container>

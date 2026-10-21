@@ -838,6 +838,59 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
       getPreviewUrl: vi.fn()
     });
 
+  it.each(['variable', 'query', 'child'] as const)(
+    '%s 中手动输入的文件短链登记后仍使用真实文件名解析',
+    async (entry) => {
+      const url =
+        'https://files.example.com/api/system/file/d/workflowFileAlias.hscf3.ExampleSignatureValue1234';
+      const file = { url, name: url, type: ChatFileTypeEnum.file };
+      axiosHeadMock.mockResolvedValue({
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'content-disposition': 'inline; filename="test_file.txt"'
+        }
+      });
+      axiosGetMock.mockImplementation(async () => ({
+        data: Readable.from([Buffer.from('file content')]),
+        headers: { 'content-type': 'text/plain; charset=utf-8' }
+      }));
+      const { fileContext, fileRegistrar } = await prepare(entry === 'query' ? [{ file }] : []);
+      const context = await (async () => {
+        if (entry === 'child') return fileContext.derive([file]);
+        if (entry === 'variable')
+          await fileRegistrar.registerInputFile({ file, source: 'variable' });
+        return fileContext;
+      })();
+
+      expect(context.resolve(url)).toMatchObject({ name: url, filename: 'test_file.txt' });
+      const { source } = await context.getSource(url);
+      const materialized = await source.materialize({ signal: new AbortController().signal });
+      expect(materialized.metadata.filename).toBe('test_file.txt');
+      expect(resolveFileSourceExtension(materialized)).toBe('txt');
+      expect(axiosHeadMock).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('短链探测没有文件元数据时，签名不能覆盖下载响应文件名或文本兜底', async () => {
+    const url = 'https://files.example.com/f/workflowFileAlias.hscf3.ExampleSignatureValue1234';
+    axiosHeadMock.mockResolvedValue({ headers: {} });
+    axiosGetMock.mockImplementation(async () => ({
+      status: 200,
+      data: Readable.from([Buffer.from('plain text')]),
+      headers: {}
+    }));
+    const { fileContext, fileRegistrar } = await prepare();
+    await fileRegistrar.registerInputFile({
+      file: { url, name: url, type: ChatFileTypeEnum.file },
+      source: 'variable'
+    });
+
+    const { source } = await fileContext.getSource(url);
+    const materialized = await source.materialize({ signal: new AbortController().signal });
+    expect(resolveFileSourceExtension(materialized)).toBe('txt');
+    expect(materialized.metadata.filename).toBe('file');
+  });
+
   it('classifies query and history before registration and shares concurrent requests', async () => {
     const url = 'https://files.example.com/opaque';
     const file = createFile({ url, name: 'photo', type: ChatFileTypeEnum.file });

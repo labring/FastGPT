@@ -12,6 +12,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
+import { useHandleInternals } from './useHandleInternals';
 
 const handleSizeConnected = 24;
 const handleSizeConnecting = 32;
@@ -57,6 +58,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   position
 }: Props) {
   const { t } = useTranslation();
+  const handleRef = useHandleInternals(nodeId);
 
   const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
@@ -133,6 +135,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       shouldWrapChildren={false}
     >
       <Handle
+        ref={handleRef}
         style={styles}
         type="source"
         id={handleId}
@@ -154,7 +157,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 });
 
 export const MyTargetHandle = React.memo(function MyTargetHandle({
-  nodeId: _nodeId,
+  nodeId,
   handleId,
   position,
   translate,
@@ -162,6 +165,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
+  const handleRef = useHandleInternals(nodeId);
   const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
@@ -204,6 +208,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 
   return (
     <Handle
+      ref={handleRef}
       style={styles}
       isConnectableEnd={styles && showHandle}
       isConnectableStart={false}

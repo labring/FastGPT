@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { createWorkflowCheckContext } from '../../../../../src/web/core/workflow/check/graph';
-import { checkWorkflowNodeResourceRules } from '../../../../../src/web/core/workflow/check/node';
+import { checkWorkflowNodeResourceRules } from '../../../../../src/web/core/workflow/check/resource';
 
 const getResourceIssues = (data: FlowNodeItemType) =>
   checkWorkflowNodeResourceRules({
     data,
-    inputMap: new Map(),
-    context: createWorkflowCheckContext({ nodes: [data], edges: [] })
+    bindings: []
   });
 
 describe('workflow node-local MCP toolset checks', () => {

@@ -20,7 +20,6 @@ import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
 import {
   S3_ACCESS_LINK_ROUTES,
-  S3SignedDownloadAliasValueSchema,
   verifyS3DownloadAccess,
   type VerifiedS3DownloadAccess
 } from '../../common/s3/accessLink';
@@ -34,9 +33,10 @@ import { createExternalHttpFileSource, createS3FileSource } from '../../common/f
 import {
   prepareChatFiles,
   parseUrlToChatFileType,
+  validateChatFileInput,
   type FilePreparationContext
 } from './file/service';
-import { getFileUrlIdentity, selectFileInputs } from './file/utils';
+import { getFileUrlIdentity, isSignedDownloadAlias, selectFileInputs } from './file/utils';
 
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
 export type FileReadContext = FilePreparationContext & {
@@ -68,7 +68,8 @@ type GetFileProps = {
   fileContext?: FileReadContext;
 };
 
-const resolveSignedDownloadAliasFromUrl = (url: string) => {
+/** 从下载 API 或公开短路径提取 signed alias；访问权限仍由后续签名校验或 HTTP 读取判断。 */
+export const resolveSignedDownloadAliasFromUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url, 'http://localhost:3000');
     const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
@@ -89,7 +90,7 @@ const resolveSignedDownloadAliasFromUrl = (url: string) => {
       return decodeURIComponent(lastPathSegment);
     })();
 
-    return S3SignedDownloadAliasValueSchema.safeParse(signedAlias).success ? signedAlias : '';
+    return isSignedDownloadAlias(signedAlias) ? signedAlias : '';
   } catch {
     return '';
   }
@@ -323,7 +324,30 @@ export const normalizeReadableFileUrl = async ({
   fileContext?: FileReadContext;
 }): Promise<string> => {
   if (typeof url !== 'string' || !url.trim()) return '';
-  const [file] = await prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext });
+  const normalizedUrl = url.trim();
+
+  // 调试续跑或直接调试解析节点时，短链可能尚未登记。先校验签名并用真实对象元数据分类，
+  // 避免把短链 token 当成带后缀的外链登记，遮蔽后续的 S3 文件读取路径。
+  if (
+    !fileContext?.resolveChatFile(normalizedUrl) &&
+    resolveSignedDownloadAliasFromUrl(normalizedUrl)
+  ) {
+    if (!validateChatFileInput({ url: normalizedUrl, fileContext })) return '';
+    const access = await resolveShortDownloadAccessFromUrl(normalizedUrl);
+    if (access) {
+      const file = await parseUrlToChatFileType({
+        url: access.objectKey,
+        metadata: { filename: access.filename, contentType: access.responseContentType }
+      });
+      return file?.type === ChatFileTypeEnum.file ? normalizedUrl : '';
+    }
+  }
+
+  const [file] = await prepareChatFiles({
+    files: [{ url: normalizedUrl }],
+    maxFiles: 1,
+    fileContext
+  });
   return file?.type === ChatFileTypeEnum.file ? file.url : '';
 };
 

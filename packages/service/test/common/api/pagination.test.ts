@@ -6,16 +6,23 @@ import type { NodeApiRequest } from '@fastgpt/service/types/http';
 describe('pagination.ts', () => {
   describe('parsePaginationRequest', () => {
     it.each(['body', 'query'] as const)(
-      'enforces the shared page size on %s without changing offsets',
+      'caps the shared page size on %s before calculating offsets',
       (source) => {
         expect(
           parsePaginationRequest({
             [source]: { pageSize: '500', pageNum: '2' }
           } as unknown as NodeApiRequest)
         ).toEqual({ pageSize: 500, offset: 500 });
-        expect(() =>
-          parsePaginationRequest({ [source]: { pageSize: '501' } } as unknown as NodeApiRequest)
-        ).toThrow(ApiRequestInputParseError);
+        expect(
+          parsePaginationRequest({
+            [source]: { pageSize: '1000', pageNum: '3' }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 500, offset: 1000 });
+        expect(
+          parsePaginationRequest({
+            [source]: { pageSize: 501, pageNum: 2, offset: 7 }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 500, offset: 7 });
       }
     );
 

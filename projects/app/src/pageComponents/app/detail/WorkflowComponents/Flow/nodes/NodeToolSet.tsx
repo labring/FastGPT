@@ -137,7 +137,13 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const title = useMemo(
     () => (
       <Flex alignItems={'center'} justifyContent={'space-between'} minW={0}>
-        <IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} mb={0} minW={0} />
+        <IOTitle
+          text={t('app:MCP_tools_list')}
+          nodeId={data.nodeId}
+          inputs={data.inputs}
+          mb={0}
+          minW={0}
+        />
         {localHttpToolSet && (
           <Button
             size={'sm'}
@@ -155,7 +161,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'350px'} maxW={'520px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} maxW={'524px'} selected={selected} {...data}>
       <Container>
         {localHttpToolSet && toolList.length === 0 ? (
           <Flex

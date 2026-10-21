@@ -1,5 +1,6 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
+import { FlowNodeTemplateOutputItemTypeSchema } from '../template/output';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
@@ -252,6 +253,7 @@ const HandleTypeSchema = z.object({
 // system template
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   id: z.string(),
+  outputs: z.array(FlowNodeTemplateOutputItemTypeSchema),
   status: PluginStatusSchema.optional(),
 
   showSourceHandle: BoolSchema.optional(),
@@ -384,6 +386,7 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  isFolded: BoolSchema.optional(),
   position: z
     .object({
       x: NumSchema,

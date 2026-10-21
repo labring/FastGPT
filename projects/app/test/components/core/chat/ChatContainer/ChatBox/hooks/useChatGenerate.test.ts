@@ -22,6 +22,7 @@ import type {
   ChatSiteItemType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputDraft/storage';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -254,6 +255,44 @@ describe('useChatGenerate.sendPrompt', () => {
     clearChatInputDrafts();
     dom.window.close();
     vi.unstubAllGlobals();
+  });
+
+  it('finishes a tool activity when its completion signal contains an empty response', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await send();
+
+    const tool = {
+      id: 'skill-reference',
+      toolName: 'Read file',
+      toolAvatar: '',
+      functionName: 'sandbox_read_file',
+      params: '',
+      hideDetails: true
+    };
+    const getActivity = () => {
+      const response = records.at(-1);
+      return response?.obj === ChatRoleEnum.AI ? response.value.at(-1)?.tools?.[0] : undefined;
+    };
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolCall,
+        responseValueId: tool.id,
+        tool
+      })
+    );
+    expect(getActivity()?.response).toBeUndefined();
+
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolResponse,
+        responseValueId: tool.id,
+        tool: { ...tool, response: '' }
+      })
+    );
+    expect(getActivity()).toEqual({ ...tool, response: '' });
+    await act(async () => request.resolve({ responseText: '' }));
   });
 
   it.each([

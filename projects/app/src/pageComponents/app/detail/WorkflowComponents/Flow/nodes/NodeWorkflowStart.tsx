@@ -11,7 +11,7 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
@@ -58,6 +58,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard
+      minW={'350px'}
       selected={selected}
       menuForbid={{
         copy: true,
