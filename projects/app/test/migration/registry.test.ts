@@ -34,7 +34,9 @@ describe('validateSystemMigrationRegistry', () => {
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids',
       '20261025_token_prices_per_million',
-      '20261022_initialize_dataset_vector_indexes'
+      '20261022_initialize_dataset_vector_indexes',
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
