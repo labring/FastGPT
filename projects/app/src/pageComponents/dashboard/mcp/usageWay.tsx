@@ -16,17 +16,18 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
   const { feConfigs } = useSystemStore();
   const [linkWay, setLinkWay] = useState<LinkWay>('http');
 
+  // MCP 服务名称优先使用用户可编辑的 mcp.name；历史数据 name 可能为空，回退到旧的自动生成格式以保证兼容。
+  const serverName = (() => {
+    const name = mcp.name?.trim();
+    return name ? name : `${feConfigs?.systemTitle}-mcp-${mcp._id}`;
+  })();
+
   const { url, jsonConfig } = (() => {
     if (linkWay === 'http') {
       const baseUrl = feConfigs?.customApiDomain || `${location.origin}/api`;
       const url = `${baseUrl}/mcp/app/${mcp.key}/mcp`;
-      const jsonConfig = `{
-  "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
-      "url": "${url}"
-    }
-  }
-}`;
+      // 用 JSON.stringify 生成配置，避免 name 中含有引号等特殊字符时破坏 JSON 结构
+      const jsonConfig = JSON.stringify({ mcpServers: { [serverName]: { url } } }, null, 2);
       return {
         url,
         jsonConfig
@@ -36,13 +37,7 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
     const url = feConfigs?.mcpServerProxyEndpoint
       ? `${feConfigs?.mcpServerProxyEndpoint}/${mcp.key}/sse`
       : '';
-    const jsonConfig = `{
-  "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
-      "url": "${url}"
-    }
-  }
-}`;
+    const jsonConfig = JSON.stringify({ mcpServers: { [serverName]: { url } } }, null, 2);
 
     return {
       url,
