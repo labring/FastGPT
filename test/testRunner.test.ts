@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveTestPlan } from '../scripts/test/run.mjs';
 
@@ -34,6 +36,19 @@ describe('resolveTestPlan', () => {
     expect(plan[0]?.args.filter((argument: string) => argument.startsWith('--filter='))).toEqual(
       filters
     );
+  });
+
+  it('supports optional workflow package scopes used by the CI workflows', () => {
+    const workflowScopes = ['workflow-core', 'workflow-cli'];
+    const availableScopes = workflowScopes.filter((scope) =>
+      existsSync(resolve(process.cwd(), 'packages', scope, 'package.json'))
+    );
+    const plan = resolveTestPlan({ scopeValue: workflowScopes.join(',') });
+
+    expect(plan).toHaveLength(availableScopes.length > 0 ? 1 : 0);
+    availableScopes.forEach((scope) => {
+      expect(plan[0]?.args).toContain(`--filter=@fastgpt/${scope}`);
+    });
   });
 
   it('supports repo-only and workspace-only unit tests', () => {
