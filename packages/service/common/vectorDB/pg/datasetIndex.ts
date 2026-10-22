@@ -1,4 +1,4 @@
-import { Client, escapeIdentifier, escapeLiteral } from 'pg';
+import pg from 'pg';
 import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
 import { DatasetVectorTableName, PG_ADDRESS } from '../constants';
 import { PgClient } from './controller';
@@ -39,7 +39,7 @@ export const ensurePgDatasetIndex = async ({
   if (!/^[a-f0-9]{24}$/.test(teamId)) throw new Error('Invalid team ID for PG index');
 
   // 普通池有 60 秒 query_timeout；建图使用独立会话，不能把连接池查询配置改为无限等待。
-  const client = new Client({
+  const client = new pg.Client({
     connectionString: PG_ADDRESS,
     application_name: 'fastgpt-dataset-index',
     connectionTimeoutMillis: 30000,
@@ -86,9 +86,9 @@ export const ensurePgDatasetIndex = async ({
     ) {
       throw new Error('Dataset FP16 indexing requires a dimensioned FP32 vector column (1..4000)');
     }
-    const qualifiedTable = `${escapeIdentifier(table.schema)}.${escapeIdentifier(DatasetVectorTableName)}`;
-    const qualifiedIndex = `${escapeIdentifier(table.schema)}.${escapeIdentifier(indexName)}`;
-    const predicate = `dataset_id = ${escapeLiteral(datasetId)} AND team_id = ${escapeLiteral(teamId)}`;
+    const qualifiedTable = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(DatasetVectorTableName)}`;
+    const qualifiedIndex = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(indexName)}`;
+    const predicate = `dataset_id = ${pg.escapeLiteral(datasetId)} AND team_id = ${pg.escapeLiteral(teamId)}`;
 
     /** 目录核验同时检查表、方法、opclass、表达式、谓词，避免误用或删除同名自建索引。 */
     const readIndex = async () => {
@@ -209,7 +209,7 @@ export const ensurePgDatasetIndex = async ({
     progressTimer.unref();
 
     await client.query(
-      `CREATE INDEX CONCURRENTLY ${escapeIdentifier(indexName)} ON ${qualifiedTable}
+      `CREATE INDEX CONCURRENTLY ${pg.escapeIdentifier(indexName)} ON ${qualifiedTable}
        USING hnsw ((vector::halfvec(${table.dimensions})) halfvec_ip_ops)
        WITH (m = 16, ef_construction = 128) WHERE ${predicate}`
     );
