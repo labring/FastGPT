@@ -330,16 +330,18 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (finalInteractive.type === 'agentAsk') {
-    // New
+  } else if (finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
     };
-  } else if (finalInteractive.type === 'workflowBuilderPreview') {
+  } else if (
+    finalInteractive.type === 'workflowBuilderPreview' &&
+    !finalInteractive.params.answerValue
+  ) {
     return {
       interactive: finalInteractive,
-      canSendQuery: !!finalInteractive.params.answerValue
+      canSendQuery: false
     };
   }
 

@@ -22,69 +22,10 @@ import {
   hasContextCheckpoint,
   isToolExecutionResponse,
   findFailedResponseNode,
-  getUserChatInteractiveReply,
-  resetDeletedInteractiveReply
+  getUserChatInteractiveReply
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
-
-describe('resetDeletedInteractiveReply', () => {
-  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
-    'only resets the matching %s answer and retains its wrapper',
-    (type) => {
-      const runtime = { entryNodeIds: ['node-1'], memoryEdges: [], nodeOutputs: [] };
-      const child: WorkflowInteractiveResponseType =
-        type === 'agentAsk'
-          ? {
-              ...runtime,
-              type,
-              askId: 'interaction-1',
-              params: {
-                description: '',
-                submitted: true,
-                questions: [{ question: 'Question', options: [], answer: 'Answer' }]
-              }
-            }
-          : {
-              ...runtime,
-              type,
-              previewId: 'interaction-1',
-              params: {
-                title: 'Confirm?',
-                mermaid: '',
-                sections: [],
-                actions: [],
-                answerValue: 'confirm',
-                answerText: 'Feedback'
-              }
-            };
-      const interactive: WorkflowInteractiveResponseType = {
-        ...runtime,
-        type: 'childrenInteractive',
-        params: { childrenResponse: child }
-      };
-      const reply = { type, interactionId: 'other', questions: [] };
-      const before = structuredClone(interactive);
-      expect(resetDeletedInteractiveReply({ interactive, replies: [reply] })).toBe(false);
-      expect(interactive).toEqual(before);
-      expect(
-        resetDeletedInteractiveReply({
-          interactive,
-          replies: [{ ...reply, interactionId: 'interaction-1' }]
-        })
-      ).toBe(true);
-      expect(interactive.entryNodeIds).toEqual(['node-1']);
-      const reset = extractDeepestInteractive(interactive);
-      if (reset.type === 'agentAsk')
-        expect(reset.params).toMatchObject({ submitted: false, questions: [{ answer: '' }] });
-      else if (reset.type === 'workflowBuilderPreview') {
-        expect(reset.params.answerValue).toBeUndefined();
-        expect(reset.params.answerText).toBeUndefined();
-      }
-    }
-  );
-});
 
 describe('getUserChatInteractiveReply', () => {
   const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };

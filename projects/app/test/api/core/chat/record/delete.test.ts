@@ -126,6 +126,73 @@ describe('delete chat record api', () => {
     expect(queryItem?.deleteTime).toBeNull();
   });
 
+  it.each([false, true])(
+    'only restores an answered Ask for an explicit retry (retry: %s)',
+    async (retry) => {
+      const source = {
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId,
+        chatId
+      };
+      const previousAi = await MongoChatItem.create({
+        ...source,
+        obj: ChatRoleEnum.AI,
+        dataId: 'question-round',
+        value: [
+          {
+            interactive: {
+              type: 'agentAsk',
+              askId: 'ask-1',
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: {
+                description: '',
+                submitted: true,
+                questions: [{ question: 'Choose?', options: [], answer: 'Answer' }]
+              }
+            }
+          }
+        ]
+      });
+      await MongoChatItem.create({
+        ...source,
+        obj: ChatRoleEnum.Human,
+        dataId: 'answer-round',
+        value: [
+          {
+            text: { content: 'Answer' },
+            interactiveReply: {
+              type: 'agentAsk',
+              interactionId: 'ask-1',
+              questions: [{ question: 'Choose?', answer: 'Answer' }]
+            }
+          }
+        ]
+      });
+      await createChatItem('answer-round');
+
+      const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
+        auth: testUser,
+        body: { appId, chatId, contentIds: ['answer-round'], retry }
+      });
+
+      expect(res.code).toBe(200);
+      const remaining = await MongoChatItem.findById(previousAi._id).lean();
+      if (remaining?.obj !== ChatRoleEnum.AI) throw new Error('Expected the original AI');
+      expect(remaining.value[0].interactive).toMatchObject({
+        type: 'agentAsk',
+        params: {
+          submitted: !retry,
+          questions: [{ answer: retry ? '' : 'Answer' }]
+        }
+      });
+      expect(await MongoChatItem.countDocuments({ appId, chatId, deleteTime: null })).toBe(1);
+    }
+  );
+
   it('should keep compatibility with query contentId and comma separated contentIds', async () => {
     await Promise.all([
       createChatItem('legacy-single'),

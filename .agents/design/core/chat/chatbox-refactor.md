@@ -731,7 +731,7 @@ PR 4 继续完成阶段三中剩余的普通生成链路，把 `generatingMessag
 关键边界：
 
 1. `generatingMessage` 仍只更新最后一条 AI 消息；恢复生成 hook 继续复用它。
-2. interactive 输入仍通过 `rewriteHistoriesByInteractiveResponse` 回写上一轮交互，不创建新的普通轮次。
+2. interactive 输入通过 `rewriteHistoriesByInteractiveResponse` 更新本地记录；AgentAsk/WorkflowPreview 回复新建 Human/AI 轮次并回写原交互状态，普通选择、表单等 submit 交互继续使用原 AI。
 3. 发送失败且没有 `responseText` 时，继续恢复用户输入并移除本轮 human/AI placeholder。
 4. `eventBus`、window message、auto execute effect 仍留在 `index.tsx`，只调用 hook 返回的 `sendPrompt`，避免本 PR 同时迁移入口监听生命周期。
 5. controller refs 仍由 `index.tsx` 创建并传入，保证 stop/page leave/resume 继续共用同一组 abort controller。
@@ -788,6 +788,8 @@ PR 5 开始阶段四，但只处理消息记录动作，不把反馈、标注、
 2. 单条删除仍保持原来的 fire-and-forget 语义：本地先过滤记录，不额外等待远端删除完成，也不新增失败 toast。
 3. 重试继续复用 `useChatGenerate` 返回的 `sendPrompt`，不在本 hook 内处理 SSE、placeholder、TTS、问题引导和侧边栏状态。
 4. `isRecordActionLoading` 只表示 record action 的加载态，目前主要覆盖重试过程，不等同于聊天生成状态。
+5. 已回答的 AgentAsk/WorkflowPreview 在删除 user 回复后保持已回答状态。服务端仅软删除目标记录，客户端仅移除该 user 及紧随的 AI，不清空原问题的答案、`submitted`、`answerValue` 或 `answerText`，也不重新显示底部交互输入框；刷新后遵守同一规则。
+6. 显式重试与普通删除的语义分开：重试先按 `askId`/`previewId` 找回原交互及原回答，裁剪请求显式携带 `retry=true`，服务端仅在此模式下同事务恢复末轮原交互供自动重发；客户端重新加载历史窗口和分页锚点后携带原答案继续生成。普通删除不携带该标记，不触发状态恢复。
 
 作用：
 

@@ -6,11 +6,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { delChatRecordById, getChatRecords } from '@/web/core/chat/record/api';
-import type {
-  ChatItemMiniType,
-  UserChatInteractiveReplyType
-} from '@fastgpt/global/core/chat/type';
-import { resetDeletedInteractiveReply } from '@fastgpt/global/core/chat/utils';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
@@ -61,15 +57,17 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    *
    * 这里只软删除 chat item 记录；聊天附件由 chat 级资源清理流程统一回收，避免单条消息删除
    * 误删后续重试、编辑流程仍可能复用的文件。
+   * retry 仅由显式重试传入，普通删除不修改原问题的已回答状态。
    */
-  const onDelMessages = useMemoizedFn((contentIds: string[]) => {
+  const onDelMessages = useMemoizedFn((contentIds: string[], retry = false) => {
     const targetContentIds = uniqueDataIds(contentIds);
     if (targetContentIds.length === 0) return Promise.resolve();
 
     return delChatRecordById({
       ...chatAuthTarget,
       chatId,
-      contentIds: targetContentIds
+      contentIds: targetContentIds,
+      ...(retry ? { retry: true } : {})
     });
   });
 
@@ -77,9 +75,10 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    * 生成某条 human 消息的“重试”回调。
    *
    * 重试不是简单地重新发送当前文本，而是先定位目标 `dataId`：
-   * 1. 删除该消息以及它之后的所有服务端记录，避免新回答和旧后续历史并存。
-   * 2. 重新加载删除后的历史窗口及分页锚点，避免继续用已删除的消息查询上下页。
-   * 3. 从被删除的第一条记录恢复 text/files，并交给 `sendPrompt` 重新发送。
+   * 1. 保存原输入及对应交互；分页缺少原问题时先补取，Preview 保留原动作和反馈。
+   * 2. 以 retry 模式裁剪该消息及后续记录，恢复原交互供自动重发。
+   * 3. 重新加载历史窗口及分页锚点，避免继续用已删除的消息查询上下页。
+   * 4. 将原 text/files 和交互回答交给 `sendPrompt` 重新发送。
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
    */
@@ -145,7 +144,10 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
           };
         })();
 
-        await onDelMessages(delHistory.map((item) => item.dataId));
+        await onDelMessages(
+          delHistory.map((item) => item.dataId),
+          true
+        );
         const refreshedHistory = await refreshChatRecords();
 
         sendPrompt({
@@ -209,20 +211,15 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    * ChatBox 的一轮普通对话通常是 human 后面紧跟 AI 回复，因此删除 human 时需要同步删除
    * 紧随其后的 AI 记录，避免界面只剩下一条失去问题上下文的回答。这里只删除“紧随其后”
    * 且仍有 `dataId` 的 AI，避免误删更远处的历史或还未落库的临时消息。
+   * 已回答的 Ask/Preview 保持原状态，删除回复不会重新显示底部提问框。
    */
   const delOneMessage = useMemoizedFn((dataId: string) => {
     return () => {
       setChatRecords((state) => {
         let aiIndex = -1;
         const deletedDataIds: string[] = [];
-        const replies: UserChatInteractiveReplyType[] = [];
-
         const nextState = state.filter((chat, i) => {
           if (chat.dataId === dataId) {
-            if (chat.obj === ChatRoleEnum.Human)
-              chat.value.forEach((value) => {
-                if (value.interactiveReply) replies.push(value.interactiveReply);
-              });
             aiIndex = i + 1;
             deletedDataIds.push(dataId);
             return false;
@@ -232,24 +229,6 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
           }
           return true;
         });
-
-        // 与服务端软删除同步恢复末轮问题，删除回答后立即重新显示底部提问框。
-        const previousAiIndex = nextState.findLastIndex(
-          (item) => item.obj === ChatRoleEnum.AI && !item.deleteTime
-        );
-        const previousAi = nextState[previousAiIndex];
-        if (previousAi?.obj === ChatRoleEnum.AI && replies.length > 0) {
-          const lastValue = previousAi.value.at(-1);
-          const interactive = lastValue?.interactive
-            ? structuredClone(lastValue.interactive)
-            : undefined;
-          if (interactive && resetDeletedInteractiveReply({ interactive, replies })) {
-            nextState[previousAiIndex] = {
-              ...previousAi,
-              value: [...previousAi.value.slice(0, -1), { ...lastValue, interactive }]
-            };
-          }
-        }
 
         void onDelMessages(deletedDataIds);
         return nextState;

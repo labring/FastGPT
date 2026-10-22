@@ -2,7 +2,7 @@ import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
-import { queryArrayParam } from '../../../../common/zod';
+import { BoolSchema, queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
@@ -35,6 +35,14 @@ export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
 
+/* ============================================================================
+ * API: 删除对话消息
+ * Route: DELETE /api/core/chat/record/delete
+ * Method: DELETE
+ * Description: 软删除指定消息；普通删除保留已回答状态，显式重试裁剪可恢复原交互供自动重发
+ * Tags: ['Chat', 'Delete']
+ * ============================================================================ */
+
 const DeleteChatRecordPropsSchema = {
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
@@ -44,6 +52,10 @@ const DeleteChatRecordPropsSchema = {
   contentIds: QueryStringArraySchema.meta({
     example: ['content123', 'content456'],
     description: '要删除的消息 ID 列表'
+  }),
+  retry: BoolSchema.optional().meta({
+    example: false,
+    description: '是否为显式重试裁剪；仅为 true 时恢复末轮原交互供自动重发，普通删除不恢复交互'
   })
 };
 export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(

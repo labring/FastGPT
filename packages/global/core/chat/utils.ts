@@ -59,41 +59,6 @@ export const getUserChatInteractiveReply = ({
 };
 
 /**
- * 就地恢复被删除 user 回复对应的 Ask/Preview；仅清除答案，保留暂停点与嵌套运行状态。
- * 返回是否匹配并更新。客户端应传入副本，服务端可传入待保存的 Mongo value。
- */
-export const resetDeletedInteractiveReply = ({
-  interactive,
-  replies
-}: {
-  interactive: WorkflowInteractiveResponseType;
-  replies: UserChatInteractiveReplyType[];
-}) => {
-  const final = extractDeepestInteractive(interactive);
-  if (
-    final.type === 'agentAsk' &&
-    replies.some((reply) => reply.type === 'agentAsk' && reply.interactionId === final.askId)
-  ) {
-    final.params.submitted = false;
-    final.params.questions.forEach((question) => {
-      question.answer = '';
-    });
-    return true;
-  }
-  if (
-    final.type === 'workflowBuilderPreview' &&
-    replies.some(
-      (reply) => reply.type === 'workflowBuilderPreview' && reply.interactionId === final.previewId
-    )
-  ) {
-    delete final.params.answerValue;
-    delete final.params.answerText;
-    return true;
-  }
-  return false;
-};
-
-/**
  * 合并两段历史，并把 system 消息排到最前。
  *
  * 比较函数必须同时看 a、b：只看 a 时两条 system 消息互相都「更小」，排序结果依赖引擎实现，

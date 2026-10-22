@@ -14,19 +14,18 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import {
-  extractDeepestInteractive,
-  getLastInteractiveValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 describe('softDeleteChatItems', () => {
   it.each([
-    { type: 'agentAsk' as const, matching: true },
-    { type: 'workflowBuilderPreview' as const, matching: true },
-    { type: 'agentAsk' as const, matching: false }
+    { type: 'agentAsk' as const, retry: false, matching: true },
+    { type: 'workflowBuilderPreview' as const, retry: false, matching: true },
+    { type: 'agentAsk' as const, retry: true, matching: true },
+    { type: 'workflowBuilderPreview' as const, retry: true, matching: true },
+    { type: 'agentAsk' as const, retry: true, matching: false }
   ])(
-    'restores only the deleted user reply for $type (matching: $matching)',
-    async ({ type, matching }) => {
+    'reopens $type only for its explicit retry (retry: $retry, matching: $matching)',
+    async ({ type, retry, matching }) => {
       const sourceId = '65f000000000000000000003';
       const sourceType = ChatSourceTypeEnum.workflowBuilder;
       const { chatId, teamId, tmbId } = await createChatTree({ sourceType, sourceId });
@@ -91,7 +90,13 @@ describe('softDeleteChatItems', () => {
         value: [{ text: { content: 'Continued' } }]
       });
 
-      await softDeleteChatItems({ sourceType, sourceId, chatId, contentIds: ['reply-round'] });
+      await softDeleteChatItems({
+        sourceType,
+        sourceId,
+        chatId,
+        contentIds: ['reply-round'],
+        retry
+      });
       const records = await MongoChatItem.find({
         sourceType,
         appId: sourceId,
@@ -101,18 +106,25 @@ describe('softDeleteChatItems', () => {
         .sort({ _id: 1 })
         .lean();
       expect(records.at(-1)?._id.toString()).toBe(previousAi._id.toString());
-      const active = getLastInteractiveValue(records);
-      if (matching) {
-        expect(active).toBeDefined();
-        const interactive = extractDeepestInteractive(active!);
+      const remainingAi = records.at(-1);
+      if (remainingAi?.obj !== ChatRoleEnum.AI || !remainingAi.value[0].interactive) {
+        throw new Error('Expected the original answered interaction');
+      }
+      if (retry && matching) {
+        const interactive = extractDeepestInteractive(remainingAi.value[0].interactive);
         if (interactive.type === 'agentAsk') {
           expect(interactive.params.submitted).toBe(false);
           expect(interactive.params.questions[0].answer).toBe('');
         } else if (interactive.type === 'workflowBuilderPreview') {
           expect(interactive.params.answerValue).toBeUndefined();
           expect(interactive.params.answerText).toBeUndefined();
-        } else throw new Error('Expected the original question');
-      } else expect(active).toBeUndefined();
+        } else throw new Error('Expected the original interaction');
+      } else {
+        expect(remainingAi.value).toEqual(previousAi.toObject().value);
+        expect(extractDeepestInteractive(remainingAi.value[0].interactive)).toEqual(
+          extractDeepestInteractive(answered)
+        );
+      }
       for (const item of [user, nextAi]) {
         const deleted = await MongoChatItem.findById(item._id).lean();
         expect(deleted?.deleteTime).toBeInstanceOf(Date);

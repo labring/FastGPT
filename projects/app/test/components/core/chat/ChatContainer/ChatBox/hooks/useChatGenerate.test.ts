@@ -10,6 +10,7 @@ import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/con
 import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatInputForm';
 import { useChatGenerate } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate';
 import { useChatRecordActions } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatRecordActions';
+import { getInteractiveByHistories } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 import ChatInput from '@/components/core/chat/ChatContainer/ChatBox/Input/ChatInput';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import {
@@ -278,6 +279,95 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'keeps an answered nested %s out of interaction mode after deleting its user reply',
+    async (type) => {
+      const runtime = { entryNodeIds: ['node-1'], memoryEdges: [], nodeOutputs: [] };
+      const child: WorkflowInteractiveResponseType =
+        type === 'agentAsk'
+          ? {
+              ...runtime,
+              type,
+              askId: 'interaction-1',
+              params: {
+                description: '',
+                submitted: true,
+                questions: [{ question: 'Choose?', options: [], answer: 'Answer' }]
+              }
+            }
+          : {
+              ...runtime,
+              type,
+              previewId: 'interaction-1',
+              params: {
+                title: 'Confirm?',
+                mermaid: '',
+                sections: [],
+                actions: [],
+                answerValue: 'revise',
+                answerText: 'Add a review branch'
+              }
+            };
+      await render();
+      await act(async () =>
+        setRecords([
+          {
+            id: 'previous-ai',
+            dataId: 'previous-ai',
+            obj: ChatRoleEnum.AI,
+            status: ChatStatusEnum.finish,
+            value: [
+              {
+                interactive: {
+                  ...runtime,
+                  type: 'childrenInteractive',
+                  params: { childrenResponse: child }
+                }
+              }
+            ]
+          },
+          {
+            id: 'reply-user',
+            dataId: 'reply-user',
+            obj: ChatRoleEnum.Human,
+            status: ChatStatusEnum.finish,
+            value: [
+              {
+                text: { content: 'Answer' },
+                interactiveReply: {
+                  type,
+                  interactionId: 'interaction-1',
+                  questions: [{ question: 'Choose?', answer: 'Answer' }]
+                }
+              }
+            ]
+          },
+          {
+            id: 'reply-ai',
+            dataId: 'reply-ai',
+            obj: ChatRoleEnum.AI,
+            status: ChatStatusEnum.finish,
+            value: [{ text: { content: 'Continued' } }]
+          }
+        ])
+      );
+      const previousAi = structuredClone(records[0]);
+
+      await act(async () => recordActions.delOneMessage('reply-user')());
+
+      expect(records).toEqual([previousAi]);
+      expect(getInteractiveByHistories(records)).toEqual({
+        interactive: undefined,
+        canSendQuery: true
+      });
+      expect(mocks.deleteRecords).toHaveBeenCalledWith(
+        expect.objectContaining({ contentIds: ['reply-user', 'reply-ai'] })
+      );
+      expect(mocks.deleteRecords.mock.calls[0][0]).not.toHaveProperty('retry');
+      expect(mocks.start).not.toHaveBeenCalled();
+    }
+  );
+
   it.each(
     (['agentAsk', 'confirm', 'revise', 'cancel'] as const).flatMap((action) => [
       { action, paginated: false },
@@ -407,6 +497,7 @@ describe('useChatGenerate.sendPrompt', () => {
       await act(async () => recordActions.retryInput(user.dataId)?.());
       expect(mocks.getRecords).toHaveBeenCalledTimes(paginated ? 1 : 0);
       expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.deleteRecords).toHaveBeenCalledWith(expect.objectContaining({ retry: true }));
       expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
       expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
         mocks.deleteRecords.mock.invocationCallOrder[0]
@@ -435,29 +526,13 @@ describe('useChatGenerate.sendPrompt', () => {
         });
       }
       if (!paginated) {
-        const originalAi = records[0];
+        const originalAi = structuredClone(records[0]);
         await act(async () => recordActions.delOneMessage(retried.dataId)());
-        expect(records).toHaveLength(1);
-        const reopened = records[0];
-        if (
-          reopened.obj !== ChatRoleEnum.AI ||
-          !reopened.value[0].interactive ||
-          originalAi.obj !== ChatRoleEnum.AI ||
-          !originalAi.value[0].interactive
-        )
-          throw new Error('Expected the original question');
-        const currentInteractive = extractDeepestInteractive(reopened.value[0].interactive);
-        const originalInteractive = extractDeepestInteractive(originalAi.value[0].interactive);
-        if (currentInteractive.type === 'agentAsk' && originalInteractive.type === 'agentAsk') {
-          expect(currentInteractive.params.submitted).toBe(false);
-          expect(originalInteractive.params.submitted).toBe(true);
-        } else if (
-          currentInteractive.type === 'workflowBuilderPreview' &&
-          originalInteractive.type === 'workflowBuilderPreview'
-        ) {
-          expect(currentInteractive.params.answerValue).toBeUndefined();
-          expect(originalInteractive.params.answerValue).toBe(action);
-        }
+        expect(records).toEqual([originalAi]);
+        expect(getInteractiveByHistories(records)).toEqual({
+          interactive: undefined,
+          canSendQuery: true
+        });
       }
     }
   );
@@ -581,7 +656,13 @@ describe('useChatGenerate.sendPrompt', () => {
     mocks.start.mockReturnValueOnce(request.promise);
     await render();
     await send();
-    const tool = { id: 'resumed-tool', toolName: 'Plan preview', toolAvatar: '', params: '' };
+    const tool = {
+      id: 'resumed-tool',
+      toolName: 'Plan preview',
+      toolAvatar: '',
+      functionName: 'ask_user',
+      params: ''
+    };
     // 刷新恢复或新交互轮次可能只有数据库预创建的空 AI 占位。
     await act(async () =>
       setRecords((state) =>
@@ -589,7 +670,10 @@ describe('useChatGenerate.sendPrompt', () => {
       )
     );
 
-    for (const event of [SseResponseEventEnum.toolParams, SseResponseEventEnum.toolResponse]) {
+    for (const event of [
+      SseResponseEventEnum.toolParams,
+      SseResponseEventEnum.toolResponse
+    ] as const) {
       await act(async () =>
         generate.generatingMessage({
           event,
