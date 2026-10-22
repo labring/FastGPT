@@ -3,12 +3,15 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppTemplate from '@/pageComponents/admin/templates/app';
-import { getSystemTemplates, putUpdateTemplateOrder } from '@/web/core/app/templates/api';
+import { getSystemTemplates, putUpdateTemplateOrder } from '@/web/admin/app/templates/api';
+import { getTemplateTypes } from '@/web/core/app/templates/api';
 
 const controls = vi.hoisted(() => ({ drag: undefined as any, list: [] as any[] }));
 vi.mock('@/web/core/app/templates/api', () => ({
+  getTemplateTypes: vi.fn().mockResolvedValue([])
+}));
+vi.mock('@/web/admin/app/templates/api', () => ({
   getSystemTemplates: vi.fn(),
-  getTemplateTypes: vi.fn().mockResolvedValue([]),
   putUpdateTemplateOrder: vi.fn().mockResolvedValue(undefined)
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', async () => {
@@ -24,13 +27,21 @@ vi.mock('@chakra-ui/react', async () => {
     Box,
     Flex: Box,
     Button: Box,
+    Center: Box,
+    Table: Box,
+    Tbody: Box,
     useDisclosure: () => ({ isOpen: false, onOpen: vi.fn(), onClose: vi.fn() })
   };
 });
 vi.mock('@fastgpt/web/components/common/MyBox', () => ({
   default: ({ children }: any) => children
 }));
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/TagFilter/SingleSelectFilter', () => ({
+  default: () => null
+}));
+vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
+  FixedTableLayout: ({ renderBody }: any) => renderBody({})
+}));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/EmptyTip', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/DndDrag', () => ({

@@ -1,28 +1,30 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
-import type { getModelTestMap } from '@test/modelCache';
-import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { setModelTestSnapshot } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getTeamModelHandle: async () =>
+    (await import('@fastgpt/service/core/ai/model/catalog/cache')).getCachedSystemModelHandle()!
+}));
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
-  findTeamMember: vi.fn(),
-  getMemberModelCatalogPermission: vi.fn()
+  getAuthorizedModelIds: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
-vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
-  getMemberModelCatalogPermission: mocks.getMemberModelCatalogPermission
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
-vi.mock('@/service/support/permission/auth/outLink', () => ({
+vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({
   authOutLink: mocks.authOutLink
-}));
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: { findOne: mocks.findTeamMember }
 }));
 
 import { handler } from '@/pages/api/core/ai/model/catalog';
@@ -33,11 +35,11 @@ const model = {
   name: 'Model',
   provider: 'provider',
   type: ModelTypeEnum.llm,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   requestAuth: 'secret',
   config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
-};
+} satisfies LLMModelDataType;
 
 describe('GET /api/core/ai/model/catalog', () => {
   beforeEach(() => {
@@ -46,28 +48,21 @@ describe('GET /api/core/ai/model/catalog', () => {
       teamId: 'team',
       tmbId: 'member',
       isRoot: false,
-      tmb: { role: 'member' }
+      tmb: { permission: { hasManagePer: false } }
     });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [model.modelId],
-      version: 'permission-version'
-    });
+    // 与真实鉴权保持一致：仅返回快照内的 active 模型。
+    mocks.getAuthorizedModelIds.mockImplementation(
+      async ({ handle }: { handle: { getActiveModels: () => { modelId: string }[] } }) =>
+        new Set(handle.getActiveModels().map((item) => item.modelId))
+    );
     mocks.authOutLink.mockResolvedValue({
       outLinkConfig: { teamId: 'outlink-team', tmbId: 'outlink-member' }
     });
-    mocks.findTeamMember.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ role: 'member' })
-    });
-    setModelTestSnapshot({ version: 'catalog-version' });
-    setModelTestMap(
-      new Map([[`id:${model.modelId}`, model]]) as ReturnType<typeof getModelTestMap>
-    );
     setModelTestSnapshot({
-      models: [model] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
-      >
+      version: 'catalog-version',
+      models: [model],
+      configuredDefaultModelIds: { llm: model.modelId }
     });
-    setModelTestSnapshot({ configuredDefaultModelIds: { llm: model.modelId } });
     global.ModelProviderRawCache = [
       {
         provider: 'provider',
@@ -80,22 +75,30 @@ describe('GET /api/core/ai/model/catalog', () => {
   it('returns the full desensitized catalog when the version changed', async () => {
     const result = await handler({ query: {} } as any);
 
-    expect(result.version).toBe('3:catalog-version:permission-version');
+    expect(mocks.authUserPer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authToken: true,
+        authApiKey: true
+      })
+    );
+    expect(result.version).toBe(
+      `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    );
     expect(result.data?.models[0]).not.toHaveProperty('requestAuth');
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
   });
 
   it('keeps one snapshot when the catalog is published during permission resolution', async () => {
-    mocks.getMemberModelCatalogPermission.mockImplementationOnce(async () => {
-      setModelTestSnapshot({ version: 'new-catalog' });
-      setModelTestSnapshot({ models: [] });
-      setModelTestSnapshot({ configuredDefaultModelIds: {} });
+    mocks.getAuthorizedModelIds.mockImplementationOnce(async () => {
+      setModelTestSnapshot({ version: 'new-catalog', models: [], configuredDefaultModelIds: {} });
       global.ModelProviderRawCache = [];
-      return { modelIds: [model.modelId], version: 'permission-version' };
+      return new Set([model.modelId]);
     });
     const result = await handler({ query: {} } as any);
-    expect(result.version).toBe('3:catalog-version:permission-version');
+    expect(result.version).toBe(
+      `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    );
     expect(result.data?.models.map((item) => item.modelId)).toEqual([model.modelId]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
@@ -108,87 +111,87 @@ describe('GET /api/core/ai/model/catalog', () => {
       if (stage === 'authentication') {
         mocks.authUserPer.mockRejectedValueOnce(failure);
       } else {
-        mocks.getMemberModelCatalogPermission.mockRejectedValueOnce(failure);
+        mocks.getAuthorizedModelIds.mockRejectedValueOnce(failure);
       }
 
       await expect(
-        handler({ query: { version: '3:catalog-version:permission-version' } } as any)
+        handler({
+          query: {
+            version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+          }
+        } as any)
       ).rejects.toBe(failure);
-      expect(getCachedModelHandle()?.getActiveModels()).toHaveLength(1);
+      expect(getCachedSystemModelHandle()?.getActiveModels()).toHaveLength(1);
       if (stage === 'authentication') {
-        expect(mocks.getMemberModelCatalogPermission).not.toHaveBeenCalled();
+        expect(mocks.getAuthorizedModelIds).not.toHaveBeenCalled();
       }
     }
   );
 
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
-      query: { version: '3:catalog-version:permission-version' }
+      query: {
+        version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+      }
     } as any);
 
-    expect(result).toEqual({ version: '3:catalog-version:permission-version' });
+    expect(result).toEqual({
+      version: `3:catalog-version:${hashStr(['catalog-version', model.modelId].join('\n'))}`
+    });
   });
 
   it('uses the server-side outlink member identity instead of login auth', async () => {
     const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
-    await handler({ query: { outLinkAuthData: JSON.stringify(outLinkAuthData) } } as any);
+    const req = { query: { outLinkAuthData: JSON.stringify(outLinkAuthData) } } as any;
+    await handler(req);
 
-    expect(mocks.authOutLink).toHaveBeenCalledWith(outLinkAuthData);
+    expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.authUserPer).not.toHaveBeenCalled();
-    expect(mocks.findTeamMember).toHaveBeenCalledWith(
-      { _id: 'outlink-member', teamId: 'outlink-team' },
-      'role'
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: { source: 'outLink', teamId: 'outlink-team', tmbId: 'outlink-member' }
+      })
     );
-    expect(mocks.getMemberModelCatalogPermission).toHaveBeenCalledWith({
-      teamId: 'outlink-team',
-      tmbId: 'outlink-member',
-      isTeamOwner: false,
-      catalogSnapshot: {
-        models: getCachedModelHandle()?.getActiveModels(),
-        revision: getCachedModelHandle()?.revision ?? 0
-      }
-    });
   });
 
-  it('keeps plugin catalog order when permission IDs use a different order', async () => {
-    const secondModel = {
-      ...model,
-      modelId: 'model-2',
-      model: 'provider-model-2',
-      name: 'Model 2'
-    };
-    setModelTestSnapshot({
-      models: [model, secondModel] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
-      >
-    });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [secondModel.modelId, model.modelId],
-      version: 'permission-version'
-    });
-
-    const result = await handler({ query: {} } as any);
-
-    expect(result.data?.models.map((item) => item.modelId)).toEqual([
-      model.modelId,
-      secondModel.modelId
-    ]);
-  });
-
-  it('does not include inactive model metadata in the candidate catalog', async () => {
+  it('keeps catalog order while excluding inactive and unauthorized models', async () => {
+    const second = { ...model, modelId: 'model-2', model: 'provider-model-2' };
     setModelTestSnapshot({
       models: [
         model,
         { ...model, modelId: 'inactive', isActive: false },
-        { ...model, modelId: 'hidden', isActive: false }
-      ] as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getAllModels']>
+        { ...model, modelId: 'private', scope: ModelScopeEnum.team, tmbId: 'other-member' },
+        second
+      ]
     });
-    mocks.getMemberModelCatalogPermission.mockResolvedValue({
-      modelIds: [model.modelId, 'inactive'],
-      version: 'p'
-    });
+    mocks.getAuthorizedModelIds.mockResolvedValue(new Set([second.modelId, model.modelId]));
+
     const result = await handler({ query: {} } as any);
-    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+    expect(result.data?.models.map((item) => item.modelId)).toEqual([
+      model.modelId,
+      second.modelId
+    ]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
+  });
+
+  it('forwards the authenticated actor to getAuthorizedModelIds', async () => {
+    mocks.authUserPer.mockResolvedValueOnce({
+      teamId: 'admin-team',
+      tmbId: 'admin-tmb',
+      isRoot: true,
+      tmb: { permission: { hasManagePer: true } }
+    });
+    await handler({ query: {} } as any);
+
+    expect(mocks.getAuthorizedModelIds).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: {
+          teamId: 'admin-team',
+          tmbId: 'admin-tmb',
+          isRoot: true,
+          teamPermission: { hasManagePer: true }
+        }
+      })
+    );
   });
 });

@@ -1,3 +1,4 @@
+import { clientInitData } from '@/web/common/system/staticData';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -7,7 +8,7 @@ import StandardPlan, { BillingModeSwitch } from '@/pageComponents/price/Standard
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import PointsCard from '@/pageComponents/price/Points';
 import FAQ from '@/pageComponents/price/FAQ';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -24,7 +25,7 @@ import {
 
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   const { subPlans } = useSystemStore();
   const router = useRouter();
 
@@ -42,6 +43,8 @@ const PriceBox = () => {
     async () => {
       // 团队上下文由用户初始化写入，请求套餐前必须等待它完成，避免重复请求造成页面二次白屏。
       const userInfo = await initUserInfo();
+      // 价格页显式确认当前公开套餐；本地缓存存在也不能跳过，避免展示已变更的旧价格。
+      await clientInitData({ includeSubPlans: true });
       const teamSubPlan = await getTeamPlanStatus();
 
       return { userInfo, teamSubPlan };
@@ -68,7 +71,7 @@ const PriceBox = () => {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !router.isReady || !shouldResumePurchase) return;
+    if (isLoading || !shouldResumePurchase) return;
 
     const intent = consumePricePurchaseIntent();
     const tab = intent?.type === 'standard' ? 'standard' : 'extra';
@@ -84,10 +87,9 @@ const PriceBox = () => {
   }, [isLoading, router, shouldResumePurchase, userInfo]);
 
   const hashTab = useMemo(() => {
-    if (!router.isReady) return undefined;
     const hash = router.asPath.split('#')[1] ?? '';
     return isPriceTabType(hash) ? hash : undefined;
-  }, [router.isReady, router.asPath]);
+  }, [router.asPath]);
 
   const activeTab = hashTab ?? userActiveTab;
   const selectSubMode = subPlans?.activityExpirationTime ? SubModeEnum.year : userSubMode;

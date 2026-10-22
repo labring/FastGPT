@@ -3,7 +3,20 @@ title: Upgrade Guide
 description: FastGPT version upgrade guide
 ---
 
-Upgrading FastGPT involves two steps:
+## Version Policy
+
+Starting with 4.14.11, FastGPT uses separate version names for stable releases and rapid-development releases:
+
+1. Two stable release lines are maintained. For example, while new features are developed in 4.16.x, fixes are maintained for 4.14.x and 4.15.x.
+2. Stable releases have no suffix, such as 4.14.11, 4.14.12, 4.15.0, and 4.15.1. A fix for 4.14.11 is released as 4.14.12 and applied to the 4.15.x stable line. These maintenance releases contain fixes and preserve the existing feature set.
+3. Rapid-development releases use a beta suffix, such as 4.16.0-beta.1, 4.16.0-beta.2, and 4.16.0-beta.3.
+4. A development line becomes a stable release approximately every 2 months. A consolidated upgrade script lets you apply all migrations from that development cycle with one request.
+
+For stable deployments, choose releases without a beta suffix. Dedicated maintenance releases provide fixes while preserving the existing feature set.
+
+## Upgrade Steps
+
+Upgrading FastGPT usually involves two steps:
 
 1. Update the image
 2. Run the upgrade initialization script
@@ -14,7 +27,7 @@ Upgrading FastGPT involves two steps:
 
 - FastGPT main image: ghcr.io/labring/fastgpt:latest
 - Plugin image: ghcr.io/labring/fastgpt-plugin
-- Code sandbox image: ghcr.io/labring/fastgpt-sandbox
+- Code sandbox image: ghcr.io/labring/fastgpt-code-sandbox
 - MCP SSE server image: ghcr.io/labring/fastgpt-mcp_server
 - Commercial edition image: ghcr.io/c121914yu/fastgpt-pro:latest
 
@@ -22,7 +35,7 @@ Upgrading FastGPT involves two steps:
 
 - FastGPT main image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
 - Plugin image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
-- Code sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox
+- Code sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
 - MCP SSE server image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
 - Commercial edition image: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
@@ -32,17 +45,17 @@ An image consists of the image name and a `Tag`. For example, registry.cn-hangzh
 
 1. Open [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP) and find App Management on the desktop.
 
-![](../../../public/imgs/updateImageSealos1.jpg)
+![Sealos desktop with App Management](../../../public/imgs/updateImageSealos1.jpg)
 
 2. Select the corresponding app - click the three dots on the right - Update.
 
-![](../../../public/imgs/updateImageSealos2.png)
+![App menu for changing a deployment](../../../public/imgs/updateImageSealos2.png)
 
 3. Update the image - Confirm changes.
 
    If you need to modify the configuration file, scroll down to the `Configuration File` section to make changes.
 
-![](../../../public/imgs/updateImageSealos3.png)
+![Image and configuration settings](../../../public/imgs/updateImageSealos3.png)
 
 ## Updating Images with Docker Compose
 
@@ -68,9 +81,9 @@ Following the initialization steps carefully will not cause any data loss. Howev
 
 `{{}}` denotes a variable. `{{host}}` refers to a variable named "host", which is your server's domain name or IP address.
 
-On Sealos, you can find your domain name as shown below:
+On Sealos, open the app details and look under **Network Configuration**. The **External Address** column shows the public URL; use its domain name for `{{host}}` when the request already includes `https://`.
 
-![](../../../public/imgs/updateImageSealos4.png)
+![App details showing the external address and environment variables](../../../public/imgs/updateImageSealos4.png)
 
 ### How to get the rootkey
 

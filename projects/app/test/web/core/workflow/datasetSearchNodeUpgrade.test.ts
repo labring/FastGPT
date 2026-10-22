@@ -7,7 +7,7 @@ import {
   getDatasetSearchFilterVersion,
   persistLegacyDatasetSearchNodeUpgrade
 } from '@/web/core/workflow/datasetSearchNodeUpgrade';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 
 const legacyNode = {
   nodeId: 'dataset-node',

@@ -8,9 +8,10 @@ import WelcomeBox from './WelcomeBox';
 import VariableInputForm from './VariableInputForm';
 import ChatRecordsList, { type ChatRecordsListProps } from './ChatRecordsList';
 import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useContextSelector } from 'use-context-selector';
 import { QuickReplyContext } from '../../context/quickReplyContext';
+import { useChatInstanceActions } from '../../context/chatInstanceActionsContext';
+import { useMemoizedFn } from 'ahooks';
 
 type ScrollDataComponent = ({
   children,
@@ -31,6 +32,7 @@ type AppChatMainProps = BoxProps & {
   recordsListProps: ChatRecordsListProps;
   boxBodyProps?: BoxProps;
   EmptyState?: React.ReactNode;
+  workflowBuilderStyle?: boolean;
 };
 
 /**
@@ -53,13 +55,17 @@ const AppChatMain = ({
   recordsListProps,
   maxW = ['100%', ChatBoxContentMaxWidth],
   boxBodyProps,
-  EmptyState
+  EmptyState,
+  workflowBuilderStyle = false
 }: AppChatMainProps) => {
   const visibleWelcomeQuestions = welcomeQuestions.map((text) => text.trim()).filter(Boolean);
   const hasEmptyState = recordsListProps.records.length === 0 && !!EmptyState;
   // 复用快捷回复的发送通道：它不受 canSendPrompt 限制，开场白阶段的预设问题也能直接发送，
   // 由 sendPrompt 内部校验变量，行为与旧版 welcomeText 内嵌的 quick-replies 一致。
   const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
+  const { sendMessage } = useChatInstanceActions();
+  const onSendQuestion = useMemoizedFn((text: string) => sendMessage({ text }));
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
 
   return (
     <ScrollData
@@ -82,13 +88,21 @@ const AppChatMain = ({
         display={'flex'}
         flexDirection={'column'}
       >
+        {/* Workflow Builder 在所有断点都保持 Figma 的完整内容宽度；
+            普通 ChatBox 继续沿用移动端额外收窄，避免改变既有聊天场景。 */}
         <Box
           className="chat-box-card"
           w={'100%'}
-          maxW={['calc(100% - 25px)', ChatBoxContentMaxWidth]}
-          mx={'auto'}
+          maxW={workflowBuilderStyle ? '100%' : ['calc(100% - 25px)', ChatBoxContentMaxWidth]}
+          mx={workflowBuilderStyle ? 0 : 'auto'}
         >
-          {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
+          {!!welcomeText && (
+            <WelcomeBox
+              welcomeText={welcomeText}
+              onSendQuestion={onSendQuestion}
+              onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
+            />
+          )}
           {visibleWelcomeQuestions.length > 0 && (
             <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
               {visibleWelcomeQuestions.map((text, index) => (
@@ -98,7 +112,7 @@ const AppChatMain = ({
                     if (onQuickReplyClick) {
                       onQuickReplyClick(text);
                     } else {
-                      eventBus.emit(EventNameEnum.sendQuestion, { text });
+                      sendMessage({ text });
                     }
                   }}
                 >
@@ -109,7 +123,7 @@ const AppChatMain = ({
           )}
         </Box>
 
-        <Box id="variable-input">
+        <Box data-chat-variable-input>
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
 

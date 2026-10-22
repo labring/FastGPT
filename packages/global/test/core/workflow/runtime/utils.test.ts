@@ -256,10 +256,13 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('3.14', WorkflowIOValueTypeEnum.number)).toBe(3.14);
   });
 
-  it('should convert to boolean type', () => {
+  it('should convert to boolean type with native Boolean semantics', () => {
     expect(valueTypeFormat('true', WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat('TRUE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
-    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    // JS 原生 Boolean：非空字符串（含 'false'）均为 true
+    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('FALSE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('', WorkflowIOValueTypeEnum.boolean)).toBe(false);
     expect(valueTypeFormat(1, WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat(0, WorkflowIOValueTypeEnum.boolean)).toBe(false);
   });
@@ -277,6 +280,18 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('["a","b"]', WorkflowIOValueTypeEnum.arrayString)).toEqual(['a', 'b']);
     expect(valueTypeFormat('single', WorkflowIOValueTypeEnum.arrayString)).toEqual(['single']);
     expect(valueTypeFormat('invalid{', WorkflowIOValueTypeEnum.arrayString)).toEqual(['invalid{']);
+  });
+
+  it('should wrap a single JSON object string into a one-item array for array types', () => {
+    // 与 'single' → ['single'] 一致：数组类型收到的非数组值包成单元素数组，
+    // 不能把对象原样交给期望数组的节点（如循环、并行执行）
+    expect(valueTypeFormat('{"name":"a"}', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
+    expect(valueTypeFormat(' {"id": 1} ', WorkflowIOValueTypeEnum.arrayAny)).toEqual([{ id: 1 }]);
+    expect(valueTypeFormat('[{"name":"a"}]', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
   });
 
   it('should handle special types (datasetQuote, selectDataset, selectApp)', () => {
@@ -316,7 +331,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'a',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'true',
@@ -326,7 +341,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'false',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'false',
@@ -911,7 +926,7 @@ describe('getLastInteractiveValue', () => {
           }
         }
       }
-    } as WorkflowInteractiveResponseType;
+    } as unknown as WorkflowInteractiveResponseType;
     const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
@@ -920,6 +935,31 @@ describe('getLastInteractiveValue', () => {
     ];
 
     expect(getLastInteractiveValue(histories)).toBeUndefined();
+  });
+
+  it.each([undefined, 'confirm'])('returns a preview only before answering: %s', (answerValue) => {
+    const interactive = {
+      type: 'workflowBuilderPreview',
+      previewId: 'preview-1',
+      entryNodeIds: ['node1'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        title: 'Workflow preview',
+        answerValue,
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    expect(getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])).toBe(
+      answerValue === undefined ? interactive : undefined
+    );
   });
 });
 
@@ -1062,27 +1102,6 @@ describe('getWorkflowEntryNodeIds', () => {
     expect(result).toEqual(['start1']);
   });
 
-  it('should return workflowStart node ids', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
-        nodeId: 'start1',
-        name: 'start',
-        flowNodeType: FlowNodeTypeEnum.workflowStart,
-        inputs: [],
-        outputs: []
-      },
-      {
-        nodeId: 'chat1',
-        name: 'chat',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: []
-      }
-    ];
-    const result = getWorkflowEntryNodeIds(nodes);
-    expect(result).toEqual(['start1']);
-  });
-
   it('should return pluginInput node ids', () => {
     const nodes: RuntimeNodeItemType[] = [
       {
@@ -1176,6 +1195,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -1198,6 +1218,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -1349,7 +1370,7 @@ describe('getReferenceVariableValue', () => {
   });
 
   it('should keep two-column table data as a two-dimensional array', () => {
-    const tableData = [
+    const tableData: [string, string][] = [
       ['指标', '金额（元）'],
       ['资产总额（期末余额）', '22,701,764,055.63'],
       ['负债总额（期末余额）', '4,809,415,705.17']

@@ -35,6 +35,7 @@ describe('WorkflowComponents utils', () => {
             intro: 'Intro 1',
             avatar: 'avatar1',
             flowNodeType: FlowNodeTypeEnum.userInput,
+            metadataLocale: 'zh-CN',
             showStatus: true,
             version: 1,
             inputs: [],
@@ -79,6 +80,7 @@ describe('WorkflowComponents utils', () => {
         intro: 'Intro 1',
         avatar: 'avatar1',
         flowNodeType: FlowNodeTypeEnum.userInput,
+        metadataLocale: 'zh-CN',
         position: { x: 100, y: 100 }
       });
 
@@ -89,6 +91,45 @@ describe('WorkflowComponents utils', () => {
         sourceHandle: 'source1',
         targetHandle: 'target1'
       });
+    });
+
+    it('preserves selected plugin tool metadata locale when saving an Agent node', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'search',
+                    pluginId: 'search',
+                    name: 'Search',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    version: '1.0.0',
+                    metadataLocale: 'zh-CN',
+                    inputs: [],
+                    outputs: []
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        expect.objectContaining({ metadataLocale: 'zh-CN' })
+      ]);
     });
 
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {

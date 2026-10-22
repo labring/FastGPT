@@ -71,4 +71,73 @@ describe('token counter', () => {
 
     expect(tokens).toBeGreaterThan(40);
   });
+
+  it('should replace media payloads with bounded placeholders before tokenizing', () => {
+    const largeBase64 = 'A'.repeat(1024 * 1024);
+    const mediaMessages = [
+      {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image_url' as const,
+            image_url: { url: `data:image/png;base64,${largeBase64}`, detail: 'high' as const }
+          },
+          {
+            type: 'input_audio' as const,
+            input_audio: { format: 'wav' as const, data: largeBase64 }
+          },
+          {
+            type: 'video_url' as const,
+            video_url: { url: `data:video/mp4;base64,${largeBase64}` }
+          },
+          {
+            type: 'file' as const,
+            file: { filename: 'example.pdf', file_data: largeBase64 }
+          }
+        ]
+      }
+    ];
+    const shortMediaMessages = [
+      {
+        role: 'user' as const,
+        content: [
+          {
+            type: 'image_url' as const,
+            image_url: { url: 'data:image/png;base64,short', detail: 'high' as const }
+          },
+          {
+            type: 'input_audio' as const,
+            input_audio: { format: 'wav' as const, data: 'short' }
+          },
+          {
+            type: 'video_url' as const,
+            video_url: { url: 'data:video/mp4;base64,short' }
+          },
+          {
+            type: 'file' as const,
+            file: { filename: 'example.pdf', file_data: 'short' }
+          }
+        ]
+      }
+    ];
+
+    expect(countGptMessagesTokensInWorker({ messages: mediaMessages })).toBe(
+      countGptMessagesTokensInWorker({ messages: shortMediaMessages })
+    );
+  });
+
+  it('音频没有 format 时使用固定占位符，不计数二进制或 undefined', () => {
+    const audioTokens = countGptMessagesTokensInWorker({
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'input_audio', input_audio: { data: 'A'.repeat(4096) } }]
+        }
+      ]
+    });
+
+    expect(audioTokens).toBe(
+      countGptMessagesTokensInWorker({ messages: [{ role: 'user', content: '[audio]' }] })
+    );
+  });
 });

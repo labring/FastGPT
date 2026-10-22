@@ -8,9 +8,10 @@ const mocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),
   getNanoid: vi.fn(),
   getAppDraftWorkflow: vi.fn(),
-  getAppDraftResourceBaseline: vi.fn(),
+  getAppDraftVersion: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   getWorkflowFinalResponseData: vi.fn(),
+  prepareAppWorkflowResources: vi.fn(),
   prepareWorkflowFileQuery: vi.fn()
 }));
 
@@ -32,7 +33,11 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppDraftWorkflow: mocks.getAppDraftWorkflow,
-  getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
+  getAppDraftVersion: mocks.getAppDraftVersion
+}));
+
+vi.mock('@fastgpt/service/core/app/resource/service', () => ({
+  prepareAppWorkflowResources: mocks.prepareAppWorkflowResources
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', () => ({
@@ -67,7 +72,7 @@ const appId = '68ad85a7463006c963799a05';
 const app = {
   _id: appId,
   name: 'Workflow app',
-  teamId: 'team-id',
+  teamId: '68ad85a7463006c963799a06',
   tmbId: 'owner-id'
 };
 const savedChatConfig = { variables: [] };
@@ -83,7 +88,8 @@ describe('workflow debug API chatId', () => {
       chatConfig: savedChatConfig,
       resources: []
     });
-    mocks.getAppDraftResourceBaseline.mockResolvedValue([]);
+    mocks.getAppDraftVersion.mockResolvedValue({ resources: [] });
+    mocks.prepareAppWorkflowResources.mockResolvedValue([]);
     mocks.getRunningUserInfoByTmbId.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'member-id'
@@ -184,6 +190,43 @@ describe('workflow debug API chatId', () => {
     );
     expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({ chatConfig: requestChatConfig })
+    );
+  });
+
+  it('preserves client runtime edge statuses when calling workflow dispatch', async () => {
+    const requestEdges = [
+      {
+        source: 'workflowStartNodeId',
+        sourceHandle: 'workflowStartNodeId-source-right',
+        target: 'aiChatNodeId',
+        targetHandle: 'aiChatNodeId-target-left',
+        status: 'active'
+      },
+      {
+        source: 'aiChatNodeId',
+        sourceHandle: 'aiChatNodeId-source-right',
+        target: 'docParserNodeId',
+        targetHandle: 'docParserNodeId-target-left',
+        status: 'waiting'
+      }
+    ];
+
+    await handler(
+      {
+        body: {
+          appId,
+          edges: requestEdges,
+          usageId: 'usage-id'
+        },
+        headers: {}
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeEdges: requestEdges
+      })
     );
   });
 });

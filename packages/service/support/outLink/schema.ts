@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../core/app/schema';
 import { getLogger, LogCategories } from '../../common/logger';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -68,6 +69,9 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: true
   },
+  allowAnonymous: {
+    type: Boolean
+  },
   limit: {
     maxUsagePoints: {
       type: Number,
@@ -114,6 +118,14 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 defineIndex(OutLinkSchema, { key: { shareId: -1 } });
 defineIndex(OutLinkSchema, { key: { teamId: 1, tmbId: 1, appId: 1 } });
 defineIndex(OutLinkSchema, { key: { teamId: 1, appId: 1, type: 1 } });
+// 一个 Bot 只能绑定一个长连接渠道；旧 Webhook 和其他类型不受此约束。
+defineIndex(OutLinkSchema, {
+  key: { 'app.botId': 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { type: PublishChannelEnum.wecomWebsocket }
+  }
+});
 // Wechat polling recovery: find online channels on startup
 defineIndex(OutLinkSchema, {
   key: { type: 1, 'app.status': 1 },

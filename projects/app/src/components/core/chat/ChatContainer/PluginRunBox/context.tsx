@@ -1,17 +1,17 @@
-import React, { type ReactNode, useCallback, useRef } from 'react';
+import { type ReactNode, useCallback, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { type PluginRunBoxProps } from './type';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { PluginRunBoxProps } from './type';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { type generatingMessageProps } from '../type';
+import type { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
-import { type ChatBoxInputFormType } from '../ChatBox/type';
+import type { ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
+import { clientGetWorkflowToolRunUserQuery } from '@/components/core/chat/ChatContainer/PluginRunBox/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { safeAbortController } from '../ChatBox/utils/generate';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -58,7 +59,7 @@ const PluginRunContextProvider = ({
   const { t } = useTranslation();
   /* Abort chat completions, questionGuide */
   const abortRequest = useCallback(() => {
-    chatController.current?.abort('stop');
+    safeAbortController(chatController.current, 'stop');
   }, []);
 
   const generatingMessage = useCallback(

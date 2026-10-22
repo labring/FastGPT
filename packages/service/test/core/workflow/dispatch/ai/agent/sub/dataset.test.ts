@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   countPromptTokensMock,
@@ -10,7 +9,8 @@ const {
   filterDatasetsByTmbIdMock,
   loadWorkflowDatasetResourceMock,
   getDatasetSearchVlmModelMock,
-  formatModelChars2PointsMock
+  formatModelChars2PointsMock,
+  resolveReadableCollectionIdsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
   createLLMResponseMock: vi.fn(),
@@ -18,7 +18,8 @@ const {
   filterDatasetsByTmbIdMock: vi.fn(),
   loadWorkflowDatasetResourceMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
-  formatModelChars2PointsMock: vi.fn()
+  formatModelChars2PointsMock: vi.fn(),
+  resolveReadableCollectionIdsMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
@@ -29,7 +30,8 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
@@ -37,27 +39,40 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: filterDatasetsByTmbIdMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
-    getDefaultLLMModelData: vi.fn(),
-    getDefaultRerankModelData: vi.fn(),
-    getEmbeddingModelData: vi.fn(() => ({
-      model: 'embedding-model',
-      name: 'Embedding Model',
-      config: {}
-    })),
-    getLLMModelData: vi.fn(({ model }: { model: string }) => ({
-      modelId: '68ad85a7463006c963799a43',
-      model,
-      name: `${model} name`,
-      config: { maxContext: 1000 }
-    })),
-    getRerankModelData: vi.fn(() => undefined),
-    getVlmModelData: vi.fn(({ model }: { model: string }) => ({
-      model,
-      name: `${model} name`,
-      config: { vision: true }
-    })),
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
+  const createHandle = () => ({
+    getDefaultModelData: vi.fn(),
+    getModelData: vi.fn(
+      (
+        { modelId, model }: { modelId?: string; model?: string },
+        { type, vision }: { type?: string; vision?: boolean } = {}
+      ) => {
+        if (type === 'rerank') return undefined;
+        if (type === 'embedding') {
+          return {
+            model: 'embedding-model',
+            name: 'Embedding Model',
+            config: {}
+          };
+        }
+        if (vision) {
+          return modelId || model
+            ? {
+                modelId,
+                model,
+                name: `${model ?? modelId} name`,
+                config: { vision: true }
+              }
+            : undefined;
+        }
+        return {
+          modelId: '68ad85a7463006c963799a43',
+          model,
+          name: `${model} name`,
+          config: { maxContext: 1000 }
+        };
+      }
+    ),
     getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
       modelId || model
         ? {
@@ -68,8 +83,12 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
           }
         : undefined
     )
-  })
-}));
+  });
+  return {
+    getSystemModelHandle: async () => createHandle(),
+    getTeamModelHandle: async () => createHandle()
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
@@ -87,6 +106,15 @@ vi.mock('@fastgpt/service/core/ai/llm/compress/constants', () => ({
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
+}));
+
+// Collection 级权限解析依赖真实 DB 查询，单测只关心「是否按鉴权结果透传可读集合」。
+vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
+  resolveReadableCollectionIds: resolveReadableCollectionIdsMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
@@ -112,6 +140,7 @@ describe('dispatchAgentDatasetSearch', () => {
       vlmModel: 'vlm-model'
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
+    resolveReadableCollectionIdsMock.mockResolvedValue(undefined);
     countPromptTokensMock.mockResolvedValue(100);
     createLLMResponseMock.mockResolvedValue({
       answerText: '[chunk_2]',
@@ -204,8 +233,7 @@ describe('dispatchAgentDatasetSearch', () => {
         textQueries: ['origin'],
         collectionFilterMatch: JSON.stringify({
           tags: { $and: [{ price: { $gte: 10 } }] }
-        }),
-        collectionFilterMode: DatasetTagFilterVersionEnum.structured
+        })
       })
     );
     expect(result.nodeResponse?.childrenResponses).toEqual([
@@ -400,6 +428,7 @@ describe('dispatchAgentDatasetSearch', () => {
 
   it('filters dataset ids by tmbId when dataset auth is enabled', async () => {
     filterDatasetsByTmbIdMock.mockResolvedValueOnce(['dataset_2']);
+    resolveReadableCollectionIdsMock.mockResolvedValueOnce(['collection_2']);
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
@@ -424,9 +453,16 @@ describe('dispatchAgentDatasetSearch', () => {
       datasetIds: ['dataset_1', 'dataset_2'],
       tmbId: 'tmb_1'
     });
+    // 鉴权后的 dataset 列表继续下钻到 collection 级权限，可读集合必须透传给召回层。
+    expect(resolveReadableCollectionIdsMock).toHaveBeenCalledWith({
+      teamId: 'team_1',
+      datasetIds: ['dataset_2'],
+      tmbId: 'tmb_1'
+    });
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        datasetIds: ['dataset_2']
+        datasetIds: ['dataset_2'],
+        readableCollectionIdList: ['collection_2']
       })
     );
   });

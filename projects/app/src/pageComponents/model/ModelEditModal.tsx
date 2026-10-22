@@ -1,7 +1,8 @@
-import { defaultChannel } from '@/global/aiproxy/constants';
+import { defaultChannel } from '@fastgpt/global/core/ai/model/channel';
 import { Button } from '@chakra-ui/react';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/settings/model/api';
+import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
+import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import dynamic from 'next/dynamic';
 import ModelConfigForm from './ModelConfigForm';
@@ -17,11 +18,13 @@ const formId = 'system-model-edit-form';
 const ModelEditModal = ({
   model,
   providers,
+  channelType,
   onSuccess,
   onClose
 }: {
-  model: AdminSystemModelListItem;
+  model: ModelConfigListItem;
   providers: ModelProviderItemType[];
+  channelType: ChannelType;
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }) => {
@@ -31,9 +34,10 @@ const ModelEditModal = ({
     loadingModelData,
     submitting,
     setSubmitting,
+    draftModel,
+    setDraftModel,
     modelFormGetValuesRef,
     selectedChannelIds,
-    setSelectedChannelIds,
     showCreateChannel,
     setShowCreateChannel,
     showAssociateChannel,
@@ -43,9 +47,11 @@ const ModelEditModal = ({
     testingChannelIds,
     setIsFormDirty,
     submitModel,
+    removeChannel,
+    associateChannels,
     refreshAfterChannelCreated,
     LeaveConfirmModal
-  } = useModelEditWorkflow({ model, onSuccess, onClose });
+  } = useModelEditWorkflow({ model, channelType, onSuccess, onClose });
 
   return (
     <>
@@ -79,12 +85,18 @@ const ModelEditModal = ({
           <ModelConfigForm
             getValuesRef={modelFormGetValuesRef}
             formId={formId}
+            channelType={channelType}
             modelData={(() => {
-              const { modelId: _modelId, avatar: _avatar, ...documentData } = detail.model;
+              const {
+                modelId: _modelId,
+                avatar: _avatar,
+                tmbId: _tmbId,
+                teamId: _teamId,
+                ...documentData
+              } = detail.model;
               return documentData;
             })()}
             providers={providers}
-            isModelIdReadOnly
             channelSection={{
               title: t('config_model:associated_channels', {
                 count: detail.channels.filter((channel) => selectedChannelIds.has(channel.id))
@@ -99,21 +111,16 @@ const ModelEditModal = ({
                   onManage={goToChannelManagement}
                   onTest={(channelId) => void testModelChannel(channelId)}
                   testingChannelIds={testingChannelIds}
-                  onRemove={(channelId) =>
-                    setSelectedChannelIds((current) => {
-                      const next = new Set(current);
-                      next.delete(channelId);
-                      return next;
-                    })
-                  }
+                  onRemove={(channelId) => void removeChannel(channelId)}
                 />
               )
             }}
             onSubmittingChange={setSubmitting}
+            onModelChange={setDraftModel}
             onDirtyChange={setIsFormDirty}
             onSuccess={() => {
               onClose();
-              void Promise.resolve(onSuccess()).catch(() => {});
+              onSuccess();
             }}
             onSubmit={submitModel}
           />
@@ -124,25 +131,30 @@ const ModelEditModal = ({
         <ModelChannelModal
           models={[
             {
-              model: detail.model.model,
+              model: draftModel.trim() || detail.model.model,
               getModelData: () => modelFormGetValuesRef.current?.(),
               avatar: detail.model.avatar
             }
           ]}
           channels={detail.channels}
+          channelType={channelType}
           selectedChannelIds={[...selectedChannelIds]}
-          onConfirm={(channelIds) => {
-            setSelectedChannelIds(new Set(channelIds));
-            setShowAssociateChannel(false);
-          }}
+          onConfirm={(channelIds) => associateChannels(channelIds)}
           onClose={() => setShowAssociateChannel(false)}
         />
       )}
 
       {detail && showCreateChannel && (
         <EditChannelModal
-          defaultConfig={{ ...defaultChannel, models: [detail.model.model] }}
-          fixedModel={{ model: detail.model.model, avatar: detail.model.avatar }}
+          defaultConfig={{
+            ...defaultChannel,
+            models: [draftModel.trim() || detail.model.model]
+          }}
+          fixedModel={{
+            model: draftModel.trim() || detail.model.model,
+            avatar: detail.model.avatar
+          }}
+          channelType={channelType}
           onSuccess={refreshAfterChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />

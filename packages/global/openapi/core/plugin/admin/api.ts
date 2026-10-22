@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { I18nStringSchema } from '../../../../common/i18n/type';
+import { PluginTextSchema } from '../../../../core/plugin/type';
 
 /* ============================================================================
  * API: 上传系统插件包
@@ -10,7 +11,8 @@ import { I18nStringSchema } from '../../../../common/i18n/type';
  * ============================================================================ */
 
 export const UploadPkgPluginBodySchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
+    format: 'binary',
     description:
       'multipart/form-data file 字段，可重复传入，支持 .pkg 文件或包含多个 .pkg 的 .zip 文件'
   })
@@ -22,15 +24,15 @@ export const UploadPkgPluginResponseItemSchema = z.object({
   etag: z.string(),
   type: z.string(),
   author: z.string().optional(),
-  name: I18nStringSchema,
+  name: PluginTextSchema,
   icon: z.string(),
   tutorialUrl: z.string().url().optional(),
   readmeUrl: z.string().url().optional(),
   repoUrl: z.string().url().optional(),
   permission: z.array(z.string()).optional(),
-  description: I18nStringSchema.optional(),
+  description: PluginTextSchema.optional(),
   tags: z.array(z.string()).optional(),
-  versionDescription: I18nStringSchema.optional()
+  versionDescription: PluginTextSchema.optional()
 });
 
 export const UploadPkgPluginFailureSchema = z.object({
@@ -49,7 +51,7 @@ export type UploadPkgPluginResponseType = z.infer<typeof UploadPkgPluginResponse
  * Route: POST /api/core/plugin/admin/pkg/confirm
  * Method: POST
  * Description: 确认已上传的系统插件包，并将插件同步到插件服务
- * Tags: ['管理员插件管理', 'Write']
+ * Tags: ['插件管理', 'Write']
  * ============================================================================ */
 
 export const ConfirmUploadPkgPluginBodySchema = z.object({

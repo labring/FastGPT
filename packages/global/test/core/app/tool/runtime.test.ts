@@ -7,8 +7,13 @@ import {
 } from '@fastgpt/global/core/app/tool/runtime';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  normalizeFlowNodeInputType
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
 
 describe('compileToolRuntime', () => {
   it('exposes generated file inputs as array<string>', () => {
@@ -81,6 +86,24 @@ describe('compileToolRuntime', () => {
     });
     expect(manualCompiled.agentGeneratedKeys).toEqual([]);
     expect(manualCompiled.modelTool.function).not.toHaveProperty('parameters');
+  });
+
+  it('builds the function description from the tool name and intro', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: 'Search documents',
+      inputs: []
+    });
+    const withoutIntro = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: '',
+      inputs: []
+    });
+
+    expect(compiled.modelTool.function.description).toBe('Search: Search documents');
+    expect(withoutIntro.modelTool.function.description).toBe('Search');
   });
 
   it('separates model parameters from configured values and defaults', () => {
@@ -174,6 +197,62 @@ describe('compileToolRuntime', () => {
     });
   });
 
+  it('keeps off inputs out of the model schema while the external schema keeps their metadata', () => {
+    const inputs: FlowNodeInputItemType[] = [
+      {
+        key: 'offInput',
+        label: 'Off input',
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        required: true,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      },
+      {
+        key: 'query',
+        label: 'Query',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        required: true
+      }
+    ];
+
+    // off 只面向第三方接口调用方，不参与 Agent 生成
+    expect(canInputBeAgentGenerated(inputs[0])).toBe(false);
+
+    const compiled = compileToolRuntime({
+      toolId: 'off-tool',
+      name: 'Off tool',
+      inputs
+    });
+
+    expect(compiled.agentGeneratedKeys).toEqual(['query']);
+    expect(compiled.modelTool.function.parameters).toEqual({
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Query' } },
+      required: ['query']
+    });
+    // 模型不生成 off 字段，改按节点默认值固定传入
+    expect(compiled.fixedInputBindings).toEqual({ offInput: 3 });
+
+    // 第三方调用方 schema 仍保留 off 字段及 required/default 元数据
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs,
+      includeNodeMetadata: true,
+      filterInternalInputs: true
+    });
+    expect(jsonSchema.properties?.offInput).toMatchObject({
+      type: 'number',
+      default: 3,
+      'x-fastgpt-node-input': {
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      }
+    });
+    expect(jsonSchema.required).toEqual(['offInput', 'query']);
+  });
+
   it('keeps editable Code custom inputs in the model schema', () => {
     const compiled = compileToolRuntime({
       toolId: 'code',
@@ -207,6 +286,7 @@ describe('compileToolRuntime', () => {
       inputs: [
         {
           key: 'dataset',
+          label: 'Dataset',
           valueType: WorkflowIOValueTypeEnum.selectDataset,
           renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
           selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -214,6 +294,7 @@ describe('compileToolRuntime', () => {
         },
         {
           key: 'mixedUnion',
+          label: 'Mixed union',
           valueType: WorkflowIOValueTypeEnum.any,
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.input,
@@ -233,6 +314,7 @@ describe('compileToolRuntime', () => {
       inputs: [
         {
           key: 'filter',
+          label: 'Filter',
           valueType: WorkflowIOValueTypeEnum.object,
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.agentGenerated
@@ -287,6 +369,7 @@ describe('compileToolRuntime', () => {
         },
         {
           key: 'limit',
+          label: 'Limit',
           valueType: WorkflowIOValueTypeEnum.number,
           renderTypeList: [FlowNodeInputTypeEnum.numberInput],
           selectedType: FlowNodeInputTypeEnum.numberInput,
@@ -328,6 +411,105 @@ describe('mergeToolRuntimeParams', () => {
 });
 
 describe('JSON Schema runtime validation', () => {
+  const legacyObject = {
+    type: 'object',
+    properties: { name: { type: 'string', required: true } }
+  };
+  it.each([
+    {
+      name: 'array items',
+      schema: { type: 'array', items: legacyObject },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'legacy tuple items',
+      schema: { type: 'array', items: [legacyObject], additionalItems: false },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'anyOf',
+      schema: { anyOf: [legacyObject, { type: 'null' }] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'boolean oneOf branch',
+      schema: { oneOf: [false, legacyObject] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'additionalProperties',
+      schema: { type: 'object', additionalProperties: legacyObject },
+      valid: { entry: { name: 'Alice' } },
+      invalid: { entry: {} }
+    },
+    {
+      name: '$defs reference',
+      schema: { $ref: '#/$defs/entry', $defs: { entry: legacyObject } },
+      valid: { name: 'Alice' },
+      invalid: {}
+    }
+  ])('normalizes nested legacy required flags in $name', ({ schema, valid, invalid }) => {
+    const before = structuredClone(schema);
+    expect(validateToolInputValue({ schema, value: valid }).success).toBe(true);
+    expect(validateToolInputValue({ schema, value: invalid }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
+  it('combines standard required keys with legacy flags and preserves schema annotations as data', () => {
+    const data = { required: true, properties: { name: { required: false } } };
+    const schema = {
+      type: 'object',
+      required: ['count'],
+      properties: {
+        count: { type: 'number' },
+        name: { type: 'string', required: true },
+        literal: { enum: [data], default: data, examples: [data] }
+      }
+    };
+    const before = structuredClone(schema);
+    expect(
+      validateToolInputValue({ schema, value: { count: 0, name: 'Alice', literal: data } }).success
+    ).toBe(true);
+    expect(validateToolInputValue({ schema, value: { name: 'Alice' } }).success).toBe(false);
+    expect(validateToolInputValue({ schema, value: { count: 0 } }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
+  it('normalizes legacy required flags for tool configuration and invocation without changing schema data', () => {
+    const jsonSchema = {
+      type: 'object',
+      properties: {
+        query: { type: 'string', minLength: 3, required: true },
+        options: {
+          type: 'object',
+          required: false,
+          properties: {
+            enabled: { type: 'boolean', required: true },
+            literal: { const: { required: true } }
+          }
+        }
+      }
+    };
+    const before = structuredClone(jsonSchema);
+    const options = { enabled: false, literal: { required: true } };
+    expect(
+      validateToolRuntimeParams({ jsonSchema, params: { query: 'fastgpt', options } }).success
+    ).toBe(true);
+    expect(
+      validateToolInputValue({ schema: jsonSchema.properties.options, value: options }).success
+    ).toBe(true);
+    expect(validateToolRuntimeParams({ jsonSchema, params: { options } }).success).toBe(false);
+    expect(
+      validateToolRuntimeParams({ jsonSchema, params: { query: 'fastgpt', options: {} } }).success
+    ).toBe(false);
+    expect(validateToolRuntimeParams({ jsonSchema, params: { query: 'x' } }).success).toBe(false);
+    expect(jsonSchema).toEqual(before);
+  });
+
   const propertySchema = {
     type: 'string',
     pattern: '^[a-z]+$',

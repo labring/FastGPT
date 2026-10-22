@@ -3,6 +3,7 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import {
   getDisplayHistoryTitle,
+  normalizeHistoryTitle,
   upsertHistoryTitle
 } from '@/web/core/chat/context/historyTitleUtils';
 
@@ -36,6 +37,14 @@ describe('historyTitleUtils', () => {
         fallbackTitle: '新对话'
       })
     ).toBe('新对话');
+  });
+
+  it('should use custom title when normalizing history for display', () => {
+    const result = normalizeHistoryTitle(
+      createHistory({ title: 'generated title', customTitle: 'manual title' })
+    );
+
+    expect(result.title).toBe('manual title');
   });
 
   it('should insert a temporary history with user input title', () => {

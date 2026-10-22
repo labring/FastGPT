@@ -1,9 +1,8 @@
 import ImagePreviewToken from '@/components/core/dataset/ImagePreviewToken';
 import type { ImagePreviewTokenItemType } from '@/components/core/dataset/ImagePreviewToken';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { Box } from '@chakra-ui/react';
 import React from 'react';
-
-const httpUrlReg = /^https?:\/\//i;
 
 /**
  * nodeResponse 里为了兼容历史展示，把文本 query 和图片 URL 都放在 datasetQueries。
@@ -16,7 +15,7 @@ const splitDatasetQueries = (datasetQueries: string[]) => {
   for (const query of datasetQueries) {
     if (!query) continue;
 
-    if (httpUrlReg.test(query)) {
+    if (isHttpUrl(query)) {
       queryImages.push({ url: query });
     } else {
       textQueries.push(query);

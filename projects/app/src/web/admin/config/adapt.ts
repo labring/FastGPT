@@ -5,8 +5,18 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { normalizeSsoConfig } from '@fastgpt/global/common/system/config/sso';
 
-const removedFeConfigKeys = [['show', 'team', 'chat'].join('_'), 'mcpServerProxyEndpoint'];
+const removedFeConfigKeys = [
+  ['show', 'team', 'chat'].join('_'),
+  'mcpServerProxyEndpoint',
+  'agentSandboxProxyUrl',
+  'evalFileMaxLines',
+  'fileUrlWhitelist',
+  'ip_whitelist',
+  'uploadFileMaxAmount',
+  'uploadFileMaxSize'
+];
 
 const omitRemovedFeConfigs = <T extends object>(configs: T): T => {
   const filtered = { ...configs } as Record<string, unknown>;
@@ -18,18 +28,23 @@ const omitRemovedFeConfigs = <T extends object>(configs: T): T => {
   return filtered as T;
 };
 
+/** 将存储配置转换为管理表单；旧后端白名单迁入 systemEnv，显式配置优先。 */
 export function formatConfigStore2FormSchema({
   fastgpt,
   fastgptPro
 }: ConfigStoreType): ConfigFormType {
   const { feConfigs, systemEnv, subPlans } = fastgpt || { feConfigs: {}, systemEnv: {} };
+  const ssoConfigs = normalizeSsoConfig({
+    publicConfig: feConfigs?.sso,
+    serverConfig: systemEnv?.sso
+  });
   const normalizedFeConfigs = omitRemovedFeConfigs({
-    ...(feConfigs || {})
+    ...(feConfigs || {}),
+    sso: ssoConfigs.publicConfig
   } as FastGPTFeConfigsType);
 
   // 初始化配置
   const {
-    show_emptyChat = false,
     show_openai_account = false,
     show_workorder = false,
     favicon = '',
@@ -41,24 +56,26 @@ export function formatConfigStore2FormSchema({
     customApiDomain = '',
     customSharePageDomain = '',
     limit = {
+      uploadFileMaxAmount: 1000,
+      uploadFileMaxSize: 1000,
       exportDatasetLimitMinutes: 20,
       websiteSyncLimitMinuted: 60
     },
     scripts = [],
-    uploadFileMaxAmount = 15,
-    uploadFileMaxSize = 500,
     sso,
     navbarItems = [],
     appTemplateCourse = '',
     show_compliance_copywriting = false,
     show_dataset_feishu = true,
     show_dataset_yuque = true,
+    show_dataset_dingtalk = true,
     show_publish_feishu = true,
     show_publish_dingtalk = true,
     show_publish_wecom = false,
     show_publish_offiaccount = true,
     show_publish_wechat = true,
     enable_team_plugin_upload = false,
+    enable_team_model = false,
     botIframeUrl = '',
     ...feConfigsProps
   } = normalizedFeConfigs;
@@ -71,7 +88,11 @@ export function formatConfigStore2FormSchema({
     hnswEfSearch = 100,
     vlmMaxProcess = 5,
     customPdfParse,
-    fileUrlWhitelist,
+    fileUrlWhitelist = Array.isArray(feConfigs?.fileUrlWhitelist)
+      ? feConfigs.fileUrlWhitelist
+      : undefined,
+    ip_whitelist = typeof feConfigs?.ip_whitelist === 'string' ? feConfigs.ip_whitelist : undefined,
+    sso: _serverSso,
     workflowHttpNode = { ignoreHttpsCertificate: false },
     ...systemEnvProps
   } = systemEnv || {};
@@ -80,16 +101,17 @@ export function formatConfigStore2FormSchema({
     siteSettings: {
       feConfigs: {
         show_workorder,
-        show_emptyChat,
         show_openai_account,
         show_dataset_feishu,
         show_dataset_yuque,
+        show_dataset_dingtalk,
         show_publish_feishu,
         show_publish_dingtalk,
         show_publish_wecom,
         show_publish_offiaccount,
         show_publish_wechat,
         enable_team_plugin_upload,
+        enable_team_model,
         favicon,
         docUrl,
         loginGuideDocUrl,
@@ -97,8 +119,6 @@ export function formatConfigStore2FormSchema({
         systemTitle,
         customApiDomain,
         customSharePageDomain,
-        uploadFileMaxAmount,
-        uploadFileMaxSize,
         appTemplateCourse,
         show_compliance_copywriting,
         botIframeUrl,
@@ -117,6 +137,8 @@ export function formatConfigStore2FormSchema({
         vlmMaxProcess,
         customPdfParse,
         fileUrlWhitelist,
+        ip_whitelist,
+        sso: ssoConfigs.serverConfig,
         workflowHttpNode,
         ...systemEnvProps
       }
@@ -145,6 +167,8 @@ export function formatConfigStore2FormSchema({
         secure: fastgptPro?.auth?.email?.secure ?? true
       },
       sms: {
+        LOGIN: fastgptPro?.auth?.sms?.LOGIN || '',
+        LOGIN_EN: fastgptPro?.auth?.sms?.LOGIN_EN || '',
         REGISTER: fastgptPro?.auth?.sms?.REGISTER || '',
         RESET_PASSWORD: fastgptPro?.auth?.sms?.RESET_PASSWORD || '',
         BIND_NOTIFICATION: fastgptPro?.auth?.sms?.BIND_NOTIFICATION || '',
@@ -243,6 +267,7 @@ export function formatConfigStore2FormSchema({
   };
 }
 
+/** 保存表单时分离公开展示配置与后端策略，并将上传限制统一写入 limit。 */
 export function formatFormData2ConfigStore({
   siteSettings,
   loginSettings,
@@ -278,6 +303,7 @@ export function formatFormData2ConfigStore({
   const finalSystemEnv = securitySystemEnvUpdates
     ? { ...systemEnv, ...securitySystemEnvUpdates }
     : systemEnv;
+  const ssoConfigs = normalizeSsoConfig({ publicConfig: sso, serverConfig: finalSystemEnv.sso });
 
   const formatFeConfig: FastGPTFeConfigsType = omitRemovedFeConfigs({
     ...feConfigs,
@@ -289,7 +315,7 @@ export function formatFormData2ConfigStore({
         return [];
       }
     })(),
-    limit,
+    limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000, ...limit },
     oauth: {
       github: github?.clientId,
       google: google?.clientId,
@@ -303,7 +329,7 @@ export function formatFormData2ConfigStore({
         : undefined,
       wecom: !!wecom
     },
-    sso,
+    sso: ssoConfigs.publicConfig,
     teamMode,
     accountCancellation,
     payConfig: {
@@ -380,6 +406,7 @@ export function formatFormData2ConfigStore({
       feConfigs: formatFeConfig,
       systemEnv: {
         ...finalSystemEnv,
+        sso: ssoConfigs.serverConfig,
         fileUrlWhitelist: finalSystemEnv.fileUrlWhitelist || []
       },
       subPlans: {

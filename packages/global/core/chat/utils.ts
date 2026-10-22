@@ -14,15 +14,16 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
 
-// Concat 2 -> 1, and sort by role
+/**
+ * 合并两段历史，并把 system 消息排到最前。
+ *
+ * 比较函数必须同时看 a、b：只看 a 时两条 system 消息互相都「更小」，排序结果依赖引擎实现，
+ * 多条 system 会被倒序。按「是否 system」比较后依赖 sort 的稳定性，各组内部保持原顺序。
+ */
 export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
-  return newHistories.sort((a) => {
-    if (a.obj === ChatRoleEnum.System) {
-      return -1;
-    }
-    return 1;
-  });
+  const rolePriority = (item: ChatItemMiniType) => (item.obj === ChatRoleEnum.System ? 0 : 1);
+  return newHistories.sort((a, b) => rolePriority(a) - rolePriority(b));
 };
 
 export const hasContextCheckpoint = (history: ChatItemMiniType) =>
@@ -36,17 +37,13 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
  * 且已在消息内部的工具折叠卡片中展示，不应被提升为整轮对话或工作流的顶层失败错误。
  *
  * 判定依据：
- * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet / toolCall）；
+ * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet）；
  * 2. 具备 Function Calling 调用与消费特征：
  *    - 绑定了 Agent 调度的 toolId；
  *    - 或产生并挂载了供大模型继续推理消费的 toolRes（子应用工具、自定义工具、系统工具在被调用时均会生成 toolRes）。
  */
 export const isToolExecutionResponse = (item: ChatHistoryItemResType): boolean => {
-  if (
-    item.moduleType === FlowNodeTypeEnum.tool ||
-    item.moduleType === FlowNodeTypeEnum.toolSet ||
-    item.moduleType === FlowNodeTypeEnum.toolCall
-  ) {
+  if (item.moduleType === FlowNodeTypeEnum.tool || item.moduleType === FlowNodeTypeEnum.toolSet) {
     return true;
   }
 
@@ -320,6 +317,7 @@ export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResT
   return outputs;
 };
 
+/** 将发布渠道映射为聊天来源，企微 Webhook 与长连接共用现有企微统计来源。 */
 export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum) => {
   switch (publishChannel) {
     case PublishChannelEnum.share:
@@ -331,6 +329,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
     case PublishChannelEnum.feishu:
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:
+    case PublishChannelEnum.wecomWebsocket:
       return ChatSourceEnum.wecom;
     case PublishChannelEnum.wechat:
       return ChatSourceEnum.wechat;

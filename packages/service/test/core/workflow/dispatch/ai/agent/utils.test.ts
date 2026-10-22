@@ -120,7 +120,6 @@ describe('Agent read_files tool protocol', () => {
       getSubAppInfo: () => ({
         name: 'Dataset Search',
         avatar: '',
-        toolDescription: ''
       }),
       getSubApp: () => undefined,
       completionTools: []
@@ -157,7 +156,6 @@ describe('Agent read_files tool protocol', () => {
       params: { model: 'gpt-4' },
       stream: true,
       streamResponseFn,
-      getSubAppInfo: () => ({ name: 'System Tool', avatar: '', toolDescription: '' }),
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',

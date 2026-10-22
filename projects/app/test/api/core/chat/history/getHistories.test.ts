@@ -290,7 +290,8 @@ describe('getHistories api test', () => {
       showSkillReferences: false,
       showFullText: false,
       canDownloadSource: false,
-      showWholeResponse: false
+      showWholeResponse: false,
+      allowAnonymous: true
     });
 
     await Promise.all([

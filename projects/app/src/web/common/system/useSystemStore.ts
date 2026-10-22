@@ -4,7 +4,6 @@ import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { FastGPTFeConfigsType, LicenseDataType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getOperationalAd } from './api';
 
@@ -54,11 +53,12 @@ type State = {
   clearLicenseData: () => void;
 
   initDataBufferId?: string;
-  feConfigs: FastGPTFeConfigsType;
+  feConfigs: NonNullable<GetSystemInitDataResponse['feConfigs']> & {
+    limit: FastGPTFeConfigsType['limit'];
+  };
   subPlans?: SubPlanType;
   systemVersion: string;
 
-  aiproxyChannels: NonNullable<GetSystemInitDataResponse['aiproxyChannels']>;
   operationalAd?: { operationalAdImage: string; operationalAdLink: string; id: string };
   loadOperationalAd: () => Promise<void>;
 
@@ -148,7 +148,7 @@ export const useSystemStore = create<State>()(
             state.licenseLoading = true;
           });
           try {
-            const { getLicenseData } = await import('@/web/common/license/api');
+            const { getLicenseData } = await import('@/web/admin/license/api');
             const licenseData = await getLicenseData();
             set((state) => {
               state.licenseData = licenseData;
@@ -170,13 +170,11 @@ export const useSystemStore = create<State>()(
 
         initDataBufferId: undefined,
         feConfigs: {
-          uploadFileMaxSize: 1000,
-          uploadFileMaxAmount: 1000
+          limit: { uploadFileMaxSize: 1000, uploadFileMaxAmount: 1000 }
         },
         subPlans: undefined,
         systemVersion: '0.0.0',
 
-        aiproxyChannels: [],
         operationalAd: undefined,
         loadOperationalAd: async () => {
           try {
@@ -188,29 +186,45 @@ export const useSystemStore = create<State>()(
             console.log('Get operational ad error', error);
           }
         },
+        /** 整体替换接口返回的配置，避免未登录响应与上次登录配置合并后残留字段。 */
         initStaticData(res) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
-
-            state.feConfigs = res.feConfigs ?? state.feConfigs;
+            if (res.feConfigs) {
+              // 只补客户端既有上传默认值，不合并上一页字段；响应中的 0 也必须保留。
+              state.feConfigs = {
+                ...res.feConfigs,
+                limit: {
+                  ...res.feConfigs.limit,
+                  uploadFileMaxAmount: res.feConfigs.limit?.uploadFileMaxAmount || 1000,
+                  uploadFileMaxSize: res.feConfigs.limit?.uploadFileMaxSize || 1000
+                }
+              };
+            }
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
-
-            state.aiproxyChannels = res.aiproxyChannels ?? state.aiproxyChannels;
           });
         }
       })),
       {
         name: 'globalStore',
-        version: 1,
-        migrate: (persistedState) => {
+        version: 4,
+        // 清理旧结构与可能透传的私有字段，下一次初始化重新确认配置。
+        migrate: (persistedState): Partial<State> => {
           const {
+            feConfigs: _feConfigs,
+            initDataBufferId: _initDataBufferId,
+            aiproxyChannels: _aiproxyChannels,
             modelProviders: _modelProviders,
             modelProviderMap: _modelProviderMap,
             defaultModels: _defaultModels,
             ...systemState
           } = persistedState as Record<string, unknown>;
-          return systemState;
+          return {
+            ...systemState,
+            feConfigs: { limit: { uploadFileMaxAmount: 1000, uploadFileMaxSize: 1000 } },
+            initDataBufferId: undefined
+          };
         },
         partialize: (state) => ({
           gitStar: state.gitStar,
@@ -219,9 +233,7 @@ export const useSystemStore = create<State>()(
           initDataBufferId: state.initDataBufferId,
           feConfigs: state.feConfigs,
           subPlans: state.subPlans,
-          systemVersion: state.systemVersion,
-
-          aiproxyChannels: state.aiproxyChannels
+          systemVersion: state.systemVersion
         })
       }
     )

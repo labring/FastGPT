@@ -1,30 +1,32 @@
 name: 'Test FastGPT-pro'
 on:
   pull_request_target:
-    types: [ opened, synchronize, reopened ]
+    types: [opened, synchronize, reopened]
     paths:
-      - "pro"
-      - "pro/**"
-      - "packages/global/**"
-      - "packages/service/**"
-      - "packages/web/**"
-      - "sdk/otel/**"
-      - "sdk/storage/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "tsconfig.json"
-      - "vitest.config.mts"
-      - "scripts/test/**"
-      - "eslint.config.mjs"
-      - "turbo.json"
-      - ".npmrc"
-      - ".gitmodules"
-      - ".github/workflows/test-fastgpt-pro.yaml"
+      - 'pro'
+      - 'pro/**'
+      - 'packages/global/**'
+      - 'packages/service/**'
+      - 'packages/web/**'
+      - 'packages/workflow-core/**'
+      - 'packages/workflow-cli/**'
+      - 'sdk/otel/**'
+      - 'sdk/storage/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
+      - 'vitest.config.mts'
+      - 'scripts/test/**'
+      - 'eslint.config.mjs'
+      - 'turbo.json'
+      - '.npmrc'
+      - '.gitmodules'
+      - '.github/workflows/test-fastgpt-pro.yaml'
   workflow_dispatch:
 
 concurrency:
-  group: "fastgpt-pro-test-${{ github.event.pull_request.number || github.ref }}"
+  group: 'fastgpt-pro-test-${{ github.event.pull_request.number || github.ref }}'
   cancel-in-progress: true
 
 jobs:
@@ -46,6 +48,7 @@ jobs:
             github.event.pull_request.head.repo.full_name || github.repository
             }}
           allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
@@ -69,8 +72,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "pnpm"
+          node-version: '24'
+          cache: 'pnpm'
       - name: Install Deps
         run: pnpm install --frozen-lockfile
       - name: Test

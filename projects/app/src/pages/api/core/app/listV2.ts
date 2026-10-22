@@ -7,7 +7,12 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import {
+  countTeamAppsByPublishedResourceGroups,
+  getAppPublishedResourceType
+} from '@fastgpt/service/core/app/resourceLookup';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -41,7 +46,8 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     excludeAppId,
     pageNum = 1,
     pageSize = 50,
-    offset
+    offset,
+    withRelatedAppCount
   } = parseApiInput({
     req,
     bodySchema: ListAppV2BodySchema
@@ -181,7 +187,26 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     };
   });
 
-  const list = await addSourceMember({ list: formatApps });
+  const relatedAppCountMap = withRelatedAppCount
+    ? await countTeamAppsByPublishedResourceGroups({
+        teamId,
+        resourceGroups: formatApps.flatMap((app) => {
+          const type = getAppPublishedResourceType(app.type);
+          if (!type) return [];
+
+          const id = String(app._id);
+          return [{ id, isOwner: app.permission.isOwner, resources: [{ type, id }] }];
+        })
+      })
+    : undefined;
+  const list = await addSourceMember({
+    list: formatApps.map((app) => ({
+      ...app,
+      ...(app.permission.isOwner && relatedAppCountMap?.has(String(app._id))
+        ? { relatedAppCount: relatedAppCountMap.get(String(app._id)) ?? 0 }
+        : {})
+    }))
+  });
   return ListAppV2ResponseSchema.parse({ list, total });
 }
 

@@ -109,7 +109,7 @@ export const useLLMResponseAccumulator = () => {
     },
 
     /**
-     * 返回归一后的聚合结果，由 createLLMResponse 继续补 finish reason、token 和保存详情。
+     * 返回聚合结果，由入口判断异常结束、补 token 并保存详情。
      */
     getResponse() {
       return {

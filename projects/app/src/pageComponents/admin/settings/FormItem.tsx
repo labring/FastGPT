@@ -4,8 +4,7 @@ import FormLabel from './FormLabel';
 function FormItem({
   children,
   title,
-  description,
-  full = false
+  description
 }: {
   children: React.ReactNode;
   title?: string;
@@ -14,9 +13,11 @@ function FormItem({
   full?: boolean;
 }) {
   return (
-    <Flex px={6} mb="4" flexDirection={'column'}>
+    <Flex mb="4" flexDirection={'column'}>
       {title && <FormLabel title={title} description={description} mb={2} />}
-      <Box maxW={full ? 'none' : ['auto', '640px']}>{children}</Box>
+      <Box w={'100%'} maxW={'none'}>
+        {children}
+      </Box>
     </Flex>
   );
 }

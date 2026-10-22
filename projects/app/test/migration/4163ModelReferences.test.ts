@@ -3,8 +3,8 @@ import type {
   SystemMigrationFailedRecord,
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -12,7 +12,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import { backfillEvaluationModelReferences } from '@/migration/tasks/20260903_backfill_evaluation_model_references';
+import { backfillEvaluationModelReferences } from '@/migration/tasks/4170/20260903_backfill_evaluation_model_references';
 import { Types } from '@fastgpt/service/common/mongo';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -20,22 +20,20 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { backfillAppModelReferences } from '@/migration/tasks/20260903_backfill_app_model_references';
-import { backfillDatasetModelReferences } from '@/migration/tasks/20260903_backfill_dataset_model_references';
-import { backfillModelPermissionReferences } from '@/migration/tasks/20260903_backfill_model_permissions';
+import { backfillAppModelReferences } from '@/migration/tasks/4170/20260903_backfill_app_model_references';
+import { backfillDatasetModelReferences } from '@/migration/tasks/4170/20260903_backfill_dataset_model_references';
+import { backfillModelPermissionReferences } from '@/migration/tasks/4170/20260903_backfill_model_permissions';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { systemMigrations } from '@/migration/registry';
 import { getMigrationStates } from '@/migration/entity';
 
-const cacheMocks = vi.hoisted(() => ({ clearAllMyModelsCache: vi.fn() }));
+const cacheMocks = vi.hoisted(() => ({ clearAllMemberModelsCache: vi.fn() }));
 
-vi.mock('@fastgpt/service/support/permission/model/controller', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/support/permission/model/controller')
-  >()),
-  clearAllMyModelsCache: cacheMocks.clearAllMyModelsCache
+vi.mock('@fastgpt/service/support/permission/model/cache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/permission/model/cache')>()),
+  clearAllMemberModelsCache: cacheMocks.clearAllMemberModelsCache
 }));
 
 const createStoredModel = ({ model, type }: { model: string; type: ModelTypeEnum }) =>
@@ -100,7 +98,7 @@ describe('4163 dataset model reference migration', () => {
     vi.clearAllMocks();
     await Promise.all([
       MongoAIModel.deleteMany({}),
-      MongoAIDefaultModel.deleteMany({}),
+      MongoAIModelCatalog.deleteMany({}),
       MongoDataset.deleteMany({}),
       MongoEvaluation.deleteMany({}),
       MongoResourcePermission.deleteMany({ resourceType: PerResourceTypeEnum.model }),
@@ -290,7 +288,7 @@ describe('4163 dataset model reference migration', () => {
     await expect(
       MongoResourcePermission.collection.findOne({ resourceName: 'removed-model' })
     ).resolves.toBeNull();
-    expect(cacheMocks.clearAllMyModelsCache).toHaveBeenCalledTimes(1);
+    expect(cacheMocks.clearAllMemberModelsCache).toHaveBeenCalledTimes(1);
   });
 
   it('migrates app, app-version, and template stages with one independent model snapshot', async () => {
@@ -402,7 +400,7 @@ describe('4163 dataset model reference migration', () => {
     expect([...state.getProgress().values()].every((item) => item.status === 'succeeded')).toBe(
       true
     );
-    expect(cacheMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+    expect(cacheMocks.clearAllMemberModelsCache).not.toHaveBeenCalled();
   });
 
   it('preserves unrelated legacy workflow values while backfilling config and model IDs', async () => {
@@ -664,7 +662,7 @@ describe('4163 dataset model reference migration', () => {
       model: 'configured-default',
       type: ModelTypeEnum.llm
     });
-    await MongoAIDefaultModel.create({
+    await MongoAIModelCatalog.create({
       scope: 'system',
       defaultModelIds: { llm: String(configuredDefault._id) }
     });

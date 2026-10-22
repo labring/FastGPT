@@ -10,6 +10,19 @@ export enum DatasetDataIndexTypeEnum {
   custom = 'custom'
 }
 
+/** 数据索引状态。新数据先写入 indexing，向量和全文索引完成后变为 indexed。 */
+export enum DatasetDataIndexStatusEnum {
+  indexing = 'indexing',
+  indexed = 'indexed',
+  error = 'error',
+  rebuildIndexPending = 'rebuildIndexPending',
+  rebuildIndexRunning = 'rebuildIndexRunning',
+  rebuildIndexFailed = 'rebuildIndexFailed',
+  rebuildSynonymPending = 'rebuildSynonymPending',
+  rebuildSynonymRunning = 'rebuildSynonymRunning',
+  rebuildSynonymFailed = 'rebuildSynonymFailed'
+}
+
 export const DatasetDataIndexMap: Record<
   `${DatasetDataIndexTypeEnum}`,
   {
@@ -46,3 +59,62 @@ export const defaultDatasetIndexData = DatasetDataIndexMap[DatasetDataIndexTypeE
 export const getDatasetIndexMapData = (type: `${DatasetDataIndexTypeEnum}`) => {
   return DatasetDataIndexMap[type] || defaultDatasetIndexData;
 };
+
+/** 数据索引状态的展示信息。字段缺失的历史数据按 indexed 展示。 */
+export const DatasetDataIndexStatusMap: Record<
+  `${DatasetDataIndexStatusEnum}`,
+  {
+    label:
+      | 'dataset:data_index_status_indexing'
+      | 'dataset:data_index_status_indexed'
+      | 'dataset:data_index_status_error'
+      | 'dataset:data_index_status_waiting_rebuild'
+      | 'dataset:data_index_status_rebuilding'
+      | 'dataset:data_index_status_rebuild_error'
+      | 'dataset:data_index_status_synonym_pending'
+      | 'dataset:data_index_status_synonym_running'
+      | 'dataset:data_index_status_synonym_failed';
+    colorSchema: 'red' | 'blue' | 'green';
+  }
+> = {
+  [DatasetDataIndexStatusEnum.indexing]: {
+    label: i18nT('dataset:data_index_status_indexing'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.indexed]: {
+    label: i18nT('dataset:data_index_status_indexed'),
+    colorSchema: 'green'
+  },
+  [DatasetDataIndexStatusEnum.rebuildIndexPending]: {
+    label: i18nT('dataset:data_index_status_waiting_rebuild'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildIndexRunning]: {
+    label: i18nT('dataset:data_index_status_rebuilding'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildIndexFailed]: {
+    label: i18nT('dataset:data_index_status_rebuild_error'),
+    colorSchema: 'red'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymPending]: {
+    label: i18nT('dataset:data_index_status_synonym_pending'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymRunning]: {
+    label: i18nT('dataset:data_index_status_synonym_running'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymFailed]: {
+    label: i18nT('dataset:data_index_status_synonym_failed'),
+    colorSchema: 'red'
+  },
+  [DatasetDataIndexStatusEnum.error]: {
+    label: i18nT('dataset:data_index_status_error'),
+    colorSchema: 'red'
+  }
+};
+
+export const getDatasetDataIndexStatusMapData = (status?: DatasetDataIndexStatusEnum) =>
+  DatasetDataIndexStatusMap[status ?? DatasetDataIndexStatusEnum.indexed] ??
+  DatasetDataIndexStatusMap[DatasetDataIndexStatusEnum.indexed];

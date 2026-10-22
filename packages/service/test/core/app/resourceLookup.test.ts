@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
+import {
+  countTeamAppsByPublishedResourceGroups,
+  findTeamAppsByPublishedResource,
+  getAppPublishedResourceType
+} from '@fastgpt/service/core/app/resourceLookup';
 
 const teamId = new Types.ObjectId('65f000000000000000000071');
 const otherTeamId = new Types.ObjectId('65f000000000000000000072');
@@ -12,6 +17,18 @@ const otherAppId = new Types.ObjectId('65f000000000000000000075');
 const publishedVersionId = new Types.ObjectId('65f000000000000000000076');
 const oldVersionId = new Types.ObjectId('65f000000000000000000077');
 const otherTeamVersionId = new Types.ObjectId('65f000000000000000000078');
+
+describe('getAppPublishedResourceType', () => {
+  it('maps tool and agent app types to published resource types', () => {
+    expect(getAppPublishedResourceType(AppTypeEnum.tool)).toBe('tool');
+    expect(getAppPublishedResourceType(AppTypeEnum.workflowTool)).toBe('tool');
+    expect(getAppPublishedResourceType(AppTypeEnum.workflow)).toBe('agent');
+  });
+
+  it('returns undefined for unsupported app types', () => {
+    expect(getAppPublishedResourceType('unknown')).toBeUndefined();
+  });
+});
 
 describe('findTeamAppsByPublishedResource', () => {
   beforeEach(async () => {
@@ -84,5 +101,175 @@ describe('findTeamAppsByPublishedResource', () => {
       ids: 'removed-skill'
     });
     expect(removed.apps).toHaveLength(0);
+  });
+
+  it('counts each app once per resource group and omits empty or non-owner groups', async () => {
+    const secondAppId = new Types.ObjectId('65f000000000000000000079');
+    const secondVersionId = new Types.ObjectId('65f000000000000000000080');
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'App using two datasets',
+        type: 'workflow',
+        publishedVersionId,
+        deleteTime: null
+      },
+      {
+        _id: secondAppId,
+        teamId,
+        tmbId,
+        name: 'App using one dataset',
+        type: 'workflow',
+        publishedVersionId: secondVersionId,
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertMany([
+      {
+        _id: publishedVersionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [
+          { type: 'dataset', id: 'dataset-1' },
+          { type: 'dataset', id: 'dataset-2' }
+        ]
+      },
+      {
+        _id: secondVersionId,
+        appId: secondAppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'dataset', id: 'dataset-2' }]
+      }
+    ]);
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      resourceGroups: [
+        { id: 'empty-group', isOwner: true, resources: [] },
+        {
+          id: 'dataset-group',
+          isOwner: true,
+          resources: [
+            { type: 'dataset', id: 'dataset-1' },
+            { type: 'dataset', id: 'dataset-2' }
+          ]
+        },
+        { id: 'non-owner', isOwner: false, resources: [{ type: 'dataset', id: 'dataset-2' }] }
+      ]
+    });
+
+    expect(counts.get('empty-group')).toBeUndefined();
+    expect(counts.get('non-owner')).toBeUndefined();
+    expect(counts.get('dataset-group')).toBe(2);
+  });
+
+  it('counts an app once when its published version references multiple resource types in a group', async () => {
+    const agentOnlyAppId = new Types.ObjectId('65f000000000000000000081');
+    const agentOnlyVersionId = new Types.ObjectId('65f000000000000000000082');
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'App using an app and a tool',
+        type: 'workflow',
+        publishedVersionId,
+        deleteTime: null
+      },
+      {
+        _id: agentOnlyAppId,
+        teamId,
+        tmbId,
+        name: 'App using an app',
+        type: 'workflow',
+        publishedVersionId: agentOnlyVersionId,
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertMany([
+      {
+        _id: publishedVersionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [
+          { type: 'agent', id: 'app-child' },
+          { type: 'tool', id: 'tool-child' }
+        ]
+      },
+      {
+        _id: agentOnlyVersionId,
+        appId: agentOnlyAppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'agent', id: 'app-child' }]
+      }
+    ]);
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      resourceGroups: [
+        {
+          id: 'mixed-resources',
+          isOwner: true,
+          resources: [
+            { type: 'agent', id: 'app-child' },
+            { type: 'tool', id: 'tool-child' }
+          ]
+        },
+        { id: 'app-child', isOwner: true, resources: [{ type: 'agent', id: 'app-child' }] }
+      ]
+    });
+
+    expect(counts.get('mixed-resources')).toBe(2);
+    expect(counts.get('app-child')).toBe(2);
+  });
+  it('counts all 101 published references independently of the detail cap', async () => {
+    const appRecords = Array.from({ length: 101 }, () => ({
+      appId: new Types.ObjectId(),
+      versionId: new Types.ObjectId()
+    }));
+    await MongoApp.collection.insertMany(
+      appRecords.map(({ appId, versionId }, index) => ({
+        _id: appId,
+        teamId,
+        tmbId,
+        name: `Referencing app ${index}`,
+        type: 'workflow',
+        publishedVersionId: versionId,
+        deleteTime: null
+      }))
+    );
+    await MongoAppVersion.collection.insertMany(
+      appRecords.map(({ appId, versionId }) => ({
+        _id: versionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'dataset', id: 'dataset-1' }]
+      }))
+    );
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      resourceGroups: [
+        {
+          id: 'dataset-1',
+          isOwner: true,
+          resources: [{ type: 'dataset', id: 'dataset-1' }]
+        }
+      ]
+    });
+
+    expect(counts.get('dataset-1')).toBe(101);
   });
 });

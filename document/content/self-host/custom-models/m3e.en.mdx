@@ -22,7 +22,7 @@ You can also set it via the environment variable: sk-key. Refer to Docker docume
 
 ## Connect to One API
 
-Add a channel with the following parameters:
+In One API, add a **Custom Channel**. Set **Base URL** to your M3E service address, add `m3e` as a custom model, choose the `default` group shown in the example, and set the channel key to the service's configured security token. Use the same custom model name in FastGPT.
 
 ![](../../../public/imgs/model-m3e1.png)
 
@@ -36,7 +36,7 @@ curl --location --request POST 'https://domain/v1/embeddings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "m3e",
-  "input": ["What is FastGPT"]
+  "input": ["What is Laf?"]
 }'
 ```
 

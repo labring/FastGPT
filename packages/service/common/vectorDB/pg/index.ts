@@ -84,6 +84,14 @@ export class PgVectorCtrl implements VectorControllerType {
       insertIds: rows.map((row) => row.id)
     };
   };
+  /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
+  refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
+    if (idList.length === 0) return;
+    await PgClient.query(
+      `UPDATE ${DatasetVectorTableName} SET createtime = CURRENT_TIMESTAMP WHERE team_id = $1 AND id = ANY($2::bigint[])`,
+      [String(teamId), idList]
+    );
+  };
   delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
@@ -119,6 +127,7 @@ export class PgVectorCtrl implements VectorControllerType {
       where: [where]
     });
   };
+  /** 按团队、知识库和集合范围召回向量；团队条件与联合索引的首列保持一致。 */
   embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
@@ -160,7 +169,8 @@ export class PgVectorCtrl implements VectorControllerType {
           WITH relaxed_results AS MATERIALIZED (
             select id, collection_id, vector <#> '[${vector}]' AS score
               from ${DatasetVectorTableName}
-              where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              where team_id = '${String(teamId)}'
+                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
                 ${filterCollectionIdSql}
                 ${forbidCollectionSql}
               order by score limit ${limit}

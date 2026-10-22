@@ -4,6 +4,12 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 
+// 枚举分组规则集中在来源分类模块；业务代码只消费语义化判断。
+const groupedChatSourceComparisonsSelector =
+  'LogicalExpression' +
+  ':matches([left.left.object.name="ChatSourceTypeEnum"], [left.right.object.name="ChatSourceTypeEnum"])' +
+  ':matches([right.left.object.name="ChatSourceTypeEnum"], [right.right.object.name="ChatSourceTypeEnum"])';
+
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -51,6 +57,27 @@ export default defineConfig([
 
       '@next/next/no-html-link-for-pages': 'off',
       'react-hooks/rules-of-hooks': 'off'
+    }
+  },
+  {
+    name: 'fastgpt/chat-source-semantics',
+    files: ['packages/**/*.{ts,tsx}', 'projects/**/*.{ts,tsx}', 'pro/**/*.{ts,tsx}'],
+    ignores: [
+      'packages/global/common/chat/source.ts',
+      '**/test/**',
+      '**/tests/**',
+      '**/*.test.ts',
+      '**/*.spec.ts'
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: groupedChatSourceComparisonsSelector,
+          message:
+            '多个 ChatSourceTypeEnum 的组合判断必须使用 @fastgpt/global/common/chat/source 中的语义化函数。'
+        }
+      ]
     }
   },
   globalIgnores(

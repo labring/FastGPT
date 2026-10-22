@@ -260,21 +260,15 @@ export const loadRequestMessages = async ({
   });
 
   /**
-   * 创建音频 content part。
-   * input_audio 需要显式 format，因此必须从文件名或 URL 扩展名推断格式。
+   * 已识别为音频的输入始终生成 input_audio。
+   * 已知 URL 格式时保留 format；未知时省略，不按名称过滤附件或猜测编码。
    */
-  const createAudioContentPart = (
-    data: string,
-    filename = data
-  ): ChatCompletionContentPart | undefined => {
-    const extension = getFileExtension(filename);
-    if (!matchFileType(audioFileType, extension)) return;
-
+  const createAudioContentPart = (data: string, format = ''): ChatCompletionContentPart => {
     return {
       type: 'input_audio',
       input_audio: {
         data,
-        format: extension
+        ...(matchFileType(audioFileType, format) ? { format } : {})
       }
     };
   };
@@ -292,7 +286,7 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
+   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
    */
   const shouldLoadMediaAsBase64 = (url: string) =>
     url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
@@ -328,7 +322,7 @@ export const loadRequestMessages = async ({
     }
 
     if (fileType === 'audio' && useAudio) {
-      return createAudioContentPart(url, getFilenameFromUrl(url));
+      return createAudioContentPart(url, getFileExtension(getFilenameFromUrl(url)));
     }
 
     if (fileType === 'video' && useVideo) {
@@ -359,8 +353,8 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 归一化图片输入：内部文件转 base64，远程图片先做可访问性校验。
-   * 返回 undefined 表示图片不可访问，需要从请求消息中过滤。
+   * 归一化图片输入：内部文件或强制配置时转 base64，远程图片直接透传给模型服务。
+   * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
    */
   const normalizeImageContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
@@ -372,39 +366,23 @@ export const loadRequestMessages = async ({
       return imageItem;
     }
 
-    try {
-      if (shouldLoadMediaAsBase64(imgUrl)) {
-        try {
-          const { completeBase64: base64 } = await getImageBase64(imgUrl);
+    if (shouldLoadMediaAsBase64(imgUrl)) {
+      try {
+        const { completeBase64: base64 } = await getImageBase64(imgUrl);
 
-          return {
-            ...imageItem,
-            image_url: {
-              ...imageItem.image_url,
-              url: base64
-            }
-          };
-        } catch (error) {
-          return Promise.reject(`Cannot load image ${imgUrl}, because ${getErrText(error)}`);
-        }
+        return {
+          ...imageItem,
+          image_url: {
+            ...imageItem.image_url,
+            url: base64
+          }
+        };
+      } catch (error) {
+        return Promise.reject(`Cannot load image ${imgUrl}, because ${getErrText(error)}`);
       }
-
-      // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
-      const response = await axios.head(imgUrl, {
-        timeout: 10000
-      });
-      if (response.status < 200 || response.status >= 400) {
-        logger.info('Filtered invalid image URL', { url: imgUrl });
-        return;
-      }
-
-      return imageItem;
-    } catch (error: any) {
-      if (error?.response?.status === 405 || error?.response?.status === 403) {
-        return imageItem;
-      }
-      logger.warn('Failed to validate image URL', { url: imgUrl, error });
     }
+
+    return imageItem;
   };
 
   /**
@@ -473,12 +451,11 @@ export const loadRequestMessages = async ({
     // input_audio / video_url。普通 file 当前不直接透传给 LLM。
     if (fileType === 'audio' && useAudio) {
       const fileUrl = fileItem.url;
-      const filename = getFilenameFromUrl(fileUrl, fileItem.name);
       const audioUrl = shouldLoadMediaAsBase64(fileUrl)
         ? await loadUrlAsBase64Data(fileUrl)
         : fileUrl;
 
-      return createAudioContentPart(audioUrl, filename);
+      return createAudioContentPart(audioUrl, getFileExtension(getFilenameFromUrl(fileUrl)));
     }
 
     if (fileType === 'video' && useVideo) {

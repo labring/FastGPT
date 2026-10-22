@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => {
   return {
     streams,
     generateQA: vi.fn(),
-    generateVector: vi.fn(),
+    generateRebuildIndex: vi.fn(),
+    generateRebuildSynonym: vi.fn(),
+    generatePreCreatedData: vi.fn(),
     datasetParseQueue: vi.fn()
   };
 });
@@ -22,8 +24,14 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   }
 }));
 vi.mock('@/service/core/dataset/queues/generateQA', () => ({ generateQA: mocks.generateQA }));
-vi.mock('@/service/core/dataset/queues/generateVector', () => ({
-  generateVector: mocks.generateVector
+vi.mock('@/service/core/dataset/queues/generateRebuildIndex', () => ({
+  generateRebuildIndex: mocks.generateRebuildIndex
+}));
+vi.mock('@/service/core/dataset/queues/generateRebuildSynonym', () => ({
+  generateRebuildSynonym: mocks.generateRebuildSynonym
+}));
+vi.mock('@/service/core/dataset/queues/generatePreCreatedData', () => ({
+  generatePreCreatedData: mocks.generatePreCreatedData
 }));
 vi.mock('@/service/core/dataset/queues/datasetParse', () => ({
   datasetParseQueue: mocks.datasetParseQueue
@@ -48,9 +56,21 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     stream.emit('change', {
       operationType: 'insert',
-      fullDocument: { mode: TrainingModeEnum.chunk }
+      fullDocument: { mode: TrainingModeEnum.index }
     });
-    await vi.waitFor(() => expect(mocks.generateVector).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce());
+
+    stream.emit('change', {
+      operationType: 'insert',
+      fullDocument: { mode: TrainingModeEnum.rebuildIndex }
+    });
+    await vi.waitFor(() => expect(mocks.generateRebuildIndex).toHaveBeenCalledOnce());
+    expect(mocks.generateRebuildSynonym).not.toHaveBeenCalled();
+    stream.emit('change', {
+      operationType: 'insert',
+      fullDocument: { mode: TrainingModeEnum.rebuildSynonym }
+    });
+    await vi.waitFor(() => expect(mocks.generateRebuildSynonym).toHaveBeenCalledOnce());
 
     stream.emit('change', {
       operationType: 'insert',
@@ -63,7 +83,8 @@ describe('createDatasetTrainingMongoWatch', () => {
     await Promise.resolve();
 
     expect(mocks.generateQA).toHaveBeenCalledOnce();
-    expect(mocks.generateVector).toHaveBeenCalledOnce();
+    expect(mocks.generateRebuildIndex).toHaveBeenCalledOnce();
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
     expect(mocks.datasetParseQueue).toHaveBeenCalledOnce();
   });
 
@@ -79,10 +100,10 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     streamAt(1).emit('change', {
       operationType: 'insert',
-      fullDocument: { mode: TrainingModeEnum.chunk }
+      fullDocument: { mode: TrainingModeEnum.index }
     });
     await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.generateVector).toHaveBeenCalledOnce();
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
     vi.useRealTimers();
   });
 });

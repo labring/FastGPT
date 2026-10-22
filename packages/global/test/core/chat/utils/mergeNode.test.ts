@@ -359,6 +359,41 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-1', 'child-2']);
   });
 
+  it('should deduplicate inline children with separately persisted child rows', () => {
+    const result = mergeNodeResponseDataByIdAndParent([
+      {
+        id: 'agent-1',
+        nodeId: 'agent-node',
+        moduleName: 'Agent',
+        moduleType: FlowNodeTypeEnum.agent,
+        childrenResponses: [
+          {
+            id: 'child-1',
+            nodeId: 'tool-node',
+            moduleName: 'Tool',
+            moduleType: FlowNodeTypeEnum.tool
+          }
+        ]
+      },
+      {
+        id: 'child-1',
+        parentId: 'agent-1',
+        nodeId: 'tool-node',
+        moduleName: 'Tool',
+        moduleType: FlowNodeTypeEnum.tool,
+        totalPoints: 2
+      }
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses).toHaveLength(1);
+    expect(result[0].childrenResponses?.[0]).toMatchObject({
+      id: 'child-1',
+      parentId: 'agent-1',
+      totalPoints: 2
+    });
+  });
+
   it('should merge repeated node increments with many inline children efficiently', () => {
     const responseDataList: ChatHistoryItemResType[] = Array.from({ length: 20 }, (_, index) => ({
       id: 'agent-1',

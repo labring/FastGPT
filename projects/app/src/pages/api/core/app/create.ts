@@ -1,12 +1,16 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
-import type { AppResourcesType } from '@fastgpt/global/core/app/type';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  AppFolderTypeList,
+  AppTypeEnum,
+  AppTypeList,
+  ToolTypeList
+} from '@fastgpt/global/core/app/constants';
+import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
   CreateAppResponseSchema,
@@ -17,33 +21,32 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -70,12 +73,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
         authApiKey: true,
         per: TeamAppCreatePermissionVal
       });
-
-  // 上限校验
-  await checkTeamAppTypeLimit({
-    teamId,
-    appCheckType: type === AppTypeEnum.workflowTool ? 'tool' : 'app'
-  });
 
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId')
     .populate<{
@@ -122,6 +119,10 @@ export const config = {
   }
 };
 
+/**
+ * 新建应用及初始版本、默认协作者。所有新增入口统一按资源类型校验配额；
+ * 复制、转换新建和工具集创建传入的 session 会继续复用，原地转换不走此入口。
+ */
 export const onCreateApp = async ({
   parentId,
   name,
@@ -159,6 +160,16 @@ export const onCreateApp = async ({
   isRoot?: boolean;
   session?: ClientSession;
 }) => {
+  // 配额属于新增资源的约束，放在共享入口，避免复制或转换新建绕过路由校验。
+  await checkTeamAppTypeLimit({
+    teamId,
+    appCheckType: AppFolderTypeList.includes(type)
+      ? 'folder'
+      : ToolTypeList.includes(type)
+        ? 'tool'
+        : 'app'
+  });
+
   if (parentId) {
     const parentApp = await MongoApp.findById(parentId, 'type').lean();
 
@@ -176,34 +187,32 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
+    handle: modelHandle
+  });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   const resources = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
   if (!AppFolderTypeList.includes(type!)) {
     await checkAppResourceReadPermissions({
       resources,
       tmbId,
-      isRoot
+      teamId,
+      isRoot,
+      modelHandle
     });
   }
-
-  // 工具集节点可能已编码 JSON Schema；只清理旧节点字段，保留嵌套 schema 的存储格式。
-  const sanitizedStorageNodes = storageNodes?.map((node) => {
-    const storageNode = { ...node } as typeof node & { toolDescription?: unknown };
-    delete storageNode.toolDescription;
-    return storageNode;
-  });
 
   const create = async (session: ClientSession) => {
     const _avatar = await (async () => {
@@ -251,7 +260,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: sanitizedStorageNodes ?? normalizedWorkflow.nodes,
+            nodes: storageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,
@@ -341,12 +350,16 @@ export const onUpdateAppWorkflow = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot: false },
+    handle: modelHandle
+  });
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });

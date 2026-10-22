@@ -8,7 +8,9 @@ const workspaceFilters = {
   admin: '@fastgpt/admin',
   global: '@fastgpt/global',
   service: '@fastgpt/service',
-  web: '@fastgpt/web'
+  web: '@fastgpt/web',
+  'workflow-core': '@fastgpt/workflow-core',
+  'workflow-cli': '@fastgpt/workflow-cli'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
 const supportedModes = ['unit', 'integration', 'sandbox', 'all'];
@@ -47,7 +49,10 @@ const parseUnitScopes = (scopeValue) => {
   return [...new Set(expandedScopes)];
 };
 
-/** Resolve the root test mode and scope into an ordered execution plan. */
+/**
+ * Resolve the root test mode and scope into an ordered execution plan.
+ * @param {{ args?: string[], modeValue?: string, scopeValue?: string }} [options]
+ */
 export const resolveTestPlan = ({ args = [], modeValue, scopeValue } = {}) => {
   if (args.length > 0) {
     if (modeValue || scopeValue) {

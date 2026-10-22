@@ -1,6 +1,6 @@
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 

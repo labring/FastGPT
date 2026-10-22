@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { Box, Button, Flex, Grid, IconButton } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getClientToolPreviewNode,
+  getNewToolPreviewNode,
   getAppToolTemplates,
   getAppToolPaths
 } from '@/web/core/app/api/tool';
@@ -62,8 +62,7 @@ type Props = {
 export const childAppSystemKey: string[] = [
   NodeInputKeyEnum.forbidStream,
   NodeInputKeyEnum.history,
-  NodeInputKeyEnum.historyMaxAmount,
-  NodeInputKeyEnum.userChatInput
+  NodeInputKeyEnum.historyMaxAmount
 ];
 
 enum TemplateTypeEnum {
@@ -348,9 +347,8 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getClientToolPreviewNode({
+      const res = await getNewToolPreviewNode({
         appId: template.id,
-        getLatestVersion: true,
         source: template.source
       });
       const toolValid = validateToolConfiguration({
@@ -392,9 +390,9 @@ const RenderList = React.memo(function RenderList({
         getToolIdentityKey(tool.pluginId, tool.source) ===
         getToolIdentityKey(template.id, template.source)
     );
-    const name = t(parseI18nString(template.name, i18n.language));
+    const name = t(selectPluginText(template.name, i18n.language));
     const intro =
-      t(parseI18nString(template.intro || '', i18n.language)) ||
+      t(selectPluginText(template.intro, i18n.language)) ||
       t('common:core.workflow.Not intro');
     const isDebugTool = isDebugToolSource(template.source);
     const isSystemSource = template.source === 'system';

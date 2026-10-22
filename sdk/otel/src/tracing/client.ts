@@ -12,13 +12,27 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import type { TracingConfigureOptions, TracingOptions } from './types';
 
 type OtlpTraceExporterConfig = ConstructorParameters<typeof OTLPTraceExporter>[0];
+type OtelTracingState = {
+  configured: boolean;
+  configurePromise: Promise<void> | null;
+  tracerProvider: NodeTracerProvider | null;
+  extraSpanProcessors: SpanProcessor[];
+  defaultTracerName: string;
+  defaultTracerVersion: string | undefined;
+};
 
-let configured = false;
-let configurePromise: Promise<void> | null = null;
-let tracerProvider: NodeTracerProvider | null = null;
-let extraSpanProcessors: SpanProcessor[] = [];
-let defaultTracerName = 'fastgpt';
-let defaultTracerVersion: string | undefined;
+// instrumentation 与 API 路由会编出两份模块实例，模块级变量互不可见。
+const otelTracingGlobal = globalThis as typeof globalThis & {
+  otelTracingState?: OtelTracingState;
+};
+const otelTracingState: OtelTracingState = (otelTracingGlobal.otelTracingState ??= {
+  configured: false,
+  configurePromise: null,
+  tracerProvider: null,
+  extraSpanProcessors: [],
+  defaultTracerName: 'fastgpt',
+  defaultTracerVersion: undefined
+});
 
 function getEnvironmentVariable(name: string): string | undefined {
   return process.env[name];
@@ -76,16 +90,18 @@ function normalizeTracingOptions(options?: false | TracingOptions) {
 }
 
 export async function configureTracing(options: TracingConfigureOptions = {}) {
-  if (configured) return;
-  if (configurePromise) return configurePromise;
+  if (otelTracingState.configured) return;
+  if (otelTracingState.configurePromise) return otelTracingState.configurePromise;
 
-  configurePromise = (async () => {
+  otelTracingState.configurePromise = (async () => {
     const tracingOptions = normalizeTracingOptions(options.tracing);
-    defaultTracerName = options.defaultTracerName ?? defaultTracerName;
-    defaultTracerVersion = options.defaultTracerVersion ?? defaultTracerVersion;
+    otelTracingState.defaultTracerName =
+      options.defaultTracerName ?? otelTracingState.defaultTracerName;
+    otelTracingState.defaultTracerVersion =
+      options.defaultTracerVersion ?? otelTracingState.defaultTracerVersion;
 
     if (!tracingOptions.enabled) {
-      configured = true;
+      otelTracingState.configured = true;
       return;
     }
 
@@ -94,11 +110,11 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
         [ATTR_SERVICE_NAME]:
           tracingOptions.serviceName ??
           getEnvironmentVariable('OTEL_SERVICE_NAME') ??
-          defaultTracerName
+          otelTracingState.defaultTracerName
       }).merge(tracingOptions.additionalResource ?? null)
     );
 
-    const spanProcessors: SpanProcessor[] = [...extraSpanProcessors];
+    const spanProcessors: SpanProcessor[] = [...otelTracingState.extraSpanProcessors];
 
     if (hasOtlpEndpoint(tracingOptions.otlpExporterConfig)) {
       const exporter = new OTLPTraceExporter({
@@ -109,7 +125,7 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
       spanProcessors.push(new BatchSpanProcessor(exporter));
     }
 
-    tracerProvider = new NodeTracerProvider({
+    otelTracingState.tracerProvider = new NodeTracerProvider({
       resource,
       sampler: new ParentBasedSampler({
         root: new TraceIdRatioBasedSampler(tracingOptions.sampleRatio)
@@ -117,58 +133,61 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
       spanProcessors
     });
 
-    tracerProvider.register();
+    otelTracingState.tracerProvider.register();
 
-    configured = true;
+    otelTracingState.configured = true;
   })();
 
   try {
-    await configurePromise;
+    await otelTracingState.configurePromise;
   } catch (error) {
-    configurePromise = null;
+    otelTracingState.configurePromise = null;
     throw error;
   }
 }
 
 /** 注册额外的 span processor；相同实例重复注册时保持幂等。 */
 export function addSpanProcessor(processor: SpanProcessor): void {
-  if (extraSpanProcessors.includes(processor)) return;
-  if (tracerProvider) {
+  if (otelTracingState.extraSpanProcessors.includes(processor)) return;
+  if (otelTracingState.tracerProvider) {
     throw new Error('addSpanProcessor must be called before tracing is configured');
   }
-  extraSpanProcessors.push(processor);
+  otelTracingState.extraSpanProcessors.push(processor);
 }
 
 export async function disposeTracing() {
-  if (configurePromise) {
+  if (otelTracingState.configurePromise) {
     try {
-      await configurePromise;
+      await otelTracingState.configurePromise;
     } catch {
-      configurePromise = null;
+      otelTracingState.configurePromise = null;
       return;
     }
   }
 
-  if (!configured) return;
+  if (!otelTracingState.configured) return;
 
-  if (!tracerProvider) {
-    const processors = extraSpanProcessors;
-    configured = false;
-    configurePromise = null;
-    extraSpanProcessors = [];
+  if (!otelTracingState.tracerProvider) {
+    const processors = otelTracingState.extraSpanProcessors;
+    otelTracingState.configured = false;
+    otelTracingState.configurePromise = null;
+    otelTracingState.extraSpanProcessors = [];
     await Promise.all(processors.map((processor) => processor.shutdown()));
     return;
   }
 
-  await tracerProvider.shutdown();
+  await otelTracingState.tracerProvider.shutdown();
 
-  configured = false;
-  configurePromise = null;
-  tracerProvider = null;
-  extraSpanProcessors = [];
+  otelTracingState.configured = false;
+  otelTracingState.configurePromise = null;
+  otelTracingState.tracerProvider = null;
+  otelTracingState.extraSpanProcessors = [];
 }
 
-export function getTracer(name = defaultTracerName, version = defaultTracerVersion) {
+export function getTracer(
+  name = otelTracingState.defaultTracerName,
+  version = otelTracingState.defaultTracerVersion
+) {
   return trace.getTracer(name, version);
 }
 

@@ -12,7 +12,13 @@ const TeamAuditSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
-    required: true
+    required: function (this: { scope?: 'member' | 'system' }) {
+      return this.scope !== 'system';
+    }
+  },
+  scope: {
+    type: String,
+    enum: ['member', 'system']
   },
   teamId: {
     type: Schema.Types.ObjectId,

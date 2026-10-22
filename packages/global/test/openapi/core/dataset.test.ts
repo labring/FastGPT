@@ -12,6 +12,15 @@ import {
   PostDatasetSyncBodySchema
 } from '../../../openapi/core/dataset/api';
 import { CreateCollectionByFileIdBodySchema } from '../../../openapi/core/dataset/collection/createApi';
+import {
+  ChangeCollectionOwnerBodySchema,
+  ChangeCollectionOwnerResponseSchema,
+  GetCollectionCollaboratorListQuerySchema,
+  GetCollectionCollaboratorListResponseSchema,
+  ResumeCollectionInheritPermissionBodySchema,
+  UpdateCollectionCollaboratorBodySchema,
+  UpdateCollectionCollaboratorResponseSchema
+} from '../../../openapi/core/dataset/collection/api';
 import { DatasetItemSchema, DatasetListItemSchema } from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
@@ -20,7 +29,11 @@ const expectedPaths = {
   '/proApi/core/dataset/changeOwner': 'post',
   '/proApi/core/dataset/collaborator/list': 'get',
   '/proApi/core/dataset/collaborator/update': 'post',
-  '/proApi/core/dataset/datasetSync': 'post'
+  '/proApi/core/dataset/datasetSync': 'post',
+  '/proApi/core/dataset/collection/changeOwner': 'post',
+  '/proApi/core/dataset/collection/collaborator/list': 'get',
+  '/proApi/core/dataset/collection/collaborator/update': 'post',
+  '/core/dataset/collection/resumeInheritPermission': 'put'
 } as const;
 
 describe('Dataset OpenAPI contracts', () => {
@@ -156,5 +169,48 @@ describe('Dataset OpenAPI contracts', () => {
         })
       })
     );
+  });
+
+  it('groups collection permission APIs and validates their contracts', () => {
+    expect(
+      openAPIDocument.paths?.['/proApi/core/dataset/collection/changeOwner']?.post?.tags
+    ).toEqual([DevApiTagsMap.permissionResource, DevApiTagsMap.datasetPermission]);
+    expect(
+      openAPIDocument.paths?.['/proApi/core/dataset/collection/collaborator/list']?.get?.tags
+    ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.datasetPermission]);
+    expect(
+      openAPIDocument.paths?.['/proApi/core/dataset/collection/collaborator/update']?.post?.tags
+    ).toEqual([DevApiTagsMap.permissionCollaborator, DevApiTagsMap.datasetPermission]);
+    expect(
+      openAPIDocument.paths?.['/core/dataset/collection/resumeInheritPermission']?.put?.tags
+    ).toEqual([DevApiTagsMap.datasetPermission]);
+
+    expect(GetCollectionCollaboratorListQuerySchema.parse({ collectionId: objectId })).toEqual({
+      collectionId: objectId
+    });
+    expect(GetCollectionCollaboratorListResponseSchema.parse({ clbs: [] })).toEqual({ clbs: [] });
+
+    expect(() =>
+      UpdateCollectionCollaboratorBodySchema.parse({ collectionId: objectId, collaborators: [] })
+    ).toThrow();
+    expect(
+      UpdateCollectionCollaboratorBodySchema.parse({
+        collectionId: objectId,
+        collaborators: [{ tmbId: objectId, permission: 4 }]
+      })
+    ).toEqual({
+      collectionId: objectId,
+      collaborators: [{ tmbId: objectId, permission: 4 }]
+    });
+    expect(UpdateCollectionCollaboratorResponseSchema.parse(undefined)).toBeUndefined();
+
+    expect(ResumeCollectionInheritPermissionBodySchema.parse({ collectionId: objectId })).toEqual({
+      collectionId: objectId
+    });
+
+    expect(
+      ChangeCollectionOwnerBodySchema.parse({ collectionId: objectId, ownerId: objectId })
+    ).toEqual({ collectionId: objectId, ownerId: objectId });
+    expect(ChangeCollectionOwnerResponseSchema.parse(undefined)).toBeUndefined();
   });
 });

@@ -4,14 +4,17 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { CreateLLMResponseProps } from '../../../../request';
-import type { SandboxClient } from '../../../../../sandbox/interface/runtime';
+import type { SandboxClient } from '../../../../../sandbox/application/runtime/client';
+import type { SandboxToolCallValidator } from '../../../../../sandbox/application/toolCall/type';
 import type { AgentLoopToolCatalog } from '../tools';
 import type { AgentLoopDatasetSearchExecutor } from '../../../domain/systemTool/datasetSearch';
+import type { AgentLoopSystemTools } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPendingMainContext,
@@ -23,6 +26,7 @@ import type {
 
 export type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopPause,
@@ -32,7 +36,7 @@ export type {
 
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
   stream?: boolean;
@@ -48,8 +52,10 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   extractFiles?: boolean;
   lang?: localeType;
   maxRunAgentTimes?: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   checkIsStopping?: () => boolean;
+  systemTools?: AgentLoopSystemTools;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (e: {
     call: ChatCompletionMessageToolCall;
@@ -60,6 +66,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   ) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   sandboxToolContext?: {
     client: SandboxClient;
+    validate?: SandboxToolCallValidator;
   };
   executeReadFileTool?: AgentLoopReadFileExecutor;
   executeDatasetSearchTool?: AgentLoopDatasetSearchExecutor;

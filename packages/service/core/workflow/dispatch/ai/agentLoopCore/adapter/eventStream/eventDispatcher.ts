@@ -36,6 +36,7 @@ export const createAgentLoopCoreEventDispatcher = ({
     Extract<AgentLoopEvent, { type: 'tool_call' }>['call']
   >();
   const completedToolCallIds = new Set<string>();
+  const announcedActivityIds = new Set<string>();
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
@@ -79,6 +80,26 @@ export const createAgentLoopCoreEventDispatcher = ({
         });
         return;
       }
+      case 'tool_activity': {
+        if (!shouldStreamTool(event.toolName)) return;
+        if (!announcedActivityIds.has(event.callId)) {
+          announcedActivityIds.add(event.callId);
+          eventStream.streamToolCall(
+            {
+              id: event.callId,
+              type: 'function',
+              function: { name: event.toolName, arguments: '' }
+            },
+            { hideDetails: true }
+          );
+        }
+        if (event.status === 'done' && !completedToolCallIds.has(event.callId)) {
+          completedToolCallIds.add(event.callId);
+          // 空响应只作为完成信号，沿用现有 SSE 协议，不暴露实际执行结果。
+          eventStream.streamToolResponse({ toolCallId: event.callId, response: '' });
+        }
+        return;
+      }
       case 'tool_run_end': {
         if (completedToolCallIds.has(event.call.id)) return;
         completedToolCallIds.add(event.call.id);
@@ -90,6 +111,11 @@ export const createAgentLoopCoreEventDispatcher = ({
             toolCallId: event.call.id,
             response: event.response
           });
+        }
+        // 子工作流的多个 assistant value 已经在执行期间流出，父层下一段回答必须
+        // 使用新的 response id，否则前端会把它们拼成同一个 Markdown 段落。
+        if (event.assistantResponses?.length) {
+          eventStream.startNewAnswerBlock();
         }
         toolRunCollector?.appendToolNodeResponse({
           call: event.call,

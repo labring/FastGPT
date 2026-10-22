@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } = vi.hoisted(() => ({
@@ -16,7 +17,7 @@ const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } =
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: {
+  axiosWithoutSSRF: {
     post: postMock
   }
 }));
@@ -174,7 +175,7 @@ describe('Sangfor provider', () => {
     );
   });
 
-  it('surfaces provider errors with an sangfor prefix', async () => {
+  it('provider 报错时落通用解析失败诊断码，原始错误不透出', async () => {
     postMock.mockResolvedValueOnce({ data: { error: 'document is unsupported' } });
 
     await expect(
@@ -182,7 +183,35 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] document is unsupported');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
+  });
+
+  it('白名单内的 statusText 透传为对应诊断码', async () => {
+    const axiosError = Object.assign(new Error('Request failed with status code 500'), {
+      response: { data: { statusText: CommonErrEnum.unsupportedParseFileType } }
+    });
+    postMock.mockRejectedValueOnce(axiosError);
+
+    await expect(
+      parseFromSangfor({
+        fileBuffer: Buffer.from('content'),
+        extension: 'docx'
+      })
+    ).rejects.toThrow(CommonErrEnum.unsupportedParseFileType);
+  });
+
+  it('响应体缺失 statusText 时落通用解析失败诊断码', async () => {
+    const axiosError = Object.assign(new Error('Request failed with status code 500'), {
+      response: { data: { detail: 'quota exceeded' } }
+    });
+    postMock.mockRejectedValueOnce(axiosError);
+
+    await expect(
+      parseFromSangfor({
+        fileBuffer: Buffer.from('content'),
+        extension: 'pdf'
+      })
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 
   it('rejects malformed success responses', async () => {
@@ -193,7 +222,7 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'pdf'
       })
-    ).rejects.toThrow('[sangfor]');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 
   it('rejects parsing when the provider URL is missing', async () => {
@@ -211,17 +240,17 @@ describe('Sangfor provider', () => {
 });
 
 describe('getDatasetIultmzhFileParseConfig', () => {
-  const allDisabled = {
+  const defaultConfig = {
     keep_header_footer: false,
-    keep_appendix: false,
+    keep_appendix: true,
     image_analysis: false,
     chart_analysis: false
   };
 
   it('为空数据集/空配置补全四布尔默认值', () => {
-    expect(getDatasetIultmzhFileParseConfig(undefined)).toEqual(allDisabled);
-    expect(getDatasetIultmzhFileParseConfig(null)).toEqual(allDisabled);
-    expect(getDatasetIultmzhFileParseConfig({})).toEqual(allDisabled);
+    expect(getDatasetIultmzhFileParseConfig(undefined)).toEqual(defaultConfig);
+    expect(getDatasetIultmzhFileParseConfig(null)).toEqual(defaultConfig);
+    expect(getDatasetIultmzhFileParseConfig({})).toEqual(defaultConfig);
   });
 
   it('保留已配置字段,仅补全缺失字段', () => {
@@ -229,9 +258,27 @@ describe('getDatasetIultmzhFileParseConfig', () => {
       getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_header_footer: true } })
     ).toEqual({
       keep_header_footer: true,
-      keep_appendix: false,
+      keep_appendix: true,
       image_analysis: false,
       chart_analysis: false
+    });
+  });
+
+  it('显式关闭页眉页脚时不被默认值覆盖', () => {
+    expect(
+      getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_header_footer: false } })
+    ).toEqual({
+      ...defaultConfig,
+      keep_header_footer: false
+    });
+  });
+
+  it('显式关闭附录保留时不被默认值覆盖', () => {
+    expect(
+      getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_appendix: false } })
+    ).toEqual({
+      ...defaultConfig,
+      keep_appendix: false
     });
   });
 });

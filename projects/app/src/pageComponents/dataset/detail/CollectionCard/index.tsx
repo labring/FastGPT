@@ -1,5 +1,5 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -9,21 +9,32 @@ import {
   Th,
   Td,
   Tbody,
-  MenuButton,
   Switch,
   Checkbox,
   HStack,
-  Button
+  Button,
+  Skeleton
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
   putDatasetCollectionById,
-  postLinkCollectionSync
+  postLinkCollectionSync,
+  getDatasetCollectionById,
+  getCollectionCollaboratorList,
+  postUpdateCollectionCollaborators,
+  putResumeCollectionInheritPermission,
+  postChangeCollectionOwner,
+  canBatchDownloadDatasetCollections,
+  createBatchDownloadDatasetCollectionsSubmitter
 } from '@/web/core/dataset/api/collection';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import {
+  createDatasetStatusRequest,
+  useDatasetStatusPolling
+} from '@/web/core/dataset/hooks/useDatasetStatusPolling';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -54,17 +65,24 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import {
+  canOpenCollectionTrainingStates,
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
 import TrainingErrorModal from './TrainingErrorModal';
 import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
+import { postEnableCollectionPermission } from '@/web/core/dataset/api';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
 const CollectionTagSetModal = dynamic(() => import('./CollectionTagSetModal'));
 const CollectionTagBatchModal = dynamic(() => import('./CollectionTagBatchModal'));
+const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -79,16 +97,31 @@ const CollectionCard = () => {
     permission: DatasetCollectionsListItemType['permission'];
   }>();
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
-  const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
+  const [datasetTrainingError, setDatasetTrainingError] = useState({
+    datasetId: '',
+    hasError: false
+  });
+  const hasDatasetTrainingError =
+    datasetTrainingError.datasetId === datasetDetail._id && datasetTrainingError.hasError;
   const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
   const [isBatchTagModalOpen, setIsBatchTagModalOpen] = useState(false);
+  const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionItemType>();
+  // 记录最近一次发起权限请求的 collection，用于丢弃快速切换目标时的过期响应。
+  const permissionTargetIdRef = useRef('');
+  const [isBatchDownloading, setIsBatchDownloading] = useState(false);
+  const batchDownloadSubmitterRef = useRef(createBatchDownloadDatasetCollectionsSubmitter());
+
+  useEffect(() => {
+    const batchDownloadSubmitter = batchDownloadSubmitterRef.current;
+    return () => batchDownloadSubmitter.cleanup();
+  }, []);
 
   const {
     collections,
     Pagination,
     total,
     getData,
-    isGetting,
+    isInitialLoading,
     pageNum,
     pageSize,
     scrollContainerRef
@@ -105,6 +138,7 @@ const CollectionCard = () => {
         return {
           ...collection,
           icon,
+          canOpenTrainingStates: canOpenCollectionTrainingStates(collection),
           statusText,
           statusColorSchema
         };
@@ -132,20 +166,25 @@ const CollectionCard = () => {
     title: t('common:Rename')
   });
 
-  const { runAsync: refreshDatasetTrainingError } = useRequest(
-    async () => {
-      const res = await checkDatasetTrainingError(datasetDetail._id);
-      return res.hasError;
-    },
-    {
-      manual: false,
-      refreshDeps: [datasetDetail._id],
-      errorToast: '',
-      onSuccess(hasError) {
-        setHasDatasetTrainingError(hasError);
-      }
-    }
+  const trainingErrorRequest = useMemo(
+    () =>
+      createDatasetStatusRequest(
+        async () => {
+          const id = datasetDetail._id;
+          if (!id) return false;
+          const { hasError } = await checkDatasetTrainingError(id);
+          return hasError;
+        },
+        (hasError) => setDatasetTrainingError({ datasetId: datasetDetail._id, hasError })
+      ),
+    [datasetDetail._id]
   );
+  const refreshDatasetTrainingError = trainingErrorRequest.refresh;
+  useEffect(() => {
+    trainingErrorRequest.activate();
+    trainingErrorRequest.refresh().catch(() => undefined);
+    return trainingErrorRequest.deactivate;
+  }, [trainingErrorRequest]);
 
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
@@ -191,30 +230,88 @@ const CollectionCard = () => {
     errorToast: t('common:core.dataset.error.Start Sync Failed')
   });
 
+  /**
+   * 读取目标 collection 详情并写入权限弹窗状态。
+   * 快速切换目标时按最近一次请求的 ID 丢弃过期响应，避免旧详情覆盖新选中的 collection。
+   */
+  const { runAsync: loadPermissionCollection, loading: isOpeningCollectionPer } = useRequest(
+    async (collectionId: string) => {
+      const detail = await getDatasetCollectionById(collectionId);
+      if (permissionTargetIdRef.current !== collectionId) return;
+      setEditPerCollection(detail);
+    }
+  );
+
+  /**
+   * 开启数据集权限并打开配置窗：物化全部 collection 权限快照 → 刷新知识库详情（开关状态）→ 读取目标详情。
+   * 流程独立于确认框执行，失败由请求层提示，开关保持原值。
+   */
+  const { runAsync: enableCollectionPerAndOpen, loading: isEnablingCollectionPer } = useRequest(
+    async (collectionId: string) => {
+      await postEnableCollectionPermission({ datasetId: datasetDetail._id });
+      await loadDatasetDetail(datasetDetail._id);
+      await loadPermissionCollection(collectionId);
+    }
+  );
+
+  const {
+    openConfirm: openCollectionPerEnableConfirm,
+    ConfirmModal: ConfirmCollectionPerEnableModal
+  } = useConfirm({
+    content: t('common:permission.collection_permission_enable_confirm')
+  });
+
+  /** 权限弹窗内写操作后刷新列表权限摘要与当前 collection 详情，避免继承态/owner 停留在旧值。 */
+  const refreshPermissionCollection = async () => {
+    if (!editPerCollection) return;
+    await getData(pageNum);
+    await loadPermissionCollection(editPerCollection._id);
+  };
+
+  /**
+   * 打开 collection 权限配置。
+   * collection 未开启数据集权限时先二次确认，确认后由 enableCollectionPerAndOpen 完成物化再打开配置窗；
+   * 已开启时直接读取详情并打开。确认框先关闭再执行异步流程，避免弹窗退出期间的状态刷新打断关闭动画。
+   */
+  const onOpenCollectionPer = (collectionId: string) => {
+    permissionTargetIdRef.current = collectionId;
+
+    if (datasetDetail.collectionPermissionEnabled === true) {
+      loadPermissionCollection(collectionId);
+      return;
+    }
+
+    openCollectionPerEnableConfirm({
+      onConfirm: () => {
+        enableCollectionPerAndOpen(collectionId).catch(() => undefined);
+      }
+    })();
+  };
+
   const hasTrainingData = useMemo(
     () => !!formatCollections.find((item) => item.trainingAmount > 0),
     [formatCollections]
   );
 
-  useRequest(
-    async () => {
-      const shouldRefreshTrainingError =
-        hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active;
+  // 删除是 owner 专属操作：批量删除仅作用于选中项中的 owner 项，其余项被过滤并提示。
+  const ownedSelectedItems = useMemo(
+    () => selectedItems.filter((item) => item.permission.isOwner),
+    [selectedItems]
+  );
+  const hasFilteredUnDeletableItems = ownedSelectedItems.length < selectedItems.length;
 
-      if (datasetDetail.status !== DatasetStatusEnum.active) {
-        loadDatasetDetail(datasetDetail._id);
-      }
-      if (hasTrainingData) {
-        getData(pageNum);
-      }
-      if (shouldRefreshTrainingError) {
-        await refreshDatasetTrainingError().catch(() => undefined);
-      }
+  useDatasetStatusPolling(
+    async () => {
+      const isDatasetProcessing = datasetDetail.status !== DatasetStatusEnum.active;
+      // 列表独立轮询，不依赖知识库任务状态或旧列表；其它页面启动的训练也能被发现。
+      // 所有子请求都结束后，才能开始下一轮的等待；单个失败不能提前结束本轮。
+      await Promise.allSettled([
+        ...(isDatasetProcessing ? [loadDatasetDetail(datasetDetail._id)] : []),
+        getData(pageNum),
+        ...(hasTrainingData || isDatasetProcessing ? [refreshDatasetTrainingError()] : [])
+      ]);
     },
-    {
-      pollingInterval: 6000,
-      manual: false
-    }
+    { ready: !!datasetDetail._id, refreshDeps: [datasetDetail._id] }
   );
 
   const { getBoxProps, isDropping } = useFolderDrag({
@@ -234,23 +331,40 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isGetting || isDropping;
+  const isLoading = isUpdating || isSyncing || isDropping || isEnablingCollectionPer;
+
+  const onBatchDownload = () => {
+    batchDownloadSubmitterRef.current.submit({
+      datasetId: datasetDetail._id,
+      collectionIds: selectedItems.map((item) => item._id),
+      onSubmittingChange: setIsBatchDownloading,
+      onError: (error) => {
+        toast({
+          status: 'error',
+          title: getErrText(error, t('dataset:archive.download_failed'))
+        });
+      }
+    });
+  };
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
-      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'}>
         {/* header */}
-        <Header
-          hasTrainingData={hasTrainingData}
-          hasTrainingError={hasDatasetTrainingError}
-          onOpenTrainingErrorModal={() => setIsTrainingErrorModalOpen(true)}
-        />
+        <Box px={[2, 6]} minH={'36px'} flexShrink={0}>
+          <Header
+            hasTrainingData={hasTrainingData}
+            hasTrainingError={hasDatasetTrainingError}
+            onOpenTrainingErrorModal={() => setIsTrainingErrorModalOpen(true)}
+          />
+        </Box>
 
         {/* collection table */}
         <FixedTableContainer
           maxH="none"
           ref={scrollContainerRef}
           mt={3}
+          px={[2, 6]}
           fontSize={'sm'}
           flex={'1 0 0'}
           h={0}
@@ -260,6 +374,22 @@ const CollectionCard = () => {
                 pt={4}
                 Controler={
                   <HStack>
+                    {hasFilteredUnDeletableItems && (
+                      <Box color={'myGray.500'} userSelect={'none'} fontSize={'sm'}>
+                        {t('dataset:collection.filtered_no_delete_permission_tip')}
+                      </Box>
+                    )}
+                    {canBatchDownloadDatasetCollections(datasetDetail.type) && (
+                      <Button
+                        variant={'whiteBase'}
+                        leftIcon={<MyIcon name={'common/download'} w={4} />}
+                        isLoading={isBatchDownloading}
+                        isDisabled={isBatchDownloading}
+                        onClick={onBatchDownload}
+                      >
+                        {t('dataset:batch_download')}
+                      </Button>
+                    )}
                     {datasetDetail.permission.hasWritePer &&
                       datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
                       feConfigs?.isPlus && (
@@ -267,22 +397,24 @@ const CollectionCard = () => {
                           {t('dataset:tag.batch_edit')}
                         </Button>
                       )}
-                    <Button
-                      variant={'whiteBase'}
-                      onClick={() =>
-                        openDeleteConfirm({
-                          onConfirm: () =>
-                            onDelCollection(selectedItems.map((e) => e._id)).then(() =>
-                              setSelectedItems([])
-                            ),
-                          customContent: t('dataset:confirm_delete_collection', {
-                            num: selectedItems.length
-                          })
-                        })()
-                      }
-                    >
-                      {t('dataset:batch_delete')}
-                    </Button>
+                    {ownedSelectedItems.length > 0 && (
+                      <Button
+                        variant={'whiteBase'}
+                        onClick={() =>
+                          openDeleteConfirm({
+                            onConfirm: () =>
+                              onDelCollection(ownedSelectedItems.map((e) => e._id)).then(() =>
+                                setSelectedItems([])
+                              ),
+                            customContent: t('dataset:confirm_delete_collection', {
+                              num: ownedSelectedItems.length
+                            })
+                          })()
+                        }
+                      >
+                        {t('dataset:batch_delete')}
+                      </Button>
+                    )}
                   </HStack>
                 }
               >
@@ -314,6 +446,23 @@ const CollectionCard = () => {
             </Thead>
             <Tbody>
               <Tr h={'5px'} />
+              {isInitialLoading &&
+                Array.from({ length: 3 }, (_, index) => (
+                  <Tr key={index} aria-hidden="true">
+                    <Td py={4}>
+                      <HStack>
+                        <Skeleton boxSize={4} borderRadius="sm" />
+                        <Skeleton boxSize={5} borderRadius="sm" />
+                        <Skeleton h={4} w="60%" minW="100px" borderRadius="sm" />
+                      </HStack>
+                    </Td>
+                    {[16, 12, 28, 20, 8, 4].map((width, column) => (
+                      <Td key={column} py={4}>
+                        <Skeleton h={4} w={width} borderRadius="sm" />
+                      </Td>
+                    ))}
+                  </Tr>
+                ))}
               {formatCollections.map((collection) => (
                 <Tr
                   key={collection._id}
@@ -392,15 +541,21 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTooltip label={t('common:Click_to_expand')}>
+                    <MyTooltip
+                      label={
+                        !collection.canOpenTrainingStates ? undefined : t('common:Click_to_expand')
+                      }
+                    >
                       <MyTag
                         showDot
                         colorSchema={collection.statusColorSchema}
                         type={'fill'}
                         fontSize={'mini'}
                         letterSpacing={'0.5px'}
+                        cursor={!collection.canOpenTrainingStates ? 'default' : 'pointer'}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!collection.canOpenTrainingStates) return;
                           setTrainingStatesCollection({
                             collectionId: collection._id,
                             permission: collection.permission
@@ -409,7 +564,9 @@ const CollectionCard = () => {
                       >
                         <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                           {t(collection.statusText as any)}
-                          <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          {collection.canOpenTrainingStates && (
+                            <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          )}
                         </Flex>
                       </MyTag>
                     </MyTooltip>
@@ -429,10 +586,10 @@ const CollectionCard = () => {
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     {collection.permission.hasWritePer && (
                       <MyMenu
-                        width={100}
-                        offset={[-70, 5]}
+                        strategy="fixed"
+                        placement="bottom-end"
                         Button={
-                          <MenuButton
+                          <Box
                             w={'1.5rem'}
                             h={'1.5rem'}
                             borderRadius={'md'}
@@ -453,7 +610,7 @@ const CollectionCard = () => {
                               borderRadius={'md'}
                               cursor={'pointer'}
                             />
-                          </MenuButton>
+                          </Box>
                         }
                         menuList={[
                           {
@@ -491,6 +648,16 @@ const CollectionCard = () => {
                                       })
                                   })
                               },
+                              ...(collection.permission.hasManagePer
+                                ? [
+                                    {
+                                      icon: 'key',
+                                      label: t('common:permission.Permission'),
+                                      disabled: isOpeningCollectionPer || isEnablingCollectionPer,
+                                      onClick: () => onOpenCollectionPer(collection._id)
+                                    }
+                                  ]
+                                : []),
                               ...(feConfigs?.isPlus &&
                               datasetDetail.type !== DatasetTypeEnum.websiteDataset
                                 ? [
@@ -503,25 +670,30 @@ const CollectionCard = () => {
                                 : [])
                             ]
                           },
-                          {
-                            children: [
-                              {
-                                type: 'danger',
-                                icon: 'delete',
-                                label: t('common:Delete'),
-                                onClick: () =>
-                                  openDeleteConfirm({
-                                    onConfirm: () => onDelCollection([collection._id]),
-                                    customContent:
-                                      collection.type === DatasetCollectionTypeEnum.folder
-                                        ? t(
-                                            'common:dataset.collections.Confirm to delete the folder'
-                                          )
-                                        : t('common:dataset.Confirm to delete the file')
-                                  })()
-                              }
-                            ]
-                          }
+                          // 删除是 owner 专属操作：非 owner 的写入协作者不提供删除入口（与 SlideCard 一致）
+                          ...(collection.permission.isOwner
+                            ? [
+                                {
+                                  children: [
+                                    {
+                                      type: 'danger' as const,
+                                      icon: 'delete',
+                                      label: t('common:Delete'),
+                                      onClick: () =>
+                                        openDeleteConfirm({
+                                          onConfirm: () => onDelCollection([collection._id]),
+                                          customContent:
+                                            collection.type === DatasetCollectionTypeEnum.folder
+                                              ? t(
+                                                  'common:dataset.collections.Confirm to delete the folder'
+                                                )
+                                              : t('common:dataset.Confirm to delete the file')
+                                        })()
+                                    }
+                                  ]
+                                }
+                              ]
+                            : [])
                         ]}
                       />
                     )}
@@ -531,12 +703,47 @@ const CollectionCard = () => {
             </Tbody>
           </Table>
 
-          {total === 0 && <EmptyCollectionTip />}
+          {!isInitialLoading && total === 0 && <EmptyCollectionTip />}
         </FixedTableContainer>
 
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+        <ConfirmCollectionPerEnableModal />
+
+        {!!editPerCollection && (
+          <ConfigPerModal
+            avatar={editPerCollection.dataset.avatar}
+            name={editPerCollection.name}
+            hasParent
+            isInheritPermission={editPerCollection.inheritPermission !== false}
+            refetchResource={refreshPermissionCollection}
+            resumeInheritPermission={() =>
+              putResumeCollectionInheritPermission(editPerCollection._id).then(
+                refreshPermissionCollection
+              )
+            }
+            onChangeOwner={(tmbId) =>
+              postChangeCollectionOwner({
+                collectionId: editPerCollection._id,
+                ownerId: tmbId
+              }).then(refreshPermissionCollection)
+            }
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerCollection.permission,
+              roleList: CollectionRoleList,
+              onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
+              onUpdateCollaborators: (props) =>
+                postUpdateCollectionCollaborators({
+                  ...props,
+                  collectionId: editPerCollection._id
+                }),
+              refreshDeps: [editPerCollection._id, editPerCollection.inheritPermission]
+            }}
+            onClose={() => setEditPerCollection(undefined)}
+          />
+        )}
 
         {!!tagSetCollection && (
           <CollectionTagSetModal

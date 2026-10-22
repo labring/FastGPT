@@ -46,14 +46,19 @@ Dataset (知识库)
   - `chunkIndex`: 块索引位置
   - `imageId`: 关联图片ID
   - `history[]`: 修改历史
+  - `indexStatus`: 初次索引使用 `indexing / indexed / error`；索引重建使用 `rebuildIndexPending / rebuildIndexRunning / rebuildIndexFailed`。重建数量只从 data 统计，待重建和重建中合并为处理中，失败单独统计。
 
 ### 4. DatasetTraining (训练队列)
 - **作用**: 异步训练任务队列,负责向量化和索引生成
 - **训练模式**:
-  - `chunk`: 文本分块
+  - `index`: 为预创建数据生成索引
+  - `rebuild`: 重建已有数据的索引
+  - `chunk`: 已弃用，仅兼容历史记录；迁移至 `index`/`rebuild`，无消费者
   - `qa`: 问答对
   - `image`: 图像处理
   - `imageParse`: 图像解析
+- **状态展示**: 普通训练按 training 统计；rebuild training 只负责执行、异常详情和重试，不重复计入数量。集合弹窗通过一次 data 聚合获取已就绪、重建处理中和重建失败数量。
+- **欠费暂停**: 分批事务同时锁定 training 并将关联重建 data 标记失败，重建任务保留供用户重试；普通训练的 data 状态和 TTL 保持原策略。重试时关联重建 data 恢复为重建中。
 
 ## 代码目录结构
 
@@ -310,13 +315,13 @@ datasetId_1_externalFileId_1 (unique)
     updateTime: Date
   }],
 
-  rebuilding?: boolean                // 重建中标志
+  indexStatus?: indexing | indexed | error | rebuildIndexPending | rebuildIndexRunning | rebuildIndexFailed
 }
 
 // 索引
 teamId_1_datasetId_1_collectionId_1_chunkIndex_1_updateTime_-1
 teamId_1_datasetId_1_collectionId_1_indexes.dataId_1
-rebuilding_1_teamId_1_datasetId_1
+indexStatus_1_teamId_1_datasetId_1
 ```
 
 ### 4. DatasetTraining Schema (dataset_trainings 集合)

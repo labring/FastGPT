@@ -9,8 +9,11 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
-  SearchDataResponseItemSchema
+  InheritPermissionInputSchema,
+  SearchDataResponseItemSchema,
+  type WithOptionalInheritPermission
 } from '../../../core/dataset/type';
+import { BoolSchema } from '../../../common/zod';
 import { AppListSortEnum } from '../../../core/app/constants';
 import {
   CollaboratorListSchema,
@@ -76,10 +79,13 @@ export const CreateDatasetBodySchema = z.object({
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
-  })
+  }),
+  inheritPermission: InheritPermissionInputSchema
 });
 
-export type CreateDatasetBody = z.infer<typeof CreateDatasetBodySchema>;
+export type CreateDatasetBody = WithOptionalInheritPermission<
+  z.infer<typeof CreateDatasetBodySchema>
+>;
 
 // 出参 Schema
 export const CreateDatasetResponseSchema = ObjectIdSchema.meta({
@@ -241,7 +247,17 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * Description: 分页获取当前用户有权限访问的知识库列表。
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
-export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend(PaginationSchema.shape);
+export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
+  withAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回被正式应用引用的数量'
+  }),
+  withFileCount: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否计算并返回知识库文件总数，默认不计算；统计所有层级的非目录集合，不按文件权限过滤'
+  })
+}).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 
 // 出参复用 DatasetListItemSchema
@@ -473,6 +489,42 @@ export type ResumeDatasetInheritPermissionBody = z.infer<
   typeof ResumeDatasetInheritPermissionBodySchema
 >;
 
+/** 启用 collection 级权限：物化该 dataset 全部 collection 快照后置位开关。 */
+export const EnableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type EnableCollectionPermissionBody = z.infer<typeof EnableCollectionPermissionBodySchema>;
+
+export const EnableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已物化的 collection 数量'
+  })
+});
+export type EnableCollectionPermissionResponse = z.infer<
+  typeof EnableCollectionPermissionResponseSchema
+>;
+
+/** 关闭 collection 级权限：清理该 dataset 全部 collection 权限配置后置位开关。 */
+export const DisableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type DisableCollectionPermissionBody = z.infer<typeof DisableCollectionPermissionBodySchema>;
+
+export const DisableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已清理的 collection 数量'
+  })
+});
+export type DisableCollectionPermissionResponse = z.infer<
+  typeof DisableCollectionPermissionResponseSchema
+>;
+
 /* ============================================================================
  * API: 创建知识库文件夹
  * Route: POST /api/core/dataset/folder/create
@@ -489,9 +541,12 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
-  })
+  }),
+  inheritPermission: InheritPermissionInputSchema
 });
-export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;
+export type CreateDatasetFolderBody = WithOptionalInheritPermission<
+  z.infer<typeof CreateDatasetFolderBodySchema>
+>;
 
 /* ============================================================================
  * API: 搜索测试

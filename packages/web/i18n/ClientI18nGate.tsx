@@ -23,7 +23,8 @@ const ClientI18nGate = ({
   fallback,
   children
 }: ClientI18nGateProps) => {
-  const { i18n } = useTranslation();
+  // 门禁只订阅语言状态；完整资源由下方统一加载，避免默认 common 的独立请求。
+  const { i18n } = useTranslation([]);
   const language = getLangMapping(getClientLanguagePreference(storageKey) || defaultLanguage);
   const requiredLanguages = useMemo(() => getRequiredI18nLanguages(language), [language]);
   const ready =

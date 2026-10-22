@@ -4,10 +4,12 @@ import type { OpenAPIPath } from '../../../type';
 import {
   CreateApiCollectionBodySchema,
   CreateApiCollectionV2BodySchema,
+  CreateApiCollectionV2ResponseSchema,
   CreateBackupCollectionMultipartSchema,
   CreateCollectionBodySchema,
   CreateCollectionByFileIdBodySchema,
   CreateCollectionByLocalFileFormSchema,
+  CreateCollectionWithResultResponseSchema,
   CreateImageCollectionMultipartSchema,
   CreateLinkCollectionBodySchema,
   CreateTemplateCollectionMultipartSchema,
@@ -176,7 +178,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建集合'
+          description: '成功创建集合',
+          content: {
+            'application/json': {
+              schema: CreateApiCollectionV2ResponseSchema
+            }
+          }
         }
       }
     }
@@ -199,7 +206,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功批量创建集合'
+          description: '成功批量创建集合，返回新建与失败的节点计数',
+          content: {
+            'application/json': {
+              schema: CreateApiCollectionV2ResponseSchema
+            }
+          }
         }
       }
     }
@@ -253,7 +265,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导入备份数据'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }
@@ -280,7 +297,12 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导入模板数据'
+          description: '成功返回集合 ID 及数据插入结果',
+          content: {
+            'application/json': {
+              schema: CreateCollectionWithResultResponseSchema
+            }
+          }
         }
       }
     }

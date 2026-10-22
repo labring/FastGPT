@@ -1,5 +1,5 @@
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type {
   ChatItemMiniType,
   UserChatItemFileItemType,
@@ -18,10 +18,8 @@ import { replaceS3KeyToPreviewUrl } from '../../common/s3/utils/preview';
 import { serviceEnv } from '../../env';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
-import { normalizeMimeType } from '../../common/s3/utils/mime';
 import {
   S3_ACCESS_LINK_ROUTES,
-  S3SignedDownloadAliasValueSchema,
   verifyS3DownloadAccess,
   type VerifiedS3DownloadAccess
 } from '../../common/s3/accessLink';
@@ -32,8 +30,16 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { FileSource } from '../../common/file/read/source';
 import { createExternalHttpFileSource, createS3FileSource } from '../../common/file/read/source';
 
+import {
+  prepareChatFiles,
+  parseUrlToChatFileType,
+  validateChatFileInput,
+  type FilePreparationContext
+} from './file/service';
+import { getFileUrlIdentity, isSignedDownloadAlias, selectFileInputs } from './file/utils';
+
 /** Workflow 等上层业务可显式注入的已授权文件读取能力。 */
-export type FileReadContext = {
+export type FileReadContext = FilePreparationContext & {
   limits?: {
     maxBytesPerFile: number;
   };
@@ -44,8 +50,6 @@ export type FileReadContext = {
         modelUrl: string;
       }
     | undefined;
-  resolveChatFile: (url: string) => UserChatItemFileItemType | undefined;
-  getIdentity: (url: string) => string | undefined;
   getSource: (url: string) => Promise<{
     source: FileSource;
     sourceKind: 'internal' | 'external';
@@ -64,34 +68,8 @@ type GetFileProps = {
   fileContext?: FileReadContext;
 };
 
-const fileTypeIncludesExtension = (fileTypes: string, extension: string) =>
-  !!extension && fileTypes.split(',').some((item) => item.trim() === extension);
-
-const resolveMediaChatFileTypeFromFilename = (filename?: string) => {
-  const extension = path.extname(filename || '').toLowerCase();
-  if (fileTypeIncludesExtension(imageFileType, extension)) return ChatFileTypeEnum.image;
-  if (fileTypeIncludesExtension(audioFileType, extension)) return ChatFileTypeEnum.audio;
-  if (fileTypeIncludesExtension(videoFileType, extension)) return ChatFileTypeEnum.video;
-};
-
-const resolveMediaChatFileTypeFromContentType = (contentType?: string) => {
-  const normalizedContentType = normalizeMimeType(contentType, '');
-  if (normalizedContentType.startsWith('image/')) return ChatFileTypeEnum.image;
-  if (normalizedContentType.startsWith('audio/')) return ChatFileTypeEnum.audio;
-  if (normalizedContentType.startsWith('video/')) return ChatFileTypeEnum.video;
-};
-
-const resolveMediaChatFileTypeFromDownloadAccess = (access: VerifiedS3DownloadAccess) => {
-  const contentTypeFileType = resolveMediaChatFileTypeFromContentType(access.responseContentType);
-  if (contentTypeFileType) return contentTypeFileType;
-
-  return (
-    resolveMediaChatFileTypeFromFilename(access.filename) ||
-    resolveMediaChatFileTypeFromFilename(access.objectKey)
-  );
-};
-
-const resolveSignedDownloadAliasFromUrl = (url: string) => {
+/** 从下载 API 或公开短路径提取 signed alias；访问权限仍由后续签名校验或 HTTP 读取判断。 */
+export const resolveSignedDownloadAliasFromUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url, 'http://localhost:3000');
     const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
@@ -112,7 +90,7 @@ const resolveSignedDownloadAliasFromUrl = (url: string) => {
       return decodeURIComponent(lastPathSegment);
     })();
 
-    return S3SignedDownloadAliasValueSchema.safeParse(signedAlias).success ? signedAlias : '';
+    return isSignedDownloadAlias(signedAlias) ? signedAlias : '';
   } catch {
     return '';
   }
@@ -139,12 +117,18 @@ const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => 
     const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(file.url);
     if (!shortDownloadAccess) return file;
 
-    const mediaType = resolveMediaChatFileTypeFromDownloadAccess(shortDownloadAccess);
-    if (!mediaType) return file;
+    const parsed = await parseUrlToChatFileType({
+      url: shortDownloadAccess.objectKey,
+      metadata: {
+        filename: shortDownloadAccess.filename,
+        contentType: shortDownloadAccess.responseContentType
+      }
+    });
+    if (!parsed || parsed.type === ChatFileTypeEnum.file) return file;
 
     return {
       ...file,
-      type: mediaType,
+      type: parsed.type,
       name:
         file.name ||
         shortDownloadAccess.filename ||
@@ -175,98 +159,6 @@ const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValu
   );
 
   return changed ? normalizedUserQuery : userQuery;
-};
-
-/**
- * 将 URL 解析成 ChatBox 文件结构。
- *
- * `urlTypeMap` 用于 workflow 运行态传入显式文件类型；普通聊天/辅助生成场景则按文件名后缀推断。
- */
-export const parseUrlToChatFileType = ({
-  url,
-  urlTypeMap = {}
-}: {
-  url: string;
-  urlTypeMap?: Record<string, ChatFileTypeEnum>;
-}): UserChatItemFileItemType | undefined => {
-  if (typeof url !== 'string') return;
-
-  if (url.startsWith('data:')) {
-    const matches = url.match(/^data:([^;]+);base64,/);
-    if (!matches) return;
-
-    const mimeType = matches[1].toLowerCase();
-    if (!mimeType.startsWith('image/')) return;
-
-    const extension = mimeType.split('/')[1];
-    return {
-      type: ChatFileTypeEnum.image,
-      name: `image.${extension}`,
-      url
-    };
-  }
-
-  try {
-    const parseUrl = new URL(url, 'http://localhost:3000');
-
-    const filename = (() => {
-      if (url.startsWith('chat/')) {
-        const basename = path.basename(url);
-        return basename.includes('.') ? basename : '';
-      }
-
-      const fromParam = parseUrl.searchParams.get('filename');
-      if (fromParam) return fromParam;
-
-      const basename = path.basename(parseUrl.pathname);
-      return basename.includes('.') ? basename : '';
-    })();
-
-    const type = urlTypeMap[url];
-    if (type) {
-      return {
-        type,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-
-    const extension = filename?.split('.').pop()?.toLowerCase() || '';
-
-    if (extension && imageFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.image,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-    if (extension && audioFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.audio,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-    if (extension && videoFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.video,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-
-    return {
-      type: ChatFileTypeEnum.file,
-      name: filename ? decodeURIComponent(filename) : url,
-      url
-    };
-  } catch {
-    return {
-      type: ChatFileTypeEnum.file,
-      name: url,
-      url
-    };
-  }
 };
 
 type ParsedFileItem = {
@@ -424,35 +316,39 @@ export const rewriteChatMessagesWithFileContext = async ({
 };
 
 /** 将已授权引用或绝对 HTTP(S) URL 归一化为可解析的文档 URL。 */
-export const normalizeReadableFileUrl = ({
+export const normalizeReadableFileUrl = async ({
   url,
   fileContext
 }: {
   url?: string;
   fileContext?: FileReadContext;
-}) => {
-  if (typeof url !== 'string') return '';
-
+}): Promise<string> => {
+  if (typeof url !== 'string' || !url.trim()) return '';
   const normalizedUrl = url.trim();
-  if (!normalizedUrl) return '';
 
-  if (fileContext) {
-    const ref = fileContext.resolve(normalizedUrl);
-    if (ref) return ref.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
+  // 调试续跑或直接调试解析节点时，短链可能尚未登记。先校验签名并用真实对象元数据分类，
+  // 避免把短链 token 当成带后缀的外链登记，遮蔽后续的 S3 文件读取路径。
+  if (
+    !fileContext?.resolveChatFile(normalizedUrl) &&
+    resolveSignedDownloadAliasFromUrl(normalizedUrl)
+  ) {
+    if (!validateChatFileInput({ url: normalizedUrl, fileContext })) return '';
+    const access = await resolveShortDownloadAccessFromUrl(normalizedUrl);
+    if (access) {
+      const file = await parseUrlToChatFileType({
+        url: access.objectKey,
+        metadata: { filename: access.filename, contentType: access.responseContentType }
+      });
+      return file?.type === ChatFileTypeEnum.file ? normalizedUrl : '';
+    }
   }
 
-  if (!/^https?:\/\//i.test(normalizedUrl)) return '';
-  if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
-    return '';
-  }
-
-  try {
-    const parsedURL = new URL(normalizedUrl);
-    if (parsedURL.protocol !== 'http:' && parsedURL.protocol !== 'https:') return '';
-    return normalizedUrl;
-  } catch {
-    return '';
-  }
+  const [file] = await prepareChatFiles({
+    files: [{ url: normalizedUrl }],
+    maxFiles: 1,
+    fileContext
+  });
+  return file?.type === ChatFileTypeEnum.file ? file.url : '';
 };
 
 /**
@@ -473,7 +369,7 @@ const getAuthorizedFileCacheSourceId = async ({
   const fileRef = fileContext?.resolve(url);
   if (fileRef) return fileContext?.getIdentity(url) ?? fileRef.modelUrl;
 
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('File URL must be an absolute HTTP(S) URL');
   }
 
@@ -516,7 +412,7 @@ export const getFileInfoFromUrl = async ({
     };
   }
 
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('File URL must be an absolute HTTP(S) URL');
   }
   const parsedUrl = new URL(url);
@@ -717,15 +613,19 @@ export const parseFileContentFromUrls = async ({
     content: string;
   }[]
 > => {
-  const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, fileContext }))
-    .filter(Boolean)
-    .slice(0, maxFiles);
+  // 空链接不占额度；数量上限同时约束探测和正文读取，超限文件不产生任何网络请求。
+  const candidateUrls = selectFileInputs({
+    files: urls.filter((url) => url.trim()),
+    maxFiles,
+    getIdentity: (url) => fileContext?.getIdentity(url.trim()) ?? getFileUrlIdentity(url.trim())
+  });
 
   const readFilesResult = await batchRun(
-    parseUrlList,
-    async (url) => {
+    candidateUrls,
+    async (inputUrl) => {
       try {
+        const url = await normalizeReadableFileUrl({ url: inputUrl, fileContext });
+        if (!url) return;
         const { name, content } = await getFileContentByUrl({
           url,
           teamId,
@@ -740,7 +640,7 @@ export const parseFileContentFromUrls = async ({
         return {
           success: false,
           name: '',
-          url,
+          url: inputUrl,
           content: getErrText(error, 'Load file error')
         };
       }
@@ -748,5 +648,5 @@ export const parseFileContentFromUrls = async ({
     5
   );
 
-  return readFilesResult;
+  return readFilesResult.filter((file): file is NonNullable<typeof file> => file !== undefined);
 };

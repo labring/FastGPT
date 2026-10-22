@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
@@ -57,11 +58,16 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
 
       return {
         collection,
-        ...(await formatDatasetDataValue({
-          q: datasetData.q,
-          a: datasetData.a,
-          imageId: datasetData.imageId
-        }))
+        ...(await formatDatasetDataValue(
+          {
+            q: datasetData.q,
+            a: datasetData.a,
+            imageId: datasetData.imageId
+          },
+          // 引用文本里的图片 key 必须绑定到已鉴权 collection 所属 dataset，
+          // 否则可借该接口为外库 key 签发短链。
+          { datasetIds: [String(collection.datasetId)] }
+        ))
       };
     } else {
       const { datasetData, collection } = await authDatasetData({
@@ -73,11 +79,14 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
       });
       return {
         collection,
-        ...(await formatDatasetDataValue({
-          q: datasetData.q,
-          a: datasetData.a,
-          imageId: datasetData.imageId
-        }))
+        ...(await formatDatasetDataValue(
+          {
+            q: datasetData.q,
+            a: datasetData.a,
+            imageId: datasetData.imageId
+          },
+          { datasetIds: [String(collection.datasetId)] }
+        ))
       };
     }
   })();

@@ -15,5 +15,11 @@
   "support_file_type": "{{fileType}} 파일 형식을 지원합니다",
   "template_csv_file_select_tip": "<highlight>템플릿을 정확히 준수하여</highlight> 작성한 {{fileType}} 파일만 지원합니다",
   "upload_error_description": "한 번에 여러 파일 또는 단일 폴더만 업로드할 수 있습니다",
-  "upload_failed": "업로드 실패"
+  "upload_failed": "업로드 실패",
+  "pdf_parse_failed": "문서 파싱에 실패했습니다. 잠시 후 다시 시도해 주세요",
+  "unsupported_parse_file_type": "지원되지 않는 파일 형식입니다. 지원되는 문서 형식(예: PDF, Word, Excel, PPT)을 업로드해 주세요",
+  "invalid_parse_file": "파일이 유효하지 않거나 손상되었습니다. 파일을 확인한 후 다시 업로드해 주세요",
+  "office_conversion_failed": "현재 이 파일을 읽을 수 없습니다. 파일이 손상되지 않았고 지원되는 형식인지 확인한 후 다시 업로드해 주세요. 그래도 읽을 수 없으면 잠시 후 다시 시도해 주세요.",
+  "docx_parse_invalid": "문서 형식이 유효하지 않거나 파일이 손상되었습니다. 파일을 확인한 후 다시 업로드해 주세요",
+  "docx_conversion_failed": "문서 파싱에 실패했습니다. 잠시 후 다시 시도해 주세요"
 }

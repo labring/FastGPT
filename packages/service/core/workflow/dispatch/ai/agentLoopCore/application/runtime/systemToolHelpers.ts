@@ -1,4 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -151,7 +152,7 @@ export const buildAgentLoopCoreSystemToolFileUrl = ({
   url: string;
   requestOrigin?: string;
 }) => {
-  if (/^https?:\/\//i.test(url)) return url;
+  if (isHttpUrl(url)) return url;
   if (requestOrigin && url.startsWith('/')) return `${requestOrigin}${url}`;
   return url;
 };

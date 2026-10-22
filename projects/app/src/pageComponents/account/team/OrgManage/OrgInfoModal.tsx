@@ -7,7 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
@@ -39,7 +39,7 @@ function OrgInfoModal({
   updateCurrentOrg: (data: { name?: string; avatar?: string; description?: string }) => void;
   parentId?: string;
 }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
 
   const isEdit = !!editOrg._id;
 

@@ -1,14 +1,55 @@
-Dockerfile
-.dockerignore
-node_modules
-npm-debug.log
-README.md
-.next
+# VCS & System files
 .git
+.gitignore
+.DS_Store
+*.pem
+*.swp
+*.swo
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.tsbuildinfo
+
+# Dependencies & Debug logs
+**/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build artifacts & local caches (防止本地 Mac/旧产物打入 Linux 镜像)
+**/.next
+**/.turbo
+**/dist
+**/out
+**/coverage
+projects/app/worker
+pro/admin/worker
 projects/volume-manager/dist
 
+# Rust build artifacts (忽略 Rust target 编译输出目录)
+**/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Env & Secrets (防止本地敏感环境配置打包进镜像)
+**/.env*.local
+**/.env.local
+**/.env.production.local
+**/.env.development.local
+
+# Temp & Cache
+tmp/
 .yalc/
 yalc.lock
 testApi/
-*.local.*
-*.local
+.antigravitycli/
+.chrome-user-data/
+document/.source/
+.gstack/
+
+# Docker & Meta
+Dockerfile*
+.dockerignore
+README.md

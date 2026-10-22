@@ -178,70 +178,44 @@ describe('form2AppWorkflow model reference', () => {
     );
   });
 
-  it('round-trips collectionFilterMatch through the dataset search node', () => {
+  it('saves a structured filter marker and round-trips conditions without a form version', () => {
     const form = getFormWithDataset();
+    delete form.dataset.collectionFilterVersion;
     form.dataset.collectionFilterMatch = {
-      logic: 'AND',
+      logic: 'OR',
       conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
     };
 
     const workflow = form2AppWorkflow(form, (key: string) => key);
-    const input = workflow.nodes
-      .flatMap((node) => node.inputs)
-      .find((item) => item.key === NodeInputKeyEnum.collectionFilterMatch);
-
-    expect(input).toMatchObject({
-      key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: ['datasetTagFilter', 'reference'],
-      value: form.dataset.collectionFilterMatch
-    });
-    expect(
-      appWorkflow2Form({ nodes: workflow.nodes, chatConfig: form.chatConfig }).dataset
-        .collectionFilterMatch
-    ).toEqual(form.dataset.collectionFilterMatch);
-  });
-
-  it('preserves the explicit legacy filter marker until the user upgrades it', () => {
-    const form = getFormWithDataset();
-    form.dataset[NodeInputKeyEnum.collectionFilterVersion] = 'legacy';
-    form.dataset.collectionFilterMatch = '{"tags":{"$and":["legacy"]}}';
-
-    const workflow = form2AppWorkflow(form, (key: string) => key);
-    const datasetNode = workflow.nodes.find(
-      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    const inputs = workflow.nodes.flatMap((node) => node.inputs);
+    expect(inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.collectionFilterVersion,
+          value: 'structured'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: ['datasetTagFilter', 'reference'],
+          value: form.dataset.collectionFilterMatch
+        })
+      ])
     );
-    expect(datasetNode).toBeTruthy();
-    expect(
-      datasetNode?.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterVersion)
-        ?.value
-    ).toBe('legacy');
-    expect(appWorkflow2Form({ nodes: workflow.nodes, chatConfig: {} }).dataset).toMatchObject({
-      [NodeInputKeyEnum.collectionFilterVersion]: 'legacy',
+    expect(appWorkflow2Form(workflow).dataset).toMatchObject({
+      collectionFilterVersion: 'structured',
       collectionFilterMatch: form.dataset.collectionFilterMatch
-    });
-
-    const unversionedNode = {
-      ...datasetNode!,
-      inputs: datasetNode!.inputs
-        .filter((input) => input.key !== NodeInputKeyEnum.collectionFilterVersion)
-        .map((input) =>
-          input.key === NodeInputKeyEnum.collectionFilterMatch
-            ? { ...input, value: undefined }
-            : input
-        )
-    };
-    expect(appWorkflow2Form({ nodes: [unversionedNode], chatConfig: {} }).dataset).toMatchObject({
-      [NodeInputKeyEnum.collectionFilterVersion]: 'structured'
     });
   });
 
   it('prioritizes pluginData name and avatar in appWorkflow2Form and falls back to node snapshot', () => {
-    const nodes = [
+    const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'tool-node-1',
+        position: { x: 0, y: 0 },
         pluginId: 'plugin-1',
         name: 'Snapshot Name 1',
         avatar: 'snapshot/avatar/1',
+        metadataLocale: 'en',
         flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [],
         outputs: [],
@@ -251,10 +225,12 @@ describe('form2AppWorkflow model reference', () => {
         }
       },
       {
+        position: { x: 0, y: 0 },
         nodeId: 'tool-node-2',
         pluginId: 'plugin-2',
         name: 'Snapshot Name 2',
         avatar: 'snapshot/avatar/2',
+        metadataLocale: 'zh-CN',
         flowNodeType: FlowNodeTypeEnum.tool,
         inputs: [],
         outputs: [],
@@ -264,10 +240,16 @@ describe('form2AppWorkflow model reference', () => {
       }
     ];
 
-    const form = appWorkflow2Form({ nodes: nodes as any, chatConfig: {} });
+    const form = appWorkflow2Form({ nodes, chatConfig: {} });
     expect(form.selectedTools).toHaveLength(2);
     expect(form.selectedTools[0].name).toBe('Updated Live Name 1');
     expect(form.selectedTools[0].avatar).toBe('live/avatar/1');
+    expect(form.selectedTools[0].metadataLocale).toBe('en');
+    expect(form.selectedTools[1].metadataLocale).toBe('zh-CN');
+
+    const savedWorkflow = form2AppWorkflow(form, (key: string) => key);
+    const savedTools = savedWorkflow.nodes.filter((node) => node.pluginId);
+    expect(savedTools.map((node) => node.metadataLocale)).toEqual(['en', 'zh-CN']);
     expect(form.selectedTools[1].name).toBe('Snapshot Name 2');
     expect(form.selectedTools[1].avatar).toBe('snapshot/avatar/2');
   });

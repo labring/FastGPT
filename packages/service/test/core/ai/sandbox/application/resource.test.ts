@@ -55,7 +55,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
 }));
 
 import {
-  deleteAppSandboxes,
+  deleteSandboxResourcesBySource,
   deleteSandboxResource,
   deleteSkillEditSandboxes,
   retryStaleStoppingSandboxes,
@@ -146,6 +146,27 @@ describe('sandbox resource lifecycle', () => {
     );
   });
 
+  it.each(['provisioning', 'restoring'])(
+    'does not delete a recent failed %s operation whose remote call may still be active',
+    async (status) => {
+      mocks.findSandboxInstanceBySandboxId.mockResolvedValue(
+        createResource({
+          status,
+          operation: {
+            id: 'failed',
+            type: status === 'provisioning' ? 'provision' : 'restore',
+            phase: 'claimed',
+            heartbeatAt: new Date(),
+            error: 'request timed out'
+          }
+        })
+      );
+      await expect(deleteSandboxResource(createResource())).rejects.toThrow('isolation window');
+      expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+      expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
+    }
+  );
+
   it('uses the cron candidate timestamp so a concurrent touch wins the stop CAS', async () => {
     const candidate = createResource({
       lastActiveAt: new Date('2026-07-01T00:00:00.000Z')
@@ -187,6 +208,7 @@ describe('sandbox resource lifecycle', () => {
 
   it('re-fences stale stopping operations before replaying provider stop', async () => {
     const stale = createClaimed('stopping', 'stop');
+    stale.operation.heartbeatAt = new Date(0);
     mocks.findStaleSandboxOperations.mockResolvedValueOnce([stale]);
     mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(stale);
 
@@ -194,7 +216,8 @@ describe('sandbox resource lifecycle', () => {
 
     expect(mocks.findStaleSandboxOperations).toHaveBeenCalledWith({
       statuses: ['stopping'],
-      heartbeatBefore: new Date('2026-07-09T23:45:00.000Z')
+      now: new Date('2026-07-10T00:00:00.000Z'),
+      heartbeatBefore: new Date('2026-07-09T23:55:00.000Z')
     });
     expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,6 +261,7 @@ describe('sandbox resource lifecycle', () => {
   it('finishes archiveDeleted delete phase without replaying remote side effects', async () => {
     const deleting = createClaimed('deleting', 'delete');
     deleting.operation.phase = 'archiveDeleted';
+    deleting.operation.heartbeatAt = new Date(0);
     const reclaimed = createClaimed('deleting', 'delete');
     reclaimed.operation.id = 'resumed-delete';
     reclaimed.operation.phase = 'archiveDeleted';
@@ -255,26 +279,44 @@ describe('sandbox resource lifecycle', () => {
     });
   });
 
-  it('uses source queries for app and skill bulk deletion', async () => {
-    const app = createResource();
+  it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
+    'queries and deletes only the requested %s source',
+    async (sourceType) => {
+      mocks.findSandboxResourcesBySource.mockResolvedValueOnce([createResource({ sourceType })]);
+
+      await deleteSandboxResourcesBySource({ sourceType, sourceId: 'app-1' });
+
+      expect(mocks.findSandboxResourcesBySource).toHaveBeenCalledExactlyOnceWith({
+        sourceType,
+        sourceId: 'app-1'
+      });
+      expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('does not acquire lifecycle leases when the source has no resources', async () => {
+    await deleteSandboxResourcesBySource({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1'
+    });
+
+    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+  });
+
+  it('uses the skill query for skill bulk deletion', async () => {
     const skill = createResource({
       sandboxId: 'skill-sandbox',
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'skill-1',
       userId: ChatSourceTypeEnum.skillEdit
     });
-    mocks.findSandboxResourcesBySource.mockResolvedValueOnce([app]);
     mocks.findSkillRelatedSandboxResources.mockResolvedValueOnce([skill]);
 
-    await deleteAppSandboxes('app-1');
     await deleteSkillEditSandboxes(['skill-1']);
 
-    expect(mocks.findSandboxResourcesBySource).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1'
-    });
+    expect(mocks.findSandboxResourcesBySource).not.toHaveBeenCalled();
     expect(mocks.findSkillRelatedSandboxResources).toHaveBeenCalledWith(['skill-1']);
-    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(2);
+    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
   });
 
   it('records every failed resource after bulk deletion settles', async () => {
@@ -290,9 +332,9 @@ describe('sandbox resource lifecycle', () => {
       return fn({ signal: new AbortController().signal, assertValid });
     });
 
-    await expect(deleteAppSandboxes('app-1')).rejects.toThrow(
-      'Failed to delete 2 sandbox resources'
-    );
+    await expect(
+      deleteSandboxResourcesBySource({ sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' })
+    ).rejects.toThrow('Failed to delete 2 sandbox resources');
 
     expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(3);
     expect(mocks.logger.error).toHaveBeenCalledWith('Failed to delete sandbox resources', {

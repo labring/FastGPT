@@ -48,12 +48,12 @@ export const UpdateDatasetSynonymFileBodySchema = UploadDatasetSynonymFileBodySc
 export type UpdateDatasetSynonymFileBody = z.infer<typeof UpdateDatasetSynonymFileBodySchema>;
 
 export const UploadDatasetSynonymFileFormSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: 'CSV、XLS 或 XLSX 同义词文件' }),
+  file: z.string().meta({ format: 'binary', description: 'CSV、XLS 或 XLSX 同义词文件' }),
   data: UploadDatasetSynonymFileBodySchema.meta({ description: 'JSON 序列化后的知识库参数' })
 });
 
 export const UpdateDatasetSynonymFileFormSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: 'CSV、XLS 或 XLSX 同义词文件' }),
+  file: z.string().meta({ format: 'binary', description: 'CSV、XLS 或 XLSX 同义词文件' }),
   data: UpdateDatasetSynonymFileBodySchema.meta({ description: 'JSON 序列化后的知识库参数' })
 });
 

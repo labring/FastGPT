@@ -1,14 +1,17 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { NextApiResponse } from 'next';
-import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
-import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
-import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import type { NextApiResponse } from 'next';
 
+import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   CreateQuestionGuideResponseSchema,
   CreateQuestionGuideV2BodySchema,
@@ -16,9 +19,8 @@ import {
   type CreateQuestionGuideV2BodyType
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,
@@ -38,6 +40,8 @@ async function handler(
   const {
     tmbId,
     teamId,
+    isRoot,
+    authType,
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId
   } = await authChatTargetCrud({
@@ -70,32 +74,39 @@ async function handler(
     field: 'obj value time'
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
-  const modelHandle = await getModelHandle();
-  const qgModelData = (() => {
-    if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
-      return modelHandle.getLLMModelData({
-        modelId: inputQuestionGuide.modelId,
-        model: inputQuestionGuide.model
-      });
-    }
-    if (
-      persistedQuestionGuide?.modelId !== undefined ||
-      persistedQuestionGuide?.model !== undefined
-    ) {
-      return modelHandle.getLLMModelData({
-        modelId: persistedQuestionGuide.modelId,
-        model: persistedQuestionGuide.model
-      });
-    }
-    return modelHandle.getDefaultModelData('llm');
-  })();
-  await authTargetModelResource({
-    targetType: resolvedSourceType,
-    targetId: resolvedSourceId,
-    modelId: qgModelData.modelId,
-    tmbId,
-    resources: appWorkflow?.resources
-  });
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const targetQuestionGuide =
+    inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined
+      ? inputQuestionGuide
+      : persistedQuestionGuide;
+  const explicitModel = modelHandle.getModelData(
+    {
+      modelId: targetQuestionGuide?.modelId,
+      model: targetQuestionGuide?.model
+    },
+    { type: ModelTypeEnum.llm, optional: true }
+  );
+  if (explicitModel) {
+    await authTargetModelResource({
+      targetType: resolvedSourceType,
+      targetId: resolvedSourceId,
+      modelId: explicitModel.modelId,
+      teamId,
+      tmbId,
+      isRoot,
+      authType,
+      handle: modelHandle,
+      resources: appWorkflow?.resources
+    });
+  }
+  const qgModelData =
+    explicitModel ??
+    modelHandle.getDefaultModelData('llm', {
+      authorizedIds: await getAuthorizedModelIds({
+        actor: { teamId, tmbId, isRoot },
+        handle: modelHandle
+      })
+    });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

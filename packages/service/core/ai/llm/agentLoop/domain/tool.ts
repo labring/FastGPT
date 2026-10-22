@@ -3,14 +3,31 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { SandboxClient } from '../../../sandbox/interface/runtime';
+import type { SandboxClient } from '../../../sandbox/application/runtime/client';
+import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
+import type { AgentAskPayload } from './systemTool/ask';
 import type { AgentLoopUsage } from './usage';
 
 export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   batchToolSize?: number;
 };
+
+/**
+ * 工具内部产生的可持久化 assistant 展示项。
+ *
+ * agent-loop 不解释这些字段，只负责沿工具执行结果和标准事件链路透传；
+ * workflow adapter 负责按顺序合并到最终 assistantResponses。
+ */
+/**
+ * Tool-generated assistant transcript kept opaque to the low-level agent loop.
+ *
+ * The workflow adapter owns the concrete chat value schema. Keeping this as an
+ * object contract avoids coupling the model loop to workflow/chat modules while
+ * still documenting that tool responses are structured assistant values.
+ */
+export type AgentLoopAssistantResponse = Record<string, unknown>;
 
 export type AgentLoopToolExecuteParams = {
   call: ChatCompletionMessageToolCall;
@@ -25,6 +42,8 @@ export type AgentLoopReadFileExecuteParams = {
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
+  /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
+  assistantResponses?: AgentLoopAssistantResponse[];
   usages: AgentLoopUsage[];
   interactive?: TChildrenResponse;
   stop?: boolean;
@@ -45,16 +64,26 @@ export type AgentLoopReadFileExecutor = (
   params: AgentLoopReadFileExecuteParams
 ) => Promise<AgentLoopReadFileExecutionResult>;
 
+export type AgentLoopAskValidator = (
+  ask: AgentAskPayload
+) => string | undefined | Promise<string | undefined>;
+
 export type AgentLoopSystemTools = {
   plan?: {
     enabled: boolean;
   };
   ask?: {
     enabled: boolean;
+    /** 由具体 Agent 注入交互约束；返回错误时将结果反馈给模型并继续当前 loop。 */
+    validate?: AgentLoopAskValidator;
   };
   sandbox?: {
     enabled: boolean;
     client: SandboxClient;
+    /** 业务访问限制在执行前校验，所有工具仍统一通过 client 执行。 */
+    validate?: SandboxToolCallValidator;
+    /** 仅调用方显式配置时，目录内的 sandbox_read_file 只公开活动信息；不限制模型读取和工具执行。 */
+    internalReadDirectories?: string[];
   };
   readFile?: {
     enabled: boolean;

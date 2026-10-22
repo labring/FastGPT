@@ -7,11 +7,14 @@ import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  type DeepRagSearchProps,
-  type SearchDatasetDataResponse
-} from '@fastgpt/service/core/dataset/search';
+  postCheckCensor,
+  postConcatUsage,
+  postCreateUsage,
+  postDeepRag,
+  postPushUsageItems
+} from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import type { DeepRagSearchProps } from '@fastgpt/service/core/dataset/search';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -19,13 +22,8 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import {
-  getAgentSandboxArchiveMaxBytes,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/interface/config';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
-import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -41,30 +39,32 @@ export function initGlobalVariables() {
   function initPlusRequest() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
       if (!isProVersion()) return Promise.resolve({ code: 200 });
-      return POST<{ code: number; message?: string }>('/common/censor/check', { text });
+      return postCheckCensor({ text });
     };
 
     global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
-      return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+      return postDeepRag(data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
-      return POST<string>('/support/wallet/usage/createUsage', data);
+      return postCreateUsage(data);
     };
     global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/concatUsage', data);
+      return postConcatUsage(data);
     };
     global.pushUsageItemsHandler = function pushUsageItemsHandler(data: PushUsageItemsProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/pushUsageItems', data);
+      return postPushUsageItems(data);
     };
   }
 
   global.datasetParseQueueLen = global.datasetParseQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
+  global.synonymQueueLen = global.synonymQueueLen ?? 0;
+  global.preCreatedQueueLen = global.preCreatedQueueLen ?? 0;
   initPlusRequest();
 }
 
@@ -92,11 +92,11 @@ export async function getInitConfig() {
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
-  show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
   enable_team_plugin_upload: false,
+  enable_team_model: false,
   appTemplateCourse:
     'https://fael3z0zfze.feishu.cn/wiki/CX9wwMGyEi5TL6koiLYcg7U0nWb?fromScene=spaceOverview',
   systemTitle: 'FastGPT',
@@ -105,18 +105,15 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
-    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   },
   scripts: [],
   favicon: '/favicon.ico',
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
-  uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -155,7 +152,6 @@ export async function initSystemConfig() {
       isProService: !!serviceEnv.PRO_URL,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
-      show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
@@ -164,12 +160,16 @@ export async function initSystemConfig() {
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
       marketplaceUrl: appEnv.MARKETPLACE_URL,
+      disableMarketplace: appEnv.DISABLE_MARKETPLACE,
 
-      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
-      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''
+      agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
+      show_agent_sandbox_free_tip:
+        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP
     },
     systemEnv: Object.assign(
       {
+        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
+        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
         datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
         vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
         qaMaxProcess: serviceEnv.QA_MAX_PROCESS,

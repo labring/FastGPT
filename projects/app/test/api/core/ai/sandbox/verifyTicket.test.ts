@@ -20,15 +20,22 @@ vi.mock('@/service/core/sandbox/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
-  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource,
+  buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
+}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/preview', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/preview', () => ({
   resolveSandboxPreviewSession: mocks.resolveSandboxPreviewSession
 }));
 
-import handler from '@/pages/api/core/ai/sandbox/verifyTicket';
+import apiHandler from '@/pages/api/core/ai/sandbox/verifyTicket';
+
+// NextAPI 在本文件中返回原始业务 handler，调用时无需 HTTP response 参数。
+const handler = apiHandler as (
+  req: Parameters<typeof apiHandler>[0]
+) => ReturnType<typeof apiHandler>;
 
 const secret = 'preview-secret-1234567890-1234567890';
 
@@ -50,9 +57,8 @@ const createTicket = (channel: 'fs' | 'terminal', permission = 'read') =>
 const createReq = (ticket: string) => ({ query: { ticket }, headers: {} }) as any;
 const previewSandboxId = 'app-0123456789abcdef';
 const previewSessionId = 'a12345678901234567890123';
-const previewCredential = `${previewSandboxId}:${previewSessionId}`;
 const createPreviewReq = () =>
-  ({ query: {}, headers: { 'x-sandbox-preview-session': previewCredential } }) as any;
+  ({ query: {}, headers: { 'x-sandbox-preview-session': previewSessionId } }) as any;
 const previewContext = {
   sandboxId: previewSandboxId,
   sourceType: ChatSourceTypeEnum.app,
@@ -75,16 +81,21 @@ describe('sandbox verifyTicket API', () => {
     });
   });
 
-  it('resolves preview sessions to the read-only HTTP listener', async () => {
-    await expect(handler(createPreviewReq())).resolves.toMatchObject({
-      sandbox_url: 'http://sandbox.internal',
-      agent_token: 'agent-password'
-    });
+  it.each([previewSessionId, `${previewSandboxId}:${previewSessionId}`])(
+    'resolves preview credential %s to the read-only HTTP listener',
+    async (credential) => {
+      const req = createPreviewReq();
+      req.headers['x-sandbox-preview-session'] = credential;
+      await expect(handler(req)).resolves.toMatchObject({
+        sandbox_url: 'http://sandbox.internal',
+        agent_token: 'agent-password'
+      });
 
-    expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(previewCredential);
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(previewContext);
-    expect(mocks.getEndpoint).toHaveBeenCalledWith(1319);
-  });
+      expect(mocks.resolveSandboxPreviewSession).toHaveBeenCalledWith(credential);
+      expect(mocks.getSandboxClient).toHaveBeenCalledWith(previewContext);
+      expect(mocks.getEndpoint).toHaveBeenCalledWith(1319);
+    }
+  );
 
   it('keeps WebSocket tickets on the existing IDE Agent listener', async () => {
     await handler(createReq(createTicket('fs')));

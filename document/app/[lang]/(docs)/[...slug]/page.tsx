@@ -56,8 +56,8 @@ export default async function Page({
         }))
     : [];
 
-  // 使用构建时导入的静态数据
-  const filePath = `content/${page.file.path}`;
+  // Use the physical locale file; the route path omits the language suffix.
+  const filePath = `content/${page.data._file.path}`;
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
@@ -110,7 +110,7 @@ export default async function Page({
           owner: 'labring',
           repo: 'FastGPT',
           sha: 'main',
-          path: `document/content/${page.file.path}`
+          path: `document/content/${page.data._file.path}`
         }}
         lastUpdate={lastModified ? new Date(lastModified) : undefined}
       >

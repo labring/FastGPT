@@ -11,6 +11,7 @@ export const processAssignPermissionSpecific = (metadata: any) => {
     appCreate: permission.hasAppCreatePer ? '✔' : '✘',
     datasetCreate: permission.hasDatasetCreatePer ? '✔' : '✘',
     apiKeyCreate: permission.hasApikeyCreatePer ? '✔' : '✘',
+    modelCreate: permission.hasModelCreatePer ? '✔' : '✘',
     manage: permission.hasManagePer ? '✔' : '✘'
   };
 };

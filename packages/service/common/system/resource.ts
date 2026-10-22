@@ -1,4 +1,5 @@
-import { availableParallelism, cpus, totalmem } from 'node:os';
+import { availableParallelism, totalmem } from 'node:os';
+import { memoize } from 'lodash-es';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 export type SystemCpuInfo = {
@@ -30,22 +31,24 @@ export type ReadableSystemResourceInfo = {
 /**
  * 获取当前进程可用的 CPU 信息。
  *
- * `availableParallelism` 会考虑容器 CPU 配额和进程亲和性；无法取得有效值时回退到
- * 系统逻辑 CPU 数，最终至少返回一个可用 CPU。
+ * 优先使用 `availableParallelism()`，其能够识别容器/cgroup CPU 配额及 CPU 亲和性，
+ * 获取到的结果通过 `memoize` 在进程生命周期内缓存，避免高频任务调度时重复调用系统 API。
  */
-export const getSystemCpuInfo = (): SystemCpuInfo => {
-  const logicalCpuCount = Math.max(1, cpus().length || 1);
-  const detectedAvailableCpuCount = availableParallelism?.();
-  const availableCpuCount =
-    Number.isFinite(detectedAvailableCpuCount) && detectedAvailableCpuCount > 0
-      ? Math.floor(detectedAvailableCpuCount)
-      : logicalCpuCount;
+export const getSystemCpuInfo = memoize((): SystemCpuInfo => {
+  const cpuCount = (() => {
+    try {
+      const val = availableParallelism();
+      return Number.isFinite(val) && val > 0 ? Math.floor(val) : 1;
+    } catch {
+      return 1;
+    }
+  })();
 
   return {
-    availableCpuCount: Math.max(1, availableCpuCount),
-    logicalCpuCount
+    availableCpuCount: cpuCount,
+    logicalCpuCount: cpuCount
   };
-};
+});
 
 /**
  * 获取当前进程可用的内存信息。

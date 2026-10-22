@@ -8,8 +8,9 @@ import {
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
 import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
+import { postDisableCollectionPermission } from '@/web/core/dataset/api';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { Box, Flex, Input, Switch } from '@chakra-ui/react';
+import { Box, Flex, Input, Switch, Skeleton, SkeletonText } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
@@ -36,8 +37,13 @@ const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServic
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
-    useContextSelector(DatasetPageContext, (v) => v);
+  const {
+    datasetDetail,
+    loadDatasetDetail,
+    updateDataset,
+    hasTrainingTask,
+    refreshCollectionList
+  } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
@@ -65,6 +71,25 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       title: t('common:action_confirm')
     });
 
+  const {
+    openConfirm: openConfirmDisableCollectionPer,
+    ConfirmModal: ConfirmDisableCollectionPerModal
+  } = useConfirm({
+    type: 'delete',
+    content: t('common:permission.collection_permission_disable_confirm')
+  });
+
+  /**
+   * 关闭数据集权限：清理全部 collection 协作者配置后刷新知识库详情。
+   * 该流程独立于确认框执行，失败由请求层提示且开关保持原值。
+   */
+  const { runAsync: disableCollectionPer, loading: isDisablingCollectionPer } = useRequest(
+    async () => {
+      await postDisableCollectionPermission({ datasetId });
+      await loadDatasetDetail(datasetId);
+    }
+  );
+
   const { runAsync: onSave } = useRequest(
     (data: DatasetItemType, clearVlmModel = false) => {
       if (clearVlmModel) return updateDataset({ id: datasetId, vlmModelId: null });
@@ -90,6 +115,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     },
     {
       onSuccess() {
+        refreshCollectionList();
         refetchDatasetTraining();
         loadDatasetDetail(datasetId);
       },
@@ -110,7 +136,19 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
-  const isTraining = rebuildingCount > 0 || trainingCount > 0;
+  const isTraining = hasTrainingTask;
+
+  if (datasetDetail._id !== datasetId) {
+    return (
+      <Box w="100%" p={6} aria-hidden="true">
+        <Flex alignItems="center" gap={1.5} mb={5}>
+          <Skeleton boxSize="20px" borderRadius="xs" flexShrink={0} />
+          <Skeleton h={5} flex={1} borderRadius="sm" />
+        </Flex>
+        <SkeletonText noOfLines={3} spacing={2} skeletonHeight={3} />
+      </Box>
+    );
+  }
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>
@@ -409,6 +447,34 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         )}
       </Box>
 
+      {datasetDetail.permission.hasManagePer &&
+        datasetDetail.collectionPermissionEnabled === true && (
+          <>
+            <MyDivider my={4} h={'2px'} maxW={'500px'} />
+            <Box fontSize={'mini'} color={'myGray.500'}>
+              {t('common:permission.collection_permission_enabled_tip')}
+              <Box
+                as={'span'}
+                ml={1}
+                textDecoration={'underline'}
+                cursor={'pointer'}
+                _hover={{ color: 'primary.600' }}
+                onClick={() =>
+                  !isDisablingCollectionPer &&
+                  openConfirmDisableCollectionPer({
+                    onConfirm: () => {
+                      // 确认框先关闭，清理流程独立执行，避免弹窗退出期间的状态刷新打断关闭动画。
+                      disableCollectionPer().catch(() => undefined);
+                    }
+                  })()
+                }
+              >
+                {t('common:permission.collection_permission_disable_action')}
+              </Box>
+            </Box>
+          </>
+        )}
+
       {datasetDetail.permission.hasManagePer && (
         <>
           <MyDivider my={4} h={'2px'} maxW={'500px'} />
@@ -432,6 +498,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />
+      <ConfirmDisableCollectionPerModal />
       {editedDataset && (
         <EditResourceModal
           {...editedDataset}

@@ -1,4 +1,4 @@
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -7,7 +7,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
 import type { ChatSchemaType } from '@fastgpt/global/core/chat/type';
 
 export type AuthSandboxSessionParams = {
@@ -29,8 +29,8 @@ export type SandboxSessionAuthResult = {
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
- * API 边界已将 appId/skillId 转成 sourceType/sourceId；这里仅按标准 chat source
- * 分发到 App Chat 或 Skill Edit 权限体系。
+ * API 边界已将 appId/skillId 转成 sourceType/sourceId；这里按标准 chat source
+ * 分发到对应权限体系。Workflow Builder 复用 App 写权限，但保留独立聊天和 Sandbox 身份。
  */
 export async function authSandboxSession({
   req,

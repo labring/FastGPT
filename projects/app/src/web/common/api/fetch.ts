@@ -7,14 +7,13 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { toChatAuthQueryTarget, type ChatAuthTargetInput } from '@/web/core/chat/utils';
 import {
   EventStreamContentType,
   fetchEventSource,
@@ -106,12 +105,13 @@ export const createResumeReadyNotifier = (onResumeReady?: () => void) => {
   };
 };
 
-const shouldSendStreamResumeHeader = (url: string) =>
+export const shouldSendStreamResumeHeader = (url: string) =>
   new Set([
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
     '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/proApi/core/workflow/builder/chat',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -143,6 +143,15 @@ export const getStreamTypingQueueConsumeCount = ({
   if (queueLength <= 0) return 0;
 
   return finished ? queueLength : Math.min(queueLength, STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING);
+};
+
+/** 收到回答文本时，只消费队首积压的 reasoning，保留回答文本原有的打字节奏。 */
+export const getStreamReasoningQueueConsumeCount = (queue: AnswerQueueItem[]) => {
+  let reasoningCount = 0;
+  while (reasoningCount < queue.length && queue[reasoningCount].reasoningText) {
+    reasoningCount += 1;
+  }
+  return reasoningCount;
 };
 
 type HandleEventSourceDataParams = {
@@ -179,9 +188,16 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
+      case SseResponseEventEnum.workflowBuilderVersion: {
+        onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
+        break;
+      }
+
       case SseResponseEventEnum.answer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, event, reasoningText });
+        if (reasoningText) {
+          enqueue({ responseValueId, event, reasoningText });
+        }
 
         const content = obj.choices?.[0]?.delta?.content || '';
 
@@ -198,7 +214,9 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
 
       case SseResponseEventEnum.fastAnswer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
-        enqueue({ responseValueId, event, reasoningText });
+        if (reasoningText) {
+          enqueue({ responseValueId, event, reasoningText });
+        }
 
         const text = obj.choices?.[0]?.delta?.content || '';
         enqueue({ responseValueId, event, text });
@@ -306,6 +324,14 @@ function $ssefetch(params: SSEFetchParams) {
       responseQueue.forEach(applyAnswerItem);
       responseQueue = [];
     };
+    const flushReasoningQueue = () => {
+      const reasoningCount = getStreamReasoningQueueConsumeCount(responseQueue);
+
+      if (reasoningCount === 0) return;
+
+      responseQueue.slice(0, reasoningCount).forEach(applyAnswerItem);
+      responseQueue = responseQueue.slice(reasoningCount);
+    };
     const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
       // 控制事件是顺序屏障：先补齐此前收到的文本，再立即更新工具或状态。
       flushAnswerQueue();
@@ -360,6 +386,10 @@ function $ssefetch(params: SSEFetchParams) {
     animateResponseLoop();
 
     const enqueue = (data: AnswerQueueItem) => {
+      // 一旦收到回答文本，先补齐此前积压的 reasoning，避免回答一直等思考动画。
+      if (data.text) {
+        flushReasoningQueue();
+      }
       responseQueue.push(data);
 
       if (document.hidden) {
@@ -497,6 +527,14 @@ function $resumefetch({
       responseQueue.forEach(applyAnswerItem);
       responseQueue = [];
     };
+    const flushReasoningQueue = () => {
+      const reasoningCount = getStreamReasoningQueueConsumeCount(responseQueue);
+
+      if (reasoningCount === 0) return;
+
+      responseQueue.slice(0, reasoningCount).forEach(applyAnswerItem);
+      responseQueue = responseQueue.slice(reasoningCount);
+    };
     const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
       // 恢复直播同样以控制事件为屏障，避免工具状态越过尚未展示的回答。
       flushAnswerQueue();
@@ -538,6 +576,10 @@ function $resumefetch({
         return;
       }
 
+      // 直播阶段收到回答文本时，先补齐此前积压的 reasoning。
+      if (data.text) {
+        flushReasoningQueue();
+      }
       responseQueue.push(data);
 
       if (document.hidden) {
@@ -655,12 +697,8 @@ function $resumefetch({
   });
 }
 
-export const streamFetch = ({
-  url = '/api/v2/chat/completions',
-  data,
-  onMessage,
-  abortCtrl
-}: StreamFetchProps) => {
+/** 构造通用 SSE 请求体，补充聊天运行参数并保留调用方的变量。 */
+export const buildStreamFetchBody = ({ data }: Pick<StreamFetchProps, 'data'>) => {
   const rawVars = data?.variables;
   const variables = {
     ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
@@ -668,6 +706,22 @@ export const streamFetch = ({
       : {}),
     cTime: formatTime2YMDHMW(new Date())
   };
+
+  return {
+    ...data,
+    variables,
+    detail: true,
+    stream: true,
+    retainDatasetCite: data.retainDatasetCite ?? true
+  };
+};
+
+export const streamFetch = ({
+  url = '/api/v2/chat/completions',
+  data,
+  onMessage,
+  abortCtrl
+}: StreamFetchProps) => {
   const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
   return $ssefetch({
@@ -681,13 +735,7 @@ export const streamFetch = ({
           [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
         })
       },
-      body: JSON.stringify({
-        ...data,
-        variables,
-        detail: true,
-        stream: true,
-        retainDatasetCite: data.retainDatasetCite ?? true
-      })
+      body: JSON.stringify(buildStreamFetchBody({ data }))
     },
     onmessage: onMessage,
     abortController: abortCtrl
@@ -702,36 +750,50 @@ type StreamResumeFetchParams = ChatAuthTargetInput & {
   controller: AbortController;
 };
 
-let activeResumeController: AbortController | undefined;
+const activeResumeControllerMap = new Map<string, AbortController>();
 
-export async function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, onResumeReady, controller } =
-    params;
-  const query = new URLSearchParams({ chatId });
-  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
-    query.set('outLinkAuthData', JSON.stringify(outLinkAuthData));
-  } else if ('skillId' in params && params.skillId) {
-    query.set('skillId', params.skillId);
-  } else {
-    query.set('appId', params.appId!);
-    if (params.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-      query.set('sourceType', ChatSourceTypeEnum.chatAgentHelper);
+/**
+ * 激活指定会话的续流控制器。
+ * 同一会话的新请求会替换旧请求，不同会话互不打断；旧请求结束时不能清理新请求。
+ */
+export const activateStreamResumeController = (resumeKey: string, controller: AbortController) => {
+  const activeController = activeResumeControllerMap.get(resumeKey);
+  if (activeController && activeController !== controller) {
+    activeController.abort('replace');
+  }
+  activeResumeControllerMap.set(resumeKey, controller);
+
+  return () => {
+    if (activeResumeControllerMap.get(resumeKey) === controller) {
+      activeResumeControllerMap.delete(resumeKey);
     }
-  }
+  };
+};
 
-  const url = `/api/core/chat/resume?${query}`;
+/** 复用统一鉴权参数构造续流地址，同时作为区分来源、资源和 chatId 的会话标识。 */
+export const buildStreamResumeUrl = ({
+  chatId,
+  chatTarget
+}: {
+  chatId: string;
+  chatTarget: ChatAuthTargetInput;
+}) => {
+  const query = new URLSearchParams({ chatId });
+  Object.entries(toChatAuthQueryTarget(chatTarget)).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
 
-  if (activeResumeController && activeResumeController !== controller) {
-    activeResumeController.abort('replace');
-  }
-  activeResumeController = controller;
+  return `/api/core/chat/resume?${query}`;
+};
+
+/** 恢复指定会话的回答流，只替换该会话的旧连接，并在结束时释放对应控制器。 */
+export async function streamResumeFetch(params: StreamResumeFetchParams) {
+  const { chatId, onmessage, onResumeUnavailable, onResumeReady, controller } = params;
+  const url = buildStreamResumeUrl({ chatId, chatTarget: params });
+  const deactivateController = activateStreamResumeController(url, controller);
 
   return $resumefetch({ url, onmessage, onResumeUnavailable, onResumeReady, controller }).finally(
-    () => {
-      if (activeResumeController === controller) {
-        activeResumeController = undefined;
-      }
-    }
+    deactivateController
   );
 }
 

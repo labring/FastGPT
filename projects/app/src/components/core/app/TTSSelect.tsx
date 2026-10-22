@@ -24,7 +24,6 @@ import AppConfigItem, { AppConfigItemAction } from './AppConfigItem';
 import ChatFunctionTip from './Tip';
 
 type TTSSelectorItemType = {
-  alias: string;
   avatar?: string;
   label: string | React.ReactNode;
   value: string;
@@ -57,13 +56,11 @@ const TTSSelect = ({
   const selectorList = useMemo(
     (): TTSSelectorItemType[] => [
       {
-        alias: t('app:tts_close'),
         label: t('app:tts_close'),
         value: TTSTypeEnum.none,
         children: []
       },
       {
-        alias: t('app:tts_browser'),
         label: t('app:tts_browser'),
         value: TTSTypeEnum.web,
         children: []
@@ -72,7 +69,6 @@ const TTSSelect = ({
         const providerData = getModelProvider(model.provider, i18n.language);
         const modelName = t(model.name as any);
         return {
-          alias: modelName,
           avatar: providerData.avatar,
           label: (
             <HStack minW={0} maxW={'100%'}>

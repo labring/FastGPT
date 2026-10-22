@@ -143,6 +143,14 @@ describe('4170 App resource snapshot migration', () => {
     });
     expect(state.getProgress()).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          key: 'clean_v1_apps',
+          status: SystemMigrationStatusEnum.running
+        }),
+        expect.objectContaining({
+          key: 'clean_v1_apps',
+          status: SystemMigrationStatusEnum.succeeded
+        }),
         expect.objectContaining({ key: 'versions', status: SystemMigrationStatusEnum.running }),
         expect.objectContaining({ key: 'versions', status: SystemMigrationStatusEnum.succeeded }),
         expect.objectContaining({ key: 'apps', status: SystemMigrationStatusEnum.running }),
@@ -180,20 +188,18 @@ describe('4170 App resource snapshot migration', () => {
     ]);
     const state = createContext({
       beforeSaveCheckpoint: async (callCount) => {
-        if (callCount === 2) throw new Error('checkpoint unavailable');
+        if (callCount === 8) throw new Error('checkpoint unavailable');
       }
     });
 
     await expect(backfillAppResourceSnapshots(state.context)).rejects.toThrow(
       'checkpoint unavailable'
     );
-    await expect(
-      MongoAppVersion.collection.findOne({ _id: records.version._id })
-    ).resolves.toMatchObject({
-      resources: [{ type: 'skill', id: 'published-skill' }]
+    await expect(MongoApp.collection.findOne({ _id: records.app._id })).resolves.toMatchObject({
+      publishedVersionId: records.version._id
     });
     expect(state.getCheckpoint()).toMatchObject({
-      stages: { versions: { processedCount: 0, lastId: null } }
+      stages: { apps: { processedCount: 0, lastId: null } }
     });
 
     await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
@@ -210,15 +216,12 @@ describe('4170 App resource snapshot migration', () => {
     ]);
     const state = createContext();
     const originalUpdateOne = MongoAppVersion.collection.updateOne.bind(MongoAppVersion.collection);
-    let changed = false;
+    let failedOnce = false;
     vi.spyOn(MongoAppVersion.collection, 'updateOne').mockImplementation(
       async (filter, update, options) => {
-        if (!changed) {
-          changed = true;
-          await originalUpdateOne(
-            { _id: records.version._id },
-            { $set: { nodes: [{ nodeId: 'changed-after-read' }] } }
-          );
+        if (!failedOnce) {
+          failedOnce = true;
+          throw new Error('Temporary database write failure');
         }
         return originalUpdateOne(filter, update, options);
       }
@@ -254,8 +257,18 @@ describe('4170 App resource snapshot migration', () => {
       MongoAppVersion.collection.insertOne(records.version)
     ]);
     const state = createContext();
-    state.context.assertActive.mockImplementationOnce(async () => {
-      await MongoAppVersion.collection.insertOne(lateVersion);
+    let versionStageStarted = false;
+    let lateVersionInserted = false;
+    state.context.reportProgress.mockImplementation(async (value) => {
+      if (value.key === 'versions' && value.status === SystemMigrationStatusEnum.running) {
+        versionStageStarted = true;
+      }
+    });
+    state.context.assertActive.mockImplementation(async () => {
+      if (versionStageStarted && !lateVersionInserted) {
+        lateVersionInserted = true;
+        await MongoAppVersion.collection.insertOne(lateVersion);
+      }
     });
 
     await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
@@ -367,5 +380,100 @@ describe('4170 App resource snapshot migration', () => {
         reason: { message: 'Auth service error' }
       })
     ]);
+  });
+
+  it('cleans legacy V1 apps and cascade deletes child apps and versions', async () => {
+    const v1AppId = new Types.ObjectId();
+    const childAppId = new Types.ObjectId();
+    const v1VersionId = new Types.ObjectId();
+
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        _id: v1AppId,
+        teamId,
+        tmbId,
+        name: 'V1 App',
+        type: 'simple',
+        modules: [
+          {
+            moduleId: 'userGuide',
+            flowType: 'userGuide'
+          }
+        ]
+      }),
+      MongoApp.collection.insertOne({
+        _id: childAppId,
+        parentId: v1AppId,
+        teamId,
+        tmbId,
+        name: 'Child Tool'
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v1VersionId,
+        appId: v1AppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        nodes: []
+      })
+    ]);
+
+    const state = createContext();
+    await backfillAppResourceSnapshots(state.context);
+
+    expect(await MongoApp.collection.findOne({ _id: v1AppId })).toBeNull();
+    expect(await MongoApp.collection.findOne({ _id: childAppId })).toBeNull();
+    expect(await MongoAppVersion.collection.findOne({ _id: v1VersionId })).toBeNull();
+  });
+
+  it('cleans legacy V1 app versions and backfills remaining V2 versions', async () => {
+    const appId = new Types.ObjectId();
+    const v1VersionId = new Types.ObjectId();
+    const v2VersionId = new Types.ObjectId();
+
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'V2 App with V1 History',
+        type: 'advanced',
+        modules: []
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v1VersionId,
+        appId,
+        tmbId,
+        time: new Date('2023-01-01'),
+        isPublish: false,
+        nodes: [
+          {
+            moduleId: 'userGuide',
+            flowType: 'userGuide'
+          }
+        ]
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v2VersionId,
+        appId,
+        tmbId,
+        time: new Date('2024-01-01'),
+        isPublish: true,
+        nodes: []
+      })
+    ]);
+
+    const state = createContext();
+    await backfillAppResourceSnapshots(state.context);
+
+    // V1 Version 应当被清理
+    expect(await MongoAppVersion.collection.findOne({ _id: v1VersionId })).toBeNull();
+    // V2 Version 应当保留并完成资源回填
+    const remainingVersion = await MongoAppVersion.collection.findOne({ _id: v2VersionId });
+    expect(remainingVersion).not.toBeNull();
+    expect(Array.isArray(remainingVersion?.resources)).toBe(true);
+    // App 依然存在且正式版本指针指向 V2 Version
+    const updatedApp = await MongoApp.collection.findOne({ _id: appId });
+    expect(updatedApp?.publishedVersionId).toEqual(v2VersionId);
   });
 });

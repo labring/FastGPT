@@ -70,6 +70,7 @@ export abstract class BaseSandboxAdapter implements ISandbox {
 
   // ==================== Lifecycle Methods ====================
 
+  abstract connectRunning(): Promise<void>;
   abstract ensureRunning(options?: SandboxEnsureRunningOptions): Promise<void>;
   abstract create(): Promise<void>;
   abstract start(): Promise<void>;

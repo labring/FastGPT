@@ -1,24 +1,23 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { NextApiResponse } from 'next';
 
-import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
-import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { type AuthModeType } from '@fastgpt/service/support/permission/type';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
-import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-
+import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
+import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
+import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
   CreateQuestionGuideBodySchema,
   CreateQuestionGuideResponseSchema,
   type CreateQuestionGuideResponseType
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 
 async function handler(
   req: ApiRequestProps,
@@ -26,13 +25,20 @@ async function handler(
 ): Promise<CreateQuestionGuideResponseType> {
   const { messages } = parseApiInput({ req, bodySchema: CreateQuestionGuideBodySchema }).body;
 
-  const { tmbId, teamId } = await authChatCert({
+  const { tmbId, teamId, authType, isRoot } = await authChatCert({
     req,
     authToken: true,
     authApiKey: true
   });
-  const modelHandle = await getModelHandle();
-  const qgModel = modelHandle.getDefaultModelData('llm');
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor:
+      authType === AuthUserTypeEnum.outLink
+        ? { source: 'outLink', teamId, tmbId }
+        : { teamId, tmbId, isRoot: Boolean(isRoot) },
+    handle: modelHandle
+  });
+  const qgModel = modelHandle.getDefaultModelData('llm', { authorizedIds });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],
@@ -67,6 +73,7 @@ async function authChatCert(props: AuthModeType): Promise<{
   apikey: string;
   isOwner: boolean;
   canWrite: boolean;
+  isRoot?: boolean;
   outLinkUid?: string;
 }> {
   const { shareId, outLinkUid } =
@@ -74,11 +81,7 @@ async function authChatCert(props: AuthModeType): Promise<{
       .outLinkAuthData || {};
 
   if (shareId && outLinkUid) {
-    const { outLinkConfig } = await authOutLinkValid({ shareId });
-    const { uid } = await authOutLinkInit({
-      outLinkUid,
-      tokenUrl: outLinkConfig.limit?.hookUrl
-    });
+    const { outLinkConfig, uid } = await authOutLink({ shareId, outLinkUid, req: props.req });
 
     return {
       teamId: String(outLinkConfig.teamId),

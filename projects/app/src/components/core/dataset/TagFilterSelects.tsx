@@ -12,21 +12,22 @@ import {
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import {
-  DatasetTagFilterFieldEnum,
-  DatasetTagFilterValueModeEnum,
   formatTagOptionKey,
   parseTagOptionKey,
   type DatasetTagFilterCondition,
   type DatasetTagFilterField,
   type DatasetTagFilterValueMode,
   type WorkflowTagFilterOption
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
-
-const FILE_TAGS = 'fileTags';
-const FILE_ATTRS = 'fileAttrs';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
+import {
+  DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum,
+  DatasetTagFilterValueModeEnum,
+  type TagFilterOperator
+} from '@fastgpt/global/core/dataset/constants';
 
 type FieldSelectValue = {
   field: DatasetTagFilterField;
@@ -36,107 +37,65 @@ type FieldSelectValue = {
   value?: unknown;
 };
 
-/** 选择标签：左侧文件标签 / 文件属性，右侧可搜索。选中后触发器只展示叶子名称。 */
-export const TagFilterFieldSelect = ({
-  condition,
-  options,
-  onChange
+type DropdownOptionItem = {
+  label: string;
+  value: string;
+  icon?: IconNameType;
+  iconFlip?: boolean;
+};
+
+/**
+ * 标签、系统属性与条件操作符共用的下拉选择底座，统一触发按钮省略、悬浮提示、可选搜索框与前缀图标。
+ */
+const TagFilterDropdownSelect = ({
+  items,
+  selectedValue,
+  selectedLabel,
+  placeholder,
+  width = '110px',
+  highlightSelected = true,
+  searchable = false,
+  popoverWidth = '140px',
+  popoverMinWidth,
+  onSelect
 }: {
-  condition: DatasetTagFilterCondition;
-  options: WorkflowTagFilterOption[];
-  onChange: (value: FieldSelectValue) => void;
+  items: DropdownOptionItem[];
+  selectedValue: string;
+  selectedLabel: string;
+  placeholder: string;
+  width?: string;
+  highlightSelected?: boolean;
+  searchable?: boolean;
+  popoverWidth?: string;
+  popoverMinWidth?: string;
+  onSelect: (value: string) => void;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [search, setSearch] = useState('');
-  const selectedLabel = (() => {
-    if (condition.field === DatasetTagFilterFieldEnum.createTime) {
-      return t('common:core.dataset.collection.metadata.Createtime' as any);
-    }
-    if (condition.field === DatasetTagFilterFieldEnum.collectionId) {
-      return t('common:core.dataset.collection.id' as any);
-    }
-    return condition.tag ?? '';
-  })();
-  const selectedValue =
-    condition.field === DatasetTagFilterFieldEnum.createTime
-      ? DatasetTagFilterFieldEnum.createTime
-      : condition.field === DatasetTagFilterFieldEnum.collectionId
-        ? DatasetTagFilterFieldEnum.collectionId
-        : condition.tag && condition.tagType
-          ? formatTagOptionKey(condition.tag, condition.tagType)
-          : '';
-  const activeGroup =
-    condition.field === DatasetTagFilterFieldEnum.createTime ||
-    condition.field === DatasetTagFilterFieldEnum.collectionId
-      ? FILE_ATTRS
-      : FILE_TAGS;
 
-  const [group, setGroup] = useState(activeGroup);
-
-  const rightItems = useMemo(() => {
+  const filteredItems = useMemo(() => {
+    if (!searchable) return items;
     const keyword = search.trim().toLowerCase();
-    if (group === FILE_ATTRS) {
-      return [
-        {
-          label: t('common:core.dataset.collection.metadata.Createtime'),
-          value: DatasetTagFilterFieldEnum.createTime
-        },
-        {
-          label: t('common:core.dataset.collection.id'),
-          value: DatasetTagFilterFieldEnum.collectionId
-        }
-      ].filter((item) => !keyword || String(item.label).toLowerCase().includes(keyword));
-    }
-    return options
-      .filter((item) => !keyword || item.tag.toLowerCase().includes(keyword))
-      .map((item) => ({
-        label: item.tag,
-        value: formatTagOptionKey(item.tag, item.tagType)
-      }));
-  }, [group, options, search, t]);
+    if (!keyword) return items;
+    return items.filter((item) => item.label.toLowerCase().includes(keyword));
+  }, [items, search, searchable]);
 
   const handleOpen = () => {
-    setGroup(activeGroup);
-    setSearch('');
+    if (searchable) {
+      setSearch('');
+    }
     onOpen();
   };
 
-  const handleSelect = (value: string) => {
-    if (value === DatasetTagFilterFieldEnum.createTime) {
-      onChange({
-        field: DatasetTagFilterFieldEnum.createTime,
-        tagType: DatasetCollectionTagTypeEnum.datetime,
-        valueMode: DatasetTagFilterValueModeEnum.input,
-        value: undefined
-      });
-    } else if (value === DatasetTagFilterFieldEnum.collectionId) {
-      onChange({
-        field: DatasetTagFilterFieldEnum.collectionId,
-        tagType: DatasetCollectionTagTypeEnum.array,
-        valueMode: DatasetTagFilterValueModeEnum.reference,
-        value: ['', undefined]
-      });
-    } else {
-      const parsed = parseTagOptionKey(value);
-      onChange({
-        field: DatasetTagFilterFieldEnum.tag,
-        tag: parsed?.tag,
-        tagType: parsed?.tagType,
-        valueMode: DatasetTagFilterValueModeEnum.input,
-        value: undefined
-      });
-    }
-    onClose();
-  };
-
   return (
-    <Box flex={1} minW={'100px'}>
+    <Box w={width} flexShrink={0}>
       <Popover
         isOpen={isOpen}
         onOpen={handleOpen}
         onClose={onClose}
         placement={'bottom-start'}
+        autoFocus={false}
         isLazy
       >
         <PopoverTrigger>
@@ -146,7 +105,7 @@ export const TagFilterFieldSelect = ({
             variant={'whitePrimaryOutline'}
             h={'36px'}
             w={'100%'}
-            px={3}
+            px={2}
             fontSize={'sm'}
             fontWeight={'normal'}
             textAlign={'left'}
@@ -154,38 +113,34 @@ export const TagFilterFieldSelect = ({
             boxShadow={isOpen ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
             color={isOpen ? 'primary.700' : 'myGray.700'}
             bg={'white'}
+            _hover={{ borderColor: 'primary.300', color: 'primary.600' }}
             _active={{ transform: 'none' }}
             rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           >
-            <Flex w={'100%'} minW={0} alignItems={'center'}>
-              {selectedLabel ? (
-                <MyTooltip label={selectedLabel} showOnlyWhenOverflow shouldWrapChildren={false}>
-                  <Box
-                    px={'4px'}
-                    py={'2px'}
-                    bg={'myGray.100'}
-                    borderRadius={'xs'}
-                    color={'myGray.900'}
-                    maxW={'100%'}
-                    minW={0}
-                    overflow={'hidden'}
-                    textOverflow={'ellipsis'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {selectedLabel}
-                  </Box>
-                </MyTooltip>
-              ) : (
-                <Box color={'myGray.500'} noOfLines={1}>
-                  {t('workflow:tag_filter_select_tag')}
+            {selectedLabel ? (
+              <MyTooltip label={selectedLabel} showOnlyWhenOverflow shouldWrapChildren={false}>
+                <Box
+                  w={'100%'}
+                  minW={0}
+                  color={'myGray.900'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {selectedLabel}
                 </Box>
-              )}
-            </Flex>
+              </MyTooltip>
+            ) : (
+              <Box w={'100%'} minW={0} noOfLines={1} color={'myGray.500'}>
+                {placeholder}
+              </Box>
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
           className="nowheel"
-          w={'320px'}
+          w={popoverWidth}
+          minW={popoverMinWidth}
           p={'6px'}
           bg={'white'}
           borderRadius={'sm'}
@@ -194,48 +149,11 @@ export const TagFilterFieldSelect = ({
           _focusVisible={{ outline: 'none' }}
           zIndex={1500}
         >
-          <Flex gap={'4px'} alignItems={'stretch'}>
-            <Flex w={'120px'} direction={'column'} gap={'4px'} flexShrink={0}>
-              {[
-                { value: FILE_TAGS, label: t('workflow:tag_filter_file_tags') },
-                { value: FILE_ATTRS, label: t('workflow:tag_filter_file_attrs') }
-              ].map((item) => {
-                const selected = group === item.value;
-                return (
-                  <Flex
-                    key={item.value}
-                    alignItems={'center'}
-                    justifyContent={'space-between'}
-                    px={'4px'}
-                    py={'6px'}
-                    borderRadius={'xs'}
-                    cursor={'pointer'}
-                    bg={selected ? 'primary.50' : 'transparent'}
-                    color={selected ? 'primary.700' : 'myGray.600'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                    onClick={() => {
-                      setGroup(item.value);
-                      setSearch('');
-                    }}
-                  >
-                    <Box>{item.label}</Box>
-                    <MyIcon
-                      name={'core/chat/chevronDown'}
-                      w={'16px'}
-                      h={'16px'}
-                      transform={'rotate(-90deg)'}
-                      color={selected ? 'primary.700' : 'myGray.600'}
-                    />
-                  </Flex>
-                );
-              })}
-            </Flex>
-            <Box w={'1px'} bg={'myGray.200'} flexShrink={0} />
-            <Flex flex={1} minW={0} direction={'column'} gap={'4px'} px={'4px'}>
+          <Flex direction={'column'} gap={searchable ? '4px' : '2px'}>
+            {searchable && (
               <Input
                 h={'32px'}
-                px={1}
+                px={2}
                 fontSize={'xs'}
                 borderRadius={'sm'}
                 border={'1px solid'}
@@ -249,49 +167,64 @@ export const TagFilterFieldSelect = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <Flex direction={'column'} maxH={'160px'} overflowY={'auto'}>
-                {rightItems.length === 0 ? (
-                  <Box px={'4px'} py={'6px'} fontSize={'xs'} color={'myGray.500'}>
-                    {t('common:no_select_data')}
-                  </Box>
-                ) : (
-                  rightItems.map((item) => {
-                    const selected = group === activeGroup && item.value === selectedValue;
-                    return (
-                      <Flex
-                        key={item.value}
-                        alignItems={'center'}
-                        px={'4px'}
-                        py={'6px'}
-                        borderRadius={'xs'}
-                        cursor={'pointer'}
-                        fontSize={'xs'}
-                        fontWeight={'medium'}
-                        bg={selected ? 'primary.50' : 'transparent'}
-                        color={selected ? 'primary.700' : 'myGray.600'}
-                        _hover={{ bg: selected ? 'primary.50' : 'myGray.50' }}
-                        onClick={() => handleSelect(item.value)}
-                      >
-                        <MyTooltip
-                          label={item.label}
-                          showOnlyWhenOverflow
-                          shouldWrapChildren={false}
+            )}
+            <Flex
+              direction={'column'}
+              gap={searchable ? undefined : '2px'}
+              maxH={searchable ? '160px' : undefined}
+              overflowY={searchable ? 'auto' : undefined}
+            >
+              {filteredItems.length === 0 ? (
+                <EmptyTip py={0} text={t('common:no_select_data')} />
+              ) : (
+                filteredItems.map((item) => {
+                  const selected = item.value === selectedValue;
+                  return (
+                    <Flex
+                      key={item.value}
+                      alignItems={'center'}
+                      gap={item.icon ? 2 : undefined}
+                      px={'4px'}
+                      py={'6px'}
+                      minH={'28px'}
+                      borderRadius={'xs'}
+                      cursor={'pointer'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                      bg={
+                        selected ? (highlightSelected ? 'primary.50' : 'myGray.50') : 'transparent'
+                      }
+                      color={selected && highlightSelected ? 'primary.700' : 'myGray.600'}
+                      _hover={{ bg: selected && highlightSelected ? 'primary.50' : 'myGray.50' }}
+                      onClick={() => {
+                        onSelect(item.value);
+                        onClose();
+                      }}
+                    >
+                      {item.icon && (
+                        <MyIcon
+                          name={item.icon}
+                          w={'16px'}
+                          h={'16px'}
+                          flexShrink={0}
+                          transform={item.iconFlip ? 'scaleX(-1)' : undefined}
+                        />
+                      )}
+                      <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                        <Box
+                          flex={1}
+                          minW={0}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
                         >
-                          <Box
-                            flex={1}
-                            minW={0}
-                            overflow={'hidden'}
-                            textOverflow={'ellipsis'}
-                            whiteSpace={'nowrap'}
-                          >
-                            {item.label}
-                          </Box>
-                        </MyTooltip>
-                      </Flex>
-                    );
-                  })
-                )}
-              </Flex>
+                          {item.label}
+                        </Box>
+                      </MyTooltip>
+                    </Flex>
+                  );
+                })
+              )}
             </Flex>
           </Flex>
         </PopoverContent>
@@ -300,11 +233,107 @@ export const TagFilterFieldSelect = ({
   );
 };
 
-type OpItem = {
-  labelKey: string;
-  value: string;
-  icon?: string;
-  iconFlip?: boolean;
+/**
+ * 自定义标签选择器：展示知识库自定义标签列表，支持关键词搜索。
+ */
+export const TagFilterFieldSelect = ({
+  condition,
+  options,
+  onChange
+}: {
+  condition: DatasetTagFilterCondition;
+  options: WorkflowTagFilterOption[];
+  onChange: (value: FieldSelectValue) => void;
+}) => {
+  const { t } = useTranslation();
+  const selectedLabel = condition.tag ?? '';
+  const selectedValue =
+    condition.tag && condition.tagType ? formatTagOptionKey(condition.tag, condition.tagType) : '';
+
+  const items = useMemo(
+    () =>
+      options.map((item) => ({
+        label: item.tag,
+        value: formatTagOptionKey(item.tag, item.tagType)
+      })),
+    [options]
+  );
+
+  return (
+    <TagFilterDropdownSelect
+      items={items}
+      selectedValue={selectedValue}
+      selectedLabel={selectedLabel}
+      placeholder={t('workflow:tag_filter_select_tag')}
+      searchable
+      popoverWidth={'200px'}
+      onSelect={(value) => {
+        const parsed = parseTagOptionKey(value);
+        onChange({
+          field: DatasetTagFilterFieldEnum.tag,
+          tag: parsed?.tag,
+          tagType: parsed?.tagType,
+          valueMode: DatasetTagFilterValueModeEnum.input,
+          value: undefined
+        });
+      }}
+    />
+  );
+};
+
+/**
+ * 系统标签属性选择器：支持选择创建时间或集合 ID。
+ */
+export const TagFilterAttrSelect = ({
+  condition,
+  onChange
+}: {
+  condition: DatasetTagFilterCondition;
+  onChange: (value: FieldSelectValue) => void;
+}) => {
+  const { t } = useTranslation();
+
+  const attrItems = useMemo(
+    () => [
+      {
+        label: t('common:core.dataset.collection.metadata.Createtime'),
+        value: DatasetTagFilterFieldEnum.createTime
+      },
+      {
+        label: t('common:core.dataset.collection.id'),
+        value: DatasetTagFilterFieldEnum.collectionId
+      }
+    ],
+    [t]
+  );
+
+  return (
+    <TagFilterDropdownSelect
+      items={attrItems}
+      selectedValue={condition.field ?? ''}
+      selectedLabel={attrItems.find((item) => item.value === condition.field)?.label ?? ''}
+      placeholder={t('workflow:tag_filter_select_attr')}
+      popoverWidth={'140px'}
+      popoverMinWidth={'110px'}
+      onSelect={(value) => {
+        if (value === DatasetTagFilterFieldEnum.createTime) {
+          onChange({
+            field: DatasetTagFilterFieldEnum.createTime,
+            tagType: DatasetCollectionTagTypeEnum.datetime,
+            valueMode: DatasetTagFilterValueModeEnum.input,
+            value: undefined
+          });
+        } else if (value === DatasetTagFilterFieldEnum.collectionId) {
+          onChange({
+            field: DatasetTagFilterFieldEnum.collectionId,
+            tagType: DatasetCollectionTagTypeEnum.array,
+            valueMode: DatasetTagFilterValueModeEnum.reference,
+            value: ['', undefined]
+          });
+        }
+      }}
+    />
+  );
 };
 
 /** 条件操作符。数字类用稿上的 16px 符号图标 + 12px 文案。 */
@@ -314,87 +343,52 @@ export const TagFilterOpSelect = ({
   onChange
 }: {
   value?: string;
-  list: OpItem[];
+  list: TagFilterOperator[];
   onChange: (value: string) => void;
 }) => {
   const { t } = useTranslation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const selected = list.find((item) => item.value === value);
+  const items = useMemo(() => {
+    // 同一操作符在数字、时间和选项标签下文案不同，按声明的 label 映射，保留现有语义。
+    const labels: Record<string, string> = {
+      'workflow:tag_filter_op_empty': t('workflow:tag_filter_op_empty'),
+      'workflow:tag_filter_op_not_empty': t('workflow:tag_filter_op_not_empty'),
+      'workflow:tag_filter_op_contains': t('workflow:tag_filter_op_contains'),
+      'workflow:tag_filter_op_not_contains': t('workflow:tag_filter_op_not_contains'),
+      'workflow:tag_filter_op_starts_with': t('workflow:tag_filter_op_starts_with'),
+      'workflow:tag_filter_op_ends_with': t('workflow:tag_filter_op_ends_with'),
+      'workflow:tag_filter_op_regex': t('workflow:tag_filter_op_regex'),
+      'workflow:tag_filter_op_eq': t('workflow:tag_filter_op_eq'),
+      'workflow:tag_filter_op_ne': t('workflow:tag_filter_op_ne'),
+      'workflow:tag_filter_op_gt': t('workflow:tag_filter_op_gt'),
+      'workflow:tag_filter_op_lt': t('workflow:tag_filter_op_lt'),
+      'workflow:tag_filter_op_gte': t('workflow:tag_filter_op_gte'),
+      'workflow:tag_filter_op_lte': t('workflow:tag_filter_op_lte'),
+      'workflow:tag_filter_op_after': t('workflow:tag_filter_op_after'),
+      'workflow:tag_filter_op_before': t('workflow:tag_filter_op_before'),
+      'workflow:tag_filter_op_in': t('workflow:tag_filter_op_in'),
+      'workflow:tag_filter_op_not_in': t('workflow:tag_filter_op_not_in')
+    };
+
+    return list.map((item) => ({
+      label: labels[item.label] ?? item.label,
+      value: item.value,
+      icon: item.icon as IconNameType | undefined,
+      iconFlip: item.iconFlip
+    }));
+  }, [list, t]);
+  const selected = items.find((item) => item.value === value);
 
   return (
-    <Popover isOpen={isOpen} onOpen={onOpen} onClose={onClose} placement={'bottom-start'} isLazy>
-      <PopoverTrigger>
-        <Button
-          type={'button'}
-          className="nowheel"
-          variant={'whitePrimaryOutline'}
-          h={'36px'}
-          w={'115px'}
-          flexShrink={0}
-          px={3}
-          fontSize={'sm'}
-          fontWeight={'normal'}
-          textAlign={'left'}
-          borderColor={isOpen ? 'primary.300' : 'myGray.200'}
-          boxShadow={isOpen ? '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)' : 'none'}
-          color={isOpen ? 'primary.700' : 'myGray.700'}
-          bg={'white'}
-          isDisabled={list.length === 0}
-          _active={{ transform: 'none' }}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
-        >
-          <Box w={'100%'} minW={0} noOfLines={1} color={selected ? 'myGray.700' : 'myGray.500'}>
-            {selected ? t(selected.labelKey) : t('workflow:tag_filter_select_condition')}
-          </Box>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="nowheel"
-        w={'115px'}
-        minW={'115px'}
-        p={'6px'}
-        bg={'white'}
-        borderRadius={'sm'}
-        border={'1px solid #fff'}
-        boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
-        _focusVisible={{ outline: 'none' }}
-        zIndex={1500}
-      >
-        <Flex direction={'column'} gap={'2px'}>
-          {list.map((item) => (
-            <Flex
-              key={item.value}
-              alignItems={'center'}
-              gap={2}
-              px={'4px'}
-              py={'6px'}
-              minH={'28px'}
-              borderRadius={'xs'}
-              cursor={'pointer'}
-              fontSize={'xs'}
-              fontWeight={'medium'}
-              color={'myGray.600'}
-              bg={item.value === value ? 'myGray.50' : 'transparent'}
-              _hover={{ bg: 'myGray.50' }}
-              onClick={() => {
-                onChange(item.value);
-                onClose();
-              }}
-            >
-              {item.icon && (
-                <MyIcon
-                  name={item.icon as IconNameType}
-                  w={'16px'}
-                  h={'16px'}
-                  flexShrink={0}
-                  transform={item.iconFlip ? 'scaleX(-1)' : undefined}
-                />
-              )}
-              <Box>{t(item.labelKey)}</Box>
-            </Flex>
-          ))}
-        </Flex>
-      </PopoverContent>
-    </Popover>
+    <TagFilterDropdownSelect
+      items={items}
+      selectedValue={value ?? ''}
+      selectedLabel={selected?.label ?? ''}
+      placeholder={t('workflow:tag_filter_select_condition')}
+      width={'100px'}
+      highlightSelected={false}
+      popoverWidth={'115px'}
+      popoverMinWidth={'100px'}
+      onSelect={onChange}
+    />
   );
 };

@@ -7,18 +7,23 @@ import type {
 import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
-import { migrateLegacySystemModels } from './tasks/20260903_migrate_legacy_system_models';
-import { backfillModelPermissionReferences } from './tasks/20260903_backfill_model_permissions';
-import { backfillDatasetModelReferences } from './tasks/20260903_backfill_dataset_model_references';
-import { backfillEvaluationModelReferences } from './tasks/20260903_backfill_evaluation_model_references';
-import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_references';
+import { migrateLegacySystemModels } from './tasks/4170/20260903_migrate_legacy_system_models';
+import { backfillModelPermissionReferences } from './tasks/4170/20260903_backfill_model_permissions';
+import { backfillDatasetModelReferences } from './tasks/4170/20260903_backfill_dataset_model_references';
+import { backfillEvaluationModelReferences } from './tasks/4170/20260903_backfill_evaluation_model_references';
+import { backfillAppModelReferences } from './tasks/4170/20260903_backfill_app_model_references';
 import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resource_create_time';
 import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
 import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
 import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
 import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
-import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
+import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
+import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
+import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
+import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
+import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
+import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -83,6 +88,10 @@ export type SystemMigration = {
    * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
    */
   delay?: boolean;
+  /** 管理员确认执行条件后才入队；等待期间不阻塞启动或后续自动任务。 */
+  manual?: boolean;
+  /** 必须先成功的前置任务 ID；只能引用注册表中更早的任务，避免乱序执行和循环依赖。 */
+  dependsOn?: readonly string[];
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
   run: (context: SystemMigrationContext) => Promise<SystemMigrationResultData | void>;
 };
@@ -346,7 +355,7 @@ export const systemMigrations = [
   },
   {
     id: '20260907_migrate_dataset_tags_v2',
-    version: '4.17.0',
+    version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260907_migrate_dataset_tags_v2.description'
@@ -366,12 +375,14 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.validation')
       }
     ],
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: migrateDatasetTagsV2
   },
   {
     id: '20260916_backfill_app_resource_snapshots',
+    // 资源提取只读取模型 ID，必须等 App、Version 和模板的模型引用回填全部成功。
+    dependsOn: ['20260903_backfill_app_model_references'],
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.name'),
     descriptionKey: i18nT(
@@ -379,6 +390,12 @@ export const systemMigrations = [
     ),
     resultKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.result'),
     progressSteps: [
+      {
+        key: 'clean_v1_apps',
+        labelKey: i18nT(
+          'system_migration:migrations.20260916_backfill_app_resource_snapshots.clean_v1_apps'
+        )
+      },
       {
         key: 'versions',
         labelKey: i18nT(
@@ -400,6 +417,134 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: backfillAppResourceSnapshots
+  },
+  {
+    id: '20260923_enable_channel_reasoning_mapping',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260923_enable_channel_reasoning_mapping.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.result'
+    ),
+    progressSteps: [
+      {
+        key: 'channels',
+        labelKey: i18nT(
+          'system_migration:migrations.20260923_enable_channel_reasoning_mapping.channels'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    delay: true,
+    run: enableChannelReasoningMapping
+  },
+  {
+    id: '20260928_backfill_member_name_set',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_backfill_member_name_set.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillMemberNameSet
+  },
+  {
+    id: '20261008_migrate_chunk_training',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261008_migrate_chunk_training.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.result'),
+    progressSteps: [
+      {
+        key: 'trainings',
+        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.trainings')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.validation')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    manual: true,
+    run: migrateChunkTraining
+  },
+  {
+    id: '20261009_migrate_dataset_rebuild_status',
+    dependsOn: ['20261008_migrate_chunk_training'],
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261009_migrate_dataset_rebuild_status.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.result'),
+    progressSteps: [
+      {
+        key: 'datas',
+        labelKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.datas')
+      },
+      {
+        key: 'trainings',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.trainings'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    manual: true,
+    run: migrateDatasetRebuildStatus
+  },
+  {
+    id: '20261009_backfill_agent_sandbox_team_id',
+    version: '4.17.3',
+    nameKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.result'),
+    progressSteps: [
+      {
+        key: 'instances',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.instances'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_backfill_agent_sandbox_team_id.validation'
+        )
+      }
+    ],
+    // 缺 teamId 只影响团队配额归属：app 会话与技能编辑共用系统总上限，且运行期会惰性补齐，
+    // 无需阻塞启动；孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillAgentSandboxTeamId
   }
 ] as const satisfies readonly SystemMigration[];
 
@@ -416,6 +561,13 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
     if (ids.has(migration.id)) {
       throw new Error(`Duplicate system migration id: ${migration.id}`);
     }
+    for (const dependency of migration.dependsOn ?? []) {
+      if (!ids.has(dependency)) {
+        throw new Error(
+          `System migration ${migration.id} must depend on an earlier registered task: ${dependency}`
+        );
+      }
+    }
     ids.add(migration.id);
 
     if (
@@ -427,6 +579,10 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
 
     if (migration.blockStartup && migration.delay) {
       throw new Error(`Blocking system migration ${migration.id} cannot be delayed`);
+    }
+
+    if (migration.manual && (migration.blockStartup || migration.delay)) {
+      throw new Error(`Manual system migration ${migration.id} cannot block startup or be delayed`);
     }
 
     const progressStepKeys = new Set<string>();

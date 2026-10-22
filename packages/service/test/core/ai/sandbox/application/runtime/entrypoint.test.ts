@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { runAgentSandboxEntrypoint } from '@fastgpt/service/core/ai/sandbox/application/runtime/entrypoint';
 import { runAgentSkillVersionEntrypoints } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/entrypoint';
-import type { DeployedSkillVersion } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill';
+import type { DeployedSkillVersion } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/types';
 
 type ExecuteResult = {
   exitCode: number;

@@ -3,23 +3,31 @@ import { isS3ObjectKey } from '../utils';
 import { S3Buckets } from '../config/constants';
 import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 import { createS3DownloadAccessUrls } from '../accessLink';
+import {
+  htmlImgTokenPrefixPattern,
+  htmlImgTokenValuePattern,
+  htmlImgTokenSuffixPattern
+} from '@fastgpt/global/common/string/markdown';
 
 const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
   previewUrlS3Sources.some((source) => isS3ObjectKey(objectKey, source));
 
-const htmlUnquotedValuePattern = /[^\s"'=<>`]+/.source;
 const s3SourcePattern = Object.values(S3Sources)
   .map((prefix) => `${prefix}\\/`)
   .join('|');
 
 /**
  * 匹配文本中的 Markdown 图片语法或带有 src 属性的完整 HTML `<img>` 标签。
- * HTML 分支先按属性 token 消费 src 前的内容，再捕获 src 前缀、值和后缀，避免命中引号属性值中的 `src=` 文本。
+ * HTML img 结构片段（prefix/value/suffix）来自 @fastgpt/global 共享定义，
+ * 拼接后捕获组编号保持不变：6=前缀、7/8/9=src 值、10=后缀。
  * 正则在模块加载时编译一次；`matchAll` 会使用独立迭代器，`replace` 也不会把调用状态泄漏给下一次调用。
  */
 const s3TextKeyRegex = new RegExp(
-  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)|(<img\b(?:(?:[^"'<>]|"[^"]*"|'[^']*'))*?\s+src\s*=\s*)(?:"([^"]*)"|'([^']*)'|(${htmlUnquotedValuePattern}))((?:(?:[^"'<>]|"[^"]*"|'[^']*'))*>)`,
+  String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${s3SourcePattern})[^)]+)>|((?:${s3SourcePattern})[^\s)]+))(\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?\s*\)|` +
+    htmlImgTokenPrefixPattern +
+    htmlImgTokenValuePattern +
+    htmlImgTokenSuffixPattern,
   'gi'
 );
 
@@ -120,15 +128,26 @@ export const replaceS3KeysWithPreviewUrlMap = (
   );
 };
 
+export type ReplaceS3KeysOptions = {
+  /**
+   * 仅放行符合条件的 S3 对象键，未通过过滤的键不会被签发为短链，保持原文本不替换。
+   * 知识库 data 调用方应传入 dataset key 过滤器；本通用工具本身仍兼容 chat/temp 场景。
+   */
+  filter?: (objectKey: string) => boolean;
+};
+
 /**
  * 批量替换多段文本中的 S3 对象键，所有唯一 key 共用批量签发请求。
- * 没有可预览 key 时返回输入副本，避免再次扫描文本和创建短链映射。
+ * 默认支持通用预览场景；知识库 data 必须通过 `options.filter` 收敛为当前 dataset 的
+ * `dataset/*` key。没有可预览 key 时返回输入副本，避免再次扫描文本和创建短链映射。
  */
 export const replaceS3KeysToPreviewUrls = async (
   documentQuoteTexts: string[],
-  expiredTime: Date
+  expiredTime: Date,
+  options?: ReplaceS3KeysOptions
 ) => {
-  const objectKeys = getS3ObjectKeysFromTexts(documentQuoteTexts);
+  const allObjectKeys = getS3ObjectKeysFromTexts(documentQuoteTexts);
+  const objectKeys = options?.filter ? allObjectKeys.filter(options.filter) : allObjectKeys;
   if (objectKeys.length === 0) return documentQuoteTexts.slice();
 
   const previewUrlMap = await createS3KeysPreviewUrlMap({
@@ -146,7 +165,11 @@ export const replaceS3KeysToPreviewUrls = async (
  * @param expiredTime 过期时间
  * @returns 替换后的文本
  */
-export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
-  const [content] = await replaceS3KeysToPreviewUrls([documentQuoteText], expiredTime);
+export async function replaceS3KeyToPreviewUrl(
+  documentQuoteText: string,
+  expiredTime: Date,
+  options?: ReplaceS3KeysOptions
+) {
+  const [content] = await replaceS3KeysToPreviewUrls([documentQuoteText], expiredTime, options);
   return content!;
 }

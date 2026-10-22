@@ -26,11 +26,12 @@ import {
 } from '../../../domain/systemTool/datasetSearch';
 import {
   normalizeAgentLoopUsages,
+  type AgentLoopAssistantResponse,
   type AgentLoopEvent,
   type AgentLoopRuntime,
   type AgentLoopUsage
 } from '../../../domain';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 
@@ -100,6 +101,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     execute: () => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
+      assistantResponses?: AgentLoopAssistantResponse[];
       usages?: AgentLoopUsage[];
       interactive?: TChildrenResponse;
       stop?: boolean;
@@ -129,6 +131,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
@@ -220,7 +223,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }
   }
 
-  if (runtime.systemTools?.ask?.enabled) {
+  const askSystemTool = runtime.systemTools?.ask;
+  if (askSystemTool?.enabled) {
     const askTool = createAskUserAgentTool();
     tools.push({
       name: askTool.function.name,
@@ -238,6 +242,15 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             response
           });
           return { content: [{ type: 'text' as const, text: response }], details: {} };
+        }
+
+        const validationError = await askSystemTool.validate?.(parsed.data);
+        if (validationError) {
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+            response: validationError
+          });
+          return { content: [{ type: 'text' as const, text: validationError }], details: {} };
         }
 
         setPendingAsk(parsed.data, callId);
@@ -261,7 +274,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     });
   }
 
-  if (runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client) {
+  const sandbox = runtime.systemTools?.sandbox;
+  if (sandbox?.enabled) {
     for (const sandboxTool of createAgentLoopSandboxTools()) {
       const agentLoopToolName = sandboxTool.function.name;
       const sandboxToolName = toSandboxToolName(agentLoopToolName);
@@ -281,15 +295,11 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           const result = await executeOrdinaryTool({
             call,
             execute: async () => {
-              const sandboxClient = runtime.systemTools?.sandbox?.client;
-              if (!sandboxClient) {
-                const response = 'Sandbox executor is not available.';
-                return { response, assistantMessages: [], usages: [], errorMessage: response };
-              }
               const sandboxResult = await runSandboxTools({
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
-                sandboxClient
+                sandboxClient: sandbox.client,
+                validate: sandbox.validate
               });
               return {
                 response: sandboxResult.response,

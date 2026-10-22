@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { delTemplate, postCreateTemplate, putUpdateTemplate } from '@/web/core/app/templates/api';
+import { delTemplate, postCreateTemplate, putUpdateTemplate } from '@/web/admin/app/templates/api';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -434,12 +434,12 @@ const TemplateConfigModal = ({
                 {
                   title: '精选应用',
                   value: true,
-                  children: <Box as="img" src="/imgs/templatePromoted.svg" w="100%" />
+                  children: <Box as="img" src="/imgs/app/templatePromoted.svg" w="100%" />
                 },
                 {
                   title: '普通应用',
                   value: false,
-                  children: <Box as="img" src="/imgs/templatePreview.svg" w="100%" />
+                  children: <Box as="img" src="/imgs/app/templatePreview.svg" w="100%" />
                 }
               ]}
               value={isPromoted ?? false}

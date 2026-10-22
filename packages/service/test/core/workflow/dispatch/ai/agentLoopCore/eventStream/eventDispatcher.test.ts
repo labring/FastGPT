@@ -26,6 +26,61 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreEventDispatcher', () => {
+  it('streams internal tool activity once without collecting tool run details', () => {
+    const workflowStreamResponse = vi.fn();
+    const appendToolNodeResponse = vi.fn();
+    const dispatcher = createAgentLoopCoreEventDispatcher({
+      eventStream: createAgentLoopCoreEventStream({
+        workflowStreamResponse,
+        getToolInfo: () => ({ name: 'Read file', avatar: 'file-avatar' })
+      }),
+      toolRunCollector: {
+        appendToolNodeResponse,
+        appendContextCompressNodeResponse: vi.fn()
+      }
+    });
+
+    for (const status of ['running', 'running', 'done', 'done'] as const) {
+      dispatcher.emitEvent({
+        type: 'tool_activity',
+        callId: 'skill-reference',
+        toolName: 'sandbox_read_file',
+        status
+      });
+    }
+
+    expect(workflowStreamResponse.mock.calls.map(([event]) => event)).toEqual([
+      {
+        id: 'skill-reference',
+        event: SseResponseEventEnum.toolCall,
+        data: {
+          tool: {
+            id: 'skill-reference',
+            toolName: 'Read file',
+            toolAvatar: 'file-avatar',
+            functionName: 'sandbox_read_file',
+            params: '',
+            hideDetails: true
+          }
+        }
+      },
+      {
+        id: 'skill-reference',
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            id: 'skill-reference',
+            toolName: '',
+            toolAvatar: '',
+            params: '',
+            response: ''
+          }
+        }
+      }
+    ]);
+    expect(appendToolNodeResponse).not.toHaveBeenCalled();
+  });
+
   it('routes model, tool and compression events to stream and tool run collector', () => {
     const workflowStreamResponse = vi.fn();
     const eventStream = createAgentLoopCoreEventStream({
@@ -260,6 +315,80 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         }
       }
     });
+  });
+
+  it('starts a new SSE answer value after streamed child assistant responses', () => {
+    const workflowStreamResponse = vi.fn();
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
+    const call = createCall({ id: 'call_child' });
+
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 0,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'child answer' });
+    dispatcher.emitEvent({
+      type: 'tool_run_end',
+      call,
+      rawResponse: 'child result',
+      response: 'child result',
+      seconds: 0.1,
+      assistantResponses: [{ text: { content: 'child answer' } }]
+    });
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 1,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'parent answer' });
+
+    const answerEvents = workflowStreamResponse.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.event === SseResponseEventEnum.answer);
+
+    expect(answerEvents).toHaveLength(2);
+    expect(answerEvents[0]).not.toHaveProperty('id');
+    expect(answerEvents[1]).toEqual(
+      expect.objectContaining({
+        id: expect.stringMatching(/^answer-/),
+        event: SseResponseEventEnum.answer
+      })
+    );
+  });
+
+  it('keeps the same SSE answer value for a later model request without child assistant responses', () => {
+    const workflowStreamResponse = vi.fn();
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
+
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 0,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'first answer' });
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 1,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'second answer' });
+
+    const answerEvents = workflowStreamResponse.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.event === SseResponseEventEnum.answer);
+
+    expect(answerEvents).toHaveLength(2);
+    expect(answerEvents[0]).not.toHaveProperty('id');
+    expect(answerEvents[1]).not.toHaveProperty('id');
   });
 
   it('passes context checkpoints to compression records when request ids are absent', () => {

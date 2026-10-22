@@ -15,11 +15,12 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 ## Access Modes
 
 - Uploads always go through the FastGPT backend proxy.
-- External download URLs are always FastGPT short links. FastGPT no longer returns object storage presigned URLs directly.
+- FastGPT provides short links for file downloads instead of returning object storage presigned URLs directly.
 - `STORAGE_DOWNLOAD_URL_MODE` supports two modes and defaults to `short-proxy`:
-  - `short-proxy`: FastGPT validates the short link and proxies the file stream. No public object storage endpoint is required.
+  - `short-proxy`: FastGPT validates the short link and proxies the file stream. Downloads through short links do not require a public object storage endpoint.
   - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.
-- Self-hosted MinIO requires `STORAGE_EXTERNAL_ENDPOINT` when using `short-redirect`.
+- The plugin logo endpoint always redirects to the public bucket URL. Storage-backed images under `/api/system/img/` are proxied by FastGPT in `short-proxy` mode and redirected to the public bucket only in `short-redirect` mode.
+- Self-hosted MinIO requires `STORAGE_EXTERNAL_ENDPOINT` in `short-redirect` mode. Plugin logos also need it when browsers cannot reach `STORAGE_S3_ENDPOINT`.
 
 ## Provider Configuration
 
@@ -32,6 +33,8 @@ FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudf
 - `STORAGE_S3_CDN_ENDPOINT` [Optional] CDN endpoint used for temporary `short-redirect` download URLs. This variable does not change the default download mode and requires `STORAGE_EXTERNAL_ENDPOINT`. Uploads still go through the FastGPT backend proxy and do not use the CDN.
 - `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
+
+If you expose MinIO through NodePort on Kubernetes, also expose its S3 API (port 9000) and set `STORAGE_EXTERNAL_ENDPOINT` to an address reachable by both browsers and FastGPT. A cluster-internal address or the server's `localhost:9000` cannot serve public bucket assets such as plugin logos to browsers. The same browser accessibility requirement applies to Docker deployments.
 
 **Complete Example**
 

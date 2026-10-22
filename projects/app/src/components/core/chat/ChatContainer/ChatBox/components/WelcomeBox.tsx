@@ -1,13 +1,19 @@
 import { Box } from '@chakra-ui/react';
 import React from 'react';
 import Markdown from '@/components/Markdown';
+import type { MarkdownActionProps } from '@/components/Markdown/type';
 import styles from './AIChatBubble/index.module.scss';
 
-const WelcomeBox = ({ welcomeText }: { welcomeText: string }) => {
+const WelcomeBox = ({ welcomeText, ...actions }: { welcomeText: string } & MarkdownActionProps) => {
   return (
     <Box py={3} w={'100%'}>
       <Box color={'myGray.900'} textAlign={'left'} fontSize={'16px'} lineHeight={1.75}>
-        <Markdown className={styles.markdown} source={`~~~guide \n${welcomeText}`} forbidZhFormat />
+        <Markdown
+          className={styles.markdown}
+          source={`~~~guide \n${welcomeText}`}
+          forbidZhFormat
+          {...actions}
+        />
       </Box>
     </Box>
   );

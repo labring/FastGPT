@@ -1,4 +1,5 @@
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { AppTemplateSchema } from '../../../../core/app/type';
@@ -73,18 +74,23 @@ export const GetAppTemplateDetailQuerySchema = z.object({
 });
 export type GetAppTemplateDetailQueryType = z.infer<typeof GetAppTemplateDetailQuerySchema>;
 
-export const GetAppTemplateDetailResponseSchema = AppTemplateSchema.omit({
+/**
+ * 模板对象在文档中的投影。底层 workflow 是 z.custom<WorkflowTemplateBasicType>()：
+ * chat agent 模板是另一种结构，且 z.custom 无法映射为 OpenAPI 类型，这里只声明为开放对象。
+ */
+export const OpenAPIAppTemplateSchema = AppTemplateSchema.omit({
   workflow: true
-})
-  .extend({
-    workflow: z.any().meta({
-      description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
-    })
+}).extend({
+  workflow: z.any().meta({
+    ...OpenObjectOpenApiMeta,
+    description: '模板对应的应用编排配置；不同应用类型可能使用不同结构'
   })
-  .optional()
-  .meta({
-    description: '模板详情；未找到模板时为空'
-  });
+});
+export type OpenAPIAppTemplateType = z.infer<typeof OpenAPIAppTemplateSchema>;
+
+export const GetAppTemplateDetailResponseSchema = OpenAPIAppTemplateSchema.optional().meta({
+  description: '模板详情；未找到模板时为空'
+});
 export type GetAppTemplateDetailResponseType = z.infer<typeof GetAppTemplateDetailResponseSchema>;
 
 /* ============================================================================

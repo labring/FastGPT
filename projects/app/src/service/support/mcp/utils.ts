@@ -5,11 +5,11 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { type Tool } from '@modelcontextprotocol/sdk/types.js';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type toolCallProps } from './type';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
+
 import {
   getRunningUserInfoByTmbId,
   getUserIdByTmbId
@@ -49,12 +49,16 @@ import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import {
   profileStage,
   setProfileMeta,
   withRequestProfile
 } from '@fastgpt/service/common/profiling';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import {
+  LimitTypeEnum,
+  assertTeamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
@@ -315,12 +319,10 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
       const runningUserInfo = await profileStage('runningUser.read', () =>
         getRunningUserInfoByTmbId(effectiveTmbId)
       );
-      const resourceContext = await profileStage('resource.context', () =>
-        loadWorkflowResourceContext({
-          resources,
-          teamId: app.teamId
-        })
-      );
+      const resourceContext = createWorkflowResourceContext({
+        resources,
+        teamId: app.teamId
+      });
 
       const {
         assistantResponses,
@@ -455,6 +457,14 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
       tmbId: effectiveTmbId,
       appId: String(app._id),
       per: ReadPermissionVal
+    })
+  );
+
+  // 校验所属团队的对话 QPM 频次限制，防止无限制调用打满集群或下游模型并发
+  await profileStage('team.frequency', () =>
+    assertTeamFrequencyLimit({
+      teamId: String(app.teamId),
+      type: LimitTypeEnum.chat
     })
   );
 

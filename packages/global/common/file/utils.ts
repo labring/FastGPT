@@ -5,6 +5,15 @@ export const isCSVFile = (filename: string) => {
   return extension === '.csv';
 };
 
+/**
+ * 判断是否为 Office/Windows 打开文档时生成的 `~$filename.ext` 锁文件。
+ * 这些文件不是可解析文档，按正式后缀上传会触发 MIME 不匹配。
+ */
+export const isOfficeLockFilename = (filename = '') => {
+  const base = filename.split(/[/\\]/).pop()?.trim() ?? '';
+  return base.startsWith('~$');
+};
+
 export function detectImageContentType(buffer: Buffer) {
   if (!buffer || buffer.length < 12) return 'text/plain';
 

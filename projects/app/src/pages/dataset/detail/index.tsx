@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
@@ -6,8 +5,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { defaultDatasetDetail } from '@/web/core/dataset/constants';
+import { useRequiredQueryParam } from '@/web/common/hooks/useRequiredQueryParam';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MetaDataCard from '@/pageComponents/dataset/detail/MetaDataCard';
 import NavBar from '@/pageComponents/dataset/detail/NavBar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -27,6 +27,9 @@ const CollectionCard = dynamic(
 const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'));
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
 const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
+const CollectionFolderCard = dynamic(
+  () => import('@/pageComponents/dataset/detail/CollectionFolderCard')
+);
 const Import = dynamic(() => import('@/pageComponents/dataset/detail/Import'));
 
 export enum TabEnum {
@@ -46,23 +49,33 @@ const sliderStyles: FlexProps = {
 };
 
 const Detail = ({ datasetId, currentTab }: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useSystem();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
 
-  useRequest(() => loadDatasetDetail(datasetId), {
-    onError(err: any) {
-      router.replace(`/dataset/list`);
-      toast({
-        title: t(getErrText(err, t('common:load_failed')) as any),
-        status: 'error'
-      });
+  const queryParentId = router.query.parentId;
+  const parentId = typeof queryParentId === 'string' ? queryParentId : '';
+
+  useRequest(
+    () => {
+      if (!datasetId) return Promise.resolve(defaultDatasetDetail);
+      return loadDatasetDetail(datasetId);
     },
-    manual: false
-  });
+    {
+      refreshDeps: [datasetId],
+      onError(err: any) {
+        router.replace(`/dataset/list`);
+        toast({
+          title: t(getErrText(err, t('common:load_failed')) as any),
+          status: 'error'
+        });
+      },
+      manual: false
+    }
+  );
 
   return (
     <>
@@ -93,7 +106,12 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             )}
             {[TabEnum.collectionCard, TabEnum.test].includes(currentTab) && (
               <Flex {...sliderStyles} flex={'0 0 17rem'}>
-                <Info datasetId={datasetId} />
+                {/* 子目录浏览态右栏=该目录自身；知识库根目录右栏=知识库 Info（不变） */}
+                {currentTab === TabEnum.collectionCard && parentId ? (
+                  <CollectionFolderCard datasetId={datasetId} collectionId={parentId} />
+                ) : (
+                  <Info datasetId={datasetId} />
+                )}
               </Flex>
             )}
           </>
@@ -123,22 +141,22 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   );
 };
 
-const Render = (data: Props) => (
-  <DatasetPageContextProvider datasetId={data.datasetId}>
-    <Detail {...data} />
-  </DatasetPageContextProvider>
-);
+const Render = () => {
+  const datasetId = useRequiredQueryParam('datasetId', {
+    fallbackRoute: '/dataset/list'
+  });
+  const { query } = useRouter();
+  const currentTab = (query.currentTab as TabEnum) || TabEnum.collectionCard;
+
+  if (!datasetId) {
+    return null;
+  }
+
+  return (
+    <DatasetPageContextProvider key={datasetId} datasetId={datasetId}>
+      <Detail datasetId={datasetId} currentTab={currentTab} />
+    </DatasetPageContextProvider>
+  );
+};
+
 export default Render;
-
-export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.collectionCard;
-  const datasetId = context?.query?.datasetId;
-
-  return {
-    props: {
-      currentTab,
-      datasetId,
-      ...(await serviceSideProps(context, ['dataset', 'file', 'user']))
-    }
-  };
-}

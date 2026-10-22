@@ -11,9 +11,11 @@ import { compressRequestMessages, compressToolResponse } from '../../../../compr
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopToolExecutionResult,
   AgentLoopUsage
@@ -25,6 +27,7 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
@@ -84,6 +87,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     rawResponse: string;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
     seconds: number;
     usages?: AgentLoopUsage[];
@@ -141,7 +145,7 @@ export const onCompressContext = async ({
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
-  modelData: LLMSystemModelDataType;
+  modelData: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];
@@ -190,6 +194,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  completionPolicy,
   batchToolSize = 1,
   body: { model, messages, max_tokens, ...body },
 
@@ -287,6 +292,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const {
       response,
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       usages: toolUsages,
       interactive,
       stop,
@@ -315,6 +321,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       rawResponse: response,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
@@ -486,6 +493,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       requestError = error;
       requestIds.push(requestId);
 
+      // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+      llmTotalPoints += totalPoints;
+
       if (requestError) {
         break;
       }
@@ -505,10 +517,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         }
       }
 
-      // Record usage
-      inputTokens += usage.inputTokens;
-      outputTokens += usage.outputTokens;
-      llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
       if (responseEmptyTip) {
         requestError = responseEmptyTip;
         break;
@@ -544,6 +552,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         const {
           response,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           usages: toolUsages,
           interactive,
           stop: stopLoop,
@@ -608,6 +617,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           rawResponse: response,
           response: toolFinalResponse,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
             ? { errorMessage: toolErrorMessage || errorMessage }
             : {}),
@@ -706,7 +716,31 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
 
-    if (toolCalls.length === 0 || !!toolChildPause || stopAgentLoop || isAborted?.()) {
+    // 暂停、工具显式停止和取消优先于业务完成判断。
+    if (toolChildPause || stopAgentLoop || isAborted?.()) {
+      break;
+    }
+    if (toolCalls.length > 0) {
+      continue;
+    }
+
+    // 只有模型自然结束时，才由业务策略决定是否追加指令继续。
+    try {
+      const decision = await completionPolicy?.({ requestIndex: runTimes });
+      // 策略可能异步执行，等待期间的取消不能触发下一轮请求。
+      if (isAborted?.() || !decision || decision.action === 'complete') {
+        break;
+      }
+      if (runTimes >= maxRunAgentTimes) {
+        requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+        break;
+      }
+      await appendRequestMessages({
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: decision.message
+      });
+    } catch (error) {
+      requestError = error;
       break;
     }
   }

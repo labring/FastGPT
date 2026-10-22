@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   RerankModelConfigType,
-  RerankSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+  RerankModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设
@@ -39,9 +39,8 @@ vi.mock('@fastgpt/service/worker/function', () => ({
 const { reRankRecall } = await import('@fastgpt/service/core/ai/rerank/index');
 
 const buildModel = (
-  overrides: Partial<RerankModelConfigType> &
-    Partial<Omit<RerankSystemModelDataType, 'config'>> = {}
-): RerankSystemModelDataType => {
+  overrides: Partial<RerankModelConfigType> & Partial<Omit<RerankModelDataType, 'config'>> = {}
+): RerankModelDataType => {
   const { maxToken = 8000, defaultConfig, ...commonOverrides } = overrides;
 
   return {

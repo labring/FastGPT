@@ -1,6 +1,7 @@
 import z from 'zod';
 import { GetPathPropsSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
+import { AppSchemaTypeSchema } from '../../../../core/app/type';
 
 /* ============================================================================
  * API: 创建应用文件夹
@@ -24,6 +25,10 @@ export const CreateAppFolderBodySchema = z
       example: '文件夹介绍',
       description: '文件夹介绍'
     }),
+    inheritPermission: AppSchemaTypeSchema.shape.inheritPermission.default(true).meta({
+      example: true,
+      description: '是否继承父级文件夹权限，默认继承'
+    }),
     type: z.enum([AppTypeEnum.folder, AppTypeEnum.toolFolder]).meta({
       example: AppTypeEnum.folder,
       description: '文件夹类型'
@@ -32,10 +37,11 @@ export const CreateAppFolderBodySchema = z
   .meta({
     example: {
       name: '默认文件夹',
-      type: AppTypeEnum.folder
+      type: AppTypeEnum.folder,
+      inheritPermission: true
     }
   });
-export type CreateAppFolderBodyType = z.infer<typeof CreateAppFolderBodySchema>;
+export type CreateAppFolderBodyType = z.input<typeof CreateAppFolderBodySchema>;
 
 export const CreateAppFolderResponseSchema = z.undefined().meta({
   description: '创建成功'

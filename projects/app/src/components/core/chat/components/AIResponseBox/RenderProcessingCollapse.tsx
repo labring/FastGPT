@@ -8,23 +8,25 @@ import {
   Flex,
   HStack
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
 
 const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
   children,
+  title,
   label,
   preview,
   onPreviewOpen,
   isProcessing = true
 }: {
   children: React.ReactNode;
+  title?: React.ReactNode;
   label?: string;
   preview?: React.ReactNode;
   onPreviewOpen?: () => void;
   isProcessing?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -52,13 +54,17 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
           >
             <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
               <Box fontSize={'16px'} lineHeight={'24px'}>
-                {isProcessing ? t('chat:processing') : t('chat:processed')}
-                {isProcessing && label && (
-                  <Box as="span">
-                    {' · '}
-                    {t(label)}
-                    {'...'}
-                  </Box>
+                {title ?? (
+                  <>
+                    {isProcessing ? t('chat:processing') : t('chat:processed')}
+                    {isProcessing && label && (
+                      <Box as="span">
+                        {' · '}
+                        {t(label as any)}
+                        {'...'}
+                      </Box>
+                    )}
+                  </>
                 )}
               </Box>
             </HStack>

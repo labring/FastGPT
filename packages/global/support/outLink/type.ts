@@ -36,6 +36,37 @@ export const WecomAppSchema = z.object({
 
 export type WecomAppType = z.infer<typeof WecomAppSchema>;
 
+export const WecomConnectionErrorCodeSchema = z.enum([
+  'AUTH_FAILED', // Bot ID 或 Secret 无效，企微认证失败。
+  'NETWORK_ERROR', // WebSocket、网络或心跳异常。
+  'CONNECTION_CONFLICT' // Bot 被其他连接占用或踢下线。
+]);
+
+export const WecomConnectionStatusSchema = z.enum(['offline', 'online', 'error']);
+
+export const WecomConnectionStatusMetaSchema = z.object({
+  lastReportedAt: z.date().meta({ description: '最近一次有效状态上报的服务端接收时间' }),
+  errorCode: WecomConnectionErrorCodeSchema.optional().meta({ description: '连接错误原因' })
+});
+
+/** 长连接存储配置；配置请求及公开响应由控制面分别校验，不能直接复用含 Secret 的结构。 */
+export const WecomWebSocketAppSchema = z.object({
+  botId: z.string().trim().min(1).max(256).meta({ description: '企微智能机器人 ID' }),
+  secret: z.string().trim().min(1).max(1024).meta({ description: '企微智能机器人 Secret' }),
+  // 持久化版本必须是正安全整数，不接受字符串或隐式类型转换。
+  revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).meta({
+    description: '服务端分配的连接配置版本'
+  }),
+  connectionStatus: WecomConnectionStatusSchema.default('offline').meta({
+    description: '服务端维护的长连接状态'
+  }),
+  connectionStatusMeta: WecomConnectionStatusMetaSchema.optional().meta({
+    description: '服务端维护的状态元数据，首次有效上报前可不存在'
+  })
+});
+
+export type WecomWebSocketAppType = z.infer<typeof WecomWebSocketAppSchema>;
+
 /**
  * WeChat Claw Bot app config.
  * @see https://github.com/Tencent/openclaw-weixin
@@ -70,6 +101,7 @@ export type OffiAccountAppType = z.infer<typeof OffiAccountAppSchema>;
 export type OutlinkAppType =
   | FeishuAppType
   | WecomAppType
+  | WecomWebSocketAppType
   | OffiAccountAppType
   | DingtalkAppType
   | WechatAppType
@@ -98,6 +130,8 @@ export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
   canDownloadSource: boolean;
   // whether to show the whole response button
   showWholeResponse: boolean;
+  // Only share links use this field; legacy share links may omit it.
+  allowAnonymous?: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -138,6 +172,14 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
 
   // config for specific platform
   app?: T;
+};
+
+export type ShareOutLinkSchemaType<T extends OutlinkAppType = undefined> = Omit<
+  OutLinkSchemaType<T>,
+  'type' | 'allowAnonymous'
+> & {
+  type: PublishChannelEnum.share;
+  allowAnonymous: boolean;
 };
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = OutLinkSchemaType<T>;

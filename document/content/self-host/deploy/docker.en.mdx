@@ -69,7 +69,7 @@ SeekDB uses MySQL protocol, fully compatible with OceanBase:
 
 - Supports 1536-dimensional vector retrieval
 - Built-in HNSW index algorithm
-- Batch insert and query rewriting
+- Batch insertion and query optimization
 - Automatic retry and connection pool management
 
 </Alert>
@@ -145,11 +145,13 @@ FASTGPT_DEPLOY_BASE_URL=https://doc.fastgpt.cn bash <(curl -fsSL https://doc.fas
 
 <CurrentOriginCodeBlockUpdater />
 
-Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`. Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`; version 4.16 additionally requires `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL. Version 4.14 does not include this service. In interactive mode, the script prompts for the addresses required by each version; 4.15 prompts only for the WebSocket URL.
+Non-interactive mode also requires `FASTGPT_FE_DOMAIN`, the full URL users use to access FastGPT, such as `https://fastgpt.example.com`.  
+Versions with Agent/Skill Sandbox also require `FASTGPT_SANDBOX_PROXY_URL`, the Sandbox WebSocket URL, such as `wss://sandbox-proxy.example.com`;  
+Versions 4.16 and later also require `FASTGPT_SANDBOX_PREVIEW_PROXY_URL` for the HTTP preview URL.
 
 Access URLs and host ports are configured independently. For direct access, set `FASTGPT_PORT` for the FastGPT host port (default `3000`) and `FASTGPT_SANDBOX_PROXY_PORT` for the Sandbox Proxy host port (default `3006`); the container ports remain `3000` and `1006`. With a reverse proxy, public ports in `FASTGPT_FE_DOMAIN`, `FASTGPT_SANDBOX_PROXY_URL`, and the preview URL (for example, `443`) are not treated as host ports, so the script keeps the default Compose mappings.
 
-The script automatically:
+**The script automatically performs the following actions**:
 
 - Downloads `docker-compose.yml`.
 - Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
@@ -173,7 +175,7 @@ If you need to pin deployment to a specific `docker-compose.yml` file, we recomm
 1. Download the required `docker-compose.yml` file to the server, for example:
 
 ```bash
-curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -o docker-compose.source.yml
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o docker-compose.source.yml
 ```
 
 <CurrentOriginCodeBlockUpdater />
@@ -182,20 +184,20 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -
 <summary>Click to view docker-compose config file download links for different databases</summary>
 
 - **Pgvector**
-  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/v4.15/cn/docker-compose.pg.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/v4.15/global/docker-compose.pg.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/main/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/main/global/docker-compose.oceanbase.yml)
 - **Milvus**
   - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](/deploy/docker/main/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/main/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
-  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
+  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
+  - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
 
 </details>
 
@@ -225,7 +227,7 @@ If you use an internal Harbor, private registry, or image mirror, download `dock
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](../config/sandbox/opensandbox) for details.
+If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox) for details.
 
 ### 2. Modify Environment Variables
 
@@ -271,7 +273,7 @@ If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_P
 ### 6. Configure Models
 
 - After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
-- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](../config/model/intro.en.mdx)
+- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](/en/self-host/config/model/intro)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
 ### 7. Install System Plugins as Needed
@@ -303,7 +305,7 @@ Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both
 
 > Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
 >
-> See [Object Storage Configuration & Common Issues](../config/object-storage.en.mdx)
+> See [Object Storage Configuration & Common Issues](/en/self-host/config/object-storage)
 
 ### Browser Unresponsive After Login
 
@@ -394,7 +396,7 @@ docker compose up -d
 
 ### How to Update Versions?
 
-1. Check the [update documentation](../upgrading/upgrade-instruction.en.mdx) to confirm the target version — avoid skipping versions.
+1. Check the [update documentation](/en/self-host/upgrading/upgrade-instruction) to confirm the target version — avoid skipping versions.
 2. Change the image tag to the target version
 3. Run these commands to pull and restart:
 
@@ -406,7 +408,7 @@ docker compose up -d
 
 ### How to Customize Environment Variables?
 
-Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](../config/env.en.mdx).
+Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](/en/self-host/config/env).
 
 ### How to Check if Environment Variables Loaded
 

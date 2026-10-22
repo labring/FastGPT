@@ -364,6 +364,20 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     }
   }
 
+  /** 只验证现有 Running 资源和命令通道，不创建或恢复停止的 Devbox。 */
+  async connectRunning(): Promise<void> {
+    const info = await this.getInfoWithProviderRetry();
+    if (!info) throw new SandboxNotFoundError(`Sandbox ${this._id} does not exist`);
+    if (info.status.state !== 'Running') {
+      throw new SandboxStateError(
+        'Cannot connect to an inactive sandbox',
+        info.status.state,
+        'Running'
+      );
+    }
+    await this.waitUntilCommandReady();
+  }
+
   async ensureRunning(options: SandboxEnsureRunningOptions = {}): Promise<void> {
     try {
       const allowCreate = options.allowCreate ?? true;

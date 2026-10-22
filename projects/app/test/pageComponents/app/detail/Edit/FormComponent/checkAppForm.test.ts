@@ -4,16 +4,20 @@ import {
   checkAppFormResourceIssues,
   checkAppFormSandboxIssues
 } from '@/pageComponents/app/detail/Edit/FormComponent/checkAppForm';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 
 vi.mock('@/web/core/workflow/modelData', () => ({
-  getWorkflowModelDetails: vi.fn().mockResolvedValue([])
+  getWorkflowModelCheckData: vi.fn().mockResolvedValue({ references: [], defaultModelIds: {} })
 }));
 
 const mockT: TFunction = ((key: string) => {
@@ -178,7 +182,7 @@ describe('checkAppFormResourceIssues', () => {
 
       const result = await checkAppFormBeforePublish({
         appForm,
-        form2WorkflowFn: () => ({ nodes: [], edges: [] }),
+        form2WorkflowFn: () => ({ nodes: [], edges: [], chatConfig: appForm.chatConfig }),
         showSandbox: false,
         enableSandbox: true,
         t: mockT
@@ -196,7 +200,7 @@ describe('checkAppFormResourceIssues', () => {
 
       const result = await checkAppFormBeforePublish({
         appForm,
-        form2WorkflowFn: () => ({ nodes: [], edges: [] }),
+        form2WorkflowFn: () => ({ nodes: [], edges: [], chatConfig: appForm.chatConfig }),
         showSandbox: true,
         enableSandbox: true,
         t: mockT
@@ -205,15 +209,59 @@ describe('checkAppFormResourceIssues', () => {
     });
 
     it('should return undefined when all validations pass', async () => {
+      const appId = '68ad85a7463006c963799a05';
       const appForm = getDefaultAppForm();
+      const workflow = {
+        nodes: [
+          {
+            nodeId: 'start',
+            name: 'Start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'answer',
+            name: 'Answer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: 'text',
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.input],
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: 'Ready'
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'answer',
+            sourceHandle: 'start-source-right',
+            targetHandle: 'answer-target-left'
+          }
+        ]
+      };
       const result = await checkAppFormBeforePublish({
+        appId,
         appForm,
-        form2WorkflowFn: () => ({ nodes: [], edges: [] }),
+        form2WorkflowFn: () => ({ ...workflow, chatConfig: appForm.chatConfig }),
         showSandbox: true,
         enableSandbox: true,
         t: mockT
       });
       expect(result).toBeUndefined();
+      expect(getWorkflowModelCheckData).toHaveBeenLastCalledWith({
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: 'start' }),
+          expect.objectContaining({ id: 'answer' })
+        ]),
+        chatConfig: appForm.chatConfig,
+        appId
+      });
     });
 
     it('should intercept error when chatConfig has invalid model configuration', async () => {
@@ -221,7 +269,7 @@ describe('checkAppFormResourceIssues', () => {
       appForm.chatConfig.ttsConfig = { type: 'model', modelId: 'non-existent-tts-model' };
       const result = await checkAppFormBeforePublish({
         appForm,
-        form2WorkflowFn: () => ({ nodes: [], edges: [] }),
+        form2WorkflowFn: () => ({ nodes: [], edges: [], chatConfig: appForm.chatConfig }),
         showSandbox: true,
         enableSandbox: true,
         t: mockT

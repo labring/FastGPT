@@ -242,10 +242,10 @@ export class ObClass {
       connection.release(); // 释放连接回连接池
     }
   }
-  async query<T extends QueryResult = any>(sql: string) {
+  async query<T extends QueryResult = any>(sql: string, values?: unknown[]) {
     const client = await this.getClient();
     const start = Date.now();
-    return client.query<T>(sql).then((res) => {
+    return client.query<T>(sql, values).then((res) => {
       const time = Date.now() - start;
 
       if (time > 300) {

@@ -36,8 +36,9 @@ export const simpleText = (text = '') => {
 export const replaceSensitiveText = (text: string) => {
   // 1. http link
   text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
-  // 2. nx-xxx 全部替换成xxx
-  text = text.replace(/ns-[\w-]+/g, 'xxx');
+  // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
+  // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
+  text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');
 
   return text;
 };
@@ -154,14 +155,9 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/*
-  Parse file extension from url
-  Test：
-  1. https://xxx.com/file.pdf?token=123
-    => pdf
-  2. https://xxx.com/file.pdf
-    => pdf
-*/
+/**
+ * 优先从查询参数中的文件名提取小写扩展名，无后缀或 URL 解析失败时回退到原始链接。
+ */
 export const parseFileExtensionFromUrl = (url = '') => {
   // Prefer explicit filename in query params for proxy links:
   // e.g. /api/system/file/d/<alias>, or a legacy proxy URL carrying filename in query.
@@ -170,7 +166,8 @@ export const parseFileExtensionFromUrl = (url = '') => {
     const queryFilename =
       parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
     if (queryFilename) {
-      const extFromQuery = path.extname(decodeURIComponent(queryFilename));
+      // URLSearchParams 已完成解码，保留文件名中的字面量 %xx。
+      const extFromQuery = path.extname(queryFilename);
       if (extFromQuery.startsWith('.')) {
         return extFromQuery.slice(1).toLowerCase();
       }
@@ -190,6 +187,27 @@ export const parseFileExtensionFromUrl = (url = '') => {
   return '';
 };
 
+/**
+ * Format `absNum` (at least the smallest unit) with the largest unit it reaches,
+ * from units sorted largest first. When rounding to two decimals would show a
+ * whole next unit, that unit is used instead: 99,999,999 reads 1亿, not 10000万,
+ * and 999,999 reads 1M, not 1000K.
+ */
+const formatWithLargestUnit = (
+  absNum: number,
+  units: [size: number, unit: string][]
+): string | undefined => {
+  const round = (value: number) => Number(value.toFixed(2));
+  const index = units.findIndex(([size]) => absNum >= size);
+  if (index === -1) return undefined;
+  const [size, unit] = units[index];
+  const larger = units[index - 1];
+  if (larger && round(absNum / size) >= larger[0] / size) {
+    return `${round(absNum / larger[0])}${larger[1]}`;
+  }
+  return `${round(absNum / size)}${unit}`;
+};
+
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
   if (num === 0) return '0';
   if (!num || isNaN(num)) return '-';
@@ -197,24 +215,30 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  if (locale === 'zh-CN') {
-    if (absNum >= 10000) {
-      const value = absNum / 10000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}万`;
-    }
+  const normalizedLocale = locale.trim().toLowerCase().replaceAll('_', '-');
+
+  if (normalizedLocale.startsWith('zh')) {
+    const isHant =
+      normalizedLocale === 'zh-hant' ||
+      normalizedLocale.includes('hant') ||
+      normalizedLocale === 'zh-tw' ||
+      normalizedLocale === 'zh-hk';
+    const yiUnit = isHant ? '億' : '亿';
+    const wanUnit = isHant ? '萬' : '万';
+
+    const unitText = formatWithLargestUnit(absNum, [
+      [100000000, yiUnit],
+      [10000, wanUnit]
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   } else {
-    if (absNum >= 1000000) {
-      const value = absNum / 1000000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}M`;
-    }
-    if (absNum >= 1000) {
-      const value = absNum / 1000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}K`;
-    }
+    const unitText = formatWithLargestUnit(absNum, [
+      [1000000000, 'B'],
+      [1000000, 'M'],
+      [1000, 'K']
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   }
 };

@@ -24,14 +24,18 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
   getSystemMigrationList,
-  retrySystemMigration
+  retrySystemMigration,
+  startSystemMigration
 } from '@/web/common/system/migrations/api';
 import {
+  getSystemMigrationErrorText,
   getSystemMigrationDisplayStatus,
   getSystemMigrationProgressPercent,
   type SystemMigrationDisplayStatus
@@ -41,6 +45,12 @@ const statusVisual: Record<
   SystemMigrationDisplayStatus,
   { labelKey: string; color: string; background: string; border: string }
 > = {
+  [SystemMigrationStatusEnum.waiting]: {
+    labelKey: i18nT('system_migration:status_waiting'),
+    color: 'yellow.700',
+    background: 'yellow.50',
+    border: 'yellow.200'
+  },
   [SystemMigrationStatusEnum.pending]: {
     labelKey: i18nT('system_migration:status_pending'),
     color: 'myGray.600',
@@ -83,7 +93,7 @@ const MigrationProgressStage = ({
   progress: SystemMigrationProgressListItem;
   onViewFailedRecords: (progress: SystemMigrationProgressListItem) => void;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   // lease 是否过期属于任务执行权状态；阶段仍保持其真实的 running 状态。
   const displayStatus = progress.status;
   const visual = statusVisual[displayStatus];
@@ -166,7 +176,9 @@ const MigrationCard = ({
   serverTime,
   onViewFailedRecords,
   onRetry,
-  retrying
+  retrying,
+  onStart,
+  starting
 }: {
   migration: SystemMigrationListItem;
   serverTime: Date;
@@ -176,8 +188,10 @@ const MigrationCard = ({
   ) => void;
   onRetry: (migrationId: string) => void;
   retrying: boolean;
+  onStart: (migrationId: string) => void;
+  starting: boolean;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
   const visual = statusVisual[displayStatus];
   const resultText = migration.result
@@ -219,6 +233,17 @@ const MigrationCard = ({
             {t(migration.descriptionKey as any)}
           </Box>
         </Box>
+        {migration.status === SystemMigrationStatusEnum.waiting && (
+          <Button
+            flexShrink={0}
+            size={'sm'}
+            variant={'primary'}
+            isLoading={starting}
+            onClick={() => onStart(migration.id)}
+          >
+            {t('system_migration:start_migration')}
+          </Button>
+        )}
         {!migration.blockStartup && migration.status === SystemMigrationStatusEnum.failed && (
           <Button
             flexShrink={0}
@@ -364,7 +389,7 @@ const FailedRecordsModal = ({
   progress: SystemMigrationProgressListItem;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   const { data, isLoading, isError, refetch } = useQuery(
     // migrationId 进入 query key，切换任务时不会复用上一任务的错误正文。
     ['systemMigrationFailedRecords', migration.id, progress.key],
@@ -385,7 +410,6 @@ const FailedRecordsModal = ({
         minH: '520px',
         display: 'flex',
         flexDirection: 'column',
-        px: 5,
         overflowY: 'auto'
       }}
     >
@@ -415,7 +439,14 @@ const FailedRecordsModal = ({
 
 /** Root 管理员的升级状态页：轮询轻量摘要，所有执行动作仍通过服务端 lease runner 完成。 */
 const SystemMigrationsPage = () => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
+  const { toast } = useToast();
+
+  /** 依赖错误按当前语言翻译名称和正文，其他错误沿用通用提示。 */
+  const showMigrationError = (error: unknown) => {
+    if (error instanceof ToastHandledError) return;
+    toast({ title: getSystemMigrationErrorText(error, t), status: 'error' });
+  };
   const { data, isFetching, isError, refetch } = useQuery(
     ['systemMigrationList'],
     getSystemMigrationList,
@@ -432,7 +463,18 @@ const SystemMigrationsPage = () => {
     (migrationId: string) => retrySystemMigration({ migrationId }),
     {
       successToast: t('system_migration:migration_retry_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       // 重置成功后立即刷新，否则需要等待下一次定时轮询才能看到 pending/running。
+      onSuccess: () => void refetch()
+    }
+  );
+  const { runAsync: startMigration, loading: isStarting } = useRequest(
+    (migrationId: string) => startSystemMigration({ migrationId }),
+    {
+      successToast: t('system_migration:migration_start_requested'),
+      errorToast: '',
+      onError: showMigrationError,
       onSuccess: () => void refetch()
     }
   );
@@ -443,7 +485,11 @@ const SystemMigrationsPage = () => {
   const [pending, running, failed] = useMemo(() => {
     const migrations = data?.migrations ?? [];
     return [
-      migrations.filter((item) => item.status === SystemMigrationStatusEnum.pending).length,
+      migrations.filter(
+        (item) =>
+          item.status === SystemMigrationStatusEnum.pending ||
+          item.status === SystemMigrationStatusEnum.waiting
+      ).length,
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.running).length,
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
@@ -578,6 +624,8 @@ const SystemMigrationsPage = () => {
                     }
                     onRetry={(migrationId) => void retryMigration(migrationId)}
                     retrying={isRetrying}
+                    onStart={(migrationId) => void startMigration(migrationId)}
+                    starting={isStarting}
                   />
                 ))
               )}

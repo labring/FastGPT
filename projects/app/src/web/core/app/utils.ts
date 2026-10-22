@@ -1,29 +1,27 @@
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { chatHistoryValueDesc } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-
-import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
 
-export const SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY = 'openSystemConfig';
+export const WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY = 'openWorkflowBuilder';
+export const WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY = 'workflowBuilderChatId';
 
-/** 生成应用详情页路由，并按需携带只在首次进入时消费的系统配置展开标记。 */
+/** 生成应用详情页路由，并按需携带只在首次进入时消费的 Builder 自动开启标记。 */
 export const getAppDetailRoute = ({
   appId,
-  openSystemConfig = false
+  openWorkflowBuilder = false
 }: {
   appId: string;
-  openSystemConfig?: boolean;
+  openWorkflowBuilder?: boolean;
 }) => ({
   pathname: '/app/detail',
   query: {
     appId,
-    ...(openSystemConfig ? { [SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY]: '1' } : {})
+    ...(openWorkflowBuilder ? { [WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY]: '1' } : {})
   }
 });
 
@@ -47,7 +45,7 @@ export function filterSensitiveFormData(appForm: AppFormEditFormType) {
   };
 }
 
-/** 为简易应用导出补充可跨环境匹配的模型名称，并保留原 modelId。 */
+/** 为简易应用导出补充可跨环境匹配的系统模型名称，并保留原 modelId。 */
 export function addModelNamesToAppForm({
   appForm,
   models
@@ -57,7 +55,9 @@ export function addModelNamesToAppForm({
 }) {
   const getModelName = ({ modelId, type }: { modelId?: string; type: ModelTypeEnum }) => {
     if (typeof modelId !== 'string' || /^\{\{.*\}\}$/.test(modelId)) return;
-    return models.find((item) => item.modelId === modelId && item.type === type)?.model;
+    return models.find(
+      (item) => isSystemModel(item) && item.modelId === modelId && item.type === type
+    )?.model;
   };
 
   const aiModel = getModelName({
@@ -85,43 +85,3 @@ export function addModelNamesToAppForm({
 
   return appForm;
 }
-
-export const workflowSystemVariables: EditorVariablePickerType[] = [
-  {
-    key: 'userId',
-    label: i18nT('workflow:use_user_id'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'appId',
-    label: i18nT('common:core.module.http.AppId'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  },
-  {
-    key: 'chatId',
-    label: i18nT('common:core.module.http.ChatId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'responseChatItemId',
-    label: i18nT('common:core.module.http.ResponseChatItemId'),
-    valueType: WorkflowIOValueTypeEnum.string,
-    required: true
-  },
-  {
-    key: 'histories',
-    label: i18nT('common:core.module.http.Histories'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.chatHistory,
-    valueDesc: chatHistoryValueDesc
-  },
-  {
-    key: 'cTime',
-    label: i18nT('common:core.module.http.Current time'),
-    required: true,
-    valueType: WorkflowIOValueTypeEnum.string
-  }
-];

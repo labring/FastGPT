@@ -78,18 +78,21 @@ const replaceMigrationFailedRecordDocuments = async ({
 };
 
 /** 幂等创建当前静态注册表对应的状态文档，已存在的运行状态不会被覆盖。 */
-export const ensureMigrationStates = async (migrationIds: string[], session?: ClientSession) => {
-  if (migrationIds.length === 0) return;
+export const ensureMigrationStates = async (
+  migrations: readonly { id: string; manual?: boolean }[],
+  session?: ClientSession
+) => {
+  if (migrations.length === 0) return;
 
   const now = new Date();
   await MongoSystemMigrationState.bulkWrite(
-    migrationIds.map((migrationId) => ({
+    migrations.map(({ id: migrationId, manual }) => ({
       updateOne: {
         filter: { _id: migrationId },
         update: {
           $setOnInsert: {
             _id: migrationId,
-            status: SystemMigrationStatusEnum.pending,
+            status: manual ? SystemMigrationStatusEnum.waiting : SystemMigrationStatusEnum.pending,
             createdAt: now,
             updatedAt: now
           }
@@ -540,6 +543,16 @@ export const resetFailedMigration = async (
         leaseExpireAt: ''
       }
     },
+    { session }
+  );
+  return result.modifiedCount === 1;
+};
+
+/** 原子接受首次手动执行请求；重复请求或已经开始的任务不会重新入队。 */
+export const enqueueManualMigration = async (migrationId: string, session?: ClientSession) => {
+  const result = await MongoSystemMigrationState.updateOne(
+    { _id: migrationId, status: SystemMigrationStatusEnum.waiting },
+    { $set: { status: SystemMigrationStatusEnum.pending }, $currentDate: { updatedAt: true } },
     { session }
   );
   return result.modifiedCount === 1;

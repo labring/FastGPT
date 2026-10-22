@@ -57,6 +57,15 @@ describe('string tools', () => {
   it('should replace sensitive text', () => {
     expect(replaceSensitiveText('Visit https://example.com/path?x=1')).toBe('Visit https://xxx');
     expect(replaceSensitiveText('token ns-abc-123 and ns-xyz')).toBe('token xxx and xxx');
+    expect(replaceSensitiveText('svc.ns-abc123.svc.cluster.local:3000')).toBe(
+      'svc.xxx.svc.cluster.local:3000'
+    );
+    expect(replaceSensitiveText('Exceeded tokens-per-minute limit')).toBe(
+      'Exceeded tokens-per-minute limit'
+    );
+    expect(replaceSensitiveText('dns-server timeout on columns-a')).toBe(
+      'dns-server timeout on columns-a'
+    );
   });
 
   it('should generate nanoid with lowercase prefix', () => {
@@ -141,8 +150,29 @@ describe('string tools', () => {
     expect(formatNumberWithUnit(Number.NaN)).toBe('-');
     expect(formatNumberWithUnit(123456, 'zh-CN')).toBe('12.35万');
     expect(formatNumberWithUnit(-200000, 'zh-CN')).toBe('-20万');
+    expect(formatNumberWithUnit(100000000, 'zh-CN')).toBe('1亿');
+    expect(formatNumberWithUnit(123456, 'zh')).toBe('12.35万');
+    expect(formatNumberWithUnit(100000000, 'zh-Hant')).toBe('1億');
+    expect(formatNumberWithUnit(20000, 'zh-Hant')).toBe('2萬');
+    expect(formatNumberWithUnit(100000000, 'zh-tw')).toBe('1億');
+    expect(formatNumberWithUnit(20000, 'zh-hk')).toBe('2萬');
+    expect(formatNumberWithUnit(100000000, 'zh_hant_tw')).toBe('1億');
+    expect(formatNumberWithUnit(123456, 'ZH-CN')).toBe('12.35万');
     expect(formatNumberWithUnit(1200, 'en')).toBe('1.2K');
     expect(formatNumberWithUnit(1250000, 'en')).toBe('1.25M');
+    expect(formatNumberWithUnit(1500000000, 'en')).toBe('1.5B');
+    expect(formatNumberWithUnit(999, 'en')).toBe('999');
+  });
+
+  it('formatNumberWithUnit moves to the next unit when rounding reaches it', () => {
+    expect(formatNumberWithUnit(99999999, 'zh-CN')).toBe('1亿');
+    expect(formatNumberWithUnit(-99999999, 'zh-CN')).toBe('-1亿');
+    expect(formatNumberWithUnit(99999999, 'zh-Hant')).toBe('1億');
+    expect(formatNumberWithUnit(99994999, 'zh-CN')).toBe('9999.5万');
+    expect(formatNumberWithUnit(999999, 'en')).toBe('1M');
+    expect(formatNumberWithUnit(999999999, 'en')).toBe('1B');
+    expect(formatNumberWithUnit(999994, 'en')).toBe('999.99K');
+    expect(formatNumberWithUnit(9999, 'zh-CN')).toBe('9,999');
     expect(formatNumberWithUnit(999, 'en')).toBe('999');
   });
 });

@@ -94,7 +94,7 @@ describe('GetQuoteDataBodySchema', () => {
 
 /**
  * Handler 分支测试：mock 所有数据层依赖，确认
- * - 对话模式：走 authChatCrud / authCollectionInChat
+ * - 对话模式：走 authChatTargetCrud / authCollectionInChat
  * - API 模式：走 authDatasetData
  * 并且字段会完整传给下游鉴权函数（防止上游 schema 剥字段后神不知鬼不觉）。
  */
@@ -105,8 +105,11 @@ const findByIdDatasetDataMock = vi.fn();
 const findByIdCollectionMock = vi.fn();
 const formatDatasetDataValueMock = vi.fn();
 
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
+  authChatTargetCrud: (props: any) => authChatTargetCrudMock(props)
+}));
+
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatTargetCrud: (props: any) => authChatTargetCrudMock(props),
   authCollectionInChat: (props: any) => authCollectionInChatMock(props)
 }));
 
@@ -127,7 +130,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/data/controller', () => ({
-  formatDatasetDataValue: (props: any) => formatDatasetDataValueMock(props)
+  formatDatasetDataValue: (...args: any[]) => formatDatasetDataValueMock(...args)
 }));
 
 import handler from '@/pages/api/core/dataset/data/getQuoteData';
@@ -152,7 +155,7 @@ describe('getQuoteData handler', () => {
     formatDatasetDataValueMock.mockImplementation(({ q, a }: any) => ({ q, a }));
   });
 
-  it('chat mode: forwards outLinkAuthData to authChatCrud', async () => {
+  it('chat mode: forwards outLinkAuthData to authChatTargetCrud', async () => {
     findByIdDatasetDataMock.mockResolvedValue({
       _id: VALID_ID,
       collectionId: 'col_1',
@@ -197,6 +200,11 @@ describe('getQuoteData handler', () => {
       collectionIds: ['col_1']
     });
     expect(authDatasetDataMock).not.toHaveBeenCalled();
+
+    // 引用格式化必须把签发范围绑定到已鉴权 collection 的 datasetId
+    expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
+      datasetIds: [makeCollection().datasetId]
+    });
   });
 
   it('chat mode: rejects when showCite is false', async () => {
@@ -278,6 +286,11 @@ describe('getQuoteData handler', () => {
     expect(authDatasetDataMock).toHaveBeenCalledWith(expect.objectContaining({ dataId: VALID_ID }));
     expect(authChatTargetCrudMock).not.toHaveBeenCalled();
     expect(authCollectionInChatMock).not.toHaveBeenCalled();
+
+    // API 模式同样要绑定已鉴权 datasetId，防止外库 key 借接口签发短链
+    expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
+      datasetIds: [makeCollection().datasetId]
+    });
   });
 
   it('returns schema-validated response payload', async () => {

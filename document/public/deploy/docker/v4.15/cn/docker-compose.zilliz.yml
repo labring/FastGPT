@@ -561,7 +561,6 @@ volumes:
   fastgpt-ob-data:
   fastgpt-ob-config:
   fastgpt-seekdb-data:
-  fastgpt-seekdb-config:
   fastgpt-aiproxy_pg:
 
 configs:

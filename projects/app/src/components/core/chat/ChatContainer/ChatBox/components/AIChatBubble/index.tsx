@@ -5,6 +5,7 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import type { ChatSiteItemType } from '../../type';
 import AIChatBubbleContent from './Content';
+import WorkflowBuilderContent from './WorkflowBuilderContent';
 import AIChatBubbleActions from './Actions';
 import type { ChatControllerProps } from '../ChatController';
 import { useContextSelector } from 'use-context-selector';
@@ -18,8 +19,6 @@ import { ChatBoxContentMaxWidth } from '../../constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
-
-export { shouldFilterAiValue } from './utils';
 
 type AIChatBubbleProps = {
   chat: ChatSiteItemType;
@@ -56,6 +55,11 @@ const AIChatBubble = ({
 }: AIChatBubbleProps) => {
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
+  const collapseIntermediateAgentResponses = useContextSelector(
+    ChatBoxContext,
+    (v) => v.collapseIntermediateAgentResponses ?? false
+  );
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -97,17 +101,20 @@ const AIChatBubble = ({
     : showNoOutputTip
       ? t('chat:no_output_content')
       : '';
+  const ContentComponent = collapseIntermediateAgentResponses
+    ? WorkflowBuilderContent
+    : AIChatBubbleContent;
 
   return (
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
       <Box
         w={'100%'}
-        maxW={ChatBoxContentMaxWidth}
+        maxW={boxBodyProps?.maxW ?? ChatBoxContentMaxWidth}
         color={'myGray.900'}
         textAlign={'left'}
         minW={isPlanCard ? ['100%', '50%'] : undefined}
       >
-        <AIChatBubbleContent
+        <ContentComponent
           chatValue={chatValue}
           responseData={chat.responseData}
           dataId={chat.dataId}
@@ -137,7 +144,7 @@ const AIChatBubble = ({
         {children}
         {showLoading && (
           <Box mt={3}>
-            <AIChatLoading text={loadingText} size={'md'} />
+            <AIChatLoading text={loadingText} />
           </Box>
         )}
       </Box>

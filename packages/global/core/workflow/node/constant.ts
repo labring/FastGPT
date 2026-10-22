@@ -1,5 +1,6 @@
 import { i18nT } from '../../../common/i18n/utils';
 import { WorkflowIOValueTypeEnum } from '../constants';
+import type { EditorVariablePickerType } from '../type/io';
 export enum FlowNodeInputTypeEnum {
   // render ui
   reference = 'reference', // reference to other node output
@@ -38,6 +39,8 @@ export enum FlowNodeInputTypeEnum {
   password = 'password',
 
   datasetTagFilter = 'datasetTagFilter',
+
+  off = 'off', // 关闭
 
   agentGenerated = 'agentGenerated' // for compatibility for >= v4.16.0
 }
@@ -93,7 +96,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/customVariable'
   },
   [FlowNodeInputTypeEnum.custom]: {
-    icon: 'core/workflow/inputType/custom'
+    icon: 'core/workflow/inputType/input'
   },
   [FlowNodeInputTypeEnum.selectSkill]: {
     icon: 'core/workflow/inputType/selectDataset'
@@ -121,6 +124,9 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.datasetTagFilter]: {
     icon: 'core/workflow/inputType/input'
+  },
+  [FlowNodeInputTypeEnum.off]: {
+    icon: 'circleMinus'
   },
   [FlowNodeInputTypeEnum.agentGenerated]: {
     icon: 'core/workflow/inputType/agentGenerated'
@@ -269,6 +275,48 @@ export const chatHistoryValueDesc = `{
   obj: System | Human | AI;
   value: string;
 }[]`;
+
+/** 运行时注入的系统变量，供画布选择器和 Workflow Core 共用类型与国际化标签。 */
+export const workflowSystemVariables: EditorVariablePickerType[] = [
+  {
+    key: 'userId',
+    label: i18nT('workflow:use_user_id'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'appId',
+    label: i18nT('common:core.module.http.AppId'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  },
+  {
+    key: 'chatId',
+    label: i18nT('common:core.module.http.ChatId'),
+    valueType: WorkflowIOValueTypeEnum.string,
+    required: true
+  },
+  {
+    key: 'responseChatItemId',
+    label: i18nT('common:core.module.http.ResponseChatItemId'),
+    valueType: WorkflowIOValueTypeEnum.string,
+    required: true
+  },
+  {
+    key: 'histories',
+    label: i18nT('common:core.module.http.Histories'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.chatHistory,
+    valueDesc: chatHistoryValueDesc
+  },
+  {
+    key: 'cTime',
+    label: i18nT('common:core.module.http.Current time'),
+    required: true,
+    valueType: WorkflowIOValueTypeEnum.string
+  }
+];
+
 export const datasetQuoteValueDesc = `{
   id: string;
   datasetId: string;
@@ -392,3 +440,8 @@ export const NESTED_CHILD_SYSTEM_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new
 
 export const isNestedChildSystemNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
   NESTED_CHILD_SYSTEM_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
+
+export enum LoopRunModeEnum {
+  array = 'array',
+  conditional = 'conditional'
+}

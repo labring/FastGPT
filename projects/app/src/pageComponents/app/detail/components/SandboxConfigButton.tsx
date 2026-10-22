@@ -6,6 +6,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SandboxEntrypointEditor from './SandboxEntrypointEditor';
 import SandboxNotSupportTip from './SandboxNotSupportTip';
 
@@ -34,6 +35,7 @@ function SandboxConfigButton({
   ...props
 }: SandboxConfigButtonProps) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [localEnabled, setLocalEnabled] = React.useState(isEnabled);
   const [localEntrypoint, setLocalEntrypoint] = React.useState(entrypoint || '');
@@ -64,7 +66,7 @@ function SandboxConfigButton({
   return (
     <Flex alignItems={'center'} gap={1} {...props}>
       {showSandbox && enableSandbox ? (
-        <MyTag>{t('app:sandbox_free_tip')}</MyTag>
+        feConfigs.show_agent_sandbox_free_tip && <MyTag>{t('app:sandbox_free_tip')}</MyTag>
       ) : (
         <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
       )}

@@ -1,37 +1,35 @@
-import { describe, expect, it, vi } from 'vitest';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getUser } from '@test/datas/users';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
+import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -199,54 +197,58 @@ describe('beforeUpdateAppFormat', () => {
       appId: 'systemTool-weather',
       versionId: undefined,
       source: 'teamId:team-1',
+      lang: 'en',
       teamId: 'team-1'
     });
   });
 
-  it('保存前移除知识库选择项的编辑态标记并保留展示快照字段', async () => {
-    const nodes = [
-      {
-        nodeId: 'dataset-node',
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        name: 'Dataset',
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            label: 'Datasets',
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                datasetId: 'dataset-1',
-                avatar: 'avatar.png',
-                name: 'Deleted Dataset',
-                vectorModel: {
-                  model: 'text-embedding'
-                },
-                isDeleted: true
-              }
-            ]
-          }
-        ],
-        outputs: []
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 知识库选择项时仅保留 datasetId',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          nodeId: 'dataset-node',
+          flowNodeType,
+          name: 'Dataset',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                {
+                  datasetId: 'dataset-1',
+                  avatar: 'avatar.png',
+                  name: 'Deleted Dataset',
+                  vectorModel: {
+                    modelId: 'embedding-model-id',
+                    model: 'text-embedding'
+                  },
+                  error: 'resource_missing',
+                  isDeleted: true
+                }
+              ]
+            }
+          ],
+          outputs: []
+        } as StoreNodeItemType
+      ];
 
-    await beforeUpdateAppFormat({ nodes });
+      await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toEqual([
-      {
-        datasetId: 'dataset-1',
-        avatar: 'avatar.png',
-        name: 'Deleted Dataset',
-        vectorModel: {
-          model: 'text-embedding'
+      expect(nodes[0].inputs[0].value).toEqual([
+        {
+          datasetId: 'dataset-1'
         }
-      }
-    ]);
-  });
+      ]);
+    }
+  );
 
-  it('保存前兼容旧版单对象知识库选择项并保留展示快照字段', async () => {
+  it('保存前兼容旧版单对象知识库选择项并过滤展示字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -272,12 +274,7 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        datasetId: 'dataset-legacy',
-        avatar: 'avatar.png',
-        name: 'Legacy Dataset',
-        vectorModel: {
-          model: 'text-embedding'
-        }
+        datasetId: 'dataset-legacy'
       }
     ]);
   });
@@ -316,7 +313,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前移除 Agent datasetParams 中的编辑态标记并保留展示快照字段', async () => {
+  it('保存前过滤 Agent datasetParams 中的知识库展示字段并保留检索参数', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -345,15 +342,10 @@ describe('beforeUpdateAppFormat', () => {
 
     await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toMatchObject({
+    expect(nodes[0].inputs[0].value).toEqual({
       datasets: [
         {
-          datasetId: 'dataset-1',
-          avatar: 'avatar.png',
-          name: 'Deleted Dataset',
-          vectorModel: {
-            model: 'text-embedding'
-          }
+          datasetId: 'dataset-1'
         }
       ],
       similarity: 0.5,
@@ -587,7 +579,7 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
-    const previousHandle = getCachedModelHandle()!;
+    const previousHandle = getCachedSystemModelHandle()!;
     const previousModels = previousHandle.getAllModels();
     const previousDefaults = getModelTestDefaults();
     const model = {
@@ -729,6 +721,7 @@ describe('resolveAppResourcesByPermission', () => {
   it('filters unauthorized resources from an unmigrated draft (missing resources) to prevent bypass', async () => {
     const owner = await getUser(`unmigrated-draft-owner-${getNanoid(6)}`);
     const member = await getUser(`unmigrated-draft-member-${getNanoid(6)}`, owner.teamId);
+    const stranger = await getUser(`unmigrated-draft-stranger-${getNanoid(6)}`);
     const workflowApp = await MongoApp.create({
       name: 'Workflow app with unmigrated draft',
       type: AppTypeEnum.workflow,
@@ -742,12 +735,13 @@ describe('resolveAppResourcesByPermission', () => {
       type: AppTypeEnum.mcpToolSet,
       modules: [],
       edges: [],
-      teamId: owner.teamId,
-      tmbId: owner.tmbId
+      teamId: stranger.teamId,
+      tmbId: stranger.tmbId
     });
 
     // 模拟尚未跑迁移的历史草稿：未包含 resources 字段，但 nodes 中已引用受保护工具
-    await MongoAppVersion.create({
+    await MongoAppVersion.collection.insertOne({
+      _id: new Types.ObjectId(),
       appId: workflowApp._id,
       tmbId: member.tmbId,
       nodes: [
@@ -781,5 +775,62 @@ describe('resolveAppResourcesByPermission', () => {
         blockOnUnauthorized: false
       })
     ).resolves.toEqual([]);
+  });
+
+  it('retains authorized resources from an unmigrated draft based on app owner permissions', async () => {
+    const owner = await getUser(`owner-baseline-${getNanoid(6)}`);
+    const member = await getUser(`member-baseline-${getNanoid(6)}`, owner.teamId);
+    const workflowApp = await MongoApp.create({
+      name: 'Workflow app owned by owner',
+      type: AppTypeEnum.workflow,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const toolset = await MongoApp.create({
+      name: 'Toolset with owner permission',
+      type: AppTypeEnum.mcpToolSet,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    // 仅授权 owner 拥有该工具集的权限，member 无个人权限
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      resourceId: toolset._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    // 模拟历史草稿（未包含 resources），由 member 创建但包含 owner 有权访问的工具
+    await MongoAppVersion.collection.insertOne({
+      _id: new Types.ObjectId(),
+      appId: workflowApp._id,
+      tmbId: member.tmbId,
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          pluginId: String(toolset._id),
+          inputs: []
+        }
+      ],
+      edges: []
+    });
+
+    const toolResource = { type: 'tool' as const, id: String(toolset._id) };
+
+    // 增量鉴权基线按 app.tmbId（owner）过滤，该工具应作为合法 baseline 进入 kept，member 发布时不被阻断
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [toolResource],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).resolves.toEqual([toolResource]);
   });
 });

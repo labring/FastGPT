@@ -94,14 +94,98 @@ description: FastGPT 私有部署常见问题排查方式
 
 ### 修改了 vectorModels 但是没有生效
 
-1. 重启容器，确保模型配置已经加载（可以在日志或者新建知识库时候看到新模型）
-2. 记得刷新一次浏览器。
-3. 如果是已经创建的知识库，需要删除重建。向量模型是创建时候绑定的，不会动态更新。
+1. 在管理员的模型配置中启用新的向量模型，然后刷新页面。旧版本通过 `config.json` 的 `vectorModels` 配置模型时，修改文件后还需重启服务。
+2. 已有知识库不会自动切换模型。由知识库所有者进入该知识库的「配置」页，选择新的索引模型并确认重建索引，无需删除知识库。
+3. 如果知识库正在处理数据或重建索引，请等待任务结束后再切换。重建索引会调用所选模型，并按模型价格计费。
 
 ---
 
 ### 如何修改 root 密码
 
 修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
+
+---
+
+### FastGPT 支持 OpenAI 的 Responses API（/v1/responses）吗？
+
+不支持（截至 4.17.0），请求会返回 404。请改用 `POST /api/v1/chat/completions` 调用应用，它兼容 OpenAI Chat Completions 格式。
+
+---
+
+### 升级后启动报 index not found（collection=modeldata_v2）怎么办？
+
+适用版本：4.16.2 及以后，向量库为 Milvus。日志里有 `IndexNotExist ... index not found[collection=modeldata_v2]`。
+
+原因：从 4.16.2 起，向量检索和全文检索都使用 `modeldata_v2` 这张表。启动时这张表已存在、却缺少全文检索索引，就会报错并退出。为什么会缺索引，目前还没有定论。另外要求 Milvus 不低于 2.5.16。
+
+怎么做：升级前按 [Milvus BM25 全文检索配置与迁移](/self-host/milvus-bm25) 备份并升级 Milvus，再升级 FastGPT 并迁移数据。已经出现这个报错的，需要删除并重建这张表，会删除数据，请先备份并联系技术支持处理。迁移完成之前，知识库检索查不到旧数据。
+
+---
+
+### docker-compose 部署报 AGENT_SANDBOX_OPENSANDBOX_IMAGE 没配置、AGENT_SANDBOX_PREVIEW_PROXY_URL 不对怎么办？
+
+适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
+
+怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（当前版本用 `main` 目录，没有 v4.16、v4.17 目录）。
+
+注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
+
+---
+
+### 并行执行报 parallel_task_not_reach_end，或者只跑了一个任务怎么办？
+
+适用版本：已按 4.17.0 核实。并行执行按输入数组的元素个数开任务，一个元素对应一个任务。传入的是一整段多行文本（比如每行一个 URL）时，它会被当成只有一个元素的数组，所以只跑一个任务。`parallel_task_not_reach_end` 表示某个任务的子流程没有走到「结束」节点；子流程有更具体的报错时，会优先显示那条报错。
+
+怎么做：在并行执行前加一个「代码运行」节点，把文本按换行拆成数组，例如返回 `text.split('\n').map(s => s.trim()).filter(Boolean)`，再让并行执行的数组输入引用这个结果。仍然报错，就打开出错任务的运行详情，检查子流程有没有走到「结束」节点。
+
+---
+
+### 用 HTTPS 访问时，上传文件报 s3 upload network error 怎么办？
+
+适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
+
+怎么做：把对应配置改成可以访问的 https 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
+
+---
+
+### Windows 本地开发时，FastGPT 启动失败，连不上插件服务（localhost:3004）怎么办？
+
+适用范围：本地开发环境（`deploy/dev`）。`fastgpt-plugin` 用 host 网络监听 3004 端口，FastGPT 启动时访问 `http://localhost:3004` 失败就会退出。Windows 的 Docker Desktop 默认只在它自己的虚拟机里让 host 网络生效，本机访问不到。
+
+怎么做：在 Docker Desktop（4.34 及以上，需登录）的 Settings → Resources → Network 里勾选 Enable host networking，然后重启；或者按开发文档的建议，改在 WSL2、Linux、macOS 下开发。
+
+---
+
+### 模型报 Download multimodal file timed out，或读不到图片怎么办？
+
+适用版本：4.15.2 及以后。`MULTIPLE_DATA_TO_BASE64` 默认值在 4.15.2 是 `true`，4.15.3 起是 `false`。为 `false` 时，FastGPT 把 `http(s)://` 开头的文件下载短链交给模型服务商去下载。短链前缀依次取 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`、`FILE_DOMAIN`、`FE_DOMAIN` 中第一个设置了的；如果是内网地址，模型服务商访问不到，就会下载超时（可能返回 `Download multimodal file timed out`）。
+
+怎么做（二选一）：设置 `MULTIPLE_DATA_TO_BASE64=true`，让 FastGPT 转成 base64 再发给模型（请求体会变大）；或者把 `FILE_DOMAIN` 配置成模型服务商能从公网访问到的 FastGPT 地址，而不是改 `FE_DOMAIN`（它是用户访问 FastGPT 的地址）。
+
+---
+
+### 导入模板时报“模板文件格式不正确，应该是首列为 q,a,indexes 的 csv 文件”怎么办？
+
+适用版本：4.9.11～4.15.8。
+
+原因：这些版本只接受 CSV 文件，并且文件内容（去掉首尾空白后）必须以 `q,a,indexes` 开头。表头每一列都加了引号（如 `"q","a","indexes"`）、写成了 `index`，或者第一行前面多了别的内容，都会报这个错。
+
+怎么做：使用导入页提供的 CSV 模板填写内容，用文本编辑器打开确认第一行以 `q,a,indexes` 开头，不要另存成 `.xlsx`。也可以升级到 4.16.0 及以后：支持 `.csv` 和 `.xlsx`，表头为 `q`、`a`、`index`（可重复）、`metadata`（可选），旧版的 `q,a,indexes` 表头仍然可用，不需要改文件。新模板的写法见 [模板导入](/guide/dataset/template)。
+
+---
+
+### 调用对话接口时，怎么拿到模型的思考内容？
+
+适用版本：4.15.2 及以后。思考内容放在单独的 `reasoning_content` 字段里，和正文 `content` 分开：流式返回时，有思考增量的数据块，其 `choices[0].delta` 里带 `reasoning_content`；非流式返回时，普通文本回答的 `choices[0].message` 里带 `reasoning_content`。只有模型实际输出了思考内容、并且 FastGPT 能识别时才有这个字段：上游返回 `reasoning_content` 字段，或者在模型配置里打开思考支持后，正文里用 `<think></think>` 包起来。4.17.1 起，AI Proxy 的 OpenAI 类型渠道还可以把上游的 `reasoning` 字段映射成 `reasoning_content`。
+
+---
+
+### 如何把向量库从 Milvus 切换为 pgvector？
+
+从 Milvus 切换到 pgvector 后，原来存在 Milvus 里的向量不会自动迁移，需要重新生成；知识库、文件和文本分块不受影响。以下步骤适用于 4.16.2 及以后的版本。
+
+1. 参照官方模板，在 docker-compose 里增加 pgvector 服务，给 `fastgpt-app` 配置 `PG_URL`，去掉 `MILVUS_ADDRESS`，然后重启。表和索引会自动创建。如果还配置了 SeekDB 或 OceanBase，它们的优先级高于 pgvector，需要一并去掉。
+2. 进入每个知识库的「配置」页，把索引模型切换为另一个模型（不能选当前正在使用的），并确认重建索引。重建完成之前，检索只能找到已经重新生成向量的数据。如果新模型不支持图片，且知识库没有配置图片理解模型，该知识库的图片索引会被关闭。
+3. 所有知识库重建完成、搜索测试正常后，再停用旧的 Milvus。停用前先备份数据。
 
 ---

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDefaultAgentSystemPrompt } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
+import { buildDefaultAgentSystemPrompt } from '@fastgpt/service/core/ai/llm/agentLoop/domain/mainPrompt';
 
 describe('buildDefaultAgentSystemPrompt', () => {
   it('uses the fixed prompt without capability-specific rules', () => {

@@ -4,6 +4,7 @@ import type { StoreNodeItemType } from '../../workflow/type/node';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
 import type { AppChatConfigType } from '../type';
 import { CanonicalAgentToolInputConfigSchema } from '../../workflow/migration';
+import { LanguageSchema } from '../../../common/i18n/type';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -41,6 +42,7 @@ const AgentToolBaseSchema = z.object({
   // 空字符串表示保持最新版本，不能在序列化时被 truthy 判断过滤。
   version: z.string().optional(),
   source: z.string().optional(),
+  metadataLocale: LanguageSchema.optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.array(AgentToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.any())

@@ -7,15 +7,18 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import type { ReactNode } from 'react';
 
 const ThirdPartyVariables = ({
   value: variableList = [],
   onChange,
-  title
+  title,
+  titleExtra
 }: {
   value?: ExternalProviderWorkflowVarType[];
   onChange: (value: ExternalProviderWorkflowVarType[]) => void;
   title: string;
+  titleExtra?: ReactNode;
 }) => {
   const { toast } = useToast();
 
@@ -38,9 +41,12 @@ const ThirdPartyVariables = ({
   return (
     <Box minH={'400px'}>
       <Flex alignItems={'center'} justifyContent={'space-between'}>
-        <Box color={'myGray.900'} fontSize={'lg'} fontWeight={'bold'}>
-          {title}
-        </Box>
+        <Flex alignItems={'center'} gap={3}>
+          <Box color={'myGray.900'} fontSize={'lg'} fontWeight={'bold'}>
+            {title}
+          </Box>
+          {titleExtra}
+        </Flex>
         <Button
           size={'sm'}
           leftIcon={<MyIcon name={'common/addLight'} width={4} />}

@@ -9,6 +9,7 @@ import { deleteChatResourcesBySource } from '@fastgpt/service/core/chat/delete';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 const mocks = vi.hoisted(() => ({
   deleteChatFilesByPrefix: vi.fn()
@@ -149,5 +150,99 @@ describe('deleteChatResourcesBySource', () => {
       chatId,
       uId: tmbId
     });
+  });
+
+  it('deletes all child tables and only the member file prefixes after checking ownership once', async () => {
+    const sourceId = '65f000000000000000000007';
+    const { chatId, teamId, tmbId } = await createChatTree({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId
+    });
+    const query = vi.spyOn(MongoChat, 'find');
+    try {
+      await deleteChatResourcesBySource({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId,
+        chatIds: [chatId, chatId, 'missing'],
+        scope: { teamId, tmbId }
+      });
+      expect(query).toHaveBeenCalledTimes(1);
+    } finally {
+      query.mockRestore();
+    }
+    expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(0);
+    expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
+    // response 记录没有 tmbId 字段，不能把成员过滤条件直接复制给子表。
+    expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
+    expect(mocks.deleteChatFilesByPrefix).toHaveBeenCalledExactlyOnceWith({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId,
+      chatId,
+      uId: tmbId
+    });
+  });
+
+  it('rejects a mixed-owner batch before deleting any records or files', async () => {
+    const sourceId = '65f000000000000000000008';
+    const first = await createChatTree({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId
+    });
+    const second = await createChatTree({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId
+    });
+    await MongoChat.updateOne(
+      { appId: sourceId, chatId: second.chatId },
+      { tmbId: '65f000000000000000000009' }
+    );
+    await expect(
+      deleteChatResourcesBySource({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId,
+        chatIds: [first.chatId, second.chatId],
+        scope: { teamId: first.teamId, tmbId: first.tmbId }
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+    expect(await MongoChat.countDocuments({ appId: sourceId })).toBe(2);
+    expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(2);
+    expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(2);
+    expect(mocks.deleteChatFilesByPrefix).not.toHaveBeenCalled();
+  });
+
+  it('does not delete orphaned child records for an unverified chat ID', async () => {
+    const sourceId = '65f000000000000000000010';
+    const { chatId, teamId, tmbId } = await createChatTree({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId
+    });
+    await MongoChat.deleteOne({ appId: sourceId, chatId });
+    await deleteChatResourcesBySource({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId,
+      chatIds: [chatId],
+      scope: { teamId, tmbId }
+    });
+    expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(1);
+    expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(1);
+    expect(mocks.deleteChatFilesByPrefix).not.toHaveBeenCalled();
+  });
+
+  it('preserves resource-level cleanup of explicitly selected orphaned App records', async () => {
+    const sourceId = '65f000000000000000000011';
+    const { chatId, teamId } = await createChatTree({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId
+    });
+    await MongoChat.deleteOne({ appId: sourceId, chatId });
+    await deleteChatResourcesBySource({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId,
+      chatIds: [chatId],
+      scope: { teamId }
+    });
+    expect(await MongoChatItem.countDocuments({ appId: sourceId })).toBe(0);
+    expect(await MongoChatItemResponse.countDocuments({ appId: sourceId })).toBe(0);
+    expect(mocks.deleteChatFilesByPrefix).not.toHaveBeenCalled();
   });
 });

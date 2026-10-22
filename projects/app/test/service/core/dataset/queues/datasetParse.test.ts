@@ -1,32 +1,36 @@
 import {
-  getModelTestDefaults,
-  getModelTestMap,
-  setModelTestMap,
-  addModelTestModel
-} from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   ParagraphChunkAIModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  addModelTestModel,
+  getModelTestDefaults,
+  getModelTestMap,
+  setModelTestMap
+} from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ read: vi.fn(), paragraph: vi.fn(), usage: vi.fn() }));
 // 本文件需要验证真实模型状态，不能使用全局测试环境里始终返回成功的向量模型 getter。
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) =>
-  importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) =>
+  importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
 );
 vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),
   readDatasetSourceRawText: mocks.read
 }));
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({ POST: mocks.paragraph }));
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  postCreateParagraphTitle: mocks.paragraph
+}));
 vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
@@ -48,7 +52,8 @@ const createTask = async ({
   vectorModelId = getModelTestDefaults().embedding!.modelId,
   paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid,
   imageIndex = false,
-  autoIndexes = false
+  autoIndexes = false,
+  trainingType = DatasetCollectionDataProcessModeEnum.chunk
 }: {
   agentModelId?: string;
   vlmModelId?: string;
@@ -56,6 +61,7 @@ const createTask = async ({
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
   imageIndex?: boolean;
   autoIndexes?: boolean;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
 } = {}) => {
   const user = await getRootUser();
   const dataset = await MongoDataset.create({
@@ -73,7 +79,7 @@ const createTask = async ({
     name: 'source',
     type: DatasetCollectionTypeEnum.file,
     fileId: 'test-file',
-    trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+    trainingType,
     paragraphChunkAIMode,
     imageIndex,
     autoIndexes
@@ -128,7 +134,7 @@ describe('datasetParseQueue model validation', () => {
           await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
         ).toMatchObject({
           q: 'Original source text.',
-          mode: state === 'unconfigured' ? TrainingModeEnum.chunk : TrainingModeEnum.image
+          mode: state === 'unconfigured' ? TrainingModeEnum.index : TrainingModeEnum.image
         });
         expect(mocks.paragraph).not.toHaveBeenCalled();
         expect(mocks.usage).not.toHaveBeenCalled();
@@ -156,9 +162,7 @@ describe('datasetParseQueue model validation', () => {
     await datasetParseQueue();
     expect(mocks.paragraph).toHaveBeenCalledTimes(5);
     expect(mocks.paragraph).toHaveBeenCalledWith(
-      '/core/dataset/training/llmPargraph',
-      expect.objectContaining({ modelId: 'missing-agent' }),
-      expect.anything()
+      expect.objectContaining({ modelId: 'missing-agent' })
     );
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
       mode: TrainingModeEnum.parse,
@@ -183,7 +187,7 @@ describe('datasetParseQueue model validation', () => {
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
     expect(
       await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
-    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.chunk });
+    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.index });
     expect(mocks.usage).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ inputTokens: 2, outputTokens: 1 })
     );
@@ -199,5 +203,71 @@ describe('datasetParseQueue model validation', () => {
     });
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.paragraph).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 模板/备份导入即 CSV 结构化（逐行 q/a/index/metadata）。重解析必须逐行还原，
+ * 不能被通用分块压成一条、也不能丢掉 metadata 与自定义 indexes。
+ */
+describe('datasetParseQueue CSV structured collections', () => {
+  const templateCsv = [
+    'q,a,index,metadata',
+    '问题一,答案一,索引A,{"src":"doc1"}',
+    '问题二,答案二,索引B,{"src":"doc2"}',
+    '问题三,答案三,索引C,{"src":"doc3"}'
+  ].join('\n');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.read.mockResolvedValue({ rawText: templateCsv });
+    mocks.paragraph.mockReset();
+    global.datasetParseQueueLen = 0;
+    global.feConfigs.isPlus = true;
+  });
+
+  it.each([
+    DatasetCollectionDataProcessModeEnum.template,
+    DatasetCollectionDataProcessModeEnum.backup
+  ])('keeps every CSV row when reparsing a %s collection', async (trainingType) => {
+    const { collection } = await createTask({ trainingType });
+
+    await datasetParseQueue();
+
+    const data = await MongoDatasetData.find({ collectionId: collection._id })
+      .sort({ chunkIndex: 1 })
+      .lean();
+    expect(data).toHaveLength(3);
+    expect(data.map((item) => item.q)).toEqual(['问题一', '问题二', '问题三']);
+    expect(data.map((item) => item.a)).toEqual(['答案一', '答案二', '答案三']);
+    expect(data.map((item) => item.metadata)).toEqual([
+      { src: 'doc1' },
+      { src: 'doc2' },
+      { src: 'doc3' }
+    ]);
+
+    const tasks = await MongoDatasetTraining.find({
+      collectionId: collection._id,
+      mode: TrainingModeEnum.index
+    })
+      .sort({ chunkIndex: 1 })
+      .lean();
+    expect(tasks).toHaveLength(3);
+    expect(tasks.map((item) => item.indexes?.map(({ type, text }) => ({ type, text })))).toEqual([
+      [{ type: DatasetDataIndexTypeEnum.custom, text: '索引A' }],
+      [{ type: DatasetDataIndexTypeEnum.custom, text: '索引B' }],
+      [{ type: DatasetDataIndexTypeEnum.custom, text: '索引C' }]
+    ]);
+
+    // 行解析依赖原始 CSV：默认的 formatText 是 Markdown 表格，表头匹配不上会得到 0 条。
+    expect(mocks.read).toHaveBeenCalledWith(expect.objectContaining({ getFormatText: false }));
+  });
+
+  it('does not request raw CSV for non-CSV chunk collections', async () => {
+    await createTask({ trainingType: DatasetCollectionDataProcessModeEnum.chunk });
+
+    await datasetParseQueue();
+
+    expect(mocks.read).not.toHaveBeenCalledWith(expect.objectContaining({ getFormatText: false }));
   });
 });

@@ -427,6 +427,13 @@ const NumberInput = numInputMultiStyle({
         fontSize: 'sm'
       }
     }),
+    md: defineStyle({
+      field: {
+        h: '36px',
+        borderRadius: 'sm',
+        fontSize: 'sm'
+      }
+    }),
     lg: defineStyle({
       field: {
         h: '40px',
@@ -532,6 +539,7 @@ const NumberInput = numInputMultiStyle({
     })
   },
   defaultProps: {
+    size: 'md',
     variant: 'outline'
   }
 });
@@ -634,6 +642,9 @@ const Checkbox = checkBoxMultiStyle({
     control: {
       borderRadius: 'xs',
       bg: 'none',
+      '&:not([data-checked]):not([data-indeterminate]) svg': {
+        opacity: 0
+      },
       _checked: {
         bg: 'primary.50',
         borderColor: 'primary.600',
@@ -668,7 +679,10 @@ const Checkbox = checkBoxMultiStyle({
         borderColor: 'primary.400'
       },
       _disabled: {
+        bg: 'none',
+        borderColor: 'inherit',
         _hover: {
+          bg: 'none',
           borderColor: 'inherit'
         }
       }

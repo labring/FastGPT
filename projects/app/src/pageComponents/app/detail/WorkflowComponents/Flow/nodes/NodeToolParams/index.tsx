@@ -22,7 +22,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} {...data}>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
         <Container>
           <Flex alignItems={'center'} justifyContent={'space-between'} mb={1.5}>
             <FormLabel fontSize={'sm'}>{t('workflow:tool_input')}</FormLabel>

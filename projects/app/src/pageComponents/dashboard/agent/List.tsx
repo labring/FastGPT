@@ -32,6 +32,7 @@ import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -44,7 +45,6 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { getDashboardAppListScene } from './utils/appListTypes';
 import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -220,7 +220,8 @@ const List = () => {
       <MyBox
         key={app._id}
         data-virtual-item=""
-        py={4}
+        pt={5}
+        pb={3}
         px={5}
         cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         border={'1px solid'}
@@ -344,6 +345,16 @@ const List = () => {
               iconColor={'myGray.400'}
               w={'0.875rem'}
             />
+            {typeof app.relatedAppCount === 'number' && (
+              <ReferencedAppsPopover
+                resourceId={app._id}
+                resourceType={
+                  getDashboardAppListScene(router.pathname) === 'tool' ? 'tool' : 'agent'
+                }
+                count={app.relatedAppCount}
+                trigger={'hover'}
+              />
+            )}
           </HStack>
           <HStack>
             {isPc && (
@@ -534,44 +545,24 @@ const List = () => {
           >
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        ) : isEmpty && !folderDetail ? (
-          hasActiveFilter || isBatchMode ? (
-            <EmptyTip />
-          ) : isPc && hasCreatePer ? (
-            <CreateButton appType={appType} />
-          ) : (
-            <Grid
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-            </Grid>
-          )
+        ) : isEmpty && !parentId && !hasActiveFilter && !isBatchMode && isPc && hasCreatePer ? (
+          <CreateButton appType={appType} />
         ) : (
-          <>
-            <Grid
-              ref={gridRef}
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-              {renderVirtualGridItems(renderAppCard)}
-            </Grid>
-          </>
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {!isBatchMode &&
+              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+            {renderVirtualGridItems(renderAppCard)}
+          </Grid>
         )}
         <DeleteConfirmModal />
         <ConfirmCopyModal />
@@ -711,7 +702,8 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={4}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}

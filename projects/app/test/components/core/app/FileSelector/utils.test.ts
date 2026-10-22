@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
 import {
   getFileSelectorDisplayIcon,
@@ -11,9 +11,11 @@ import {
   markFileSelectorUploading,
   markFileSelectorUploadSuccess,
   mergeFileSelectorExternalValue,
+  probeFileSelectorLinkFilename,
   sanitizeFileSelectValue
 } from '@/components/core/app/FileSelector/utils';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 describe('sanitizeFileSelectValue', () => {
   it('retains uploaded preview URLs only for temporary debug values', () => {
@@ -146,6 +148,207 @@ describe('inferFileSelectorType', () => {
       ChatFileTypeEnum.image
     );
     expect(inferFileSelectorType('report.unknown')).toBe(ChatFileTypeEnum.file);
+  });
+});
+
+describe('probeFileSelectorLinkFilename', () => {
+  const fetchMock = vi.fn<typeof fetch>();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(new Response(null));
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['https://example.com/audio.mp3?token=1', 'audio.mp3'],
+    ['https://example.com/encoded%2Epdf', 'encoded.pdf'],
+    ['https://example.com/download?filename=video.mp4', 'video.mp4'],
+    ['https://example.com/report.unknown', 'report.unknown'],
+    ['https://example.com/download?filename=opaque', 'opaque'],
+    ['https://example.com/bad%.pdf', 'bad%.pdf']
+  ])('链接有文件名时不请求远端：%s', async (url, filename) => {
+    expect(await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })).toBe(
+      filename
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['audio/mpeg', 'file.mpga'],
+    [' VIDEO/MP4 ; charset=utf-8', 'file.mp4'],
+    ['image/png', 'file.png'],
+    ['application/pdf', 'file.pdf'],
+    ['text/plain', 'file.txt'],
+    ['application/octet-stream', undefined],
+    ['', undefined]
+  ])('HEAD 复用 MIME 库推断文件后缀：%s', async (contentType, filename) => {
+    fetchMock.mockResolvedValue(new Response(null, { headers: { 'Content-Type': contentType } }));
+    const url = 'https://example.com/directory.pdf/opaque?filename=';
+    expect(await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })).toBe(
+      filename
+    );
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(url, {
+      method: 'HEAD',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+      signal: expect.any(AbortSignal)
+    });
+  });
+
+  it.each(['', '/relative', 'not a URL', 'data:audio/wav;base64,abc', 'ftp://example.com/audio'])(
+    '非 HTTP(S) 链接不探测：%s',
+    async (url) => {
+      expect(
+        await probeFileSelectorLinkFilename({ url, signal: new AbortController().signal })
+      ).toBeUndefined();
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['', 'attachment; filename="report.pdf"', 'report.pdf'],
+    ['application/octet-stream', 'attachment; filename="report.docx"', 'report.docx'],
+    ['application/pdf', 'attachment; filename="recording.mp3"', 'file.pdf']
+  ])('复用响应文件名解析，明确 MIME 优先：%s / %s', async (contentType, disposition, filename) => {
+    fetchMock.mockResolvedValue(
+      new Response(null, {
+        headers: { 'Content-Type': contentType, 'Content-Disposition': disposition }
+      })
+    );
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBe(filename);
+  });
+
+  it.each([
+    ['audio/ogg', 'file/fill/audio'],
+    ['audio/aac', 'file/fill/audio'],
+    ['video/quicktime', 'file/fill/video'],
+    ['image/avif', 'image'],
+    ['image/heic', 'image']
+  ])('HEAD 后缀交给公共图标函数，媒体别名不降级：%s', async (contentType, icon) => {
+    fetchMock.mockResolvedValue(new Response(null, { headers: { 'Content-Type': contentType } }));
+    const filename = await probeFileSelectorLinkFilename({
+      url: 'https://example.com/opaque',
+      signal: new AbortController().signal
+    });
+    expect(getFileIcon(filename)).toBe(icon);
+  });
+
+  it.each([new TypeError('Failed to fetch'), new DOMException('Aborted', 'AbortError')])(
+    'fetch 拒绝时静默返回：%s',
+    async (error) => {
+      fetchMock.mockRejectedValue(error);
+      expect(
+        await probeFileSelectorLinkFilename({
+          url: 'https://example.com/opaque',
+          signal: new AbortController().signal
+        })
+      ).toBeUndefined();
+    }
+  );
+
+  it('HTTP 失败静默返回', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 405 }));
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBeUndefined();
+  });
+
+  it.each(['timeout', 'cancel'] as const)('%s 会中止 HEAD 并清理定时器和监听', async (mode) => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener(
+            'abort',
+            () => reject(new DOMException('Aborted', 'AbortError')),
+            { once: true }
+          );
+        })
+    );
+    const controller = new AbortController();
+    const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+    const pending = probeFileSelectorLinkFilename({
+      url: 'https://example.com/opaque',
+      signal: controller.signal
+    });
+    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(3000);
+    else controller.abort();
+    expect(await pending).toBeUndefined();
+    expect(fetchMock.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(controller.signal.aborted).toBe(mode === 'cancel');
+    expect(removeListener).toHaveBeenCalledWith('abort', expect.any(Function));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('已取消的请求不发起网络访问', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: controller.signal
+      })
+    ).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['timeout', 'cancel'] as const)('%s 后迟到的成功响应不更新图标', async (mode) => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    let complete: (response: Response) => void = () => {};
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        })
+    );
+    const pending = probeFileSelectorLinkFilename({
+      url: 'https://example.com/opaque',
+      signal: controller.signal
+    });
+    if (mode === 'timeout') await vi.advanceTimersByTimeAsync(3000);
+    else controller.abort();
+    complete(new Response(null, { headers: { 'Content-Type': 'audio/wav' } }));
+    expect(await pending).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('fetch 同步抛错或响应头读取抛错时仍静默返回', async () => {
+    fetchMock.mockImplementation(() => {
+      throw new Error('Blocked fetch');
+    });
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBeUndefined();
+    const response = new Response(null);
+    vi.spyOn(response.headers, 'get').mockImplementation(() => {
+      throw new Error('Unreadable headers');
+    });
+    fetchMock.mockResolvedValue(response);
+    expect(
+      await probeFileSelectorLinkFilename({
+        url: 'https://example.com/opaque',
+        signal: new AbortController().signal
+      })
+    ).toBeUndefined();
   });
 });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GET } from '@/web/admin/common/request';
+import { getTeamMembers } from '@/web/admin/team/api';
 import { Box, Button, Center, Spinner, useDisclosure } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -48,7 +48,7 @@ export default function DetailTeamModal(props: { teamId: string }) {
   const { isLoading } = useQuery(
     ['getTeams', teamId],
     () => {
-      return GET('/proApi/admin/routes/teams/getTeamMembers', { teamId });
+      return getTeamMembers(teamId);
     },
     {
       onSuccess: (res: any) => {

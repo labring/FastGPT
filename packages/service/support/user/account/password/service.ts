@@ -7,12 +7,41 @@ import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { type ClientSession } from '../../../../common/mongo';
 import { MongoTmpData } from '../../../tmpData/schema';
 import { MongoUser } from '../../schema';
+import {
+  isPasswordAvailableForUsername,
+  isSsoPasswordPolicyEnabled,
+  isSsoUsername
+} from '@fastgpt/global/support/user/account/password/utils';
 
 export const PASSWORD_CHANGE_SESSION_TTL_SECONDS = 5 * 60;
 
 type PasswordChangeSessionData = {
   userId: string;
   loginSessionId: string;
+};
+
+/** 后端从真实连接配置派生 SSO 接入状态，忽略 feConfigs 中缓存或外部传入的 enabled。 */
+const getSsoPasswordPolicy = () => ({
+  enabled: Boolean(global.systemEnv?.sso?.url),
+  disablePasswordForSsoUsers: global.feConfigs?.sso?.disablePasswordForSsoUsers
+});
+
+/** 当前运行时是否开启 SSO 用户禁用密码策略。判定口径由 global 统一提供，此处只负责注入运行时配置。 */
+export const isSsoPasswordDisabled = () => isSsoPasswordPolicyEnabled(getSsoPasswordPolicy());
+
+/** 使用共享账号分类规则判断持久化 username 是否属于当前 SSO 环境。 */
+export const isSsoUserByUsername = (username: string) =>
+  isSsoUsername(username, getSsoPasswordPolicy());
+
+/** 返回当前运行时中指定账号是否允许使用或维护平台密码。 */
+export const getUserPasswordAvailability = (username: string) =>
+  isPasswordAvailableForUsername(username, getSsoPasswordPolicy());
+
+/** 在密码比对或最终写入前拒绝受限 SSO 用户。 */
+export const assertUserPasswordAvailable = (username: string) => {
+  if (!getUserPasswordAvailability(username)) {
+    throw new UserError(UserErrEnum.ssoPasswordUnavailable);
+  }
 };
 
 type PasswordChangeSession = {

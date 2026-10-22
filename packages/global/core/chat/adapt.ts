@@ -298,7 +298,13 @@ export const chats2GPTMessages = ({
   const normalizeChatToolContext = (
     tool?: Partial<ToolModuleResponseItemType> | null
   ): NormalizedChatToolContext | undefined => {
-    if (!tool || !isNonEmptyString(tool.id) || !isNonEmptyString(tool.functionName)) {
+    // 仅用于展示进度的工具记录没有模型上下文，不能据此构造空参数、空响应的虚假调用。
+    if (
+      !tool ||
+      tool.hideDetails ||
+      !isNonEmptyString(tool.id) ||
+      !isNonEmptyString(tool.functionName)
+    ) {
       return;
     }
 
@@ -474,10 +480,13 @@ export const chats2GPTMessages = ({
       };
 
       item.value.forEach((value) => {
+        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
+        const hasTools = Array.isArray(tools) && tools.length > 0;
         const startsNewAssistantPayload =
           Boolean(value.contextCheckpoint) ||
           Boolean(value.agentPlanUpdate) ||
           Boolean(value.agentAsk) ||
+          hasTools ||
           typeof value.reasoning?.content === 'string' ||
           typeof value.text?.content === 'string';
 
@@ -540,9 +549,6 @@ export const chats2GPTMessages = ({
         if (typeof value.text?.content === 'string') {
           appendAssistantText(value.text.content, value.hideInUI);
         }
-
-        const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
-        const hasTools = Array.isArray(tools) && tools.length > 0;
 
         if (reserveTool && hasTools) {
           const normalizedToolContexts = tools

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Input, Textarea } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
+import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
@@ -12,11 +12,12 @@ import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import NavbarItems from './components/FormField/NavbarItems';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
-interface titleType {
+type titleType = {
   mainTitle: string;
   subTitles: string[];
-}
+};
 
 export const Settings = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
@@ -53,24 +54,18 @@ export const Settings = () => {
   const isLoading = loadingConfig || loadingSave;
 
   const titles: Array<titleType> = [
-    {
-      mainTitle: '基础配置',
-      subTitles: [
-        '前端展示配置',
-        '个性化配置',
-        '全局Script脚本',
-        '系统参数',
-        'PDF 解析配置',
-        '使用限制',
-        '小助手配置',
-        '侧边栏配置'
-      ]
-    }
-  ];
+    '前端展示配置',
+    '个性化配置',
+    '全局Script脚本',
+    '系统参数',
+    'PDF 解析配置',
+    '使用限制',
+    '小助手配置',
+    '侧边栏配置'
+  ].map((mainTitle) => ({ mainTitle, subTitles: [] }));
 
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
-      <FirstTitle title="基础配置" />
       <FirstTitle title="前端展示配置" />
       <FormItem title="系统名" description="">
         <Input {...register('feConfigs.systemTitle')} placeholder="" />
@@ -250,6 +245,40 @@ export const Settings = () => {
           {...register('limit.websiteSyncLimitMinuted', {
             valueAsNumber: true
           })}
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="沙箱实例系统总上限"
+        description="所有团队 Agent 沙箱活跃实例合计上限，留空表示使用环境变量配置；建议不低于单团队配额。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMax') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMax', typeof val === 'number' ? val : undefined)
+          }
+          placeholder=""
+        />
+      </FormItem>
+      <FormItem
+        title="单团队沙箱实例配额"
+        description="单团队 Agent 沙箱活跃实例上限，留空表示使用环境变量配置，环境变量未配置时不限制；建议不超过系统总上限，超过时超出部分不会生效。"
+      >
+        <MyNumberInput
+          min={1}
+          step={1}
+          precision={0}
+          bg={'white'}
+          inputFieldProps={{ bg: 'white' }}
+          value={watch('systemEnv.agentSandboxMaxPerTeam') ?? ''}
+          onChange={(val) =>
+            setValue('systemEnv.agentSandboxMaxPerTeam', typeof val === 'number' ? val : undefined)
+          }
           placeholder=""
         />
       </FormItem>

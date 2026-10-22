@@ -6,15 +6,6 @@ import type { AccountCancellationSchemaType } from './schema';
 export const getAccountCancellationAuthKey = (userId: string) =>
   `accountCancellation:${String(userId)}`;
 
-export const maskAccount = (account?: string) => {
-  if (!account) return '';
-  const at = account.indexOf('@');
-  if (at > 1) return `${account.slice(0, 2)}***${account.slice(at)}`;
-  if (/^1\d{10}$/.test(account)) return `${account.slice(0, 3)}****${account.slice(-4)}`;
-  if (account.length <= 4) return `${account.slice(0, 1)}***`;
-  return `${account.slice(0, 2)}***${account.slice(-2)}`;
-};
-
 /** 将内部 pending/finalizing 记录转换为公开注销状态。 */
 export const formatAccountCancellationPendingResponse = (
   record: Pick<AccountCancellationSchemaType, 'status' | 'requestedAt'>,

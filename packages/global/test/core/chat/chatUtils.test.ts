@@ -51,6 +51,31 @@ describe('concatHistories', () => {
 
     expect(result[0].obj).toBe(ChatRoleEnum.System);
   });
+
+  it('should keep the original order of multiple system messages and of the rest', () => {
+    const text = (content: string) => [{ text: { content } }];
+    const histories1: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: text('Q1') },
+      { obj: ChatRoleEnum.AI, value: text('A1') }
+    ];
+    const histories2: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.System, value: text('S1') },
+      { obj: ChatRoleEnum.System, value: text('S2') },
+      { obj: ChatRoleEnum.Human, value: text('Q2') },
+      { obj: ChatRoleEnum.System, value: text('S3') }
+    ];
+
+    const result = concatHistories(histories1, histories2);
+
+    expect(result.map((item) => item.value[0].text?.content)).toEqual([
+      'S1',
+      'S2',
+      'S3',
+      'Q1',
+      'A1',
+      'Q2'
+    ]);
+  });
 });
 
 describe('hasContextCheckpoint', () => {
@@ -467,6 +492,12 @@ describe('getChatSourceByPublishChannel', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.wecom)).toBe(ChatSourceEnum.wecom);
   });
 
+  it('should map wecom websocket channel to the existing wecom source', () => {
+    expect(getChatSourceByPublishChannel(PublishChannelEnum.wecomWebsocket)).toBe(
+      ChatSourceEnum.wecom
+    );
+  });
+
   it('should map officialAccount channel to official_account source', () => {
     expect(getChatSourceByPublishChannel(PublishChannelEnum.officialAccount)).toBe(
       ChatSourceEnum.official_account
@@ -824,7 +855,7 @@ describe('isToolExecutionResponse', () => {
     ).toBe(false);
   });
 
-  it('returns true when moduleType is tool, toolSet or toolCall', () => {
+  it('returns true when moduleType is tool or toolSet', () => {
     expect(
       isToolExecutionResponse({
         id: 'tool-1',
@@ -840,15 +871,6 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'tool-set-node',
         moduleName: 'Tool Set',
         moduleType: FlowNodeTypeEnum.toolSet
-      })
-    ).toBe(true);
-
-    expect(
-      isToolExecutionResponse({
-        id: 'tool-call-1',
-        nodeId: 'tool-call-node',
-        moduleName: 'Tool Call',
-        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(true);
   });
@@ -904,6 +926,15 @@ describe('isToolExecutionResponse', () => {
         nodeId: 'agent-node',
         moduleName: '主模型',
         moduleType: FlowNodeTypeEnum.agent
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-call-1',
+        nodeId: 'tool-call-node',
+        moduleName: 'Tool Call',
+        moduleType: FlowNodeTypeEnum.toolCall
       })
     ).toBe(false);
 
@@ -968,6 +999,17 @@ describe('findFailedResponseNode', () => {
     };
 
     expect(findFailedResponseNode([rootNode])).toEqual(rootNode);
+  });
+
+  it('returns root toolCall node error when toolCall failed', () => {
+    const toolCallNode: ChatHistoryItemResType = {
+      id: 'root-tool-call',
+      moduleName: '工具调用',
+      moduleType: FlowNodeTypeEnum.toolCall,
+      errorText: 'Sandbox capacity exceeded'
+    };
+
+    expect(findFailedResponseNode([toolCallNode])).toEqual(toolCallNode);
   });
 
   it('prefers root node error over child node error', () => {

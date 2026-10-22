@@ -4,21 +4,21 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
+const isValidHttpUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 type UseInputGuideConfigFormProps = {
   isOpen: boolean;
   value: ChatInputGuideConfigType;
   total: number;
   onClose: () => void;
   onChange: (e: ChatInputGuideConfigType) => void;
-};
-
-const isHttpUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return ['http:', 'https:'].includes(url.protocol);
-  } catch {
-    return false;
-  }
 };
 
 /**
@@ -51,7 +51,7 @@ export const useInputGuideConfigForm = ({
   const handleConfirm = useCallback(
     (data: ChatInputGuideConfigType) => {
       if (data.open) {
-        if (trimmedCustomUrl && !isHttpUrl(trimmedCustomUrl)) {
+        if (trimmedCustomUrl && !isValidHttpUrl(trimmedCustomUrl)) {
           toast({
             status: 'warning',
             title: t('app:input_guide_custom_url_invalid')

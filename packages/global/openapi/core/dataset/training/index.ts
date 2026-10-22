@@ -8,7 +8,8 @@ import {
   GetTrainingErrorBodySchema,
   GetDatasetTrainingErrorBodySchema,
   HasDatasetTrainingErrorQuerySchema,
-  GetDatasetTrainingQueueQuerySchema
+  GetDatasetTrainingQueueQuerySchema,
+  GetDatasetTrainingQueueResponseSchema
 } from './api';
 
 export const DatasetTrainingPath: OpenAPIPath = {
@@ -56,7 +57,8 @@ export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/deleteTrainingData': {
     post: {
       summary: '删除训练数据',
-      description: '删除指定的训练数据条目，需要管理权限',
+      description:
+        '删除指定的训练任务，需要管理权限。索引重建任务会同时删除对应原始数据及全部索引；首次训练任务仅取消训练。',
       tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
@@ -153,14 +155,17 @@ export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/getDatasetTrainingQueue': {
     get: {
       summary: '获取训练队列状态',
-      description: '获取知识库当前的重建数量和训练队列数量',
+      description: '判断知识库是否存在普通训练任务或尚未处理完的重建数据，包含失败记录',
       tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: GetDatasetTrainingQueueQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回重建数量和训练队列数量'
+          description: '成功返回是否存在训练任务',
+          content: {
+            'application/json': { schema: GetDatasetTrainingQueueResponseSchema }
+          }
         }
       }
     }

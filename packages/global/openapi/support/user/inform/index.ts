@@ -3,7 +3,7 @@ import {
   SystemMsgModalResponseSchema,
   OperationalAdResponseSchema,
   ActivityAdResponseSchema
-} from '../../../admin/support/user/inform/api';
+} from '../../../admin/system/inform/api';
 import { DevApiTagsMap } from '../../../tag';
 import {
   GetUnreadInformResponseSchema,

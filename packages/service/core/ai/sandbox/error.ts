@@ -35,3 +35,15 @@ export const createAgentSandboxInitializingError = () =>
 /** 将底层迁移异常转换为可展示且经过敏感信息替换的用户错误。 */
 export const createSandboxRuntimeUpgradeFailedError = (error: unknown) =>
   new UserError(getErrText(error, SandboxErrEnum.runtimeUpgradeFailed));
+
+/**
+ * 生成沙箱活跃实例系统总上限拒绝错误。
+ *
+ * 表示平台级 Quota 已满（app 会话与技能编辑共用计数池），需要等待其他沙箱停止/归档后重试。
+ */
+export const createAgentSandboxLimitReachedError = () =>
+  new UserError(SandboxErrEnum.agentSandboxLimitReached);
+
+/** 生成团队沙箱配额拒绝错误：当前团队的活跃沙箱实例已达配额上限。 */
+export const createAgentSandboxTeamLimitReachedError = () =>
+  new UserError(SandboxErrEnum.agentSandboxTeamLimitReached);

@@ -20,6 +20,9 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { moveCollectionPermission } from '@fastgpt/service/support/permission/collection/controller';
+import { authDatasetCollectionMove } from '@fastgpt/service/support/permission/collection/moveAuth';
 
 // Set folder collection children forbid status
 const updateFolderChildrenForbid = async ({
@@ -94,21 +97,31 @@ async function handler(req: ApiRequestProps) {
     if (!collection) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
-    id = collection._id;
+    id = String(collection._id);
   }
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // 凭证校验
-  const { collection, teamId, tmbId } = await authDatasetCollection({
-    req,
-    authToken: true,
-    authApiKey: true,
-    collectionId: id,
-    per: WritePermissionVal
-  });
+  const isMove = parentId !== undefined;
+  const targetParentId = parentId || null;
+  // Move 需要先读取 Collection 定位源父级；普通字段更新直接要求 Collection write。
+  const auth = { req, authToken: true, authApiKey: true, collectionId: id };
+  const { collection, teamId, tmbId } = isMove
+    ? await authDatasetCollectionMove({ ...auth, targetParentId })
+    : await authDatasetCollection({ ...auth, per: WritePermissionVal });
+
+  // Move collection：parentId 显式提供时在事务前校验深度/环
+  if (isMove) {
+    await checkMoveFolderDepth({
+      resourceId: id,
+      targetParentId,
+      teamId: collection.teamId,
+      model: MongoDatasetCollection,
+      isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
+    });
+  }
 
   await mongoSessionRun(async (session) => {
     const collectionTags = await createOrGetCollectionTags({
@@ -118,13 +131,31 @@ async function handler(req: ApiRequestProps) {
       session
     });
 
+    if (isMove) {
+      // Move：不接收 inheritPermission 参数，保持 Collection 自身的继承关系不变——
+      // 原为继承态则继承新父级 clbs 并同步继承态子 Folder 快照；原为独立态则保持独立配置，仅更新 parentId。
+      // parentId 由 moveCollectionPermission 更新，避免重复写入。
+      await moveCollectionPermission({
+        collection: {
+          _id: String(collection._id),
+          type: collection.type,
+          teamId: String(collection.teamId),
+          parentId: collection.parentId ? String(collection.parentId) : null,
+          datasetId: String(collection.datasetId),
+          tmbId: String(collection.tmbId),
+          inheritPermission: collection.inheritPermission
+        },
+        targetParentId,
+        session
+      });
+    }
+
     await MongoDatasetCollection.updateOne(
       {
         _id: id
       },
       {
         $set: {
-          ...(parentId !== undefined && { parentId: parentId || null }),
           ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
           ...(collectionTags !== undefined && { tags: collectionTags }),
           ...(forbid !== undefined && { forbid }),

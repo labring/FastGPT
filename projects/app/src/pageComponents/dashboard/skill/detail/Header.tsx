@@ -226,7 +226,7 @@ export const LeftHeader = () => {
                     if (!skillDetail) return;
                     openConfirmDelete({
                       customContent:
-                        (skillDetail.appCount ?? 0) > 0 ? (
+                        skillDetail.appCount !== undefined && skillDetail.appCount > 0 ? (
                           <Trans
                             i18nKey={i18nT('skill:confirm_delete_with_refs')}
                             values={{ count: skillDetail.appCount }}

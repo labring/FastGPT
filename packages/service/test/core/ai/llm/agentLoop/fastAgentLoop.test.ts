@@ -41,7 +41,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', () => ({
   runSandboxTools: runSandboxToolsMock,
   getSandboxToolInfo: vi.fn(() => ({
     name: 'Sandbox',
@@ -162,6 +162,87 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('你是一个 Work Agent');
   });
 
+  it('continues the same loop when completion policy rejects a natural completion', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_early', content: 'phase summary' }),
+      text({ requestId: 'req_terminal', content: 'terminal answer' })
+    ]);
+    const completionPolicy = vi
+      .fn()
+      .mockResolvedValueOnce({
+        action: 'continue',
+        message: 'Continue until terminal facts exist.'
+      })
+      .mockResolvedValueOnce({ action: 'complete' });
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ completionPolicy }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
+    expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
+    expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: 'Continue until terminal facts exist.'
+    });
+  });
+
+  it('does not continue when cancelled while completion policy is pending', async () => {
+    let isStopping = false;
+    const continuationMessage = 'Continue until terminal facts exist.';
+    const completionPolicy = vi.fn(async () => {
+      await Promise.resolve();
+      isStopping = true;
+      return { action: 'continue' as const, message: continuationMessage };
+    });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_cancelled', content: 'phase summary' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        completionPolicy,
+        checkIsStopping: () => isStopping
+      }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('aborted');
+    expect(completionPolicy).toHaveBeenCalledTimes(1);
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.completeMessages).not.toContainEqual({
+      role: ChatCompletionRequestMessageRoleEnum.System,
+      content: continuationMessage
+    });
+  });
+
+  it('returns an error when completion policy cannot reach terminal facts within the run budget', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_budget', content: 'still incomplete' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        maxRunAgentTimes: 1,
+        completionPolicy: () => ({ action: 'continue', message: 'Continue.' })
+      }),
+      input: {
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build it' }]
+      }
+    });
+
+    expect(result.status).toBe('error');
+    expect(String(result.error)).toContain('Agent loop reached max run times: 1');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+  });
+
   it('creates an active plan through set_plan', async () => {
     const events: any[] = [];
     mockCreateLLMResponseQueue(createLLMResponseMock, [
@@ -271,6 +352,46 @@ describe('runFastAgentMainLoop', () => {
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
+  });
+
+  it.each([false, true])('passes child responses through tool end (resume: %s)', async (resume) => {
+    const emitEvent = vi.fn();
+    const childResponses = [{ text: { content: 'child output' }, hideReason: true }];
+    const executeTool = vi.fn(async () => ({
+      response: 'tool result',
+      assistantMessages: [],
+      assistantResponses: childResponses,
+      usages: []
+    }));
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...(!resume ? [toolCall({ id: 'call_child', name: 'search', args: {} })] : []),
+      text({ requestId: 'req_after_child', content: 'parent answer' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool, executeInteractiveTool: executeTool, emitEvent }),
+      input: {
+        messages: [{ role: 'user', content: 'continue' }],
+        ...(resume
+          ? {
+              childrenInteractiveParams: {
+                childrenResponse: { type: 'userSelect' },
+                toolParams: { toolCallId: 'call_child' }
+              }
+            }
+          : {})
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tool_run_end',
+        call: expect.objectContaining({ id: 'call_child' }),
+        assistantResponses: childResponses
+      })
+    );
   });
 
   it('runs sandbox internal tools and emits regular runtime tool events', async () => {

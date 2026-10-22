@@ -1,4 +1,4 @@
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { AgentLoopCoreEventStream, CreateAgentLoopCoreEventStreamParams } from './type';
@@ -19,9 +19,29 @@ export const createAgentLoopCoreEventStream = ({
   sliceToolResponse = false,
   getToolInfo
 }: CreateAgentLoopCoreEventStreamParams): AgentLoopCoreEventStream => {
+  // response id 只用于流式 UI 识别 value 边界，不写入最终聊天记录。
+  const responseIdPrefix = `answer-${getNanoid(8)}`;
+  let responseIdIndex = 0;
+  let pendingResponseId: string | undefined;
+  let activeResponseId: string | undefined;
+
+  const startNewAnswerBlock = () => {
+    pendingResponseId = `${responseIdPrefix}-${++responseIdIndex}`;
+  };
+
+  const getAnswerResponseId = () => {
+    if (pendingResponseId) {
+      activeResponseId = pendingResponseId;
+      pendingResponseId = undefined;
+    }
+    return activeResponseId;
+  };
+
   const streamReasoningText = (text: string) => {
     if (!streamReasoning) return;
+    const responseId = getAnswerResponseId();
     workflowStreamResponse?.({
+      ...(responseId ? { id: responseId } : {}),
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
         reasoning_content: text
@@ -31,7 +51,9 @@ export const createAgentLoopCoreEventStream = ({
 
   const streamAnswerText = (text: string) => {
     if (!streamAnswer) return;
+    const responseId = getAnswerResponseId();
     workflowStreamResponse?.({
+      ...(responseId ? { id: responseId } : {}),
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
         text
@@ -39,7 +61,7 @@ export const createAgentLoopCoreEventStream = ({
     });
   };
 
-  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call) => {
+  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call, options) => {
     if (!streamAnswer) return;
 
     const toolInfo = getToolInfo(call.function.name);
@@ -54,7 +76,8 @@ export const createAgentLoopCoreEventStream = ({
           toolName: toolInfo.name,
           toolAvatar: toolInfo.avatar || '',
           functionName: call.function.name,
-          params: call.function.arguments ?? ''
+          params: options?.hideDetails ? '' : (call.function.arguments ?? ''),
+          ...(options?.hideDetails ? { hideDetails: true } : {})
         }
       }
     });
@@ -139,6 +162,7 @@ export const createAgentLoopCoreEventStream = ({
   };
 
   return {
+    startNewAnswerBlock,
     streamReasoning: streamReasoningText,
     streamAnswer: streamAnswerText,
     streamToolCall,

@@ -105,6 +105,7 @@ const SecondaryNavigationContainer = <ValueType extends string>({
                 minH={0}
                 overflowY={'auto'}
                 list={tabs}
+                scrollPositionKey={mobileScrollPositionKey}
                 value={value}
                 onChange={onChange}
               />

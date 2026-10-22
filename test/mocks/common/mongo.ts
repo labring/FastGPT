@@ -37,7 +37,8 @@ const connectTestMongo = async (props: { db: Mongoose; url: string; connectedCb?
       retryWrites: false,
       serverSelectionTimeoutMS: 10000
     });
-    await db.connection.db?.dropDatabase();
+    // UUID 已保证首次连接的数据库独立；连接后删库会与 Mongoose 自动建表竞争。
+    // 用例间文档清理和文件结束后的删库由 test/setup.ts 负责。
     connectedCb?.();
 
     return db;

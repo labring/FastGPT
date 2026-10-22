@@ -11,6 +11,7 @@ const threshold = 200;
 /**
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
  * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
+ * 查询参数变化时立即切换数据窗口，首次加载未完成时也会重查，并丢弃旧参数的响应。
  */
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
@@ -23,14 +24,19 @@ export function useLinkedScroll<
     currentData,
     defaultScroll = 'top',
     enablePagination = true,
-    showErrorToast = true
+    showPrevLoading = true,
+    showErrorToast = true,
+    showInitialLoading = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
     currentData?: { id: string; anchor?: any };
     defaultScroll?: 'top' | 'bottom';
     enablePagination?: boolean;
+    showPrevLoading?: boolean;
     showErrorToast?: boolean;
+    /** 是否在初次历史请求期间覆盖滚动内容。关闭后可先渲染输入区。 */
+    showInitialLoading?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -46,7 +52,11 @@ export function useLinkedScroll<
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
   const isInit = useRef(false);
+  const previousParamsRef = useRef(params);
   const paramsVersionRef = useRef(0);
+  // 滚动事件和布局变化可能在请求状态完成渲染前重复触发，使用 ref 立即锁住同一方向的分页请求。
+  const prevLoadingRef = useRef(false);
+  const nextLoadingRef = useRef(false);
 
   const scrollToItem = useCallback(
     (id?: string) => {
@@ -131,7 +141,9 @@ export function useLinkedScroll<
     }
   );
   useEffect(() => {
-    if (!isInit.current) return;
+    // 首次请求期间也可能切换会话；只跳过挂载，不跳过尚未完成初始化时的参数变化。
+    if (previousParamsRef.current === params) return;
+    previousParamsRef.current = params;
     paramsVersionRef.current += 1;
     anchorRef.current = {
       top: null,
@@ -152,38 +164,44 @@ export function useLinkedScroll<
 
   const { runAsync: loadPrevData, loading: prevLoading } = useRequest(
     async (scrollRef = containerRef) => {
-      if (!anchorRef.current.top || !hasMorePrev || isLoading) return;
+      if (!anchorRef.current.top || !hasMorePrev || isLoading || prevLoadingRef.current) return;
 
-      const paramsVersion = paramsVersionRef.current;
-      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
-      const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
+      prevLoadingRef.current = true;
 
-      const response = await callApi({
-        prevId: anchorRef.current.top.id,
-        anchor: anchorRef.current.top.anchor,
-        pageSize,
-        ...params
-      } as TParams);
+      try {
+        const paramsVersion = paramsVersionRef.current;
+        const prevScrollTop = scrollRef?.current?.scrollTop || 0;
+        const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
 
-      if (paramsVersion !== paramsVersionRef.current) return;
-      if (!response) return;
+        const response = await callApi({
+          prevId: anchorRef.current.top.id,
+          anchor: anchorRef.current.top.anchor,
+          pageSize,
+          ...params
+        } as TParams);
 
-      setHasMorePrev(response.hasMorePrev);
+        if (paramsVersion !== paramsVersionRef.current) return;
+        if (!response) return;
 
-      if (response.list.length > 0) {
-        setDataList((prev) => [...response.list, ...prev]);
-        anchorRef.current.top = response.list[0];
+        setHasMorePrev(response.hasMorePrev);
 
-        setTimeout(() => {
-          if (scrollRef?.current) {
-            const newHeight = scrollRef.current.scrollHeight;
-            const heightDiff = newHeight - prevScrollHeight;
-            scrollRef.current.scrollTop = prevScrollTop + heightDiff;
-          }
-        }, 0);
+        if (response.list.length > 0) {
+          setDataList((prev) => [...response.list, ...prev]);
+          anchorRef.current.top = response.list[0];
+
+          setTimeout(() => {
+            if (scrollRef?.current) {
+              const newHeight = scrollRef.current.scrollHeight;
+              const heightDiff = newHeight - prevScrollHeight;
+              scrollRef.current.scrollTop = prevScrollTop + heightDiff;
+            }
+          }, 0);
+        }
+
+        return response;
+      } finally {
+        prevLoadingRef.current = false;
       }
-
-      return response;
     },
     {
       refreshDeps: [hasMorePrev, isLoading, params, pageSize],
@@ -193,35 +211,41 @@ export function useLinkedScroll<
 
   const { runAsync: loadNextData, loading: nextLoading } = useRequest(
     async (scrollRef = containerRef) => {
-      if (!anchorRef.current.bottom || !hasMoreNext || isLoading) return;
+      if (!anchorRef.current.bottom || !hasMoreNext || isLoading || nextLoadingRef.current) return;
 
-      const paramsVersion = paramsVersionRef.current;
-      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
+      nextLoadingRef.current = true;
 
-      const response = await callApi({
-        nextId: anchorRef.current.bottom.id,
-        anchor: anchorRef.current.bottom.anchor,
-        pageSize,
-        ...params
-      } as TParams);
+      try {
+        const paramsVersion = paramsVersionRef.current;
+        const prevScrollTop = scrollRef?.current?.scrollTop || 0;
 
-      if (paramsVersion !== paramsVersionRef.current) return;
-      if (!response) return;
+        const response = await callApi({
+          nextId: anchorRef.current.bottom.id,
+          anchor: anchorRef.current.bottom.anchor,
+          pageSize,
+          ...params
+        } as TParams);
 
-      setHasMoreNext(response.hasMoreNext);
+        if (paramsVersion !== paramsVersionRef.current) return;
+        if (!response) return;
 
-      if (response.list.length > 0) {
-        setDataList((prev) => [...prev, ...response.list]);
-        anchorRef.current.bottom = response.list[response.list.length - 1];
+        setHasMoreNext(response.hasMoreNext);
 
-        setTimeout(() => {
-          if (scrollRef?.current) {
-            scrollRef.current.scrollTop = prevScrollTop;
-          }
-        }, 0);
+        if (response.list.length > 0) {
+          setDataList((prev) => [...prev, ...response.list]);
+          anchorRef.current.bottom = response.list[response.list.length - 1];
+
+          setTimeout(() => {
+            if (scrollRef?.current) {
+              scrollRef.current.scrollTop = prevScrollTop;
+            }
+          }, 0);
+        }
+
+        return response;
+      } finally {
+        nextLoadingRef.current = false;
       }
-
-      return response;
     },
     {
       refreshDeps: [hasMoreNext, isLoading, params, pageSize],
@@ -262,12 +286,12 @@ export function useLinkedScroll<
           const { scrollTop, scrollHeight, clientHeight } = actualContainerRef.current;
 
           // 滚动到底部附近，加载更多下方数据
-          if (scrollTop + clientHeight >= scrollHeight - threshold) {
+          if (scrollTop + clientHeight >= scrollHeight - threshold && !nextLoadingRef.current) {
             loadNextData(actualContainerRef);
           }
 
           // 滚动到顶部附近，加载更多上方数据
-          if (scrollTop <= threshold) {
+          if (scrollTop <= threshold && !prevLoadingRef.current) {
             loadPrevData(actualContainerRef);
           }
         },
@@ -276,8 +300,14 @@ export function useLinkedScroll<
       );
 
       return (
-        <MyBox ref={setRefs} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
-          {hasMorePrev && prevLoading && (
+        <MyBox
+          ref={setRefs}
+          h={'100%'}
+          overflow={'auto'}
+          isLoading={isLoading && (showInitialLoading || isInit.current)}
+          {...props}
+        >
+          {showPrevLoading && hasMorePrev && prevLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:is_requesting')}
             </Box>
@@ -291,7 +321,7 @@ export function useLinkedScroll<
         </MyBox>
       );
     },
-    [enablePagination, isLoading]
+    [enablePagination, isLoading, showInitialLoading, showPrevLoading]
   );
 
   return {

@@ -1,4 +1,4 @@
-import { EmbeddingSystemModelDataSchema, LLMSystemModelDataSchema } from '../ai/model.schema';
+import { EmbeddingModelDataSchema, LLMModelDataSchema } from '../ai/model/schema';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -22,12 +22,12 @@ import {
   YuqueServerSchema
 } from './apiDataset/type';
 import { SourceMemberSchema } from '../../support/user/type';
-import { DatasetDataIndexTypeEnum } from './data/constants';
+import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './data/constants';
 import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
-import { NumSchema } from '../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Tag Type ===== */
@@ -39,9 +39,6 @@ export type DatasetCollectionTagType = `${DatasetCollectionTagTypeEnum}`;
 export const DatasetCollectionTagOptionsSchema = z
   .array(z.string().trim().min(1))
   .meta({ description: '选项类标签的预设选项' });
-
-/** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
-export const DEFAULT_TAG = 'default_tag';
 
 /** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
 export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
@@ -121,24 +118,44 @@ export type ChunkSettingsType = z.infer<typeof ChunkSettingsSchema>;
 
 /* ===== Iultmzh file parse config ===== */
 // 外部文档解析服务开关,整体校验、整体存取;仅当 collection 的 customPdfParse=true
-// 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层用固定默认值补全。
+// 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层按页眉页脚默认删除、附录默认保留、图片识别和图表转表默认关闭补全。
 export const sangforFileParseConfigSchema = z
   .object({
     keep_header_footer: z.boolean().optional().meta({
-      description: '是否保留页眉页脚,默认删除'
+      description: '是否保留页眉页脚，默认关闭（删除页眉页脚）'
     }),
     keep_appendix: z.boolean().optional().meta({
-      description: '是否保留附录,默认删除首个附录标题后的内容'
+      description: '是否保留附录，默认开启'
     }),
     image_analysis: z.boolean().optional().meta({
-      description: '是否保留图片识别(含印章)结果,默认关闭'
+      description: '是否保留图片识别（含印章）结果，默认关闭'
     }),
     chart_analysis: z.boolean().optional().meta({
-      description: '是否保留图表转表格结果(同时保留原图片),默认关闭'
+      description: '是否保留图表转表格结果（同时保留原图片），默认关闭'
     })
   })
   .meta({ description: '外部文档解析配置' });
 export type IultmzhFileParseConfigType = z.infer<typeof sangforFileParseConfigSchema>;
+
+/* ===== Inherit permission ===== */
+// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效；dataset/collection 三处创建入参共用。
+const inheritPermissionMetadata = {
+  example: true,
+  description:
+    '是否继承父级权限（默认 true），仅对文件夹（type=folder）生效，仅供 sangfor 使用（FastGPT UI 未使用）：true = 继承父级（根 folder 继承 dataset）；false = 独立创建，仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点'
+};
+export const InheritPermissionSchema = BoolSchema.optional().meta(inheritPermissionMetadata);
+
+// API 入参解析时，未提供该字段按继承态处理；内部 service schema 仍可使用可选的基础 schema。
+export const InheritPermissionInputSchema =
+  InheritPermissionSchema.default(true).meta(inheritPermissionMetadata);
+
+/** API 请求可省略继承标记，但 schema 解析后的结果始终包含 boolean 值。 */
+export type WithOptionalInheritPermission<T extends { inheritPermission: boolean }> = Omit<
+  T,
+  'inheritPermission'
+> &
+  Partial<Pick<T, 'inheritPermission'>>;
 
 /* ===== Dataset ===== */
 export const DatasetSchema = z
@@ -151,6 +168,10 @@ export const DatasetSchema = z
     createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
+    collectionPermissionEnabled: z
+      .boolean()
+      .optional()
+      .meta({ description: 'collection 级权限开关：false 表示关闭态（默认，可读性等于 dataset）' }),
 
     avatar: z
       .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))
@@ -226,6 +247,11 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
+
+  inheritPermission: z
+    .boolean()
+    .optional()
+    .meta({ description: '继承权限：true=快照合并父级，false=独立配置' }),
 
   fileId: z.string().optional().meta({ description: '文件 ID' }),
   rawLink: z.string().optional().meta({ description: '原始链接' }),
@@ -312,7 +338,11 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
-  rebuilding: z.boolean().optional().meta({ description: '重建中' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   synonymVersion: z.number().int().nonnegative().optional().meta({ description: '同义词索引版本' }),
   synonymRebuildingVersion: z
     .number()
@@ -346,12 +376,6 @@ export const DatasetTrainingSchema = z.object({
   expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
-  synonymVersion: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .meta({ description: '任务目标同义词版本' }),
   dataId: ObjectIdSchema.optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
   a: z.string().meta({ description: '回答/补充文本' }),
@@ -401,7 +425,7 @@ export const DatasetSimpleItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   avatar: DatasetSchema.shape.avatar,
   name: z.string().meta({ description: '名称' }),
-  vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' })
+  vectorModel: EmbeddingModelDataSchema.meta({ description: '向量模型' })
 });
 export type DatasetSimpleItemType = z.infer<typeof DatasetSimpleItemSchema>;
 export const DatasetListItemSchema = z.object({
@@ -414,7 +438,16 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
-  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+  appCount: IntSchema.optional().meta({
+    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    example: 0
+  }),
+  fileCount: IntSchema.optional().meta({
+    description:
+      '知识库所有层级的非目录集合数量，不按文件权限过滤；仅 listV2 请求 withFileCount 时返回，folder 类型不返回',
+    example: 0
+  }),
+  vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
   }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
@@ -431,14 +464,18 @@ export const DatasetItemSchema = DatasetSchema.omit({
   vlmModel: true
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
+  hasTrainingTask: z.boolean().meta({
+    description: '是否存在普通训练任务或待处理、处理中、失败的索引/同义词重建数据',
+    example: false
+  }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
-  vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
+  vectorModel: EmbeddingModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),
-  agentModel: LLMSystemModelDataSchema.optional().meta({
+  agentModel: LLMModelDataSchema.optional().meta({
     description: 'AI 模型；模型已删除时为空，已停用模型仍返回展示数据'
   }),
-  vlmModel: LLMSystemModelDataSchema.optional().meta({ description: '视觉语言模型' }),
+  vlmModel: LLMModelDataSchema.optional().meta({ description: '视觉语言模型' }),
   permission: PermissionSchema
 });
 export type DatasetItemType = z.infer<typeof DatasetItemSchema>;
@@ -497,6 +534,11 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   isOwner: z.boolean().meta({ description: '是否为 owner' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })

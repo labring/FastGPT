@@ -60,6 +60,14 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       insertIds: rows.map((row) => row.id)
     };
   };
+  /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
+  refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
+    if (idList.length === 0) return;
+    await OgClient.query(
+      `UPDATE ${DatasetVectorTableName} SET createtime = CURRENT_TIMESTAMP WHERE team_id = $1 AND id = ANY($2::bigint[])`,
+      [String(teamId), idList]
+    );
+  };
   delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
@@ -133,7 +141,8 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
-            WHERE dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+            WHERE team_id = '${String(teamId)}'
+              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
               ${forbidCollectionSql}
             ORDER BY score LIMIT ${limit};

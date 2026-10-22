@@ -9,12 +9,11 @@ import {
 } from '@chakra-ui/react';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { updatePlan, type AdminPlanType } from '@/web/admin/wallet/plan/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { StandardSubLevelEnum, SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import type { AdminPlanType as PlanType } from '@/web/admin/users/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
@@ -29,8 +28,14 @@ function transformDate(date: string) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+const formatOptionalNumber = (val: unknown) => {
+  if (val === '' || val === null || val === undefined) return undefined;
+  const num = Number(val);
+  return Number.isNaN(num) ? undefined : num;
+};
+
 export default function PlanEditModal(props: {
-  data: PlanType;
+  data: AdminPlanType;
   getData: any;
   subType: `${SubTypeEnum}`;
 }) {
@@ -44,7 +49,7 @@ export default function PlanEditModal(props: {
     reset,
     control,
     formState: { errors }
-  } = useForm<PlanType>({
+  } = useForm<AdminPlanType>({
     defaultValues: {
       id: '',
       teamId: '',
@@ -75,7 +80,7 @@ export default function PlanEditModal(props: {
     }
   });
 
-  const { runAsync: onSubmit, loading } = useRequest(async (formData: PlanType) => {
+  const { runAsync: onSubmit, loading } = useRequest(async (formData: AdminPlanType) => {
     try {
       const startTimeISO = new Date(formData.startTime).toISOString();
       const expiredTimeISO = new Date(formData.expiredTime).toISOString();
@@ -86,7 +91,7 @@ export default function PlanEditModal(props: {
         throw new Error('剩余积分不能大于总积分');
       }
 
-      await POST(`/proApi/admin/routes/plans/updatePlan`, {
+      await updatePlan({
         id: data.id,
         type: formData.type,
         startTime: startTimeISO,
@@ -97,19 +102,19 @@ export default function PlanEditModal(props: {
         extraDatasetSize: formData.extraDatasetSize,
         level: formData.level,
 
-        maxTeamMember: formData.maxTeamMember,
-        maxApp: formData.maxApp,
-        maxDataset: formData.maxDataset,
-        maxDatasetSize: formData.maxDatasetSize,
-        requestsPerMinute: formData.requestsPerMinute,
-        websiteSyncPerDataset: formData.websiteSyncPerDataset,
-        chatHistoryStoreDuration: formData.chatHistoryStoreDuration,
-        appRegistrationCount: formData.appRegistrationCount,
-        auditLogStoreDuration: formData.auditLogStoreDuration,
-        ticketResponseTime: formData.ticketResponseTime,
-        customDomain: formData.customDomain,
-        maxUploadFileSize: formData.maxUploadFileSize,
-        maxUploadFileCount: formData.maxUploadFileCount,
+        maxTeamMember: formatOptionalNumber(formData.maxTeamMember),
+        maxApp: formatOptionalNumber(formData.maxApp),
+        maxDataset: formatOptionalNumber(formData.maxDataset),
+        maxDatasetSize: formatOptionalNumber(formData.maxDatasetSize),
+        requestsPerMinute: formatOptionalNumber(formData.requestsPerMinute),
+        websiteSyncPerDataset: formatOptionalNumber(formData.websiteSyncPerDataset),
+        chatHistoryStoreDuration: formatOptionalNumber(formData.chatHistoryStoreDuration),
+        appRegistrationCount: formatOptionalNumber(formData.appRegistrationCount),
+        auditLogStoreDuration: formatOptionalNumber(formData.auditLogStoreDuration),
+        ticketResponseTime: formatOptionalNumber(formData.ticketResponseTime),
+        customDomain: formatOptionalNumber(formData.customDomain),
+        maxUploadFileSize: formatOptionalNumber(formData.maxUploadFileSize),
+        maxUploadFileCount: formatOptionalNumber(formData.maxUploadFileCount),
         enableSandbox: formData.enableSandbox
       });
       toast({
@@ -136,7 +141,21 @@ export default function PlanEditModal(props: {
           reset({
             ...data,
             startTime: transformDate(data.startTime),
-            expiredTime: transformDate(data.expiredTime)
+            expiredTime: transformDate(data.expiredTime),
+            maxTeamMember: data.maxTeamMember ?? undefined,
+            maxApp: data.maxApp ?? undefined,
+            maxDataset: data.maxDataset ?? undefined,
+            maxDatasetSize: data.maxDatasetSize ?? undefined,
+            requestsPerMinute: data.requestsPerMinute ?? undefined,
+            websiteSyncPerDataset: data.websiteSyncPerDataset ?? undefined,
+            chatHistoryStoreDuration: data.chatHistoryStoreDuration ?? undefined,
+            appRegistrationCount: data.appRegistrationCount ?? undefined,
+            auditLogStoreDuration: data.auditLogStoreDuration ?? undefined,
+            ticketResponseTime: data.ticketResponseTime ?? undefined,
+            customDomain: data.customDomain ?? undefined,
+            maxUploadFileSize: data.maxUploadFileSize ?? undefined,
+            maxUploadFileCount: data.maxUploadFileCount ?? undefined,
+            enableSandbox: data.enableSandbox ?? undefined
           });
         }}
       >
@@ -228,7 +247,7 @@ export default function PlanEditModal(props: {
               {...register('extraDatasetSize', {
                 required: 'This is required'
               })}
-              id="metadata"
+              id="extraDatasetSize"
               variant="outline"
               placeholder="额外知识库容量"
               type="number"
@@ -271,27 +290,40 @@ export default function PlanEditModal(props: {
             <MyDivider />
             <Box mt={4}>下面的值会覆盖套餐配置，不填则会用套餐的标准值</Box>
             <FormControl>
-              <FormLabel htmlFor="totalPoints" fontWeight={'bold'}>
+              <FormLabel htmlFor="maxTeamMember" fontWeight={'bold'}>
                 团队成员上限
               </FormLabel>
               <Input
                 {...register('maxTeamMember')}
-                id="totalPoints"
+                id="maxTeamMember"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
             <FormControl mt={4}>
-              <FormLabel htmlFor="totalPoints" fontWeight={'bold'}>
+              <FormLabel htmlFor="maxApp" fontWeight={'bold'}>
                 应用上限
               </FormLabel>
-              <Input {...register('maxApp')} id="totalPoints" variant="outline" type="number" />
+              <Input
+                {...register('maxApp')}
+                id="maxApp"
+                variant="outline"
+                placeholder="跟随套餐"
+                type="number"
+              />
             </FormControl>
             <FormControl mt={4}>
-              <FormLabel htmlFor="totalPoints" fontWeight={'bold'}>
+              <FormLabel htmlFor="maxDataset" fontWeight={'bold'}>
                 知识库上限
               </FormLabel>
-              <Input {...register('maxDataset')} id="totalPoints" variant="outline" type="number" />
+              <Input
+                {...register('maxDataset')}
+                id="maxDataset"
+                variant="outline"
+                placeholder="跟随套餐"
+                type="number"
+              />
             </FormControl>
             <FormControl mt={4}>
               <FormLabel htmlFor="maxDatasetSize" fontWeight={'bold'}>
@@ -301,6 +333,7 @@ export default function PlanEditModal(props: {
                 {...register('maxDatasetSize')}
                 id="maxDatasetSize"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -312,6 +345,7 @@ export default function PlanEditModal(props: {
                 {...register('requestsPerMinute')}
                 id="requestsPerMinute"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -323,6 +357,7 @@ export default function PlanEditModal(props: {
                 {...register('websiteSyncPerDataset')}
                 id="websiteSyncPerDataset"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -334,6 +369,7 @@ export default function PlanEditModal(props: {
                 {...register('chatHistoryStoreDuration')}
                 id="chatHistoryStoreDuration"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -345,6 +381,7 @@ export default function PlanEditModal(props: {
                 {...register('appRegistrationCount')}
                 id="appRegistrationCount"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -356,6 +393,7 @@ export default function PlanEditModal(props: {
                 {...register('auditLogStoreDuration')}
                 id="auditLogStoreDuration"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -367,6 +405,7 @@ export default function PlanEditModal(props: {
                 {...register('ticketResponseTime')}
                 id="ticketResponseTime"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -378,6 +417,7 @@ export default function PlanEditModal(props: {
                 {...register('customDomain')}
                 id="customDomain"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -389,6 +429,7 @@ export default function PlanEditModal(props: {
                 {...register('maxUploadFileSize')}
                 id="maxUploadFileSize"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>
@@ -400,6 +441,7 @@ export default function PlanEditModal(props: {
                 {...register('maxUploadFileCount')}
                 id="maxUploadFileCount"
                 variant="outline"
+                placeholder="跟随套餐"
                 type="number"
               />
             </FormControl>

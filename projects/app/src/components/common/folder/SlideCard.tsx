@@ -21,6 +21,10 @@ const FolderSlideCard = ({
   onMove,
   deleteTip,
   onDelete,
+  // 为 false 时不渲染简介区（collection 无 intro 字段）
+  showIntro = true,
+  // 为 false 时不渲染协作者区（如知识库未开启数据集权限配置）
+  showCollaborator = true,
 
   managePer,
   isInheritPermission,
@@ -31,6 +35,8 @@ const FolderSlideCard = ({
   refreshDeps?: any[];
   name: string;
   intro?: string;
+  showIntro?: boolean;
+  showCollaborator?: boolean;
   onEdit: () => void;
   onMove: () => void;
   deleteTip: string;
@@ -67,9 +73,11 @@ const FolderSlideCard = ({
             onClick={onEdit}
           />
         </HStack>
-        <Box mt={3} fontSize={'sm'} color={'myGray.500'} cursor={'pointer'} onClick={onEdit}>
-          {intro || t('common:not_yet_introduced')}
-        </Box>
+        {showIntro && (
+          <Box mt={3} fontSize={'sm'} color={'myGray.500'} cursor={'pointer'} onClick={onEdit}>
+            {intro || t('common:not_yet_introduced')}
+          </Box>
+        )}
       </Box>
 
       {managePer.permission.hasManagePer && (
@@ -119,7 +127,7 @@ const FolderSlideCard = ({
         </>
       )}
 
-      {feConfigs?.isPlus && (
+      {showCollaborator && feConfigs?.isPlus && (
         <>
           <MyDivider my={6} />
 

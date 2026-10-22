@@ -1,0 +1,996 @@
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { ClientSession } from '../../../common/mongo';
+import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
+import { MongoDataset } from '../../../core/dataset/schema';
+import { MongoResourcePermission } from '../schema';
+import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
+import {
+  assertDatasetCollectionPermissionEnabled,
+  getDatasetCollectionPermissionEnabled,
+  lockDatasetCollectionPermissionState
+} from './datasetSwitch';
+import type { SyncChildrenPermissionResourceType } from '../inheritPermission';
+import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  moveResourcePermissions,
+  resumeResourcePermissionInheritance,
+  syncResourceTreePermissions
+} from '../resourcePermissionService';
+import {
+  calculateInheritedResourceCollaborators,
+  createInheritedResourceCollaboratorCalculator,
+  mergeResourceCollaborators,
+  toInheritedCollaborators
+} from '../resourcePermissionPolicy';
+import {
+  resourcePermissionRepo,
+  type ResourcePermissionPatch
+} from '../repository/resourcePermissionRepo';
+
+/**
+ * 读取 collection 的父级有效 clbs（跨类型父级解析——collection 适配层的唯一边界）：
+ *  - parentId 有值：父级为 collection folder（同类型），读其物化快照；
+ *  - parentId 为空（根）：父级为 dataset，读其物化快照（main 已物化为完整有效 ACL）。
+ */
+export const resolveCollectionParentClbs = async ({
+  teamId,
+  datasetId,
+  parentId,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  parentId: ParentIdType;
+  session?: ClientSession;
+}): Promise<CollaboratorItemType[]> => {
+  return resourcePermissionRepo.findByResource({
+    teamId,
+    resourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
+    resourceId: parentId ? String(parentId) : datasetId,
+    session
+  });
+};
+
+/** 创建 Collection 时需要的资源最小字段。 */
+export type CollectionCreateResourceType = SyncChildrenPermissionResourceType & {
+  datasetId: string;
+  tmbId: string;
+};
+
+/**
+ * 创建 Collection 时初始化权限记录（全快照模型）：
+ * - `inheritPermission=true`（默认）：完整快照 = `merge(父级有效 clbs, [owner])`，
+ *   根 collection 父级 = dataset（跨类型覆盖），非根 = 父 collection folder；
+ * - `inheritPermission=false`（独立态）：仅 owner 快照（createResourcePermissions 内部父级读空），
+ *   仅允许在 dataset 已启用时创建（关闭态拒绝，避免凭空出现独立态 collection）。
+ */
+export async function createCollectionPermission({
+  resource,
+  tmbId,
+  session
+}: {
+  resource: CollectionCreateResourceType;
+  tmbId: string;
+  session: ClientSession;
+}): Promise<void> {
+  await createCollectionPermissionsBatch({
+    teamId: resource.teamId,
+    resources: [
+      {
+        collectionId: String(resource._id),
+        datasetId: resource.datasetId,
+        parentId: resource.parentId,
+        tmbId,
+        inheritPermission: resource.inheritPermission
+      }
+    ],
+    session
+  });
+}
+
+/**
+ * 重训 / 同步等「删除原集合并以新 _id 重建」场景的权限迁移。
+ *
+ * 重建会生成新的 collection `_id`，而创建流程只会写入默认快照（继承态 = 父级 + owner，
+ * 独立态 = 仅 owner），因此不迁移就会丢掉原集合的权限配置：独立态集合失去全部自定义协作者，
+ * 继承态集合失去相对父级独有的授权。
+ *
+ * 调用方必须在删除原集合前读取快照，并在新集合创建后、同一事务内调用本函数写回：
+ * 快照相对新集合依然成立——重建保持了 parentId 与 inheritPermission，父级快照未变。
+ *
+ * 空快照（关闭态存量数据没有 ACL 行）不写入，保留创建流程写入的默认快照。
+ */
+export async function carryOverCollectionPermission({
+  teamId,
+  collectionId,
+  collaborators,
+  session
+}: {
+  teamId: string;
+  /** 重建后的新 collection id。 */
+  collectionId: string;
+  /** 删除原集合前读取的物化快照。 */
+  collaborators: CollaboratorItemType[];
+  session: ClientSession;
+}): Promise<void> {
+  if (collaborators.length === 0) return;
+
+  await resourcePermissionRepo.replaceResource({
+    teamId,
+    resourceType: PerResourceTypeEnum.collection,
+    resourceId: String(collectionId),
+    collaborators,
+    session
+  });
+}
+
+/** 移动 Collection 所需的最小字段。 */
+export type CollectionMoveResourceType = Pick<
+  DatasetCollectionSchemaType,
+  '_id' | 'type' | 'teamId' | 'parentId' | 'datasetId' | 'tmbId' | 'inheritPermission'
+>;
+
+/**
+ * 移动 Collection 时的权限处理（全快照模型），以 collection **自身当前继承态**为策略：
+ * - `inheritPermission=false`：仅更新 parentId，快照与独立态保持不变（不合并目标父级）；
+ * - `inheritPermission=true`（默认）：
+ *   - 目标父级 = `resolveCollectionParentClbs(targetParentId)`（根 → dataset 有效 clbs）；
+ *   - 源父级 = `resolveCollectionParentClbs(collection.parentId)`（根 → dataset 有效 clbs，
+ *     用于剥离旧父级贡献）；
+ *   - `moveResourcePermissions` 剥离旧父级、合并新父级，folder 经 `syncResourceTreePermissions`
+ *     递归子树；最后更新 parentId 并保持 `inheritPermission=true`。
+ */
+export async function moveCollectionPermission({
+  collection,
+  targetParentId: rawTargetParentId,
+  session
+}: {
+  collection: CollectionMoveResourceType;
+  /** 目标位置（null 表示 Dataset 根目录）。 */
+  targetParentId: ParentIdType;
+  session: ClientSession;
+}): Promise<void> {
+  const teamId = collection.teamId;
+  const targetParentId = rawTargetParentId || null;
+
+  // 保持独立配置：仅更新 parentId，快照与 inheritPermission=false 保持不变
+  if (collection.inheritPermission === false) {
+    // 独立态只可能存在于启用态；断言避免关闭态被隐式开启（关闭态无快照，move 结果会失配）
+    await assertDatasetCollectionPermissionEnabled({
+      teamId,
+      datasetId: collection.datasetId,
+      session
+    });
+    await MongoDatasetCollection.updateOne(
+      { _id: collection._id },
+      { $set: { parentId: targetParentId, inheritPermission: false } },
+      { session }
+    );
+    return;
+  }
+
+  // 继承态（含当前无父级的根 collection）：剥离源父级贡献、合并目标父级贡献，保持继承态
+  const newParentClbs = await resolveCollectionParentClbs({
+    teamId,
+    datasetId: collection.datasetId,
+    parentId: targetParentId,
+    session
+  });
+  const oldParentClbs = await resolveCollectionParentClbs({
+    teamId,
+    datasetId: collection.datasetId,
+    parentId: collection.parentId,
+    session
+  });
+
+  await moveResourcePermissions({
+    resource: collection,
+    newParentId: targetParentId,
+    resourceModel: MongoDatasetCollection,
+    resourceType: PerResourceTypeEnum.collection,
+    newParentCollaborators: newParentClbs,
+    oldParentCollaborators: oldParentClbs,
+    session
+  });
+
+  await MongoDatasetCollection.updateOne(
+    { _id: collection._id },
+    { $set: { parentId: targetParentId, inheritPermission: true } },
+    { session }
+  );
+}
+
+/**
+ * 恢复 Collection 继承（全快照模型）：保留相对当前父级独有的权限位并同步子树。
+ * 根 collection（parentId 空）父级 = dataset，经 parentResourceType/parentResourceId 覆盖。
+ */
+export async function resumeCollectionInheritPermission({
+  collection,
+  session
+}: {
+  collection: Pick<
+    DatasetCollectionSchemaType,
+    '_id' | 'tmbId' | 'parentId' | 'datasetId' | 'type' | 'teamId'
+  >;
+  session?: ClientSession;
+}): Promise<void> {
+  // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
+  await assertDatasetCollectionPermissionEnabled({
+    teamId: collection.teamId,
+    datasetId: collection.datasetId,
+    session
+  });
+
+  return resumeResourcePermissionInheritance({
+    resource: collection,
+    resourceModel: MongoDatasetCollection,
+    resourceType: PerResourceTypeEnum.collection,
+    parentResourceType: collection.parentId
+      ? PerResourceTypeEnum.collection
+      : PerResourceTypeEnum.dataset,
+    parentResourceId: collection.parentId ? String(collection.parentId) : collection.datasetId,
+    session
+  });
+}
+
+/**
+ * Batch-delete Collection 权限记录（`resourceType=collection`），用于 Dataset/Collection 删除
+ * 在同一事务内清理，失败整体回滚。幂等。
+ */
+export async function deleteCollectionPermissions({
+  teamId,
+  collectionIds,
+  session
+}: {
+  teamId: string;
+  collectionIds: string[];
+  session: ClientSession;
+}): Promise<void> {
+  if (collectionIds.length === 0) return;
+
+  await MongoResourcePermission.deleteMany({
+    resourceType: PerResourceTypeEnum.collection,
+    teamId,
+    resourceId: { $in: collectionIds }
+  }).session(session);
+}
+
+/** 单个 collection 快照 old→new 的 diff patches（insert/update/delete）。 */
+const buildSnapshotPatches = ({
+  resourceId,
+  oldCollaborators,
+  newCollaborators
+}: {
+  resourceId: string;
+  oldCollaborators: CollaboratorItemType[];
+  newCollaborators: CollaboratorItemType[];
+}): ResourcePermissionPatch[] => {
+  const patches: ResourcePermissionPatch[] = [];
+  const oldMap = new Map(oldCollaborators.map((clb) => [getCollaboratorId(clb), clb]));
+  const newMap = new Map(newCollaborators.map((clb) => [getCollaboratorId(clb), clb]));
+
+  for (const newClb of newCollaborators) {
+    const oldClb = oldMap.get(getCollaboratorId(newClb));
+    if (oldClb?.permission === newClb.permission) continue;
+    const { permission, ...collaborator } = newClb;
+    patches.push({
+      resourceId,
+      collaborator,
+      action: oldClb ? 'update' : 'insert',
+      permission
+    });
+  }
+  for (const oldClb of oldCollaborators) {
+    if (newMap.has(getCollaboratorId(oldClb))) continue;
+    const { permission: _, ...collaborator } = oldClb;
+    patches.push({ resourceId, collaborator, action: 'delete' });
+  }
+
+  return patches;
+};
+
+/**
+ * 将单个 Dataset 的根级继承态 Collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，
+ * folder 经 `syncResourceTreePermissions` 递归子树。父级来源 = dataset 有效 clbs。
+ * 供运行时跨树同步（syncDatasetToCollections）与启用时物化（enableDatasetCollectionPermissions）复用。
+ */
+export const syncRootCollections = async ({
+  teamId,
+  datasetId,
+  oldRootClbs,
+  rootClbs,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  /** Dataset 旧有效 clbs（变更前）。 */
+  oldRootClbs: CollaboratorItemType[];
+  /** Dataset 新有效 clbs（变更后，作为根级 Collection 的父级来源）。 */
+  rootClbs: CollaboratorItemType[];
+  session: ClientSession;
+}): Promise<void> => {
+  // 只处理实际变化的协作者：由父级（dataset 有效 clbs）old/new 对比筛出 affected。
+  // 合并计算按 collaborator 独立，无 affected 时子级快照不变，直接短路（零 DB 读）。
+  const oldInherited = toInheritedCollaborators(oldRootClbs);
+  const newInherited = toInheritedCollaborators(rootClbs);
+  const parentCollaboratorsById = new Map(
+    [...oldInherited, ...newInherited].map((collaborator) => [
+      getCollaboratorId(collaborator),
+      collaborator
+    ])
+  );
+  const oldParentPermissions = new Map(
+    oldInherited.map((collaborator) => [getCollaboratorId(collaborator), collaborator.permission])
+  );
+  const newParentPermissions = new Map(
+    newInherited.map((collaborator) => [getCollaboratorId(collaborator), collaborator.permission])
+  );
+  const affectedCollaborators = Array.from(parentCollaboratorsById.values()).filter(
+    (collaborator) => {
+      const collaboratorId = getCollaboratorId(collaborator);
+      return oldParentPermissions.get(collaboratorId) !== newParentPermissions.get(collaboratorId);
+    }
+  );
+  const affectedIdSet = new Set(affectedCollaborators.map(getCollaboratorId));
+  if (affectedCollaborators.length === 0) {
+    return;
+  }
+  const oldAffectedRootClbs = oldRootClbs.filter((collaborator) =>
+    affectedIdSet.has(getCollaboratorId(collaborator))
+  );
+  const newAffectedRootClbs = rootClbs.filter((collaborator) =>
+    affectedIdSet.has(getCollaboratorId(collaborator))
+  );
+
+  const rootChildren = await MongoDatasetCollection.find(
+    { teamId, datasetId, parentId: null, inheritPermission: { $ne: false } },
+    '_id type tmbId'
+  )
+    .lean()
+    .session(session);
+  if (rootChildren.length === 0) return;
+
+  // 只加载受影响协作者的 ACL 行（无 N+1，也不拉全量快照）
+  const childIds = rootChildren.map((child) => String(child._id));
+  const affectedCollaboratorIds = affectedCollaborators.map(
+    ({ permission: _, ...collaborator }) => collaborator
+  );
+  const allClbs = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
+    teamId,
+    resourceType: PerResourceTypeEnum.collection,
+    resourceIds: childIds,
+    collaborators: affectedCollaboratorIds,
+    session
+  });
+  const snapshotMap = new Map<string, CollaboratorItemType[]>();
+  for (const clb of allClbs) {
+    const rid = String(clb.resourceId);
+    const arr = snapshotMap.get(rid) ?? [];
+    arr.push(clb);
+    snapshotMap.set(rid, arr);
+  }
+
+  // 预构造合并计算器（父级只含 affected），同一 dataset 下全部根级 collection 复用，避免循环内重复建 Map
+  const calculator = createInheritedResourceCollaboratorCalculator({
+    oldParentCollaborators: oldAffectedRootClbs,
+    newParentCollaborators: newAffectedRootClbs
+  });
+
+  const patches: ResourcePermissionPatch[] = [];
+  const folderChildren: Array<{
+    childId: string;
+    oldSnapshot: CollaboratorItemType[];
+    newSnapshot: CollaboratorItemType[];
+  }> = [];
+
+  for (const child of rootChildren) {
+    const childId = String(child._id);
+    const oldSnapshot = snapshotMap.get(childId) ?? [];
+    const newSnapshot = calculator(oldSnapshot);
+    const childPatches = buildSnapshotPatches({
+      resourceId: childId,
+      oldCollaborators: oldSnapshot,
+      newCollaborators: newSnapshot
+    });
+    patches.push(...childPatches);
+
+    // folder 自身无变化 ⇒ 其有效 clbs 不变 ⇒ 子树也无需递归
+    if (child.type === DatasetCollectionTypeEnum.folder && childPatches.length > 0) {
+      folderChildren.push({ childId, oldSnapshot, newSnapshot });
+    }
+  }
+
+  await resourcePermissionRepo.patchResources({
+    teamId,
+    resourceType: PerResourceTypeEnum.collection,
+    patches,
+    session
+  });
+
+  // folder 递归：子树复用 syncResourceTreePermissions，其内部对旧快照再做一次 affected 过滤
+  for (const { childId, oldSnapshot, newSnapshot } of folderChildren) {
+    await syncResourceTreePermissions({
+      resource: {
+        _id: childId,
+        type: DatasetCollectionTypeEnum.folder,
+        teamId,
+        parentId: null,
+        inheritPermission: true
+      },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      oldParentCollaborators: oldSnapshot,
+      newParentCollaborators: newSnapshot,
+      session
+    });
+  }
+};
+
+/**
+ * dataset 有效 clbs 变更后，将受影响 dataset（含继承态后代）下全部 collection 的快照重新物化。
+ * 根级继承态 collection 从 oldEffectiveClbs 物化到 newEffectiveClbs，folder 递归同步子树。
+ * 由 dataset 写路径（collaborator/move/resume）在同一事务内调用。幂等（diff 写入）。
+ */
+export async function syncDatasetToCollections({
+  teamId,
+  datasetId,
+  oldEffectiveClbs,
+  newEffectiveClbs,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  /** Dataset 旧有效 clbs（变更前）。 */
+  oldEffectiveClbs: CollaboratorItemType[];
+  /** Dataset 新有效 clbs（变更后）。 */
+  newEffectiveClbs: CollaboratorItemType[];
+  session: ClientSession;
+}): Promise<void> {
+  // 关闭态短路：关闭态不存在自定义 collection 权限，读路径已短路到 dataset 有效权限，
+  // 无需（也不应）写 collection 快照。
+  const collectionPermissionEnabled = await getDatasetCollectionPermissionEnabled({
+    teamId,
+    datasetId,
+    session
+  });
+  if (!collectionPermissionEnabled) return;
+
+  // 收集 root dataset + 全部后代 dataset（仅继承态后代的有效 clbs 会随父级变化）
+  const datasetNodes = new Map<string, { parentId: string | null; inheritPermission?: boolean }>();
+  const collectQueue = [datasetId];
+  while (collectQueue.length) {
+    const currentId = collectQueue.shift()!;
+    const children = await MongoDataset.find(
+      { teamId, parentId: currentId },
+      '_id parentId inheritPermission'
+    )
+      .lean()
+      .session(session);
+    for (const child of children) {
+      const childId = String(child._id);
+      datasetNodes.set(childId, {
+        parentId: child.parentId ? String(child.parentId) : null,
+        inheritPermission: child.inheritPermission
+      });
+      collectQueue.push(childId);
+    }
+  }
+
+  // 批量加载后代 dataset 物化快照（无 N+1）
+  const descendantIds = Array.from(datasetNodes.keys());
+  const allClbs = await resourcePermissionRepo.findByResourceIds({
+    teamId,
+    resourceType: PerResourceTypeEnum.dataset,
+    resourceIds: descendantIds,
+    session
+  });
+  const ownClbsMap = new Map<string, CollaboratorItemType[]>();
+  for (const clb of allClbs) {
+    const id = String(clb.resourceId);
+    const arr = ownClbsMap.get(id) ?? [];
+    arr.push(clb);
+    ownClbsMap.set(id, arr);
+  }
+
+  // BFS 自顶向下：seed 用 root dataset 的旧/新有效 clbs，逐 dataset 重新物化根级 collection
+  const syncQueue: Array<{
+    currentId: string;
+    oldEffectiveClbs: CollaboratorItemType[];
+    newEffectiveClbs: CollaboratorItemType[];
+  }> = [{ currentId: datasetId, oldEffectiveClbs, newEffectiveClbs }];
+  const visited = new Set<string>();
+
+  while (syncQueue.length) {
+    const { currentId, oldEffectiveClbs: oldClbs, newEffectiveClbs: newClbs } = syncQueue.shift()!;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    await syncRootCollections({
+      teamId,
+      datasetId: currentId,
+      oldRootClbs: oldClbs,
+      rootClbs: newClbs,
+      session
+    });
+
+    for (const childId of descendantIds) {
+      const node = datasetNodes.get(childId)!;
+      if (node.parentId !== currentId) continue;
+      if (node.inheritPermission === false) continue;
+      const oldChildClbs = ownClbsMap.get(childId) ?? [];
+      const newChildClbs = calculateInheritedResourceCollaborators({
+        oldParentCollaborators: oldClbs,
+        newParentCollaborators: newClbs,
+        childCollaborators: oldChildClbs
+      });
+      syncQueue.push({
+        currentId: childId,
+        oldEffectiveClbs: oldChildClbs,
+        newEffectiveClbs: newChildClbs
+      });
+    }
+  }
+}
+
+/** 批量 ACL 写入的分片大小：4w 行整批 deleteMany + insertMany 的载荷与内存都不可接受 */
+const COLLECTION_PERMISSION_WRITE_CHUNK_SIZE = 1000;
+
+const chunked = <T>(items: T[], size: number): T[][] => {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) result.push(items.slice(i, i + size));
+  return result;
+};
+
+/** 批量读到的 ACL 行：每个协作者一行，行内直接带 resourceId */
+type ResourcePermissionRow = Awaited<
+  ReturnType<typeof resourcePermissionRepo.findByResourceIds>
+>[number];
+
+/** 按 resourceId 归并 ACL 行（批量读的通用后处理）。 */
+const indexByResourceId = (rows: ResourcePermissionRow[]) => {
+  const map = new Map<string, CollaboratorItemType[]>();
+  for (const row of rows) {
+    const id = String(row.resourceId);
+    const arr = map.get(id) ?? [];
+    arr.push(row);
+    map.set(id, arr);
+  }
+  return map;
+};
+
+/** 批量初始化 Collection ACL 的最小入参。 */
+export type CollectionPermissionCreateItem = {
+  collectionId: string;
+  datasetId: string;
+  /** 父级 collection id；null 表示父级是 dataset（知识库根） */
+  parentId: ParentIdType;
+  tmbId: string;
+  inheritPermission?: boolean;
+  /** 内部创建流程已核对来源归属、位置和 owner，可复用其完整快照。 */
+  permissionSourceCollectionId?: string;
+};
+
+/**
+ * 批量初始化新建 Collection 的 ACL 快照，语义与 `createCollectionPermission` 等价。
+ *
+ * 单条创建也复用此实现：**关闭态 dataset 跳过写入**。关闭态读路径不走 collection 快照
+ * （`canShortCircuitCollectionPermission`），重新启用又会清空重建
+ * （`enableDatasetCollectionPermissions`），此间写入的行注定被覆盖；ApiDataset 单次导入
+ * 可达 4w 行，这条短路决定事务量级。独立态在关闭态非法，直接使用本次开关结果拒绝。
+ */
+export async function createCollectionPermissionsBatch({
+  teamId,
+  resources,
+  session
+}: {
+  teamId: string;
+  resources: CollectionPermissionCreateItem[];
+  session: ClientSession;
+}): Promise<void> {
+  if (resources.length === 0) return;
+
+  const byDataset = new Map<string, CollectionPermissionCreateItem[]>();
+  for (const item of resources) {
+    const arr = byDataset.get(item.datasetId) ?? [];
+    arr.push(item);
+    byDataset.set(item.datasetId, arr);
+  }
+
+  for (const [datasetId, items] of byDataset) {
+    const enabled = await lockDatasetCollectionPermissionState({ teamId, datasetId, session });
+    if (!enabled) {
+      if (items.some((item) => item.inheritPermission === false))
+        throw DatasetErrEnum.collectionPermissionDisabled;
+      continue;
+    }
+
+    // 同父级的快照只读一次：40k 行下逐行回查父级是主要开销
+    const inheritingItems = items.filter(
+      (item) => item.inheritPermission !== false && !item.permissionSourceCollectionId
+    );
+    const parentIds = Array.from(
+      new Set([
+        ...inheritingItems.filter((item) => item.parentId).map((item) => String(item.parentId)),
+        ...items.flatMap((item) =>
+          item.permissionSourceCollectionId ? [item.permissionSourceCollectionId] : []
+        )
+      ])
+    );
+    const parentRows: ResourcePermissionRow[] = [];
+    for (const resourceIds of chunked(parentIds, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
+      const rows = await resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds,
+        session
+      });
+      // 父级协作者总数可能远大于父节点数，不能将无界查询结果展开为 push 的函数参数。
+      for (const row of rows) parentRows.push(row);
+    }
+    // 独立态不继承任何父级；非根节点也不需要读取 dataset 快照。
+    const datasetClbs = inheritingItems.some((item) => !item.parentId)
+      ? await resourcePermissionRepo.findByResource({
+          teamId,
+          resourceType: PerResourceTypeEnum.dataset,
+          resourceId: datasetId,
+          session
+        })
+      : [];
+    const parentClbsById = indexByResourceId(parentRows);
+    const collaboratorsByKey = new Map<string, CollaboratorItemType[]>();
+    const snapshots = items.map((item) => {
+      // 同父级、同 owner 的新节点快照相同，计算一次即可；不同 owner 不得混用。
+      const key = JSON.stringify([
+        item.inheritPermission !== false,
+        item.parentId ?? null,
+        item.tmbId,
+        item.permissionSourceCollectionId
+      ]);
+      if (!collaboratorsByKey.has(key)) {
+        collaboratorsByKey.set(
+          key,
+          item.permissionSourceCollectionId
+            ? [
+                ...(parentClbsById.get(item.permissionSourceCollectionId) ?? []).filter(
+                  (row) => String(row.tmbId ?? '') !== item.tmbId
+                ),
+                { tmbId: item.tmbId, permission: OwnerRoleVal }
+              ]
+            : item.inheritPermission === false
+              ? [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+              : mergeResourceCollaborators({
+                  parentCollaborators: item.parentId
+                    ? (parentClbsById.get(String(item.parentId)) ?? [])
+                    : datasetClbs,
+                  childCollaborators: [{ tmbId: item.tmbId, permission: OwnerRoleVal }]
+                })
+        );
+      }
+      return {
+        resourceId: item.collectionId,
+        collaborators: collaboratorsByKey.get(key)!
+      };
+    });
+
+    for (const chunk of chunked(snapshots, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
+      await resourcePermissionRepo.insertResources({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resources: chunk,
+        session
+      });
+    }
+  }
+}
+
+/** 批量迁移 Collection 父级时的 ACL 入参。 */
+export type CollectionPermissionMoveItem = {
+  collectionId: string;
+  datasetId: string;
+  /** 变更前的父级 collection id；null = dataset 根 */
+  oldParentId: ParentIdType;
+  /** 变更后的父级 collection id；null = dataset 根 */
+  newParentId: ParentIdType;
+  type: DatasetCollectionTypeEnum;
+  inheritPermission?: boolean;
+};
+
+type CollectionPermissionMovedFolder = {
+  collectionId: string;
+  oldSnapshot: CollaboratorItemType[];
+  newSnapshot: CollaboratorItemType[];
+};
+
+/**
+ * parentId 写入完成后，按新树同步本轮移动 folder 的未移动后代。
+ *
+ * 例如本轮同时执行「A 移到 X 下、B 移到 A 下」：B 的 ACL 已在第一阶段按 A 的新 ACL 算好。
+ * 若此处让 A 的递归同步继续经过 B，就会再次用树遍历结果覆盖 B；所以 `movedCollectionIds`
+ * 是递归的停止点，B 再由自己的 folder 计划继续同步它未移动的子孙。
+ */
+export async function syncMovedCollectionPermissionDescendants({
+  teamId,
+  folders,
+  movedCollectionIds,
+  session
+}: {
+  teamId: string;
+  folders: CollectionPermissionMovedFolder[];
+  movedCollectionIds: Set<string>;
+  session: ClientSession;
+}): Promise<void> {
+  for (const folder of folders) {
+    await syncResourceTreePermissions({
+      resource: {
+        _id: folder.collectionId,
+        type: DatasetCollectionTypeEnum.folder,
+        teamId,
+        parentId: null,
+        inheritPermission: true
+      },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      oldParentCollaborators: folder.oldSnapshot,
+      newParentCollaborators: folder.newSnapshot,
+      stopResourceIds: movedCollectionIds,
+      session
+    });
+  }
+}
+
+/**
+ * 批量重算「父级变更」后的 Collection ACL，语义同 `moveCollectionPermission` 的继承态分支：
+ * 剥离旧父级贡献、合并新父级贡献；同批父子节点按新父级拓扑顺序计算。
+ *
+ * 此函数只更新移动节点自身的 ACL，并返回需要传播的 folder。调用方必须先写完所有 `parentId`
+ * 后才可传播：否则按树查子节点仍会读到旧结构，漏掉刚移动到该 folder 下的节点。
+ *
+ * **不**更新 parentId —— 调用方仍走批量 parentId 写入，两条写入职责分离才能保留
+ * `matchedCount`（未命中即目标行被删/重建）这道告警。
+ *
+ * 独立态快照不随父级变化，关闭态 dataset 无自定义快照，两者都跳过。
+ */
+export async function moveCollectionPermissionsBatch({
+  teamId,
+  items,
+  session
+}: {
+  teamId: string;
+  items: CollectionPermissionMoveItem[];
+  session: ClientSession;
+}): Promise<CollectionPermissionMovedFolder[]> {
+  if (items.length === 0) return [];
+
+  const movedFolders: CollectionPermissionMovedFolder[] = [];
+
+  const byDataset = new Map<string, CollectionPermissionMoveItem[]>();
+  for (const item of items) {
+    const arr = byDataset.get(item.datasetId) ?? [];
+    arr.push(item);
+    byDataset.set(item.datasetId, arr);
+  }
+
+  for (const [datasetId, datasetItems] of byDataset) {
+    const enabled = await lockDatasetCollectionPermissionState({ teamId, datasetId, session });
+    if (!enabled) continue;
+
+    const moving = datasetItems.filter((item) => item.inheritPermission !== false);
+    if (moving.length === 0) continue;
+
+    const snapshotIds = Array.from(
+      new Set(
+        datasetItems
+          .flatMap((item) => [item.collectionId, item.oldParentId, item.newParentId])
+          .filter(Boolean)
+          .map(String)
+      )
+    );
+    const [collectionRows, datasetClbs] = await Promise.all([
+      resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds: snapshotIds,
+        session
+      }),
+      resourcePermissionRepo.findByResource({
+        teamId,
+        resourceType: PerResourceTypeEnum.dataset,
+        resourceId: datasetId,
+        session
+      })
+    ]);
+    // 统一保留所有节点的旧快照；中间节点剥离旧继承时也需要移动祖先和外部父级的旧 ACL。
+    const snapshotById = indexByResourceId(collectionRows);
+    const oldParentClbsOf = (parentId: ParentIdType) =>
+      parentId ? (snapshotById.get(String(parentId)) ?? []) : datasetClbs;
+    const newSnapshotsById = new Map<string, CollaboratorItemType[]>();
+    const newParentClbsOf = (parentId: ParentIdType) =>
+      parentId
+        ? (newSnapshotsById.get(String(parentId)) ?? snapshotById.get(String(parentId)) ?? [])
+        : datasetClbs;
+
+    // 结构依赖包含独立权限节点：它们的父级也会改变，只是不需要重算自身 ACL。
+    const movingById = new Map(datasetItems.map((item) => [item.collectionId, item]));
+
+    // 找出所有外部父节点的祖先链，检查是否有祖先属于本轮 moving
+    const externalParentIds = Array.from(
+      new Set(
+        moving
+          .map((item) => (item.newParentId ? String(item.newParentId) : ''))
+          .filter(Boolean)
+          .filter((id) => !movingById.has(id))
+      )
+    );
+
+    const externalNodeMap = new Map<
+      string,
+      { _id: string; parentId: string | null; inheritPermission?: boolean }
+    >();
+    let currExtIds = externalParentIds;
+    const loadedExternalIds = new Set<string>();
+    while (currExtIds.length > 0) {
+      for (const id of currExtIds) loadedExternalIds.add(id);
+      const docs = await MongoDatasetCollection.find(
+        { teamId, datasetId, _id: { $in: currExtIds } },
+        '_id parentId inheritPermission'
+      )
+        .session(session)
+        .lean();
+      const nextIds = new Set<string>();
+      for (const doc of docs) {
+        const id = String(doc._id);
+        const pId = doc.parentId ? String(doc.parentId) : null;
+        externalNodeMap.set(id, {
+          _id: id,
+          parentId: pId,
+          inheritPermission: doc.inheritPermission
+        });
+        if (pId && !movingById.has(pId) && !loadedExternalIds.has(pId)) {
+          nextIds.add(pId);
+        }
+      }
+      currExtIds = Array.from(nextIds);
+    }
+
+    // 外部节点 ACL 一次批量补齐，避免共享祖先重复查询；无 ACL 行也视为已读取的空快照。
+    const loadedSnapshotIds = new Set(snapshotIds);
+    const externalSnapshotIds = Array.from(externalNodeMap.keys()).filter(
+      (id) => !loadedSnapshotIds.has(id)
+    );
+    if (externalSnapshotIds.length > 0) {
+      const externalRows = await resourcePermissionRepo.findByResourceIds({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceIds: externalSnapshotIds,
+        session
+      });
+      for (const [id, collaborators] of indexByResourceId(externalRows)) {
+        snapshotById.set(id, collaborators);
+      }
+    }
+
+    const movingAncestorById = new Map<string, string | null>();
+    /** 检查外部旧树的环并缓存最近移动祖先；共享路径只遍历一次，避免深链重复扫描。 */
+    const findMovingAncestorId = (startId: string): string | null => {
+      const path = new Set<string>();
+      let currId: string | null = startId;
+      while (currId && !movingById.has(currId) && !movingAncestorById.has(currId)) {
+        if (path.has(currId)) {
+          throw new Error(`Circular collection parent move: ${currId}`);
+        }
+        path.add(currId);
+        currId = externalNodeMap.get(currId)?.parentId ?? null;
+      }
+      const ancestorId = currId
+        ? movingById.has(currId)
+          ? currId
+          : (movingAncestorById.get(currId) ?? null)
+        : null;
+      for (const id of path) movingAncestorById.set(id, ancestorId);
+      return ancestorId;
+    };
+
+    /** 用已验证无环的路径计算中间节点新快照，保留自身授权，并在独立权限节点停止继承。 */
+    const resolveIntermediateSnapshots = (targetId: string) => {
+      if (newSnapshotsById.has(targetId)) return;
+      if (!findMovingAncestorId(targetId)) return;
+      const path: Array<{ _id: string; parentId: string | null; inheritPermission?: boolean }> = [];
+      let curr = externalNodeMap.get(targetId);
+      while (curr && !newSnapshotsById.has(curr._id)) {
+        path.push(curr);
+        curr = curr.parentId ? externalNodeMap.get(curr.parentId) : undefined;
+      }
+      for (const node of path.reverse()) {
+        const nodeOldSnapshot = snapshotById.get(node._id) ?? [];
+        const nodeNewSnapshot =
+          node.inheritPermission === false
+            ? nodeOldSnapshot
+            : calculateInheritedResourceCollaborators({
+                oldParentCollaborators: oldParentClbsOf(node.parentId),
+                newParentCollaborators: newParentClbsOf(node.parentId),
+                childCollaborators: nodeOldSnapshot
+              });
+        newSnapshotsById.set(node._id, nodeNewSnapshot);
+      }
+    };
+
+    const orderedMoving: CollectionPermissionMoveItem[] = [];
+    const visitingIds = new Set<string>();
+    const visitedIds = new Set<string>();
+    const visit = (item: CollectionPermissionMoveItem) => {
+      if (visitedIds.has(item.collectionId)) return;
+      if (visitingIds.has(item.collectionId)) {
+        // 这种环无法落成树；比起按任意快照继续计算，直接让外层事务回滚更安全。
+        throw new Error(`Circular collection parent move: ${item.collectionId}`);
+      }
+
+      visitingIds.add(item.collectionId);
+      // 独立节点是 ACL 依赖的终点，不能沿其新父级继续计算继承关系。
+      if (item.inheritPermission !== false) {
+        const newParent = item.newParentId && movingById.get(String(item.newParentId));
+        if (newParent) {
+          visit(newParent);
+        } else if (item.newParentId) {
+          const movingAncestorId = findMovingAncestorId(String(item.newParentId));
+          if (movingAncestorId && movingById.has(movingAncestorId)) {
+            visit(movingById.get(movingAncestorId)!);
+          }
+        }
+      }
+      visitingIds.delete(item.collectionId);
+      visitedIds.add(item.collectionId);
+      orderedMoving.push(item);
+    };
+    moving.forEach(visit);
+
+    const snapshots: Array<{ resourceId: string; collaborators: CollaboratorItemType[] }> = [];
+
+    for (const item of orderedMoving) {
+      if (item.inheritPermission === false) {
+        newSnapshotsById.set(item.collectionId, snapshotById.get(item.collectionId) ?? []);
+        continue;
+      }
+      if (item.newParentId && !movingById.has(String(item.newParentId))) {
+        resolveIntermediateSnapshots(String(item.newParentId));
+      }
+      const oldSnapshot = snapshotById.get(item.collectionId) ?? [];
+      const newSnapshot = calculateInheritedResourceCollaborators({
+        oldParentCollaborators: oldParentClbsOf(item.oldParentId),
+        newParentCollaborators: newParentClbsOf(item.newParentId),
+        childCollaborators: oldSnapshot
+      });
+      // 写入 map 的时机很关键：后续子节点会把它作为「新父级」快照，而非读数据库中的旧值。
+      newSnapshotsById.set(item.collectionId, newSnapshot);
+      snapshots.push({ resourceId: item.collectionId, collaborators: newSnapshot });
+
+      // folder 自身快照没变 ⇒ 其有效 clbs 不变 ⇒ 子树无需递归。
+      // 快照为空也要递归：关闭态下建的 collection 没有 ACL 行，首次校正才把它们补齐。
+      if (
+        item.type === DatasetCollectionTypeEnum.folder &&
+        buildSnapshotPatches({
+          resourceId: item.collectionId,
+          oldCollaborators: oldSnapshot,
+          newCollaborators: newSnapshot
+        }).length > 0
+      ) {
+        // 暂不递归；要等本轮全部 parentId 写成功，才能基于新树找准后代。
+        movedFolders.push({ collectionId: item.collectionId, oldSnapshot, newSnapshot });
+      }
+    }
+
+    for (const chunk of chunked(snapshots, COLLECTION_PERMISSION_WRITE_CHUNK_SIZE)) {
+      await resourcePermissionRepo.replaceResources({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resources: chunk,
+        session
+      });
+    }
+  }
+
+  return movedFolders;
+}

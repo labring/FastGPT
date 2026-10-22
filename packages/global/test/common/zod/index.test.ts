@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { BoolSchema, optionalNullToUndefined } from '@fastgpt/global/common/zod';
+import {
+  BoolSchema,
+  NumSchema,
+  optionalEmptyToUndefined,
+  optionalNullToUndefined,
+  queryArrayParam
+} from '@fastgpt/global/common/zod';
 import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeTemplateOutputItemTypeSchema } from '@fastgpt/global/core/workflow/template/output';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -46,7 +53,7 @@ describe('BoolSchema', () => {
       }).required
     ).toBe(true);
 
-    const output = FlowNodeOutputItemTypeSchema.parse({
+    const output = FlowNodeTemplateOutputItemTypeSchema.parse({
       id: 'output',
       key: 'output',
       type: FlowNodeOutputTypeEnum.static,
@@ -58,6 +65,13 @@ describe('BoolSchema', () => {
     expect(output.required).toBe(true);
     expect(output.invalid).toBe(false);
     expect(output.invalidCondition?.({ inputs: [], llmModelMap: {} })).toBe(true);
+    expect(FlowNodeOutputItemTypeSchema.parse(output)).toEqual({
+      id: 'output',
+      key: 'output',
+      type: FlowNodeOutputTypeEnum.static,
+      required: true,
+      invalid: false
+    });
   });
 });
 
@@ -71,5 +85,49 @@ describe('optionalNullToUndefined', () => {
 
   it.each([false, 0, ''])('preserves valid falsy values: %j', (value) => {
     expect(schema.parse(value)).toBe(value);
+  });
+});
+
+describe('optionalEmptyToUndefined', () => {
+  const schema = optionalEmptyToUndefined(NumSchema);
+
+  it('normalizes null, undefined and empty string to undefined without coercing to zero', () => {
+    expect(schema.parse(null)).toBeUndefined();
+    expect(schema.parse(undefined)).toBeUndefined();
+    expect(schema.parse('')).toBeUndefined();
+  });
+
+  it('preserves zero and string zero as numeric 0', () => {
+    expect(schema.parse(0)).toBe(0);
+    expect(schema.parse('0')).toBe(0);
+  });
+
+  it('parses valid numbers', () => {
+    expect(schema.parse(1024)).toBe(1024);
+    expect(schema.parse('1024')).toBe(1024);
+  });
+});
+
+describe('queryArrayParam', () => {
+  const schema = queryArrayParam(z.array(z.coerce.number()).min(1));
+
+  it('normalizes single string to array', () => {
+    expect(schema.parse('3')).toEqual([3]);
+  });
+
+  it('normalizes comma-separated string to array', () => {
+    expect(schema.parse('3,4,5')).toEqual([3, 4, 5]);
+  });
+
+  it('preserves native arrays', () => {
+    expect(schema.parse([1, 2])).toEqual([1, 2]);
+    expect(schema.parse(['1', '2'])).toEqual([1, 2]);
+  });
+
+  it('normalizes empty and undefined values', () => {
+    const optionalSchema = queryArrayParam(z.array(z.coerce.number()).optional());
+    expect(optionalSchema.parse(undefined)).toBeUndefined();
+    expect(optionalSchema.parse(null)).toBeUndefined();
+    expect(optionalSchema.parse('')).toBeUndefined();
   });
 });

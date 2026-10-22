@@ -18,6 +18,7 @@ import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolSecretInputTypeEnum;
@@ -61,7 +62,7 @@ export const SecretInputForm = ({
   onToggleExpand,
   onSubmit
 }: SecretInputFormProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
   const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
     defaultIsOpen: false
@@ -213,7 +214,7 @@ export const SecretInputForm = ({
         <Box fontSize={'sm'} pl={6} mt={2}>
           {childTools.map((tool) => (
             <Box key={tool.id} fontSize={'sm'} mb={1}>
-              {t(tool.name as any)}:{' '}
+              {t(selectPluginText(tool.name, i18n.language))}:{' '}
               {t('app:plugin_cost_per_times', { cost: tool.systemKeyCost || 0 })}
             </Box>
           ))}
@@ -316,7 +317,7 @@ export const SecretInputForm = ({
                         const inputKey = `value.${item.key}.value` as any;
                         const value = getValues(`value.${item.key}`);
                         const showInput = !!value?.value || !value?.secret || editIndex === i;
-                        const fieldLabel = t(item.label as any);
+                        const fieldLabel = item.label;
 
                         return (
                           <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
@@ -338,7 +339,7 @@ export const SecretInputForm = ({
                                     alignItems={'center'}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={fieldLabel}
+                                    placeholder={item.placeholder ?? fieldLabel}
                                     {...register(inputKey, {
                                       required: item.required
                                     })}
@@ -393,7 +394,7 @@ export const SecretInputForm = ({
                                     py={0}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={fieldLabel}
+                                    placeholder={item.placeholder ?? fieldLabel}
                                     isInvalid={!!error}
                                   />
                                 )}
@@ -422,7 +423,11 @@ export const SecretInputForm = ({
                                       inputType={secretInputTypeToInputType(item.inputType)}
                                       value={value}
                                       onChange={onChange}
-                                      placeholder={fieldLabel}
+                                      placeholder={
+                                        item.inputType === 'numberInput'
+                                          ? (item.placeholder ?? fieldLabel)
+                                          : fieldLabel
+                                      }
                                       bg={'myGray.50'}
                                       list={item.list}
                                       isInvalid={!!error}

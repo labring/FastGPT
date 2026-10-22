@@ -1,5 +1,6 @@
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import { getSseErrorResponse } from '../../../common/response';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -7,6 +8,8 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
 import { getStreamResumeMirror } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
 type CreateWorkflowStreamResponseContextBaseParams = {
   req: NodeHttpRequest;
@@ -28,7 +31,7 @@ type CreateWorkflowStreamResponseContextParams = CreateWorkflowStreamResponseCon
 export type WorkflowStreamResponseContext = {
   responseWrite: ReturnType<typeof getWorkflowResponseWrite>;
   writeStreamError: (error: unknown) => void;
-  /** always present — no-op when stream resume is disabled */
+  /** 等待续流缓存写入并缩短结束后的 TTL；异常只记录日志，禁用续流时为空操作。 */
   flushResume: () => Promise<void>;
 };
 
@@ -168,20 +171,33 @@ export async function createWorkflowStreamResponseContext({
     }
   };
 
-  if (!shouldEnableStreamResume) {
-    return {
-      ...context,
-      async flushResume() {
-        // no-op — stream resume is disabled
-      }
-    };
-  }
-
+  let flushPromise: Promise<void> | undefined;
   return {
     ...context,
-    async flushResume() {
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
+    flushResume() {
+      // 完成与 finally 可重复调用，共享同一次缓存写入等待与 TTL 收尾。
+      flushPromise ??= (async () => {
+        // 分别处理两步的异常，缓存写入失败时仍需尝试 TTL 收尾。
+        await mirror?.flush().catch((error) => {
+          logger.error('Failed to flush workflow stream resume cache', {
+            teamId,
+            sourceType,
+            sourceId,
+            chatId,
+            error
+          });
+        });
+        await mirror?.shrinkTTLAfterComplete().catch((error) => {
+          logger.error('Failed to shrink workflow stream resume cache TTL', {
+            teamId,
+            sourceType,
+            sourceId,
+            chatId,
+            error
+          });
+        });
+      })();
+      return flushPromise;
     }
   };
 }

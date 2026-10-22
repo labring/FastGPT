@@ -10,6 +10,10 @@ import {
   type GetApiDatasetFileListBody,
   type GetApiDatasetFileListResponse
 } from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
+import { createDatasetCache } from '@fastgpt/service/support/tmpData/datasetCache';
+
+// 仅用于选文件时的浏览快照；正式导入、同步调用 factory 时不注入共享缓存。
+const browseCache = createDatasetCache({ namespace: 'api-dataset-browse', ttlMs: 3 * 60 * 1000 });
 
 async function handler(
   req: ApiRequestProps<GetApiDatasetFileListBody>
@@ -29,7 +33,7 @@ async function handler(
   });
 
   const files = await (
-    await getApiDatasetRequest(dataset.apiDatasetServer)
+    await getApiDatasetRequest(dataset.apiDatasetServer, { cache: browseCache })
   ).listFiles({ searchKey: searchKey, parentId });
 
   return GetApiDatasetFileListResponseSchema.parse(files);

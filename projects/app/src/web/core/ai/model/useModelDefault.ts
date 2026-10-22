@@ -1,5 +1,5 @@
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { useCallback } from 'react';
 import { getModelDefault, type ModelFilter } from './modelData';
 import { useModelQuery } from './useModelQuery';

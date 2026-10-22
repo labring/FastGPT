@@ -52,6 +52,9 @@ export type SystemConfigType = {
       secure?: boolean;
     };
     sms: {
+      /** 登录二次验证短信模板 CODE；未配置时手机号账号降级为纯密码登录。 */
+      LOGIN?: string;
+      LOGIN_EN?: string;
       REGISTER: string;
       RESET_PASSWORD: string;
       BIND_NOTIFICATION: string;
@@ -150,17 +153,20 @@ export type ConfigFormType = {
     feConfigs: {
       show_workorder: boolean;
       appTemplateCourse: string;
-      show_emptyChat: boolean;
       show_openai_account: boolean;
+      /** 由 Pro 的 LOGIN_2FA_ENABLED 下发，控制管理端是否展示登录二次验证短信模板配置项。 */
+      login2faEnabled?: boolean;
       show_compliance_copywriting: boolean;
       show_dataset_feishu: boolean;
       show_dataset_yuque: boolean;
+      show_dataset_dingtalk: boolean;
       show_publish_feishu: boolean;
       show_publish_dingtalk: boolean;
       show_publish_wecom: boolean;
       show_publish_offiaccount: boolean;
       show_publish_wechat: boolean;
       enable_team_plugin_upload: boolean;
+      enable_team_model: boolean;
       favicon: string;
       docUrl: string;
       loginGuideDocUrl: string;
@@ -168,10 +174,7 @@ export type ConfigFormType = {
       systemTitle: string;
       customApiDomain: string;
       customSharePageDomain: string;
-      uploadFileMaxAmount: number;
-      uploadFileMaxSize: number;
       botIframeUrl: string;
-      ip_whitelist?: string;
       customDomain?: {
         enable?: boolean;
         domain?: {
@@ -185,6 +188,8 @@ export type ConfigFormType = {
     scripts?: string;
     limit?: FastGPTConfigFileType['feConfigs']['limit'];
     systemEnv: {
+      agentSandboxMax?: FastGPTConfigFileType['systemEnv']['agentSandboxMax'];
+      agentSandboxMaxPerTeam?: FastGPTConfigFileType['systemEnv']['agentSandboxMaxPerTeam'];
       openapiPrefix: string;
       datasetParseMaxProcess: number;
       vectorMaxProcess: number;
@@ -194,6 +199,8 @@ export type ConfigFormType = {
       hnswMaxScanTuples: number;
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
+      ip_whitelist?: string;
+      sso?: FastGPTConfigFileType['systemEnv']['sso'];
       workflowHttpNode?: {
         ignoreHttpsCertificate?: boolean;
       };
@@ -232,8 +239,13 @@ export type ConfigFormType = {
     sso?: {
       title?: string;
       icon?: string;
-      url?: string;
       autoLogin?: boolean;
+      /**
+       * 开启后，SSO 命名空间下的账号（username 形如 `<租户>-<账号>`）不再允许使用平台密码：
+       * 登录、找回密码、管理端改密都会被服务端拒绝，登录页首屏改为登录方式选择页。
+       * 仅在配置了 systemEnv.sso.url 时生效。
+       */
+      disablePasswordForSsoUsers?: boolean;
     };
   };
   paySettings: {

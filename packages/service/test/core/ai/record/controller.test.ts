@@ -52,7 +52,7 @@ describe('sanitizeLLMRequestRecordPayload', () => {
         }
       ]
     });
-    expect(payload.messages[0].content[1].image_url.url).toContain(createBase64());
+    expect(payload.messages[0].content[1].image_url?.url).toContain(createBase64());
   });
 
   it('redacts raw base64 data fields and keeps normal text', () => {
@@ -72,40 +72,170 @@ describe('sanitizeLLMRequestRecordPayload', () => {
       text: 'plain text should stay'
     });
   });
+
+  it('serializes nested errors and custom properties while redacting diagnostic data', () => {
+    const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
+    const error = Object.assign(
+      new Error('tool failed', {
+        cause: { original: cause, image: `data:image/png;base64,${createBase64()}` }
+      }),
+      { code: 'LLM_TOOL_CALL_ERROR' }
+    );
+    const result = sanitizeLLMRequestRecordPayload({
+      error,
+      date: new Date(0),
+      buffer: Buffer.from('image'),
+      empty: null,
+      enabled: false
+    });
+    expect(result).toMatchObject({
+      error: {
+        name: 'Error',
+        message: 'tool failed',
+        stack: expect.any(String),
+        code: 'LLM_TOOL_CALL_ERROR',
+        cause: {
+          original: {
+            name: 'Error',
+            message: 'provider failed',
+            code: 'PROVIDER_ERROR',
+            stack: expect.any(String)
+          },
+          image: 'data:image/png;base64,[base64 omitted]'
+        }
+      },
+      date: new Date(0),
+      buffer: '[base64 omitted]',
+      empty: null,
+      enabled: false
+    });
+    expect(error.cause).toHaveProperty('image', `data:image/png;base64,${createBase64()}`);
+    const noStack = new Error('no stack');
+    delete noStack.stack;
+    expect(sanitizeLLMRequestRecordPayload(noStack)).toEqual({
+      name: 'Error',
+      message: 'no stack'
+    });
+  });
+
+  it.each([false, true])(
+    'omits stacks from nested and array errors with enumerable=%s',
+    (enumerable) => {
+      const cause = Object.assign(new Error('provider failed'), { code: 'PROVIDER_ERROR' });
+      const error = Object.assign(new Error('tool failed', { cause: { original: cause } }), {
+        code: 'LLM_TOOL_CALL_ERROR'
+      });
+      Object.defineProperty(error, 'stack', { enumerable });
+      Object.defineProperty(cause, 'stack', { enumerable });
+      const result = sanitizeLLMRequestRecordPayload(
+        { error, errors: [cause] },
+        {
+          omitErrorStack: true
+        }
+      );
+      expect(result).toEqual({
+        error: {
+          name: 'Error',
+          message: 'tool failed',
+          code: 'LLM_TOOL_CALL_ERROR',
+          cause: {
+            original: { name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }
+          }
+        },
+        errors: [{ name: 'Error', message: 'provider failed', code: 'PROVIDER_ERROR' }]
+      });
+      // 原始 Error 不被修改，日志场景默认仍保留 stack。
+      expect(error.stack).toEqual(expect.any(String));
+      expect(sanitizeLLMRequestRecordPayload({ error })).toMatchObject({
+        error: { stack: expect.any(String) }
+      });
+    }
+  );
 });
 
 describe('LLM request record team isolation', () => {
-  it('saves records with very large video data urls after redacting base64 payloads', async () => {
-    const largeVideoBase64 = createBase64(10_000_000);
+  it.each([false, true])(
+    'persists upstream errors without stacks with enumerable=%s',
+    async (enumerable) => {
+      const cause = Object.assign(new Error('provider disconnected'), { code: 'PROVIDER_ERROR' });
+      const error = Object.assign(new Error('upstream failed', { cause }), {
+        code: 'UPSTREAM_ERROR'
+      });
+      Object.defineProperty(error, 'stack', { enumerable });
+      Object.defineProperty(cause, 'stack', { enumerable });
+      await saveLLMRequestRecord({
+        teamId: '507f1f77bcf86cd799439011',
+        requestId: 'upstream_error',
+        body: {},
+        response: { error }
+      });
+      const record = await getLLMRequestRecord('upstream_error', '507f1f77bcf86cd799439011');
+      expect(record?.response).toEqual({
+        error: {
+          name: 'Error',
+          code: 'UPSTREAM_ERROR',
+          message: 'upstream failed',
+          cause: {
+            name: 'Error',
+            code: 'PROVIDER_ERROR',
+            message: 'provider disconnected'
+          }
+        }
+      });
+      // 入库清理顶层及 cause 的调用栈，原始 Error 仍可用于系统日志。
+      expect(error.stack).toEqual(expect.any(String));
+      expect(cause.stack).toEqual(expect.any(String));
+      expect(error.cause).toBe(cause);
+    }
+  );
 
+  it('redacts image, audio and very large video payloads before saving the request to MongoDB', async () => {
+    const videoBase64 = createBase64(10_000_000);
+    const imageBase64 = createBase64();
+    const audioBase64 = createBase64();
+    const body = {
+      model: 'gpt-4o',
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'analyze these media files' },
+            { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } },
+            { type: 'input_audio', input_audio: { data: audioBase64, format: 'wav' } },
+            { type: 'video_url', video_url: { url: `data:video/mp4;base64,${videoBase64}` } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ]
+    };
     await saveLLMRequestRecord({
       teamId: '507f1f77bcf86cd799439011',
-      requestId: 'large_video_request',
-      body: {
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'analyze this video' },
-              {
-                type: 'video_url',
-                video_url: {
-                  url: `data:video/mp4;base64,${largeVideoBase64}`
-                }
-              }
-            ]
-          }
-        ]
-      },
+      requestId: 'media_request',
+      body,
       response: { answerText: 'done' }
     });
-
-    const record = await getLLMRequestRecord('large_video_request', '507f1f77bcf86cd799439011');
-
-    expect(record?.body.messages[0].content[1].video_url.url).toBe(
-      'data:video/mp4;base64,[base64 omitted]'
-    );
+    const record = await getLLMRequestRecord('media_request', '507f1f77bcf86cd799439011');
+    expect(record?.body).toEqual({
+      model: 'gpt-4o',
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'analyze these media files' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,[base64 omitted]' } },
+            { type: 'input_audio', input_audio: { data: '[base64 omitted]', format: 'wav' } },
+            { type: 'video_url', video_url: { url: 'data:video/mp4;base64,[base64 omitted]' } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ]
+    });
     expect(record?.response).toEqual({ answerText: 'done' });
+    expect(JSON.stringify(record?.body)).not.toContain(videoBase64);
+    expect(JSON.stringify(body)).toContain(videoBase64);
+    expect(JSON.stringify(body)).toContain(imageBase64);
   });
 
   it('saves records with teamId and only reads them from the same team', async () => {

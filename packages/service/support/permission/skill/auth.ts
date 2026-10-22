@@ -11,6 +11,7 @@ import { parseHeaderCert } from '../auth/common';
 import { getTmbPermission } from '../controller';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 export type AuthSkillResponse = AuthResponseType<SkillPermission> & {
   skill: AgentSkillSchemaType & { permission: SkillPermission };
@@ -28,18 +29,20 @@ export const authSkillByTmbId = async ({
   tmbId,
   skillId,
   per,
-  isRoot = false
+  isRoot = false,
+  tmbInfo
 }: {
   tmbId: string;
   skillId: string;
   per: PermissionValueType;
   isRoot?: boolean;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }): Promise<{
   skill: AgentSkillSchemaType & { permission: SkillPermission };
 }> => {
   const skill = await (async () => {
     const [{ teamId, permission: tmbPer }, skill] = await Promise.all([
-      getTmbInfoByTmbId({ tmbId }),
+      tmbInfo ?? getTmbInfoByTmbId({ tmbId }),
       MongoAgentSkills.findOne({ _id: skillId, deleteTime: null }).lean()
     ]);
 

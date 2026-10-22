@@ -4,6 +4,8 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -16,9 +18,13 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type LogUserGroup = {
-  _id: string;
+  _id: {
+    userId: string;
+    source: ChatSourceEnum;
+  };
   count: number;
 };
 
@@ -57,9 +63,36 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     ? new RegExp(replaceRegChars(searchKey.trim()), 'i')
     : undefined;
 
-  // 团队成员名称不在 app_chat_logs 中，先将名称搜索转换为 tmbId，再和外链 UID 一起下推到日志表。
+  // 成员名可能是待补齐占位值；用户名和联系方式保存在 users，需要先限定当前团队成员，再解析回 tmbId，避免扫描全局 users 集合。
   const matchedTeamMemberIds = searchPattern
-    ? await MongoTeamMember.find({ teamId: teamObjectId, name: searchPattern }, '_id').lean()
+    ? await (async () => {
+        const teamMemberUsers = await MongoTeamMember.find(
+          { teamId: teamObjectId },
+          'userId'
+        ).lean();
+        const teamUserIds = teamMemberUsers.map((member) => member.userId);
+        const matchedUsers = teamUserIds.length
+          ? await MongoUser.find(
+              {
+                _id: { $in: teamUserIds },
+                $or: [{ username: searchPattern }, { contact: searchPattern }]
+              },
+              '_id'
+            ).lean()
+          : [];
+        return MongoTeamMember.find(
+          {
+            teamId: teamObjectId,
+            $or: [
+              { name: searchPattern },
+              ...(matchedUsers.length
+                ? [{ userId: { $in: matchedUsers.map((user) => user._id) } }]
+                : [])
+            ]
+          },
+          '_id'
+        ).lean();
+      })()
     : [];
   const userMatch = searchPattern
     ? {
@@ -89,14 +122,17 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
       },
       {
         $group: {
-          _id: '$userId',
+          _id: {
+            userId: '$userId',
+            source: '$source'
+          },
           count: { $sum: 1 }
         }
       },
       {
         $facet: {
           list: [
-            { $sort: { count: -1, _id: 1 } },
+            { $sort: { count: -1, '_id.userId': 1, '_id.source': 1 } },
             { $skip: resolvedOffset },
             { $limit: resolvedPageSize }
           ],
@@ -109,28 +145,21 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
 
   const userGroups = aggregateResult?.list ?? [];
   const total = aggregateResult?.total?.[0]?.count ?? 0;
-  const userIds = userGroups.map((item) => String(item._id));
-  const teamMembers = userIds.length
-    ? await MongoTeamMember.find(
-        {
-          _id: {
-            $in: userIds
-              .filter((id) => Types.ObjectId.isValid(id))
-              .map((id) => new Types.ObjectId(id))
-          },
-          teamId: teamObjectId
-        },
-        '_id name avatar'
-      ).lean()
-    : [];
-  const tmbMap = new Map(teamMembers.map((member) => [String(member._id), member]));
+  const userIds = userGroups.map((item) => String(item._id.userId));
+  const teamMembers = await getTeamMemberMap({
+    teamId: teamObjectId,
+    memberIds: userIds,
+    fields: '_id name avatar'
+  });
+  const tmbMap = teamMembers;
 
   const list = userGroups.map((item): LogUserType => {
-    const userId = String(item._id);
+    const userId = String(item._id.userId);
     const member = tmbMap.get(userId);
+    const isShareUser = item._id.source === ChatSourceEnum.share;
     return {
-      outLinkUid: member ? null : userId,
-      tmbId: member ? userId : null,
+      outLinkUid: isShareUser || !member ? userId : null,
+      tmbId: !isShareUser && member ? userId : null,
       name: member?.name || userId,
       avatar: member?.avatar || DEFAULT_USER_AVATAR,
       count: item.count

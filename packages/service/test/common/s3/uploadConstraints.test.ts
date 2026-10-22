@@ -143,6 +143,7 @@ describe('preset extension lists', () => {
       '.md',
       '.html',
       '.pptx',
+      '.ofd',
       '.doc',
       '.wps',
       '.docm',

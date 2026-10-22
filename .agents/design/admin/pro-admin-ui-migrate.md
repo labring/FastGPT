@@ -286,7 +286,7 @@ projects/app
 | 项       | pro/admin                                          | app                                          | 处理                                                                      |
 | -------- | -------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------- |
 | 请求封装 | `@/service/common/request` 的 GET/POST             | app 的请求方式（`@/web/common/api` / fetch） | 页面里 `GET(...)` 改写成 app 请求工具（封装一个 admin 专用 request 也可） |
-| SSR i18n | 每个页面 `getServerSideProps` + `serviceSideProps` | app 页面多无 SSR i18n                        | 删除 getServerSideProps，`useClientTranslation` 按需                      |
+| SSR i18n | 每个页面 `getServerSideProps` + `serviceSideProps` | app 页面多无 SSR i18n                        | 删除 getServerSideProps，`useSafeTranslation` 按需                      |
 | 认证     | `useAdminStore.initAdminInfo()`                    | `useUserStore` + `username==='root'`         | AdminContainer 层校验，页面不再各自鉴权                                   |
 | License  | `useSystemStore.licenseData.functions.*`           | 无                                           | 默认关闭对应导航/UI（§7.4）                                               |
 | 中文文案 | 写死                                               | 写死                                         | 本期保留写死中文，不做 i18n（§8.3）                                       |
