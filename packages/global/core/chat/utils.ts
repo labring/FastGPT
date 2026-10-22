@@ -11,8 +11,9 @@ import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
-import { extractDeepestInteractive } from '../workflow/runtime/utils';
+import { isAskInteractive, extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
+import { getUserChatSelect } from './input/utils';
 
 /**
  * 合并两段历史，并把 system 消息排到最前。
@@ -297,6 +298,8 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
+      // 全部跳过也是一次有效的结构化提交。
+      if (getUserChatSelect([item])) return true;
       // 有文本内容，保留
       if (item.text?.content?.trim()) {
         return true;
@@ -366,11 +369,5 @@ export const checkInteractiveResponseStatus = ({
   input: string;
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (
-    finalInteractive.type === 'agentPlanAskQuery' ||
-    (finalInteractive.type === 'agentAsk' && finalInteractive.responseMode !== 'submit')
-  ) {
-    return 'query';
-  }
-  return 'submit';
+  return isAskInteractive(finalInteractive) ? 'query' : 'submit';
 };

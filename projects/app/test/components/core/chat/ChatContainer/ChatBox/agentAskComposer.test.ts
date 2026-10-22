@@ -1,23 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskQuestion } from '@fastgpt/global/core/ai/agent/type';
 import { getAgentAskAnswerDetails } from '@/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer';
 
-const questions: AgentAskQuestionInteractive[] = [
+const questions: AgentAskQuestion[] = [
   {
     question: 'Choose an action',
     options: [
       { summary: 'Confirm', value: 'confirm' },
       { summary: 'Cancel', value: 'cancel' }
-    ],
-    answer: ''
+    ]
   },
   {
     question: 'Add feedback',
     options: [
       { summary: 'Use defaults', value: 'defaults' },
       { summary: 'Use custom input', value: 'custom' }
-    ],
-    answer: ''
+    ]
   }
 ];
 

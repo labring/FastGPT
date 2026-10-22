@@ -17,8 +17,7 @@ import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 
 /** 复用完整预览协议，状态场景仅改变预览 ID 和确认结果。 */
 const createPreviewInteractive = (
-  previewId = 'preview-1',
-  answerValue?: 'confirm'
+  previewId = 'preview-1'
 ): Extract<WorkflowInteractiveResponseType, { type: 'workflowBuilderPreview' }> => ({
   type: 'workflowBuilderPreview',
   previewId,
@@ -33,8 +32,7 @@ const createPreviewInteractive = (
       { value: 'confirm', label: '确认', inputMode: 'none' },
       { value: 'revise', label: '修改', inputMode: 'text' },
       { value: 'cancel', label: '取消', inputMode: 'none' }
-    ],
-    answerValue
+    ]
   }
 });
 
@@ -377,15 +375,50 @@ describe('getWorkflowBuilderPendingInteractiveKey', () => {
 });
 
 describe('isWorkflowBuilderVersionGenerating', () => {
+  it.each([
+    { value: '确认并开始搭建', expected: true },
+    { value: '取消本次搭建', expected: false },
+    { value: '增加审核分支', expected: false },
+    { value: 'confirm', expected: false }
+  ])('matches the adjacent preview button label: $value', ({ value, expected }) => {
+    const interactive = createPreviewInteractive();
+    interactive.params.actions[0].label = '确认并开始搭建';
+    const preview: ChatItemObjItemType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
+    const answer: ChatItemObjItemType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        { select: { type: 'workflowBuilderPreview', questions: [{ question: '方案预览', value }] } }
+      ]
+    };
+
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [preview, answer], isChatGenerating: true })
+    ).toBe(expected);
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [answer], isChatGenerating: true })
+    ).toBe(false);
+  });
+
   it('identifies the version-building substage after Mermaid confirmation', () => {
     const preview = {
       obj: ChatRoleEnum.AI,
       value: [
         {
-          interactive: createPreviewInteractive('preview-1', 'confirm')
+          interactive: createPreviewInteractive('preview-1')
         }
       ]
     } as ChatItemObjItemType;
+    const confirmation: ChatItemObjItemType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          select: {
+            type: 'workflowBuilderPreview',
+            questions: [{ question: '方案预览', value: '确认' }]
+          }
+        }
+      ]
+    };
     const version = {
       obj: ChatRoleEnum.AI,
       value: [
@@ -414,16 +447,22 @@ describe('isWorkflowBuilderVersionGenerating', () => {
       false
     );
     expect(
-      isWorkflowBuilderVersionGenerating({ chatRecords: [preview], isChatGenerating: true })
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [preview, confirmation],
+        isChatGenerating: true
+      })
     ).toBe(true);
     expect(
       isWorkflowBuilderVersionGenerating({
-        chatRecords: [preview, version],
+        chatRecords: [preview, confirmation, version],
         isChatGenerating: true
       })
     ).toBe(false);
     expect(
-      isWorkflowBuilderVersionGenerating({ chatRecords: [preview], isChatGenerating: false })
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [preview, confirmation],
+        isChatGenerating: false
+      })
     ).toBe(false);
     expect(
       isWorkflowBuilderVersionGenerating({

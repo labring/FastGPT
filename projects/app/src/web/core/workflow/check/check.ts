@@ -1,4 +1,7 @@
-import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import type {
   WorkflowCheckNodeIssueMap,
@@ -200,6 +203,17 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
       ? result.issueMap[firstErrorNodeId].find((issue) => issue.level === 'error')
       : errors[0],
     errorNodeIds,
-    errorMessages: [...new Set(errors.map((issue) => issue.message))]
+    // 节点错误统一携带节点名；汇总去重后最多展示 3 条，节点诊断仍完整保留。
+    errorMessages: [
+      ...new Set(
+        errors.map((issue) => {
+          if (!issue.nodeName) return issue.message;
+          // 模型不可用的翻译文案已包含节点名，避免重复拼接。
+          if (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+            return issue.message;
+          return `「${issue.nodeName}」${issue.message}`;
+        })
+      )
+    ].slice(0, 3)
   };
 };

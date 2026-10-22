@@ -47,16 +47,6 @@ export type WorkflowBuilderVersion = z.infer<typeof WorkflowBuilderVersionSchema
 
 export type WorkflowBuilderVersionDisplayState = 'ready' | 'available' | 'expired';
 
-/** Builder 结构化选项的回答载荷；字段名保留现有聊天接口约定。 */
-export const AgentPlanAskResponseSchema = z
-  .object({
-    askId: z.string().min(1),
-    optionValue: z.string().min(1),
-    text: z.string().trim().min(1).optional()
-  })
-  .strict();
-export type AgentPlanAskResponse = z.infer<typeof AgentPlanAskResponseSchema>;
-
 export const WorkflowBuilderPreviewActionSchema = z.object({
   value: z.enum(['confirm', 'revise', 'cancel']),
   label: z.string().trim().min(1),
@@ -82,9 +72,7 @@ export const WorkflowBuilderPreviewInteractiveSchema = z.object({
     title: z.string().trim().min(1),
     mermaid: z.string().trim().min(1),
     sections: z.array(WorkflowBuilderPreviewSectionSchema),
-    actions: z.array(WorkflowBuilderPreviewActionSchema).length(3),
-    answerValue: z.enum(['confirm', 'revise', 'cancel']).optional(),
-    answerText: z.string().optional()
+    actions: z.array(WorkflowBuilderPreviewActionSchema).length(3)
   })
 });
 export type WorkflowBuilderPreviewInteractive = z.infer<

@@ -29,7 +29,10 @@ import {
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview
 } from './utils/interactive';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -60,7 +63,7 @@ import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
-import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/WorkflowBuilderPreviewComposer';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -129,8 +132,6 @@ export type ChatBoxFeatures = {
   footerRunDetailPosition?: 'default' | 'afterCopy';
   /** 工作流 AI 面板使用 Figma 的 132px 渐变描边输入框。 */
   workflowBuilderInput?: boolean;
-  /** 仅 Workflow Builder 将多轮 Agent 响应收进最外层处理过程。 */
-  workflowBuilderResponseCollapse?: boolean;
   /** 隐藏 Agent Ask 选项标题后的协议值，仅展示选项摘要。 */
   hideAgentAskOptionDescription?: boolean;
 };
@@ -153,7 +154,6 @@ const resolveChatBoxFeatures = (
   disableFooterHoverTranslate: features?.disableFooterHoverTranslate ?? false,
   footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default',
   workflowBuilderInput: features?.workflowBuilderInput ?? false,
-  workflowBuilderResponseCollapse: features?.workflowBuilderResponseCollapse ?? false,
   hideAgentAskOptionDescription: features?.hideAgentAskOptionDescription ?? false
 });
 
@@ -813,7 +813,7 @@ const ChatBox = ({
                         workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                       />
                     </Box>
-                    {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                    {isAgentAskPending && isAgentAskInteractive(activeInteractive) && (
                       <Box
                         w={'100%'}
                         maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
@@ -825,9 +825,16 @@ const ChatBox = ({
                           showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
                           onSubmit={(answers) =>
                             sendPromptWithDisabledGuard({
-                              text: JSON.stringify({ answers }),
-                              interactive: lastInteractive,
-                              hideInUI: true
+                              select: {
+                                type: 'agentAsk',
+                                questions: activeInteractive.params.questions.map(
+                                  ({ question }, index) => ({
+                                    question,
+                                    value: answers[index] ?? ''
+                                  })
+                                )
+                              },
+                              interactive: lastInteractive
                             })
                           }
                         />
@@ -870,11 +877,7 @@ const ChatBoxContainer = (props: Props) => {
   const resolvedFeatures = resolveChatBoxFeatures(props.features);
 
   return (
-    <ChatProvider
-      {...props}
-      enableTTS={resolvedFeatures.tts}
-      collapseIntermediateAgentResponses={resolvedFeatures.workflowBuilderResponseCollapse}
-    >
+    <ChatProvider {...props} enableTTS={resolvedFeatures.tts}>
       <QuickReplyContextProvider enableQuickReplies={resolvedFeatures.quickReplies}>
         <ChatBox {...props} />
       </QuickReplyContextProvider>

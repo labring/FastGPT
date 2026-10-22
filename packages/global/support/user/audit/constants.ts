@@ -1,4 +1,5 @@
 import type { auditLogMap, adminAuditLogMap } from '../../../../web/support/user/audit/constants';
+import { DatasetAuditEventEnum } from '../../../core/dataset/constants';
 
 export enum AdminAuditEventEnum {
   ADMIN_LOGIN = 'ADMIN_LOGIN',
@@ -124,3 +125,23 @@ export type AuditEventParamsType = {
 export type AdminAuditEventParamsType = {
   [K in AdminAuditEventEnum]: (typeof adminAuditLogMap)[K]['params'];
 };
+
+/** 允许以 system 作用域写入的知识库审计事件（无操作人成员 ID）。 */
+export type DatasetAuditEvent = `${DatasetAuditEventEnum}`;
+
+export type DatasetAuditEventParamsType = {
+  [K in DatasetAuditEventEnum]: (typeof auditLogMap)[K]['params'];
+};
+
+/**
+ * 团队审计事件全集：成员事件 + 知识库事件。
+ *
+ * Mongo enum、Zod 校验、共享类型与前端筛选菜单都从这里派生，避免各个消费方
+ * 各自维护一份事件列表而错配（曾导致知识库事件能写入、却读不出）。
+ */
+export const TeamAuditEventList = [
+  ...Object.values(AuditEventEnum),
+  ...Object.values(DatasetAuditEventEnum)
+];
+
+export type TeamAuditEvent = `${AuditEventEnum | DatasetAuditEvent}`;

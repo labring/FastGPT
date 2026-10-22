@@ -636,12 +636,20 @@ describe('getHistories', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'ask_1',
               params: {
-                content: 'Choose one',
-                options: ['A', 'B', 'C'],
-                answer: 'A'
+                description: '',
+                questions: [
+                  {
+                    question: 'Choose one',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' },
+                      { summary: 'C', value: 'C' }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -649,6 +657,20 @@ describe('getHistories', () => {
       }
     ];
 
+    completedRound.push(
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type: 'agentAsk',
+              questions: [{ question: 'Choose one', value: 'A' }]
+            }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Done' } }] }
+    );
     expect(getAgentLoopHistories(0, completedRound)).toEqual([]);
     expect(getAgentLoopHistories(0, MockHistories)).toEqual([]);
   });

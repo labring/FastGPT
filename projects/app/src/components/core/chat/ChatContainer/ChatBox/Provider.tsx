@@ -53,8 +53,6 @@ export type ChatProviderProps = {
   onSwitchQuickApp?: (appId: string) => Promise<void>;
   boxBodyProps?: BoxProps;
   inputBodyProps?: BoxProps;
-  /** 将中间 Agent 响应保留在最外层处理折叠中，仅由专用聊天入口开启。 */
-  collapseIntermediateAgentResponses?: boolean;
 };
 
 type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'outLinkAuthData'> & {
@@ -145,7 +143,6 @@ export const ChatBoxContext = createContext<useChatStoreType>({
   },
   boxBodyProps: undefined,
   inputBodyProps: undefined,
-  collapseIntermediateAgentResponses: false,
   // @ts-ignore
   variablesForm: undefined
 });
@@ -156,7 +153,6 @@ const Provider = ({
   outLinkAuthData,
   chatType,
   enableTTS = true,
-  collapseIntermediateAgentResponses = false,
   children,
   ...props
 }: ChatProviderProps & {
@@ -313,8 +309,7 @@ const Provider = ({
     isChatting,
     chatInputGuide,
     getHistoryResponseData,
-    chatType,
-    collapseIntermediateAgentResponses
+    chatType
   };
   return (
     <WorkflowRuntimeContextProvider

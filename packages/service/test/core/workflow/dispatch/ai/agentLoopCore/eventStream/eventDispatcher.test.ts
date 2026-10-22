@@ -26,6 +26,45 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreEventDispatcher', () => {
+  it.each([true, false])(
+    'announces a resumed tool before its result while respecting visibility %s',
+    (visible) => {
+      const workflowStreamResponse = vi.fn();
+      const dispatcher = createAgentLoopCoreEventDispatcher({
+        eventStream: createAgentLoopCoreEventStream({
+          workflowStreamResponse,
+          getToolInfo: () => ({ name: 'Plan preview', avatar: 'preview-avatar' })
+        }),
+        shouldStreamTool: () => visible
+      });
+      const call = createCall({ id: 'resumed-preview', name: 'workflow_builder_present_preview' });
+      const event = {
+        type: 'tool_run_end' as const,
+        call,
+        rawResponse: 'confirmed',
+        response: 'confirmed',
+        seconds: 0
+      };
+      dispatcher.emitEvent(event);
+      dispatcher.emitEvent(event);
+
+      const events = workflowStreamResponse.mock.calls.map(([event]) => event);
+      expect(events.map((event) => event.event)).toEqual(
+        visible ? [SseResponseEventEnum.toolCall, SseResponseEventEnum.toolResponse] : []
+      );
+      if (visible) {
+        expect(events[0].data.tool).toEqual({
+          id: call.id,
+          toolName: 'Plan preview',
+          toolAvatar: 'preview-avatar',
+          functionName: call.function.name,
+          params: call.function.arguments
+        });
+        expect(events[1].data.tool.response).toBe('confirmed');
+      }
+    }
+  );
+
   it('streams internal tool activity once without collecting tool run details', () => {
     const workflowStreamResponse = vi.fn();
     const appendToolNodeResponse = vi.fn();
@@ -170,6 +209,11 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     expect(
       workflowStreamResponse.mock.calls.filter(
         ([event]) => event.event === SseResponseEventEnum.toolResponse
+      )
+    ).toHaveLength(1);
+    expect(
+      workflowStreamResponse.mock.calls.filter(
+        ([event]) => event.event === SseResponseEventEnum.toolCall
       )
     ).toHaveLength(1);
     expect(workflowStreamResponse).toHaveBeenCalledWith({

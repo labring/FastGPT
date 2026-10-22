@@ -46,6 +46,7 @@ const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isT
   return normalizedInput;
 };
 
+/** 将画布转为保存及导出数据，保留工具版本的展示快照，移除仅供 UI 使用的状态。 */
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
   edges,
@@ -102,6 +103,8 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
+      versionLabel: item.data.versionLabel,
+      isLatestVersion: item.data.isLatestVersion,
       ...(item.data.metadataLocale !== undefined
         ? { metadataLocale: item.data.metadataLocale }
         : {}),

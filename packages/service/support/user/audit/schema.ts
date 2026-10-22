@@ -1,6 +1,9 @@
 import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import { type TeamAuditSchemaType } from '@fastgpt/global/support/user/audit/type';
-import { AdminAuditEventEnum, AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  AdminAuditEventEnum,
+  TeamAuditEventList
+} from '@fastgpt/global/support/user/audit/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -31,7 +34,7 @@ const TeamAuditSchema = new Schema({
   },
   event: {
     type: String,
-    enum: [...Object.values(AuditEventEnum), ...Object.values(AdminAuditEventEnum)],
+    enum: [...TeamAuditEventList, ...Object.values(AdminAuditEventEnum)],
     required: true
   },
   metadata: {

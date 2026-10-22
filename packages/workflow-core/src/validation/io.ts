@@ -14,8 +14,7 @@ import {
 import {
   canInputBeAgentGenerated,
   initToolInputTypeByDefaultMode,
-  isAgentGeneratedToolInput,
-  isToolInputValueConfigured
+  isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
@@ -33,6 +32,7 @@ import { getWorkflowInputValueForValidation } from '../template/inputValue';
  * 流程开始的用户问题由运行时提供，保留历史输入声明但跳过其静态输入检查。
  * JSON 编辑器和标签过滤复用运行时转换；动态表达式延后校验，密钥按存储结构校验。
  * 只读取文档，归一化输入时不改写调用方配置；远端资源绑定继续由绑定诊断及调用方校验。
+ * 工具激活由 Web 运行/发布前检查，生成阶段允许暂不配置密钥。
  */
 export const validateNodeIO = ({
   document,
@@ -108,20 +108,6 @@ export const validateNodeIO = ({
       isAgentGeneratedToolInput(normalizedInput) &&
       canInputBeAgentGenerated(normalizedInput)
     ) {
-      continue;
-    }
-
-    if (
-      isToolNode &&
-      input.key === NodeInputKeyEnum.systemInputConfig &&
-      !isToolInputValueConfigured({ input })
-    ) {
-      diagnostics.push({
-        code: WorkflowDiagnosticCodeEnum.toolInputConfigurationMissing,
-        severity: 'error',
-        nodeId: node.nodeId,
-        inputKey: input.key
-      });
       continue;
     }
 
