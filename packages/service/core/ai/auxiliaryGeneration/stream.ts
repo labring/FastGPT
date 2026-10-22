@@ -55,7 +55,6 @@ export const createAuxiliaryGenerationStream = async ({
   const sseContext = createSseStreamContext({
     res,
     streamResumeMirror: mirror,
-    keepHeartbeatAfterClose: true,
     heartbeat: {
       write: (writer) => {
         writer({

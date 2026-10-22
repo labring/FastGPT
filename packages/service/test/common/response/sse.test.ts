@@ -42,12 +42,12 @@ describe('SSE stream resume cleanup', () => {
   });
 });
 
-describe('SSE stream heartbeat after client disconnect', () => {
+describe('SSE stream lifecycle after client disconnect', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('keeps the resume mirror active after close until the owner cleans up', () => {
+  it('stops the heartbeat after close while continuing to mirror generated content', () => {
     vi.useFakeTimers();
     const response = Object.assign(new EventEmitter(), {
       closed: false,
@@ -59,7 +59,6 @@ describe('SSE stream heartbeat after client disconnect', () => {
     const enqueueRaw = vi.fn();
     const context = createSseStreamContext({
       res: response as any,
-      keepHeartbeatAfterClose: true,
       heartbeat: {
         intervalMs: 1000,
         write: (writer) => writer({ event: 'ping', data: '' })
@@ -67,18 +66,22 @@ describe('SSE stream heartbeat after client disconnect', () => {
       streamResumeMirror: { enqueueRaw }
     });
 
+    vi.advanceTimersByTime(1000);
+    expect(enqueueRaw).toHaveBeenCalledWith('event: ping\ndata: \n\n');
+
     response.closed = true;
     response.destroyed = true;
     response.emit('close');
-    vi.advanceTimersByTime(1000);
-
-    expect(enqueueRaw).toHaveBeenCalledWith('event: ping\ndata: \n\n');
-    expect(response.write).not.toHaveBeenCalled();
-
-    context.cleanup();
     enqueueRaw.mockClear();
+    response.write.mockClear();
     vi.advanceTimersByTime(1000);
-
     expect(enqueueRaw).not.toHaveBeenCalled();
+
+    context.write({ event: 'answer', data: 'continued generation' });
+    expect(enqueueRaw).toHaveBeenCalledExactlyOnceWith(
+      'event: answer\ndata: continued generation\n\n'
+    );
+    expect(response.write).not.toHaveBeenCalled();
+    context.cleanup();
   });
 });
