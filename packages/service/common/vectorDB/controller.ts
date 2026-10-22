@@ -1,5 +1,5 @@
 /* vector crud */
-import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches';
+import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
@@ -9,8 +9,7 @@ import type { GetVectorsProps } from '../../core/ai/embedding';
 import type {
   VectorControllerType,
   InsertVectorControllerPropsType,
-  DelDatasetVectorCtrlPropsType,
-  VectorRowsChangedCallback
+  DelDatasetVectorCtrlPropsType
 } from './type';
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
@@ -35,7 +34,7 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
-const teamVectorCountCache = new TeamVectorCountCache({
+const vectorCountCache = new VectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
@@ -45,23 +44,36 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) 
 
 type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
 
+/** 增删成功后同时清除团队及受影响知识库的计数，知识库上下文不参与物理删除过滤。 */
+const invalidateVectorCounts = async ({
+  teamId,
+  datasetIds
+}: {
+  teamId: string;
+  datasetIds: string[];
+}) => {
+  await Promise.all([
+    vectorCountCache.invalidate({ teamId: String(teamId) }),
+    ...[...new Set(datasetIds.map(String))].map((datasetId) =>
+      vectorCountCache.invalidate({ teamId: String(teamId), datasetId })
+    )
+  ]);
+};
+
 /**
  * 统一写入知识库索引向量。
  *
  * `inputs` 的 text/image 类型只用于告诉 embedding 模型如何生成向量；
  * 进入向量库时已经统一成 number[][]，向量库本身不区分文本向量或图片向量。
  * 传入 string 时保持旧行为，默认按文本生成 embedding。
- * 写入成功后调用上层业务通知；回调不传入向量适配器，失败隔离由回调实现方负责。
  */
 export const insertDatasetDataVector = async ({
   model,
   inputs,
-  onVectorRowsChanged,
   ...props
 }: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: DatasetVectorInput[];
   model: EmbeddingModelDataType;
-  onVectorRowsChanged: VectorRowsChangedCallback;
 }) => {
   if (inputs.length === 0) {
     return {
@@ -90,7 +102,7 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  await onVectorRowsChanged({ teamId: props.teamId, datasetIds: [props.datasetId] });
+  await invalidateVectorCounts({ teamId: props.teamId, datasetIds: [props.datasetId] });
 
   return {
     tokens,
@@ -98,20 +110,15 @@ export const insertDatasetDataVector = async ({
   };
 };
 
-/** 按原范围删除向量，成功后调用上层业务通知；统计上下文与回调均不传给向量适配器。 */
-export const deleteDatasetDataVector = async ({
-  onVectorRowsChanged,
-  ...props
-}: DelDatasetVectorCtrlPropsType & { onVectorRowsChanged: VectorRowsChangedCallback }) => {
-  // 单库上下文只用于统计，物理删除继续使用原来的 id/idList 过滤条件。
+/** 删除成功后失效相关计数；单库上下文只用于缓存，不改变按 id/idList 删除的实际范围。 */
+export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlPropsType) => {
   const { datasetIds, deleteProps } = (() => {
     if ('datasetIds' in props) return { datasetIds: props.datasetIds, deleteProps: props };
-
     const { datasetId, ...deleteProps } = props;
     return { datasetIds: [datasetId], deleteProps };
   })();
   const result = await retryFn(() => Vector.delete(deleteProps));
-  await onVectorRowsChanged({ teamId: props.teamId, datasetIds });
+  await invalidateVectorCounts({ teamId: props.teamId, datasetIds });
   return result;
 };
 
@@ -127,24 +134,27 @@ export const refreshDatasetDataVectorCreateTime: VectorControllerType['refreshCr
 
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
-/** 读取最近成功的团队计数快照；缺失时回源，缓存写入不阻塞请求返回。 */
-export const getVectorCountByTeamId = async (teamId: string) => {
-  const cacheCount = await teamVectorCountCache.get(teamId);
+/** 缓存命中直接返回；未命中时查询向量库，异步回填 Redis，不持久化到 Mongo。 */
+const getCachedVectorCount = async (scope: VectorCountScope) => {
+  const cacheCount = await vectorCountCache.get(scope);
   if (cacheCount !== undefined) {
     return cacheCount;
   }
 
-  const count = await Vector.getVectorCount({ teamId });
-  void teamVectorCountCache.set({ teamId, count });
+  const count = await Vector.getVectorCount(scope);
+  void vectorCountCache.set({ ...scope, count });
   return count;
 };
 
-/** 发布本轮团队计数；超时取消后不再开始缓存回填，正常变更不废弃统计结果。 */
-export const refreshTeamVectorCount = async (teamId: string, signal?: AbortSignal) => {
-  signal?.throwIfAborted();
-  const count = await Vector.getVectorCount({ teamId });
-  signal?.throwIfAborted();
-  await teamVectorCountCache.set({ teamId, count });
-  return count;
+/** 团队总数沿用原有缓存优先策略。 */
+export const getVectorCountByTeamId = (teamId: string) =>
+  getCachedVectorCount({ teamId: String(teamId) });
+
+/** 团队及知识库总数共用缓存；集合级和全局统计仍直接查询，避免误用更大范围的数量。 */
+export const getVectorCount: VectorControllerType['getVectorCount'] = (props) => {
+  if (!props.teamId || props.collectionId) return Vector.getVectorCount(props);
+  return getCachedVectorCount({
+    teamId: String(props.teamId),
+    ...(props.datasetId ? { datasetId: String(props.datasetId) } : {})
+  });
 };
-export const getVectorCount = Vector.getVectorCount;
