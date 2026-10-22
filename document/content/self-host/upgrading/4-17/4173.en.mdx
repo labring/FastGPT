@@ -23,10 +23,11 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 - `AGENT_SANDBOX_MAX` sets the total number of active Agent sandbox instances and defaults to 100. App sessions and Skill editing share this quota. Use `AGENT_SANDBOX_MAX_PER_TEAM` to set a per-team limit; it is unlimited by default. In the Commercial edition, both limits can be configured in the admin system settings, which take precedence over environment variables.
 - Shared pagination automatically caps `pageSize` values above 500 at 500 instead of returning a validation error. Some endpoints still enforce smaller limits.
 - OpenSandbox adds `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`. Both default to 1 and must be at least 1. They apply only to the Kubernetes runtime with OpenSandbox Server v0.2.1 or later, reducing resource requests while keeping limits unchanged. Changes apply only to newly created or recreated sandboxes, not when connecting to or resuming existing sandboxes.
+- The `/api/core/dataset/exportAll` endpoint now exports a single Dataset and no longer supports exporting an entire folder. When file-level permissions are enabled, exports include only files the current member can read. Update folder export integrations to request each Dataset separately.
 
 ## 🚀 New features
 
-1. Added [Workflow assisted generation](/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
+1. Added [Workflow assisted generation](/en/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
 2. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 3. App chats now cache input drafts separately for each member, App, and session. Text and references to successfully uploaded attachments can be restored after switching sessions or refreshing the page. Drafts stay in the current browser tab, with up to 10 drafts retained for one hour after the last edit. A draft is cleared once its message is accepted for sending.
 4. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
@@ -36,6 +37,7 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 8. User selection Nodes and single-select or multi-select fields in form input Nodes now support dynamic options from variable references. Empty dynamic option lists return a clear error.
 9. System plugins now support localized names, descriptions, Tools within Toolkits, input and output parameters, secret schemas, and READMEs. Existing Workflow Nodes and fixed Agent Tools retain the language snapshot captured when they were added.
 10. The OpenSandbox Kubernetes runtime now supports separate CPU and memory overcommit factors, reducing scheduling reservations while keeping resource limits unchanged.
+11. Team audit logs now record bulk retries of failed Dataset or Collection processing tasks, single-task retries, processing record deletions, and index rebuilds when switching Embedding models. These events can be filtered by type. Index rebuild logs retain both model names and stable IDs for traceability.
 
 ## ⚙️ Optimizations
 
@@ -58,6 +60,11 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 17. Improved Mermaid streaming rendering and diagram preview interactions, including zooming, dragging, and touch controls.
 18. Workflow references to deleted Datasets or Datasets missing from the App resource snapshot now log expected resource errors as warnings, reducing unnecessary error alerts.
 19. Mermaid diagrams now automatically handle line break tags.
+20. The Agent prompt editor now includes input guidance and a variable picker for system variables and custom App variables.
+21. Moved Dataset tag filters for simple Apps and Agents into the search parameters dialog, with consistent condition editing, variable selection, and enabled-state summaries. Changing Datasets removes invalid custom tag conditions. Workflow tag filters retain configured conditions when turned off in manual input mode.
+22. Simplified chat loading animations and sandbox status messages. Improved collapsing, scrolling, and sticky headers for reasoning, Tool, and Skill details. Truncated model names now show their full text on hover.
+23. When applying a candidate from Workflow assisted generation, Tools with no configured credentials default to an available system secret. Tools without a system secret remain pending activation.
+24. Improved API file library service address validation. Legacy bare domains now default to `https://` when a scheme is missing, and the form displays validation guidance for complete HTTP(S) URLs.
 
 ## 🐛 Fixes
 
@@ -95,6 +102,12 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 32. Fixed team member management showing the restore action for ineligible members. It now appears only for disabled members in synchronization mode.
 33. Fixed required ObjectId request parameters being marked as optional in OpenAPI documentation, including parameter requirements and minimal request examples.
 34. Fixed uploaded documents not being recognized by the document parsing Node during single-step Workflow debugging.
+35. Fixed Skill cards not supporting drag-and-drop moves into folders. Confirm the move after dropping a card. Dragging is disabled during batch selection to prevent conflicting actions.
+36. Fixed copied Markdown tables including CSV escaping quotes. Table copying and export now handle CRLF, standalone CR, and LF line breaks consistently to prevent misplaced rows.
+37. Fixed Dataset exports bypassing file-level permissions. Exported headers and data now use the same set of readable files.
+38. Fixed OpenGauss vector searches missing the team filter. Queries now filter by both team and Dataset.
+39. Fixed legacy placeholders, invalid variable bindings, or debug values on Workflow start Nodes causing static validation failures. The user question is supplied at runtime.
+40. Fixed inconsistent validation of Workflow variable bindings and structured Dataset tag filters. Canvas checks treat invalid bindings as unconfigured and retain valid entries in multiple selections. Assisted generation and the CLI continue to strictly validate binding sources, types, and scope.
 
 ## 🛠️ Code improvements
 
@@ -104,3 +117,10 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 4. Extracted shared `workflow-core` and `workflow-cli` packages to unify Node, reference, conditional branch, system configuration, and semantic validation for the canvas and AI Workflow builder.
 5. Separated Skill debugging logic from the HTTP adapter, sharing permission checks, Workflow dispatch, usage tracking, and error finalization.
 6. Added the base data model for a WeCom WebSocket publishing channel, including bot credentials, configuration revisions, connection status, a unique Bot ID constraint, and chat and billing source mappings.
+7. Unified Workflow validation diagnostic codes in a shared enum for the canvas, CLI, and assisted generation.
+8. Audit logging now supports the `system` scope for events without a member identity. Member events still require a member ID.
+9. Unified structured answers for Agent Ask and Workflow assisted generation previews. Questions and answers are stored in separate user messages and share model input conversion and chat persistence logic.
+10. Workflow assisted generation now caches sandbox Node templates by content to reduce repeated writes across chat rounds. Missing template files are written again automatically.
+11. Updated Node.js base images for the App, documentation, code execution sandbox, MCP Server, and related services to 24.22.1, along with Hono and Vite dependencies.
+12. Fixed repeated errors when a Dataset parsing task runs out of points during processing. The task now skips the current attempt, and the team balance check pauses processing when tasks are next claimed.
+13. Fixed website Dataset synchronization continuing to crawl after model configuration errors. When quota or model configuration errors stop a crawl early, existing pages that have not yet been visited are no longer deleted as outdated content.
