@@ -136,6 +136,26 @@ describe('ensurePgDatasetIndex', () => {
     expect(mocks.query.mock.calls.some(([sql]) => sql.includes('count(*)'))).toBe(false);
   });
 
+  it('builds the same FP16 partial index for halfvec storage and reuses its simplified column key', async () => {
+    table!.vector_type = 'halfvec';
+    const query = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (sql: string) => {
+      const result = await query(sql);
+      if (sql.includes('CREATE INDEX')) index!.expression = 'vector';
+      return result;
+    });
+
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+      pgIndex: 'ready',
+      created: true
+    });
+    expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toEqual({
+      pgIndex: 'ready',
+      created: false
+    });
+    expect(callbacks.onBuilding).toHaveBeenCalledOnce();
+  });
+
   it('repairs only a definition-matching invalid concurrent index', async () => {
     index = { ...validIndex, valid: false, ready: false };
     await ensurePgDatasetIndex({ ...scope, ...callbacks });
@@ -151,6 +171,7 @@ describe('ensurePgDatasetIndex', () => {
     { opclass: 'vector_ip_ops' },
     { columns: 2 },
     { expression: 'vector::halfvec(8)' },
+    { expression: 'vector' },
     { predicate: null }
   ])('never removes a mismatched same-name index: %j', async (overrides) => {
     index = { ...validIndex, ...overrides } as Index;
@@ -197,13 +218,13 @@ describe('ensurePgDatasetIndex', () => {
 
   it.each([
     undefined,
-    { schema: 'public', vector_type: 'halfvec', dimensions: 16 },
+    { schema: 'public', vector_type: 'bit', dimensions: 16 },
     { schema: 'public', vector_type: 'vector', dimensions: -1 },
     { schema: 'public', vector_type: 'vector', dimensions: 4001 }
   ])('rejects unsupported storage without creating an index', async (value) => {
     table = value;
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
-      'FP32 vector column'
+      'vector or halfvec column'
     );
     expect(callbacks.onBuilding).not.toHaveBeenCalled();
   });

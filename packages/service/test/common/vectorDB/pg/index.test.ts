@@ -3,11 +3,39 @@ import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 
 vi.unmock('@fastgpt/service/common/vectorDB/pg');
+const storage = vi.hoisted(() => ({ vectorVQ: 32 }));
+vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  get VectorVQ() {
+    return storage.vectorVQ;
+  }
+}));
 const poolClient = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
 vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
   PgClient: { query: vi.fn() },
   connectPg: vi.fn(async () => ({ connect: async () => poolClient }))
 }));
+
+describe('PgVectorCtrl.init', () => {
+  it.each([32, 16, 8, 4, 2])(
+    'uses configured storage for VectorVQ=%i without a global HNSW',
+    async (vectorVQ) => {
+      storage.vectorVQ = vectorVQ;
+      vi.mocked(PgClient.query)
+        .mockReset()
+        .mockResolvedValue({ rows: [], rowCount: 0, command: 'CREATE', oid: 0, fields: [] });
+
+      await new PgVectorCtrl().init();
+
+      const statements = vi.mocked(PgClient.query).mock.calls.map(([sql]) => String(sql));
+      expect(statements[0]).toContain(
+        `vector ${vectorVQ === 16 ? 'HALFVEC' : 'VECTOR'}(1536) NOT NULL`
+      );
+      expect(statements.some((sql) => /USING hnsw/i.test(sql))).toBe(false);
+      expect(statements).toHaveLength(3);
+    }
+  );
+});
 
 describe('PgVectorCtrl.embRecall', () => {
   beforeEach(() => {
