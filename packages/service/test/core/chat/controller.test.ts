@@ -205,7 +205,7 @@ describe('getChatItems', () => {
       expect(result.histories[0].value[0].text?.content).toBe('Visible answer');
     });
 
-    it('should migrate legacy planId ask records and answers to askId', async () => {
+    it('ignores malformed legacy Ask metadata and keeps readable text without converting ids', async () => {
       await MongoChatItem.create([
         {
           teamId: testUser.teamId,
@@ -222,19 +222,6 @@ describe('getChatItems', () => {
                 functionName: 'ask_agent',
                 params: '{}',
                 planId: 'legacy-plan'
-              }
-            },
-            {
-              interactive: {
-                type: 'agentPlanAskQuery',
-                planId: 'legacy-plan',
-                entryNodeIds: ['agent_node'],
-                memoryEdges: [],
-                nodeOutputs: [],
-                params: {
-                  content: 'Which option?',
-                  options: ['A', 'B', 'C']
-                }
               }
             }
           ]
@@ -263,15 +250,13 @@ describe('getChatItems', () => {
         limit: 10,
         field: 'obj value'
       });
+      if (result.histories[0].obj !== ChatRoleEnum.AI) throw new Error('Expected AI history');
       const aiValue = result.histories[0].value;
       const humanValue = result.histories[1].value[0];
 
-      expect(aiValue[0].agentAsk).toMatchObject({ askId: 'legacy-plan' });
-      expect(aiValue[0].agentAsk).not.toHaveProperty('planId');
-      expect(aiValue[1].interactive).toMatchObject({ askId: 'legacy-plan' });
-      expect(aiValue[1].interactive).not.toHaveProperty('planId');
-      expect(humanValue).toMatchObject({ askId: 'legacy-plan' });
-      expect(humanValue).not.toHaveProperty('planId');
+      expect(aiValue[0].agentAsk).toBeUndefined();
+      expect(humanValue.text?.content).toBe('A');
+      expect(humanValue).not.toHaveProperty('askId');
       expect(() => AIChatItemSchema.parse(result.histories[0])).not.toThrow();
       expect(() => UserChatItemSchema.parse(result.histories[1])).not.toThrow();
     });

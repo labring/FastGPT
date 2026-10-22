@@ -3,13 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import AgentAskReply from '@/components/core/chat/ChatContainer/ChatBox/components/AgentAskReply';
+import InteractiveReply from '@/components/core/chat/ChatContainer/ChatBox/components/InteractiveReply';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
 
-describe('AgentAskReply', () => {
+describe('InteractiveReply', () => {
   // Vitest 使用 classic JSX 转换；生产中的 Next.js 自动注入 JSX runtime。
   beforeAll(() => vi.stubGlobal('React', React));
   afterAll(() => vi.unstubAllGlobals());
@@ -19,23 +19,18 @@ describe('AgentAskReply', () => {
       React.createElement(
         ChakraProvider,
         null,
-        React.createElement(AgentAskReply, {
-          interactive: {
+        React.createElement(InteractiveReply, {
+          chatValue: [],
+          reply: {
             type: 'agentAsk',
-            askId: 'ask-1',
-            params: {
-              description: '',
-              submitted: true,
-              questions: [
-                {
-                  question: 'Choose an action',
-                  options: [{ summary: 'Confirm action', value: 'confirm' }],
-                  answer: 'confirm'
-                },
-                { question: 'Add feedback', options: [], answer: 'Custom feedback\nMore details' },
-                { question: 'Optional detail', options: [], answer: '' }
-              ]
-            }
+            questions: [
+              {
+                question: 'Choose an action',
+                value: 'Confirm action'
+              },
+              { question: 'Add feedback', value: 'Custom feedback\nMore details' },
+              { question: 'Optional detail', value: '' }
+            ]
           }
         })
       )

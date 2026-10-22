@@ -99,7 +99,6 @@ const ChatAgentHelperChatBox = ({
   const onStartChat = async ({
     messages,
     responseChatItemId,
-    interactive,
     controller,
     generatingMessage
   }: StartChatFnProps) => {
@@ -114,7 +113,6 @@ const ChatAgentHelperChatBox = ({
         responseChatItemId,
         appId,
         messages,
-        interactive,
         metadata: {
           type,
           data: metadata

@@ -1,9 +1,9 @@
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { contentProps, setupContentTest, versionValue } from './contentTestUtils';
+import { confirmedPreview, contentProps, setupContentTest, versionValue } from './contentTestUtils';
 import Content from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble/Content';
 
-describe('ordinary AI chat content', () => {
+describe('AI chat content', () => {
   const view = setupContentTest();
 
   it('keeps every answer outside processing groups and renders combined reasoning only once', async () => {
@@ -26,9 +26,69 @@ describe('ordinary AI chat content', () => {
     ]);
     expect(answers.every((element) => !element.closest('[data-process]'))).toBe(true);
     expect(view.container.querySelectorAll('[data-content="reasoning"]')).toHaveLength(1);
+    expect(view.container.querySelector('[data-process] [data-process]')).toBeNull();
+  });
+
+  it('keeps builder preview, resumed processing, answers and version cards in order', async () => {
+    await view.render(
+      React.createElement(
+        Content,
+        contentProps({
+          chatValue: [
+            { reasoning: { content: 'Before preview' }, text: { content: 'Intermediate answer' } },
+            confirmedPreview,
+            { reasoning: { content: 'After preview' } },
+            {
+              ...versionValue,
+              reasoning: { content: 'Final reasoning' },
+              text: { content: 'Final answer' }
+            }
+          ]
+        })
+      )
+    );
+
+    const answers = [...view.container.querySelectorAll('[data-content="answer"]')];
+    const interactive = view.container.querySelector('[data-content="interactive"]')!;
+    const version = view.container.querySelector('[data-content="version"]')!;
+    const processes = view.container.querySelectorAll('[data-process]');
+    expect(processes).toHaveLength(2);
+    expect(view.container.querySelector('[data-process] [data-process]')).toBeNull();
+    expect(answers.map((answer) => answer.textContent)).toEqual([
+      'Intermediate answer',
+      'Final answer'
+    ]);
     expect(
-      view.container.querySelector('[data-process="workflow_builder_process_details"]')
-    ).toBeNull();
+      [...answers, interactive, version].every((node) => !node.closest('[data-process]'))
+    ).toBe(true);
+    expect(view.container.querySelectorAll('[data-content="version"]')).toHaveLength(1);
+    expect(
+      [...view.container.querySelectorAll('[data-content="reasoning"]')].map(
+        (element) => element.textContent
+      )
+    ).toEqual(['Before preview', 'After preview', 'Final reasoning']);
+    expect(
+      answers[0].compareDocumentPosition(interactive) & window.Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      interactive.compareDocumentPosition(processes[1]) & window.Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('shows streaming answers directly without moving them when generation completes', async () => {
+    const props = contentProps({
+      chatValue: [{ reasoning: { content: 'Thinking' }, text: { content: 'Streaming answer' } }],
+      isChatting: true
+    });
+    await view.render(React.createElement(Content, props));
+    const answer = view.container.querySelector('[data-content="answer"]')!;
+    expect(answer.textContent).toBe('Streaming answer');
+    expect(answer.closest('[data-process]')).toBeNull();
+    expect(view.container.querySelectorAll('[data-process]')).toHaveLength(1);
+
+    await view.render(React.createElement(Content, { ...props, isChatting: false }));
+    expect(view.container.querySelectorAll('[data-content="answer"]')).toHaveLength(1);
+    expect(view.container.querySelector('[data-content="answer"]')).toBe(answer);
   });
 
   it('ignores hidden and empty values while preserving standalone content', async () => {

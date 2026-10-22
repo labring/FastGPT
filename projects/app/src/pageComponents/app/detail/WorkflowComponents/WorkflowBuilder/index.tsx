@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -16,7 +16,7 @@ import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
-import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
+import { mergeWorkflowBuilderAppliedAppDetail, prepareWorkflowBuilderToolSecrets } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
 import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
@@ -96,7 +96,7 @@ const WorkflowBuilder = () => {
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
         const modelList = await getModelList();
         const defaultModelIds = useUserModelStore.getState().defaultModelIds;
-        const workflowConfig = await parseWorkflowImportConfig({
+        const importedWorkflowConfig = await parseWorkflowImportConfig({
           config: compileStoreWorkflow(targetDocument),
           appType:
             appDetail.type === AppTypeEnum.workflowTool
@@ -108,6 +108,10 @@ const WorkflowBuilder = () => {
           modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
+        const workflowConfig = {
+          ...importedWorkflowConfig,
+          nodes: await prepareWorkflowBuilderToolSecrets({ nodes: importedWorkflowConfig.nodes })
+        };
         // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
         previousWorkflow = getCurrentWorkflow();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
@@ -156,7 +160,15 @@ const WorkflowBuilder = () => {
         });
         myToast({
           status: 'success',
-          title: t('workflow_builder_applied', { name: version.name })
+          title: (
+            <Text as="span" fontWeight="normal">
+              <Trans
+                i18nKey="workflow:workflow_builder_applied"
+                values={{ name: version.name }}
+                components={{ bold: <Text as="strong" fontWeight={600} /> }}
+              />
+            </Text>
+          )
         });
         return archivedVersion;
       } catch (error) {

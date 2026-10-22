@@ -1,3 +1,4 @@
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { type ChatControllerProps } from './ChatController';
@@ -17,7 +18,7 @@ import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
-import AgentAskReply from './AgentAskReply';
+import InteractiveReply from './InteractiveReply';
 import AIChatBubble from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { shouldFilterAiValue } from './AIChatBubble/utils';
@@ -81,10 +82,6 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const collapseIntermediateAgentResponses = useContextSelector(
-    ChatBoxContext,
-    (v) => v.collapseIntermediateAgentResponses ?? false
-  );
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
   const { isPc } = useSystem();
@@ -139,25 +136,17 @@ const ChatItem = (props: Props) => {
       const groups = getAIChatDisplayGroups({
         chatValue: chat.value,
         isLastChild,
-        isChatting,
-        collapseIntermediateAgentResponses
+        isChatting
       });
-      // Ask 独占末尾时，也要为恢复失败和反馈保留 AI 展示位置，避免内容落入用户气泡或丢失。
-      if (hasFooterContent && groups[groups.length - 1]?.type !== 'ai') {
+      // 仅有提问交互时，也要保留 AI 的错误和反馈位置。
+      if (hasFooterContent && groups.length === 0) {
         groups.push({ type: 'ai', values: [] });
       }
       return groups;
     }
 
     return [];
-  }, [
-    chat.obj,
-    chat.value,
-    collapseIntermediateAgentResponses,
-    hasFooterContent,
-    isChatting,
-    isLastChild
-  ]);
+  }, [chat.obj, chat.value, hasFooterContent, isChatting, isLastChild]);
   const lastAiGroupIndex = displayGroups.findLastIndex((group) => group.type === 'ai');
   const hasValidAiContent = useMemo(() => {
     if (chat.obj !== ChatRoleEnum.AI) return false;
@@ -259,7 +248,8 @@ const ChatItem = (props: Props) => {
             </>
           ) : null;
 
-        if (group.type === 'human' || group.type === 'agentAsk') {
+        if (group.type === 'human') {
+          const select = getUserChatSelect(group.values);
           // 用户气泡的复制操作在正文下方，需要保留与普通 user 消息相同的空间。
           return (
             <Box
@@ -269,11 +259,11 @@ const ChatItem = (props: Props) => {
               maxW={boxBodyProps?.maxW ?? (isPc ? ChatBoxContentMaxWidth : 'calc(100% - 25px)')}
               mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
-              pt={group.type === 'agentAsk' && i > 0 ? 2 : undefined}
-              pb={group.type === 'agentAsk' ? (i < displayGroups.length - 1 ? 6 : 2) : undefined}
             >
-              {group.type === 'agentAsk' ? (
-                <AgentAskReply interactive={group.interactive} />
+              {select ? (
+                <InteractiveReply reply={select} chatValue={group.values} chatTime={chat.time}>
+                  {renderCommonFooter()}
+                </InteractiveReply>
               ) : (
                 <HumanChatBubble
                   chatValue={group.values}

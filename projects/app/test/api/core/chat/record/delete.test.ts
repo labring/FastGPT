@@ -126,6 +126,63 @@ describe('delete chat record api', () => {
     expect(queryItem?.deleteTime).toBeNull();
   });
 
+  it('soft deletes an Ask reply without rewriting the original AI', async () => {
+    const source = {
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      appId,
+      chatId
+    };
+    const interactive = {
+      type: 'agentAsk',
+      askId: 'ask-1',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        description: '',
+        questions: [
+          {
+            question: 'Choose?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ]
+          }
+        ]
+      }
+    };
+    const previousAi = await MongoChatItem.create({
+      ...source,
+      obj: ChatRoleEnum.AI,
+      dataId: 'question-round',
+      value: [{ interactive }]
+    });
+    await MongoChatItem.create({
+      ...source,
+      obj: ChatRoleEnum.Human,
+      dataId: 'answer-round',
+      value: [
+        {
+          select: {
+            type: 'agentAsk',
+            questions: [{ question: 'Choose?', value: 'A' }]
+          }
+        }
+      ]
+    });
+    await createChatItem('answer-round');
+    const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
+      auth: testUser,
+      body: { appId, chatId, contentIds: ['answer-round'] }
+    });
+    expect(res.code).toBe(200);
+    const remaining = await MongoChatItem.findById(previousAi._id).lean();
+    expect(remaining?.value).toEqual([{ interactive }]);
+    expect(await MongoChatItem.countDocuments({ appId, chatId, deleteTime: null })).toBe(1);
+  });
+
   it('should keep compatibility with query contentId and comma separated contentIds', async () => {
     await Promise.all([
       createChatItem('legacy-single'),

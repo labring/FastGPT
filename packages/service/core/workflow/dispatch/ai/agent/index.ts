@@ -346,23 +346,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const outputAssistantResponses = outputSummary.assistantResponses;
 
-    if (
-      outputSummary.status === 'interactive' &&
-      outputSummary.interactive?.type === 'agentPlanAskQuery'
-    ) {
-      // ask 暂停不产出最终 answer，只返回 interactive + memory。
-      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
-      // saveChat 会把该 askId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
-      return {
-        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-          nodeId,
-          providerState: outputSummary.providerState
-        }),
-        [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
-      };
-    }
-
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
       return {
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,

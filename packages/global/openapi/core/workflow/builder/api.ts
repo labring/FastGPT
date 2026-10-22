@@ -4,7 +4,6 @@ import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 import {
-  AgentPlanAskResponseSchema,
   WorkflowBuilderVersionSchema,
   WorkflowChecksumSchema
 } from '../../../../core/workflow/builder/type';
@@ -41,9 +40,6 @@ export const WorkflowBuilderChatBodySchema = z.object({
   model: z.string().min(1).optional().meta({
     description: '工作流辅助生成使用的 LLM 模型',
     example: 'gpt-5'
-  }),
-  agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
-    description: '用户对当前 Agent 结构化选项的回答'
   }),
   workflowContext: z
     .object({

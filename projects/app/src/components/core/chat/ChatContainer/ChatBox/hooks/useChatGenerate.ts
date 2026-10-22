@@ -134,7 +134,7 @@ const isAbortByLeave = (reason: unknown) => {
  *
  * 边界行为：
  * - `generatingMessage` 仍只更新最后一条 AI 消息；如果最后一条不是 AI，则直接跳过。
- * - interactive 输入会改写上一轮交互结果，不创建新的普通会话轮次。
+ * - Ask/Preview 回复会新建 user/AI 轮次并回写旧交互状态；表单等 submit 交互继续使用原 AI。
  * - 发送失败且后端没有返回 `responseText` 时恢复用户输入，并回滚本轮 human/AI placeholder。
  * - `abortRequest('leave')` 后无论流正常返回或抛错，都保留服务端生成状态，不更新当前会话。
  */
@@ -223,14 +223,6 @@ export const useChatGenerate = ({
         if (autoTTSResponse) {
           splitText2Audio(formatChatValue2InputType(item.value).text || '');
         }
-
-        const updateIndex = (() => {
-          if (!responseValueId) return item.value.length - 1;
-          const index = item.value.findIndex((item) => item.id === responseValueId);
-          if (index !== -1) return index;
-          return item.value.length - 1;
-        })();
-        const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
 
         if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
           return {
@@ -420,45 +412,31 @@ export const useChatGenerate = ({
             value: [...item.value, val]
           };
         }
-        if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
-          if (tool.params) {
-            updateValue.tools = updateValue.tools.map((item) => {
-              if (item.id !== tool.id) return item;
+        if (
+          (event === SseResponseEventEnum.toolParams ||
+            event === SseResponseEventEnum.toolResponse) &&
+          tool
+        ) {
+          const field = event === SseResponseEventEnum.toolParams ? 'params' : 'response';
+          const delta = tool[field];
+          if (typeof delta !== 'string' || (field === 'params' && !delta)) return item;
+
+          // 仅按工具 ID 合并；孤立增量不能落到最后一个正文或尚为空的新 AI 占位上。
+          return {
+            ...item,
+            value: item.value.map((value) => {
+              if (!value.tools?.some((currentTool) => currentTool.id === tool.id)) return value;
 
               return {
-                ...item,
-                params: `${item.params || ''}${tool.params}`
+                ...value,
+                tools: value.tools.map((currentTool) =>
+                  currentTool.id === tool.id
+                    ? { ...currentTool, [field]: `${currentTool[field] || ''}${delta}` }
+                    : currentTool
+                )
               };
-            });
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          }
-          return item;
-        }
-        if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-          if (typeof tool.response === 'string') {
-            updateValue.tools = updateValue.tools.map((item) =>
-              item.id === tool.id
-                ? { ...item, response: `${item.response || ''}${tool.response}` }
-                : item
-            );
-
-            return {
-              ...item,
-              value: [
-                ...item.value.slice(0, updateIndex),
-                updateValue,
-                ...item.value.slice(updateIndex + 1)
-              ]
-            };
-          }
-          return item;
+            })
+          };
         }
 
         if (event === SseResponseEventEnum.planStatus && planStatus) {
@@ -672,7 +650,7 @@ export const useChatGenerate = ({
       files = [],
       history = chatRecords,
       interactive,
-      agentPlanAskResponse,
+      select,
       autoTTSResponse = false,
       hideInUI = false,
       clearInput = false
@@ -702,7 +680,7 @@ export const useChatGenerate = ({
 
           text = text.trim();
 
-          if (!text && files.length === 0) {
+          if (!text && files.length === 0 && !select) {
             toast({
               title: t('chat:content_empty'),
               status: 'warning'
@@ -758,15 +736,17 @@ export const useChatGenerate = ({
                   key: file.key || ''
                 }
               })),
-              ...(text
-                ? [
-                    {
-                      text: {
-                        content: text
+              ...(select
+                ? [{ select }]
+                : text
+                  ? [
+                      {
+                        text: {
+                          content: text
+                        }
                       }
-                    }
-                  ]
-                : [])
+                    ]
+                  : [])
             ] as UserChatItemValueItemType[],
             status: ChatStatusEnum.finish
           };
@@ -811,8 +791,7 @@ export const useChatGenerate = ({
               ? rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
                   interactive,
-                  interactiveVal: text,
-                  agentPlanAskResponse
+                  interactiveVal: text
                 })
               : newChatList
           );
@@ -839,13 +818,13 @@ export const useChatGenerate = ({
                 return item;
               }),
               reserveId: true,
-              reserveTool: true
+              reserveTool: true,
+              reserveSelect: true
             });
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
               interactive,
-              agentPlanAskResponse,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables

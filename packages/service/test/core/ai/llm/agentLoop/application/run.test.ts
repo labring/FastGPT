@@ -402,7 +402,19 @@ describe('runAgentLoopApplication tool visibility', () => {
     { output: { content: 'Visible answer' }, visible: true },
     { output: { content: '' }, visible: true },
     { output: { reasoning_content: 'Visible reasoning' }, visible: true },
-    { output: { interactive: { type: 'agentPlanAskQuery' as const } }, visible: true },
+    {
+      output: {
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            description: '',
+            submitted: false,
+            questions: [{ question: '', options: [], answer: '' }]
+          }
+        }
+      },
+      visible: true
+    },
     { output: { audio: { id: 'audio-1' } }, visible: true },
     { output: { function_call: { name: 'legacy', arguments: '{}' } }, visible: true },
     { output: { refusal: 'Cannot answer' }, visible: true },

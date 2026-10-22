@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isToolInputValueConfigured } from '@fastgpt/global/core/app/formEdit/utils';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowRuleIssue } from '../type';
@@ -25,6 +26,15 @@ export const checkWorkflowNodeResourceRules = ({
     issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
   } else if (data.pluginData?.error) {
     issues.push({ code: resolvePluginDataErrorIssueCode(data.pluginData.error) });
+  }
+
+  // 密钥激活是运行/发布前置条件，普通串联工具与 selectedTools 挂载工具都需要检查。
+  const systemInputConfig = inputs.get(NodeInputKeyEnum.systemInputConfig);
+  if (systemInputConfig && !isToolInputValueConfigured({ input: systemInputConfig })) {
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
+      inputKey: NodeInputKeyEnum.systemInputConfig
+    });
   }
 
   /** 资源删除/权限标记来自服务端快照，不根据客户端身份重新鉴权。 */

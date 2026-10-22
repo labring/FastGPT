@@ -255,13 +255,7 @@ const WorkflowBuilderChatContent = ({
   ]);
 
   const onStartChat = useMemoizedFn(
-    async ({
-      messages,
-      responseChatItemId,
-      agentPlanAskResponse,
-      controller,
-      generatingMessage
-    }: StartChatFnProps) => {
+    async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
       const document = reactFlowStateToWorkflowDocument({
         nodes: getNodes(),
         edges,
@@ -276,7 +270,6 @@ const WorkflowBuilderChatContent = ({
           responseChatItemId,
           messages: messages.slice(-1),
           model: selectedModelId || undefined,
-          agentPlanAskResponse,
           workflowContext: { document, checksum }
         },
         onMessage: generatingMessage,
@@ -311,6 +304,7 @@ const WorkflowBuilderChatContent = ({
     <Box display={'flex'} flexDirection={'column'} h={'100%'} minH={0}>
       <Box flex={1} minH={0} overflow={'hidden'}>
         <ChatBox
+          dialogTips={t('builder_input_placeholder')}
           isReady={!!selectedModel}
           active={!watchExternalChat}
           sourceTarget={sourceTarget}
@@ -327,7 +321,6 @@ const WorkflowBuilderChatContent = ({
             quickReplies: true,
             disableFooterHoverTranslate: true,
             workflowBuilderInput: true,
-            workflowBuilderResponseCollapse: true,
             hideAgentAskOptionDescription: true
           }}
           InputLeftComponent={ModelSelector}
