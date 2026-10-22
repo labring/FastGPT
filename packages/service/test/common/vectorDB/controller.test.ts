@@ -17,6 +17,7 @@ import {
   recallFromVectorStore,
   getVectorDataByTime,
   getVectorCountByTeamId,
+  refreshTeamVectorCount,
   getVectorCount,
   insertDatasetDataVector,
   deleteDatasetDataVector,
@@ -41,14 +42,7 @@ vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
           redis: {
             set: (...args: any[]) => mockRedisStringSet(...args),
             get: (...args: any[]) => mockRedisStringGet(...args),
-            delete: (...args: any[]) => mockRedisStringDelete(...args),
-            evalScript: ({ keys, args }: { keys: string[]; args: any[] }) => {
-              // 这里仅模拟缓存协议；Lua 原子性由 DAL 的真实 Redis 测试验证。
-              if (keys.length === 1) return Promise.resolve('revision');
-              if (args.length === 3)
-                return mockRedisStringSet({ key: keys[1], value: String(args[1]), ttlMs: args[2] });
-              return mockRedisStringDelete(keys[1]);
-            }
+            delete: (...args: any[]) => mockRedisStringDelete(...args)
           }
         });
       }
@@ -114,6 +108,7 @@ describe('VectorDB Controller', () => {
         await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
         expect(onVectorRowsChanged).toHaveBeenCalledWith({ teamId: 't', datasetIds: datasets });
         expect(mockVectorDelete).toHaveBeenCalledWith(filter);
+        expect(mockRedisStringDelete).not.toHaveBeenCalled();
         expect(mockVectorDelete.mock.invocationCallOrder[0]).toBeLessThan(
           onVectorRowsChanged.mock.invocationCallOrder[0]
         );
@@ -313,6 +308,42 @@ describe('VectorDB Controller', () => {
     });
   });
 
+  describe('refreshTeamVectorCount', () => {
+    it('keeps cached reads available during mutations and publishes the completed count', async () => {
+      mockRedisStringGet.mockResolvedValue('90');
+      mockGetVectors.mockResolvedValue({ tokens: 1, vectors: [[0.1]] });
+      mockGetVectorCount.mockImplementationOnce(async () => {
+        // 模拟 COUNT 执行期间仍在增删，当前读请求继续使用上次成功的快照。
+        await insertDatasetDataVector({
+          teamId: 'team_hot',
+          datasetId: 'dataset_a',
+          collectionId: 'collection_a',
+          inputs: ['text'],
+          model: {} as any,
+          onVectorRowsChanged
+        });
+        await deleteDatasetDataVector({
+          teamId: 'team_hot',
+          datasetId: 'dataset_a',
+          id: '1',
+          onVectorRowsChanged
+        });
+        expect(await getVectorCountByTeamId('team_hot')).toBe(90);
+        return 100;
+      });
+
+      await expect(refreshTeamVectorCount('team_hot')).resolves.toBe(100);
+      expect(mockGetVectorCount).toHaveBeenCalledTimes(1);
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
+      expect(onVectorRowsChanged).toHaveBeenCalledTimes(2);
+      expect(mockRedisStringSet).toHaveBeenCalledWith({
+        key: 'cache:team_vector_count:team_hot',
+        value: '100',
+        ttlMs: 1_800_000
+      });
+    });
+  });
+
   describe('getVectorCount', () => {
     it('should call Vector.getVectorCount', async () => {
       mockGetVectorCount.mockResolvedValue(50);
@@ -433,7 +464,7 @@ describe('VectorDB Controller', () => {
       });
     });
 
-    it('should invalidate team vector cache after insert', async () => {
+    it('notifies statistics without clearing the previous team count', async () => {
       mockGetVectors.mockResolvedValue({
         tokens: 50,
         vectors: [[0.1]]
@@ -451,73 +482,10 @@ describe('VectorDB Controller', () => {
         model: mockModel as any
       });
 
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
       expect(onVectorRowsChanged).toHaveBeenCalledWith({
         teamId: 'team_abc',
         datasetIds: ['dataset_def']
-      });
-    });
-
-    it('should return insert result when team vector cache invalidation fails', async () => {
-      mockGetVectors.mockResolvedValue({
-        tokens: 50,
-        vectors: [[0.1]]
-      });
-      mockVectorInsert.mockResolvedValue({
-        insertIds: ['id_1']
-      });
-      mockRedisStringDelete.mockRejectedValueOnce(new Error('redis down'));
-
-      const result = await insertDatasetDataVector({
-        onVectorRowsChanged,
-        teamId: 'team_abc',
-        datasetId: 'dataset_def',
-        collectionId: 'col_ghi',
-        inputs: ['single input'],
-        model: mockModel as any
-      });
-
-      expect(result).toEqual({
-        tokens: 50,
-        insertIds: ['id_1']
-      });
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
-      expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
-        teamId: 'team_abc',
-        error: expect.any(Error)
-      });
-    });
-
-    it('should return insert result when team vector cache invalidation times out', async () => {
-      vi.useFakeTimers();
-      mockGetVectors.mockResolvedValue({
-        tokens: 50,
-        vectors: [[0.1]]
-      });
-      mockVectorInsert.mockResolvedValue({
-        insertIds: ['id_1']
-      });
-      mockRedisStringDelete.mockReturnValueOnce(new Promise(() => {}));
-
-      const resultPromise = insertDatasetDataVector({
-        onVectorRowsChanged,
-        teamId: 'team_abc',
-        datasetId: 'dataset_def',
-        collectionId: 'col_ghi',
-        inputs: ['single input'],
-        model: mockModel as any
-      });
-
-      await vi.advanceTimersByTimeAsync(3000);
-
-      await expect(resultPromise).resolves.toEqual({
-        tokens: 50,
-        insertIds: ['id_1']
-      });
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
-      expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
-        teamId: 'team_abc',
-        error: expect.any(Error)
       });
     });
 
@@ -645,58 +613,7 @@ describe('VectorDB Controller', () => {
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
-    });
-
-    it('should return delete result when team vector cache invalidation fails', async () => {
-      mockVectorDelete.mockResolvedValue({ deletedCount: 5 });
-      mockRedisStringDelete.mockRejectedValueOnce(new Error('redis down'));
-
-      const props = {
-        teamId: 'team_cache_test',
-        id: 'some_id'
-      };
-
-      const result = await deleteDatasetDataVector({
-        ...props,
-        datasetId: 'dataset_456',
-        onVectorRowsChanged
-      });
-
-      expect(mockVectorDelete).toHaveBeenCalledWith(props);
-      expect(result).toEqual({ deletedCount: 5 });
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
-      expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
-        teamId: 'team_cache_test',
-        error: expect.any(Error)
-      });
-    });
-
-    it('should return delete result when team vector cache invalidation times out', async () => {
-      vi.useFakeTimers();
-      mockVectorDelete.mockResolvedValue({ deletedCount: 5 });
-      mockRedisStringDelete.mockReturnValueOnce(new Promise(() => {}));
-
-      const props = {
-        teamId: 'team_cache_test',
-        id: 'some_id'
-      };
-
-      const resultPromise = deleteDatasetDataVector({
-        ...props,
-        datasetId: 'dataset_456',
-        onVectorRowsChanged
-      });
-
-      await vi.advanceTimersByTimeAsync(3000);
-
-      await expect(resultPromise).resolves.toEqual({ deletedCount: 5 });
-      expect(mockVectorDelete).toHaveBeenCalledWith(props);
-      expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_cache_test');
-      expect(mockLoggerWarn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
-        teamId: 'team_cache_test',
-        error: expect.any(Error)
-      });
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
     });
   });
 });
