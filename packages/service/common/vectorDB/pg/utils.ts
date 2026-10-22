@@ -47,7 +47,7 @@ export const buildPgVectorRecallQuery = ({
   const indexedSet = new Set(indexed);
   const exact = ids.filter((id) => !indexedSet.has(id));
 
-  // 2. 每个局部索引的候选集先物化，再用原始 FP32 向量重排，避免外层排序被下推。
+  // 2. 候选集先物化，再将存储向量转为 FP32 计算距离；halfvec 存储不会恢复量化前的精度。
   const candidates = indexed.map(
     (id, i) => `candidates_${i} AS MATERIALIZED (
       SELECT id, collection_id, vector

@@ -28,7 +28,8 @@ import {
 import { buildPgVectorRecallQuery } from '@fastgpt/service/common/vectorDB/pg/utils';
 import { connectPg } from '@fastgpt/service/common/vectorDB/pg/controller';
 
-describe.skipIf(!target)('local PG FP16 dataset index', () => {
+const describeStorage = describe.skipIf(!target).each(['vector', 'halfvec']);
+describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
   const teamId = '507f1f77bcf86cd799439011';
   const datasetId = '507f1f77bcf86cd799439012';
   const repairId = '507f1f77bcf86cd799439013';
@@ -38,6 +39,8 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
   const admin = new Client({ connectionString: target?.address });
   const vector = [1, ...Array.from({ length: dimensions - 1 }, () => 0)];
   const callbacks = { onBuilding: vi.fn(async () => {}), onProgress: vi.fn() };
+  const topScores =
+    storage === 'halfvec' ? [1.125, 1.25, 1.375, 1.5] : [1.0001, 1.0002, 1.0003, 1.0004];
 
   beforeAll(async () => {
     await admin.connect();
@@ -46,10 +49,10 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
     const pool = await connectPg();
     await pool.query(`CREATE TABLE modeldata (
       id bigserial PRIMARY KEY, team_id varchar(50), dataset_id varchar(50), collection_id varchar(50),
-      vector vector(${dimensions}), createtime timestamp DEFAULT now()
+      vector ${storage}(${dimensions}), createtime timestamp DEFAULT now()
     )`);
     await ctrl.init();
-    // 数据分布不与查询向量相同；最高分样本用于核验 FP16 相同值仍按 FP32 区分排序。
+    // vector 样本核验 FP16 相同候选仍按 FP32 区分；halfvec 样本使用可精确表示的分数。
     for (const id of [datasetId, repairId]) {
       await pool.query(
         `INSERT INTO modeldata (team_id, dataset_id, collection_id, vector)
@@ -60,16 +63,21 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
       );
     }
     for (const [id, score, collection] of [
-      [datasetId, 1.0001, 'allowed'],
-      [datasetId, 1.0002, 'allowed'],
+      [datasetId, topScores[0], 'allowed'],
+      [datasetId, topScores[1], 'allowed'],
       [datasetId, 2, 'hidden'],
-      [smallIds[0], 1.0003, 'allowed'],
-      [smallIds[1], 1.0004, 'allowed'],
-      [repairId, 1000000, 'poison']
+      [smallIds[0], topScores[2], 'allowed'],
+      [smallIds[1], topScores[3], 'allowed']
     ] as const) {
       await pool.query(
         'INSERT INTO modeldata (team_id, dataset_id, collection_id, vector) VALUES ($1,$2,$3,$4)',
         [teamId, id, collection, `[${[score, ...vector.slice(1)].join(',')}]`]
+      );
+    }
+    if (storage === 'vector') {
+      await pool.query(
+        "INSERT INTO modeldata (team_id, dataset_id, collection_id, vector) VALUES ($1,$2,'poison',$3)",
+        [teamId, repairId, `[${[1000000, ...vector.slice(1)].join(',')}]`]
       );
     }
     // 即使 datasetId 相同，其他团队也不允许进入候选。
@@ -89,7 +97,13 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
     await admin.end();
   });
 
-  it('initializes FP32 storage and ordinary indexes without a global HNSW', async () => {
+  it('preserves storage and initializes ordinary indexes without a global HNSW', async () => {
+    const { rows: columns } = await (
+      await connectPg()
+    ).query(
+      "SELECT format_type(atttypid, atttypmod) AS type FROM pg_attribute WHERE attrelid = 'modeldata'::regclass AND attname = 'vector'"
+    );
+    expect(columns[0].type).toBe(`${storage}(${dimensions})`);
     const { rows } = await (
       await connectPg()
     ).query('SELECT indexname FROM pg_indexes WHERE schemaname = $1', [target!.schema]);
@@ -126,9 +140,9 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
     const result = await ctrl.embRecall(props);
     expect(result.results).toHaveLength(3);
     const scores = result.results.map((row) => row.score);
-    expect(scores[0]).toBeCloseTo(1.0004, 6);
-    expect(scores[1]).toBeCloseTo(1.0003, 6);
-    expect(scores[2]).toBeCloseTo(1.0002, 6);
+    expect(scores[0]).toBeCloseTo(topScores[3], 6);
+    expect(scores[1]).toBeCloseTo(topScores[2], 6);
+    expect(scores[2]).toBeCloseTo(topScores[1], 6);
     expect(result.results.every((row) => row.collectionId === 'allowed')).toBe(true);
 
     const exact = await ctrl.embRecall({ ...props, datasetVectorData: [] });
@@ -149,25 +163,29 @@ describe.skipIf(!target)('local PG FP16 dataset index', () => {
     }
   });
 
-  it('repairs an invalid index left by a failed concurrent build after bad data is removed', async () => {
-    await expect(
-      ensurePgDatasetIndex({ teamId, datasetId: repairId, ...callbacks })
-    ).rejects.toThrow();
-    const pool = await connectPg();
-    const invalid = await pool.query(
-      'SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass($1)',
-      [getPgDatasetIndexName(repairId)]
-    );
-    expect(invalid.rows[0].indisvalid).toBe(false);
-    await pool.query("DELETE FROM modeldata WHERE dataset_id = $1 AND collection_id = 'poison'", [
-      repairId
-    ]);
-    expect(await ensurePgDatasetIndex({ teamId, datasetId: repairId, ...callbacks })).toEqual({
-      pgIndex: 'ready',
-      created: true
-    });
-  }, 240000);
-  it.skipIf(!process.env.FASTGPT_PG_INDEX_BENCHMARK)(
+  it.skipIf(storage !== 'vector')(
+    'repairs an invalid index left by a failed concurrent build after bad data is removed',
+    async () => {
+      await expect(
+        ensurePgDatasetIndex({ teamId, datasetId: repairId, ...callbacks })
+      ).rejects.toThrow();
+      const pool = await connectPg();
+      const invalid = await pool.query(
+        'SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass($1)',
+        [getPgDatasetIndexName(repairId)]
+      );
+      expect(invalid.rows[0].indisvalid).toBe(false);
+      await pool.query("DELETE FROM modeldata WHERE dataset_id = $1 AND collection_id = 'poison'", [
+        repairId
+      ]);
+      expect(await ensurePgDatasetIndex({ teamId, datasetId: repairId, ...callbacks })).toEqual({
+        pgIndex: 'ready',
+        created: true
+      });
+    },
+    240000
+  );
+  it.skipIf(!process.env.FASTGPT_PG_INDEX_BENCHMARK || storage !== 'vector')(
     'reports warm vector-stage latency for the same 100 queries',
     async () => {
       const { rows } = await (
