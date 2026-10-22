@@ -58,7 +58,7 @@ vi.mock('@/components/core/chat/components/AIResponseBox', () => ({
         )
       );
     }
-    if (value.chatAgentConfig) {
+    if (value.chatAgentBuilderVersion) {
       elements.push(
         React.createElement(
           'button',

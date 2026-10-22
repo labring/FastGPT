@@ -12,7 +12,7 @@ import {
 } from '@/web/core/chat/context/chatItemContext';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
-import RenderChatAgentConfig from './RenderChatAgentConfig';
+import RenderChatAgentBuilderVersion from './RenderChatAgentBuilderVersion';
 import RenderPlanStatus from './RenderPlanStatus';
 import RenderProcessingCollapse from './RenderProcessingCollapse';
 import type { ProcessingPreviewTarget } from './RenderProcessingPreview';
@@ -216,11 +216,11 @@ const AIResponseBox = ({
     }
   }
 
-  if (value.chatAgentConfig) {
+  if (value.chatAgentBuilderVersion) {
     responseBlocks.push(
-      <RenderChatAgentConfig
-        key={`chatAgentConfig-${value.chatAgentConfig.s3Key}`}
-        config={value.chatAgentConfig}
+      <RenderChatAgentBuilderVersion
+        key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
+        version={value.chatAgentBuilderVersion}
         responseChatItemId={chatItemDataId}
         isChatting={isChatting}
       />

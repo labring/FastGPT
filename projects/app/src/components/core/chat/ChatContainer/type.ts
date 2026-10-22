@@ -13,7 +13,7 @@ import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxili
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
-import type { ChatAgentConfigReference } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentConfig';
+import type { ChatAgentBuilderVersion } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentBuilderVersion';
 
 type BaseGeneratingMessageProps = {
   responseValueId?: string;
@@ -38,7 +38,7 @@ type BaseGeneratingMessageProps = {
   workflowBuilderVersion?: WorkflowBuilderVersion;
 
   formData?: ChatAgentConfigFormDataType;
-  chatAgentConfig?: ChatAgentConfigReference;
+  chatAgentBuilderVersion?: ChatAgentBuilderVersion;
 };
 
 type ToolStreamEvent =

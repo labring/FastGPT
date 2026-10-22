@@ -341,14 +341,14 @@ describe('useChatGenerate.sendPrompt', () => {
         systemPrompt: 'Use the generated agent',
         tools: [{ id: 'systemTool-shared', source: 'system' }]
       });
-      const chatAgentConfig = {
+      const chatAgentBuilderVersion = {
         s3Key: 'chat/helper/config.json',
         expiresAt: '2099-01-01T00:00:00.000Z'
       };
       const event = {
         event: AuxiliaryGenerationEventEnum.chatAgentConfig,
         formData,
-        chatAgentConfig
+        chatAgentBuilderVersion
       };
       mocks.start.mockImplementation(async ({ generatingMessage }) => {
         generatingMessage(event);
@@ -368,14 +368,14 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.onGeneratingMessage).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining(event)
       );
-      expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentConfig }]));
+      expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }
   );
 
   it('retains a completed configuration reference after reopening without replaying or auto-applying', async () => {
-    const chatAgentConfig = {
+    const chatAgentBuilderVersion = {
       s3Key: 'chat/helper/completed.json',
       expiresAt: '2099-01-01T00:00:00.000Z'
     };
@@ -389,14 +389,14 @@ describe('useChatGenerate.sendPrompt', () => {
               id: 'resumed-ai',
               dataId: 'resumed-ai',
               obj: ChatRoleEnum.AI,
-              value: [{ chatAgentConfig }]
+              value: [{ chatAgentBuilderVersion }]
             }
           ]
         }
       }
     });
     await render({ resume: true });
-    expect(records.at(-1)?.value).toEqual([{ chatAgentConfig }]);
+    expect(records.at(-1)?.value).toEqual([{ chatAgentBuilderVersion }]);
     expect(mocks.applyConfig).not.toHaveBeenCalled();
   });
 

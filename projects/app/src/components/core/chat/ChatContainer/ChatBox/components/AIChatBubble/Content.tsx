@@ -64,7 +64,7 @@ const AIChatBubbleContent = (props: AIChatBubbleContentProps) => {
       !hasAnswer &&
       !hasInteractive &&
       !value.workflowBuilderVersion &&
-      !value.chatAgentConfig
+      !value.chatAgentBuilderVersion
     )
       return;
 

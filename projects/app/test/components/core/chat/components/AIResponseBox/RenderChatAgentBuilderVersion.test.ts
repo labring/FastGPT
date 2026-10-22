@@ -2,14 +2,14 @@ import { JSDOM } from 'jsdom';
 import React, { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import RenderChatAgentConfig from '@/components/core/chat/components/AIResponseBox/RenderChatAgentConfig';
+import RenderChatAgentBuilderVersion from '@/components/core/chat/components/AIResponseBox/RenderChatAgentBuilderVersion';
 
 const actions = vi.hoisted(() => ({ isApplying: false, applyConfig: vi.fn() }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@/web/core/chat/context/chatItemContext', () => ({ ChatItemContext: {} }));
 vi.mock('use-context-selector', () => ({
   useContextSelector: (_context: unknown, select: (value: unknown) => unknown) =>
-    select({ chatAgentConfigActions: actions })
+    select({ chatAgentBuilderVersionActions: actions })
 }));
 vi.mock('@chakra-ui/react', () => ({
   Flex: ({ children }: { children: ReactNode }) => React.createElement('div', null, children),
@@ -51,8 +51,8 @@ describe('historical generated configuration card', () => {
   const render = async ({ expired = false, isChatting = false } = {}) => {
     await act(async () =>
       root.render(
-        React.createElement(RenderChatAgentConfig, {
-          config: {
+        React.createElement(RenderChatAgentBuilderVersion, {
+          version: {
             s3Key: 'chat/helper/config.json',
             expiresAt: expired ? '2000-01-01T00:00:00.000Z' : '2099-01-01T00:00:00.000Z'
           },

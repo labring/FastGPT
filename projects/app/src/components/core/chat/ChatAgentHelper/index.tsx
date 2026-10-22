@@ -223,7 +223,7 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
       }
     }
   );
-  const chatAgentConfigActions = useMemo(
+  const chatAgentBuilderVersionActions = useMemo(
     () => ({ isApplying: isApplyingConfig, applyConfig }),
     [isApplyingConfig, applyConfig]
   );
@@ -234,7 +234,7 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
 
   return (
     <ChatItemContextProvider
-      chatAgentConfigActions={chatAgentConfigActions}
+      chatAgentBuilderVersionActions={chatAgentBuilderVersionActions}
       showRouteToDatasetDetail={false}
       canDownloadSource={false}
       isShowCite={false}

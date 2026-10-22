@@ -23,7 +23,7 @@ import {
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
-import { ChatAgentConfigReferenceSchema } from '../ai/auxiliaryGeneration/chatAgentConfig';
+import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
 import { UserChatSelectSchema } from './input/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
@@ -251,7 +251,7 @@ export const AIChatItemValueSchema = z.object({
   agentAsk: AgentLoopAskSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
-  chatAgentConfig: ChatAgentConfigReferenceSchema.optional(),
+  chatAgentBuilderVersion: ChatAgentBuilderVersionSchema.optional(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()

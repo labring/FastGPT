@@ -235,8 +235,8 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       }
 
       case AuxiliaryGenerationEventEnum.chatAgentConfig: {
-        const { chatAgentConfig, ...formData } = obj;
-        onmessage({ event, formData, chatAgentConfig });
+        const { chatAgentBuilderVersion, ...formData } = obj;
+        onmessage({ event, formData, chatAgentBuilderVersion });
         break;
       }
 

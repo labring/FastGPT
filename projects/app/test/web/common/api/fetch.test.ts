@@ -25,11 +25,11 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 describe('handleEventSourceData', () => {
   it('passes a generated configuration archive reference through normal and replayed events', () => {
-    const chatAgentConfig = {
+    const chatAgentBuilderVersion = {
       s3Key: 'chat/helper/config.json',
       expiresAt: '2099-01-01T00:00:00.000Z'
     };
-    const payload = { systemPrompt: 'Generated prompt', chatAgentConfig };
+    const payload = { systemPrompt: 'Generated prompt', chatAgentBuilderVersion };
     const onmessage = vi.fn();
     handleEventSourceData({
       event: AuxiliaryGenerationEventEnum.chatAgentConfig,
@@ -41,7 +41,7 @@ describe('handleEventSourceData', () => {
     expect(onmessage).toHaveBeenCalledExactlyOnceWith({
       event: AuxiliaryGenerationEventEnum.chatAgentConfig,
       formData: { systemPrompt: payload.systemPrompt },
-      chatAgentConfig
+      chatAgentBuilderVersion
     });
   });
 

@@ -179,7 +179,12 @@ export const hasMeaningfulAiOutput = (chat?: ChatSiteItemType) => {
     if (item.tools?.some((tool) => tool.params || tool.response)) return true;
     // 技能、计划和交互本身就是可见 UI 块，不要求额外文本。
     if (item.skills?.length) return true;
-    if (item.plan || item.interactive || item.workflowBuilderVersion || item.chatAgentConfig)
+    if (
+      item.plan ||
+      item.interactive ||
+      item.workflowBuilderVersion ||
+      item.chatAgentBuilderVersion
+    )
       return true;
     return false;
   });
