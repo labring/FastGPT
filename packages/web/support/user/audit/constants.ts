@@ -447,6 +447,56 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  //Training
+  ['dataset.training.retry']: {
+    content: i18nT('account_team:log_dataset_training_retry'),
+    typeLabel: i18nT('account_team:dataset_training_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+    }
+  },
+  ['dataset.collection.training.retry']: {
+    content: i18nT('account_team:log_dataset_collection_training_retry'),
+    typeLabel: i18nT('account_team:dataset_collection_training_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.training.task.retry']: {
+    content: i18nT('account_team:log_dataset_training_task_retry'),
+    typeLabel: i18nT('account_team:dataset_training_task_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.training.record.delete']: {
+    content: i18nT('account_team:log_dataset_training_record_delete'),
+    typeLabel: i18nT('account_team:dataset_training_record_delete'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.index.rebuild']: {
+    content: i18nT('account_team:log_dataset_index_rebuild'),
+    typeLabel: i18nT('account_team:dataset_index_rebuild'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      /** 展示名，日志正文使用；目录查不到模型时退回模型 ID。 */
+      oldModelName: string;
+      newModelName: string;
+      /** 稳定模型 ID，正文不展示，仅供排查模型改名场景。 */
+      oldModelId: string;
+      newModelId: string;
+    }
+  },
   //Data
   [AuditEventEnum.CREATE_DATA]: {
     content: i18nT('account_team:log_create_data'),
