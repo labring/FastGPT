@@ -8,7 +8,10 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -83,14 +86,14 @@ async function handler(req: ApiRequestProps) {
   } = parseApiInput({ req, bodySchema: UpdateDatasetCollectionBodySchema }).body;
   let id = parsedCollectionId;
 
-  // 通过 externalFileId 查找 collection：先鉴权 dataset，再查询
+  // 通过 externalFileId 查找 collection：这里只做定位，更新门槛由后续 collection manage 承担
   if (datasetId && externalFileId) {
     await authDataset({
       req,
       authToken: true,
       authApiKey: true,
       datasetId,
-      per: WritePermissionVal
+      per: ReadPermissionVal
     });
 
     const collection = await MongoDatasetCollection.findOne({ datasetId, externalFileId }, '_id');
@@ -106,11 +109,18 @@ async function handler(req: ApiRequestProps) {
 
   const isMove = parentId !== undefined;
   const targetParentId = parentId || null;
-  // Move 需要先读取 Collection 定位源父级；普通字段更新直接要求 Collection write。
+  // move 只校验源父级/目标父级；字段更新要求节点自身 manage。
+  const hasMetaUpdate =
+    !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
   const { collection, teamId, tmbId } = isMove
     ? await authDatasetCollectionMove({ ...auth, targetParentId })
-    : await authDatasetCollection({ ...auth, per: WritePermissionVal });
+    : await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+
+  // 同请求携带字段更新时仍需节点 manage，避免借 move 绕过改名/禁用等门槛
+  if (isMove && hasMetaUpdate) {
+    await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+  }
 
   // Move collection：parentId 显式提供时在事务前校验深度/环
   if (isMove) {
