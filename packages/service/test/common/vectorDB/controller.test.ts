@@ -10,7 +10,7 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
-import { vectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 // Import controller functions after mocks are set up
 import {

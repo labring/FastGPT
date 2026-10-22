@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { bullMQ, type BullMQBinding } from '../binding';
-import { QueueNames } from '../names';
-import type { Processor } from '../types';
+import { bullMQ, type BullMQBinding } from '@fastgpt/dal/redis/bullmq/binding';
+import { QueueNames } from '@fastgpt/dal/redis/bullmq/names';
+import type { Processor } from '@fastgpt/dal/redis/bullmq/types';
 
 const VectorRowsUpdateJobSchema = z.object({
   teamId: z.string().min(1),

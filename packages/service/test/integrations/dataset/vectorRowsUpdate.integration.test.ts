@@ -7,7 +7,7 @@ import type { Queue, Worker } from '@fastgpt/dal/redis/bullmq/types';
 import {
   VectorRowsUpdateMQService,
   type VectorRowsUpdateJobData
-} from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+} from '@fastgpt/service/core/dataset/vectorData/mq';
 import { RedisCacheAdapter, asRedisLogicalKey } from '@fastgpt/dal/redis/adapter';
 import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches/teamVectorCount';
 

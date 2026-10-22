@@ -12,7 +12,7 @@ import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
-import { vectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
