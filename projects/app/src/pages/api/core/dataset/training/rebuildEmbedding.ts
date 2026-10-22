@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -27,7 +27,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/training/audit';
+import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/audit/training';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {

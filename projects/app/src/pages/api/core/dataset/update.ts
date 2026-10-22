@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { DatasetAuditEventEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
@@ -19,10 +19,8 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
-import {
-  buildDatasetConfigUpdatePatch,
-  buildDatasetUpdateAuditLogs
-} from '@fastgpt/service/core/dataset/audit';
+import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
+import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
 import { type ClientSession } from 'mongoose';
 

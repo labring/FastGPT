@@ -1,6 +1,6 @@
 import updateHandler from '@/pages/api/core/dataset/update';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
-  DatasetAuditEventEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   TrainingModeEnum

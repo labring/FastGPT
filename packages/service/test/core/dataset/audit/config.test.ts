@@ -1,16 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  DatasetAuditEventEnum,
-  DatasetConfigAuditItemEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
+import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user/audit/constants';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import {
   buildDatasetConfigAuditChanges,
-  buildDatasetConfigUpdatePatch,
-  resolveDatasetAuditModel,
   stringifyDatasetConfigAuditValue
-} from '@fastgpt/service/core/dataset/audit';
+} from '@fastgpt/service/core/dataset/audit/utils';
+import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
+import { resolveDatasetAuditModel } from '@fastgpt/service/core/dataset/audit/config';
 
 describe('dataset level audit events', () => {
   it('keeps every dataset event registered in the team audit event list', () => {

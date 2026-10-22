@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   createDatasetAuditProcessors,
   processDatasetConfigUpdateSpecific

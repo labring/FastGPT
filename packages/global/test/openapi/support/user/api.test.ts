@@ -41,7 +41,7 @@ import {
   GetInvitationLinkInfoResponseSchema
 } from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
 import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user/audit/constants';
-import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 

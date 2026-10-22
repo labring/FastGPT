@@ -1,4 +1,4 @@
-import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 /** 将知识库协作者权限数字转换为审计列表展示用的权限标记。 */

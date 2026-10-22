@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/training/audit';
+import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/audit/training';
 
 describe('getTrainingAuditModelLabel', () => {
   it.each([

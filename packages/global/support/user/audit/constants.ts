@@ -1,5 +1,5 @@
 import type { auditLogMap, adminAuditLogMap } from '../../../../web/support/user/audit/constants';
-import { DatasetAuditEventEnum } from '../../../core/dataset/constants';
+import { DatasetAuditEventEnum } from '../../../core/dataset/audit/constants/event';
 
 export enum AdminAuditEventEnum {
   ADMIN_LOGIN = 'ADMIN_LOGIN',
