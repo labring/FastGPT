@@ -104,13 +104,15 @@ export const deleteDatasetDataVector = async ({
   onVectorRowsChanged,
   ...props
 }: DelDatasetVectorCtrlPropsType & { onVectorRowsChanged: VectorRowsChangedCallback }) => {
-  const deleteProps = { ...props };
-  // datasetId 仅补充统计上下文，不改变适配器原有的删除参数或过滤条件。
-  if ('datasetId' in deleteProps) delete deleteProps.datasetId;
+  // 单库上下文只用于统计，物理删除继续使用原来的 id/idList 过滤条件。
+  const { datasetIds, deleteProps } = (() => {
+    if ('datasetIds' in props) return { datasetIds: props.datasetIds, deleteProps: props };
+
+    const { datasetId, ...deleteProps } = props;
+    return { datasetIds: [datasetId], deleteProps };
+  })();
   const result = await retryFn(() => Vector.delete(deleteProps));
   await teamVectorCountCache.invalidate(props.teamId);
-  const datasetIds =
-    'datasetIds' in props ? props.datasetIds : props.datasetId ? [props.datasetId] : [];
   await onVectorRowsChanged({ teamId: props.teamId, datasetIds });
   return result;
 };
