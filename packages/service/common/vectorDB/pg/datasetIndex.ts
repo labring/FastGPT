@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
 import { DatasetVectorTableName, PG_ADDRESS } from '../constants';
 import { PgClient } from './controller';
@@ -18,8 +19,7 @@ export type PgDatasetIndexProgress = {
 
 /** 名字由知识库 ID 唯一推导，不在 Mongo 中存储或信任外部传入的索引名。 */
 export const getPgDatasetIndexName = (datasetId: string) => {
-  if (!/^[a-f0-9]{24}$/.test(datasetId)) throw new Error('Invalid dataset ID for PG index');
-  return `${DatasetVectorTableName}_fp16_${datasetId}`;
+  return `${DatasetVectorTableName}_fp16_${ObjectIdSchema.parse(datasetId)}`;
 };
 
 /**
@@ -36,7 +36,6 @@ export const ensurePgDatasetIndex = async ({
   onProgress: (progress: PgDatasetIndexProgress) => void;
 }): Promise<{ pgIndex: 'ready' | 'none'; created: boolean }> => {
   const indexName = getPgDatasetIndexName(datasetId);
-  if (!/^[a-f0-9]{24}$/.test(teamId)) throw new Error('Invalid team ID for PG index');
 
   // 普通池有 60 秒 query_timeout；建图使用独立会话，不能把连接池查询配置改为无限等待。
   const client = new pg.Client({
