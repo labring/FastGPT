@@ -4,37 +4,6 @@ import {
   type HttpToolConfigType
 } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { McpToolConfigSchema } from '@fastgpt/global/core/app/tool/mcpTool/type';
-
-/** 检查节点内 MCP 工具集保存条件；空草稿不经过此校验。 */
-export const getMcpToolSetConfigError = ({
-  url,
-  toolList
-}: {
-  url: string;
-  toolList: unknown[];
-}) => {
-  if (!url || url.trim() !== url) return 'invalid_url';
-
-  try {
-    const parsedUrl = new URL(url);
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) return 'invalid_url';
-  } catch {
-    return 'invalid_url';
-  }
-
-  if (toolList.length === 0) return 'empty_tool_list';
-
-  const names = new Set<string>();
-  for (const tool of toolList) {
-    const parsedTool = McpToolConfigSchema.safeParse(tool);
-    if (!parsedTool.success) return 'invalid_tool_schema';
-    const name = parsedTool.data.name.trim();
-    if (!name) return 'empty_tool_name';
-    if (names.has(name)) return 'duplicate_tool_name';
-    names.add(name);
-  }
-};
 
 /** 校验工作流节点 OpenAPI 配置，避免保存无法展开或执行的 operation。 */
 export const getHttpToolSetConfigError = async ({

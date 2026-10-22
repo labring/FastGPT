@@ -1,7 +1,6 @@
 import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -45,8 +44,8 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
-import { storeSecretValue } from '../../common/secret/utils';
-import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { encryptSecretValue } from '../../common/secret/utils';
+import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
@@ -60,7 +59,6 @@ export async function rewriteAppWorkflowToDetail({
   isRoot,
   ownerTmbId,
   viewerTmbId,
-  appType,
   lang,
   resources = []
 }: {
@@ -68,7 +66,6 @@ export async function rewriteAppWorkflowToDetail({
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
-  appType?: AppTypeEnum;
   /** 当前请求操作者；仅对快照外新增资源做 UI 侧权限提示。 */
   viewerTmbId?: string;
   lang?: localeType;
@@ -383,9 +380,6 @@ export async function rewriteAppWorkflowToDetail({
     isRecord(value) && typeof value.toolId === 'string' && value.toolId ? value.toolId : undefined;
   type ExternalToolSetReferenceIds = Record<'mcpToolSet' | 'httpToolSet', string | undefined>;
   const externalToolSetReferenceIds = new Map<DetailWorkflowNode, ExternalToolSetReferenceIds>();
-  const isToolSetSourceApp =
-    appType === AppTypeEnum.mcpToolSet || appType === AppTypeEnum.httpToolSet;
-
   await Promise.all(
     nodes.map(async (node) => {
       if (node.flowNodeType !== FlowNodeTypeEnum.pluginInput) {
@@ -669,6 +663,10 @@ export async function rewriteAppWorkflowToDetail({
     delete sanitized.headerSecret;
     return sanitized;
   };
+  const encryptHeaderSecret = (value: Record<string, SecretValueType>) =>
+    Object.fromEntries(
+      Object.entries(value).map(([key, secret]) => [key, encryptSecretValue(secret)])
+    );
   const projectToolSetSummary = (toolSet: Record<string, unknown>, toolId?: string) => ({
     ...(toolId ? { toolId } : {}),
     ...(Array.isArray(toolSet.toolList)
@@ -717,35 +715,20 @@ export async function rewriteAppWorkflowToDetail({
   };
 
   nodes.forEach((node) => {
-    if (!isToolSetSourceApp) {
-      clearToolCredentials({
-        toolConfig: node.toolConfig,
-        externalNodeReference: Boolean(node.pluginId),
-        referenceIds: externalToolSetReferenceIds.get(node)
-      });
-    }
+    clearToolCredentials({
+      toolConfig: node.toolConfig,
+      externalNodeReference: Boolean(node.pluginId),
+      referenceIds: externalToolSetReferenceIds.get(node)
+    });
 
     const mcpToolSet = node.toolConfig?.mcpToolSet;
     if (mcpToolSet && 'headerSecret' in mcpToolSet && mcpToolSet.headerSecret != null) {
-      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+      mcpToolSet.headerSecret = encryptHeaderSecret(mcpToolSet.headerSecret);
     }
 
     const httpToolSet = node.toolConfig?.httpToolSet;
     if (httpToolSet && 'headerSecret' in httpToolSet && httpToolSet.headerSecret != null) {
-      httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
-    }
-
-    if (
-      isToolSetSourceApp &&
-      httpToolSet &&
-      'baseUrl' in httpToolSet &&
-      Array.isArray(httpToolSet.toolList)
-    ) {
-      httpToolSet.toolList.forEach((tool) => {
-        if (tool.headerSecret != null) {
-          tool.headerSecret = storeSecretValue(StoreSecretValueTypeSchema.parse(tool.headerSecret));
-        }
-      });
+      httpToolSet.headerSecret = encryptHeaderSecret(httpToolSet.headerSecret);
     }
   });
 
