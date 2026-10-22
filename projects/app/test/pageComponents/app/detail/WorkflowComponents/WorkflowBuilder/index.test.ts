@@ -10,6 +10,12 @@ import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chat
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
@@ -24,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   load: vi.fn(),
   commit: vi.fn(),
   getModels: vi.fn(),
+  getToolPreview: vi.fn(),
   parseImport: vi.fn(),
   initData: vi.fn(),
   flowData2StoreData: vi.fn(),
@@ -62,6 +69,7 @@ vi.mock('@/pageComponents/dashboard/agent/utils/appTemplateParse', () => ({
   parseWorkflowImportConfig: mocks.parseImport
 }));
 vi.mock('@/web/core/ai/model/modelData', () => ({ getModelList: mocks.getModels }));
+vi.mock('@/web/core/app/api/tool', () => ({ getClientToolPreviewNode: mocks.getToolPreview }));
 vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
   useUserModelStore: { getState: () => ({ defaultModelIds: {} }) }
 }));
@@ -306,6 +314,42 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.commit).toHaveBeenCalledWith(
       expect.objectContaining({ document: archivedDocument, checksum: version.checksum })
     );
+  });
+
+  it('selects an available system secret only on the imported canvas and commits the unchanged archive', async () => {
+    const archivedDocument = structuredClone(document);
+    archivedDocument.nodes.push({
+      nodeId: 'search',
+      name: 'Search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      pluginId: 'search-tool',
+      version: '1.0.0',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      outputs: []
+    });
+    mocks.load.mockResolvedValueOnce({ document: archivedDocument, checksum: version.checksum });
+    mocks.getToolPreview.mockResolvedValue({ hasSystemSecret: true });
+
+    await act(async () => {
+      await mocks.actions!.applyVersion(version, 'response-1');
+    });
+
+    expect(canvas.nodes.find((node) => node.nodeId === 'search')?.inputs[0].value).toEqual({
+      type: SystemToolSecretInputTypeEnum.system
+    });
+    expect(mocks.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        document: archivedDocument,
+        checksum: version.checksum
+      })
+    );
+    expect(mocks.commit.mock.lastCall![0].document.nodes.at(-1).inputs[0].value).toBeUndefined();
   });
 
   it('does not restore a snapshot when preparation fails before any canvas write', async () => {

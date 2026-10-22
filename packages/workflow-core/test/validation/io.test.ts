@@ -761,22 +761,19 @@ describe('validateNodeIO', () => {
     ).toEqual([WorkflowDiagnosticCodeEnum.requiredInputMissing]);
   });
 
-  it('requires tool system configuration and accepts its configured default', () => {
+  it.each([false, true])('leaves tool activation to run/publish checks (mounted: %s)', (isTool) => {
     const node = makeNode({
       flowNodeType: FlowNodeTypeEnum.pluginModule,
       inputs: [
         makeInput({
           key: NodeInputKeyEnum.systemInputConfig,
           required: false,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
           valueType: WorkflowIOValueTypeEnum.any
         })
       ]
     });
-    expect(check(node, true).map((item) => item.code)).toEqual([
-      WorkflowDiagnosticCodeEnum.toolInputConfigurationMissing
-    ]);
-    node.inputs[0].defaultValue = 'configured';
-    expect(check(node, true)).toEqual([]);
+    expect(check(node, isTool)).toEqual([]);
   });
 
   it('checks editable code parameter names and references without a duplicate generic required issue', () => {

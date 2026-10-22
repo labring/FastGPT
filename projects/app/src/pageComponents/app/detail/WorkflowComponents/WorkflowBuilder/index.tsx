@@ -16,7 +16,7 @@ import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
-import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
+import { mergeWorkflowBuilderAppliedAppDetail, prepareWorkflowBuilderToolSecrets } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
 import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
@@ -96,7 +96,7 @@ const WorkflowBuilder = () => {
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
         const modelList = await getModelList();
         const defaultModelIds = useUserModelStore.getState().defaultModelIds;
-        const workflowConfig = await parseWorkflowImportConfig({
+        const importedWorkflowConfig = await parseWorkflowImportConfig({
           config: compileStoreWorkflow(targetDocument),
           appType:
             appDetail.type === AppTypeEnum.workflowTool
@@ -108,6 +108,10 @@ const WorkflowBuilder = () => {
           modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
+        const workflowConfig = {
+          ...importedWorkflowConfig,
+          nodes: await prepareWorkflowBuilderToolSecrets({ nodes: importedWorkflowConfig.nodes })
+        };
         // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
         previousWorkflow = getCurrentWorkflow();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');

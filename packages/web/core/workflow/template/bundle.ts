@@ -42,7 +42,11 @@ export const createWorkflowTemplateBundle = ({
     JSON.parse(
       JSON.stringify({
         schemaVersion: 'fastgpt-workflow-template-bundle/v1',
-        items: [...systemItems, ...items]
+        // 密钥是否可用属于应用画布时的运行态信息，不提供给模型或沙盒模板。
+        items: [...systemItems, ...items].map((item) => {
+          const { hasSystemSecret: _, ...template } = item.template;
+          return { ...item, template };
+        })
       })
     )
   );
