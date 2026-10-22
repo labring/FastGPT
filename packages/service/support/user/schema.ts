@@ -31,6 +31,11 @@ const UserSchema = new Schema({
     select: false
   },
   passwordUpdateTime: Date,
+  // 未激活账号需由用户本人设置新密码；旧用户缺少字段时按已激活处理。
+  isActivated: {
+    type: Boolean,
+    default: true
+  },
   createTime: {
     type: Date,
     default: () => new Date()

@@ -11,6 +11,7 @@ export type AdminUpdateUserData = {
   _id: string;
   username?: string;
   password?: string;
+  clearActivated?: boolean;
   status?: string;
 };
 

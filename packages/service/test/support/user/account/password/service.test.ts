@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   PASSWORD_CHANGE_SESSION_TTL_SECONDS,
@@ -7,7 +9,7 @@ import {
   getUserPasswordAvailability,
   isSsoPasswordDisabled,
   isSsoUserByUsername,
-  updatePasswordWithChangeSession
+  updatePassword
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
@@ -41,13 +43,35 @@ describe('password change session service', () => {
 
   it('rejects a missing, expired, mismatched, or reused session', async () => {
     await expect(
-      updatePasswordWithChangeSession({
+      updatePassword({
         sessionId: 'missing',
         userId: 'user-1',
         loginSessionId: 'login-1',
         newPassword: 'new'
       })
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
+  });
+
+  it('activates an unactivated account after setting a password with a change session', async () => {
+    const user = await MongoUser.create({
+      username: 'update-password-activation',
+      password: hashStr('old-password'),
+      isActivated: false
+    });
+    const userId = String(user._id);
+    const loginSessionId = 'login-activation';
+    const { sessionId } = await createPasswordChangeSession({ userId, loginSessionId });
+
+    await updatePassword({
+      sessionId,
+      userId,
+      loginSessionId,
+      newPassword: hashStr('new-password')
+    });
+
+    const updated = await MongoUser.findById(user._id).lean();
+    expect(updated?.isActivated).toBe(true);
+    expect(updated?.passwordUpdateTime).toBeInstanceOf(Date);
   });
 });
 

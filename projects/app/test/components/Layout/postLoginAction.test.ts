@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
+  isMandatoryPostLoginAction,
   isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
   startPostLoginAction,
@@ -13,7 +14,8 @@ import {
 const getAction = (
   completed: OneTimePostLoginAction[] = [],
   hasImportantInform = true,
-  currentAction?: PostLoginAction
+  currentAction?: PostLoginAction,
+  needsAccountActivation = false
 ) =>
   getNextPostLoginAction({
     canStartMandatory: true,
@@ -25,7 +27,8 @@ const getAction = (
     shouldShowContact: true,
     contactHandled: false,
     isPlus: true,
-    hasImportantInform
+    hasImportantInform,
+    needsAccountActivation
   });
 
 describe('post login action order', () => {
@@ -164,6 +167,37 @@ describe('post login action order', () => {
 
   it('keeps the current action ahead of newly arrived notifications', () => {
     expect(getAction([], true, 'activityAd')).toBe('activityAd');
+  });
+
+  it('prioritises the account activation over every other action', () => {
+    expect(getAction([], true, undefined, true)).toBe('accountActivation');
+    // 未激活时后面的动作只能排队，不能抢在账号激活前面弹出。
+    expect(getAction(['accountActivation'], true, undefined, true)).toBe('invitation');
+  });
+
+  it('treats the account activation as a mandatory action', () => {
+    expect(isMandatoryPostLoginAction('accountActivation')).toBe(true);
+  });
+
+  it('keeps the account activation behind the mandatory gate', () => {
+    const params = {
+      canStartMandatory: true,
+      canStartOptional: true,
+      completed: new Set<OneTimePostLoginAction>(),
+      inviteLinkId: '',
+      hasPendingMemberName: false,
+      shouldShowContact: false,
+      contactHandled: false,
+      // root 账号不在 plus 名单里，账号激活仍必须由独立状态控制。
+      isPlus: false,
+      hasImportantInform: false,
+      needsAccountActivation: true
+    };
+
+    expect(getNextPostLoginAction(params)).toBe('accountActivation');
+    // 只准入可选动作时不能展示账号激活：它属于强制动作集合，必须走强制门槛。
+    expect(getNextPostLoginAction({ ...params, canStartMandatory: false })).toBeUndefined();
+    expect(getNextPostLoginAction({ ...params, needsAccountActivation: false })).toBeUndefined();
   });
 
   it('can enqueue important notifications again after the first login flow', () => {

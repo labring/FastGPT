@@ -46,4 +46,12 @@ describe('password account API', () => {
       passwordChangeSession: 'password-change-session'
     });
   });
+
+  it('omits the change token when the login Session is the only authorization', async () => {
+    await updatePassword({ newPassword: 'Strong-password-123' });
+
+    expect(POST).toHaveBeenCalledWith('/support/user/account/password/update', {
+      newPsw: hashStr('Strong-password-123')
+    });
+  });
 });

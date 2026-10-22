@@ -1,11 +1,13 @@
 import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 const {
   mockUserFindOne,
   mockUserFind,
   mockUserCreate,
+  mockUserUpdateOne,
   mockTeamMemberFindOne,
   mockTeamMemberFind,
   mockTeamMemberCreate,
@@ -15,6 +17,7 @@ const {
   mockUserFindOne: vi.fn(),
   mockUserFind: vi.fn(),
   mockUserCreate: vi.fn(),
+  mockUserUpdateOne: vi.fn(),
   mockTeamMemberFindOne: vi.fn(),
   mockTeamMemberFind: vi.fn(),
   mockTeamMemberCreate: vi.fn(),
@@ -26,7 +29,8 @@ vi.mock('@fastgpt/service/support/user/schema', () => ({
   MongoUser: {
     findOne: mockUserFindOne,
     find: mockUserFind,
-    create: mockUserCreate
+    create: mockUserCreate,
+    updateOne: mockUserUpdateOne
   }
 }));
 
@@ -80,6 +84,7 @@ describe('system user initialization and agent user check', () => {
 
     mockUserFindOne.mockResolvedValue(null);
     mockUserCreate.mockResolvedValue([{ _id: 'root-id' }]);
+    mockUserUpdateOne.mockResolvedValue({ matchedCount: 1 });
     mockTeamMemberFindOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ teamId: 'root-team-id' })
     });
@@ -168,5 +173,51 @@ describe('system user initialization and agent user check', () => {
     expect(getAgentUserTmbIds()).toEqual(new Set(['tmb-agent-a']));
     expect(checkIsAgentUser('tmb-agent-a')).toBe(true);
     expect(mockWithLease).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks a legacy root without activation state as unactivated without changing its password', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id' });
+
+    await initSystemUser();
+
+    expect(mockUserCreate).not.toHaveBeenCalled();
+    expect(mockUserUpdateOne).toHaveBeenCalledWith(
+      { _id: 'root-id', isActivated: { $exists: false } },
+      { $set: { isActivated: false } },
+      { session: expect.anything() }
+    );
+  });
+
+  it('only marks roots without activation state as unactivated', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id', isActivated: true });
+
+    await initSystemUser();
+
+    expect(mockUserUpdateOne).toHaveBeenCalledWith(
+      { _id: 'root-id', isActivated: { $exists: false } },
+      { $set: { isActivated: false } },
+      { session: expect.anything() }
+    );
+  });
+
+  it('creates root with the fixed default password and as unactivated', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue(null);
+    mockUserCreate.mockResolvedValue([{ _id: 'root-id' }]);
+
+    await initSystemUser();
+
+    expect(mockUserCreate).toHaveBeenCalledWith(
+      [
+        {
+          username: 'root',
+          password: hashStr('123456'),
+          isActivated: false
+        }
+      ],
+      { session: expect.anything(), ordered: true }
+    );
   });
 });

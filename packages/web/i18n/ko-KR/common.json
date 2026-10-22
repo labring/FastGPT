@@ -1318,6 +1318,8 @@
   "password_wechat_load_failed": "QR 코드를 불러오지 못했습니다. 다시 시도해 주세요.",
   "password_wechat_qr": "WeChat 인증 QR 코드",
   "password_wechat_scan": "WeChat QR 코드로 로그인",
+  "account_activation_title": "계정 활성화",
+  "account_activation_description": "새 비밀번호를 설정하여 계정을 활성화하세요.",
   "update_password": "비밀번호 변경",
   "batch_manage": "일괄 관리",
   "batch_move": "일괄 이동",
