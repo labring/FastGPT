@@ -350,6 +350,13 @@ export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
 export const ReferencedAppsResponseSchema = z
   .object({
     list: z.array(ReferencedAppSchema).meta({ description: '当前用户有权限读取的引用应用' }),
+    hiddenApps: z
+      .array(
+        z.object({
+          sourceMember: SourceMemberSchema.optional().meta({ description: '应用创建者信息' })
+        })
+      )
+      .meta({ description: '当前用户无权查看的引用应用创建者' }),
     hiddenCount: IntSchema.meta({
       description: '当前用户无权限查看的引用应用数量',
       example: 0
@@ -357,7 +364,7 @@ export const ReferencedAppsResponseSchema = z
   })
   .meta({
     description: '正式应用引用列表及当前用户无权限查看的数量',
-    example: { list: [referencedAppExample], hiddenCount: 0 }
+    example: { list: [referencedAppExample], hiddenApps: [], hiddenCount: 0 }
   });
 export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 

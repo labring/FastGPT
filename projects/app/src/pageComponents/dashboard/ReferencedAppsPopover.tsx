@@ -23,7 +23,11 @@ const ReferencedAppsContent = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [data, setData] = useState<ReferencedAppsResponse>({ list: [], hiddenCount: 0 });
+  const [data, setData] = useState<ReferencedAppsResponse>({
+    list: [],
+    hiddenApps: [],
+    hiddenCount: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -38,7 +42,20 @@ const ReferencedAppsContent = ({
       .finally(() => setIsLoading(false));
   }, [loadApps, resourceId, resourceType, t, toast]);
 
-  const { list, hiddenCount } = data;
+  const { list, hiddenApps } = data;
+  const hiddenAppsByCreator = hiddenApps.reduce(
+    (groups, app) => {
+      const creatorName = app.sourceMember?.name ?? '-';
+      const group = groups.find((item) => item.creatorName === creatorName);
+      if (group) {
+        group.count += 1;
+      } else {
+        groups.push({ creatorName, count: 1 });
+      }
+      return groups;
+    },
+    [] as { creatorName: string; count: number }[]
+  );
 
   return (
     <MyBox
@@ -77,6 +94,28 @@ const ReferencedAppsContent = ({
                 </Box>
               </Flex>
             ))}
+            {hiddenAppsByCreator.map(({ creatorName, count }) => (
+              <Flex
+                key={`hidden-${creatorName}`}
+                h={'48px'}
+                align={'center'}
+                px={'12px'}
+                borderBottom={'sm'}
+              >
+                <Box
+                  flex={'1 1 0'}
+                  minW={0}
+                  fontSize={'14px'}
+                  lineHeight={'20px'}
+                  color={'myGray.900'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {t('common:related_apps_hidden', { count })}
+                </Box>
+              </Flex>
+            ))}
           </Flex>
           <Flex w={'120px'} flexShrink={0} direction={'column'}>
             {list.map((app) => (
@@ -111,20 +150,40 @@ const ReferencedAppsContent = ({
                 </Box>
               </Flex>
             ))}
+            {hiddenAppsByCreator.map(({ creatorName }) => (
+              <Flex
+                key={`hidden-owner-${creatorName}`}
+                h={'48px'}
+                align={'center'}
+                gap={'4px'}
+                px={'12px'}
+                borderBottom={'sm'}
+                overflow={'hidden'}
+              >
+                <MyIcon
+                  name={'common/lineUser'}
+                  w={'13px'}
+                  h={'14px'}
+                  color={'myGray.400'}
+                  flexShrink={0}
+                />
+                <Box
+                  flex={'1 1 0'}
+                  minW={0}
+                  fontSize={'14px'}
+                  lineHeight={'20px'}
+                  color={'myGray.500'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {creatorName}
+                </Box>
+              </Flex>
+            ))}
           </Flex>
         </Flex>
       </Box>
-      {hiddenCount > 0 && (
-        <Box
-          mt={'8px'}
-          fontSize={'12px'}
-          lineHeight={'16px'}
-          color={'myGray.500'}
-          letterSpacing={'0.4px'}
-        >
-          {t('common:related_apps_hidden', { count: hiddenCount })}
-        </Box>
-      )}
     </MyBox>
   );
 };

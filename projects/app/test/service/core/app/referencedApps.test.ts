@@ -71,6 +71,11 @@ describe('formatReadableReferencedApps', () => {
 
     expect(result).toEqual({
       list: [],
+      hiddenApps: [
+        { sourceMember: undefined },
+        { sourceMember: undefined },
+        { sourceMember: undefined }
+      ],
       hiddenCount: 3
     });
   });
