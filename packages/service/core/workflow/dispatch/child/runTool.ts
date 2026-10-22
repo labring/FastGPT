@@ -122,6 +122,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     return mcpClient;
   };
 
+  const formatToolResult = <T>(result: T): RunToolResponse => ({
+    data: { [NodeOutputKeyEnum.rawResponse]: result },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      toolInput,
+      toolRes: result,
+      moduleLogo: avatar
+    },
+    [DispatchNodeResponseKeyEnum.toolResponse]: result
+  });
+
   const callHttpTool = async ({
     tool,
     baseUrl,
@@ -371,15 +381,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         toolInput = params;
         assertToolRuntimeParams({ jsonSchema: referencedTool.inputSchema, params });
         const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
-        return {
-          data: { [NodeOutputKeyEnum.rawResponse]: result },
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            toolInput,
-            toolRes: result,
-            moduleLogo: avatar
-          },
-          [DispatchNodeResponseKeyEnum.toolResponse]: result
-        };
+        return formatToolResult(result);
       }
 
       const { name: toolName, url, headerSecret, inputSchema } = mcpTool;
@@ -390,15 +392,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = params;
       assertToolRuntimeParams({ jsonSchema: inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
-      return {
-        data: { [NodeOutputKeyEnum.rawResponse]: result },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolInput,
-          toolRes: result,
-          moduleLogo: avatar
-        },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
-      };
+      return formatToolResult(result);
     } else if (toolConfig?.httpTool) {
       const httpToolConfig = toolConfig.httpTool;
       if ('toolId' in httpToolConfig) {
@@ -460,17 +454,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
       const result = await mcpClient.toolCall({ toolName, params: restParams });
 
-      return {
-        data: {
-          [NodeOutputKeyEnum.rawResponse]: result
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolInput,
-          toolRes: result,
-          moduleLogo: avatar
-        },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
-      };
+      return formatToolResult(result);
     }
   } catch (error) {
     if (isWorkflowResourceError(error)) throw error;

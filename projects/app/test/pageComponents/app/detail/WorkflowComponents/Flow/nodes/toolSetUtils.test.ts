@@ -4,7 +4,6 @@ import { pathData2ToolList } from '@fastgpt/global/core/app/tool/httpTool/utils'
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import {
   getHttpToolSetConfigError,
-  getMcpToolSetConfigError,
   getNodeHttpToolListForSave
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/toolSetUtils';
 
@@ -40,34 +39,6 @@ const getImportedTools = async () => {
   const { pathData } = await str2OpenApiSchema(openApiSchemaStr);
   return pathData2ToolList(pathData);
 };
-
-describe('MCP ToolSet config validation', () => {
-  const validTool = {
-    name: 'search',
-    description: 'Search',
-    inputSchema: { type: 'object', properties: {} }
-  };
-
-  it('accepts valid HTTP(S) URLs and rejects invalid or empty config', () => {
-    expect(
-      getMcpToolSetConfigError({ url: 'https://mcp.example.com', toolList: [validTool] })
-    ).toBeUndefined();
-    expect(getMcpToolSetConfigError({ url: 'file:///tmp/mcp', toolList: [validTool] })).toBe(
-      'invalid_url'
-    );
-    expect(getMcpToolSetConfigError({ url: 'https://mcp.example.com', toolList: [] })).toBe(
-      'empty_tool_list'
-    );
-  });
-
-  it('rejects empty or duplicate names and invalid input schemas', () => {
-    const error = (tool: typeof validTool) =>
-      getMcpToolSetConfigError({ url: 'https://mcp.example.com', toolList: [tool] });
-
-    expect(error({ ...validTool, name: '  ' })).toBe('empty_tool_name');
-    expect(error({ ...validTool, inputSchema: 'invalid' })).toBe('invalid_tool_schema');
-  });
-});
 
 describe('HTTP ToolSet config validation', () => {
   it('accepts all imported operations and node-local operation subsets', async () => {

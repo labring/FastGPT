@@ -435,8 +435,14 @@ export const rewriteRuntimeWorkFlow = async ({
   };
 
   /** 历史外部 ToolSet 可能缺少嵌套 ID，运行时回退到父节点 pluginId。 */
-  const getToolSetReferenceId = (toolSet: { toolId?: string } | undefined, pluginId: string) =>
-    toolSet?.toolId || pluginId;
+  const getToolSetReferenceId = (toolSet: unknown, pluginId: string) =>
+    typeof toolSet === 'object' &&
+    toolSet !== null &&
+    'toolId' in toolSet &&
+    typeof toolSet.toolId === 'string' &&
+    toolSet.toolId
+      ? toolSet.toolId
+      : pluginId;
 
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;

@@ -37,6 +37,21 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const localHttpToolSet =
     !data.pluginId && httpToolSet && !('toolId' in httpToolSet) ? httpToolSet : undefined;
   const toolDetail = toolDetailIndex === null ? undefined : toolList[toolDetailIndex];
+  const updateToolConfig = useCallback(
+    (toolConfig: FlowNodeItemType['toolConfig']) => {
+      if (!toolConfig) return;
+      onChangeNode({
+        nodeId: data.nodeId,
+        type: 'attr',
+        key: 'toolConfig',
+        value: {
+          ...data.toolConfig,
+          ...toolConfig
+        }
+      });
+    },
+    [data.nodeId, data.toolConfig, onChangeNode]
+  );
   const onSaveDescription = useCallback(
     (index: number, description: string) => {
       const toolSetKey = (['mcpToolSet', 'httpToolSet', 'systemToolSet'] as const).find(
@@ -47,91 +62,57 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       const toolSet = data.toolConfig[toolSetKey];
       if (!toolSet) return;
 
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          [toolSetKey]: {
-            ...toolSet,
-            toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
-              toolIndex === index ? { ...tool, description } : tool
-            )
-          }
+      updateToolConfig({
+        [toolSetKey]: {
+          ...toolSet,
+          toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
+            toolIndex === index ? { ...tool, description } : tool
+          )
         }
       });
     },
-    [data.nodeId, data.toolConfig, onChangeNode]
+    [data.toolConfig, updateToolConfig]
   );
   const onParseMcpTools = useCallback(
     (config: McpToolSetRuntimeConfigType) => {
       if (!localMcpToolSet || !data.toolConfig) return;
 
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          mcpToolSet: config
-        }
-      });
+      updateToolConfig({ mcpToolSet: config });
     },
-    [data.nodeId, data.toolConfig, localMcpToolSet, onChangeNode]
+    [data.toolConfig, localMcpToolSet, updateToolConfig]
   );
   const onSaveHttpToolList = useCallback(
     (nextToolList: HttpToolConfigType[]) => {
       if (!localHttpToolSet || !data.toolConfig) return;
 
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          httpToolSet: {
-            ...localHttpToolSet,
-            toolList: nextToolList.map(({ headerSecret: _headerSecret, ...tool }) => tool)
-          }
+      updateToolConfig({
+        httpToolSet: {
+          ...localHttpToolSet,
+          toolList: nextToolList.map(({ headerSecret: _headerSecret, ...tool }) => tool)
         }
       });
     },
-    [data.nodeId, data.toolConfig, localHttpToolSet, onChangeNode]
+    [data.toolConfig, localHttpToolSet, updateToolConfig]
   );
   const onSaveMcpToolList = useCallback(
     (nextToolList: McpToolConfigType[]) => {
       if (!localMcpToolSet || !data.toolConfig) return;
 
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          mcpToolSet: {
-            ...localMcpToolSet,
-            toolList: nextToolList
-          }
+      updateToolConfig({
+        mcpToolSet: {
+          ...localMcpToolSet,
+          toolList: nextToolList
         }
       });
     },
-    [data.nodeId, data.toolConfig, localMcpToolSet, onChangeNode]
+    [data.toolConfig, localMcpToolSet, updateToolConfig]
   );
   const onSaveHttpToolSet = useCallback(
     (config: HttpToolSetRuntimeConfigType) => {
-      onChangeNode({
-        nodeId: data.nodeId,
-        type: 'attr',
-        key: 'toolConfig',
-        value: {
-          ...data.toolConfig,
-          httpToolSet: config
-        }
-      });
+      updateToolConfig({ httpToolSet: config });
       setIsConfigOpen(false);
     },
-    [data.nodeId, data.toolConfig, onChangeNode]
+    [data.toolConfig, updateToolConfig]
   );
 
   const title = useMemo(

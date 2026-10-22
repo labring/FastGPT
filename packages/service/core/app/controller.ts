@@ -7,7 +7,8 @@ import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { formatToolInputSecrets } from './tool/secretConfig';
-import { storeSecretValue } from '../../common/secret/utils';
+import { encryptSecretValue } from '../../common/secret/utils';
+import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -40,6 +41,12 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
+
+/** 仅加密明文工具集请求头，避免保存链路重复调用时二次加密。 */
+const storeToolSetSecret = <T extends Record<string, SecretValueType>>(secret: T): T =>
+  Object.fromEntries(
+    Object.entries(secret).map(([key, value]) => [key, encryptSecretValue(value)])
+  ) as T;
 
 /**
  * 在更新应用前，对工作流节点数据进行格式化和安全处理。
@@ -77,15 +84,15 @@ export const beforeUpdateAppFormat = async ({
   nodes.forEach((node) => {
     const mcpToolSet = node.toolConfig?.mcpToolSet;
     if (mcpToolSet && 'url' in mcpToolSet && mcpToolSet.headerSecret != null) {
-      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
+      mcpToolSet.headerSecret = storeToolSetSecret(mcpToolSet.headerSecret);
     }
     const httpToolSet = node.toolConfig?.httpToolSet;
     if (httpToolSet && 'baseUrl' in httpToolSet) {
       if (httpToolSet.headerSecret != null) {
-        httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
+        httpToolSet.headerSecret = storeToolSetSecret(httpToolSet.headerSecret);
       }
       httpToolSet.toolList.forEach((tool) => {
-        if (tool.headerSecret != null) tool.headerSecret = storeSecretValue(tool.headerSecret);
+        if (tool.headerSecret != null) tool.headerSecret = storeToolSetSecret(tool.headerSecret);
       });
     }
 
