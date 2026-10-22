@@ -10,6 +10,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@/web/core/app/api/tool', () => ({ getNewToolPreviewNode: vi.fn() }));
 
@@ -72,15 +73,41 @@ describe('loadGeneratedTools', () => {
   it.each([undefined, 'system'])(
     'preserves existing system configuration when the saved source is %s',
     async (source) => {
-      const tool = createTool(source);
+      const tool = {
+        ...createTool(source),
+        version: 'saved-version',
+        inputs: [
+          {
+            key: 'apiKey',
+            label: '',
+            renderTypeList: [],
+            value: 'saved-api-key'
+          }
+        ]
+      };
       const result = await loadGeneratedTools({
         newToolIds: [{ id: toolId, source: 'system' }],
         existsTools: [tool]
       });
 
-      expect(result).toEqual([tool]);
-      expect(result[0]).toBe(tool);
+      expect(result).toEqual([{ ...tool, source: 'system' }]);
+      expect(result[0].inputs).toBe(tool.inputs);
+      expect(tool.source).toBe(source);
       expect(getNewToolPreviewNode).not.toHaveBeenCalled();
+
+      const form = getDefaultAppForm();
+      form.selectedTools = result;
+      const savedTools = agentForm2AppWorkflow(form, (key: string) => key)
+        .nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
+        ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+      expect(savedTools).toEqual([
+        expect.objectContaining({
+          id: toolId,
+          source: 'system',
+          version: 'saved-version',
+          config: { apiKey: 'saved-api-key' }
+        })
+      ]);
     }
   );
 });
@@ -259,7 +286,9 @@ describe('agentForm2AppWorkflow model reference', () => {
     const form = getDefaultAppForm();
     form.dataset.collectionFilterMatch = {
       logic: 'AND',
-      conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
+      conditions: [
+        { tag: 'price', tagType: DatasetCollectionTagTypeEnum.number, op: '$gte', value: 10 }
+      ]
     };
     const workflow = agentForm2AppWorkflow(form, (key: string) => key);
     const datasetParams = workflow.nodes

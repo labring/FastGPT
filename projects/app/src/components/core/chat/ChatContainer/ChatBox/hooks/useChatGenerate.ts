@@ -93,6 +93,7 @@ type QueuedGeneratingMessage = generatingMessageProps & {
 
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
+  onGeneratingMessage?: (message: generatingMessageProps) => void;
   isRoundPending: boolean;
   chatControllerRef: MutableRefObject<AbortController>;
   questionGuideControllerRef: MutableRefObject<AbortController>;
@@ -134,12 +135,14 @@ const isAbortByLeave = (reason: unknown) => {
  *
  * 边界行为：
  * - `generatingMessage` 仍只更新最后一条 AI 消息；如果最后一条不是 AI，则直接跳过。
+ * - 普通生成和恢复流都先通知业务事件回调，避免恢复时遗漏表单配置等聊天内容以外的事件。
  * - Ask/Preview 回复会新建 user/AI 轮次并回写旧交互状态；表单等 submit 交互继续使用原 AI。
  * - 发送失败且后端没有返回 `responseText` 时恢复用户输入，并回滚本轮 human/AI placeholder。
  * - `abortRequest('leave')` 后无论流正常返回或抛错，都保留服务端生成状态，不更新当前会话。
  */
 export const useChatGenerate = ({
   onStartChat,
+  onGeneratingMessage,
   isRoundPending,
   chatControllerRef,
   questionGuideControllerRef,
@@ -597,6 +600,8 @@ export const useChatGenerate = ({
 
   const generatingMessage = useMemoizedFn(
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
+      onGeneratingMessage?.(message);
+
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>
           state.sourceKey === sourceKey && state.chatId === chatId

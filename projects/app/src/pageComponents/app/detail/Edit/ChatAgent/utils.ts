@@ -457,6 +457,10 @@ export const loadGeneratedTools = async ({
           (tool) => getToolIdentityKey(tool.pluginId, tool.source) === identityKey
         );
         if (existTool) {
+          // 新提示词使用带来源的引用；复用旧配置时也要补齐来源，才能与运行时引用一致。
+          if (source === 'system' && !existTool.source) {
+            return { ...existTool, source };
+          }
           return existTool;
         }
 
