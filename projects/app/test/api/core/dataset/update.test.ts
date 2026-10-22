@@ -7,9 +7,11 @@ import {
 import type { UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import {
+  ManageRoleVal,
   OwnerRoleVal,
   PerResourceTypeEnum,
-  ReadRoleVal
+  ReadRoleVal,
+  WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -667,5 +669,43 @@ describe('update dataset', () => {
     const afterJob = await MongoDatasetTraining.findById(trainingJob._id).lean();
     expect(afterJob?.retryCount).toBe(1);
     expect(afterJob?.lockTime.toISOString()).toBe(fixedLockTime.toISOString());
+  });
+
+  it('write 协作者不能更新知识库信息，manage 可以', async () => {
+    const { owner, members } = await getFakeUsers(2);
+    const [writeMember, manageMember] = members;
+    const teamId = String(owner.teamId);
+    const dataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'update-permission-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    await setDatasetCollaborators({
+      datasetId: String(dataset._id),
+      teamId,
+      type: dataset.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(writeMember.tmbId), permission: WriteRoleVal },
+        { tmbId: String(manageMember.tmbId), permission: ManageRoleVal }
+      ]
+    });
+
+    const denied = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: writeMember,
+      body: { id: String(dataset._id), name: 'renamed-by-write' }
+    });
+    expect(denied.code).not.toBe(200);
+    expect((await MongoDataset.findById(dataset._id).lean())?.name).toBe(
+      'update-permission-dataset'
+    );
+
+    const allowed = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: manageMember,
+      body: { id: String(dataset._id), name: 'renamed-by-manage' }
+    });
+    expect(allowed.code).toBe(200);
+    expect((await MongoDataset.findById(dataset._id).lean())?.name).toBe('renamed-by-manage');
   });
 });
