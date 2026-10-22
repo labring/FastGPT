@@ -26,6 +26,7 @@ import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
+import { profileStage } from '../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -268,38 +269,40 @@ export class MCPClient {
     await this.client.close().catch(() => {});
 
     logger.debug('Start connect mcp client', { url: this.url });
-    try {
-      const transport = new StreamableHTTPClientTransport(new URL(this.url), {
-        fetch: safeFetch,
-        requestInit: {
-          headers: this.headers
-        }
-      });
-      await this.client.connect(transport);
-    } catch (streamableError: any) {
-      if (!shouldFallbackToSSE(streamableError)) {
-        logger.info('Streamable HTTP error', streamableError);
-        throw streamableError;
-      }
-
+    await profileStage('mcpClient.connect', async () => {
       try {
-        await this.client.connect(
-          new SSEClientTransport(new URL(this.url), {
-            fetch: safeFetch,
-            requestInit: {
-              headers: this.headers
-            }
-          })
-        );
-      } catch (sseError: any) {
-        logger.info('SSE error', sseError);
-        throw new Error(
-          `MCP connection failed. Streamable HTTP: ${getErrorMessage(
-            streamableError
-          )}; SSE: ${getErrorMessage(sseError)}`
-        );
+        const transport = new StreamableHTTPClientTransport(new URL(this.url), {
+          fetch: safeFetch,
+          requestInit: {
+            headers: this.headers
+          }
+        });
+        await this.client.connect(transport);
+      } catch (streamableError: any) {
+        if (!shouldFallbackToSSE(streamableError)) {
+          logger.info('Streamable HTTP error', streamableError);
+          throw streamableError;
+        }
+
+        try {
+          await this.client.connect(
+            new SSEClientTransport(new URL(this.url), {
+              fetch: safeFetch,
+              requestInit: {
+                headers: this.headers
+              }
+            })
+          );
+        } catch (sseError: any) {
+          logger.info('SSE error', sseError);
+          throw new Error(
+            `MCP connection failed. Streamable HTTP: ${getErrorMessage(
+              streamableError
+            )}; SSE: ${getErrorMessage(sseError)}`
+          );
+        }
       }
-    }
+    });
 
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
@@ -405,15 +408,17 @@ export class MCPClient {
       const client = await this.getConnection();
       logger.debug('MCP client calling tool', { url: this.url, toolName, params });
 
-      return await client.callTool(
-        {
-          name: toolName,
-          arguments: params
-        },
-        undefined,
-        {
-          timeout: 300000
-        }
+      return await profileStage('mcpClient.call', () =>
+        client.callTool(
+          {
+            name: toolName,
+            arguments: params
+          },
+          undefined,
+          {
+            timeout: 300000
+          }
+        )
       );
     } catch (error) {
       logger.error('MCP client tool call failed', { url: this.url, toolName, error });

@@ -88,6 +88,7 @@ import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import type { WorkflowResourceContext } from '../utils/resource';
+import { profileStage } from '../../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -159,7 +160,7 @@ export async function dispatchWorkFlow({
 
   /* Init function */
   // Check point
-  await checkTeamAIPoints(runningUserInfo.teamId);
+  await profileStage('wf.points.check', () => checkTeamAIPoints(runningUserInfo.teamId));
 
   const {
     fileContext,
@@ -167,18 +168,20 @@ export async function dispatchWorkFlow({
     getPreviewUrl,
     query: runtimeQuery,
     histories: preparedHistories
-  } = await prepareWorkflowFileContext({
-    query,
-    histories,
-    scope: {
-      sourceType: runningAppInfo.sourceType,
-      sourceId: runningAppInfo.sourceId,
-      uid: data.uid,
-      chatId
-    },
-    maxFileAmount: data.maxFileAmount,
-    maxBytesPerFile: data.maxBytesPerFile
-  });
+  } = await profileStage('wf.file.context', () =>
+    prepareWorkflowFileContext({
+      query,
+      histories,
+      scope: {
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
+        uid: data.uid,
+        chatId
+      },
+      maxFileAmount: data.maxFileAmount,
+      maxBytesPerFile: data.maxBytesPerFile
+    })
+  );
   const getHistoryPreviewUrl = async (key: string) => {
     try {
       return await getPreviewUrl(key);
@@ -188,66 +191,72 @@ export async function dispatchWorkFlow({
     }
   };
 
-  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
-    (() => {
-      if (lastInteractive?.usageId) {
-        return lastInteractive.usageId;
-      }
-      if (usageSource) {
-        return createChatUsageRecord({
-          appName: runningAppInfo.name,
-          appId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.app
-              ? runningAppInfo.sourceId
-              : undefined,
-          skillId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
-              ? runningAppInfo.sourceId
-              : undefined,
-          teamId: runningUserInfo.teamId,
-          tmbId: runningUserInfo.tmbId,
-          source: usageSource
-        });
-      }
-      return usageId;
-    })(),
-    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
-    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
-    // Remove stopping sign
-    delAgentRuntimeStopSign({
-      ...chatSource,
-      chatId
-    })
-  ]);
+  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await profileStage(
+    'wf.init',
+    () =>
+      Promise.all([
+        getUserChatInfo(runningUserInfo.tmbId),
+        (() => {
+          if (lastInteractive?.usageId) {
+            return lastInteractive.usageId;
+          }
+          if (usageSource) {
+            return createChatUsageRecord({
+              appName: runningAppInfo.name,
+              appId:
+                runningAppInfo.sourceType === ChatSourceTypeEnum.app
+                  ? runningAppInfo.sourceId
+                  : undefined,
+              skillId:
+                runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
+                  ? runningAppInfo.sourceId
+                  : undefined,
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId,
+              source: usageSource
+            });
+          }
+          return usageId;
+        })(),
+        // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+        addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
+        // Remove stopping sign
+        delAgentRuntimeStopSign({
+          ...chatSource,
+          chatId
+        })
+      ])
+  );
 
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
-  const variableState = await WorkflowVariableState.create({
-    timezone,
-    runningAppInfo,
-    uid: data.uid,
-    chatId,
-    responseChatItemId,
-    histories: runtimeHistories,
-    variablesConfig: data.chatConfig?.variables,
-    inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables,
-    runtimeOnlyVariables: getEntryPointRuntimeVariables({
-      entryPoints: data.chatConfig?.entryPoints,
-      inputVariables: data.variables
-    }),
-    maxFileAmount: data.maxFileAmount,
-    resolveInputFile: async (file) => {
-      const ref = await fileRegistrar.registerInputFile({
-        file,
-        source: 'variable'
-      });
-      if (!ref) throw new UserError('Invalid workflow variable file');
-      return ref.modelUrl;
-    }
-  });
+  const variableState = await profileStage('wf.variable.state', () =>
+    WorkflowVariableState.create({
+      timezone,
+      runningAppInfo,
+      uid: data.uid,
+      chatId,
+      responseChatItemId,
+      histories: runtimeHistories,
+      variablesConfig: data.chatConfig?.variables,
+      inputVariables: data.variables,
+      externalVariables: externalProvider.externalWorkflowVariables,
+      runtimeOnlyVariables: getEntryPointRuntimeVariables({
+        entryPoints: data.chatConfig?.entryPoints,
+        inputVariables: data.variables
+      }),
+      maxFileAmount: data.maxFileAmount,
+      resolveInputFile: async (file) => {
+        const ref = await fileRegistrar.registerInputFile({
+          file,
+          source: 'variable'
+        });
+        if (!ref) throw new UserError('Invalid workflow variable file');
+        return ref.modelUrl;
+      }
+    })
+  );
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
@@ -275,18 +284,20 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
-  const nodeResponseSink = await createWorkflowEntryNodeResponseSink({
-    teamId: data.runningAppInfo.teamId,
-    sourceType: data.runningAppInfo.sourceType,
-    sourceId: data.runningAppInfo.sourceId,
-    chatId,
-    chatItemDataId: responseChatItemId,
-    nodeResponseWriteConfig: data.nodeResponseWriteConfig,
-    apiVersion: data.apiVersion,
-    responseAllData: data.responseAllData,
-    responseDetail: data.responseDetail,
-    workflowStreamResponse: data.workflowStreamResponse
-  });
+  const nodeResponseSink = await profileStage('wf.sink.create', () =>
+    createWorkflowEntryNodeResponseSink({
+      teamId: data.runningAppInfo.teamId,
+      sourceType: data.runningAppInfo.sourceType,
+      sourceId: data.runningAppInfo.sourceId,
+      chatId,
+      chatItemDataId: responseChatItemId,
+      nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+      apiVersion: data.apiVersion,
+      responseAllData: data.responseAllData,
+      responseDetail: data.responseDetail,
+      workflowStreamResponse: data.workflowStreamResponse
+    })
+  );
 
   // Init some props
   return new Promise((resolve, reject) => {

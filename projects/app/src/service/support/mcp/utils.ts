@@ -50,6 +50,11 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import {
+  profileStage,
+  setProfileMeta,
+  withRequestProfile
+} from '@fastgpt/service/common/profiling';
 
 const assertMcpTeamUsable = async (mcp: { teamId?: string; tmbId?: string }) => {
   if (!mcp.teamId || !mcp.tmbId) return;
@@ -148,26 +153,37 @@ export const workflow2InputSchema = (chatConfig?: {
  * MCP key 在创建或更新绑定应用时已经完成权限校验；运行时按 key 中保存的应用快照提供工具，
  * 不再因为创建人的应用权限后续变化而隐藏工具，避免已发布集成被普通权限调整意外中断。
  */
-export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean();
+export const getMcpServerTools = (key: string): Promise<Tool[]> =>
+  withRequestProfile({ kind: 'tools/list' }, () => buildMcpServerTools(key));
+
+const buildMcpServerTools = async (key: string): Promise<Tool[]> => {
+  const mcp = await profileStage('mcpKey.read', () =>
+    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean()
+  );
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
-  await assertMcpTeamUsable(mcp);
+
+  setProfileMeta({ appCount: mcp.apps.length });
+  await profileStage('team.check', () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await MongoApp.find(
-    {
-      _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-      }
-    },
-    { name: 1, intro: 1, publishedVersionId: 1 }
-  ).lean();
+  const appList = await profileStage('app.list', () =>
+    MongoApp.find(
+      {
+        _id: { $in: mcp.apps.map((app) => app.appId) },
+        type: {
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+        }
+      },
+      { name: 1, intro: 1, publishedVersionId: 1 }
+    ).lean()
+  );
 
   // Get latest version
-  const versionList = await Promise.all(appList.map((app) => getAppLatestVersion(app._id, app)));
+  const versionList = await profileStage('app.versions', () =>
+    Promise.all(appList.map((app) => getAppLatestVersion(app._id, app)))
+  );
 
   // Compute mcp tools
   const tools = versionList.map<Tool>((version, index) => {
@@ -196,7 +212,12 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
  * 发布 key 用于定位绑定关系；每次执行都按发布者或 authProxy 代理成员重新校验应用读权限，
  * 并将对话与运行用户上下文归属到该有效成员。
  */
-export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
+export const callMcpServerTool = (props: toolCallProps) =>
+  withRequestProfile({ kind: 'tools/call', toolName: props.toolName }, () =>
+    callMcpServerToolInner(props)
+  );
+
+const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
   const dispatchApp = async (
     app: AppSchemaType,
     variables: Record<string, any>,
@@ -206,10 +227,16 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
     // Get app latest version
-    const { versionId, nodes, edges, chatConfig, resources } = await getAppLatestVersion(
-      app._id,
-      app
+    const { versionId, nodes, edges, chatConfig, resources } = await profileStage(
+      'app.version',
+      () => getAppLatestVersion(app._id, app)
     );
+
+    setProfileMeta({
+      appId: String(app._id),
+      isPlugin,
+      nodeCount: nodes.length
+    });
 
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
@@ -258,67 +285,81 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
       query: workflowQuery,
       maxFileAmount,
       maxBytesPerFile
-    } = await prepareWorkflowFileQuery({
-      teamId: String(app.teamId),
-      chatConfig,
-      query: userQuestion.value
-    });
+    } = await profileStage('file.limit', () =>
+      prepareWorkflowFileQuery({
+        teamId: String(app.teamId),
+        chatConfig,
+        query: userQuestion.value
+      })
+    );
     const workflowUserQuestion: UserChatItemType = {
       ...userQuestion,
       value: workflowQuery
     };
-    const preparedRound = await preChatRound({
-      ...chatSource,
-      chatId,
-      teamId: String(app.teamId),
-      tmbId: effectiveTmbId,
-      source: ChatSourceEnum.mcp,
-      userContent: workflowUserQuestion,
-      responseChatItemId,
-      fixedTitle: pluginFixedTitle
-    });
+    const preparedRound = await profileStage('chat.prepare', () =>
+      preChatRound({
+        ...chatSource,
+        chatId,
+        teamId: String(app.teamId),
+        tmbId: effectiveTmbId,
+        source: ChatSourceEnum.mcp,
+        userContent: workflowUserQuestion,
+        responseChatItemId,
+        fixedTitle: pluginFixedTitle
+      })
+    );
     let chatRoundFinalized = false;
 
     try {
+      // 保持在 dispatchWorkFlow 参数求值时的原始顺序：先读运行成员，再构建资源快照。
+      const runningUserInfo = await profileStage('runningUser.read', () =>
+        getRunningUserInfoByTmbId(effectiveTmbId)
+      );
+      const resourceContext = await profileStage('resource.context', () =>
+        loadWorkflowResourceContext({
+          resources,
+          teamId: app.teamId
+        })
+      );
+
       const {
         assistantResponses,
         newVariables,
         durationSeconds,
         system_memories,
         workflowRuntimeSummary
-      } = await dispatchWorkFlow({
-        chatId: preparedRound.chatId,
-        mode: 'chat',
-        usageSource: UsageSourceEnum.mcp,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: String(app._id),
-          name: app.name,
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(effectiveTmbId),
-        uid: effectiveTmbId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        resourceContext: await loadWorkflowResourceContext({
-          resources,
-          teamId: app.teamId
-        }),
-        variables,
-        responseChatItemId: preparedRound.responseChatItemId,
-        query: removeEmptyUserInput(workflowQuery),
-        maxFileAmount,
-        maxBytesPerFile,
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        nodeResponseWriteConfig: {
-          persistToDb: true,
-          retainInMemory: false
-        }
-      });
+      } = await profileStage('workflow.dispatch', () =>
+        dispatchWorkFlow({
+          chatId: preparedRound.chatId,
+          mode: 'chat',
+          usageSource: UsageSourceEnum.mcp,
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(app._id),
+            name: app.name,
+            teamId: String(app.teamId),
+            tmbId: String(app.tmbId)
+          },
+          runningUserInfo,
+          uid: effectiveTmbId,
+          runtimeNodes,
+          runtimeEdges: storeEdges2RuntimeEdges(edges),
+          resourceContext,
+          variables,
+          responseChatItemId: preparedRound.responseChatItemId,
+          query: removeEmptyUserInput(workflowQuery),
+          maxFileAmount,
+          maxBytesPerFile,
+          chatConfig,
+          histories: [],
+          stream: false,
+          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+          nodeResponseWriteConfig: {
+            persistToDb: true,
+            retainInMemory: false
+          }
+        })
+      );
 
       // Save chat
       const aiResponse: AIChatItemType & { dataId?: string } = {
@@ -342,7 +383,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         durationSeconds,
         workflowRuntimeSummary
       };
-      await finalizeChatRound(saveParams);
+      await profileStage('chat.finalize', () => finalizeChatRound(saveParams));
       chatRoundFinalized = true;
 
       // Get MCP response type
@@ -375,23 +416,26 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     }
   };
 
-  const mcp = await MongoMcpKey.findOne(
-    { key },
-    { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }
-  ).lean();
+  const mcp = await profileStage('mcpKey.read', () =>
+    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }).lean()
+  );
 
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
-  await assertMcpTeamUsable(mcp);
+
+  setProfileMeta({ appCount: mcp.apps.length });
+  await profileStage('team.check', () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await MongoApp.find({
-    _id: { $in: mcp.apps.map((app) => app.appId) },
-    type: {
-      $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-    }
-  }).lean();
+  const appList = await profileStage('app.list', () =>
+    MongoApp.find({
+      _id: { $in: mcp.apps.map((app) => app.appId) },
+      type: {
+        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+      }
+    }).lean()
+  );
 
   const app = appList.find((app) => {
     const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
@@ -403,12 +447,16 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const effectiveTmbId = await resolveMcpEffectiveTmbId({ mcp, authProxy });
-  await authAppByTmbId({
-    tmbId: effectiveTmbId,
-    appId: String(app._id),
-    per: ReadPermissionVal
-  });
+  const effectiveTmbId = await profileStage('identity.resolve', () =>
+    resolveMcpEffectiveTmbId({ mcp, authProxy })
+  );
+  await profileStage('app.auth', () =>
+    authAppByTmbId({
+      tmbId: effectiveTmbId,
+      appId: String(app._id),
+      per: ReadPermissionVal
+    })
+  );
 
   return await dispatchApp(app, inputs, effectiveTmbId);
 };

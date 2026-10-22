@@ -1,5 +1,6 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { getLogger, LogCategories } from '../logger';
+import { isProfiling, recordMongoOperation } from '../profiling';
 import type {
   AnyBulkWriteOperation,
   ClientSession,
@@ -94,6 +95,14 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
           logger.warn('MongoDB slow query (>2s)', getLogData());
         } else if (duration > 500) {
           logger.warn('MongoDB slow query (>500ms)', getLogData());
+        }
+
+        // 只有 MCP 分段采集开启且当前请求处于采集上下文时才统计，避免影响普通请求。
+        if (isProfiling()) {
+          recordMongoOperation({
+            collectionName: this.model?.collection?.name || this._model?.collection?.name,
+            durationMs: duration
+          });
         }
       }
       next();

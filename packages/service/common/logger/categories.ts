@@ -144,7 +144,8 @@ export const LogCategories = {
     MCP: Object.assign(['mcp'], {
       APP: ['mcp', 'app'],
       CLIENT: ['mcp', 'client'],
-      SERVER: ['mcp', 'server']
+      SERVER: ['mcp', 'server'],
+      PROFILE: ['mcp', 'profile']
     }),
     OPENAPI: Object.assign(['openapi'], {
       TOOLS: ['openapi', 'tools']
