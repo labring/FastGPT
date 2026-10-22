@@ -111,6 +111,38 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     expect(rows.map((row) => row.indexname)).toContain('team_dataset_collection_index');
   });
 
+  it('keeps legacy global indexes and queries existing data before the local index is ready', async () => {
+    const pool = await connectPg();
+    await pool.query(
+      `CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw
+       (vector ${storage === 'halfvec' ? 'halfvec_ip_ops' : 'vector_ip_ops'})
+       WITH (m = 32, ef_construction = 128)`
+    );
+    await ctrl.init();
+    const { rows } = await pool.query("SELECT to_regclass('vector_index') IS NOT NULL AS exists");
+    expect(rows[0].exists).toBe(true);
+
+    for (const pgIndex of [undefined, 'pending', 'building', 'failed'] as const) {
+      const props = {
+        teamId,
+        datasetIds: [datasetId, ...smallIds],
+        vector,
+        limit: 3,
+        forbidCollectionIdList: ['hidden'],
+        datasetVectorData: pgIndex ? [{ datasetId, rows: 30004, pgIndex }] : undefined
+      };
+      const query = buildPgVectorRecallQuery(props)!;
+      expect(query.usesHnsw).toBe(false);
+      const plan = await pool.query(`EXPLAIN (FORMAT JSON) ${query.text}`, query.values);
+      expect(JSON.stringify(plan.rows)).not.toContain('vector_index');
+      const result = await ctrl.embRecall(props);
+      expect(result.results.map(({ score }) => score)).toEqual(
+        [topScores[3], topScores[2], topScores[1]].map(Math.fround)
+      );
+      expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
+    }
+  }, 240000);
+
   it('creates a valid FP16 partial index and skips a second build', async () => {
     expect(await ensurePgDatasetIndex({ teamId, datasetId, ...callbacks })).toEqual({
       pgIndex: 'ready',
@@ -150,6 +182,46 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     await expect(ctrl.embRecall({ ...props, filterCollectionIdList: ['hidden'] })).resolves.toEqual(
       { results: [] }
     );
+  });
+
+  it('inserts, refreshes, counts and deletes vectors with legacy and local indexes present', async () => {
+    const scope = { teamId, datasetId };
+    const count = await ctrl.getVectorCount(scope);
+    const { insertIds } = await ctrl.insert({
+      ...scope,
+      collectionId: 'allowed',
+      vectors: [[3, ...vector.slice(1)]]
+    });
+    try {
+      expect(await ctrl.getVectorCount(scope)).toBe(count + 1);
+      const props = {
+        ...scope,
+        datasetIds: [datasetId],
+        vector,
+        limit: 3,
+        forbidCollectionIdList: ['hidden'],
+        datasetVectorData: [{ datasetId, rows: count + 1, pgIndex: 'ready' as const }]
+      };
+      const indexed = await ctrl.embRecall(props);
+      expect(indexed.results[0]).toEqual({ id: insertIds[0], collectionId: 'allowed', score: 3 });
+      expect(indexed.results).toEqual(
+        (await ctrl.embRecall({ ...props, datasetVectorData: [] })).results
+      );
+      await (
+        await connectPg()
+      ).query("UPDATE modeldata SET createtime = '2000-01-01' WHERE id = $1", [insertIds[0]]);
+      await ctrl.refreshCreateTime({ teamId, idList: insertIds });
+      const { rows } = await (
+        await connectPg()
+      ).query(
+        "SELECT createtime > '2000-01-01'::timestamp AS refreshed FROM modeldata WHERE id = $1",
+        [insertIds[0]]
+      );
+      expect(rows[0].refreshed).toBe(true);
+    } finally {
+      await ctrl.delete({ teamId, idList: insertIds });
+    }
+    expect(await ctrl.getVectorCount(scope)).toBe(count);
   });
 
   it('keeps one database build globally even if an old worker still owns the session lock', async () => {
