@@ -123,5 +123,9 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "Backfills teamId for legacy agent sandbox instances from their App/Skill source. Orphan records whose source was deleted are skipped and counted; records whose source exists without a teamId are reported as failed records for repair and retry.",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "Backfill sandbox team ownership",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "Validate sandbox team ownership backfill",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records."
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records.",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "Initialize dataset vector indexes",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "Count existing dataset vectors in the background and schedule FP16 partial indexes for datasets with more than 30,000 vectors. Exact search remains available while indexes are being built.",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "Counted {{scannedCount}} datasets; {{eligibleCount}} met the index threshold. Index builds continue in the queue.",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "Count dataset vectors and schedule index builds"
 }

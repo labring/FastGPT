@@ -123,5 +123,9 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "레거시 Agent 샌드박스 인스턴스의 teamId를 App/Skill 소스에서 확인해 백필합니다. 소스가 삭제된 고아 레코드는 건너뛰고 집계하며, 소스는 있지만 teamId가 없는 레코드는 실패 목록에 기록되어 수정 후 재시도할 수 있습니다.",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "샌드박스 팀 소속 백필",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "샌드박스 팀 소속 백필 검증",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "샌드박스 인스턴스 {{scannedCount}}개를 검사하고 팀 소속 {{backfilledCount}}개를 백필했으며, 고아 레코드 {{orphanCount}}개를 건너뛰었습니다."
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "샌드박스 인스턴스 {{scannedCount}}개를 검사하고 팀 소속 {{backfilledCount}}개를 백필했으며, 고아 레코드 {{orphanCount}}개를 건너뛰었습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "데이터셋 벡터 인덱스 초기화",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "기존 데이터셋의 벡터 수를 백그라운드에서 집계하고 30,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약"
 }

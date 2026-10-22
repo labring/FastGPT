@@ -39,7 +39,8 @@ export async function registerNodeInstrumentation() {
       { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
-      { appEnv }
+      { appEnv },
+      { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -67,7 +68,8 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
-      import('@/env')
+      import('@/env'),
+      import('@fastgpt/service/core/dataset/vectorData/mq')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -155,7 +157,7 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,
-        action: () => initVectorStore(),
+        action: () => initVectorStore({ onDatasetCounted: onDatasetVectorCounted }),
         logger,
         getErrText
       })
