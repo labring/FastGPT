@@ -33,7 +33,6 @@ import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/ty
 import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetRuntimeConfigSchema,
-  ToolSetPreviewReferenceSchema,
   type McpToolSetRuntimeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -435,6 +434,10 @@ export const rewriteRuntimeWorkFlow = async ({
     }
   };
 
+  /** 历史外部 ToolSet 可能缺少嵌套 ID，运行时回退到父节点 pluginId。 */
+  const getToolSetReferenceId = (toolSet: { toolId?: string } | undefined, pluginId: string) =>
+    toolSet?.toolId || pluginId;
+
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
     headerSecret?: McpToolSetRuntimeConfigType['headerSecret'];
@@ -501,7 +504,7 @@ export const rewriteRuntimeWorkFlow = async ({
               pushEdges(newToolNode.nodeId);
             });
           } else {
-            const toolSetId = ToolSetPreviewReferenceSchema.parse(mcpToolsetVal).toolId;
+            const toolSetId = getToolSetReferenceId(mcpToolsetVal, toolSetNode.pluginId);
             const app = await getAuthorizedToolSet(toolSetId);
             if (!app) continue;
             const toolList = filterWorkflowToolList({
@@ -564,7 +567,7 @@ export const rewriteRuntimeWorkFlow = async ({
               pushEdges(newToolNode.nodeId);
             });
           } else {
-            const toolSetId = ToolSetPreviewReferenceSchema.parse(httpToolsetVal).toolId;
+            const toolSetId = getToolSetReferenceId(httpToolsetVal, toolSetNode.pluginId);
             const app = await getAuthorizedToolSet(toolSetId);
             if (!app) continue;
 
