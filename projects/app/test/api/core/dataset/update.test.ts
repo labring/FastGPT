@@ -1,7 +1,6 @@
 import updateHandler from '@/pages/api/core/dataset/update';
 import {
   DatasetAuditEventEnum,
-  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   TrainingModeEnum
@@ -846,6 +845,65 @@ describe('update dataset audit', () => {
     }
   });
 
+  it('logs agent and VLM model changes when distinct IDs share one display name', async () => {
+    const owner = (await getFakeUsers(1)).members[0];
+    const previousModels = getCachedSystemModelHandle()!.getAllModels();
+    const llm = getModelTestDefaults().llm!;
+    const sharedName = '审核用同名模型';
+    const oldModel = {
+      ...llm,
+      modelId: new Types.ObjectId().toHexString(),
+      model: 'audit-old-model',
+      name: sharedName,
+      config: { ...llm.config, vision: true }
+    };
+    const newModel = {
+      ...llm,
+      modelId: new Types.ObjectId().toHexString(),
+      model: 'audit-new-model',
+      name: sharedName,
+      config: { ...llm.config, vision: true }
+    };
+    setModelTestSnapshot({ models: [...previousModels, oldModel, newModel] });
+
+    try {
+      const dataset = await MongoDataset.create({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'audit-same-model-name',
+        type: DatasetTypeEnum.dataset,
+        agentModelId: oldModel.modelId,
+        vlmModelId: oldModel.modelId
+      });
+
+      const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+        auth: owner,
+        body: {
+          id: String(dataset._id),
+          agentModelId: newModel.modelId,
+          vlmModelId: newModel.modelId
+        }
+      });
+
+      expect(res.code).toBe(200);
+
+      const logs = await waitForAuditLogs(owner.teamId, 2);
+      expect(logs).toHaveLength(2);
+      expect(logs.map((log) => log.metadata?.changeItem)).toEqual([
+        'account_team:dataset_config_item_agentModel',
+        'account_team:dataset_config_item_vlmModel'
+      ]);
+      expect(logs.map((log) => [log.metadata?.oldValue, log.metadata?.newValue])).toEqual([
+        [sharedName, sharedName],
+        [sharedName, sharedName]
+      ]);
+      expect(JSON.stringify(logs)).not.toContain(oldModel.modelId);
+      expect(JSON.stringify(logs)).not.toContain(newModel.modelId);
+    } finally {
+      setModelTestSnapshot({ models: previousModels });
+    }
+  });
+
   it('never leaks a raw model id when the stored model no longer exists', async () => {
     const owner = (await getFakeUsers(1)).members[0];
     const previousModels = getCachedSystemModelHandle()!.getAllModels();
@@ -875,6 +933,52 @@ describe('update dataset audit', () => {
       expect(logs[0].metadata?.oldValue).toBe('common:UnKnow');
       expect(logs[0].metadata?.newValue).toBe(llm.name);
       expect(JSON.stringify(logs[0].metadata)).not.toContain(deletedModelId);
+    } finally {
+      setModelTestSnapshot({ models: previousModels });
+    }
+  });
+
+  it('records a VLM clear with its old display name and an empty new value', async () => {
+    const owner = (await getFakeUsers(1)).members[0];
+    const previousModels = getCachedSystemModelHandle()!.getAllModels();
+    const llm = getModelTestDefaults().llm!;
+    const visionModel = {
+      ...llm,
+      modelId: new Types.ObjectId().toHexString(),
+      model: 'audit-clear-vlm',
+      name: '可读图片模型',
+      config: { ...llm.config, vision: true }
+    };
+    setModelTestSnapshot({ models: [...previousModels, visionModel] });
+
+    try {
+      const dataset = await MongoDataset.create({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'audit-clear-vlm',
+        type: DatasetTypeEnum.dataset,
+        vlmModelId: visionModel.modelId,
+        vlmModel: visionModel.model
+      });
+
+      const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+        auth: owner,
+        body: { id: String(dataset._id), vlmModelId: null }
+      });
+
+      expect(res.code).toBe(200);
+      const logs = await waitForAuditLogs(owner.teamId, 1);
+      expect(logs).toHaveLength(1);
+      expect(logs[0].metadata).toMatchObject({
+        changeItem: 'account_team:dataset_config_item_vlmModel',
+        oldValue: '可读图片模型',
+        newValue: '-'
+      });
+      expect(JSON.stringify(logs[0].metadata)).not.toContain(visionModel.modelId);
+
+      const updatedDataset = await MongoDataset.findById(dataset._id).lean();
+      expect(updatedDataset).not.toHaveProperty('vlmModelId');
+      expect(updatedDataset).not.toHaveProperty('vlmModel');
     } finally {
       setModelTestSnapshot({ models: previousModels });
     }
@@ -918,6 +1022,70 @@ describe('update dataset audit', () => {
     expect(JSON.stringify(logs[0].metadata)).not.toContain('buffer');
   });
 
+  it('uses persisted partial API server updates for audits and logs only credential rotations', async () => {
+    const owner = (await getFakeUsers(1)).members[0];
+    const baseUrl = 'https://api.example.com';
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'audit-partial-api-config',
+      type: DatasetTypeEnum.apiDataset,
+      apiDatasetServer: {
+        apiServer: {
+          baseUrl,
+          authorization: 'Bearer old-secret',
+          basePath: '/v1'
+        }
+      }
+    });
+
+    // API update expands only submitted leaf fields; omitted credentials and basePath stay intact.
+    const partialRes = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), apiDatasetServer: { apiServer: { baseUrl } } }
+    });
+    expect(partialRes.code).toBe(200);
+    expect(await readAuditLogs(owner.teamId)).toHaveLength(0);
+    expect((await MongoDataset.findById(dataset._id).lean())?.apiDatasetServer).toEqual({
+      apiServer: { baseUrl, authorization: 'Bearer old-secret', basePath: '/v1' }
+    });
+
+    const rotateRes = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: {
+        id: String(dataset._id),
+        apiDatasetServer: { apiServer: { baseUrl, authorization: 'Bearer new-secret' } }
+      }
+    });
+    expect(rotateRes.code).toBe(200);
+
+    const logs = await waitForAuditLogs(owner.teamId, 1);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].metadata).toMatchObject({
+      changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization',
+      oldValue: '[REDACTED]',
+      newValue: '[REDACTED]'
+    });
+    expect(JSON.stringify(logs)).not.toContain('old-secret');
+    expect(JSON.stringify(logs)).not.toContain('new-secret');
+    expect((await MongoDataset.findById(dataset._id).lean())?.apiDatasetServer).toEqual({
+      apiServer: { baseUrl, authorization: 'Bearer new-secret', basePath: '/v1' }
+    });
+
+    const unchangedRes = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: owner,
+        body: {
+          id: String(dataset._id),
+          apiDatasetServer: { apiServer: { baseUrl, authorization: 'Bearer new-secret' } }
+        }
+      }
+    );
+    expect(unchangedRes.code).toBe(200);
+    expect(await readAuditLogs(owner.teamId)).toHaveLength(1);
+  });
+
   it('redacts credentials inside source configuration from audit logs', async () => {
     const owner = (await getFakeUsers(1)).members[0];
     const dataset = await MongoDataset.create({
@@ -936,7 +1104,7 @@ describe('update dataset audit', () => {
             baseUrl: 'https://api.example.com',
             authorization: 'Bearer secret-token'
           }
-        } as never
+        }
       }
     });
 

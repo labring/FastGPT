@@ -1,6 +1,7 @@
-import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
+/** 将知识库协作者权限数字转换为审计列表展示用的权限标记。 */
 export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
   const role = parseInt(metadata.permission, 10);
   const permission = new DatasetPermission({ role });
@@ -33,7 +34,7 @@ export const processDatasetConfigUpdateSpecific = (metadata: any, t: any) => {
   };
 };
 
-export const createDatasetProcessors = {
+export const createDatasetAuditProcessors = {
   UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific,
   [DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]: processDatasetConfigUpdateSpecific
 };

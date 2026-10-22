@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  createDatasetProcessors,
+  createDatasetAuditProcessors,
   processDatasetConfigUpdateSpecific
-} from '@/pageComponents/account/team/Audit/processors/datasetProcessors';
+} from '@/pageComponents/account/team/Audit/dataset/audit';
 
 /** 模拟 i18next：只有已知 key 会命中，未命中时原样返回（与项目 i18n 行为一致）。 */
 const t = (key: string) =>
@@ -15,7 +15,7 @@ const t = (key: string) =>
 
 describe('dataset audit processors', () => {
   it('registers a processor for the dataset config update event', () => {
-    expect(createDatasetProcessors[DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]).toBe(
+    expect(createDatasetAuditProcessors[DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]).toBe(
       processDatasetConfigUpdateSpecific
     );
   });

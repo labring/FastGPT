@@ -7,6 +7,8 @@ import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import {
   buildDatasetConfigAuditChanges,
+  buildDatasetConfigUpdatePatch,
+  resolveDatasetAuditModel,
   stringifyDatasetConfigAuditValue
 } from '@fastgpt/service/core/dataset/audit';
 
@@ -90,8 +92,8 @@ describe('buildDatasetConfigAuditChanges', () => {
     expect(changes).toEqual([
       {
         changeItem: 'account_team:dataset_config_item_chunkSettings · indexPrefixTitle',
-        oldValue: '关闭',
-        newValue: '开启'
+        oldValue: 'common:no',
+        newValue: 'common:yes'
       }
     ]);
   });
@@ -162,6 +164,51 @@ describe('buildDatasetConfigAuditChanges', () => {
     );
   });
 
+  it('records credential rotations but keeps both values redacted', () => {
+    const changes = buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
+      oldValue: { apiServer: { authorization: 'Bearer old-secret' } },
+      newValue: { apiServer: { authorization: 'Bearer new-secret' } }
+    });
+
+    expect(changes).toEqual([
+      {
+        changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization',
+        oldValue: '[REDACTED]',
+        newValue: '[REDACTED]'
+      }
+    ]);
+    expect(JSON.stringify(changes)).not.toContain('old-secret');
+    expect(JSON.stringify(changes)).not.toContain('new-secret');
+  });
+
+  it('does not log unchanged credentials', () => {
+    expect(
+      buildDatasetConfigAuditChanges({
+        item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
+        oldValue: { yuqueServer: { token: 'same-secret' } },
+        newValue: { yuqueServer: { token: 'same-secret' } }
+      })
+    ).toEqual([]);
+  });
+
+  it('uses stable model identities for comparison while displaying readable names', () => {
+    expect(
+      buildDatasetConfigAuditChanges({
+        item: DatasetConfigAuditItemEnum.AGENT_MODEL,
+        oldValue: 'Shared display name',
+        newValue: 'Shared display name',
+        compareValues: { oldValue: 'model-id-1', newValue: 'model-id-2' }
+      })
+    ).toEqual([
+      {
+        changeItem: 'account_team:dataset_config_item_agentModel',
+        oldValue: 'Shared display name',
+        newValue: 'Shared display name'
+      }
+    ]);
+  });
+
   it('renders booleans and arrays without json noise', () => {
     expect(
       buildDatasetConfigAuditChanges({
@@ -172,10 +219,102 @@ describe('buildDatasetConfigAuditChanges', () => {
     ).toEqual([
       {
         changeItem: 'account_team:dataset_config_item_autoSync',
-        oldValue: '关闭',
-        newValue: '开启'
+        oldValue: 'common:no',
+        newValue: 'common:yes'
       }
     ]);
+  });
+});
+
+describe('resolveDatasetAuditModel', () => {
+  it('uses the resolved stable ID and display name', () => {
+    expect(
+      resolveDatasetAuditModel({
+        reference: { modelId: 'model-id', model: 'old-model-name' },
+        modelData: { modelId: 'resolved-id', model: 'provider-model', name: 'Display name' }
+      })
+    ).toEqual({ modelId: 'resolved-id', modelName: 'Display name' });
+  });
+
+  it('keeps legacy model names when the catalog no longer has the model', () => {
+    expect(
+      resolveDatasetAuditModel({ reference: { modelId: undefined, model: 'legacy-model' } })
+    ).toEqual({ modelId: 'legacy-model', modelName: 'legacy-model' });
+  });
+
+  it('does not expose unresolved model IDs as display names', () => {
+    expect(resolveDatasetAuditModel({ reference: { modelId: 'deleted-model-id' } })).toEqual({
+      modelId: 'deleted-model-id',
+      modelName: 'common:UnKnow'
+    });
+  });
+});
+
+describe('buildDatasetConfigUpdatePatch', () => {
+  it('retains omitted nested fields and emits only persisted dotted updates', () => {
+    const currentValue = {
+      apiServer: {
+        baseUrl: 'https://api.example.com',
+        authorization: 'Bearer secret',
+        basePath: '/v1'
+      },
+      yuqueServer: { userId: 'user-id', token: 'yuque-secret' }
+    };
+    const { updateFields, effectiveValue } = buildDatasetConfigUpdatePatch({
+      currentValue,
+      patchValue: { apiServer: { baseUrl: 'https://api.example.com' } },
+      rootPath: 'apiDatasetServer'
+    });
+
+    expect(updateFields).toEqual({
+      'apiDatasetServer.apiServer.baseUrl': 'https://api.example.com'
+    });
+    expect(effectiveValue).toEqual(currentValue);
+    expect(
+      buildDatasetConfigAuditChanges({
+        item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
+        oldValue: currentValue,
+        newValue: effectiveValue
+      })
+    ).toEqual([]);
+  });
+
+  it('preserves omitted fields when a nested credential is rotated', () => {
+    const currentValue = {
+      apiServer: {
+        baseUrl: 'https://api.example.com',
+        authorization: 'Bearer old-secret',
+        basePath: '/v1'
+      }
+    };
+    const { updateFields, effectiveValue } = buildDatasetConfigUpdatePatch({
+      currentValue,
+      patchValue: { apiServer: { authorization: 'Bearer new-secret' } },
+      rootPath: 'apiDatasetServer'
+    });
+
+    expect(updateFields).toEqual({
+      'apiDatasetServer.apiServer.authorization': 'Bearer new-secret'
+    });
+    expect(effectiveValue).toEqual({
+      apiServer: {
+        baseUrl: 'https://api.example.com',
+        authorization: 'Bearer new-secret',
+        basePath: '/v1'
+      }
+    });
+  });
+
+  it('treats empty nested objects and nulls as no-ops', () => {
+    const currentValue = { apiServer: { baseUrl: 'https://api.example.com' } };
+    const { updateFields, effectiveValue } = buildDatasetConfigUpdatePatch({
+      currentValue,
+      patchValue: { apiServer: {}, yuqueServer: null },
+      rootPath: 'apiDatasetServer'
+    });
+
+    expect(updateFields).toEqual({});
+    expect(effectiveValue).toBe(currentValue);
   });
 });
 
