@@ -14,8 +14,14 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
-import { accordionButtonStyle, processingItemHeaderStyle } from './constants';
+import {
+  accordionButtonStyle,
+  processingContentClipStyle,
+  processingItemClipStyle,
+  processingItemHeaderStyle
+} from './constants';
 import { useCollapseScroll } from './useCollapseScroll';
+import { useStickyHeaderClip } from './useStickyHeaderClip';
 import {
   getWorkflowBuilderToolDisplayName,
   getWorkflowBuilderToolPresentation
@@ -118,6 +124,7 @@ const RenderTool = React.memo(function RenderTool({
   const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const { collapseRef, onCollapseChange } = useCollapseScroll();
+  const contentRef = useStickyHeaderClip(collapseRef);
   const isToolGenerating = showAnimation && tool.response === undefined;
   const workflowBuilderPresentation = getWorkflowBuilderToolPresentation(tool.functionName);
   const displayAvatar = tool.toolAvatar || workflowBuilderPresentation?.avatar || '';
@@ -162,7 +169,13 @@ const RenderTool = React.memo(function RenderTool({
         setIsExpanded(Array.isArray(index) ? index.length > 0 : index === 0);
       }}
     >
-      <AccordionItem ref={collapseRef} borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
+      <AccordionItem
+        ref={collapseRef}
+        borderTop={'none'}
+        borderBottom={'none'}
+        lineHeight={'24px'}
+        sx={processingItemClipStyle}
+      >
         <Box {...processingItemHeaderStyle}>
           <AccordionButton
             {...accordionButtonStyle}
@@ -189,15 +202,18 @@ const RenderTool = React.memo(function RenderTool({
         </Box>
         {isExpanded && (
           <AccordionPanel
+            ref={contentRef}
             py={0}
             px={0}
             mt={2}
             borderRadius={'md'}
             // 详情随聊天区域滚动；放开折叠容器裁剪，让代码头部在工具标题下吸顶。
             motionProps={{ style: { overflow: 'visible' } }}
-            sx={{ '.code-header': { top: '24px' } }}
+            sx={processingContentClipStyle}
           >
-            <ToolDetail isToolGenerating={isToolGenerating} tool={tool} />
+            <Box data-processing-content display={'flow-root'}>
+              <ToolDetail isToolGenerating={isToolGenerating} tool={tool} />
+            </Box>
           </AccordionPanel>
         )}
       </AccordionItem>

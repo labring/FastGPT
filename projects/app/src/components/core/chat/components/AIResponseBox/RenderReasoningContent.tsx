@@ -13,8 +13,13 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
-import { processingItemHeaderStyle } from './constants';
+import {
+  processingContentClipStyle,
+  processingItemClipStyle,
+  processingItemHeaderStyle
+} from './constants';
 import { useCollapseScroll } from './useCollapseScroll';
+import { useStickyHeaderClip } from './useStickyHeaderClip';
 
 const reasoningTypography = {
   fontSize: '14px',
@@ -42,6 +47,7 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
 } & MarkdownActionProps) {
   const { t } = useTranslation();
   const { collapseRef, onCollapseChange } = useCollapseScroll();
+  const contentRef = useStickyHeaderClip(collapseRef);
   const showAnimation = isChatting && isLastResponseValue;
 
   return (
@@ -50,7 +56,13 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
       defaultIndex={defaultExpanded ? 0 : undefined}
       onChange={onCollapseChange}
     >
-      <AccordionItem ref={collapseRef} borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
+      <AccordionItem
+        ref={collapseRef}
+        borderTop={'none'}
+        borderBottom={'none'}
+        lineHeight={'24px'}
+        sx={processingItemClipStyle}
+      >
         <Box {...processingItemHeaderStyle}>
           <AccordionButton
             w={'fit-content'}
@@ -93,8 +105,17 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
             <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
           </AccordionButton>
         </Box>
-        <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
-          <Box position={'relative'} ml={3}>
+        <AccordionPanel
+          ref={contentRef}
+          py={0}
+          pr={0}
+          pl={0}
+          mt={2}
+          color={'myGray.500'}
+          motionProps={{ style: { overflow: 'visible' } }}
+          sx={processingContentClipStyle}
+        >
+          <Box data-processing-content display={'flow-root'} position={'relative'} ml={3}>
             <Box
               pl={3}
               borderLeft={'1px solid'}

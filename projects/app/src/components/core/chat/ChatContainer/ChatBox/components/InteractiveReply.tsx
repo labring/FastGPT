@@ -39,7 +39,7 @@ const InteractiveReply = ({
         }
       ]}
       content={
-        <Flex direction={'column'} gap={3} minW={0} maxW={'100%'}>
+        <Flex direction={'column'} gap={3} minW={0} maxW={'100%'} fontSize={'md'}>
           {files.length > 0 && <HumanChatBubbleContent chatValue={files} />}
           {questions.map(({ question, value }, index) => (
             <Box key={index} minW={0} maxW={'100%'} lineHeight={7}>

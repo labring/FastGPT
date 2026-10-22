@@ -12,14 +12,20 @@ describe('useCollapseScroll', () => {
   let container: HTMLDivElement;
   let outer: HTMLDivElement;
   let item: HTMLDivElement;
+  let header: HTMLDivElement;
   let itemTop: number;
+  let headerTop: number;
   const scroll = vi.fn();
   const outerScroll = vi.fn();
 
   const Harness = () => {
     const { collapseRef, onCollapseChange } = useCollapseScroll();
     onChange = onCollapseChange;
-    return React.createElement('div', { ref: collapseRef });
+    return React.createElement(
+      'div',
+      { ref: collapseRef },
+      React.createElement('div', { style: { position: 'sticky', top: 0 } })
+    );
   };
   const runFrame = () => {
     const callbacks = [...frames.values()];
@@ -59,9 +65,14 @@ describe('useCollapseScroll', () => {
     root = createRoot(clip);
     await act(async () => root!.render(React.createElement(Harness)));
     item = clip.firstElementChild as HTMLDivElement;
+    header = item.firstElementChild as HTMLDivElement;
     itemTop = -500;
+    headerTop = 42;
     vi.spyOn(item, 'getBoundingClientRect').mockImplementation(
       () => new dom.window.DOMRect(0, itemTop)
+    );
+    vi.spyOn(header, 'getBoundingClientRect').mockImplementation(
+      () => new dom.window.DOMRect(0, headerTop)
     );
   });
 
@@ -88,6 +99,35 @@ describe('useCollapseScroll', () => {
     onChange([]);
     expect(frames.size).toBe(1);
     onChange([0]);
+    runFrame();
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('keeps a collapsed item below the outer sticky processing title', () => {
+    item.style.scrollMarginTop = '29px';
+    header.style.top = '29px';
+    headerTop = 71;
+    itemTop = -100;
+    onChange(-1);
+    runFrame();
+
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ top: 129, behavior: 'auto' });
+  });
+
+  it.each([42, 150])('does not reposition a title at its normal flow position (%s)', (top) => {
+    itemTop = top;
+    headerTop = top;
+    onChange(-1);
+    expect(frames.size).toBe(0);
+    runFrame();
+    expect(scroll).not.toHaveBeenCalled();
+    expect(outerScroll).not.toHaveBeenCalled();
+  });
+
+  it('does not reposition when sticky positioning is disabled', () => {
+    header.style.position = 'static';
+    onChange(-1);
+    expect(frames.size).toBe(0);
     runFrame();
     expect(scroll).not.toHaveBeenCalled();
   });
