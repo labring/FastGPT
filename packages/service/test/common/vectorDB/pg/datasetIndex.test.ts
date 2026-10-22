@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 
 const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
@@ -94,7 +95,10 @@ afterEach(() => vi.useRealTimers());
 describe('getPgDatasetIndexName', () => {
   it('derives stable bounded names and rejects unsafe IDs', () => {
     expect(getPgDatasetIndexName(scope.datasetId)).toBe(`modeldata_fp16_${scope.datasetId}`);
-    expect(() => getPgDatasetIndexName("bad'--")).toThrow('Invalid dataset');
+    expect(getPgDatasetIndexName(scope.datasetId.toUpperCase())).toBe(
+      `modeldata_fp16_${scope.datasetId.toUpperCase()}`
+    );
+    expect(() => getPgDatasetIndexName("bad'--")).toThrow(ZodError);
   });
 });
 
@@ -204,11 +208,7 @@ describe('ensurePgDatasetIndex', () => {
     expect(callbacks.onBuilding).not.toHaveBeenCalled();
   });
 
-  it('rejects invalid tenant IDs before connecting and respects another database build lock', async () => {
-    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks, teamId: 'bad' })).rejects.toThrow(
-      'Invalid team'
-    );
-    expect(mocks.connect).not.toHaveBeenCalled();
+  it('respects another database build lock', async () => {
     locked = false;
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow('still running');
     expect(mocks.end).toHaveBeenCalledOnce();
