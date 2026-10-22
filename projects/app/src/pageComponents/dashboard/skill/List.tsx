@@ -6,6 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Trans, useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -44,7 +45,6 @@ import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashb
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   getResourceListDisplayTime,
@@ -423,9 +423,11 @@ const List = ({
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-            {skill.description}
-          </Box>
+          <MyTooltip label={skill.description} showOnlyWhenOverflow>
+            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+              {skill.description}
+            </Box>
+          </MyTooltip>
         </Box>
 
         <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">

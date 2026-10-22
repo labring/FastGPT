@@ -14,6 +14,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -29,7 +30,6 @@ import type { EditResourceInfoFormType } from '@/components/common/Modal/EditRes
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
 import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
@@ -294,9 +294,11 @@ const List = () => {
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-            {app.intro || t('common:no_intro')}
-          </Box>
+          <MyTooltip label={app.intro || t('common:no_intro')} showOnlyWhenOverflow>
+            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+              {app.intro || t('common:no_intro')}
+            </Box>
+          </MyTooltip>
         </Box>
         <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
           <HStack flex={'1 0 0'}>
