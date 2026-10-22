@@ -1,5 +1,5 @@
 /* pg vector crud */
-import { DatasetVectorTableName } from '../constants';
+import { DatasetVectorTableName, VectorVQ } from '../constants';
 import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
@@ -14,13 +14,15 @@ const RECALL_QUERY_TIMEOUT_MS = 120_000;
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
   init = async () => {
+    const isHalfVec = VectorVQ === 16;
+
     try {
       await connectPg();
       await PgClient.query(`
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGSERIAL PRIMARY KEY,
-            vector VECTOR(1536) NOT NULL,
+            vector ${isHalfVec ? 'HALFVEC(1536)' : 'VECTOR(1536)'} NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,

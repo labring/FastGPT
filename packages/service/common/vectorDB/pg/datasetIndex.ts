@@ -23,7 +23,7 @@ export const getPgDatasetIndexName = (datasetId: string) => {
 };
 
 /**
- * 在线创建知识库 FP16 表达式索引，保留原始 FP32 向量。
+ * 在线创建知识库 FP16 局部索引，保留原列的 FP32 或 FP16 存储类型。
  * 全局 PG 会话锁兜底 worker 失联后仍在运行的 DDL；只修复定义完全匹配的无效索引。
  */
 export const ensurePgDatasetIndex = async ({
@@ -63,7 +63,7 @@ export const ensurePgDatasetIndex = async ({
   let progressQuery: Promise<void> | undefined;
   try {
     await client.connect();
-    // 1. 解析实际表和列类型；不把已有 halfvec 数据冒充可恢复的 FP32 原始向量。
+    // 1. 按实际列类型核验索引，兼容配置决定的 vector / halfvec 存储。
     const { rows: tables } = await client.query<{
       schema: string;
       dimensions: number;
@@ -79,11 +79,13 @@ export const ensurePgDatasetIndex = async ({
     const table = tables[0];
     if (
       !table ||
-      table.vector_type !== 'vector' ||
+      !['vector', 'halfvec'].includes(table.vector_type) ||
       table.dimensions < 1 ||
       table.dimensions > 4000
     ) {
-      throw new Error('Dataset FP16 indexing requires a dimensioned FP32 vector column (1..4000)');
+      throw new Error(
+        'Dataset FP16 indexing requires a dimensioned vector or halfvec column (1..4000)'
+      );
     }
     const qualifiedTable = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(DatasetVectorTableName)}`;
     const qualifiedIndex = `${pg.escapeIdentifier(table.schema)}.${pg.escapeIdentifier(indexName)}`;
@@ -116,12 +118,17 @@ export const ensurePgDatasetIndex = async ({
       if (!index) return;
       const normalize = (value: string) =>
         value.replace(/::(?:text|character varying)/g, '').replace(/[\s()"]/g, '');
+      const expression = normalize(index.expression);
+      // halfvec 列转为相同维度的 halfvec 时，PG 会消除恒等转换，将索引键记录为 vector 列。
+      const matchesExpression =
+        expression === `vector::halfvec${table.dimensions}` ||
+        (table.vector_type === 'halfvec' && expression === 'vector');
       if (
         !index.on_table ||
         index.columns !== 1 ||
         index.method !== 'hnsw' ||
         index.opclass !== 'halfvec_ip_ops' ||
-        normalize(index.expression) !== `vector::halfvec${table.dimensions}` ||
+        !matchesExpression ||
         normalize(index.predicate ?? '') !== normalize(predicate)
       ) {
         throw new Error(`Refusing to reuse or remove mismatched PG index: ${indexName}`);
