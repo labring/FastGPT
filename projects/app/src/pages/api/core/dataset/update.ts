@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
@@ -6,7 +7,6 @@ import {
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
@@ -18,7 +18,9 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
+import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
 import { type ClientSession } from 'mongoose';
 
@@ -141,6 +143,41 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     handle: modelHandle
   });
 
+  const apiDatasetServerPatch =
+    apiDatasetServer === undefined
+      ? undefined
+      : buildDatasetConfigUpdatePatch({
+          currentValue: dataset.apiDatasetServer,
+          patchValue: apiDatasetServer,
+          rootPath: 'apiDatasetServer'
+        });
+  const configAuditLogs = buildDatasetUpdateAuditLogs({
+    dataset,
+    modelHandle,
+    update: {
+      name,
+      intro,
+      avatar,
+      agentModelId,
+      agentModel,
+      agentModelData,
+      vlmModelId,
+      vlmModel,
+      vlmModelData,
+      clearVlmModel,
+      websiteConfig,
+      externalReadUrl,
+      apiDatasetServer: {
+        enabled: apiDatasetServer !== undefined,
+        value: apiDatasetServerPatch?.effectiveValue
+      },
+      autoSync,
+      chunkSettings,
+      chunkSettingsEnabled: rawChunkSettings !== undefined,
+      fileParseConfig: sangforFileParseConfig
+    }
+  });
+
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
     if (
@@ -175,34 +212,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
-    const apiDatasetParams = (() => {
-      if (!apiDatasetServer) return {};
-
-      const flattenObjectWithConditions = (
-        obj: any,
-        prefix = 'apiDatasetServer'
-      ): Record<string, any> => {
-        const result: Record<string, any> = {};
-
-        if (!obj || typeof obj !== 'object') return result;
-
-        Object.keys(obj).forEach((key) => {
-          const value = obj[key];
-          const newKey = prefix ? `${prefix}.${key}` : key;
-
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            // Recursively flatten nested objects
-            Object.assign(result, flattenObjectWithConditions(value, newKey));
-          } else {
-            // Add non-empty primitive values
-            result[newKey] = value;
-          }
-        });
-
-        return result;
-      };
-      return flattenObjectWithConditions(apiDatasetServer);
-    })();
+    const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
 
     await MongoDataset.findByIdAndUpdate(
       id,
@@ -234,10 +244,25 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
-  await mongoSessionRun(async (session) => {
-    logDatasetUpdate({ tmbId, teamId, dataset });
-    return onUpdate(session);
-  });
+  await mongoSessionRun((session) => onUpdate(session));
+
+  // 事务提交成功后才写审计：失败回滚的更新不应该出现在操作日志里。
+  // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。
+  if (configAuditLogs.length > 0) {
+    void addAuditLogs(
+      configAuditLogs.map(({ changeItem, oldValue, newValue }) => ({
+        tmbId,
+        teamId,
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        params: {
+          datasetName: name ?? dataset.name,
+          changeItem,
+          oldValue,
+          newValue
+        }
+      }))
+    );
+  }
 }
 export default NextAPI(handler);
 
@@ -258,26 +283,4 @@ const updateSyncSchedule = async ({
     // remove Job Scheduler
     return removeDatasetSyncJobScheduler(dataset._id);
   }
-};
-
-const logDatasetUpdate = ({
-  tmbId,
-  teamId,
-  dataset
-}: {
-  tmbId: string;
-  teamId: string;
-  dataset: any;
-}) => {
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_DATASET,
-      params: {
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
 };

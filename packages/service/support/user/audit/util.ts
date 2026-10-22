@@ -13,7 +13,7 @@ import type {
   DatasetAuditEventParamsType,
   TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
-import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);

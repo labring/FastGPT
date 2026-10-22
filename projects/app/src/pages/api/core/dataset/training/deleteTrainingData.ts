@@ -12,7 +12,8 @@ import {
   DeleteTrainingDataResponseSchema,
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
-import { TrainingModeEnum, DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 

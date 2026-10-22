@@ -180,14 +180,59 @@ describe('AIModelSelector lazy directory', () => {
     expect(mocks.setFromCatalog).toHaveBeenCalledWith(
       expect.objectContaining({ modelId: 'chosen', name: 'Chosen' })
     );
-    mocks.setFromCatalog.mockClear();
+  });
+
+  it('emits only when a real model changes, never on provider navigation', () => {
+    mocks.open = true;
+    // 11 个模型以上走分组：左列是提供商，右列才是模型
+    mocks.lists.mockImplementation(() => ({
+      modelList: Array.from({ length: 11 }, (_, index) => ({
+        modelId: `model-${index}`,
+        model: `m-${index}`,
+        name: `Model ${index}`,
+        type: 'llm',
+        provider: index % 2 === 0 ? 'p-a' : 'p-b',
+        config: {}
+      })),
+      loading: false,
+      error: false
+    }));
+    const onChange = vi.fn();
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'model-0',
+      onChange
+    });
+
+    // 点击另一个提供商：只是导航，右列仍是上一次的模型，不能回调
+    selector.props.onSelect(['p-b', 'model-0']);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 右列还没选中任何模型
+    selector.props.onSelect(['p-b', undefined]);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 重选当前模型同样不应产生 update 请求（例如点了同一个已被高亮的项）
+    selector.props.onSelect(['p-a', 'model-0']);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // 真正切到另一个模型才回调
+    selector.props.onSelect(['p-b', 'model-1']);
+    expect(onChange).toHaveBeenCalledWith('model-1');
+  });
+
+  it('does not emit when the same model is reselected in a flat list', () => {
+    mocks.open = true;
+    const onChange = vi.fn();
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.llm,
+      value: 'chosen',
+      onChange
+    });
+
     selector.props.onSelect(['chosen']);
-    expect(mocks.setFromCatalog).toHaveBeenCalledWith(
-      expect.objectContaining({ modelId: 'chosen' })
-    );
-    expect(mocks.setFromCatalog.mock.invocationCallOrder[0]).toBeLessThan(
-      onChange.mock.invocationCallOrder[0]
-    );
+    expect(onChange).not.toHaveBeenCalled();
+    expect(mocks.setFromCatalog).not.toHaveBeenCalled();
   });
 
   it('keeps the existing detail when a successfully loaded catalog is missing the current model', () => {

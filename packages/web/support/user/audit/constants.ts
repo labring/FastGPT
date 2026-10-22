@@ -346,6 +346,46 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:update_dataset'),
     params: {} as { name?: string; datasetName: string; datasetType: string }
   },
+  /**
+   * 修改知识库配置：每个实际变化的配置项一条日志。
+   *
+   * `changeItem` 是「配置项 i18n key」，对象型配置再拼 `.字段路径`（如 `… · chunkSize`），
+   * 因此这里是 string 而不是枚举。
+   */
+  ['dataset.config.update']: {
+    content: i18nT('account_team:log_dataset_config_updated'),
+    typeLabel: i18nT('account_team:dataset_config_updated'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      changeItem: string;
+      oldValue: string;
+      newValue: string;
+    }
+  },
+  /** 创建知识库标签定义。 */
+  ['dataset.tag.create']: {
+    content: i18nT('account_team:log_dataset_tag_created'),
+    typeLabel: i18nT('account_team:dataset_tag_created'),
+    params: {} as { name?: string; datasetName: string; tagName: string }
+  },
+  /** 重命名知识库标签定义。 */
+  ['dataset.tag.rename']: {
+    content: i18nT('account_team:log_dataset_tag_renamed'),
+    typeLabel: i18nT('account_team:dataset_tag_renamed'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      oldName: string;
+      newName: string;
+    }
+  },
+  /** 删除知识库标签定义。 */
+  ['dataset.tag.delete']: {
+    content: i18nT('account_team:log_dataset_tag_deleted'),
+    typeLabel: i18nT('account_team:dataset_tag_deleted'),
+    params: {} as { name?: string; datasetName: string; tagName: string }
+  },
   [AuditEventEnum.DELETE_DATASET]: {
     content: i18nT('account_team:log_delete_dataset'),
     typeLabel: i18nT('account_team:delete_dataset'),

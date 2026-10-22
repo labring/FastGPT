@@ -41,7 +41,7 @@ import {
   GetInvitationLinkInfoResponseSchema
 } from '@fastgpt/global/openapi/support/user/team/invitationLink/api';
 import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user/audit/constants';
-import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
@@ -142,6 +142,35 @@ describe('support user OpenAPI contracts', () => {
     ).toBeUndefined();
   });
 
+  it('accepts every dataset audit event in filter and response', () => {
+    // 配置/标签事件与 upstream 已合入的训练事件共用团队审计合同；每个事件都必须能通过筛选和响应校验。
+    const datasetEvents = Object.values(DatasetAuditEventEnum);
+
+    expect(TeamAuditEventList).toEqual(expect.arrayContaining(datasetEvents));
+
+    expect(AuditListBodySchema.parse({ events: datasetEvents }).events).toEqual(datasetEvents);
+
+    for (const event of datasetEvents) {
+      const parsed = AuditListResponseSchema.parse({
+        total: 1,
+        list: [
+          {
+            _id: objectId,
+            sourceMember: {
+              name: '张三',
+              avatar: null,
+              status: TeamMemberStatusEnum.active
+            },
+            event,
+            timestamp: '2026-01-02T00:00:00.000Z',
+            metadata: { name: '张三' }
+          }
+        ]
+      });
+      expect(parsed.list[0].event).toBe(event);
+    }
+  });
+
   it('parses audit filters and responses', () => {
     expect(
       AuditListBodySchema.parse({
@@ -207,37 +236,6 @@ describe('support user OpenAPI contracts', () => {
         }
       ]
     });
-  });
-
-  it('accepts every dataset audit event in filter and response', () => {
-    // 知识库事件与成员事件共用同一个审计存储；双方都必须出现在 TeamAuditEventList 里，
-    // 否则新事件会「能写入但读不出」——团队审计列表在响应 schema 校验阶段整体失败。
-    const datasetEvents = Object.values(DatasetAuditEventEnum);
-
-    expect(datasetEvents).toHaveLength(5);
-    expect(TeamAuditEventList).toEqual(expect.arrayContaining(datasetEvents));
-
-    expect(AuditListBodySchema.parse({ events: datasetEvents }).events).toEqual(datasetEvents);
-
-    for (const event of datasetEvents) {
-      const parsed = AuditListResponseSchema.parse({
-        total: 1,
-        list: [
-          {
-            _id: objectId,
-            sourceMember: {
-              name: '张三',
-              avatar: null,
-              status: TeamMemberStatusEnum.active
-            },
-            event,
-            timestamp: '2026-01-02T00:00:00.000Z',
-            metadata: { name: '张三' }
-          }
-        ]
-      });
-      expect(parsed.list[0].event).toBe(event);
-    }
   });
 
   it('parses inform list, unread summary, and read query', () => {
