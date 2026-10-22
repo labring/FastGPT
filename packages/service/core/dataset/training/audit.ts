@@ -14,7 +14,7 @@ export type TrainingAuditModelLabel = {
  * 索引模型审计服务于人工排查「谁把索引模型换成了什么」，所以展示名取模型目录里的 `name`，
  * 其次取 provider 侧的 `model`；目录里已经查不到该模型（历史数据或刚被删除）以及目录不可用时，
  * 退回引用里保存的旧标识，名称解析不出来再退回 ID。稳定 `modelId` 单独返回，便于按 ID 追踪
- * 改名前后的同一模型。整个过程不抛错，避免审计影响已经提交的重建流程。
+ * 改名前后的同一模型。整个过程不抛错，避免审计影响已经提交的重建流程
  */
 export const getTrainingAuditModelLabel = async ({
   teamId,
