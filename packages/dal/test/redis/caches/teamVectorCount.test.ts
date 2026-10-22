@@ -1,138 +1,188 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
-import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches/teamVectorCount';
+import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches';
+
+const logicalKey = 'cache:team_vector_count:team-1';
+const physicalKey = `fastgpt:${logicalKey}`;
 
 describe('TeamVectorCountCache', () => {
-  const redis = { get: vi.fn(), evalScript: vi.fn() };
-  const logger = { warn: vi.fn() };
-  const cache = () => new TeamVectorCountCache({ redis: redis as any, logger });
-  const revisionKey = 'cache:team_vector_count_revision:t';
-  const countKey = 'cache:team_vector_count:t';
+  const redis = {
+    get: vi.fn(),
+    set: vi.fn(),
+    delete: vi.fn()
+  };
+  const logger = {
+    warn: vi.fn()
+  };
 
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
     redis.get.mockResolvedValue(null);
-    redis.evalScript.mockResolvedValue(1);
+    redis.set.mockResolvedValue(undefined);
+    redis.delete.mockResolvedValue(false);
   });
-  afterEach(() => vi.useRealTimers());
 
-  describe('get', () => {
-    it('reads existing decimal counts, including zero, and treats malformed values as misses', async () => {
-      for (const [raw, value] of [
-        ['150', 150],
-        ['0', 0],
-        [null, undefined],
-        [undefined, undefined],
-        ['', undefined],
-        [' ', undefined],
-        ['-1', undefined],
-        ['1.5', undefined],
-        ['0x10', undefined],
-        ['1e3', undefined],
-        ['NaN', undefined],
-        ['9007199254740992', undefined]
-      ]) {
-        redis.get.mockResolvedValueOnce(raw);
-        await expect(cache().get('t')).resolves.toBe(value);
-      }
-      expect(redis.get).toHaveBeenCalledWith(countKey);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('preserves the physical key and 1800 second TTL through the Redis adapter', async () => {
+    const commandClient = {
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn().mockResolvedValue('OK'),
+      del: vi.fn().mockResolvedValue(0)
+    };
+    const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
+    const cache = new TeamVectorCountCache({ redis: adapter, logger });
+
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
+    await cache.set({ teamId: 'team-1', count: 42 });
+    await cache.invalidate('team-1');
+
+    expect(commandClient.get).toHaveBeenCalledWith(physicalKey);
+    expect(commandClient.set).toHaveBeenCalledWith(physicalKey, '42', 'PX', 1_800_000);
+    expect(commandClient.del).toHaveBeenCalledWith(physicalKey);
+  });
+
+  it('returns a cached decimal string as a number', async () => {
+    redis.get.mockResolvedValue('150');
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await expect(cache.get('team-1')).resolves.toBe(150);
+    expect(redis.get).toHaveBeenCalledWith(logicalKey);
+  });
+
+  it('preserves zero and treats invalid numeric cache values as misses', async () => {
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    redis.get.mockResolvedValueOnce('0');
+    await expect(cache.get('team-1')).resolves.toBe(0);
+
+    for (const value of ['NaN', 'Infinity', '-1', '1.5', '0x10', '0b10', '1e3', '']) {
+      redis.get.mockResolvedValueOnce(value);
+      await expect(cache.get('team-1')).resolves.toBeUndefined();
+    }
+  });
+
+  it('clears an absent timer handle after an immediate operation', async () => {
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockReturnValue(undefined as unknown as ReturnType<typeof setTimeout>);
+    try {
+      redis.get.mockResolvedValue('150');
+      const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+      await expect(cache.get('team-1')).resolves.toBe(150);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
+  it('returns a miss when Redis has no value', async () => {
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('returns a miss and logs when a read fails', async () => {
+    const error = new Error('read failed');
+    redis.get.mockRejectedValue(error);
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await expect(cache.get('team-1')).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to get team vector count cache', {
+      teamId: 'team-1',
+      error
     });
   });
 
-  describe('getRevision', () => {
-    it('returns only a valid revision token', async () => {
-      redis.evalScript.mockResolvedValueOnce('revision');
-      await expect(cache().getRevision('t')).resolves.toBe('revision');
-      expect(redis.evalScript).toHaveBeenCalledWith({
-        script: expect.any(String),
-        keys: [revisionKey],
-        args: [expect.any(String), 1_800_000]
-      });
-      for (const invalid of [null, '', 1]) {
-        redis.evalScript.mockResolvedValueOnce(invalid);
-        await expect(cache().getRevision('t')).resolves.toBeUndefined();
-      }
+  it('returns a miss after the independent read deadline', async () => {
+    vi.useFakeTimers();
+    redis.get.mockReturnValue(new Promise(() => undefined));
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    const result = cache.get('team-1');
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(result).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to get team vector count cache', {
+      teamId: 'team-1',
+      error: expect.any(Error)
     });
   });
 
-  describe('set and invalidate', () => {
-    it('uses the original physical count key and a separate revision key in atomic operations', async () => {
-      const commandClient = { eval: vi.fn().mockResolvedValue(1) };
-      const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
-      const actual = new TeamVectorCountCache({ redis: adapter, logger });
-      await actual.set({ teamId: 't', count: 42, revision: 'r' });
-      expect(commandClient.eval).toHaveBeenCalledWith(
-        expect.any(String),
-        2,
-        `fastgpt:${revisionKey}`,
-        `fastgpt:${countKey}`,
-        'r',
-        '42',
-        '1800000'
-      );
-      await actual.invalidate('t');
-      expect(commandClient.eval).toHaveBeenLastCalledWith(
-        expect.any(String),
-        2,
-        `fastgpt:${revisionKey}`,
-        `fastgpt:${countKey}`,
-        expect.any(String),
-        '1800000'
-      );
+  it('writes a decimal string with the fixed TTL', async () => {
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await cache.set({ teamId: 'team-1', count: 42 });
+
+    expect(redis.set).toHaveBeenCalledWith({
+      key: logicalKey,
+      value: '42',
+      ttlMs: 1_800_000
     });
   });
 
-  describe('best-effort Redis operations', () => {
-    const operations = [
-      {
-        name: 'get',
-        method: (c: TeamVectorCountCache) => c.get('t'),
-        mock: redis.get,
-        warning: 'Failed to get team vector count cache'
-      },
-      {
-        name: 'getRevision',
-        method: (c: TeamVectorCountCache) => c.getRevision('t'),
-        mock: redis.evalScript,
-        warning: 'Failed to get team vector count revision'
-      },
-      {
-        name: 'set',
-        method: (c: TeamVectorCountCache) => c.set({ teamId: 't', count: 5, revision: 'r' }),
-        mock: redis.evalScript,
-        warning: 'Failed to set team vector count cache'
-      },
-      {
-        name: 'invalidate',
-        method: (c: TeamVectorCountCache) => c.invalidate('t'),
-        mock: redis.evalScript,
-        warning: 'Failed to invalidate team vector count cache'
-      }
-    ];
+  it('logs write failures without rejecting', async () => {
+    const error = new Error('write failed');
+    redis.set.mockRejectedValue(error);
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
 
-    it.each(operations)(
-      '$name logs failures without overriding the database result',
-      async ({ method, mock, warning }) => {
-        const error = new Error('offline');
-        mock.mockRejectedValueOnce(error);
-        await expect(method(cache())).resolves.toBeUndefined();
-        expect(logger.warn).toHaveBeenCalledWith(warning, { teamId: 't', error });
-      }
-    );
+    await expect(cache.set({ teamId: 'team-1', count: 42 })).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to set team vector count cache', {
+      teamId: 'team-1',
+      error
+    });
+  });
 
-    it.each(operations)(
-      '$name retains an independent three-second deadline',
-      async ({ method, mock, warning }) => {
-        vi.useFakeTimers();
-        mock.mockReturnValueOnce(new Promise(() => undefined));
-        const operation = method(cache());
-        await vi.advanceTimersByTimeAsync(3000);
-        await expect(operation).resolves.toBeUndefined();
-        expect(logger.warn).toHaveBeenCalledWith(warning, {
-          teamId: 't',
-          error: expect.any(Error)
-        });
-      }
-    );
+  it('logs write timeouts without rejecting', async () => {
+    vi.useFakeTimers();
+    redis.set.mockReturnValue(new Promise(() => undefined));
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    const result = cache.set({ teamId: 'team-1', count: 42 });
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(result).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to set team vector count cache', {
+      teamId: 'team-1',
+      error: expect.any(Error)
+    });
+  });
+
+  it('invalidates the cache key', async () => {
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await cache.invalidate('team-1');
+
+    expect(redis.delete).toHaveBeenCalledWith(logicalKey);
+  });
+
+  it('logs invalidate failures without rejecting', async () => {
+    const error = new Error('delete failed');
+    redis.delete.mockRejectedValue(error);
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    await expect(cache.invalidate('team-1')).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
+      teamId: 'team-1',
+      error
+    });
+  });
+
+  it('logs invalidate timeouts without rejecting', async () => {
+    vi.useFakeTimers();
+    redis.delete.mockReturnValue(new Promise(() => undefined));
+    const cache = new TeamVectorCountCache({ redis: redis as any, logger });
+
+    const result = cache.invalidate('team-1');
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(result).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith('Failed to invalidate team vector count cache', {
+      teamId: 'team-1',
+      error: expect.any(Error)
+    });
   });
 });

@@ -8,8 +8,6 @@ import {
   VectorRowsUpdateMQService,
   type VectorRowsUpdateJobData
 } from '@fastgpt/service/core/dataset/vectorData/mq';
-import { RedisCacheAdapter, asRedisLogicalKey } from '@fastgpt/dal/redis/adapter';
-import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches/teamVectorCount';
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
@@ -114,30 +112,5 @@ describeWithRedis('vector rows fixed windows and global concurrency on Redis', (
     await Promise.all(jobs.map((job) => job.promote()));
     await vi.waitFor(() => expect(finished).toBe(5), { timeout: 10_000 });
     expect(maximum).toBe(1);
-  });
-
-  it('does not let an older team count refill a cache invalidated during counting', async () => {
-    const adapter = new RedisCacheAdapter({
-      getCommandClient: () => redis[0].getCommandConnection()
-    });
-    const teamId = `test-${randomUUID()}`;
-    const cache = new TeamVectorCountCache({ redis: adapter, logger: { warn: vi.fn() } });
-    try {
-      const old = await cache.getRevision(teamId);
-      await cache.set({ teamId, count: 10, revision: old! });
-      expect(await cache.get(teamId)).toBe(10);
-      await cache.invalidate(teamId);
-      await cache.set({ teamId, count: 1, revision: old! });
-      expect(await cache.get(teamId)).toBeUndefined();
-      const current = await cache.getRevision(teamId);
-      expect(current).not.toBe(old);
-      await cache.set({ teamId, count: 20, revision: current! });
-      expect(await cache.get(teamId)).toBe(20);
-    } finally {
-      await adapter.deleteMany([
-        asRedisLogicalKey(`cache:team_vector_count:${teamId}`),
-        asRedisLogicalKey(`cache:team_vector_count_revision:${teamId}`)
-      ]);
-    }
   });
 });

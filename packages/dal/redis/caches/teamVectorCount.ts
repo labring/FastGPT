@@ -1,6 +1,5 @@
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
 import type { RedisCacheLogger } from '../types';
-import { randomUUID } from 'node:crypto';
 
 const TEAM_VECTOR_COUNT_CACHE_TTL_MS = 30 * 60 * 1000;
 const TEAM_VECTOR_CACHE_OPERATION_TIMEOUT_MS = 3000;
@@ -26,8 +25,6 @@ export class TeamVectorCountCache {
   }
 
   private getKey = (teamId: string) => asRedisLogicalKey(`cache:team_vector_count:${teamId}`);
-  private getRevisionKey = (teamId: string) =>
-    asRedisLogicalKey(`cache:team_vector_count_revision:${teamId}`);
 
   private runWithTimeout = async <T>({
     promise,
@@ -90,39 +87,17 @@ export class TeamVectorCountCache {
     return Number.isSafeInteger(parsedCount) && parsedCount >= 0 ? parsedCount : undefined;
   }
 
-  /** 计数前取得变更标记；Redis 不可用时不写缓存，但仍允许数据库计数返回。 */
-  async getRevision(teamId: string) {
-    const revision = await this.runOperation({
-      teamId,
-      operation: 'Get team vector count revision',
-      warnMessage: 'Failed to get team vector count revision',
-      action: () =>
-        this.redis.evalScript({
-          script: `local revision = redis.call('GET', KEYS[1])
-          if revision then return revision end
-          redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
-          return ARGV[1]`,
-          keys: [this.getRevisionKey(teamId)],
-          args: [randomUUID(), TEAM_VECTOR_COUNT_CACHE_TTL_MS]
-        })
-    });
-    return typeof revision === 'string' && revision.length > 0 ? revision : undefined;
-  }
-
-  /** 只有计数期间没有发生变更才回填；迟到的计数不得恢复已失效的旧值。 */
-  async set({ teamId, count, revision }: { teamId: string; count: number; revision: string }) {
+  /** best-effort 写入缓存；调用方无需等待该结果才能返回 VectorDB 主结果。 */
+  async set({ teamId, count }: { teamId: string; count: number }) {
     await this.runOperation({
       teamId,
       operation: 'Set team vector count cache',
       warnMessage: 'Failed to set team vector count cache',
       action: () =>
-        this.redis.evalScript({
-          script: `if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
-          redis.call('SET', KEYS[2], ARGV[2], 'PX', ARGV[3])
-          redis.call('PEXPIRE', KEYS[1], ARGV[3])
-          return 1`,
-          keys: [this.getRevisionKey(teamId), this.getKey(teamId)],
-          args: [revision, count, TEAM_VECTOR_COUNT_CACHE_TTL_MS]
+        this.redis.set({
+          key: this.getKey(teamId),
+          value: String(count),
+          ttlMs: TEAM_VECTOR_COUNT_CACHE_TTL_MS
         })
     });
   }
@@ -133,13 +108,7 @@ export class TeamVectorCountCache {
       teamId,
       operation: 'Invalidate team vector count cache',
       warnMessage: 'Failed to invalidate team vector count cache',
-      action: () =>
-        this.redis.evalScript({
-          script: `redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
-          return redis.call('DEL', KEYS[2])`,
-          keys: [this.getRevisionKey(teamId), this.getKey(teamId)],
-          args: [randomUUID(), TEAM_VECTOR_COUNT_CACHE_TTL_MS]
-        })
+      action: () => this.redis.delete(this.getKey(teamId))
     });
   }
 }
