@@ -129,5 +129,9 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "已扫描 {{scannedCount}} 条目录和资源记录，未解决异常 {{failedCount}} 条。",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 与工具文件夹路径",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知识库文件夹路径",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "初始化知识库向量索引",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "后台统计已有知识库的向量数，超过三万条的知识库延迟投递 FP16 局部索引构建任务；索引未完成时继续精确检索。",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "已统计 {{scannedCount}} 个知识库，{{eligibleCount}} 个达到索引构建条件；实际构建由队列继续执行。",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "统计知识库并投递索引任务"
 }

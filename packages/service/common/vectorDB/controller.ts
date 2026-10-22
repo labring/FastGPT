@@ -9,12 +9,14 @@ import type { GetVectorsProps } from '../../core/ai/embedding';
 import type {
   VectorControllerType,
   InsertVectorControllerPropsType,
-  DelDatasetVectorCtrlPropsType
+  DelDatasetVectorCtrlPropsType,
+  VectorStoreHooks,
+  GetVectorCountPropsType
 } from './type';
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 import { isProVersion } from '../system/constants';
@@ -43,7 +45,13 @@ const vectorCountCache = new VectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
-export const initVectorStore = Vector.init;
+let vectorStoreHooks: VectorStoreHooks = {};
+
+/** 启动时由业务入口注入计数通知；provider 保持不依赖 MQ 的纯向量存取职责。 */
+export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
+  vectorStoreHooks = hooks;
+  await Vector.init();
+};
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
  * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
@@ -165,27 +173,73 @@ export const refreshDatasetDataVectorCreateTime: VectorControllerType['refreshCr
 
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
-/** 缓存命中直接返回；未命中时查询向量库，异步回填 Redis，不持久化到 Mongo。 */
-const getCachedVectorCount = async (scope: VectorCountScope) => {
-  const cacheCount = await vectorCountCache.get(scope);
-  if (cacheCount !== undefined) {
-    return cacheCount;
+const pendingVectorCounts = new Map<string, Promise<number>>();
+
+/** 缓存命中直接返回；并发 miss 合并查询，异步回填 Redis 并通知业务，不持久化到 Mongo。 */
+const getCachedVectorCount = async (
+  scope: VectorCountScope,
+  {
+    refresh = false,
+    notifyDatasetCounted = true
+  }: { refresh?: boolean; notifyDatasetCounted?: boolean } = {}
+) => {
+  if (!refresh) {
+    const cacheCount = await vectorCountCache.get(scope);
+    if (cacheCount !== undefined) return cacheCount;
   }
 
-  const count = await Vector.getVectorCount(scope);
-  void vectorCountCache.set({ ...scope, count });
-  return count;
+  // 同一节点的并发 miss 合并为一次 COUNT，避免检索高峰放大冷统计开销。
+  const key = JSON.stringify(scope);
+  const pending = pendingVectorCounts.get(key);
+  if (pending) return pending;
+  const counting = (async () => {
+    const count = await Vector.getVectorCount(scope);
+    void vectorCountCache.set({ ...scope, count });
+    const datasetId = scope.datasetId;
+    const onDatasetCounted = vectorStoreHooks.onDatasetCounted;
+    if (notifyDatasetCounted && datasetId && onDatasetCounted) {
+      // 通知失败不改变统计结果；下一次真实统计仍会再通知，缓存命中不重复投递。
+      void withTimeout(
+        Promise.resolve().then(() =>
+          onDatasetCounted({
+            teamId: scope.teamId,
+            datasetId,
+            rows: count
+          })
+        ),
+        3000,
+        'Dataset vector count notification timed out'
+      ).catch((error) =>
+        getLogger(LogCategories.INFRA.QUEUE).warn('Dataset vector count notification failed', {
+          ...scope,
+          error
+        })
+      );
+    }
+    return count;
+  })().finally(() => pendingVectorCounts.delete(key));
+  pendingVectorCounts.set(key, counting);
+  return counting;
 };
 
 /** 团队总数沿用原有缓存优先策略。 */
 export const getVectorCountByTeamId = (teamId: string) =>
   getCachedVectorCount({ teamId: String(teamId) });
 
-/** 团队及知识库总数共用缓存；集合级和全局统计仍直接查询，避免误用更大范围的数量。 */
-export const getVectorCount: VectorControllerType['getVectorCount'] = (props) => {
+/**
+ * 团队及知识库总数共用缓存；集合级和全局统计直接查询。
+ * 升级扫描可刷新缓存并关闭异步通知，由迁移自身在检查 lease 后可靠投递。
+ */
+export const getVectorCount = (
+  props: GetVectorCountPropsType,
+  options: { refresh?: boolean; notifyDatasetCounted?: boolean } = {}
+) => {
   if (!props.teamId || props.collectionId) return Vector.getVectorCount(props);
-  return getCachedVectorCount({
-    teamId: String(props.teamId),
-    ...(props.datasetId ? { datasetId: String(props.datasetId) } : {})
-  });
+  return getCachedVectorCount(
+    {
+      teamId: String(props.teamId),
+      ...(props.datasetId ? { datasetId: String(props.datasetId) } : {})
+    },
+    options
+  );
 };

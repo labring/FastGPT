@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
+import { DatasetVectorSearchDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
 
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
@@ -69,6 +70,7 @@ export type RefreshVectorCreateTimeProps = z.infer<typeof RefreshVectorCreateTim
 export const EmbeddingRecallCtrlPropsSchema = z.object({
   teamId: z.string(),
   datasetIds: z.array(z.string()),
+  datasetVectorData: z.array(DatasetVectorSearchDataSchema).optional(),
   vector: z.array(z.number()),
   limit: z.number(),
   forbidCollectionIdList: z.array(z.string()),
@@ -100,6 +102,11 @@ export const GetVectorCountPropsSchema = z.object({
   collectionId: z.string().optional()
 });
 export type GetVectorCountPropsType = z.infer<typeof GetVectorCountPropsSchema>;
+
+/** 业务层注入统计完成通知，向量适配层不依赖队列或知识库 Mongo 模型。 */
+export type VectorStoreHooks = {
+  onDatasetCounted?: (data: { teamId: string; datasetId: string; rows: number }) => Promise<void>;
+};
 
 // ==================== Vector Controller Interface ====================
 export interface VectorControllerType {

@@ -129,5 +129,9 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "리소스 {{scannedCount}}개를 검사했으며, 해결되지 않은 레코드는 {{failedCount}}개입니다.",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "App 및 도구 폴더 경로 백필",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "데이터 세트 폴더 경로 백필",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "폴더 경로 검증"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "폴더 경로 검증",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "데이터셋 벡터 인덱스 초기화",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "기존 데이터셋의 벡터 수를 백그라운드에서 집계하고 30,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약"
 }

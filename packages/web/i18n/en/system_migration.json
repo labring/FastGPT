@@ -129,5 +129,9 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "Scanned {{scannedCount}} resource records; {{failedCount}} unresolved records remain.",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "Backfill App and tool folder paths",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "Backfill Dataset folder paths",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "Initialize dataset vector indexes",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "Count existing dataset vectors in the background and schedule FP16 partial indexes for datasets with more than 30,000 vectors. Exact search remains available while indexes are being built.",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "Counted {{scannedCount}} datasets; {{eligibleCount}} met the index threshold. Index builds continue in the queue.",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "Count dataset vectors and schedule index builds"
 }
