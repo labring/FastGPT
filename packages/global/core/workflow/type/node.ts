@@ -1,5 +1,7 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
+import { WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum } from '../diagnostic/constants';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
+import { FlowNodeTemplateOutputItemTypeSchema } from '../template/output';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
@@ -220,6 +222,7 @@ const HandleTypeSchema = z.object({
 // system template
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   id: z.string(),
+  outputs: z.array(FlowNodeTemplateOutputItemTypeSchema),
   status: PluginStatusSchema.optional(),
 
   showSourceHandle: BoolSchema.optional(),
@@ -321,7 +324,7 @@ export const WorkflowCheckIssueSchema = z.object({
   nodeName: z.string().optional(),
   nodeType: z.enum(FlowNodeTypeEnum),
   level: WorkflowCheckIssueLevelSchema,
-  code: z.string(),
+  code: z.union([z.enum(WorkflowDiagnosticCodeEnum), z.enum(WorkflowCheckIssueCodeEnum)]),
   message: z.string(),
   inputKey: z.string().optional()
 });
@@ -352,6 +355,7 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  isFolded: BoolSchema.optional(),
   position: z
     .object({
       x: NumSchema,

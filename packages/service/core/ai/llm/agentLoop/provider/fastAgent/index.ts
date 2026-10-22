@@ -84,8 +84,10 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     extractFiles: runtime.llmParams.extractFiles,
     lang: runtime.lang,
     maxRunAgentTimes: runtime.maxRunAgentTimes,
+    completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
+    systemTools: runtime.systemTools,
     toolCatalog: {
       runtimeTools: runtime.toolCatalog.runtimeTools,
       ...(runtime.systemTools?.ask?.enabled ? { askTool: createAskUserAgentTool() } : {}),
@@ -95,7 +97,7 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
             updatePlanTool: createUpdatePlanAgentTool()
           }
         : {}),
-      ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
+      ...(runtime.systemTools?.sandbox?.enabled
         ? { sandboxTools: createAgentLoopSandboxTools() }
         : {}),
       ...(runtime.systemTools?.readFile?.enabled
@@ -111,12 +113,9 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     },
     executeTool: runtime.executeTool,
     executeInteractiveTool: runtime.executeInteractiveTool,
-    sandboxToolContext:
-      runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
-        ? {
-            client: runtime.systemTools.sandbox.client
-          }
-        : undefined,
+    sandboxToolContext: runtime.systemTools?.sandbox?.enabled
+      ? runtime.systemTools.sandbox
+      : undefined,
     executeReadFileTool: runtime.systemTools?.readFile?.execute,
     executeDatasetSearchTool: runtime.systemTools?.datasetSearch?.execute,
     datasetSearchCurrentInputFiles: runtime.systemTools?.datasetSearch?.currentInputFiles,

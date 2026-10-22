@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
@@ -38,7 +38,7 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   }
 }));
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: vi.fn()
 }));
 

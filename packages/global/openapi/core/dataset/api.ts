@@ -251,6 +251,11 @@ export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
   withAppCount: BoolSchema.optional().meta({
     example: true,
     description: '是否返回被正式应用引用的数量'
+  }),
+  withFileCount: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否计算并返回知识库文件总数，默认不计算；统计所有层级的非目录集合，不按文件权限过滤'
   })
 }).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;

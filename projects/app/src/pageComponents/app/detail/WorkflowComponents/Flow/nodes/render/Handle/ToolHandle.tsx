@@ -10,6 +10,7 @@ import { WorkflowActionsContext } from '../../../../context/workflowActionsConte
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
+import { useHandleInternals } from './useHandleInternals';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -20,6 +21,7 @@ type ToolHandleProps = BoxProps & {
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
+  const handleRef = useHandleInternals(nodeId);
   const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
@@ -57,6 +59,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const Render = useMemo(() => {
     return (
       <Handle
+        ref={handleRef}
         style={{
           borderRadius: '0',
           backgroundColor: 'transparent',
@@ -88,13 +91,14 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         />
       </Handle>
     );
-  }, [active, showHandle, size]);
+  }, [active, handleRef, showHandle, size]);
 
   return Render;
 };
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
+  const handleRef = useHandleInternals(nodeId);
   const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
   const connectingEdge = useContextSelector(
     WorkflowActionsContext,
@@ -124,6 +128,7 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
     return (
       <MyTooltip label={t('common:core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
+          ref={handleRef}
           style={{
             borderRadius: '0',
             backgroundColor: 'transparent',
@@ -153,7 +158,7 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
         </Handle>
       </MyTooltip>
     );
-  }, [active, onConnect, size, t]);
+  }, [active, handleRef, onConnect, size, t]);
 
   return Render;
 };

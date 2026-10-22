@@ -1,12 +1,13 @@
+import {
+  filterSelectableWorkflowNodeOutputs,
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getHandleId
+} from '@fastgpt/global/common/workflow/reference';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getNodeAllSource,
-  filterSelectableWorkflowNodeOutputs,
-  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
-} from '@/web/core/workflow/utils';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
@@ -26,7 +27,6 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { Position } from 'reactflow';
 import { MySourceHandle } from '../../Handle';
-import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 const MultipleRowSelect = dynamic(() =>
@@ -369,6 +369,7 @@ const MultipleReferenceSelector = ({
               gap={2}
               fontSize={'sm'}
               fontWeight={'normal'}
+              pointerEvents={'auto'}
               _hover={{
                 '.delete': {
                   visibility: 'visible'

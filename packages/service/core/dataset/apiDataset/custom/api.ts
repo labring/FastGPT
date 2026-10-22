@@ -18,6 +18,7 @@ import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { ensureHttpProtocol } from '@fastgpt/global/common/string/url';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 type ResponseDataType = {
@@ -39,7 +40,9 @@ type APIFileListResponse = {
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
-    baseURL: apiServer.baseUrl,
+    // 兜底未经过 schema 解析的历史配置（如后台任务直接读库），补齐协议后再交给 axios，
+    // 避免请求阶段直接抛 ERR_INVALID_URL。
+    baseURL: ensureHttpProtocol(apiServer.baseUrl),
     timeout: 60000, // 超时时间
     headers: {
       'content-type': 'application/json',

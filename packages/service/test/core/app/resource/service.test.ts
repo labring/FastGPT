@@ -2,7 +2,8 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   getAppDraftResourceBaseline,
   prepareAppWorkflowResources,
-  authTargetModelResource
+  authTargetModelResource,
+  resolveAppResourcesByPermission
 } from '@fastgpt/service/core/app/resource/service';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -10,6 +11,12 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
@@ -38,10 +45,16 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppDraftVersion: mocks.getAppDraftVersion
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/app/schema')>()),
-  MongoApp: { findById: mocks.mongoAppFindById }
-}));
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
+  return {
+    ...actual,
+    MongoApp: {
+      findById: mocks.mongoAppFindById,
+      find: actual.MongoApp.find.bind(actual.MongoApp)
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: mocks.authAppByTmbId
@@ -61,8 +74,121 @@ vi.mock('@fastgpt/service/support/user/team/controller', () => ({
 
 import {
   checkAppResourceReadPermissions,
-  getUnauthorizedAppResources
+  getUnauthorizedAppResources,
+  getAppResourcesOutsideTeam
 } from '@fastgpt/service/support/permission/app/resource';
+
+describe('resource snapshots stay within their team', () => {
+  const teamId = '65f000000000000000000002';
+  const otherTeamId = '65f000000000000000000003';
+  const tmbId = '65f000000000000000000001';
+
+  it('validates all resource types while preserving global models and system Skills', async () => {
+    // MongoApp 只替换了 findById；归属查询使用真实数据库，避免 ACL mock 掩盖团队边界。
+    const { MongoApp } = await vi.importActual<typeof import('@fastgpt/service/core/app/schema')>(
+      '@fastgpt/service/core/app/schema'
+    );
+    const app = await MongoApp.create({
+      name: 'Foreign app',
+      type: AppTypeEnum.workflow,
+      teamId: otherTeamId,
+      tmbId
+    });
+    const dataset = await MongoDataset.create({
+      name: 'Foreign dataset',
+      teamId: otherTeamId,
+      tmbId
+    });
+    const skill = await MongoAgentSkills.create({
+      name: 'Foreign Skill',
+      source: AgentSkillSourceEnum.personal,
+      teamId: otherTeamId,
+      tmbId
+    });
+    const systemSkill = await MongoAgentSkills.create({
+      name: 'System Skill',
+      source: AgentSkillSourceEnum.system,
+      tmbId
+    });
+    const models = ['system', 'team'].map((scope) =>
+      AIModelDataSchema.parse({
+        scope,
+        teamId: scope === 'team' ? otherTeamId : undefined,
+        tmbId: scope === 'team' ? tmbId : undefined,
+        modelId: `${scope}-model`,
+        model: scope,
+        name: scope,
+        provider: 'OpenAI',
+        type: 'llm',
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+      })
+    );
+    const handle = createModelHandle({
+      models,
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'scope-test'
+    });
+    const foreign = [
+      { type: 'agent' as const, id: String(app._id) },
+      { type: 'tool' as const, id: String(app._id) },
+      { type: 'dataset' as const, id: String(dataset._id) },
+      { type: 'skill' as const, id: String(skill._id) },
+      { type: 'model' as const, id: 'team-model' }
+    ];
+    const global = [
+      { type: 'model' as const, id: 'system-model' },
+      { type: 'skill' as const, id: String(systemSkill._id) }
+    ];
+    const denied = await getAppResourcesOutsideTeam({
+      resources: [...foreign, ...global],
+      teamId,
+      modelHandle: handle
+    });
+    expect(denied).toHaveLength(foreign.length);
+    expect(denied).toEqual(
+      expect.arrayContaining(
+        foreign.map((resource, index) => ({
+          resource,
+          error: [
+            AppErrEnum.unAuthApp,
+            AppErrEnum.unAuthApp,
+            DatasetErrEnum.unAuthDataset,
+            SkillErrEnum.unAuthSkill,
+            ERROR_ENUM.unAuthModel
+          ][index]
+        }))
+      )
+    );
+    await expect(
+      getAppResourcesOutsideTeam({
+        resources: [...foreign, ...global],
+        teamId: otherTeamId,
+        modelHandle: handle
+      })
+    ).resolves.toEqual([]);
+  });
+
+  it('blocks root debug on a foreign dataset already present in the draft and strips it on save', async () => {
+    const dataset = await MongoDataset.create({
+      name: 'Old foreign reference',
+      teamId: otherTeamId,
+      tmbId
+    });
+    const resources = [{ type: 'dataset' as const, id: String(dataset._id) }];
+    mocks.getAppDraftVersion.mockResolvedValue({ resources });
+    const args = { appId: 'app', teamId, tmbId, isRoot: true, extracted: resources };
+    await expect(
+      resolveAppResourcesByPermission({ ...args, blockOnUnauthorized: true })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    await expect(
+      resolveAppResourcesByPermission({ ...args, blockOnUnauthorized: false })
+    ).resolves.toEqual([]);
+    await expect(
+      resolveAppResourcesByPermission({ ...args, teamId: otherTeamId, blockOnUnauthorized: true })
+    ).resolves.toEqual(resources);
+  });
+});
 
 describe('authTargetModelResource', () => {
   // App 分支只看版本快照，不读取 handle。
@@ -256,7 +382,7 @@ describe('getAppDraftResourceBaseline', () => {
     sessionQuery.lean.mockResolvedValue({ tmbId: ownerId });
     mocks.mongoAppFindById.mockReturnValue(sessionQuery);
     mocks.getTmbInfoByTmbId.mockResolvedValue({ teamId: 'team', permission: {} });
-    mocks.authDatasetByTmbId.mockReset().mockResolvedValue({ dataset: {} });
+    mocks.authDatasetByTmbId.mockReset().mockResolvedValue({ dataset: { teamId: 'team' } });
   });
   const legacyDraft = () => ({
     nodes: [
@@ -324,11 +450,48 @@ describe('prepareAppWorkflowResources', () => {
     mocks.getTeamModelHandle.mockResolvedValue({
       version: 'prepare-catalog',
       getActiveModels: () => [model],
+      getAllModels: () => [model],
       getSystemModels: () => [model],
       getTeamModels: () => [],
       getDefaultModelIds: () => ({})
     });
   });
+  it.each([true, false])(
+    'keeps root debug resource references in the target team: sameTeam=%s',
+    async (sameTeam) => {
+      const datasetId = '65f000000000000000000073';
+      mocks.getAppDraftVersion.mockResolvedValue({ resources: [] });
+      mocks.authDatasetByTmbId.mockResolvedValue({
+        dataset: { teamId: sameTeam ? teamId : 'other-team' }
+      });
+      const prepared = prepareAppWorkflowResources({
+        appId: 'app',
+        teamId,
+        tmbId,
+        isRoot: true,
+        nodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+            outputs: [],
+            inputs: [
+              {
+                key: NodeInputKeyEnum.datasetSelectList,
+                value: [{ datasetId }],
+                renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+              }
+            ]
+          }
+        ] as any
+      });
+      if (sameTeam) {
+        await expect(prepared).resolves.toEqual([{ type: 'dataset', id: datasetId }]);
+      } else {
+        await expect(prepared).rejects.toBe(DatasetErrEnum.unAuthDataset);
+      }
+    }
+  );
   it.each([NodeInputKeyEnum.aiModel, NodeInputKeyEnum.aiModelId])(
     'prepares a dynamic %s without authorizing the expression as a model ID',
     async (key) => {

@@ -12,6 +12,7 @@ import {
   getFileNameFromUrl,
   getFileUrlIdentity,
   isAbsoluteHttpUrl,
+  isSignedDownloadAlias,
   selectFileInputs
 } from './utils';
 
@@ -50,7 +51,7 @@ const probeWithoutContext = pLimit(5);
 
 /**
  * 唯一链接分类入口：已登记结果 > 明确媒体类型 > 可信对象元数据 > 链接文件名 > 系统链接探测 > 普通文件。
- * 链接包含 filename 参数或带后缀的路径文件名时不探测，未知后缀保留为普通文件。
+ * 链接包含 filename 参数或带后缀的路径文件名时不探测，未知后缀保留为普通文件；短链凭证不视为文件名。
  * 普通 file 提示仍允许探测无文件名链接；私有 key 只按后缀推测，不请求签名链接。
  * 分类不截断、不登记。Context 内相同身份复用探测和降级结果，远端探测并发上限为 5。
  */
@@ -100,7 +101,11 @@ export const parseUrlToChatFileType = async ({
           url,
           validateUrl: validateFileUrlDomain
         });
-        return { type: mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file, filename };
+        return {
+          type: mediaTypeFromMime(contentType) ?? ChatFileTypeEnum.file,
+          // 探测端未返回文件名或格式证据时，不能继续把 URL 中的签名当作解析文件名。
+          filename: isSignedDownloadAlias(filename) ? undefined : filename
+        };
       } catch {
         // 系统探测失败时只降级类型，不授予读取权限；业务读取仍需通过独立校验。
       }
@@ -123,9 +128,11 @@ export const parseUrlToChatFileType = async ({
       const basename = url.startsWith('chat/')
         ? path.basename(url)
         : (getFileNameFromUrl(url) ?? path.basename(parsedUrl.pathname));
-      const filename =
-        (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
-        (basename.includes('.') ? basename : '');
+      // 短链中的点号分隔 alias、过期时间与签名；交给响应元数据推测，不能作为已知后缀跳过探测。
+      const filename = isSignedDownloadAlias(basename)
+        ? ''
+        : (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||
+          (basename.includes('.') ? basename : '');
       const extension = `.${filename.slice(filename.lastIndexOf('.') + 1).toLowerCase()}`;
       const mediaExtensions: [string, ChatFileTypeEnum][] = [
         [imageFileType, ChatFileTypeEnum.image],

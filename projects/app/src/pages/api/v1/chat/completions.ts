@@ -33,7 +33,7 @@ import {
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
-import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
+import { authOutLinkChatStart } from '@fastgpt/service/support/permission/publish/authChat';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';

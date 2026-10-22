@@ -1,12 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -33,7 +32,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 /**
  * 更新知识库接口
  * 1. 若包含 parentId，则复用 moveDataset 服务完成鉴权、层级检查、权限继承与移动操作；
- * 2. 若包含基础信息或模型配置，则校验写权限并更新。
+ * 2. 若包含基础信息或模型配置，则校验管理员权限并更新。
  */
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const {
@@ -91,17 +90,13 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   }
 
   // 2. 基础属性更新
-  const { dataset, permission, tmbId, teamId, isRoot } = await authDataset({
+  const { dataset, tmbId, teamId, isRoot } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: id,
-    per: ReadPermissionVal
+    per: ManagePermissionVal
   });
-
-  if (!permission.hasWritePer) {
-    return Promise.reject(DatasetErrEnum.unAuthDataset);
-  }
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings

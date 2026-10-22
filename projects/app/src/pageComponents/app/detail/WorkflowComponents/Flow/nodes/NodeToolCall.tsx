@@ -109,7 +109,7 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'480px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={beforeSandboxInputs} isTool={isTool} />

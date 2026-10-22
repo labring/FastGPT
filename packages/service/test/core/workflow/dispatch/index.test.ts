@@ -706,6 +706,31 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('标签过滤关闭时，collectionFilterMatch 解析为 undefined', () => {
+    const node = createNode('search', FlowNodeTypeEnum.datasetSearchNode);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: {
+          logic: 'AND',
+          conditions: [{ tag: 'dept', op: '$eq', value: 'sales' }],
+          open: false
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState({}).state
+    });
+
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBeUndefined();
+  });
+
   it('Agent 嵌套 datasetParams 会解析标签过滤行内引用', () => {
     const variableState = createVariableState({ price: 18 });
     const node = createNode('agent', FlowNodeTypeEnum.agent);

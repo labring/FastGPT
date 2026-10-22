@@ -964,14 +964,15 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
+  it('ignores legacy unwrapped Ask memory without crashing a new run', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'legacy-plan',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1020,25 +1021,9 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'fastAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: {
-            pendingMainContext: expect.objectContaining({
-              askToolCallId: 'call_ask',
-              activePlan: {
-                planId: 'legacy-plan',
-                name: 'Legacy plan',
-                description: 'Legacy description',
-                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
-              }
-            })
-          }
-        })
-      })
-    );
+    const input = runAgentLoopMock.mock.calls[0][0].input;
+    expect(input.providerState).toBeUndefined();
+    expect(input.userAnswer).toBeUndefined();
     expect(result.data.answerText).toBe('continued answer');
   });
 
@@ -1056,16 +1041,14 @@ describe('dispatchRunAgent user context', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           },
           {
             question: 'Second?',
             options: [
               { summary: 'C', value: 'C' },
               { summary: 'D', value: 'D' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -1115,10 +1098,11 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask_1',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {

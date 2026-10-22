@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,

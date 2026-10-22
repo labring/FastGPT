@@ -8,7 +8,11 @@ import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 
@@ -207,17 +211,54 @@ describe('checkAppFormResourceIssues', () => {
     it('should return undefined when all validations pass', async () => {
       const appId = '68ad85a7463006c963799a05';
       const appForm = getDefaultAppForm();
+      const workflow = {
+        nodes: [
+          {
+            nodeId: 'start',
+            name: 'Start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            inputs: [],
+            outputs: []
+          },
+          {
+            nodeId: 'answer',
+            name: 'Answer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: 'text',
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.input],
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: 'Ready'
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'answer',
+            sourceHandle: 'start-source-right',
+            targetHandle: 'answer-target-left'
+          }
+        ]
+      };
       const result = await checkAppFormBeforePublish({
         appId,
         appForm,
-        form2WorkflowFn: () => ({ nodes: [], edges: [], chatConfig: appForm.chatConfig }),
+        form2WorkflowFn: () => ({ ...workflow, chatConfig: appForm.chatConfig }),
         showSandbox: true,
         enableSandbox: true,
         t: mockT
       });
       expect(result).toBeUndefined();
       expect(getWorkflowModelCheckData).toHaveBeenLastCalledWith({
-        nodes: [],
+        nodes: expect.arrayContaining([
+          expect.objectContaining({ id: 'start' }),
+          expect.objectContaining({ id: 'answer' })
+        ]),
         chatConfig: appForm.chatConfig,
         appId
       });

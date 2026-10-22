@@ -1,21 +1,63 @@
+import { WorkflowBuilderChatBodySchema } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
+import fixture from '@fastgpt/workflow-core/test/fixtures/basic-static/workflow.json';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   activateStreamResumeController,
   buildStreamResumeUrl,
   createResumeReadyNotifier,
+  buildStreamFetchBody,
   createStreamFetchError,
   getStreamReasoningQueueConsumeCount,
   getStreamTypingQueueConsumeCount,
-  handleEventSourceData
+  handleEventSourceData,
+  shouldSendStreamResumeHeader
 } from '@/web/common/api/fetch';
 import {
   SseResponseEventEnum,
   StreamResumePhaseEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 describe('handleEventSourceData', () => {
+  it('preserves candidate metadata without changing ordinary answer events in the same stream', () => {
+    const version = {
+      versionNo: 1,
+      name: 'Version 1',
+      filename: 'version-1.json',
+      checksum: `sha256:${'a'.repeat(64)}`,
+      generatedAt: '2026-10-20T00:00:00.000Z',
+      expiresAt: '2026-10-20T01:00:00.000Z'
+    };
+    const enqueue = vi.fn();
+    const onmessage = vi.fn();
+    const onerror = vi.fn();
+    for (const message of [
+      workflowSseEvent.answerDelta('a'),
+      workflowSseEvent.workflowBuilderVersion(version),
+      workflowSseEvent.answerDelta('b'),
+      workflowSseEvent.done(SseResponseEventEnum.answer)
+    ]) {
+      handleEventSourceData({
+        event: message.event!,
+        data: typeof message.data === 'string' ? message.data : JSON.stringify(message.data),
+        enqueue,
+        onmessage,
+        onerror
+      });
+    }
+    expect(onmessage).toHaveBeenCalledExactlyOnceWith({
+      event: SseResponseEventEnum.workflowBuilderVersion,
+      responseValueId: undefined,
+      workflowBuilderVersion: version
+    });
+    expect(enqueue.mock.calls.map(([event]) => event.text)).toEqual(['a', 'b']);
+    expect(onerror).not.toHaveBeenCalled();
+  });
+
   it('should enqueue reasoning before answer text for the typing effect', () => {
     const enqueue = vi.fn();
     const onmessage = vi.fn();
@@ -210,9 +252,24 @@ describe('createResumeReadyNotifier', () => {
   });
 });
 
+describe('shouldSendStreamResumeHeader', () => {
+  it('enables resume for the Pro Skill Helper endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/ai/skill/debugChat')).toBe(true);
+  });
+
+  it('enables resume for the Pro Workflow Builder endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/workflow/builder/chat')).toBe(true);
+  });
+});
+
 describe('buildStreamResumeUrl', () => {
   it.each([
     { name: 'App', chatTarget: { appId: 'app-1' }, expected: { appId: 'app-1' } },
+    {
+      name: 'Workflow Builder',
+      chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder as const },
+      expected: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder }
+    },
     {
       name: 'Agent Helper',
       chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.chatAgentHelper as const },
@@ -241,6 +298,10 @@ describe('activateStreamResumeController', () => {
       { chatId: 'chat-1', chatTarget: { appId: 'app-1' } },
       { chatId: 'chat-2', chatTarget: { appId: 'app-1' } },
       { chatId: 'chat-1', chatTarget: { appId: 'app-2' } },
+      {
+        chatId: 'chat-1',
+        chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.workflowBuilder as const }
+      },
       {
         chatId: 'chat-1',
         chatTarget: { appId: 'app-1', sourceType: ChatSourceTypeEnum.chatAgentHelper as const }
@@ -275,5 +336,39 @@ describe('activateStreamResumeController', () => {
 
     deactivateActive();
     deactivateNext();
+  });
+});
+
+describe('buildStreamFetchBody', () => {
+  it('accepts the shared chat transport body and strips extra runtime fields', async () => {
+    const appId = '67f4c91c79a4d61b1f116b2a';
+    const document = WorkflowDocumentSchema.parse(structuredClone(fixture));
+    document.app.appId = appId;
+    const requestBody = {
+      appId,
+      chatId: 'workflow-builder-chat',
+      messages: [{ role: 'user' as const, content: 'Add an AI node' }],
+      workflowContext: {
+        document,
+        checksum: await getWorkflowChecksum(document)
+      }
+    };
+
+    const builderBody = buildStreamFetchBody({ data: requestBody });
+    expect(builderBody).toMatchObject({
+      ...requestBody,
+      variables: { cTime: expect.any(String) },
+      detail: true,
+      stream: true,
+      retainDatasetCite: true
+    });
+    expect(WorkflowBuilderChatBodySchema.parse(builderBody)).toEqual(requestBody);
+
+    expect(buildStreamFetchBody({ data: { variables: { input: 'value' } } })).toMatchObject({
+      variables: { input: 'value', cTime: expect.any(String) },
+      detail: true,
+      stream: true,
+      retainDatasetCite: true
+    });
   });
 });

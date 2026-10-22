@@ -35,7 +35,6 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { WorkflowRuntimeSummaryType } from '../workflow/dispatch/type';
@@ -792,11 +791,10 @@ export const pushChatRecords = async (props: Props) => {
   }
 };
 
-/*
-  更新交互节点，包含两种情况：
-  1. 更新当前的 items，并把 value 追加到当前 items
-  2. 新增 items, 次数只需要改当前的 items 里的交互节点值即可，其他属性追加在新增的 items 里
-*/
+/**
+ * 保存交互回复：Ask/Preview 的 query 直接完成新的 Human/AI 轮次，不回写原问题；
+ * submit 将交互状态和续跑结果合并到当前 AI 消息。
+ */
 export const updateInteractiveChat = async ({
   interactive,
   shouldFinalizePreparedRound = false,
@@ -823,31 +821,12 @@ export const updateInteractiveChat = async ({
     sourceId: props.sourceId
   };
   const appSourceId = chatSource.sourceId;
-  if (!chatId) return;
+  if (!chatId || isSkipSaveChatId(chatId)) return;
 
   const { variables: variableList } = getAppChatConfig({
     chatConfig: appChatConfig,
     isPublicFetch: false
   });
-
-  const chatItem = await MongoChatItem.findOne({
-    ...buildChatSourceQuery(chatSource),
-    chatId,
-    obj: ChatRoleEnum.AI
-  }).sort({
-    _id: -1
-  });
-
-  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) {
-    if (props.generationRunId) {
-      await stopChatGenerationLease({
-        ...chatSource,
-        chatId,
-        generationRunId: props.generationRunId
-      });
-    }
-    return;
-  }
 
   // Get interactive value
   interactive.params = interactive.params || {};
@@ -867,50 +846,24 @@ export const updateInteractiveChat = async ({
       throw new Error('Prepared chat round is required for interactive query');
     }
 
-    if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
-      if (!finalInteractive.askId) {
-        throw new Error(`Agent ask interactive askId is required: ${chatId}`);
-      }
-      if (finalInteractive.type === 'agentPlanAskQuery') {
-        // Legacy ask_user
-        finalInteractive.params.answer = userInteractiveVal;
-      } else {
-        // New (multiple questions)
-        const answers = parseAgentAskAnswers(userInteractiveVal);
-        finalInteractive.params.questions = finalInteractive.params.questions.map(
-          (question, index) => ({
-            ...question,
-            answer: answers[index] ?? question.answer
-          })
-        );
-        finalInteractive.params.submitted = true;
-      }
+    return finalizeChatRound(props);
+  }
 
-      const interactiveChatItem = await MongoChatItem.findOne({
-        ...buildChatSourceQuery(chatSource),
+  const chatItem = await MongoChatItem.findOne({
+    ...buildChatSourceQuery(chatSource),
+    chatId,
+    obj: ChatRoleEnum.AI
+  }).sort({ _id: -1 });
+  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) {
+    // 没有可续写的 AI 记录时不写库，但仍要释放本 run 的生成租约。
+    if (props.generationRunId) {
+      await stopChatGenerationLease({
+        ...chatSource,
         chatId,
-        obj: ChatRoleEnum.AI,
-        'value.interactive': { $exists: true }
-      }).sort({ _id: -1 });
-      if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
-        throw new Error(`Interactive query chat item not found: ${chatId}`);
-      }
-      const previousInteractiveIndex = interactiveChatItem.value.findLastIndex(
-        (item) => !!item.interactive
-      );
-      if (previousInteractiveIndex === -1) {
-        throw new Error(`Interactive query value not found: ${chatId}`);
-      }
-      interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
-      interactiveChatItem.markModified('value');
-      await interactiveChatItem.save();
-
-      props.userContent.value.forEach((item) => {
-        item.askId = finalInteractive.askId;
+        generationRunId: props.generationRunId
       });
     }
-
-    return finalizeChatRound(props);
+    return;
   }
 
   const parsedUserInteractiveVal = (() => {

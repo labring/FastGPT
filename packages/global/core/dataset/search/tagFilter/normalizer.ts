@@ -5,7 +5,8 @@ import {
   DatasetTagFilterFieldEnum,
   DatasetTagFilterLogicEnum,
   DatasetTagFilterValueModeEnum,
-  DatasetTagFilterVersionEnum
+  DatasetTagFilterVersionEnum,
+  emptyValueOperators
 } from '../../constants';
 import {
   type DatasetSearchValue,
@@ -15,7 +16,11 @@ import {
   type TagConditionObject,
   isDatasetTagFilterValue
 } from './type';
-import { isTagFilterOpWithoutValue } from './uiUtils';
+
+const emptyOps = new Set(emptyValueOperators.map((item) => item.value));
+
+/** 判断条件是否无需输入值，供配置展示与检索载荷归一化共用。 */
+export const isTagFilterOpWithoutValue = (op?: string) => !!op && emptyOps.has(op);
 
 const hasDatasetTagFilterConfiguration = (value: unknown) => {
   if (typeof value === 'string') return value.trim().length > 0;
@@ -241,6 +246,8 @@ const mergeCollectionIds = (conditions: DatasetTagFilterCondition[]) => {
 export const serializeDatasetTagFilterValue = (
   value: DatasetTagFilterValue
 ): string | undefined => {
+  if (value.open === false) return undefined;
+
   const tagConditions = value.conditions
     .map(buildTagConditionObject)
     .filter((item): item is TagConditionObject => Boolean(item));
@@ -311,8 +318,9 @@ export const formatCollectionFilterMatchParam = ({
 
   // 1. 表单 AST 结构：解析 reference 模式下的引用变量并序列化为检索 JSON
   if (structured) {
+    if (structured.open === false) return undefined;
     const resolved: DatasetTagFilterValue = {
-      logic: structured.logic,
+      ...structured,
       conditions: structured.conditions.map((condition) =>
         resolveConditionValue(condition, resolveReference)
       )
@@ -405,4 +413,50 @@ export const formatCollectionFilterMatchParam = ({
   }
 
   return undefined;
+};
+
+/**
+ * 判断过滤配置是否至少包含一条完整条件，供 SimpleApp / ChatAgent 的 SearchParamsTip 展示开启状态。
+ * SimpleApp 与 ChatAgent 自首次支持标签过滤起即为结构化格式，且不支持工作流转回简易应用，无需兼容旧版字符串；
+ * 复用归一化的字段和值规则，引用只检查配置完整度，不读取运行时变量。
+ */
+export const hasEffectiveDatasetTagFilter = (value: unknown): boolean => {
+  if (!isDatasetTagFilterValue(value)) return false;
+  if (value.open === false) return false;
+
+  return value.conditions.some((condition) => {
+    if (!condition.op) return false;
+    if (isTagCondition(condition) && !condition.tag?.trim()) return false;
+
+    const isReference =
+      condition.field === DatasetTagFilterFieldEnum.collectionId
+        ? condition.valueMode !== DatasetTagFilterValueModeEnum.input
+        : condition.valueMode === DatasetTagFilterValueModeEnum.reference;
+    if (!isReference || (isTagCondition(condition) && isTagFilterOpWithoutValue(condition.op))) {
+      return (
+        serializeDatasetTagFilterValue({
+          logic: DatasetTagFilterLogicEnum.AND,
+          conditions: [condition]
+        }) !== undefined
+      );
+    }
+    return (
+      isReferenceTuple(condition.value) &&
+      condition.value[0].trim().length > 0 &&
+      Boolean(condition.value[1]?.trim())
+    );
+  });
+};
+
+/**
+ * 判断标签过滤在工作流节点中是否处于开启状态。
+ * - 变量引用模式下，数组形式（含已开启待选的空数组）视为开启；
+ * - 手动输入模式下，显式指定 open 时以 open 为准，未指定时按是否包含有效过滤条件判定；
+ * - 其余情况（如初始 undefined 或空行且未显式开启）默认处于关闭状态。
+ */
+export const isDatasetTagFilterOpen = (value: unknown): boolean => {
+  if (Array.isArray(value)) return true;
+  if (!isDatasetTagFilterValue(value)) return false;
+  if (value.open !== undefined) return value.open;
+  return hasEffectiveDatasetTagFilter(value);
 };

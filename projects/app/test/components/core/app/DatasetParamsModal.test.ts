@@ -58,8 +58,9 @@ vi.mock('@/components/Select/AIModelSelector', () => ({
   }
 }));
 vi.mock('@/components/common/Textarea/MyTextarea', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MyModal', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children
+vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
+  default: ({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children, footer)
 }));
 vi.mock('@chakra-ui/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@chakra-ui/react')>();

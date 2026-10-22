@@ -212,7 +212,7 @@ Skill Edit 和 Skill 调试保持强依赖。文件 API 在服务端重新校验
 
 - 两级配额：系统总上限（env `AGENT_SANDBOX_MAX`，默认 100）与团队配额（env `AGENT_SANDBOX_MAX_PER_TEAM`，
   默认不限）；均以服务端系统配置 `systemEnv.agentSandboxMax / agentSandboxMaxPerTeam` 优先、env 兜底。
-  未配置新变量 `AGENT_SANDBOX_MAX` 时兼容读取 `AGENT_SANDBOX_MAX_EDIT_DEBUG`，两者均未配置时使用默认值。
+  未配置 `AGENT_SANDBOX_MAX` 时使用默认值。
 - app 会话与技能编辑**共用同一个计数池**（忽略 provider 与 sourceType）：用量为 Mongo 活跃实例数，
   任一超限直接返回 409（`agentSandboxLimitReached` / `agentSandboxTeamLimitReached`），不排队。
 - 计入 Quota 的状态：`provisioning / legacyMigrating / running / stopping / archiving / restoring`；

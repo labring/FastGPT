@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { type ApiRequestProps } from '@fastgpt/next/type';

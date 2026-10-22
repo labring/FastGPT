@@ -13,6 +13,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetApiDatasetCatalogBody } from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useBoolean, useMemoizedFn, useMount } from 'ahooks';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -30,7 +31,13 @@ const ApiDatasetForm = ({
   form: UseFormReturn<any>;
 }) => {
   const { t } = useTranslation();
-  const { register, setValue, watch } = form;
+  const { register, setValue, watch, formState } = form;
+  // form 由外层以 any 传入，这里只取 baseUrl 的字段错误并声明最小结构
+  const baseUrlError = (
+    formState.errors?.apiDatasetServer as
+      | { apiServer?: { baseUrl?: { message?: string } } }
+      | undefined
+  )?.apiServer?.baseUrl;
   const inputLayoutProps = controlWidth
     ? {
         w: controlWidth,
@@ -185,11 +192,27 @@ const ApiDatasetForm = ({
             <Input
               {...inputLayoutProps}
               bg={'myWhite.600'}
+              isInvalid={!!baseUrlError}
               placeholder={t('dataset:api_url')}
               maxLength={200}
-              {...register('apiDatasetServer.apiServer.baseUrl', { required: true })}
+              {...register('apiDatasetServer.apiServer.baseUrl', {
+                required: t('dataset:api_url_invalid'),
+                // 保存时不做协议猜测：必须显式填写完整的 http(s) 地址
+                validate: (value: string) => isValidHttpUrl(value) || t('dataset:api_url_invalid')
+              })}
             />
           </Flex>
+          {baseUrlError?.message && (
+            <Box
+              mt={1}
+              color={'red.600'}
+              fontSize={'sm'}
+              pl={controlWidth ? 0 : '110px'}
+              textAlign={controlWidth ? 'right' : 'left'}
+            >
+              {baseUrlError.message}
+            </Box>
+          )}
           <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
             <FormLabel flex={['', '0 0 110px']} fontSize={'sm'}>
               Authorization

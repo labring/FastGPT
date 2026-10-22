@@ -1,9 +1,11 @@
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  getNodeAllSource,
-  workflowReferenceValueIsSelectable
-} from '@/web/core/workflow/utils';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+  workflowReferenceValueIsSelectable,
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,
@@ -11,7 +13,6 @@ import {
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
-  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -27,10 +28,6 @@ import type {
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import {
-  getSelectedInputRenderType,
-  nodeInputIsReference
-} from '@fastgpt/global/common/workflow/reference';
 import {
   normalizeFlowNodeInputType,
   serializeAgentTool
@@ -49,6 +46,7 @@ const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isT
   return normalizedInput;
 };
 
+/** 将画布转为保存及导出数据，保留工具版本的展示快照，移除仅供 UI 使用的状态。 */
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
   edges,
@@ -105,6 +103,8 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
+      versionLabel: item.data.versionLabel,
+      isLatestVersion: item.data.isLatestVersion,
       ...(item.data.metadataLocale !== undefined
         ? { metadataLocale: item.data.metadataLocale }
         : {}),
@@ -118,12 +118,12 @@ export const uiWorkflow2StoreWorkflow = ({
       }),
       // 仅用于画布的函数不能持久化，也不属于严格 API Schema。
       outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
+      isFolded: item.data.isFolded,
       pluginId: item.data.pluginId,
       toolConfig: item.data.toolConfig,
       catchError: item.data.catchError
     };
   });
-
   const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
   const formatEdges: StoreEdgeItemType[] = edges
     .map((item) => ({

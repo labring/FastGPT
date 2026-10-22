@@ -23,6 +23,9 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { failChatRound } from '@fastgpt/service/core/chat/saveChat';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const createPrepareParams = (
   overrides?: Partial<PrepareChatRoundParams>,
@@ -297,36 +300,58 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(1);
   });
 
-  it('should reuse the original AI dataId for submit agentAsk', async () => {
-    const params = createPreChatRoundParams(
-      { responseChatItemId: 'client-new-data-id' },
-      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-    );
-    await MongoChat.create({
-      appId: testAppId,
-      chatId: params.chatId,
-      teamId: testTeamId,
-      tmbId: testTmbId,
-      sourceType: params.sourceType,
-      source: params.source
-    });
-    await MongoChatItem.create({
-      teamId: testTeamId,
-      tmbId: testTmbId,
-      sourceType: params.sourceType,
-      appId: testAppId,
-      chatId: params.chatId,
-      dataId: 'previous-helper-ai-data-id',
-      obj: ChatRoleEnum.AI,
-      value: []
-    });
+  it.each([
+    { sourceType: ChatSourceTypeEnum.app, nested: true },
+    { sourceType: ChatSourceTypeEnum.chatAgentHelper, nested: false },
+    { sourceType: ChatSourceTypeEnum.workflowBuilder, nested: true }
+  ])(
+    'preserves a visible new user round for $sourceType Ask, even if generation fails',
+    async ({ sourceType, nested }) => {
+      const params = createPreChatRoundParams(
+        {
+          responseChatItemId: 'client-new-data-id',
+          sourceType,
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            dataId: 'answer-human-id',
+            hideInUI: false,
+            value: [
+              {
+                select: {
+                  type: 'agentAsk',
+                  questions: [{ question: 'Audience?', value: 'A' }]
+                }
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: params.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: params.sourceType,
+        source: params.source
+      });
+      await MongoChatItem.create({
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: params.sourceType,
+        appId: testAppId,
+        chatId: params.chatId,
+        dataId: 'previous-helper-ai-data-id',
+        obj: ChatRoleEnum.AI,
+        value: []
+      });
 
-    const result = await preChatRound({
-      ...params,
-      interactive: {
+      const ask: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
         askId: 'chat-agent-helper-ask',
-        responseMode: 'submit',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
         params: {
           description: 'Collect requirements',
           questions: [
@@ -335,24 +360,59 @@ describe('prepare chat round', () => {
               options: [
                 { summary: 'A', value: 'A' },
                 { summary: 'B', value: 'B' }
-              ],
-              answer: ''
+              ]
             }
           ]
         }
-      } as any
-    });
+      };
+      const result = await preChatRound({
+        ...params,
+        interactive: nested
+          ? {
+              type: 'childrenInteractive',
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: [],
+              params: { childrenResponse: ask }
+            }
+          : ask
+      });
 
-    expect(result.responseChatItemId).toBe('previous-helper-ai-data-id');
-    expect(result.shouldFinalizePreparedRound).toBe(false);
-    expect(
-      await MongoChatItem.countDocuments({
+      expect(result.responseChatItemId).toBe('client-new-data-id');
+      expect(result.shouldFinalizePreparedRound).toBe(true);
+      const records = await MongoChatItem.find({
         appId: testAppId,
         chatId: params.chatId,
         sourceType: params.sourceType
-      })
-    ).toBe(1);
-  });
+      }).sort({ _id: 1 });
+      expect(records.map((record) => [record.obj, record.dataId])).toEqual([
+        [ChatRoleEnum.AI, 'previous-helper-ai-data-id'],
+        [ChatRoleEnum.Human, 'client-new-data-id'],
+        [ChatRoleEnum.AI, 'client-new-data-id']
+      ]);
+      const human = records[1];
+      if (human.obj !== ChatRoleEnum.Human) throw new Error('Expected the new user record');
+      expect(human.hideInUI).toBe(false);
+      expect(human.value).toEqual(params.userContent.value);
+      expect(human.value[0]).not.toHaveProperty('askId');
+      expect(human.value[0]).not.toHaveProperty('interactiveReply');
+      expect(chatValue2RuntimePrompt(params.userContent.value).text).toBe('{"answers":["A"]}');
+      await failChatRound({
+        sourceType,
+        sourceId: testAppId,
+        chatId: result.chatId,
+        responseChatItemId: result.responseChatItemId,
+        error: new Error('Resume failed')
+      });
+      const refreshedHuman = await MongoChatItem.findById(human._id).lean();
+      if (refreshedHuman?.obj !== ChatRoleEnum.Human) throw new Error('User record disappeared');
+      expect(refreshedHuman?.value).toEqual(human.value);
+      expect(refreshedHuman?.hideInUI).toBe(false);
+      const failedAi = await MongoChatItem.findById(records[2]._id).lean();
+      if (failedAi?.obj !== ChatRoleEnum.AI) throw new Error('Expected the new AI record');
+      expect(failedAi?.errorMsg).toBe('Resume failed');
+    }
+  );
 
   it('should mark chat as error when interactive continue has no previous AI item', async () => {
     const params = createPreChatRoundParams(
@@ -378,7 +438,7 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
   });
 
-  it('should treat agentPlanAskQuery interactive as a new round', async () => {
+  it('should treat agentAsk interactive as a new round', async () => {
     const params = createPreChatRoundParams(
       {
         responseChatItemId: 'agent-plan-query-data-id'
@@ -389,11 +449,20 @@ describe('prepare chat round', () => {
     const result = await preChatRound({
       ...params,
       interactive: {
-        type: 'agentPlanAskQuery',
+        type: 'agentAsk',
         askId: 'call_ask',
         params: {
-          content: 'Need more input',
-          options: ['Use repo', 'Use docs', 'Use defaults']
+          description: '',
+          questions: [
+            {
+              question: 'Need more input',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ]
+            }
+          ]
         }
       } as any
     });
@@ -403,7 +472,7 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
   });
 
-  it('should treat an agentPlanAskQuery nested in a child tool as a new round', async () => {
+  it('should treat an agentAsk nested in a child tool as a new round', async () => {
     const params = createPreChatRoundParams(
       {
         responseChatItemId: 'nested-agent-query-data-id'
@@ -420,11 +489,20 @@ describe('prepare chat round', () => {
             toolCallId: 'tool_1'
           },
           childrenResponse: {
-            type: 'agentPlanAskQuery',
+            type: 'agentAsk',
             askId: 'call_ask',
             params: {
-              content: 'Need more input',
-              options: ['Use repo', 'Use docs', 'Use defaults']
+              description: '',
+              questions: [
+                {
+                  question: 'Need more input',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ]
+                }
+              ]
             }
           }
         }

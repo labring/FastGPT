@@ -18,6 +18,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 
 type RenderListProps = {
+  isOpen: boolean;
   index: number;
   list: MultipleSelectProps['list'];
   cloneValue: (string | undefined)[];
@@ -34,6 +35,7 @@ type RenderListProps = {
 };
 
 const RenderList = React.memo(function RenderList({
+  isOpen,
   index,
   list,
   cloneValue,
@@ -60,6 +62,17 @@ const RenderList = React.memo(function RenderList({
       MenuRef.current[index]!.scrollTop = currentScrollTop;
     }
   }, [currentScrollTop, index, MenuRef]);
+
+  // 每列挂载、展开或选中项位置变化后再定位，覆盖异步加载和后续出现的子列。
+  // 依赖实际选中值与位置，避免父级用新数组重渲染时打断用户手动滚动。
+  useEffect(() => {
+    if (!isOpen || selectedIndex < 0) return;
+    const menu = MenuRef.current[index];
+    const selectedItem = SelectedItemRef.current[index];
+    if (menu && selectedItem) {
+      menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+    }
+  }, [isOpen, selectedValue, selectedIndex, index, MenuRef, SelectedItemRef]);
 
   return (
     <>
@@ -134,6 +147,7 @@ const RenderList = React.memo(function RenderList({
       </Box>
       {children.length > 0 && (
         <RenderList
+          isOpen={isOpen}
           list={children}
           index={index + 1}
           cloneValue={cloneValue}
@@ -186,18 +200,6 @@ export const MultipleRowSelect = ({
   const resolvedCloneValue =
     isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
 
-  useEffect(() => {
-    if (isOpen) {
-      for (let i = 0; i < MenuRef.current.length; i++) {
-        const menu = MenuRef.current[i];
-        const selectedItem = SelectedItemRef.current[i];
-        if (menu && selectedItem) {
-          menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
-        }
-      }
-    }
-  }, [isOpen]);
-
   const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -244,8 +246,15 @@ export const MultipleRowSelect = ({
               }
             : {})}
         >
-          {/* data-preserve-width：避免外层 width:auto 冲掉触发器截断 */}
-          <Flex alignItems={'center'} minW={0} w={'100%'} overflow={'hidden'} data-preserve-width>
+          {/* 保留截断宽度，并恢复 MenuButton 默认屏蔽的标签 hover 事件。 */}
+          <Flex
+            alignItems={'center'}
+            minW={0}
+            w={'100%'}
+            overflow={'hidden'}
+            pointerEvents={'auto'}
+            data-preserve-width
+          >
             <Box
               data-preserve-width
               flex={'1 1 0'}
@@ -297,6 +306,7 @@ export const MultipleRowSelect = ({
             </Box>
           ) : (
             <RenderList
+              isOpen={isOpen}
               list={list}
               index={0}
               cloneValue={resolvedCloneValue}
@@ -482,7 +492,7 @@ export const MultipleRowArraySelect = ({
               })}
           className="nowheel"
         >
-          <Box w={'100%'} textAlign={'left'}>
+          <Box w={'100%'} textAlign={'left'} pointerEvents={'auto'}>
             {label ?? placeholder}
           </Box>
         </MenuButton>

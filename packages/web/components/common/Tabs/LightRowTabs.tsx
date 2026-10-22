@@ -14,6 +14,7 @@ type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   inlineStyles?: FlexProps;
   activeColor?: string;
   defaultColor?: string;
+  inactiveColor?: string;
   itemHeight?: string;
   outerPadding?: string;
   outerHeight?: string;
@@ -28,6 +29,7 @@ const LightRowTabs = <ValueType = string,>({
   value,
   activeColor = 'primary.600',
   defaultColor = 'transparent',
+  inactiveColor = 'myGray.600',
   itemHeight,
   outerPadding,
   outerHeight,
@@ -153,6 +155,7 @@ const LightRowTabs = <ValueType = string,>({
                   borderBottomColor: activeColor
                 }
               : {
+                  color: inactiveColor,
                   cursor: 'pointer'
                 })}
           >

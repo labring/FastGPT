@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
-import { workflowSystemVariables } from '@/web/core/app/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';

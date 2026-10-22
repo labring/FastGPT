@@ -141,7 +141,8 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
-            WHERE dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+            WHERE team_id = '${String(teamId)}'
+              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
               ${forbidCollectionSql}
             ORDER BY score LIMIT ${limit};

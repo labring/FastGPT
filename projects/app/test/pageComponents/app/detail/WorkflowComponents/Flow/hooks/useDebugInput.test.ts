@@ -1,3 +1,4 @@
+import { type WorkflowReferenceSourceNode } from '@fastgpt/global/common/workflow/reference';
 import { describe, expect, it } from 'vitest';
 import {
   NodeInputKeyEnum,
@@ -12,7 +13,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import {
   checkInputShouldRenderInDebug,

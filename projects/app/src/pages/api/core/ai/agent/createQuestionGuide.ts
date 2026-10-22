@@ -2,7 +2,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import type { NextApiResponse } from 'next';
 
 import { NextAPI } from '@/service/middleware/entry';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
+import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {

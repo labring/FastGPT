@@ -15,10 +15,6 @@ export const createAgentLoopCoreAskInteractive = ({
   askId,
   params: {
     description: ask.reason,
-    questions: ask.questions.map((question) => ({
-      ...question,
-      // Initialize the initial state
-      answer: ''
-    }))
+    questions: ask.questions
   }
 });

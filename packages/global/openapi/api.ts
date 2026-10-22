@@ -5,10 +5,14 @@ import z from 'zod';
 
 export const PaginationPageSizeLimit = 500;
 
-/** 通用分页条数约束；业务接口需要更小上限时显式覆盖 pageSize。 */
+/** 通用分页条数超限时自动截断；业务接口需要更小上限时显式覆盖 pageSize。 */
 export const PaginationPageSizeSchema = IntSchema.positive()
+  .overwrite((value) => Math.min(value, PaginationPageSizeLimit))
   .max(PaginationPageSizeLimit)
-  .meta({ example: 20, description: `每页条数，最大 ${PaginationPageSizeLimit}` });
+  .meta({
+    example: 20,
+    description: `每页条数，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理`
+  });
 
 /* 按 offset 分页 */
 export const PaginationSchema = z.object({

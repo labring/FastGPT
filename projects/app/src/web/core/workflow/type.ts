@@ -1,4 +1,5 @@
 import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 export type THelperLine = {
@@ -21,5 +22,7 @@ export type WorkflowRuleIssue = Pick<WorkflowCheckIssue, 'code' | 'inputKey'> & 
   fallbackLabel?: string;
   fieldLabel?: 'variable' | 'value' | 'dataset_quote' | 'question_guide' | 'tts';
   model?: string;
-  messageCode?: string;
+  messageCode?: WorkflowCheckIssueCodeEnum;
+  message?: string;
+  level?: WorkflowCheckIssue['level'];
 };

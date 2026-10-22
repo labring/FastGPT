@@ -1,18 +1,8 @@
 import { Box, Flex } from '@chakra-ui/react';
-import React, { useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import type {
-  AIChatItemValueItemType,
-  ChatHistoryItemResType
-} from '@fastgpt/global/core/chat/type';
-import type { OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
+import React from 'react';
 import AIResponseBox from '../../../../components/AIResponseBox';
-import RenderProcessingCollapse from '../../../../components/AIResponseBox/RenderProcessingCollapse';
-import RenderProcessingPreview, {
-  getProcessingPreviewLabelKey,
-  getProcessingPreviewTarget,
-  type ProcessingPreviewTarget
-} from '../../../../components/AIResponseBox/RenderProcessingPreview';
+import ProcessingGroup from './ProcessingGroup';
+import type { AIChatBubbleContentProps, IndexedAIChatValue } from './type';
 import {
   hasAiAnswerContent,
   hasAiFoldableProcessingContent,
@@ -21,93 +11,26 @@ import {
   hasAiStandaloneProcessingContent
 } from './utils';
 
-type AIChatBubbleContentProps = {
-  dataId: string;
-  chatValue: AIChatItemValueItemType[];
-  responseData?: ChatHistoryItemResType[];
-  isLastChild: boolean;
-  isChatting: boolean;
-  allowedCitationIds?: Set<string>;
-  onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
-};
-
-type ExpandedProcessingPreview = {
-  groupKey: string;
-  valueIndex: number;
-  target: ProcessingPreviewTarget;
-};
-
-const AIChatBubbleContent = ({
-  chatValue,
-  responseData,
-  dataId,
-  isLastChild,
-  isChatting,
-  allowedCitationIds,
-  onOpenCiteModal
-}: AIChatBubbleContentProps) => {
-  const { t } = useTranslation('workflow');
-  const [expandedProcessingPreview, setExpandedProcessingPreview] =
-    useState<ExpandedProcessingPreview>();
-
-  const renderValue = ({
-    value,
-    index,
-    wrapProcessing,
-    showProcessing = true,
-    showFoldableProcessing,
-    showStandaloneProcessing,
-    showAnswer = true,
-    showInteractive = true,
-    defaultExpandProcessing = true,
-    defaultExpandedProcessingTarget
-  }: {
-    value: AIChatItemValueItemType;
-    index: number;
-    wrapProcessing: boolean;
-    showProcessing?: boolean;
-    showFoldableProcessing?: boolean;
-    showStandaloneProcessing?: boolean;
-    showAnswer?: boolean;
-    showInteractive?: boolean;
-    defaultExpandProcessing?: boolean;
-    defaultExpandedProcessingTarget?: ProcessingPreviewTarget;
-  }) => {
-    const isLastResponse = isLastChild && index === chatValue.length - 1;
-
-    return (
-      <AIResponseBox
-        chatItemDataId={dataId}
-        value={value}
-        responseData={responseData}
-        isLastResponseValue={isLastResponse}
-        isLastChild={isLastChild}
-        isChatting={isChatting}
-        onOpenCiteModal={onOpenCiteModal}
-        allowedCitationIds={allowedCitationIds}
-        wrapProcessing={wrapProcessing}
-        showProcessing={showProcessing}
-        showFoldableProcessing={showFoldableProcessing}
-        showStandaloneProcessing={showStandaloneProcessing}
-        showAnswer={showAnswer}
-        showInteractive={showInteractive}
-        defaultExpandProcessing={defaultExpandProcessing}
-        defaultExpandedProcessingTarget={defaultExpandedProcessingTarget}
-      />
-    );
-  };
-
+/** 统一按正文与交互边界展示思考、工具调用和回答，回答及版本卡片始终在处理折叠之外。 */
+const AIChatBubbleContent = (props: AIChatBubbleContentProps) => {
+  const {
+    chatValue,
+    responseData,
+    dataId,
+    isLastChild,
+    isChatting,
+    allowedCitationIds,
+    onOpenCiteModal
+  } = props;
   const contentBlocks: React.ReactNode[] = [];
-  let processingGroup: Array<{ value: AIChatItemValueItemType; index: number }> = [];
+  let processingGroup: IndexedAIChatValue[] = [];
 
+  /** 在正文、交互或独立过程内容之前收束连续的思考和工具调用。 */
   const flushProcessingGroup = () => {
     if (processingGroup.length === 0) return;
 
     const group = processingGroup;
     processingGroup = [];
-    const previewItem = group[group.length - 1];
-    const groupKey = `${dataId}-processing-${group[0].index}`;
-    const previewTarget = previewItem ? getProcessingPreviewTarget(previewItem.value) : undefined;
     const hasFinishedContent = group.some(
       ({ value }) => hasAiAnswerContent(value) || hasAiInteractiveContent(value)
     );
@@ -118,47 +41,12 @@ const AIChatBubbleContent = ({
       group.some(({ index }) => index === chatValue.length - 1);
 
     contentBlocks.push(
-      <Box key={groupKey}>
-        <RenderProcessingCollapse
-          isProcessing={isProcessing}
-          label={previewItem ? getProcessingPreviewLabelKey(previewItem.value, t) : undefined}
-          preview={
-            previewItem ? (
-              <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
-            ) : undefined
-          }
-          onPreviewOpen={
-            previewItem && previewTarget
-              ? () => {
-                  setExpandedProcessingPreview({
-                    groupKey,
-                    valueIndex: previewItem.index,
-                    target: previewTarget
-                  });
-                }
-              : undefined
-          }
-        >
-          {group.map(({ value, index }) => (
-            <Box key={`${dataId}-ai-${index}`}>
-              {renderValue({
-                value,
-                index,
-                wrapProcessing: false,
-                showAnswer: false,
-                showInteractive: false,
-                showStandaloneProcessing: false,
-                defaultExpandProcessing: false,
-                defaultExpandedProcessingTarget:
-                  expandedProcessingPreview?.groupKey === groupKey &&
-                  expandedProcessingPreview.valueIndex === index
-                    ? expandedProcessingPreview.target
-                    : undefined
-              })}
-            </Box>
-          ))}
-        </RenderProcessingCollapse>
-      </Box>
+      <ProcessingGroup
+        key={`${dataId}-processing-${group[0].index}`}
+        {...props}
+        items={group}
+        isProcessing={isProcessing}
+      />
     );
   };
 
@@ -171,31 +59,32 @@ const AIChatBubbleContent = ({
     const hasAnswer = hasAiAnswerContent(value);
     const hasInteractive = hasAiInteractiveContent(value);
 
-    if (!hasProcessing && !hasAnswer && !hasInteractive) return;
+    if (!hasProcessing && !hasAnswer && !hasInteractive && !value.workflowBuilderVersion) return;
 
     if (hasFoldableProcessing) {
       processingGroup.push({ value, index });
-
-      if (!hasStandaloneProcessing && !hasAnswer && !hasInteractive) {
-        return;
-      }
+      if (!hasStandaloneProcessing && !hasAnswer && !hasInteractive) return;
     }
 
     flushProcessingGroup();
-
     contentBlocks.push(
       <Box key={`${dataId}-ai-${index}`}>
-        {renderValue({
-          value,
-          index,
-          wrapProcessing: true,
-          showFoldableProcessing: false,
-          showStandaloneProcessing: hasStandaloneProcessing
-        })}
+        <AIResponseBox
+          chatItemDataId={dataId}
+          value={value}
+          responseData={responseData}
+          isLastResponseValue={isLastChild && index === chatValue.length - 1}
+          isLastChild={isLastChild}
+          isChatting={isChatting}
+          onOpenCiteModal={onOpenCiteModal}
+          allowedCitationIds={allowedCitationIds}
+          wrapProcessing={true}
+          showFoldableProcessing={false}
+          showStandaloneProcessing={hasStandaloneProcessing}
+        />
       </Box>
     );
   });
-
   flushProcessingGroup();
 
   return (

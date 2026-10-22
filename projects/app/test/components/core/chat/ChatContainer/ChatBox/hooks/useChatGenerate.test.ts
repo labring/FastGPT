@@ -9,6 +9,8 @@ import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Pro
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatInputForm';
 import { useChatGenerate } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate';
+import { useChatRecordActions } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatRecordActions';
+import { getInteractiveByHistories } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 import ChatInput from '@/components/core/chat/ChatContainer/ChatBox/Input/ChatInput';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import {
@@ -22,6 +24,9 @@ import type {
   ChatSiteItemType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputDraft/storage';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -33,10 +38,18 @@ const mocks = vi.hoisted(() => ({
   createGuide: vi.fn(),
   splitAudio: vi.fn(),
   scroll: vi.fn(),
+  deleteRecords: vi.fn(),
+  getRecords: vi.fn(),
+  refreshRecords: vi.fn(),
   system: { isPc: false }
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useSystem', () => ({ useSystem: () => mocks.system }));
+vi.mock('@/web/core/chat/record/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/web/core/chat/record/api')>()),
+  delChatRecordById: mocks.deleteRecords,
+  getChatRecords: mocks.getRecords
+}));
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({ feConfigs: { limit: {} }, setNotSufficientModalType: () => {} })
 }));
@@ -69,6 +82,7 @@ describe('useChatGenerate.sendPrompt', () => {
   let root: Root;
   let input: ReturnType<typeof useChatInputForm>;
   let generate: ReturnType<typeof useChatGenerate>;
+  let recordActions: ReturnType<typeof useChatRecordActions>;
   let records: ChatSiteItemType[];
   let setRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
 
@@ -121,6 +135,7 @@ describe('useChatGenerate.sendPrompt', () => {
       notifyChatGenerateStatusChange: mocks.notifyStatus,
       finishChatGenerateStatus: mocks.finishStatus
     });
+    recordActions = useChatRecordActions({ sendPrompt: generate.sendPrompt });
     return withComposer
       ? React.createElement(ChatInput, {
           onSendMessage: generate.sendPrompt,
@@ -177,9 +192,15 @@ describe('useChatGenerate.sendPrompt', () => {
       setChatBoxData,
       resetVariables: () => {}
     } as unknown as React.ComponentProps<typeof ChatItemContext.Provider>['value'];
-    const record = { chatRecords, setChatRecords } as unknown as React.ComponentProps<
-      typeof ChatRecordContext.Provider
-    >['value'];
+    const record = {
+      chatRecords,
+      setChatRecords,
+      refreshChatRecords: async () => {
+        const history = await mocks.refreshRecords();
+        setChatRecords(history);
+        return history;
+      }
+    } as unknown as React.ComponentProps<typeof ChatRecordContext.Provider>['value'];
     const chat = {
       variableList: [],
       startSegmentedAudio: mocks.startAudio,
@@ -244,6 +265,7 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.clearAllMocks();
     mocks.system.isPc = false;
     mocks.start.mockResolvedValue({ responseText: 'answer' });
+    mocks.deleteRecords.mockResolvedValue(undefined);
     mocks.startAudio.mockResolvedValue(undefined);
     root = createRoot(document.getElementById('root')!);
   });
@@ -254,6 +276,341 @@ describe('useChatGenerate.sendPrompt', () => {
     clearChatInputDrafts();
     dom.window.close();
     vi.unstubAllGlobals();
+  });
+
+  it.each(
+    (['agentAsk', 'confirm', 'revise', 'cancel'] as const).flatMap((action) => [
+      { action, paginated: false },
+      { action, paginated: true }
+    ])
+  )(
+    'creates and retries a structured user reply for $action (paginated: $paginated)',
+    async ({ action, paginated }) => {
+      const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
+      const select: UserChatSelectType =
+        action === 'agentAsk'
+          ? {
+              type: 'agentAsk',
+              questions: [
+                { question: 'Choose?', value: 'upload' },
+                { question: 'Details?', value: 'Custom feedback' },
+                { question: 'Optional?', value: '' }
+              ]
+            }
+          : {
+              type: 'workflowBuilderPreview',
+              questions: [
+                {
+                  question: 'Confirm workflow?',
+                  value:
+                    action === 'revise'
+                      ? 'Add a review branch'
+                      : action === 'confirm'
+                        ? 'Confirm'
+                        : 'Cancel'
+                }
+              ]
+            };
+      const interactive: WorkflowInteractiveResponseType =
+        action === 'agentAsk'
+          ? {
+              ...runtime,
+              type: 'agentAsk',
+              askId: 'ask-1',
+              params: {
+                description: '',
+                questions: select.questions.map(({ question }) => ({
+                  question,
+                  options: [
+                    { summary: 'Upload file', value: 'upload' },
+                    { summary: 'Paste text', value: 'paste' }
+                  ]
+                }))
+              }
+            }
+          : {
+              ...runtime,
+              type: 'workflowBuilderPreview',
+              previewId: 'preview-1',
+              params: {
+                title: 'Confirm workflow?',
+                mermaid: 'flowchart LR; A --> B',
+                sections: [],
+                actions: [
+                  { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+                  { value: 'revise', label: 'Revise', inputMode: 'text' },
+                  { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+                ]
+              }
+            };
+      const request = Promise.withResolvers<{ responseText: string }>();
+      mocks.start.mockReturnValueOnce(request.promise);
+      await render();
+      const sourceAi: ChatSiteItemType = {
+        id: 'previous-ai',
+        dataId: 'previous-ai',
+        obj: ChatRoleEnum.AI,
+        status: ChatStatusEnum.finish,
+        value: [{ interactive }]
+      };
+      const originalAi = structuredClone(sourceAi);
+      await act(async () => setRecords([sourceAi]));
+      await act(async () => generate.sendPrompt({ select, interactive }));
+      expect(records.map(({ obj }) => obj)).toEqual([
+        ChatRoleEnum.AI,
+        ChatRoleEnum.Human,
+        ChatRoleEnum.AI
+      ]);
+      const [, user, ai] = records;
+      expect(records[0]).toEqual(originalAi);
+      expect(user.value).toEqual([{ select }]);
+      expect(user.hideInUI).toBe(false);
+      expect(ai.dataId).not.toBe('previous-ai');
+      expect(
+        mocks.start.mock.calls[0][0].messages.filter(
+          (message: { role: string }) => message.role === 'user'
+        )
+      ).toEqual([expect.objectContaining({ content: [{ type: 'select', select }] })]);
+      await act(async () => request.resolve({ responseText: 'Continued' }));
+      mocks.refreshRecords.mockResolvedValueOnce([sourceAi]);
+      if (paginated) await act(async () => setRecords(records.slice(1)));
+      await act(async () => recordActions.retryInput(user.dataId)?.());
+      expect(mocks.getRecords).not.toHaveBeenCalled();
+      expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.deleteRecords.mock.calls[0][0]).not.toHaveProperty('retry');
+      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+        mocks.deleteRecords.mock.invocationCallOrder[0]
+      );
+      const retried = records.at(-2);
+      expect(retried?.value).toEqual(user.value);
+      expect(retried?.dataId).not.toBe(user.dataId);
+      expect(mocks.start).toHaveBeenCalledTimes(2);
+      expect(
+        mocks.start.mock.calls[1][0].messages
+          .filter((message: { role: string }) => message.role === 'user')
+          .at(-1)
+      ).toMatchObject({ content: [{ type: 'select', select }] });
+      if (!paginated && retried) {
+        await act(async () => recordActions.delOneMessage(retried.dataId)());
+        expect(records).toEqual([originalAi]);
+        expect(getInteractiveByHistories(records)).toEqual({
+          interactive,
+          canSendQuery: action === 'agentAsk'
+        });
+      }
+    }
+  );
+
+  it('keeps the original structured input when retry deletion fails', async () => {
+    await render();
+    await act(async () =>
+      setRecords([
+        {
+          id: 'answer-user',
+          dataId: 'answer-user',
+          obj: ChatRoleEnum.Human,
+          status: ChatStatusEnum.finish,
+          value: [
+            {
+              select: {
+                type: 'agentAsk',
+                questions: [{ question: 'Choose?', value: 'A' }]
+              }
+            }
+          ]
+        }
+      ])
+    );
+    const original = records;
+    mocks.deleteRecords.mockRejectedValueOnce(new Error('Delete failed'));
+    await act(async () => recordActions.retryInput('answer-user')?.());
+    expect(records).toBe(original);
+    expect(mocks.start).not.toHaveBeenCalled();
+    expect(mocks.refreshRecords).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'warning', title: 'Delete failed' })
+    );
+  });
+
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'does not offer editing for a structured %s user reply',
+    async (type) => {
+      await render();
+      await act(async () =>
+        setRecords([
+          {
+            id: 'answer-user',
+            dataId: 'answer-user',
+            obj: ChatRoleEnum.Human,
+            status: ChatStatusEnum.finish,
+            value: [
+              {
+                select: {
+                  type,
+                  questions: [{ question: 'Choose?', value: 'confirm' }]
+                }
+              }
+            ]
+          }
+        ])
+      );
+      const original = records;
+
+      expect(recordActions.editInput('answer-user')).toBeUndefined();
+      expect(records).toBe(original);
+      expect(recordActions.isRecordActionLoading).toBe(false);
+      expect(mocks.deleteRecords).not.toHaveBeenCalled();
+      expect(mocks.refreshRecords).not.toHaveBeenCalled();
+      expect(mocks.start).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([true, false])(
+    'reloads the history window before sending an edited message (refresh succeeds: %s)',
+    async (succeeds) => {
+      await render();
+      await act(async () =>
+        setRecords([
+          {
+            id: 'old-user',
+            dataId: 'old-user',
+            obj: ChatRoleEnum.Human,
+            status: ChatStatusEnum.finish,
+            value: [{ text: { content: 'Old prompt' } }]
+          }
+        ])
+      );
+      if (succeeds) mocks.refreshRecords.mockResolvedValueOnce([]);
+      else mocks.refreshRecords.mockRejectedValueOnce(new Error('Refresh failed'));
+
+      await act(async () =>
+        recordActions.editInput('old-user')?.({ text: 'Edited prompt', files: [] })
+      );
+
+      expect(mocks.deleteRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords).toHaveBeenCalledTimes(1);
+      expect(mocks.refreshRecords.mock.invocationCallOrder[0]).toBeGreaterThan(
+        mocks.deleteRecords.mock.invocationCallOrder[0]
+      );
+      expect(recordActions.isRecordActionLoading).toBe(false);
+      if (succeeds) {
+        expect(mocks.start).toHaveBeenCalledTimes(1);
+        expect(mocks.start.mock.calls[0][0].messages).toEqual([
+          expect.objectContaining({ role: 'user', content: 'Edited prompt' })
+        ]);
+      } else {
+        expect(mocks.start).not.toHaveBeenCalled();
+        expect(mocks.toast).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'warning', title: 'Refresh failed' })
+        );
+      }
+    }
+  );
+
+  it('finishes a tool activity when its completion signal contains an empty response', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await send();
+
+    const tool = {
+      id: 'skill-reference',
+      toolName: 'Read file',
+      toolAvatar: '',
+      functionName: 'sandbox_read_file',
+      params: '',
+      hideDetails: true
+    };
+    const getActivity = () => {
+      const response = records.at(-1);
+      return response?.obj === ChatRoleEnum.AI ? response.value.at(-1)?.tools?.[0] : undefined;
+    };
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolCall,
+        responseValueId: tool.id,
+        tool
+      })
+    );
+    expect(getActivity()?.response).toBeUndefined();
+
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolResponse,
+        responseValueId: tool.id,
+        tool: { ...tool, response: '' }
+      })
+    );
+    expect(getActivity()).toEqual({ ...tool, response: '' });
+    await act(async () => request.resolve({ responseText: '' }));
+  });
+
+  it('ignores orphan tool deltas and merges later results by tool ID without touching other values', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await send();
+    const tool = {
+      id: 'resumed-tool',
+      toolName: 'Plan preview',
+      toolAvatar: '',
+      functionName: 'ask_user',
+      params: ''
+    };
+    // 刷新恢复或新交互轮次可能只有数据库预创建的空 AI 占位。
+    await act(async () =>
+      setRecords((state) =>
+        state.map((item) => (item.obj === ChatRoleEnum.AI ? { ...item, value: [] } : item))
+      )
+    );
+
+    for (const event of [
+      SseResponseEventEnum.toolParams,
+      SseResponseEventEnum.toolResponse
+    ] as const) {
+      await act(async () =>
+        generate.generatingMessage({
+          event,
+          tool: { ...tool, params: 'orphan', response: 'orphan' }
+        })
+      );
+    }
+    expect(records.at(-1)?.value).toEqual([]);
+
+    await act(async () =>
+      generate.generatingMessage({ event: SseResponseEventEnum.toolCall, tool })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.answer,
+        responseValueId: 'answer-after-tool',
+        text: 'Keep this answer'
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolParams,
+        responseValueId: 'unrelated-value',
+        tool: { ...tool, params: '{}' }
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.toolResponse,
+        responseValueId: 'unrelated-value',
+        tool: { ...tool, response: 'confirmed' }
+      })
+    );
+
+    const response = records.at(-1);
+    expect(response?.obj).toBe(ChatRoleEnum.AI);
+    if (response?.obj !== ChatRoleEnum.AI) throw new Error('Expected AI response');
+    expect(response.value).toEqual([
+      { id: tool.id, tools: [{ ...tool, params: '{}', response: 'confirmed' }] },
+      { id: 'answer-after-tool', text: { content: 'Keep this answer' } }
+    ]);
+    await act(async () => request.resolve({ responseText: '' }));
   });
 
   it.each([

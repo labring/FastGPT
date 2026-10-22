@@ -10,7 +10,7 @@ const NodeAnswer = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} {...data}>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
         <Container>
           <RenderInput nodeId={nodeId} flowInputList={inputs} />
         </Container>

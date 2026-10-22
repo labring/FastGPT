@@ -149,17 +149,10 @@ export const prepareChatRound = async (
 
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
-    value: params.userContent.value.map((item) =>
-      item.file?.key
-        ? {
-            ...item,
-            file: {
-              ...item.file,
-              url: ''
-            }
-          }
-        : item
-    ),
+    value: params.userContent.value.map((item) => ({
+      ...item,
+      ...(item.file?.key ? { file: { ...item.file, url: '' } } : {})
+    })),
     dataId: responseChatItemId,
     obj: ChatRoleEnum.Human
   };

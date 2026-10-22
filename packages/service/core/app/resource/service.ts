@@ -17,13 +17,16 @@ import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { assertAuthModels, getAuthorizedModelIds } from '../../../support/permission/model/auth';
 import {
   filterAuthorizedAppResources,
-  checkAppResourceReadPermissions
+  checkAppResourceReadPermissions,
+  getAppResourcesOutsideTeam
 } from '../../../support/permission/app/resource';
+import { getTmbInfoByTmbId } from '../../../support/user/team/controller';
 import { MongoApp } from '../schema';
 import { getAppDraftVersion, getAppLatestVersion } from '../version/controller';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import {
   extractAppResources,
+  getAppResourceKey,
   hasAppResource,
   mergeAppResources,
   splitExtractedAppResources,
@@ -36,15 +39,15 @@ import {
  */
 export const getAppDraftResourceBaseline = async ({
   appId,
+  teamId,
   session,
   isRoot = false,
-  allowRootCrossTeam = false,
   modelHandle
 }: {
   appId: string;
+  teamId?: string;
   session?: ClientSession;
   isRoot?: boolean;
-  allowRootCrossTeam?: boolean;
   modelHandle?: ModelHandle;
 }): Promise<AppResourcesType> => {
   const draft = await getAppDraftVersion(appId, session);
@@ -69,14 +72,14 @@ export const getAppDraftResourceBaseline = async ({
   return filterAuthorizedAppResources({
     resources,
     tmbId: String(app.tmbId),
+    teamId,
     isRoot,
-    allowRootCrossTeam,
     modelHandle
   });
 };
 
 /**
- * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
+ * 全部资源必须属于目标团队，系统模型和系统 Skill 除外；仅新增资源重新检查成员 ACL。
  * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
  * 历史未迁移草稿（缺失 resources 字段）统一按所属应用的所有者 app.tmbId 过滤基线。
  */
@@ -84,51 +87,63 @@ export const resolveAppResourcesByPermission = async ({
   appId,
   extracted,
   tmbId,
+  teamId,
   isRoot = false,
   blockOnUnauthorized,
-  allowRootCrossTeam = false,
   modelHandle,
   session
 }: {
   appId: string;
   extracted: AppResource[];
   tmbId: string;
+  teamId?: string;
   isRoot?: boolean;
   blockOnUnauthorized: boolean;
-  allowRootCrossTeam?: boolean;
   /** 调用方已读取的团队模型目录；不传时按需读取。 */
   modelHandle?: ModelHandle;
   session?: ClientSession;
 }) => {
   const baseline = await getAppDraftResourceBaseline({
     appId,
+    teamId,
     session,
     isRoot,
-    allowRootCrossTeam,
     modelHandle
   });
   const { kept, added } = splitExtractedAppResources({ extracted, baseline });
-  if (added.length === 0) return mergeAppResources(kept);
+  // 快照只继承资源 ACL，不继承跨团队权限；旧快照也必须核对归属。
+  const outOfTeam = kept.length
+    ? await getAppResourcesOutsideTeam({
+        resources: kept,
+        teamId: teamId ?? (await getTmbInfoByTmbId({ tmbId })).teamId,
+        modelHandle,
+        session
+      })
+    : [];
+  if (blockOnUnauthorized && outOfTeam[0]) throw outOfTeam[0].error;
+  const deniedKeys = new Set(outOfTeam.map(({ resource }) => getAppResourceKey(resource)));
+  const scopedKept = kept.filter((resource) => !deniedKeys.has(getAppResourceKey(resource)));
+  if (added.length === 0) return mergeAppResources(scopedKept);
 
   if (blockOnUnauthorized) {
     await checkAppResourceReadPermissions({
       resources: added,
       tmbId,
+      teamId,
       isRoot,
-      allowRootCrossTeam,
       modelHandle
     });
-    return mergeAppResources([...kept, ...added]);
+    return mergeAppResources([...scopedKept, ...added]);
   }
 
   const authorizedAdded = await filterAuthorizedAppResources({
     resources: added,
     tmbId,
+    teamId,
     isRoot,
-    allowRootCrossTeam,
     modelHandle
   });
-  return mergeAppResources([...kept, ...authorizedAdded]);
+  return mergeAppResources([...scopedKept, ...authorizedAdded]);
 };
 
 /**
@@ -177,9 +192,9 @@ export const authTargetModelResource = async ({
       appId: targetId,
       extracted: [modelResource],
       tmbId,
+      teamId,
       isRoot,
       blockOnUnauthorized: true,
-      allowRootCrossTeam: isRoot,
       modelHandle: handle
     });
     return;
@@ -233,9 +248,9 @@ export const prepareAppWorkflowResources = async ({
     appId,
     extracted: extractedResources,
     tmbId,
+    teamId,
     isRoot,
     blockOnUnauthorized: true,
-    allowRootCrossTeam: isRoot,
     modelHandle
   });
 };

@@ -36,6 +36,7 @@ export const createAgentLoopCoreEventDispatcher = ({
     Extract<AgentLoopEvent, { type: 'tool_call' }>['call']
   >();
   const completedToolCallIds = new Set<string>();
+  const announcedActivityIds = new Set<string>();
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
@@ -79,6 +80,26 @@ export const createAgentLoopCoreEventDispatcher = ({
         });
         return;
       }
+      case 'tool_activity': {
+        if (!shouldStreamTool(event.toolName)) return;
+        if (!announcedActivityIds.has(event.callId)) {
+          announcedActivityIds.add(event.callId);
+          eventStream.streamToolCall(
+            {
+              id: event.callId,
+              type: 'function',
+              function: { name: event.toolName, arguments: '' }
+            },
+            { hideDetails: true }
+          );
+        }
+        if (event.status === 'done' && !completedToolCallIds.has(event.callId)) {
+          completedToolCallIds.add(event.callId);
+          // 空响应只作为完成信号，沿用现有 SSE 协议，不暴露实际执行结果。
+          eventStream.streamToolResponse({ toolCallId: event.callId, response: '' });
+        }
+        return;
+      }
       case 'tool_run_end': {
         if (completedToolCallIds.has(event.call.id)) return;
         completedToolCallIds.add(event.call.id);
@@ -86,6 +107,10 @@ export const createAgentLoopCoreEventDispatcher = ({
         const functionName = event.call.function.name;
         // 失败结果同样是模型已消费的 toolResponse，必须实时推送给客户端。
         if (shouldStreamTool(functionName)) {
+          // 交互续跑会在新轮次直接结束上一轮工具；先补齐调用信息，与持久化 collector 的行为一致。
+          if (!pendingToolCallMap.has(event.call.id) && !announcedActivityIds.has(event.call.id)) {
+            eventStream.streamToolCall(event.call);
+          }
           eventStream.streamToolResponse({
             toolCallId: event.call.id,
             response: event.response
