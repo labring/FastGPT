@@ -1,12 +1,6 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
 
-/** 向量成功变更后的业务通知；实现方负责隔离通知故障，避免已提交的写入被误判失败。 */
-export type VectorRowsChangedCallback = (props: {
-  teamId: string;
-  datasetIds: string[];
-}) => Promise<void>;
-
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
   id: z.string(),
@@ -32,12 +26,12 @@ export const InsertVectorResponseSchema = z.object({
 });
 export type InsertVectorResponseType = z.infer<typeof InsertVectorResponseSchema>;
 
-/** 业务删除入参：按 id 或 idList 删除时，必须提供知识库统计上下文。 */
+/** 业务删除入参：按 id 或 idList 删除时，必须提供知识库上下文以失效计数缓存。 */
 export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     id: z.string(),
-    // 仅用于删除后的知识库统计，不参与删除范围。
+    // 仅用于删除后的知识库缓存失效，不参与删除范围。
     datasetId: z.string(),
     retry: z.number().optional()
   }),
@@ -56,7 +50,7 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
 ]);
 export type DelDatasetVectorCtrlPropsType = z.infer<typeof DelDatasetVectorCtrlPropsSchema>;
 
-/** 向量适配器只接收物理删除参数，统计用的单库上下文由业务层剥离。 */
+/** 向量适配器只接收物理删除参数，缓存失效用的单库上下文由控制层剥离。 */
 export const DeleteVectorControllerPropsSchema = z.union([
   DelDatasetVectorCtrlPropsSchema.options[0].omit({ datasetId: true }),
   DelDatasetVectorCtrlPropsSchema.options[1],

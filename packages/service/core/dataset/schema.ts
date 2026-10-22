@@ -14,10 +14,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { userCollectionName } from '../../support/user/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import {
-  DatasetVectorDataSchema,
-  type DatasetVectorDataType
-} from '@fastgpt/global/core/dataset/vectorData/type';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -110,23 +106,6 @@ const DatasetSchema = new Schema({
   vectorModelId: {
     type: String
   },
-  // 缺失整个快照表示尚未统计；不能用默认零值把存量知识库当成空库。
-  vectorData: {
-    type: new Schema(
-      {
-        rows: { type: Number, required: true, min: 0, validate: Number.isSafeInteger },
-        rowsUpdatedAt: { type: Date, required: true },
-        pgIndex: {
-          type: String,
-          required: true,
-          enum: DatasetVectorDataSchema.shape.pgIndex.options
-        },
-        pgIndexCheckedAt: { type: Date, required: true }
-      },
-      { _id: false }
-    ),
-    default: undefined
-  },
   agentModel: {
     type: String
   },
@@ -215,6 +194,4 @@ defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段
 
 defineIndex(DatasetSchema, { key: { teamId: 1 }, deprecated: true });
 
-export const MongoDataset = getMongoModel<
-  DatasetSchemaType & { vectorData?: DatasetVectorDataType }
->(DatasetCollectionName, DatasetSchema);
+export const MongoDataset = getMongoModel<DatasetSchemaType>(DatasetCollectionName, DatasetSchema);
