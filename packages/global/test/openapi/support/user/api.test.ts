@@ -210,11 +210,11 @@ describe('support user OpenAPI contracts', () => {
   });
 
   it('accepts every dataset audit event in filter and response', () => {
-    // 知识库事件与成员事件共用同一个审计存储；双方都必须出现在 TeamAuditEventList 里，
+    // 知识库事件（集合 + 训练）与成员事件共用同一个审计存储；双方都必须出现在 TeamAuditEventList 里，
     // 否则新事件会「能写入但读不出」——团队审计列表在响应 schema 校验阶段整体失败。
     const datasetEvents = Object.values(DatasetAuditEventEnum);
 
-    expect(datasetEvents).toHaveLength(5);
+    expect(datasetEvents).toHaveLength(12);
     expect(TeamAuditEventList).toEqual(expect.arrayContaining(datasetEvents));
 
     expect(AuditListBodySchema.parse({ events: datasetEvents }).events).toEqual(datasetEvents);

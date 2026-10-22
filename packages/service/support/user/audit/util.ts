@@ -98,7 +98,7 @@ export function addAuditLog<T extends AdminAuditEventEnum>(
   input: AddAuditLogInput<T, AdminAuditEventParamsType[T]>
 ): Promise<void>;
 
-/** 知识库事件：事件名取 DatasetAuditEventEnum 的点分 value，参数类型按 DatasetAuditEventParamsType 校验。 */
+/** 知识库事件（集合 + 训练）：事件名取 DatasetAuditEventEnum 的点分 value，参数类型按 DatasetAuditEventParamsType 校验。 */
 export function addAuditLog<T extends DatasetAuditEventEnum>(
   input: AddAuditLogInput<T, DatasetAuditEventParamsType[T]>
 ): Promise<void>;

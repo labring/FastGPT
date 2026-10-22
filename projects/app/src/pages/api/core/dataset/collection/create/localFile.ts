@@ -4,7 +4,10 @@ import {
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetAuditEventEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { multer } from '@fastgpt/service/common/file/multer';
@@ -14,6 +17,11 @@ import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadC
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import {
+  getCollectionAuditLocation,
+  getCollectionAuditObjectType
+} from '@fastgpt/service/core/dataset/collection/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
@@ -71,6 +79,21 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       }
     });
     promoted = true;
+
+    void addAuditLog({
+      tmbId,
+      teamId,
+      event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+      params: {
+        collectionName,
+        objectType: getCollectionAuditObjectType(DatasetCollectionTypeEnum.file),
+        location: await getCollectionAuditLocation({
+          datasetName: dataset.name,
+          parentId: collectionData.parentId
+        })
+      }
+    });
+
     return collectionResult;
   } catch (error) {
     if (fileId && !promoted) {

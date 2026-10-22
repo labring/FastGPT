@@ -2,13 +2,33 @@ import { i18nT } from '../../common/i18n/utils';
 
 /* ------------ dataset -------------- */
 /**
- * 知识库训练审计事件；持久化复用 support/user/audit 的通用审计框架。
+ * 知识库审计事件（集合 + 训练）；持久化复用 support/user/audit 的通用审计框架。
  *
- * value 采用与集合审计一致的点分小写路径：前半段是最多三级资源层级，最后一段是动词原形动作
- * （retry / delete / rebuild）；成员名保持仓库惯例的大写下划线。
+ * value 采用 OpenAI Audit Logs 风格的点分小写路径：前半段是资源层级
+ * （`dataset.collection` / `dataset.training` / `dataset.index`），最后一段是动词原形动作
+ * （create / update / sync / export / add / remove / retry / delete / rebuild）；
+ * 成员名保持仓库惯例的大写下划线。
  * 值直接进入 operationLogs.event，修改会影响历史日志展示。
  */
 export enum DatasetAuditEventEnum {
+  /** 创建集合；导入文件按「一个文件一条日志」逐条写入。 */
+  DATASET_COLLECTION_CREATE = 'dataset.collection.create',
+  /** 更新集合对象属性；一次请求命中多项变更时按变更逐条写入。 */
+  DATASET_COLLECTION_UPDATE = 'dataset.collection.update',
+  DATASET_COLLECTION_EXPORT = 'dataset.collection.export',
+  /** 同步集合：只记录发起的同步操作，不区分同步结果。 */
+  DATASET_COLLECTION_SYNC = 'dataset.collection.sync',
+  DATASET_COLLECTION_TAG_ADD = 'dataset.collection.tag.add',
+  DATASET_COLLECTION_TAG_REMOVE = 'dataset.collection.tag.remove',
+  /**
+   * 集合权限恢复为继承上级。
+   *
+   * 集合的权限继承与知识库 / 应用不同：它既可以继承父目录，也可以直接继承知识库；
+   * 且只有知识库启用 collection 级权限后才存在「独立态」。因此单独建一个事件，
+   * 不和 DATASET_COLLECTION_UPDATE 的子动作混在一起——它不改集合的可编辑属性，
+   * 只重置 ACL 快照，审计展示上需要单列一栏。
+   */
+  DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME = 'dataset.collection.permission.inheritance_resume',
   /** 知识库级全部重试：不指定集合，重试该知识库下所有失败训练任务。 */
   DATASET_TRAINING_RETRY = 'dataset.training.retry',
   /** 集合级全部重试：重试指定集合下的所有失败训练任务。 */
@@ -20,6 +40,16 @@ export enum DatasetAuditEventEnum {
   /** 切换索引模型并重建索引；影响整个知识库。 */
   DATASET_INDEX_REBUILD = 'dataset.index.rebuild'
 }
+
+/** 集合对象的可审计变更动作，区分同一次更新中的改名 / 移动 / 启停。 */
+export enum DatasetContentAuditActionEnum {
+  RENAME = 'rename',
+  MOVE = 'move',
+  ENABLE = 'enable',
+  DISABLE = 'disable'
+}
+
+export type DatasetContentAuditAction = `${DatasetContentAuditActionEnum}`;
 
 export enum DatasetTypeEnum {
   folder = 'folder',
