@@ -14,6 +14,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './synonym/schema';
 import { invalidateDatasetSynonymMatcherCache } from './synonym/entity';
+import { notifyVectorRowsChanged } from './vectorData/mq';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -121,7 +122,11 @@ export async function delDatasetRelevantData({
 
   await delCollectionRelatedSource({ collections });
   // Delete vector data
-  await deleteDatasetDataVector({ teamId, datasetIds });
+  await deleteDatasetDataVector({
+    teamId,
+    datasetIds,
+    onVectorRowsChanged: notifyVectorRowsChanged
+  });
 
   // delete collections and their permission snapshots (same transaction)
   const collectionIds = collections.map((item) => String(item._id));

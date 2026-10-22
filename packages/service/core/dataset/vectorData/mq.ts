@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { bullMQ, type BullMQBinding } from '@fastgpt/dal/redis/bullmq/binding';
 import { QueueNames } from '@fastgpt/dal/redis/bullmq/names';
 import type { Processor } from '@fastgpt/dal/redis/bullmq/types';
+import { getLogger, LogCategories } from '../../../common/logger';
+import type { VectorRowsChangedCallback } from '../../../common/vectorDB/type';
 
 const VectorRowsUpdateJobSchema = z.object({
   teamId: z.string().min(1),
@@ -86,3 +88,28 @@ export class VectorRowsUpdateMQService {
 }
 
 export const vectorRowsUpdateMQService = new VectorRowsUpdateMQService();
+
+/** 向量变更成功后通知统计，投递最多等待三秒；故障不能让调用方重试已提交的向量。 */
+export const notifyVectorRowsChanged: VectorRowsChangedCallback = async ({
+  teamId,
+  datasetIds
+}) => {
+  // lean 的 Mongo 引用运行时可能仍是 ObjectId，MQ 合同只携带稳定的字符串身份。
+  const data = { teamId: String(teamId), datasetIds: datasetIds.map(String) };
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      vectorRowsUpdateMQService.pushJobs(data),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('Vector rows notification timed out')), 3000);
+      })
+    ]);
+  } catch (error) {
+    getLogger(LogCategories.INFRA.QUEUE).error('Failed to queue vector rows update', {
+      ...data,
+      error
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+};

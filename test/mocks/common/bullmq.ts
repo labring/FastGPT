@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
-// Mock BullMQ to prevent queue connection errors
-vi.mock('@fastgpt/dal/redis/bullmq', async (importOriginal) => {
+// 直接 mock 定义模块，让直接导入和旧聚合入口共享同一套队列替身。
+vi.mock('@fastgpt/dal/redis/bullmq/binding', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
 
   const mockQueue = {

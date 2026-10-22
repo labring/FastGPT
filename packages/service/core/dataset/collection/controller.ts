@@ -55,6 +55,7 @@ import {
 } from '../training/controller';
 import { getDatasetImageIndexCapability } from '../utils';
 import { getTrainingModeByCollection } from './utils';
+import { notifyVectorRowsChanged } from '../vectorData/mq';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
@@ -1098,7 +1099,12 @@ export async function delCollection({
           ]
         : []),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds, collectionIds })
+      deleteDatasetDataVector({
+        teamId,
+        datasetIds,
+        collectionIds,
+        onVectorRowsChanged: notifyVectorRowsChanged
+      })
     ]);
 
     // delete collections
