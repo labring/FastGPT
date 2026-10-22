@@ -44,6 +44,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     per: OwnerPermissionVal
   });
   const {
+    handle: modelHandle,
     models: [vectorModelData]
   } = await assertAuthModels({
     actor: { teamId, tmbId, isRoot },
@@ -130,19 +131,18 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     billId: String(usageId)
   });
 
-  // 审计在重建任务落库后写入；模型名查不到时退回模型 ID，不影响已提交的重建流程。
-  // 同时保留稳定 ID：日志展示读名称，排查改名前后的同一模型时按 ID 追踪。
+  // 审计复用鉴权时的模型快照，避免重建提交后为日志再次查询目录版本。
+  // 名称与稳定 ID 分开保留；旧模型已删除时由保存的引用提供展示兜底。
   {
-    const [oldModel, newModel] = await Promise.all([
-      getTrainingAuditModelLabel({
-        teamId,
-        reference: getDatasetModelReference(dataset, 'embedding')
-      }),
-      getTrainingAuditModelLabel({
-        teamId,
-        reference: { modelId: vectorModelData.modelId, model: vectorModelData.model }
-      })
-    ]);
+    const oldModelReference = getDatasetModelReference(dataset, 'embedding');
+    const oldModel = getTrainingAuditModelLabel({
+      reference: oldModelReference,
+      model: modelHandle.findModelData(oldModelReference)
+    });
+    const newModel = getTrainingAuditModelLabel({
+      reference: { modelId: vectorModelData.modelId, model: vectorModelData.model },
+      model: vectorModelData
+    });
     addAuditLog({
       tmbId,
       teamId,
