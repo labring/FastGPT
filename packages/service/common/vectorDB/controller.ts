@@ -14,7 +14,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 import { isProVersion } from '../system/constants';
-import { vectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {

@@ -1,8 +1,5 @@
 import { DatasetVectorDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
-import {
-  vectorRowsUpdateMQService,
-  type VectorRowsUpdateJobData
-} from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+import { vectorRowsUpdateMQService, type VectorRowsUpdateJobData } from './mq';
 import { getVectorCount, refreshTeamVectorCount } from '../../../common/vectorDB/controller';
 import { findDatasetForVectorRows, updateDatasetVectorRows } from './entity';
 
