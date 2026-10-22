@@ -405,7 +405,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? finalOutput.assistantResponses
-        : undefined
+        : undefined,
+      // Agent 也可作为「工具调用」节点的工具运行，需把最终回答作为工具结果返回给上层模型。
+      [DispatchNodeResponseKeyEnum.toolResponse]: finalOutput.answerText
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory；内部详情已经由 sink 发布。

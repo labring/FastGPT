@@ -731,6 +731,34 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result['ai-tool'] ?? []).toEqual([]);
   });
 
+  it('does not require a legacy user question when an Agent node is used as a tool', () => {
+    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
+    const agentToolNode = makeNode('agent-tool', FlowNodeTypeEnum.agent, {
+      inputs: AgentNode.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.aiModelId
+          ? { ...input, value: 'configured-model' }
+          : { ...input }
+      )
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, toolCallNode, agentToolNode],
+      edges: [
+        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+        {
+          id: 'e-tool-call-agent',
+          source: 'tool-call',
+          sourceHandle: NodeOutputKeyEnum.selectedTools,
+          target: 'agent-tool',
+          targetHandle: NodeOutputKeyEnum.selectedTools,
+          type: EDGE_TYPE
+        }
+      ]
+    });
+
+    expect(result['agent-tool'] ?? []).toEqual([]);
+  });
+
   it('does not report an activated tool as inactive when a normal required input is empty', () => {
     const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
     const activatedToolNode = makeNode('activated-tool', FlowNodeTypeEnum.tool, {

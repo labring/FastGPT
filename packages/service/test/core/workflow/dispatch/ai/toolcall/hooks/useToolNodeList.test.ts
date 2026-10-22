@@ -191,6 +191,55 @@ describe('useToolNodeList', () => {
     ]);
   });
 
+  it('exposes an Agent node connected by selectedTools as a tool', () => {
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        {
+          source: 'toolcall',
+          target: 'agent_1',
+          targetHandle: NodeOutputKeyEnum.selectedTools
+        }
+      ] as any,
+      runtimeNodes: [
+        createToolNode({
+          nodeId: 'agent_1',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.userChatInput,
+              valueType: 'string',
+              required: true,
+              toolDescription: 'user question',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.agentGenerated,
+                FlowNodeInputTypeEnum.reference,
+                FlowNodeInputTypeEnum.textarea
+              ],
+              selectedType: FlowNodeInputTypeEnum.agentGenerated
+            },
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              valueType: 'string',
+              value: 'configured-model',
+              renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
+              selectedType: FlowNodeInputTypeEnum.settingLLMModel
+            }
+          ]
+        })
+      ]
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        nodeId: 'agent_1',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent
+      })
+    ]);
+  });
+
   it('reads normalized system tool input modes', () => {
     const runtimeNodes = [
       createToolNode({

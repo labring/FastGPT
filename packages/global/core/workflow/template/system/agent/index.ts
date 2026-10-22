@@ -35,6 +35,8 @@ export const AgentNode: FlowNodeTemplateType = {
   name: i18nT('workflow:template.agent_module'),
   intro: i18nT('workflow:template.agent_module_intro'),
   showStatus: true,
+  // 可作为「工具调用」节点的工具被连接和调用。
+  isTool: true,
   catchError: false,
   version: '4.17.0',
   inputs: [

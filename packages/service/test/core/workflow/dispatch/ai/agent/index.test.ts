@@ -773,6 +773,7 @@ describe('dispatchRunAgent user context', () => {
     const result = await resultPromise!;
 
     expect(result.data.answerText).toBe('ok');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('ok');
     expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
       {
         text: {
