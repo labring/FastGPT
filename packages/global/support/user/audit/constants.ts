@@ -76,7 +76,9 @@ export enum AuditEventEnum {
   EXPORT_DATASET = 'EXPORT_DATASET',
   CREATE_DATASET_FOLDER = 'CREATE_DATASET_FOLDER',
   //Collection
+  /** @deprecated 创建集合已统一由 DatasetAuditEventEnum.DATASET_COLLECTION_CREATE 记录，保留枚举仅为兼容历史日志展示。 */
   CREATE_COLLECTION = 'CREATE_COLLECTION',
+  /** @deprecated 集合更新已统一由 DatasetAuditEventEnum.DATASET_COLLECTION_UPDATE 记录，保留枚举仅为兼容历史日志展示。 */
   UPDATE_COLLECTION = 'UPDATE_COLLECTION',
   DELETE_COLLECTION = 'DELETE_COLLECTION',
   RETRAIN_COLLECTION = 'RETRAIN_COLLECTION',
@@ -126,7 +128,7 @@ export type AdminAuditEventParamsType = {
   [K in AdminAuditEventEnum]: (typeof adminAuditLogMap)[K]['params'];
 };
 
-/** 允许以 system 作用域写入的知识库审计事件（无操作人成员 ID）。 */
+/** 允许以 system 作用域写入的知识库审计事件（集合 + 训练，无操作人成员 ID）。 */
 export type DatasetAuditEvent = `${DatasetAuditEventEnum}`;
 
 export type DatasetAuditEventParamsType = {
@@ -134,7 +136,7 @@ export type DatasetAuditEventParamsType = {
 };
 
 /**
- * 团队审计事件全集：成员事件 + 知识库事件。
+ * 团队审计事件全集：成员事件 + 知识库事件（集合 + 训练）。
  *
  * Mongo enum、Zod 校验、共享类型与前端筛选菜单都从这里派生，避免各个消费方
  * 各自维护一份事件列表而错配（曾导致知识库事件能写入、却读不出）。

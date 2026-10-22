@@ -10,6 +10,7 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { getFakeUsers } from '@test/datas/users';
@@ -160,5 +161,149 @@ describe('update collection', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
+  });
+
+  it('为重命名、移动和启用状态分别写入一条内容对象审计', async () => {
+    const { actor, file, target, grant } = await fixture();
+    await grant(String(file._id), WriteRoleVal);
+
+    expect(
+      (
+        await Call(updateHandler, {
+          auth: actor,
+          body: { id: String(file._id), name: 'renamed' }
+        })
+      ).code
+    ).toBe(200);
+    expect(
+      (
+        await Call(updateHandler, {
+          auth: actor,
+          body: { id: String(file._id), parentId: String(target._id) }
+        })
+      ).code
+    ).toBe(200);
+    expect(
+      (
+        await Call(updateHandler, {
+          auth: actor,
+          body: { id: String(file._id), forbid: true }
+        })
+      ).code
+    ).toBe(200);
+
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: actor.teamId,
+          event: 'dataset.collection.update'
+        })
+          .sort({ timestamp: 1 })
+          .lean();
+
+        expect(logs).toHaveLength(3);
+        // 每条日志记录执行当时的名字：改名后后续两条已是新名
+        expect(logs.map((log) => log.metadata)).toEqual([
+          expect.objectContaining({
+            datasetName: 'update-test',
+            collectionName: 'file',
+            action: 'rename',
+            oldValue: 'file',
+            newValue: 'renamed'
+          }),
+          expect.objectContaining({
+            collectionName: 'renamed',
+            action: 'move',
+            oldValue: 'update-test/source/renamed',
+            newValue: 'update-test/target/renamed'
+          }),
+          expect.objectContaining({
+            collectionName: 'renamed',
+            action: 'disable',
+            oldValue: 'account_team:dataset_content_status_enabled',
+            newValue: 'account_team:dataset_content_status_disabled'
+          })
+        ]);
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it('重命名与移动合并时仍各自一条日志，位置使用新名称', async () => {
+    const { actor, file, target, grant } = await fixture();
+    await grant(String(file._id), WriteRoleVal);
+
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), name: 'renamed', parentId: String(target._id) }
+    });
+    expect(result.code).toBe(200);
+
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: actor.teamId,
+          event: 'dataset.collection.update'
+        })
+          .sort({ timestamp: 1 })
+          .lean();
+
+        expect(logs.map((log) => log.metadata.action)).toEqual(['rename', 'move']);
+        expect(logs[1].metadata).toEqual(
+          expect.objectContaining({
+            oldValue: 'update-test/source/file',
+            newValue: 'update-test/target/renamed'
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it('无实际变更时不写入审计', async () => {
+    const { actor, file, grant } = await fixture();
+    await grant(String(file._id), WriteRoleVal);
+
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), name: 'file', forbid: false }
+    });
+    expect(result.code).toBe(200);
+
+    const logs = await MongoTeamAudit.find({
+      teamId: actor.teamId,
+      event: 'dataset.collection.update'
+    }).lean();
+    expect(logs).toHaveLength(0);
+  });
+
+  it('文件夹禁用只记录文件夹自身，子 collection 只执行状态级联', async () => {
+    const { actor, source, file } = await fixture();
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(source._id), forbid: true }
+    });
+
+    expect(result.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.forbid).toBe(true);
+
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: actor.teamId,
+          event: 'dataset.collection.update'
+        }).lean();
+        expect(logs).toHaveLength(1);
+        expect(logs[0].metadata).toEqual(
+          expect.objectContaining({
+            collectionName: 'source',
+            action: 'disable',
+            oldValue: 'account_team:dataset_content_status_enabled',
+            newValue: 'account_team:dataset_content_status_disabled'
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 });

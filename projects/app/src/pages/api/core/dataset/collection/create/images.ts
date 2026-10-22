@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
+  DatasetAuditEventEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -28,6 +29,11 @@ import path from 'node:path';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import {
+  getCollectionAuditLocation,
+  getCollectionAuditObjectType
+} from '@fastgpt/service/core/dataset/collection/audit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -105,7 +111,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       })
     );
 
-    return createCollectionAndInsertData({
+    const collectionResult = await createCollectionAndInsertData({
       dataset,
       imageIds,
       createCollectionParams: {
@@ -121,6 +127,22 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
           : DatasetCollectionDataProcessModeEnum.chunk
       }
     });
+
+    void addAuditLog({
+      tmbId,
+      teamId,
+      event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+      params: {
+        collectionName,
+        objectType: getCollectionAuditObjectType(DatasetCollectionTypeEnum.images),
+        location: await getCollectionAuditLocation({
+          datasetName: dataset.name,
+          parentId
+        })
+      }
+    });
+
+    return collectionResult;
   } catch (error) {
     return Promise.reject(error);
   } finally {
