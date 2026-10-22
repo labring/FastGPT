@@ -1,6 +1,6 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
-import * as pg from 'pg';
+import pg from 'pg';
 import type { Pool, QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
 import { serviceEnv } from '../../../env';

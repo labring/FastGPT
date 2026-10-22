@@ -13,19 +13,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock('pg', async (importOriginal) => {
   const actual = await importOriginal<typeof import('pg') & { default: typeof import('pg') }>();
   const driver = actual.default ?? actual;
+  class MockClient {
+    constructor(options: unknown) {
+      mocks.options(options);
+    }
+    connect = mocks.connect;
+    end = mocks.end;
+    query = mocks.query;
+    on = mocks.on;
+  }
   return {
     ...actual,
-    escapeIdentifier: driver.escapeIdentifier,
-    escapeLiteral: driver.escapeLiteral,
-    Client: class {
-      constructor(options: unknown) {
-        mocks.options(options);
-      }
-      connect = mocks.connect;
-      end = mocks.end;
-      query = mocks.query;
-      on = mocks.on;
-    }
+    default: { ...driver, Client: MockClient }
   };
 });
 vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({

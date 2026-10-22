@@ -1,4 +1,4 @@
-import { escapeLiteral } from 'pg';
+import pg from 'pg';
 import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vectorData/constants';
 import type { EmbeddingRecallCtrlPropsType } from '../type';
 import { DatasetVectorTableName } from '../constants';
@@ -36,7 +36,7 @@ export const buildPgVectorRecallQuery = ({
     values.push(forbidden);
     collectionClauses.push(`NOT (collection_id = ANY($${values.length}::varchar[]))`);
   }
-  const baseWhere = [`team_id = ${escapeLiteral(String(teamId))}`, ...collectionClauses].join(
+  const baseWhere = [`team_id = ${pg.escapeLiteral(String(teamId))}`, ...collectionClauses].join(
     ' AND '
   );
   const metadata = new Map(datasetVectorData.map((item) => [String(item.datasetId), item]));
@@ -52,7 +52,7 @@ export const buildPgVectorRecallQuery = ({
     (id, i) => `candidates_${i} AS MATERIALIZED (
       SELECT id, collection_id, vector
       FROM ${DatasetVectorTableName}
-      WHERE ${baseWhere} AND dataset_id = ${escapeLiteral(id)}
+      WHERE ${baseWhere} AND dataset_id = ${pg.escapeLiteral(id)}
       ORDER BY vector::halfvec(${vector.length}) <#> $1::halfvec(${vector.length})
       LIMIT $2
     )`
