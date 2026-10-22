@@ -22,7 +22,7 @@ import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app
 import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
 import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
-import { backfillFolderAncestorIds } from './tasks/4171/20261011_backfill_folder_ancestor_ids';
+import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder_ancestor_ids';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
 
@@ -548,28 +548,28 @@ export const systemMigrations = [
     run: backfillAgentSandboxTeamId
   },
   {
-    id: '20261011_backfill_folder_ancestor_ids',
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20261011_backfill_folder_ancestor_ids.name'),
+    id: '20261022_backfill_folder_ancestor_ids',
+    version: '4.17.3',
+    nameKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.name'),
     descriptionKey: i18nT(
-      'system_migration:migrations.20261011_backfill_folder_ancestor_ids.description'
+      'system_migration:migrations.20261022_backfill_folder_ancestor_ids.description'
     ),
-    resultKey: i18nT('system_migration:migrations.20261011_backfill_folder_ancestor_ids.result'),
+    resultKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.result'),
     progressSteps: [
       {
         key: 'apps',
-        labelKey: i18nT('system_migration:migrations.20261011_backfill_folder_ancestor_ids.apps')
+        labelKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.apps')
       },
       {
         key: 'datasets',
         labelKey: i18nT(
-          'system_migration:migrations.20261011_backfill_folder_ancestor_ids.datasets'
+          'system_migration:migrations.20261022_backfill_folder_ancestor_ids.datasets'
         )
       },
       {
         key: 'validation',
         labelKey: i18nT(
-          'system_migration:migrations.20261011_backfill_folder_ancestor_ids.validation'
+          'system_migration:migrations.20261022_backfill_folder_ancestor_ids.validation'
         )
       }
     ],

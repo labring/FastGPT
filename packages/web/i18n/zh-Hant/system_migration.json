@@ -124,10 +124,10 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱團隊歸屬",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校驗沙箱團隊歸屬回填結果",
   "migrations.20261009_backfill_agent_sandbox_team_id.result": "已掃描 {{scannedCount}} 個沙箱實例，回填團隊歸屬 {{backfilledCount}} 個，跳過孤兒記錄 {{orphanCount}} 個。",
-  "migrations.20261011_backfill_folder_ancestor_ids.name": "回填目錄祖先路徑",
-  "migrations.20261011_backfill_folder_ancestor_ids.description": "以 parentId 重建 App、工具與知識庫資料夾路徑，並清除非資料夾上的殘留欄位。無法安全遷移的記錄會列出，修復後可重試。",
-  "migrations.20261011_backfill_folder_ancestor_ids.result": "已掃描 {{scannedCount}} 筆目錄與資源記錄，尚有 {{failedCount}} 筆未解決記錄。",
-  "migrations.20261011_backfill_folder_ancestor_ids.apps": "回填 App 與工具資料夾路徑",
-  "migrations.20261011_backfill_folder_ancestor_ids.datasets": "回填知識庫資料夾路徑",
-  "migrations.20261011_backfill_folder_ancestor_ids.validation": "驗證資料夾路徑"
+  "migrations.20261022_backfill_folder_ancestor_ids.name": "回填目錄祖先路徑",
+  "migrations.20261022_backfill_folder_ancestor_ids.description": "以 parentId 重建 App、工具與知識庫資料夾路徑，並清除非資料夾上的殘留欄位。無法安全遷移的記錄會列出，修復後可重試。",
+  "migrations.20261022_backfill_folder_ancestor_ids.result": "已掃描 {{scannedCount}} 筆目錄與資源記錄，尚有 {{failedCount}} 筆未解決記錄。",
+  "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 與工具資料夾路徑",
+  "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知識庫資料夾路徑",
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "驗證資料夾路徑"
 }

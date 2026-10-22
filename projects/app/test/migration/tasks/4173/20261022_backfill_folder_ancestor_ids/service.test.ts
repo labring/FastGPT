@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { migrateFolderMigrationBatch } from '@/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/service';
+import { migrateFolderMigrationBatch } from '@/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/service';
 
 const teamId = new Types.ObjectId();
 const appIds = [

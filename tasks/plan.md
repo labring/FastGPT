@@ -74,7 +74,7 @@
 
 ## 数据清洗迁移脚本
 
-上线前必须提供一个系统迁移脚本，把已有目录数据洗成 `ancestorIds` 约定。脚本不是手工临时命令，而是追加到 `projects/app/src/migration/registry.ts` 末尾的自动任务，目录为 `projects/app/src/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/`，永久任务 ID 为 `20261011_backfill_folder_ancestor_ids`。任务使用非阻塞启动与 `continue` 失败策略。
+上线前必须提供一个系统迁移脚本，把已有目录数据洗成 `ancestorIds` 约定。脚本不是手工临时命令，而是追加到 `projects/app/src/migration/registry.ts` 末尾的自动任务，目录为 `projects/app/src/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/`，永久任务 ID 为 `20261022_backfill_folder_ancestor_ids`。任务使用非阻塞启动与 `continue` 失败策略。
 
 清洗范围是 `apps` 中的 `folder`、`toolFolder`，以及 `datasets` 中的 `folder`，包括已软删除文档。非 folder 不生成路径；如果历史数据在非 folder 上存在 `ancestorIds`，脚本将该字段清除。
 

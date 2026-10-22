@@ -118,8 +118,8 @@ describe('validateSystemMigrationRegistry', () => {
 
   it('appends the non-blocking folder path backfill after existing migrations', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20261011_backfill_folder_ancestor_ids',
-      version: '4.17.1',
+      id: '20261022_backfill_folder_ancestor_ids',
+      version: '4.17.3',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'apps' }, { key: 'datasets' }, { key: 'validation' }]

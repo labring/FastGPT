@@ -110,7 +110,7 @@
 **说明：**新增并注册一个数据清洗迁移脚本。它以 `parentId` 为唯一权威来源，为历史 App folder、工具 folder 和 Dataset folder 生成或纠正 `ancestorIds`，并清除非 folder 上的该字段。实现时遵循 `.agents/skills/system/system-migration-development/SKILL.md`，只追加到注册表末尾，不修改已发布的迁移。
 
 **验收标准：**
-- [x] 脚本位于 `projects/app/src/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/`，任务 ID 为 `20261011_backfill_folder_ancestor_ids`，使用 `blockStartup: false` 和分批断点续跑；失败策略为 `continue`。
+- [x] 脚本位于 `projects/app/src/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/`，任务 ID 为 `20261022_backfill_folder_ancestor_ids`，使用 `blockStartup: false` 和分批断点续跑；失败策略为 `continue`。
 - [x] 清洗覆盖未删除和已软删除的目标 folder。根节点写入空路径，子节点写入父路径加父 ID；非 folder 上已有的 `ancestorIds` 被清除。脚本不修改 `parentId`、权限和业务字段。
 - [x] App folder 与工具 folder 分树清洗。父文档缺失、父类型不匹配、成环或超深的 folder 不写入，并以集合名、文档 ID 和原因记入失败明细。
 - [x] 重复执行幂等；从 checkpoint 恢复时不重扫已完成批次，并先重试已保存的坏数据。验证阶段检查两个集合的完整快照。
@@ -124,10 +124,10 @@
 
 **预计涉及文件：**
 - `projects/app/src/migration/registry.ts`
-- `projects/app/src/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/index.ts`
-- `projects/app/src/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/service.ts`
+- `projects/app/src/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/index.ts`
+- `projects/app/src/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/service.ts`
 - `projects/app/test/migration/registry.test.ts`
-- `projects/app/test/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/`
+- `projects/app/test/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/`
 - `packages/web/i18n/{zh-CN,en,ko-KR,zh-Hant}/system_migration.json`
 
 **规模：**中，3–5 个文件

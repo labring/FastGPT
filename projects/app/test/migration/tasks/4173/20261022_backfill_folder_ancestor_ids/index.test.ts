@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { backfillFolderAncestorIds } from '@/migration/tasks/4171/20261011_backfill_folder_ancestor_ids';
+import { backfillFolderAncestorIds } from '@/migration/tasks/4173/20261022_backfill_folder_ancestor_ids';
 import {
   getFolderMigrationSnapshot,
   migrateFolderMigrationBatch,
   readFolderMigrationBatch,
   readFolderMigrationDocsByIds
-} from '@/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/service';
+} from '@/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/service';
 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 50 }));
-vi.mock('@/migration/tasks/4171/20261011_backfill_folder_ancestor_ids/service', () => ({
+vi.mock('@/migration/tasks/4173/20261022_backfill_folder_ancestor_ids/service', () => ({
   getFolderMigrationSnapshot: vi.fn(),
   migrateFolderMigrationBatch: vi.fn(),
   readFolderMigrationBatch: vi.fn(),
@@ -24,7 +24,7 @@ const datasetId = new Types.ObjectId('bbbbbbbbbbbbbbbbbbbbbbbb');
 const createContext = (initialCheckpoint?: Record<string, unknown>) => {
   let checkpoint = initialCheckpoint;
   const context = {
-    migrationId: '20261011_backfill_folder_ancestor_ids',
+    migrationId: '20261022_backfill_folder_ancestor_ids',
     runId: 'test-run',
     signal: new AbortController().signal,
     getCheckpoint: async (schema) =>
