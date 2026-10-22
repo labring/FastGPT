@@ -2,6 +2,7 @@ import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
@@ -231,6 +232,54 @@ describe('dispatchRunTools file context', () => {
           fileUrlList: ['/current.pdf']
         })
       })
+    );
+  });
+
+  it('persists child workflow memories while the tool workflow is paused', async () => {
+    const memories = {
+      'agentLoopMemory-agent_1': {
+        providerState: {
+          pendingMainContext: {
+            messages: [],
+            askToolCallId: 'call_ask'
+          }
+        }
+      }
+    };
+    runToolCallMock.mockResolvedValueOnce({
+      toolWorkflowInteractiveResponse: {
+        type: 'toolChildrenInteractive',
+        params: {
+          childrenResponse: {
+            type: 'agentAsk',
+            askId: 'call_ask',
+            params: {
+              description: 'need input',
+              questions: []
+            }
+          },
+          toolParams: {
+            toolCallId: 'call_tool'
+          }
+        }
+      },
+      toolDispatchFlowResponses: [],
+      workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+      toolCallInputTokens: 0,
+      toolCallOutputTokens: 0,
+      toolCallTotalPoints: 0,
+      completeMessages: [],
+      assistantResponses: [],
+      finish_reason: 'stop',
+      requestIds: [],
+      memories
+    });
+
+    const result = await dispatchRunTools(createProps());
+
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual(memories);
+    expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
+      expect.objectContaining({ type: 'toolChildrenInteractive' })
     );
   });
 

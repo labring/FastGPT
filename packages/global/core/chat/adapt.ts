@@ -534,10 +534,15 @@ export const chats2GPTMessages = ({
           const answer = value.agentAsk.askId
             ? agentAskAnswerMap.get(value.agentAsk.askId)
             : undefined;
-          if (appendedToolCall && typeof answer === 'string') {
+          if (appendedToolCall) {
+            /**
+             * 未回答的 ask 也必须补齐 tool message。
+             * 子 Agent 作为工具暂停时，用户答案还没写回历史，此时重建的上下文会留下
+             * 只有 assistant tool_calls、没有对应 tool message 的非法消息序列，provider 会直接拒绝请求。
+             */
             appendToolMessage({
               id: appendedToolCall.toolCall.id,
-              response: answer
+              response: typeof answer === 'string' ? answer : 'Waiting for user answer.'
             });
           }
         }

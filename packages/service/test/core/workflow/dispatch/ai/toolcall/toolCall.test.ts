@@ -496,6 +496,51 @@ describe('runToolCall compression node responses', () => {
     ]);
   });
 
+  it('collects child workflow memories for interactive resume', async () => {
+    const childMemories = {
+      'agentLoopMemory-agent_1': {
+        providerState: {
+          pendingMainContext: {
+            messages: [],
+            askToolCallId: 'call_ask'
+          }
+        }
+      }
+    };
+    runWorkflowMock.mockResolvedValueOnce({
+      toolResponse: undefined,
+      assistantResponses: [],
+      flowUsages: [],
+      flatNodeResponses: [],
+      workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
+      system_memories: childMemories
+    });
+    runAgentLoopMock.mockImplementationOnce(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{}' }
+      };
+      await options.runtime.executeTool({ call, messages: [] });
+      return createLoopResult({ usages: [] });
+    });
+
+    const result = await runToolCall(
+      createProps({
+        toolNodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.tool,
+            inputs: []
+          }
+        ]
+      })
+    );
+
+    expect(result.memories).toEqual(childMemories);
+  });
+
   it('preserves the order of multiple tool responses from events', async () => {
     runAgentLoopMock.mockImplementationOnce(async (options) => {
       for (const [id, name, response] of [

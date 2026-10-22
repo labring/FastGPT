@@ -187,7 +187,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       finish_reason,
       error,
       requestIds,
-      firstTokenTime
+      firstTokenTime,
+      memories
     } = await (async () => {
       const adaptMessages = buildAgentLoopCoreRequestMessages({
         messages,
@@ -235,7 +236,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...getNodeErrResponse({
           error,
           [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+          [DispatchNodeResponseKeyEnum.memories]: memories
         }),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? previewAssistantResponses
@@ -250,6 +252,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           ? previewAssistantResponses
           : undefined,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+        // Agent 工具暂停时保存子流程 memory，恢复时由子 Agent 读取 pending state。
+        [DispatchNodeResponseKeyEnum.memories]: memories,
         [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
       };
     }
@@ -266,6 +270,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ? previewAssistantResponses
         : undefined,
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+      [DispatchNodeResponseKeyEnum.memories]: memories,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };
   } catch (error) {
