@@ -1408,11 +1408,14 @@ describe('pushChatRecords', () => {
           questions: [
             {
               question: action === 'agentAsk' ? '方向？' : '确认方案？',
-              value: action === 'agentAsk' ? 'rust' : action,
-              answer: action === 'revise' ? '增加审核分支' : action
+              value: {
+                agentAsk: 'rust',
+                confirm: 'Confirm',
+                revise: '增加审核分支',
+                cancel: 'Cancel'
+              }[action]
             }
-          ],
-          ...(action === 'revise' ? { feedback: '增加审核分支' } : {})
+          ]
         };
         const props = createMockProps(
           {

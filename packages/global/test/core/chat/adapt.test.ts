@@ -3553,7 +3553,7 @@ describe('getSystemPrompt_ChatItemType', () => {
 describe('structured user answers', () => {
   const select = {
     type: 'agentAsk' as const,
-    questions: [{ question: '输入方式？', value: 'upload', answer: '上传文件' }]
+    questions: [{ question: '输入方式？', value: 'upload' }]
   };
   const ask: ChatItemMiniType = {
     obj: ChatRoleEnum.AI,
@@ -3576,7 +3576,7 @@ describe('structured user answers', () => {
       expect.objectContaining({
         role: 'tool',
         tool_call_id: 'ask-call',
-        content: '## 输入方式？\n\n回答：上传文件 - upload'
+        content: '## 输入方式？\n\n回答：upload'
       })
     ]);
   });
@@ -3619,7 +3619,7 @@ describe('structured user answers', () => {
     expect(chatValue2RuntimePrompt(restored[0].value).text).toBe('{"answers":["upload"]}');
     expect(chats2GPTMessages({ messages: [answer], reserveId: false })[0]).toMatchObject({
       role: 'user',
-      content: '## 输入方式？\n\n回答：上传文件 - upload'
+      content: '## 输入方式？\n\n回答：upload'
     });
   });
 
@@ -3634,7 +3634,7 @@ describe('structured user answers', () => {
         {
           select: {
             ...select,
-            questions: [{ question: '补充？', value: 'review', answer: '增加审核' }]
+            questions: [{ question: '补充？', value: 'review' }]
           }
         }
       ]
@@ -3645,8 +3645,8 @@ describe('structured user answers', () => {
       reserveTool: true
     });
     expect(result.filter((item) => item.role === 'tool').map((item) => item.content)).toEqual([
-      '## 输入方式？\n\n回答：上传文件 - upload',
-      '## 补充？\n\n回答：增加审核 - review'
+      '## 输入方式？\n\n回答：upload',
+      '## 补充？\n\n回答：review'
     ]);
   });
 });

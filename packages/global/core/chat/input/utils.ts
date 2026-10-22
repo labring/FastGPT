@@ -14,21 +14,14 @@ export const getUserChatSelect = (
   }
 };
 
-/** 将结构化回答转为模型可读内容；原始选项值保留，避免展示文字改变提交语义。 */
+/** 将用户消息中保存的问题和回答直接转为模型可读内容，空回答表示跳过。 */
 export const formatUserChatSelect = (select: UserChatSelectType) =>
   select.questions
-    .map(({ question, value, answer }) => {
-      const content = !value
-        ? '未回答'
-        : answer && answer !== value
-          ? `${answer} - ${value}`
-          : value;
-      return `## ${question}\n\n回答：${content}`;
-    })
+    .map(({ question, value }) => `## ${question}\n\n回答：${value === '' ? '未回答' : value}`)
     .join('\n\n');
 
-/** Ask 续跑需要原始答案数组；Preview 的动作在结构化输入中读取，文本只提供用户反馈。 */
+/** Ask 续跑按题目顺序传递答案数组；Preview 直接使用用户的选择文案或修改意见。 */
 export const userChatSelect2RuntimeText = (select: UserChatSelectType) =>
   isAgentAskInteractive(select)
     ? JSON.stringify({ answers: select.questions.map(({ value }) => value) })
-    : (select.feedback ?? select.questions[0].answer);
+    : (select.questions[0]?.value ?? '');

@@ -163,12 +163,27 @@ export const isWorkflowBuilderVersionGenerating = ({
   let latestVersionOrder = -1;
   let valueOrder = 0;
 
-  chatRecords.forEach((record) => {
+  chatRecords.forEach((record, index) => {
     if (record.obj === ChatRoleEnum.Human) {
       valueOrder += 1;
       const select = getUserChatSelect(record.value);
-      if (select?.type === 'workflowBuilderPreview' && select.questions[0].value === 'confirm')
-        latestConfirmedPreviewOrder = valueOrder;
+      if (select?.type === 'workflowBuilderPreview') {
+        const previous = chatRecords[index - 1];
+        const interactiveValue =
+          previous?.obj === ChatRoleEnum.AI
+            ? previous.value.findLast((value) => value.interactive)?.interactive
+            : undefined;
+        const interactive = interactiveValue
+          ? extractDeepestInteractive(interactiveValue)
+          : undefined;
+        if (
+          interactive?.type === 'workflowBuilderPreview' &&
+          interactive.params.actions.some(
+            ({ value, label }) => value === 'confirm' && label === select.questions[0].value
+          )
+        )
+          latestConfirmedPreviewOrder = valueOrder;
+      }
       return;
     }
     if (record.obj !== ChatRoleEnum.AI) return;

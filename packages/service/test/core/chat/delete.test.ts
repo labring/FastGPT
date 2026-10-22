@@ -69,7 +69,7 @@ describe('softDeleteChatItems', () => {
         ...source,
         obj: ChatRoleEnum.Human,
         dataId: 'reply-round',
-        value: [{ select: { type, questions: [{ question: 'Choose?', value: 'A', answer: 'A' }] } }]
+        value: [{ select: { type, questions: [{ question: 'Choose?', value: 'A' }] } }]
       });
       const ai = await MongoChatItem.create({
         ...source,

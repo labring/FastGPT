@@ -20,17 +20,16 @@ describe('InteractiveReply', () => {
         ChakraProvider,
         null,
         React.createElement(InteractiveReply, {
-          chatValue: [{ text: { content: '{"answers":["confirm","Custom feedback",""]}' } }],
+          chatValue: [],
           reply: {
             type: 'agentAsk',
-            interactionId: 'ask-1',
             questions: [
               {
                 question: 'Choose an action',
-                answer: 'Confirm action'
+                value: 'Confirm action'
               },
-              { question: 'Add feedback', answer: 'Custom feedback\nMore details' },
-              { question: 'Optional detail', answer: '' }
+              { question: 'Add feedback', value: 'Custom feedback\nMore details' },
+              { question: 'Optional detail', value: '' }
             ]
           }
         })

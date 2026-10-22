@@ -20,9 +20,9 @@ const InteractiveReply = ({
   children?: React.ReactNode;
 }) => {
   const { t } = useTranslation();
-  const questions = reply.questions.map(({ question, answer }) => ({
+  const questions = reply.questions.map(({ question, value }) => ({
     question,
-    answer: answer === '' ? t('chat:interactive.agent_ask.unanswered') : answer
+    value: value === '' ? t('chat:interactive.agent_ask.unanswered') : value
   }));
   const files = chatValue.filter((value) => value.file).map(({ file }) => ({ file }));
 
@@ -34,14 +34,14 @@ const InteractiveReply = ({
         ...files,
         {
           text: {
-            content: questions.map(({ question, answer }) => `${question}\n${answer}`).join('\n\n')
+            content: questions.map(({ question, value }) => `${question}\n${value}`).join('\n\n')
           }
         }
       ]}
       content={
         <Flex direction={'column'} gap={3} minW={0} maxW={'100%'}>
           {files.length > 0 && <HumanChatBubbleContent chatValue={files} />}
-          {questions.map(({ question, answer }, index) => (
+          {questions.map(({ question, value }, index) => (
             <Box key={index} minW={0} maxW={'100%'} lineHeight={7}>
               <MyTooltip label={question} showOnlyWhenOverflow>
                 <Box color={'myGray.600'} noOfLines={1}>
@@ -49,7 +49,7 @@ const InteractiveReply = ({
                 </Box>
               </MyTooltip>
               <Box whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
-                {answer}
+                {value}
               </Box>
             </Box>
           ))}

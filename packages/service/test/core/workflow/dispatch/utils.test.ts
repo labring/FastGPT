@@ -664,7 +664,7 @@ describe('getHistories', () => {
           {
             select: {
               type: 'agentAsk',
-              questions: [{ question: 'Choose one', value: 'A', answer: 'A' }]
+              questions: [{ question: 'Choose one', value: 'A' }]
             }
           }
         ]

@@ -94,7 +94,7 @@ describe('ChatItem interactive replies', () => {
         {
           select: {
             type: 'agentAsk',
-            questions: [{ question: 'Question', answer: 'Answer', value: 'Answer' }]
+            questions: [{ question: 'Question', value: 'Answer' }]
           }
         }
       ]
@@ -157,8 +157,8 @@ describe('ChatItem interactive replies', () => {
           select: {
             type: 'agentAsk',
             questions: [
-              { question: 'Question 1', answer: 'custom', value: 'custom' },
-              { question: 'Question 2', answer: '', value: '' }
+              { question: 'Question 1', value: 'custom' },
+              { question: 'Question 2', value: '' }
             ]
           }
         }
@@ -233,13 +233,7 @@ describe('ChatItem interactive replies', () => {
               text: { content: response.expected },
               select: {
                 type: 'workflowBuilderPreview',
-                questions: [
-                  {
-                    question: preview.params.title,
-                    value: response.answerValue,
-                    answer: response.expected
-                  }
-                ]
+                questions: [{ question: preview.params.title, value: response.expected }]
               }
             }
           ]

@@ -177,6 +177,10 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
+  askId: z.string().nullish().meta({
+    deprecated: true,
+    description: '旧版用户回复的交互关联 ID，保留兼容，新消息不再写入'
+  }),
   select: UserChatSelectSchema.optional(),
   text: z
     .object({

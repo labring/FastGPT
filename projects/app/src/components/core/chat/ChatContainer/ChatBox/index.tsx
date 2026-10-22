@@ -828,16 +828,10 @@ const ChatBox = ({
                               select: {
                                 type: 'agentAsk',
                                 questions: activeInteractive.params.questions.map(
-                                  (question, index) => {
-                                    const value = answers[index] ?? '';
-                                    return {
-                                      question: question.question,
-                                      value,
-                                      answer:
-                                        question.options.find((option) => option.value === value)
-                                          ?.summary ?? value
-                                    };
-                                  }
+                                  ({ question }, index) => ({
+                                    question,
+                                    value: answers[index] ?? ''
+                                  })
                                 )
                               },
                               interactive: lastInteractive

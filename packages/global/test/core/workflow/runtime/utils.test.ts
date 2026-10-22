@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isAgentAskInteractive,
+  isAskInteractive,
   extractDeepestInteractive,
   getMaxHistoryLimitFromNodes,
   valueTypeFormat,
@@ -44,6 +45,36 @@ const getReferenceVariableValue = ({
     ...props,
     variables
   });
+
+describe('isAskInteractive', () => {
+  it.each([
+    { interactive: { type: 'agentAsk' }, expected: true },
+    { interactive: { type: 'workflowBuilderPreview' }, expected: true },
+    { interactive: { type: 'userSelect' }, expected: false },
+    { interactive: { type: 'userInput' }, expected: false },
+    { interactive: { type: 'agentPlanAskQuery' }, expected: false },
+    { interactive: undefined, expected: false },
+    { interactive: null, expected: false }
+  ])('classifies the current Ask interaction: $interactive', ({ interactive, expected }) => {
+    expect(isAskInteractive(interactive)).toBe(expected);
+  });
+
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'requires nested %s interactions to be extracted before classifying them',
+    (type) => {
+      const interactive: WorkflowInteractiveResponseType = {
+        type: 'childrenInteractive',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: { childrenResponse: { type } }
+      };
+
+      expect(isAskInteractive(interactive)).toBe(false);
+      expect(isAskInteractive(extractDeepestInteractive(interactive))).toBe(true);
+    }
+  );
+});
 
 describe('isAgentAskInteractive', () => {
   it.each([
@@ -833,7 +864,7 @@ describe('getLastInteractiveValue', () => {
         {
           select: {
             type: 'agentAsk',
-            questions: [{ question: 'Choose?', value: 'A', answer: 'A' }]
+            questions: [{ question: 'Choose?', value: 'A' }]
           }
         }
       ]
@@ -972,7 +1003,7 @@ describe('getLastInteractiveValue', () => {
             {
               select: {
                 type: 'workflowBuilderPreview',
-                questions: [{ question: 'Confirm?', value: 'confirm', answer: 'Confirm' }]
+                questions: [{ question: 'Confirm?', value: 'Confirm' }]
               }
             }
           ]

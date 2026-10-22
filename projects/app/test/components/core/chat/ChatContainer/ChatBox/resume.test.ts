@@ -379,7 +379,7 @@ describe('mergeResumeCompletedChatRecords', () => {
             text: { content: 'Answer' },
             select: {
               type,
-              questions: [{ question: 'Question', value: 'Answer', answer: 'Answer' }]
+              questions: [{ question: 'Question', value: 'Answer' }]
             }
           }
         ]

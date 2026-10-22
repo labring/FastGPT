@@ -785,7 +785,7 @@ PR 5 开始阶段四，但只处理消息记录动作，不把反馈、标注、
 2. 单条删除仍保持原来的 fire-and-forget 语义：本地先过滤记录，不额外等待远端删除完成，也不新增失败 toast。
 3. 重试继续复用 `useChatGenerate` 返回的 `sendPrompt`，不在本 hook 内处理 SSE、placeholder、TTS、问题引导和侧边栏状态。
 4. `isRecordActionLoading` 只表示 record action 的加载态，目前主要覆盖重试过程，不等同于聊天生成状态。
-5. Ask/WorkflowPreview 的答案只保存在真实 user 的 `select` 输入中，结构与 text/file 并列，直接保存问题、选项原始值、展示文字及必要的方案反馈，不增加 user 关联 ID。原 AI 只保存提问、工具调用和执行断点，不持久化答案或提交状态。
+5. Ask/WorkflowPreview 的答案只保存在真实 user 的 `select` 输入中，结构与 text/file 并列，仅保留 `type` 和 `questions: [{ question, value }]`。Ask 的 value 为选项内容或自定义回答，空字符串表示跳过；Preview 的 value 为确认/取消按钮文案或修改意见，按相邻原预览中的按钮定义识别动作。不单独保存 answer、feedback 或 user 关联 ID；旧用户 askId 字段保留为 nullish 并标记弃用，新消息不再写入。原 AI 只保存提问、工具调用和执行断点，不持久化答案或提交状态。
 6. 按严格相邻消息还原 Ask 回答：只读取提问 AI 紧接着的第一条消息；该消息缺失或不是 user 时，工具 response 为空，不跨消息向后查找。暂不支持删除中间问答导致的跨轮缺口，后续由删除入口限制该操作，不为此增加关联字段或补查逻辑。
 7. 删除和重试统一走普通消息流程：服务端仅软删除目标记录。删除末轮 user 回答及随后 AI 后，原 Ask/Preview 自然重新待答；重试裁剪、重新加载历史窗口和分页锚点后，原样重发 text/files/select。不再传递 retry 标记、补查原问题或反向回写旧 AI。
 8. 当前只维护 `agentAsk` 与独立的 WorkflowPreview 协议。旧 Ask 数据仅保证读取与渲染不崩溃，不做 ID 迁移、答案转换、选中态恢复或旧断点续跑。无法识别的交互安全忽略。

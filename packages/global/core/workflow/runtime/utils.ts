@@ -31,6 +31,15 @@ export const isAgentAskInteractive = <T extends { type: string }>(
   interactive: T | null | undefined
 ): interactive is T & { type: 'agentAsk' } => interactive?.type === 'agentAsk';
 
+/**
+ * 识别通过新建 user 消息回答的 Ask 交互，统一 Agent Ask 和工作流方案确认的公共行为。
+ * 只判断当前层类型，不校验载荷；嵌套交互需先通过 extractDeepestInteractive 提取。
+ */
+export const isAskInteractive = <T extends { type: string }>(
+  interactive: T | null | undefined
+): interactive is T & { type: 'agentAsk' | 'workflowBuilderPreview' } =>
+  isAgentAskInteractive(interactive) || interactive?.type === 'workflowBuilderPreview';
+
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
@@ -187,14 +196,11 @@ export const getLastInteractiveValue = (
 
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
     if (!finalInteractive) return;
-    if (isAgentAskInteractive(finalInteractive)) {
-      if (!AgentAskInteractiveSchema.safeParse(finalInteractive).success) return;
-      return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
-        ? undefined
-        : lastValue.interactive;
-    }
-    if (finalInteractive.type === 'workflowBuilderPreview') {
-      if (!WorkflowBuilderPreviewInteractiveSchema.safeParse(finalInteractive).success) return;
+    if (isAskInteractive(finalInteractive)) {
+      const schema = isAgentAskInteractive(finalInteractive)
+        ? AgentAskInteractiveSchema
+        : WorkflowBuilderPreviewInteractiveSchema;
+      if (!schema.safeParse(finalInteractive).success) return;
       return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
         ? undefined
         : lastValue.interactive;

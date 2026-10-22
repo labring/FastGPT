@@ -167,7 +167,7 @@ describe('delete chat record api', () => {
         {
           select: {
             type: 'agentAsk',
-            questions: [{ question: 'Choose?', value: 'A', answer: 'A' }]
+            questions: [{ question: 'Choose?', value: 'A' }]
           }
         }
       ]

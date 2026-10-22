@@ -375,6 +375,30 @@ describe('getWorkflowBuilderPendingInteractiveKey', () => {
 });
 
 describe('isWorkflowBuilderVersionGenerating', () => {
+  it.each([
+    { value: '确认并开始搭建', expected: true },
+    { value: '取消本次搭建', expected: false },
+    { value: '增加审核分支', expected: false },
+    { value: 'confirm', expected: false }
+  ])('matches the adjacent preview button label: $value', ({ value, expected }) => {
+    const interactive = createPreviewInteractive();
+    interactive.params.actions[0].label = '确认并开始搭建';
+    const preview: ChatItemObjItemType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
+    const answer: ChatItemObjItemType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        { select: { type: 'workflowBuilderPreview', questions: [{ question: '方案预览', value }] } }
+      ]
+    };
+
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [preview, answer], isChatGenerating: true })
+    ).toBe(expected);
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [answer], isChatGenerating: true })
+    ).toBe(false);
+  });
+
   it('identifies the version-building substage after Mermaid confirmation', () => {
     const preview = {
       obj: ChatRoleEnum.AI,
@@ -390,7 +414,7 @@ describe('isWorkflowBuilderVersionGenerating', () => {
         {
           select: {
             type: 'workflowBuilderPreview',
-            questions: [{ question: '方案预览', value: 'confirm', answer: '确认' }]
+            questions: [{ question: '方案预览', value: '确认' }]
           }
         }
       ]

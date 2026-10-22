@@ -403,13 +403,7 @@ describe('Ask and Preview immutable questions', () => {
           {
             select: {
               type,
-              questions: [
-                {
-                  question: 'Choose?',
-                  value: type === 'agentAsk' ? 'A' : 'confirm',
-                  answer: 'Answer'
-                }
-              ]
+              questions: [{ question: 'Choose?', value: type === 'agentAsk' ? 'A' : 'confirm' }]
             }
           }
         ]

@@ -312,7 +312,7 @@ describe('prepare chat round', () => {
               {
                 select: {
                   type: 'agentAsk',
-                  questions: [{ question: 'Audience?', value: 'A', answer: 'A' }]
+                  questions: [{ question: 'Audience?', value: 'A' }]
                 }
               }
             ]

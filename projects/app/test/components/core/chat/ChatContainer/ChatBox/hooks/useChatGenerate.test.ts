@@ -292,9 +292,9 @@ describe('useChatGenerate.sendPrompt', () => {
           ? {
               type: 'agentAsk',
               questions: [
-                { question: 'Choose?', value: 'upload', answer: 'Upload file' },
-                { question: 'Details?', value: 'Custom feedback', answer: 'Custom feedback' },
-                { question: 'Optional?', value: '', answer: '' }
+                { question: 'Choose?', value: 'upload' },
+                { question: 'Details?', value: 'Custom feedback' },
+                { question: 'Optional?', value: '' }
               ]
             }
           : {
@@ -302,11 +302,14 @@ describe('useChatGenerate.sendPrompt', () => {
               questions: [
                 {
                   question: 'Confirm workflow?',
-                  value: action,
-                  answer: action === 'revise' ? 'Add a review branch' : action
+                  value:
+                    action === 'revise'
+                      ? 'Add a review branch'
+                      : action === 'confirm'
+                        ? 'Confirm'
+                        : 'Cancel'
                 }
-              ],
-              ...(action === 'revise' ? { feedback: 'Add a review branch' } : {})
+              ]
             };
       const interactive: WorkflowInteractiveResponseType =
         action === 'agentAsk'
@@ -412,7 +415,7 @@ describe('useChatGenerate.sendPrompt', () => {
             {
               select: {
                 type: 'agentAsk',
-                questions: [{ question: 'Choose?', value: 'A', answer: 'A' }]
+                questions: [{ question: 'Choose?', value: 'A' }]
               }
             }
           ]
@@ -445,7 +448,7 @@ describe('useChatGenerate.sendPrompt', () => {
               {
                 select: {
                   type,
-                  questions: [{ question: 'Choose?', value: 'confirm', answer: 'Confirm' }]
+                  questions: [{ question: 'Choose?', value: 'confirm' }]
                 }
               }
             ]

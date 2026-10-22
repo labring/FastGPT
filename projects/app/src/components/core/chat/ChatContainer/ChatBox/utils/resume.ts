@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import {
   isAgentAskInteractive,
+  isAskInteractive,
   extractDeepestInteractive
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -305,11 +306,7 @@ export const shouldAppendResumeInteractive = ({
 
   if (!isSameInteractive) return true;
 
-  if (
-    isAgentAskInteractive(existingFinalInteractive) ||
-    existingFinalInteractive.type === 'workflowBuilderPreview'
-  )
-    return false;
+  if (isAskInteractive(existingFinalInteractive)) return false;
   return !isSubmittedFormInteractive(existingFinalInteractive);
 };
 

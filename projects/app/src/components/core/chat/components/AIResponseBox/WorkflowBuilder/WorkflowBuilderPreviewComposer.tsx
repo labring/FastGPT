@@ -50,11 +50,9 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
           questions: [
             {
               question: interactive.params.title,
-              value: result.action.value,
-              answer: result.text ?? result.action.label
+              value: result.text ?? result.action.label
             }
-          ],
-          ...(result.text ? { feedback: result.text } : {})
+          ]
         }
       });
     },
