@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Button, Flex, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import { ChatAgentHelperAvatar } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import type { ChatAgentBuilderVersion } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentBuilderVersion';
@@ -23,6 +25,7 @@ const RenderChatAgentBuilderVersion = ({
   const [expired, setExpired] = useState(() => new Date(version.expiresAt).getTime() <= Date.now());
   return (
     <Flex alignItems="center" gap={3} p={3} borderWidth="1px" borderRadius="md">
+      <Avatar src={ChatAgentHelperAvatar} w="24px" flexShrink={0} />
       <Text flex={1} minW={0} noOfLines={1} fontSize="sm">
         {t('chat_agent_config_ready')}
       </Text>

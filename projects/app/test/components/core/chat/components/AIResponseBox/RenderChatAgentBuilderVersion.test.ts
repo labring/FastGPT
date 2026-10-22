@@ -6,6 +6,7 @@ import RenderChatAgentBuilderVersion from '@/components/core/chat/components/AIR
 
 const actions = vi.hoisted(() => ({ isApplying: false, applyConfig: vi.fn() }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
 vi.mock('@/web/core/chat/context/chatItemContext', () => ({ ChatItemContext: {} }));
 vi.mock('use-context-selector', () => ({
   useContextSelector: (_context: unknown, select: (value: unknown) => unknown) =>
