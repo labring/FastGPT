@@ -301,6 +301,13 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
+  // 批量标签操作看所选 Collection 自身的写权限，不依赖当前 Dataset 或父目录权限。
+  const writableSelectedCollections = useMemo(
+    () => selectedItems.filter((item) => item.permission.hasWritePer),
+    [selectedItems]
+  );
+  const hasFilteredUnWritableItems = writableSelectedCollections.length < selectedItems.length;
+
   // 删除是 owner 专属操作：批量删除仅作用于选中项中的 owner 项，其余项被过滤并提示。
   const ownedSelectedItems = useMemo(
     () => selectedItems.filter((item) => item.permission.isOwner),
@@ -387,6 +394,11 @@ const CollectionCard = () => {
                         {t('dataset:collection.filtered_no_delete_permission_tip')}
                       </Box>
                     )}
+                    {hasFilteredUnWritableItems && (
+                      <Box color={'myGray.500'} userSelect={'none'} fontSize={'sm'}>
+                        {t('common:read_only_no_batch_permission')}
+                      </Box>
+                    )}
                     {canBatchDownloadDatasetCollections(datasetDetail.type) && (
                       <Button
                         variant={'whiteBase'}
@@ -398,7 +410,7 @@ const CollectionCard = () => {
                         {t('dataset:batch_download')}
                       </Button>
                     )}
-                    {datasetDetail.permission.hasWritePer &&
+                    {writableSelectedCollections.length > 0 &&
                       datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
                       feConfigs?.isPlus && (
                         <Button variant={'whiteBase'} onClick={() => setIsBatchTagModalOpen(true)}>
@@ -474,7 +486,12 @@ const CollectionCard = () => {
               {formatCollections.map((collection) => (
                 <Tr
                   key={collection._id}
-                  _hover={collection.isNavigableFolder ? undefined : { bg: 'myGray.50' }}
+                  _hover={{ bg: 'myGray.50' }}
+                  sx={
+                    collection.isNavigableFolder
+                      ? { '&:hover > td': { backgroundColor: 'myGray.50' } }
+                      : undefined
+                  }
                   {...getBoxProps({
                     dataId: collection._id,
                     isFolder: collection.type === DatasetCollectionTypeEnum.folder,
@@ -533,10 +550,7 @@ const CollectionCard = () => {
                             mr={2}
                             flexShrink={0}
                           />
-                          <MyTooltip
-                            label={collection.isNavigableFolder ? undefined : collection.name}
-                            showOnlyWhenOverflow
-                          >
+                          <MyTooltip label={collection.name} showOnlyWhenOverflow>
                             <Box
                               color={'myGray.900'}
                               fontWeight={'500'}
@@ -554,33 +568,32 @@ const CollectionCard = () => {
                       </Flex>
                     </HStack>
                   </Td>
-                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
-                    {collection.trainingType
-                      ? t(
-                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                            '-') as any
-                        )
-                      : '-'}
+                  <Td py={2}>
+                    {!collection.isNavigableFolder &&
+                      (collection.trainingType
+                        ? t(
+                            (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                              '-') as any
+                          )
+                        : '-')}
                   </Td>
-                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
-                    {collection.dataAmount || '-'}
+                  <Td py={2}>{!collection.isNavigableFolder && (collection.dataAmount || '-')}</Td>
+                  <Td fontSize={'xs'} py={2} color={'myGray.500'}>
+                    <Box visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                      {formatTime2YMDHM(collection.createTime)}
+                    </Box>
+                    <Box visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                      {formatTime2YMDHM(collection.updateTime)}
+                    </Box>
                   </Td>
-                  <Td
-                    fontSize={'xs'}
-                    py={2}
-                    color={'myGray.500'}
-                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
-                  >
-                    <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                    <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
-                  </Td>
-                  <Td py={2} visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                  <Td py={2}>
                     <MyTooltip
                       label={
                         !collection.canOpenTrainingStates ? undefined : t('common:Click_to_expand')
                       }
                     >
                       <MyTag
+                        visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
                         showDot
                         colorSchema={collection.statusColorSchema}
                         type={'fill'}
@@ -605,12 +618,9 @@ const CollectionCard = () => {
                       </MyTag>
                     </MyTooltip>
                   </Td>
-                  <Td
-                    py={2}
-                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
+                      visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
                       isChecked={!collection.forbid}
                       isDisabled={!collection.permission.hasWritePer}
                       size={'sm'}
@@ -622,12 +632,8 @@ const CollectionCard = () => {
                       }
                     />
                   </Td>
-                  <Td
-                    py={2}
-                    visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {collection.permission.hasWritePer && (
+                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                    {collection.permission.hasWritePer && !collection.isNavigableFolder && (
                       <MyMenu
                         strategy="fixed"
                         placement="bottom-end"
@@ -801,7 +807,7 @@ const CollectionCard = () => {
 
         {isBatchTagModalOpen && (
           <CollectionTagBatchModal
-            collections={selectedItems}
+            collections={writableSelectedCollections}
             onClose={() => setIsBatchTagModalOpen(false)}
             onSuccess={() => {
               getData(pageNum);

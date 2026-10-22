@@ -80,8 +80,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     });
   };
 
-  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
-  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   // 进入目录后只认目录自身的写权限，不能把根目录的团队创建权限继承进来。
   const hasCreatePer = parentId
     ? Boolean(folderDetail?.permission.hasWritePer)
@@ -132,7 +130,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {(isPc ? !isNavigableFolder : hasCreatePer) && (
+            {(isPc || hasCreatePer) && (
               <Flex alignItems={'center'} gap={[2, '12px']}>
                 {isPc && (
                   <Button

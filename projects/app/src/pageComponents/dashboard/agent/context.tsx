@@ -254,6 +254,7 @@ const AppListContextProvider = ({
     }
   );
   const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const canReadCurrentFolder = !parentId || currentFolderPath?.folderAccessMode === 'read';
 
   const {
     data: requestedFolderDetail,
@@ -267,7 +268,7 @@ const AppListContextProvider = ({
     },
     {
       manual: false,
-      ready: !parentId || currentFolderPath?.folderAccessMode === 'read',
+      ready: canReadCurrentFolder,
       refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
     }
   );
@@ -288,7 +289,11 @@ const AppListContextProvider = ({
 
   const { runAsync: onUpdateApp } = useRequest((id: string, data: UpdateAppBodyType) =>
     putAppById(id, data).then(async (res) => {
-      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
+      // ready=false 的详情请求会让 ahooks runAsync 返回永不完成的 Promise，导航目录下不能刷新它。
+      const refreshFolderDetail = canReadCurrentFolder
+        ? refetchFolderDetail()
+        : Promise.resolve(null);
+      await Promise.all([refreshFolderDetail, refetchPaths(), loadMyApps()]);
       return res;
     })
   );

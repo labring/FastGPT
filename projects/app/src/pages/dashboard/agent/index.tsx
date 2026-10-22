@@ -64,8 +64,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
-  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
-  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   const folderDepthLimitTip = t('common:folder_depth_limit_tip');
 
   const {
@@ -159,7 +157,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {(isPc ? !isNavigableFolder : hasCreatePer) && (
+            {(isPc || hasCreatePer) && (
               <Flex alignItems={'center'} gap={[2, '12px']}>
                 {isPc && (
                   <Button

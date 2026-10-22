@@ -62,8 +62,6 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
-  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
-  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   const folderDepthLimitTip = t('common:folder_depth_limit_tip');
   // 与 Agent 列表一致：目录内只看该目录的写权限，避免详情未返回时退回团队创建权限。
   const hasCreatePer = parentId
@@ -155,7 +153,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {!isNavigableFolder && (isPc || hasCreatePer) && (
+            {(isPc || hasCreatePer) && (
               <Flex alignItems={'center'} gap={[2, '12px']}>
                 {isPc && (
                   <Button
