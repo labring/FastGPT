@@ -650,7 +650,7 @@ export const useChatGenerate = ({
       files = [],
       history = chatRecords,
       interactive,
-      agentPlanAskResponse,
+      select,
       autoTTSResponse = false,
       hideInUI = false,
       clearInput = false
@@ -680,7 +680,7 @@ export const useChatGenerate = ({
 
           text = text.trim();
 
-          if (!text && files.length === 0) {
+          if (!text && files.length === 0 && !select) {
             toast({
               title: t('chat:content_empty'),
               status: 'warning'
@@ -736,15 +736,17 @@ export const useChatGenerate = ({
                   key: file.key || ''
                 }
               })),
-              ...(text
-                ? [
-                    {
-                      text: {
-                        content: text
+              ...(select
+                ? [{ select }]
+                : text
+                  ? [
+                      {
+                        text: {
+                          content: text
+                        }
                       }
-                    }
-                  ]
-                : [])
+                    ]
+                  : [])
             ] as UserChatItemValueItemType[],
             status: ChatStatusEnum.finish
           };
@@ -789,8 +791,7 @@ export const useChatGenerate = ({
               ? rewriteHistoriesByInteractiveResponse({
                   histories: newChatList,
                   interactive,
-                  interactiveVal: text,
-                  agentPlanAskResponse
+                  interactiveVal: text
                 })
               : newChatList
           );
@@ -817,13 +818,13 @@ export const useChatGenerate = ({
                 return item;
               }),
               reserveId: true,
-              reserveTool: true
+              reserveTool: true,
+              reserveSelect: true
             });
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
               interactive,
-              agentPlanAskResponse,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables

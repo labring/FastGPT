@@ -18,7 +18,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
   const params = hasRequestBodyPayload(req.body)
     ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
     : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
-  const { sourceType, sourceId, chatId, contentId, contentIds, retry, outLinkAuthData } = params;
+  const { sourceType, sourceId, chatId, contentId, contentIds, outLinkAuthData } = params;
   const authRes = await authChatTargetCrud({
     req,
     authToken: true,
@@ -43,8 +43,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     sourceType: authRes.sourceType,
     sourceId: resolvedSourceId,
     chatId,
-    contentIds: targetContentIds,
-    retry
+    contentIds: targetContentIds
   });
 
   return DeleteChatRecordResponseSchema.parse(undefined);

@@ -31,7 +31,7 @@ export const getAIChatDisplayGroups = ({
     if (value.hideInUI || !value.interactive) return false;
 
     const interactive = extractDeepestInteractive(value.interactive);
-    return isAgentAskInteractive(interactive) || interactive.type === 'workflowBuilderPreview';
+    return isAgentAskInteractive(interactive) || interactive?.type === 'workflowBuilderPreview';
   };
 
   const groups: AIChatDisplayGroup[] = [];
@@ -53,7 +53,7 @@ export const getAIChatDisplayGroups = ({
             value.workflowBuilderVersion ||
             (value.interactive &&
               (!isReplyInteractive(value) ||
-                extractDeepestInteractive(value.interactive).type === 'workflowBuilderPreview')))
+                extractDeepestInteractive(value.interactive)?.type === 'workflowBuilderPreview')))
       );
       if (!hasVisibleContent && (!isLastSegment || hasReplyBoundary)) return;
       groups.push({ type: 'ai', values });

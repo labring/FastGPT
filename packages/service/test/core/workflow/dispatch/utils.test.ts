@@ -640,7 +640,6 @@ describe('getHistories', () => {
               askId: 'ask_1',
               params: {
                 description: '',
-                submitted: true,
                 questions: [
                   {
                     question: 'Choose one',
@@ -648,8 +647,7 @@ describe('getHistories', () => {
                       { summary: 'A', value: 'A' },
                       { summary: 'B', value: 'B' },
                       { summary: 'C', value: 'C' }
-                    ],
-                    answer: 'A'
+                    ]
                   }
                 ]
               }
@@ -659,6 +657,20 @@ describe('getHistories', () => {
       }
     ];
 
+    completedRound.push(
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type: 'agentAsk',
+              questions: [{ question: 'Choose one', value: 'A', answer: 'A' }]
+            }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Done' } }] }
+    );
     expect(getAgentLoopHistories(0, completedRound)).toEqual([]);
     expect(getAgentLoopHistories(0, MockHistories)).toEqual([]);
   });

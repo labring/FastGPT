@@ -1,5 +1,10 @@
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  extractDeepestInteractive,
+  isAgentAskInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
+import { AgentLoopAskSchema, AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -9,11 +14,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { composeChatItemResponseData } from './nodeResponseStorage';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  buildChatSourceAggregateMatch,
-  buildChatSourceQuery,
-  type ChatSourceParams
-} from './source';
+import { buildChatSourceAggregateMatch, buildChatSourceQuery } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
@@ -74,41 +75,25 @@ export async function getChatItems({
   hasMoreNext: boolean;
 }> {
   /**
-   * 只在读取边界迁移历史 Agent 数据，避免回写数据库或让旧字段扩散到客户端。
-   * 旧 ask 使用 planId 关联卡片、调用和回答；兼容读取后统一输出 askId。
+   * 读取时校验计划展示数据；旧 Ask 不做字段迁移或答案恢复。
    */
   const normalizePersistedAgentData = (histories: ChatItemMiniType[]) => {
-    const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
-      !!value && typeof value === 'object' && !Array.isArray(value);
-
-    const normalizeLegacyAskId = (value: unknown) => {
-      if (!isObjectRecord(value)) return;
-
-      const askId =
-        typeof value.askId === 'string' && value.askId
-          ? value.askId
-          : typeof value.planId === 'string' && value.planId
-            ? value.planId
-            : undefined;
-      if (askId) {
-        value.askId = askId;
-      }
-      delete value.planId;
-    };
-
     histories.forEach((item) => {
       if (!item.value) return;
-
-      if (item.obj === ChatRoleEnum.Human) {
-        item.value.forEach(normalizeLegacyAskId);
-        return;
-      }
 
       if (item.obj !== ChatRoleEnum.AI) return;
 
       item.value.forEach((value) => {
-        normalizeLegacyAskId(value.agentAsk);
-
+        if (value.agentAsk && !AgentLoopAskSchema.safeParse(value.agentAsk).success)
+          value.agentAsk = undefined;
+        if (value.interactive) {
+          const interactive = extractDeepestInteractive(value.interactive);
+          if (
+            isAgentAskInteractive(interactive) &&
+            !AgentAskInteractiveSchema.safeParse(interactive).success
+          )
+            value.interactive = undefined;
+        }
         if (!value.plan) return;
 
         const parsedPlan = AgentPlanReadSchema.safeParse(value.plan);

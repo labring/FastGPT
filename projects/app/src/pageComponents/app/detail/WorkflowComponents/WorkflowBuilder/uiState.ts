@@ -1,3 +1,4 @@
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { useEffect, useState } from 'react';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
@@ -163,8 +164,14 @@ export const isWorkflowBuilderVersionGenerating = ({
   let valueOrder = 0;
 
   chatRecords.forEach((record) => {
+    if (record.obj === ChatRoleEnum.Human) {
+      valueOrder += 1;
+      const select = getUserChatSelect(record.value);
+      if (select?.type === 'workflowBuilderPreview' && select.questions[0].value === 'confirm')
+        latestConfirmedPreviewOrder = valueOrder;
+      return;
+    }
     if (record.obj !== ChatRoleEnum.AI) return;
-
     record.value.forEach((value) => {
       valueOrder += 1;
 
@@ -176,16 +183,13 @@ export const isWorkflowBuilderVersionGenerating = ({
       const interactive = extractDeepestInteractive(value.interactive);
       if (interactive.type === 'workflowBuilderPreview') {
         latestPreviewOrder = valueOrder;
-        if (interactive.params.answerValue === 'confirm') {
-          latestConfirmedPreviewOrder = valueOrder;
-        }
       }
     });
   });
 
   if (latestConfirmedPreviewOrder > latestVersionOrder) return true;
 
-  // 刷新时服务端尚未落下 confirm，但最新预览仍位于旧版本之后，此时沿用本标签页的确认态。
+  // 历史窗口暂未包含确认 user 时，沿用当前标签页的生成阶段缓存。
   return wasBuildingWorkflow && latestPreviewOrder >= latestVersionOrder;
 };
 

@@ -764,23 +764,20 @@ PR 5 开始阶段四，但只处理消息记录动作，不把反馈、标注、
 
 它负责：
 
-1. `onDelMessage`
-   - 作为 hook 内部统一删除通道。
-   - 如果外部传入 `onDeleteChatItem`，优先使用外部删除能力。
-   - 如果没有外部删除能力，则调用默认 `delChatRecordById`。
-   - 默认删除关联文件，重试流程会显式传 `delFile=false`，避免旧输入文件在重试前被删掉。
-   - 默认删除 API 会自动带上当前 `appId`、`chatId` 和 `outLinkAuthData`。
+1. `onDelMessages`
+   - 按 `dataId` 去重，通过当前 chat source 和授权参数调用统一软删除接口。
+   - 保留聊天附件，由 chat 级资源清理流程统一回收，重试和编辑可继续复用原文件。
 2. `retryInput`
-   - 根据目标 `dataId` 找到需要重试的记录位置。
-   - 删除目标记录以及它后面的所有服务端记录，避免旧后续历史和新回答并存。
-   - 将本地 `chatRecords` 裁剪到目标记录之前。
-   - 从被删除的第一条记录里恢复 text/files，转换为 `ChatBoxInputType`。
-   - 调用 `sendPrompt` 重新发送，并把裁剪后的 records 作为 history 传入。
-   - 失败时使用 warning toast 提示 `Retry failed`，保持原有反馈方式。
-3. `delOneMessage`
-   - 删除一条 human 消息。
-   - 如果它的下一条记录是带 `dataId` 的 AI 回复，则同步删除该 AI 回复。
-   - 不删除更远处的 AI 或其他历史，避免误删跨轮记录。
+   - 定位目标 user，保留原始 text/files/select，软删除该条及其后的记录。
+   - 重新加载历史窗口和分页锚点，再通过 `sendPrompt` 原样重发输入。
+   - Ask/Preview 从剩余末轮 AI 自然恢复，不补查原问题，不传重试状态标记，不回写旧 AI。
+   - 失败时沿用 warning toast。
+3. `editInput`
+   - Ask/Preview 的结构化 user 回复隐藏编辑按钮，hook 不提供编辑回调，避免按普通文本重发而破坏输入结构。
+   - 裁剪目标 user 及后续记录，重新加载历史窗口，再发送编辑后的普通输入。
+4. `delOneMessage`
+   - 移除目标 user 及紧随其后的 AI，并软删除对应记录。
+   - 删除末轮回答后，底部输入自然回到原 Ask/Preview。
 
 关键边界：
 
@@ -788,10 +785,12 @@ PR 5 开始阶段四，但只处理消息记录动作，不把反馈、标注、
 2. 单条删除仍保持原来的 fire-and-forget 语义：本地先过滤记录，不额外等待远端删除完成，也不新增失败 toast。
 3. 重试继续复用 `useChatGenerate` 返回的 `sendPrompt`，不在本 hook 内处理 SSE、placeholder、TTS、问题引导和侧边栏状态。
 4. `isRecordActionLoading` 只表示 record action 的加载态，目前主要覆盖重试过程，不等同于聊天生成状态。
-5. 已回答的 AgentAsk/WorkflowPreview 在删除 user 回复后保持已回答状态。服务端仅软删除目标记录，客户端仅移除该 user 及紧随的 AI，不清空原问题的答案、`submitted`、`answerValue` 或 `answerText`，也不重新显示底部交互输入框；刷新后遵守同一规则。
-6. 显式重试与普通删除的语义分开：重试先按 `askId`/`previewId` 找回原交互及原回答，裁剪请求显式携带 `retry=true`，服务端仅在此模式下同事务恢复末轮原交互供自动重发；客户端重新加载历史窗口和分页锚点后携带原答案继续生成。普通删除不携带该标记，不触发状态恢复。
-7. 问答协议统一使用 `agentAsk`。当前问答生产入口均已输出多题结构，旧单题协议及其类型、字符串选项、读取转换、回填和恢复兼容分支一并删除，不迁移尚未上线的旧测试数据；方案确认仍使用独立的 WorkflowPreview 协议。
-8. 前后端和 Pro 统一通过 `isAgentAskInteractive` 判断 Ask 类型，交互提交、消息快照、答案回填、恢复和重试均复用该类型守卫；嵌套交互先提取最深层，再判断其类型。
+5. Ask/WorkflowPreview 的答案只保存在真实 user 的 `select` 输入中，结构与 text/file 并列，直接保存问题、选项原始值、展示文字及必要的方案反馈，不增加 user 关联 ID。原 AI 只保存提问、工具调用和执行断点，不持久化答案或提交状态。
+6. 按严格相邻消息还原 Ask 回答：只读取提问 AI 紧接着的第一条消息；该消息缺失或不是 user 时，工具 response 为空，不跨消息向后查找。暂不支持删除中间问答导致的跨轮缺口，后续由删除入口限制该操作，不为此增加关联字段或补查逻辑。
+7. 删除和重试统一走普通消息流程：服务端仅软删除目标记录。删除末轮 user 回答及随后 AI 后，原 Ask/Preview 自然重新待答；重试裁剪、重新加载历史窗口和分页锚点后，原样重发 text/files/select。不再传递 retry 标记、补查原问题或反向回写旧 AI。
+8. 当前只维护 `agentAsk` 与独立的 WorkflowPreview 协议。旧 Ask 数据仅保证读取与渲染不崩溃，不做 ID 迁移、答案转换、选中态恢复或旧断点续跑。无法识别的交互安全忽略。
+9. 前后端和 Pro 共用 Ask 类型守卫及结构化输入契约；ChatBox 请求保留 select 原始输入，模型适配时转换为可读文本或相邻 Ask 的 tool response。普通表单/选择节点保留原有 submit 续跑机制。
+
 
 作用：
 

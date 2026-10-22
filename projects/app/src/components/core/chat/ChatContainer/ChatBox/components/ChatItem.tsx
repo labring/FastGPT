@@ -1,3 +1,4 @@
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { type ChatControllerProps } from './ChatController';
@@ -248,9 +249,7 @@ const ChatItem = (props: Props) => {
           ) : null;
 
         if (group.type === 'human') {
-          const interactiveReply = group.values.find(
-            (value) => value.interactiveReply
-          )?.interactiveReply;
+          const select = getUserChatSelect(group.values);
           // 用户气泡的复制操作在正文下方，需要保留与普通 user 消息相同的空间。
           return (
             <Box
@@ -261,12 +260,8 @@ const ChatItem = (props: Props) => {
               mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
             >
-              {interactiveReply ? (
-                <InteractiveReply
-                  reply={interactiveReply}
-                  chatValue={group.values}
-                  chatTime={chat.time}
-                >
+              {select ? (
+                <InteractiveReply reply={select} chatValue={group.values} chatTime={chat.time}>
                   {renderCommonFooter()}
                 </InteractiveReply>
               ) : (

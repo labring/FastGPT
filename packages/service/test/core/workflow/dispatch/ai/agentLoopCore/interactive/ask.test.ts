@@ -41,16 +41,14 @@ describe('agentLoopCore ask interactive', () => {
               { summary: 'Yes', value: 'Yes' },
               { summary: 'No', value: 'No' },
               { summary: 'Not sure', value: 'Not sure' }
-            ],
-            answer: ''
+            ]
           },
           {
             question: 'Include examples?',
             options: [
               { summary: 'Yes', value: 'Yes' },
               { summary: 'No', value: 'No' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -64,15 +62,13 @@ describe('agentLoopCore ask interactive', () => {
         askId: 'call_skill_choice',
         params: {
           description: 'The selected Skill requires the user to choose a style.',
-          submitted: false,
           questions: [
             {
               question: 'Which presentation style should I use?',
               options: [
                 { summary: 'Editorial', value: 'Editorial' },
                 { summary: 'Swiss', value: 'Swiss' }
-              ],
-              answer: ''
+              ]
             }
           ]
         }

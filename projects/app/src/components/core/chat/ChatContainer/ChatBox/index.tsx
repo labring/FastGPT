@@ -825,7 +825,21 @@ const ChatBox = ({
                           showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
                           onSubmit={(answers) =>
                             sendPromptWithDisabledGuard({
-                              text: JSON.stringify({ answers }),
+                              select: {
+                                type: 'agentAsk',
+                                questions: activeInteractive.params.questions.map(
+                                  (question, index) => {
+                                    const value = answers[index] ?? '';
+                                    return {
+                                      question: question.question,
+                                      value,
+                                      answer:
+                                        question.options.find((option) => option.value === value)
+                                          ?.summary ?? value
+                                    };
+                                  }
+                                )
+                              },
                               interactive: lastInteractive
                             })
                           }

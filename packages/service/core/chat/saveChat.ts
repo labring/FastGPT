@@ -18,19 +18,13 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
-import {
-  checkInteractiveResponseStatus,
-  getUserChatInteractiveReply
-} from '@fastgpt/global/core/chat/utils';
+import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  isAgentAskInteractive,
-  extractDeepestInteractive
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -41,7 +35,6 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { WorkflowRuntimeSummaryType } from '../workflow/dispatch/type';
@@ -738,7 +731,7 @@ export const pushChatRecords = async (props: Props) => {
 };
 
 /**
- * 保存交互回复：query 回写上一轮交互状态并完成预创建的 Human/AI 轮次；
+ * 保存交互回复：Ask/Preview 的 query 直接完成新的 Human/AI 轮次，不回写原问题；
  * submit 将交互状态和续跑结果合并到当前 AI 消息。
  */
 export const updateInteractiveChat = async ({
@@ -791,66 +784,6 @@ export const updateInteractiveChat = async ({
     if (!shouldFinalizePreparedRound) {
       throw new Error('Prepared chat round is required for interactive query');
     }
-
-    const interactiveReply = getUserChatInteractiveReply({ interactive, text: userInteractiveVal });
-    if (interactiveReply && userContent.value[0]) {
-      userContent.hideInUI = false;
-      userContent.value[0] = { ...userContent.value[0], interactiveReply };
-    }
-
-    if (isAgentAskInteractive(finalInteractive)) {
-      if (!finalInteractive.askId) {
-        throw new Error(`Agent ask interactive askId is required: ${chatId}`);
-      }
-      const answers = parseAgentAskAnswers(userInteractiveVal);
-      finalInteractive.params.questions = finalInteractive.params.questions.map(
-        (question, index) => ({
-          ...question,
-          answer: answers[index] ?? question.answer
-        })
-      );
-      finalInteractive.params.submitted = true;
-
-      // Ask 的答案由 tool response 恢复，标记用户内容以避免重复进入普通对话上下文。
-      userContent.value.forEach((item) => {
-        item.askId = finalInteractive.askId;
-      });
-    } else if (finalInteractive.type === 'workflowBuilderPreview' && !finalInteractive.previewId) {
-      throw new Error(`Workflow Builder previewId is required: ${chatId}`);
-    }
-
-    // 本轮 AI 是预创建的占位消息；交互状态仍需回写到上一轮携带交互的 AI。
-    const interactiveChatItem = await MongoChatItem.findOne({
-      ...buildChatSourceQuery(chatSource),
-      chatId,
-      obj: ChatRoleEnum.AI,
-      deleteTime: null,
-      'value.interactive': { $exists: true }
-    }).sort({ _id: -1 });
-    if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
-      throw new Error(`Interactive query chat item not found: ${chatId}`);
-    }
-    const previousInteractiveIndex = interactiveChatItem.value.findLastIndex((item) => {
-      if (!item.interactive) return false;
-      const previousInteractive = extractDeepestInteractive(item.interactive);
-      if (finalInteractive.type === 'workflowBuilderPreview') {
-        return (
-          previousInteractive.type === 'workflowBuilderPreview' &&
-          previousInteractive.previewId === finalInteractive.previewId
-        );
-      }
-      return (
-        isAgentAskInteractive(previousInteractive) &&
-        isAgentAskInteractive(finalInteractive) &&
-        previousInteractive.askId === finalInteractive.askId
-      );
-    });
-    if (previousInteractiveIndex === -1) {
-      throw new Error(`Interactive query value not found: ${chatId}`);
-    }
-    interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
-    interactiveChatItem.markModified('value');
-    await interactiveChatItem.save();
 
     return finalizeChatRound(props);
   }

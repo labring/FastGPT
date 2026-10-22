@@ -1,11 +1,11 @@
 import { Box, Button, Flex, Textarea, useColorMode } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskQuestion } from '@fastgpt/global/core/ai/agent/type';
 import { useTranslation } from 'next-i18next';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 type Answers = Record<string, string>;
-type AgentAskOption = AgentAskQuestionInteractive['options'][number];
+type AgentAskOption = AgentAskQuestion['options'][number];
 
 export type AgentAskAnswerDetail =
   | { kind: 'option'; value: string }
@@ -18,7 +18,7 @@ export const getAgentAskAnswerDetails = ({
   answers,
   selectedOptionIndexes
 }: {
-  questions: AgentAskQuestionInteractive[];
+  questions: AgentAskQuestion[];
   answers: Answers;
   selectedOptionIndexes: Record<string, number>;
 }): AgentAskAnswerDetail[] =>
@@ -299,7 +299,7 @@ const AgentAskComposer = ({
   customAnswerRequired = false,
   showOptionValue = true
 }: {
-  questions: AgentAskQuestionInteractive[];
+  questions: AgentAskQuestion[];
   onSubmit: (answers: string[], details: AgentAskAnswerDetail[]) => void;
   /**
    * 自定义答案行的展示文案与输入占位符（默认取 i18n 的 custom_answer）。

@@ -1,4 +1,4 @@
-import type { AgentAskQuestionInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { AgentAskQuestion } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 import React, { useCallback, useMemo, useState } from 'react';
 import AgentAskComposer, {
@@ -11,13 +11,12 @@ const getPreviewQuestion = (interactive: WorkflowBuilderPreviewInteractive) => {
   const { title, actions } = interactive.params;
   const customAction = actions.find((action) => action.inputMode === 'text');
   const optionActions = actions.filter((action) => action.inputMode !== 'text');
-  const question: AgentAskQuestionInteractive = {
+  const question: AgentAskQuestion = {
     question: title,
     options: optionActions.map((action) => ({
       value: action.value,
       summary: action.label
-    })),
-    answer: ''
+    }))
   };
 
   return { question, customAction };
@@ -30,10 +29,9 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
   interactive: WorkflowBuilderPreviewInteractive;
 }) {
   const { continueInteractive } = useChatInstanceActions();
-  const { answerValue, actions } = interactive.params;
+  const { actions } = interactive.params;
   const [submittedValue, setSubmittedValue] = useState('');
-  const effectiveValue = answerValue || submittedValue;
-  const isSubmitted = !!effectiveValue;
+  const isSubmitted = !!submittedValue;
   const { question, customAction } = useMemo(() => getPreviewQuestion(interactive), [interactive]);
 
   const onSubmit = useCallback(
@@ -47,15 +45,20 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
 
       setSubmittedValue(result.action.value);
       continueInteractive({
-        text: result.text ?? result.action.label,
-        agentPlanAskResponse: {
-          askId: interactive.previewId,
-          optionValue: result.action.value,
-          text: result.text
+        select: {
+          type: 'workflowBuilderPreview',
+          questions: [
+            {
+              question: interactive.params.title,
+              value: result.action.value,
+              answer: result.text ?? result.action.label
+            }
+          ],
+          ...(result.text ? { feedback: result.text } : {})
         }
       });
     },
-    [actions, continueInteractive, customAction, interactive.previewId]
+    [actions, continueInteractive, customAction, interactive.params.title]
   );
 
   if (isSubmitted) {
@@ -64,7 +67,7 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
 
   return (
     <AgentAskComposer
-      key={`${interactive.previewId}-${answerValue ?? ''}`}
+      key={interactive.previewId}
       questions={[question]}
       customOptionLabel={customAction?.label}
       customOptionPlaceholder={customAction?.inputPlaceholder}

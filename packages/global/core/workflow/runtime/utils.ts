@@ -10,7 +10,11 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import {
+  AgentAskInteractiveSchema,
+  type WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
+import { WorkflowBuilderPreviewInteractiveSchema } from '../builder/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
@@ -20,7 +24,7 @@ import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 /**
- * 统一判断 Agent Ask 类型，供运行时交互及用户问答快照共用，并保留调用方的具体类型。
+ * 统一判断 Agent Ask 类型，供运行时交互及结构化用户输入共用，并保留调用方的具体类型。
  * 只判断当前层标记；嵌套工作流交互需先通过 extractDeepestInteractive 提取。
  */
 export const isAgentAskInteractive = <T extends { type: string }>(
@@ -171,13 +175,29 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
 export const getLastInteractiveValue = (
   histories: ChatItemMiniType[]
 ): WorkflowInteractiveResponseType | undefined => {
-  const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  const lastAIMessage = histories[lastAIIndex];
 
-  if (lastAIMessage) {
+  if (lastAIMessage?.obj === ChatRoleEnum.AI) {
     const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
 
     if (!lastValue || !lastValue.interactive) {
       return;
+    }
+
+    const finalInteractive = extractDeepestInteractive(lastValue.interactive);
+    if (!finalInteractive) return;
+    if (isAgentAskInteractive(finalInteractive)) {
+      if (!AgentAskInteractiveSchema.safeParse(finalInteractive).success) return;
+      return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
+        ? undefined
+        : lastValue.interactive;
+    }
+    if (finalInteractive.type === 'workflowBuilderPreview') {
+      if (!WorkflowBuilderPreviewInteractiveSchema.safeParse(finalInteractive).success) return;
+      return histories[lastAIIndex + 1]?.obj === ChatRoleEnum.Human
+        ? undefined
+        : lastValue.interactive;
     }
 
     if (isChildInteractive(lastValue.interactive.type)) {
@@ -197,18 +217,7 @@ export const getLastInteractiveValue = (
       return lastValue.interactive;
     }
 
-    if (isAgentAskInteractive(lastValue.interactive) && !lastValue.interactive.params.submitted) {
-      return lastValue.interactive;
-    }
-
     if (lastValue.interactive.type === 'paymentPause' && !lastValue.interactive.params.continue) {
-      return lastValue.interactive;
-    }
-
-    if (
-      lastValue.interactive.type === 'workflowBuilderPreview' &&
-      !lastValue.interactive.params.answerValue
-    ) {
       return lastValue.interactive;
     }
   }

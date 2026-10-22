@@ -255,13 +255,7 @@ const WorkflowBuilderChatContent = ({
   ]);
 
   const onStartChat = useMemoizedFn(
-    async ({
-      messages,
-      responseChatItemId,
-      agentPlanAskResponse,
-      controller,
-      generatingMessage
-    }: StartChatFnProps) => {
+    async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
       const document = reactFlowStateToWorkflowDocument({
         nodes: getNodes(),
         edges,
@@ -276,7 +270,6 @@ const WorkflowBuilderChatContent = ({
           responseChatItemId,
           messages: messages.slice(-1),
           model: selectedModelId || undefined,
-          agentPlanAskResponse,
           workflowContext: { document, checksum }
         },
         onMessage: generatingMessage,

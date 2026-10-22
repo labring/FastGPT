@@ -176,18 +176,12 @@ export const UserInputInteractiveSchema = z.object({
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
 
-export const AgentAskQuestionInteractiveSchema = AgentAskQuestionSchema.safeExtend({
-  answer: z.string()
-});
-export type AgentAskQuestionInteractive = z.infer<typeof AgentAskQuestionInteractiveSchema>;
-
 export const AgentAskInteractiveSchema = z.object({
   type: z.literal('agentAsk'),
   askId: z.string().min(1),
   params: z.object({
     description: z.string(),
-    questions: z.array(AgentAskQuestionInteractiveSchema).min(1).max(3),
-    submitted: z.boolean().optional()
+    questions: z.array(AgentAskQuestionSchema).min(1).max(3)
   })
 });
 export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;

@@ -5,7 +5,6 @@ import {
   type AIChatItemValueItemType,
   type ChatHistoryItemResType,
   type ChatItemMiniType,
-  type UserChatInteractiveReplyType,
   type UserChatItemValueItemType
 } from './type';
 import { sliceStrStartEnd } from '../../common/string/tools';
@@ -14,42 +13,7 @@ import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import { isAgentAskInteractive, extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
-import { parseAgentAskAnswers } from '../ai/agent/utils';
-
-/**
- * 为真实用户消息生成问答快照，不改变供模型续跑的原始回答。
- * 快照随 user value 保存，刷新、失败恢复或分页时无需依赖旧 AI 消息才能展示。
- */
-export const getUserChatInteractiveReply = ({
-  interactive,
-  text
-}: {
-  interactive: WorkflowInteractiveResponseType;
-  text: string;
-}): UserChatInteractiveReplyType | undefined => {
-  const finalInteractive = extractDeepestInteractive(interactive);
-  if (isAgentAskInteractive(finalInteractive)) {
-    const answers = parseAgentAskAnswers(text);
-    return {
-      type: 'agentAsk',
-      interactionId: finalInteractive.askId,
-      questions: finalInteractive.params.questions.map((question, index) => {
-        const answer = answers[index] ?? question.answer ?? '';
-        return {
-          question: question.question,
-          answer: question.options.find((option) => option.value === answer)?.summary ?? answer
-        };
-      })
-    };
-  }
-  if (finalInteractive.type === 'workflowBuilderPreview') {
-    return {
-      type: 'workflowBuilderPreview',
-      interactionId: finalInteractive.previewId,
-      questions: [{ question: finalInteractive.params.title, answer: text }]
-    };
-  }
-};
+import { getUserChatSelect } from './input/utils';
 
 /**
  * 合并两段历史，并把 system 消息排到最前。
@@ -334,6 +298,8 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
+      // 全部跳过也是一次有效的结构化提交。
+      if (getUserChatSelect([item])) return true;
       // 有文本内容，保留
       if (item.text?.content?.trim()) {
         return true;

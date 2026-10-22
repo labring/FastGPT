@@ -1,8 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
-import type {
-  UserChatInteractiveReplyType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
@@ -16,7 +14,7 @@ const InteractiveReply = ({
   chatTime,
   children
 }: {
-  reply: UserChatInteractiveReplyType;
+  reply: UserChatSelectType;
   chatValue: UserChatItemValueItemType[];
   chatTime?: Date;
   children?: React.ReactNode;

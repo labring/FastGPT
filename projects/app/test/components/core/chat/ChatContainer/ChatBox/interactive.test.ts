@@ -9,7 +9,6 @@ import {
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview,
   isUserInputInteractiveSubmitted,
-  persistAgentAskAnswersToHistories,
   resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
@@ -119,39 +118,38 @@ const createUserInputInteractive = ({
 
 describe('getInteractiveByHistories', () => {
   it.each([false, true])(
-    'only exposes unanswered agentAsk interactions (submitted: %s)',
-    (submitted) => {
-      const interactive = {
+    'derives pending Ask from the adjacent user (answered: %s)',
+    (answered) => {
+      const interactive: WorkflowInteractiveResponseType = {
         ...baseInteractive,
         type: 'agentAsk',
         askId: 'ask-1',
         params: {
-          description: 'Choose one',
-          submitted,
+          description: '',
           questions: [
             {
               question: 'Choose?',
               options: [
                 { summary: 'A', value: 'A' },
                 { summary: 'B', value: 'B' }
-              ],
-              answer: submitted ? 'B' : ''
+              ]
             }
           ]
         }
-      } satisfies WorkflowInteractiveResponseType;
-      const nested: WorkflowInteractiveResponseType = {
-        ...baseInteractive,
-        type: 'childrenInteractive',
-        params: { childrenResponse: interactive }
       };
-      for (const value of [interactive, nested]) {
-        const result = getInteractiveByHistories([createAiRecord(value)]);
-        expect(result).toEqual({
-          interactive: submitted ? undefined : interactive,
+      for (const source of [
+        interactive,
+        {
+          ...baseInteractive,
+          type: 'childrenInteractive' as const,
+          params: { childrenResponse: interactive }
+        }
+      ]) {
+        const records = [createAiRecord(source), ...(answered ? [createHumanRecord()] : [])];
+        expect(getInteractiveByHistories(records)).toEqual({
+          interactive: answered ? undefined : interactive,
           canSendQuery: true
         });
-        expect(isPendingAgentAsk(result.interactive)).toBe(!submitted);
       }
     }
   );
@@ -200,15 +198,10 @@ describe('getInteractiveByHistories', () => {
     expect(pending).toEqual({ interactive, canSendQuery: false });
     expect(isPendingWorkflowBuilderPreview(pending.interactive)).toBe(true);
 
-    const answered = {
-      ...interactive,
-      params: { ...interactive.params, answerValue: 'confirm' as const }
-    };
-    expect(getInteractiveByHistories([createAiRecord(answered)])).toEqual({
+    expect(getInteractiveByHistories([createAiRecord(interactive), createHumanRecord()])).toEqual({
       interactive: undefined,
       canSendQuery: true
     });
-    expect(isPendingWorkflowBuilderPreview(answered)).toBe(false);
   });
 });
 
@@ -227,8 +220,7 @@ describe('isPendingAgentAsk', () => {
               options: [
                 { summary: 'A', value: 'A' },
                 { summary: 'B', value: 'B' }
-              ],
-              answer: ''
+              ]
             }
           ]
         }
@@ -285,68 +277,6 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     expect((result[0].value[0] as any).interactive.params.inputForm[0].value).toBe('FastGPT');
   });
 
-  it('keeps the new Human/AI round and writes auxiliary AgentAsk answers back to the question', () => {
-    const interactive = {
-      ...baseInteractive,
-      type: 'agentAsk',
-      askId: 'chat-agent-helper-ask',
-      params: {
-        description: 'Collect requirements',
-        questions: [
-          {
-            question: 'Audience?',
-            options: [
-              { summary: 'Developers', value: 'Developers' },
-              { summary: 'Designers', value: 'Designers' }
-            ],
-            answer: ''
-          },
-          {
-            question: 'Format?',
-            options: [
-              { summary: 'Course', value: 'Course' },
-              { summary: 'Workshop', value: 'Workshop' }
-            ],
-            answer: ''
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-    const result = rewriteHistoriesByInteractiveResponse({
-      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
-      interactive,
-      interactiveVal: JSON.stringify({ answers: ['Developers', 'Workshop'] })
-    });
-
-    const submittedInteractive = (result[0].value[0] as any).interactive;
-    expect(submittedInteractive.params.questions.map((question: any) => question.answer)).toEqual([
-      'Developers',
-      'Workshop'
-    ]);
-    expect(submittedInteractive.params.submitted).toBe(true);
-    expect(result.map(({ obj }) => obj)).toEqual([
-      ChatRoleEnum.AI,
-      ChatRoleEnum.Human,
-      ChatRoleEnum.AI
-    ]);
-    expect(result[1]).toMatchObject({
-      hideInUI: false,
-      value: [
-        {
-          askId: 'chat-agent-helper-ask',
-          interactiveReply: {
-            type: 'agentAsk',
-            interactionId: 'chat-agent-helper-ask',
-            questions: [
-              { question: 'Audience?', answer: 'Developers' },
-              { question: 'Format?', answer: 'Workshop' }
-            ]
-          }
-        }
-      ]
-    });
-  });
-
   it('marks paymentPause as continued and removes temporary round records', () => {
     const interactive = {
       ...baseInteractive,
@@ -364,220 +294,6 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
 
     expect(result).toHaveLength(1);
     expect((result[0].value[0] as any).interactive.params.continue).toBe(true);
-  });
-
-  it('keeps the temporary user round when agentAsk becomes a normal query', () => {
-    const interactive = {
-      ...baseInteractive,
-      type: 'agentAsk',
-      askId: 'ask-1',
-      params: {
-        description: '',
-        submitted: false,
-        questions: [
-          {
-            question: 'Need more detail',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' },
-              { summary: 'C', value: 'C' }
-            ],
-            answer: ''
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-
-    const histories = [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()];
-    const result = rewriteHistoriesByInteractiveResponse({
-      histories,
-      interactive,
-      interactiveVal: JSON.stringify({ answers: ['new user question'] })
-    });
-
-    expect(result).toHaveLength(3);
-    expect(result[1].dataId).toBe(histories[1].dataId);
-    expect(result[2]).toEqual({
-      ...histories[2],
-      status: ChatStatusEnum.loading
-    });
-    expect(result[1]).toMatchObject({
-      hideInUI: false,
-      value: [
-        {
-          askId: 'ask-1',
-          interactiveReply: {
-            type: 'agentAsk',
-            interactionId: 'ask-1',
-            questions: [{ question: 'Need more detail', answer: 'new user question' }]
-          }
-        }
-      ]
-    });
-    expect(histories[1].value[0]).not.toHaveProperty('interactiveReply');
-    expect(histories[1].value[0]).not.toHaveProperty('askId');
-  });
-
-  it('persists multi-question agentAsk values for query responses', () => {
-    const interactive = {
-      ...baseInteractive,
-      type: 'agentAsk',
-      askId: 'ask-1',
-      params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'First?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ],
-            answer: ''
-          },
-          {
-            question: 'Second?',
-            options: [
-              { summary: 'C', value: 'C' },
-              { summary: 'D', value: 'D' }
-            ],
-            answer: ''
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-    const histories = [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()];
-    const result = rewriteHistoriesByInteractiveResponse({
-      histories,
-      interactive,
-      interactiveVal: JSON.stringify({ answers: ['A', ''] })
-    });
-
-    const submittedInteractive = (result[0].value[0] as any).interactive;
-    expect(submittedInteractive.params.submitted).toBe(true);
-    expect(submittedInteractive.params.questions.map((question: any) => question.answer)).toEqual([
-      'A',
-      ''
-    ]);
-    expect(result[2]).toEqual({
-      ...histories[2],
-      status: ChatStatusEnum.loading
-    });
-  });
-
-  it('persists the stable option value and revision text separately from the visible answer', () => {
-    const interactive = {
-      ...baseInteractive,
-      type: 'workflowBuilderPreview',
-      previewId: 'ask-preview',
-      params: {
-        title: 'Confirm this workflow?',
-        mermaid: 'flowchart LR\n  A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-          { value: 'revise', label: 'Revise', inputMode: 'text' },
-          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-
-    const result = rewriteHistoriesByInteractiveResponse({
-      histories: [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()],
-      interactive,
-      interactiveVal: 'Add a review branch',
-      agentPlanAskResponse: {
-        askId: 'ask-preview',
-        optionValue: 'revise',
-        text: 'Add a review branch'
-      }
-    });
-
-    expect((result[0].value[0] as any).interactive.params).toMatchObject({
-      answerValue: 'revise',
-      answerText: 'Add a review branch'
-    });
-    expect(result).toHaveLength(3);
-    expect(result[1].obj).toBe(ChatRoleEnum.Human);
-    expect(result[1].dataId).toBe('human-1');
-    expect(result[1]).toMatchObject({
-      hideInUI: false,
-      value: [
-        {
-          interactiveReply: {
-            type: 'workflowBuilderPreview',
-            interactionId: 'ask-preview',
-            questions: [{ question: 'Confirm this workflow?', answer: 'Add a review branch' }]
-          }
-        }
-      ]
-    });
-    expect(result[1].value[0]).not.toHaveProperty('askId');
-    expect(result[2].dataId).toBe('ai-placeholder');
-    expect(
-      resolveInteractiveResponseChatItemId({
-        histories: [createAiRecord(interactive)],
-        interactive,
-        interactiveVal: 'Add a review branch',
-        responseChatItemId: 'new-response-id'
-      })
-    ).toBe('new-response-id');
-  });
-
-  it('only persists an agent ask answer to the matching askId', () => {
-    const firstAsk = {
-      ...baseInteractive,
-      type: 'agentAsk',
-      askId: 'ask-1',
-      params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'First question',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ],
-            answer: ''
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-    const secondAsk = {
-      ...baseInteractive,
-      type: 'agentAsk',
-      askId: 'ask-2',
-      params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'Second question',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ],
-            answer: ''
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-    const unrelatedInteractive = {
-      ...createUserSelectInteractive(),
-      askId: 'ask-2'
-    } as WorkflowInteractiveResponseType;
-
-    const result = persistAgentAskAnswersToHistories({
-      histories: [
-        createAiRecord(firstAsk),
-        createAiRecord(secondAsk, { id: 'ai-2' }),
-        createAiRecord(unrelatedInteractive, { id: 'ai-3' })
-      ],
-      interactive: secondAsk,
-      answer: JSON.stringify({ answers: ['B'] })
-    });
-
-    expect((result[0].value[0] as any).interactive.params.questions[0].answer).toBe('');
-    expect((result[1].value[0] as any).interactive.params.questions[0].answer).toBe('B');
-    expect((result[2].value[0] as any).interactive.params.answer).toBeUndefined();
   });
 });
 
@@ -612,8 +328,7 @@ describe('resolveInteractiveResponseChatItemId', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -641,4 +356,75 @@ describe('resolveInteractiveResponseChatItemId', () => {
       })
     ).toBe('new-response-id');
   });
+});
+
+describe('Ask and Preview immutable questions', () => {
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'keeps the original %s and the new structured user round unchanged',
+    (type) => {
+      const interactive =
+        type === 'agentAsk'
+          ? {
+              ...baseInteractive,
+              type,
+              askId: 'ask-1',
+              params: {
+                description: '',
+                questions: [
+                  {
+                    question: 'Choose?',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
+              }
+            }
+          : {
+              ...baseInteractive,
+              type,
+              previewId: 'preview-1',
+              params: {
+                title: 'Confirm?',
+                mermaid: 'flowchart LR; A --> B',
+                sections: [],
+                actions: [
+                  { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
+                  { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
+                  { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
+                ]
+              }
+            };
+      const human: ChatSiteItemType = {
+        ...createHumanRecord(),
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type,
+              questions: [
+                {
+                  question: 'Choose?',
+                  value: type === 'agentAsk' ? 'A' : 'confirm',
+                  answer: 'Answer'
+                }
+              ]
+            }
+          }
+        ]
+      };
+      const histories = [createAiRecord(interactive), human, createAiPlaceholder()];
+      const original = structuredClone(histories);
+      const result = rewriteHistoriesByInteractiveResponse({
+        histories,
+        interactive,
+        interactiveVal: ''
+      });
+      expect(result).toEqual(original);
+      expect(histories).toEqual(original);
+      expect(result[1].value[0]).not.toHaveProperty('askId');
+      expect(result[1].value[0]).not.toHaveProperty('interactiveReply');
+    }
+  );
 });

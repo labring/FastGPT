@@ -331,10 +331,7 @@ describe('mergeResumeCompletedChatRecords', () => {
   it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
     'matches %s by interaction ID so pagination cannot copy an earlier answer into the next question',
     (type) => {
-      const createInteractive = (
-        id: string,
-        submitted: boolean
-      ): WorkflowInteractiveResponseType => {
+      const createInteractive = (id: string): WorkflowInteractiveResponseType => {
         if (type === 'agentAsk') {
           return {
             type,
@@ -345,8 +342,7 @@ describe('mergeResumeCompletedChatRecords', () => {
             usageId: 'same-usage',
             params: {
               description: '',
-              questions: [{ question: 'Question', options: [], answer: submitted ? 'Answer' : '' }],
-              submitted
+              questions: [{ question: 'Question', options: [] }]
             }
           };
         }
@@ -361,14 +357,13 @@ describe('mergeResumeCompletedChatRecords', () => {
             title: 'Confirm?',
             mermaid: '',
             sections: [],
-            actions: [],
-            answerValue: submitted ? 'confirm' : undefined
+            actions: []
           }
         };
       };
-      const submitted = createInteractive('old-interaction', true);
-      const pending = createInteractive('next-interaction', false);
-      const pendingSame = createInteractive('old-interaction', false);
+      const submitted = createInteractive('old-interaction');
+      const pending = createInteractive('next-interaction');
+      const pendingSame = createInteractive('old-interaction');
       const existingValues = [{ interactive: submitted }];
       expect(shouldAppendResumeInteractive({ existingValues, incomingInteractive: pending })).toBe(
         true
@@ -382,10 +377,9 @@ describe('mergeResumeCompletedChatRecords', () => {
         value: [
           {
             text: { content: 'Answer' },
-            interactiveReply: {
+            select: {
               type,
-              interactionId: 'old-interaction',
-              questions: [{ question: 'Question', answer: 'Answer' }]
+              questions: [{ question: 'Question', value: 'Answer', answer: 'Answer' }]
             }
           }
         ]

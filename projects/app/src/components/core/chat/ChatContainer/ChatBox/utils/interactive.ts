@@ -9,12 +9,7 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { AgentPlanAskResponse } from '@fastgpt/global/core/workflow/builder/type';
-import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
-import {
-  checkInteractiveResponseStatus,
-  getUserChatInteractiveReply
-} from '@fastgpt/global/core/chat/utils';
+import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
 import type { ChatSiteItemType } from '../type';
@@ -24,7 +19,7 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return isAgentAskInteractive(finalInteractive) && !finalInteractive.params.submitted;
+  return isAgentAskInteractive(finalInteractive);
 };
 
 /** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
@@ -32,7 +27,7 @@ export const isPendingWorkflowBuilderPreview = (interactive?: WorkflowInteractiv
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return finalInteractive.type === 'workflowBuilderPreview' && !finalInteractive.params.answerValue;
+  return finalInteractive?.type === 'workflowBuilderPreview';
 };
 
 /**
@@ -60,109 +55,6 @@ export const isUserInputInteractiveSubmitted = ({
 
     return interactive.params.inputForm.some((input) => input.key in formInputResult);
   });
-};
-
-/**
- * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
- * 这里把答案乐观写回对应的 Agent Ask，避免旧消息在失去 isLastChild 后丢失选中态。
- */
-export const persistAgentAskAnswersToHistories = ({
-  histories,
-  interactive,
-  answer,
-  agentPlanAskResponse
-}: {
-  histories: ChatSiteItemType[];
-  interactive: WorkflowInteractiveResponseType;
-  answer: string;
-  agentPlanAskResponse?: AgentPlanAskResponse;
-}): ChatSiteItemType[] => {
-  const sourceInteractive = extractDeepestInteractive(interactive);
-
-  if (sourceInteractive.type === 'workflowBuilderPreview') {
-    if (agentPlanAskResponse?.askId !== sourceInteractive.previewId) return histories;
-
-    return histories.map((item) => {
-      if (item.obj !== ChatRoleEnum.AI) return item;
-
-      return {
-        ...item,
-        value: item.value.map((val) => {
-          if (!('interactive' in val) || !val.interactive) return val;
-
-          const finalInteractive = extractDeepestInteractive(val.interactive);
-          if (
-            finalInteractive.type !== 'workflowBuilderPreview' ||
-            finalInteractive.previewId !== sourceInteractive.previewId
-          ) {
-            return val;
-          }
-
-          return {
-            ...val,
-            interactive: {
-              ...finalInteractive,
-              params: {
-                ...finalInteractive.params,
-                answerValue: agentPlanAskResponse.optionValue as 'confirm' | 'revise' | 'cancel',
-                answerText: agentPlanAskResponse.text
-              }
-            }
-          };
-        })
-      };
-    });
-  }
-  if (!isAgentAskInteractive(sourceInteractive)) {
-    return histories;
-  }
-
-  const targetAskId = sourceInteractive.askId;
-  const submittedAnswers = parseAgentAskAnswers(answer);
-  let hasUpdated = false;
-
-  const nextHistories = histories.map<ChatSiteItemType>((item) => {
-    if (item.obj !== ChatRoleEnum.AI) return item;
-
-    let itemUpdated = false;
-    const nextValues = item.value.map((val) => {
-      if (!('interactive' in val) || !val.interactive) return val;
-
-      const finalInteractive = extractDeepestInteractive(val.interactive);
-
-      if (!isAgentAskInteractive(finalInteractive) || finalInteractive.askId !== targetAskId) {
-        return val;
-      }
-      if (finalInteractive.params.submitted) {
-        return val;
-      }
-
-      itemUpdated = true;
-      hasUpdated = true;
-      return {
-        ...val,
-        interactive: {
-          ...finalInteractive,
-          params: {
-            ...finalInteractive.params,
-            questions: finalInteractive.params.questions.map((question, index) => ({
-              ...question,
-              answer: submittedAnswers[index] ?? question.answer
-            })),
-            submitted: true
-          }
-        }
-      };
-    });
-
-    if (!itemUpdated) return item;
-    return {
-      ...item,
-      value: nextValues
-    };
-  });
-
-  return hasUpdated ? nextHistories : histories;
 };
 
 /**
@@ -300,15 +192,12 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (isAgentAskInteractive(finalInteractive) && !finalInteractive.params.submitted) {
+  } else if (isAgentAskInteractive(finalInteractive)) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
     };
-  } else if (
-    finalInteractive.type === 'workflowBuilderPreview' &&
-    !finalInteractive.params.answerValue
-  ) {
+  } else if (finalInteractive.type === 'workflowBuilderPreview') {
     return {
       interactive: finalInteractive,
       canSendQuery: false
@@ -350,16 +239,13 @@ export const resolveInteractiveResponseChatItemId = ({
 export const rewriteHistoriesByInteractiveResponse = ({
   histories,
   interactiveVal,
-  interactive,
-  agentPlanAskResponse
+  interactive
 }: {
   histories: ChatSiteItemType[];
   interactiveVal: string;
   interactive: WorkflowInteractiveResponseType;
-  agentPlanAskResponse?: AgentPlanAskResponse;
 }): ChatSiteItemType[] => {
   const status = checkInteractiveResponseStatus({ interactive, input: interactiveVal });
-  const interactiveReply = getUserChatInteractiveReply({ interactive, text: interactiveVal });
 
   const formatHistories = (() => {
     if (status === 'query') {
@@ -368,36 +254,8 @@ export const rewriteHistoriesByInteractiveResponse = ({
     return histories.slice(0, -2);
   })();
 
-  const workingHistories =
-    status === 'query'
-      ? persistAgentAskAnswersToHistories({
-          histories: formatHistories,
-          interactive,
-          answer: interactiveVal,
-          agentPlanAskResponse
-        })
-      : formatHistories;
-
-  const newHistories = workingHistories.map((item, i) => {
-    if (
-      status === 'query' &&
-      interactiveReply &&
-      i === workingHistories.length - 2 &&
-      item.obj === ChatRoleEnum.Human
-    ) {
-      return {
-        ...item,
-        hideInUI: false,
-        value: item.value.map((value, index) => ({
-          ...value,
-          ...(index === 0 ? { interactiveReply } : {}),
-          ...(isAgentAskInteractive(interactiveReply)
-            ? { askId: interactiveReply.interactionId }
-            : {})
-        }))
-      };
-    }
-    if (i !== workingHistories.length - 1) return item;
+  const newHistories = formatHistories.map((item, i) => {
+    if (i !== formatHistories.length - 1) return item;
 
     if (status === 'query') {
       return {

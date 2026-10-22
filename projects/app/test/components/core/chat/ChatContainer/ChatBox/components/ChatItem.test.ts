@@ -10,6 +10,10 @@ import ChatItem from '@/components/core/chat/ChatContainer/ChatBox/components/Ch
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+// 图标异步加载不参与 SSR，用可查询的标记验证真实气泡的编辑入口。
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: ({ name }: { name: string }) => React.createElement('svg', { 'data-icon': name })
+}));
 // 只隔离 AI 叶子展示和操作区，保留 ChatItem 分组和用户气泡的真实渲染。
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', () => ({
   default: ({ chatValue, children }: React.ComponentProps<typeof AIChatBubble>) =>
@@ -30,7 +34,7 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', 
     )
 }));
 
-const answeredAsk: ChatSiteItemType = {
+const answeredAsk: Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }> = {
   id: 'ai-1',
   dataId: 'ai-1',
   obj: ChatRoleEnum.AI,
@@ -42,8 +46,7 @@ const answeredAsk: ChatSiteItemType = {
         askId: 'ask-1',
         params: {
           description: '',
-          questions: [{ question: 'Question', options: [], answer: 'Answer' }],
-          submitted: true
+          questions: [{ question: 'Question', options: [] }]
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -89,12 +92,9 @@ describe('ChatItem interactive replies', () => {
       status: ChatStatusEnum.finish,
       value: [
         {
-          askId: 'ask-1',
-          text: { content: '{"answers":["Answer"]}' },
-          interactiveReply: {
+          select: {
             type: 'agentAsk',
-            interactionId: 'ask-1',
-            questions: [{ question: 'Question', answer: 'Answer' }]
+            questions: [{ question: 'Question', answer: 'Answer', value: 'Answer' }]
           }
         }
       ]
@@ -154,12 +154,11 @@ describe('ChatItem interactive replies', () => {
       value: [
         {
           text: { content: '{"answers":["custom",""]}' },
-          interactiveReply: {
+          select: {
             type: 'agentAsk',
-            interactionId: 'ask-1',
             questions: [
-              { question: 'Question 1', answer: 'custom' },
-              { question: 'Question 2', answer: '' }
+              { question: 'Question 1', answer: 'custom', value: 'custom' },
+              { question: 'Question 2', answer: '', value: '' }
             ]
           }
         }
@@ -169,25 +168,25 @@ describe('ChatItem interactive replies', () => {
       'Question 1customQuestion 2chat:interactive.agent_ask.unanswered'
     );
     expect(dom.window.document.body.textContent).not.toContain('answers');
+    expect(dom.window.document.querySelector('[data-icon="copy"]')).not.toBeNull();
+    expect(dom.window.document.querySelector('[data-icon="edit"]')).toBeNull();
+    dom.window.close();
+  });
+
+  it('keeps the edit action for an ordinary text user message', () => {
+    const dom = renderChatItem({
+      id: 'plain-user',
+      dataId: 'plain-user',
+      obj: ChatRoleEnum.Human,
+      status: ChatStatusEnum.finish,
+      value: [{ text: { content: 'Plain input' } }]
+    });
+    expect(dom.window.document.querySelector('[data-icon="edit"]')).not.toBeNull();
     dom.window.close();
   });
 
   it('does not render a consultation row or an empty AI bubble while waiting for an answer', () => {
-    const value = answeredAsk.value[0];
-    if (value.interactive?.type !== 'agentAsk') throw new Error('Missing Ask fixture');
-
-    const dom = renderChatItem({
-      ...answeredAsk,
-      value: [
-        {
-          ...value,
-          interactive: {
-            ...value.interactive,
-            params: { ...value.interactive.params, submitted: false }
-          }
-        }
-      ]
-    });
+    const dom = renderChatItem(answeredAsk);
     const cards = [...dom.window.document.querySelectorAll('.chat-box-card')];
     expect(cards).toHaveLength(0);
     expect(dom.window.document.querySelector('[data-ai-message]')).toBeNull();
@@ -212,9 +211,7 @@ describe('ChatItem interactive replies', () => {
             { value: 'confirm', label: '确认并开始搭建', inputMode: 'none' },
             { value: 'revise', label: '修改方案', inputMode: 'text' },
             { value: 'cancel', label: '取消', inputMode: 'none' }
-          ],
-          answerValue: response.answerValue,
-          answerText: response.answerText
+          ]
         }
       };
       const dom = renderChatItem([
@@ -234,10 +231,15 @@ describe('ChatItem interactive replies', () => {
           value: [
             {
               text: { content: response.expected },
-              interactiveReply: {
+              select: {
                 type: 'workflowBuilderPreview',
-                interactionId: 'preview-1',
-                questions: [{ question: preview.params.title, answer: response.expected }]
+                questions: [
+                  {
+                    question: preview.params.title,
+                    value: response.answerValue,
+                    answer: response.expected
+                  }
+                ]
               }
             }
           ]
@@ -264,6 +266,8 @@ describe('ChatItem interactive replies', () => {
       expect(cards[0].querySelector('[data-ai-message]')).not.toBeNull();
       expect(cards[1].querySelector('.chakra-card')).not.toBeNull();
       expect(cards[1].querySelector('[data-ai-message]')).toBeNull();
+      expect(cards[1].querySelector('[data-icon="copy"]')).not.toBeNull();
+      expect(cards[1].querySelector('[data-icon="edit"]')).toBeNull();
       expect(dom.window.document.body.textContent).not.toContain(
         'interactive.user_select.selected'
       );

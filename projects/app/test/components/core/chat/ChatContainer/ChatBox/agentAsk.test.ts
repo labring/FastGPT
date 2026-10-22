@@ -9,10 +9,7 @@ const ask: AgentAskInteractive = {
   askId: 'ask-1',
   params: {
     description: 'Choose a direction',
-    questions: [
-      { question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }], answer: 'a' }
-    ],
-    submitted: true
+    questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
   }
 };
 const askValue = {
@@ -31,8 +28,7 @@ const preview: WorkflowBuilderPreviewInteractive = {
       { value: 'confirm', label: 'Confirm and build', inputMode: 'none' },
       { value: 'revise', label: 'Revise', inputMode: 'text' },
       { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-    ],
-    answerValue: 'confirm'
+    ]
   }
 };
 const previewValue = {
@@ -40,6 +36,21 @@ const previewValue = {
 } satisfies AIChatItemValueItemType;
 
 describe('getAIChatDisplayGroups', () => {
+  it('ignores invalid old Ask payloads without losing surrounding text', () => {
+    const legacy = {
+      interactive: { type: 'agentAsk', params: { options: ['A', 'B'] } }
+    } as unknown as AIChatItemValueItemType;
+    const result = getAIChatDisplayGroups({
+      chatValue: [before, legacy, after],
+      isLastChild: true,
+      isChatting: false
+    });
+    expect(result.flatMap((group) => group.values).filter((value) => value.text)).toEqual([
+      before,
+      after
+    ]);
+  });
+
   const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
   const getGroups = (
     chatValue: AIChatItemValueItemType[],
@@ -80,34 +91,23 @@ describe('getAIChatDisplayGroups', () => {
     expect(value).toEqual(original);
   });
 
-  it.each([undefined, 'confirm', 'revise', 'cancel'] as const)(
-    'preserves the workflow plan body when its answer is %s',
-    (answerValue) => {
-      const value: AIChatItemValueItemType = {
-        interactive: {
-          ...previewValue.interactive,
-          params: { ...preview.params, answerValue }
-        }
-      };
-      for (const isLastChild of [true, false]) {
-        for (const isChatting of [true, false]) {
-          expect(getGroups([value], { isLastChild, isChatting })).toEqual([
-            { type: 'ai', values: [value] }
-          ]);
-          expect(getGroups([before, value, after], { isLastChild, isChatting })).toEqual([
-            { type: 'ai', values: [before] },
-            { type: 'ai', values: [value] },
-            { type: 'ai', values: [after] }
-          ]);
-        }
+  it('preserves the workflow plan body across historical and streaming positions', () => {
+    for (const isLastChild of [true, false]) {
+      for (const isChatting of [true, false]) {
+        expect(getGroups([previewValue], { isLastChild, isChatting })).toEqual([
+          { type: 'ai', values: [previewValue] }
+        ]);
+        expect(getGroups([before, previewValue, after], { isLastChild, isChatting })).toEqual([
+          { type: 'ai', values: [before] },
+          { type: 'ai', values: [previewValue] },
+          { type: 'ai', values: [after] }
+        ]);
       }
     }
-  );
+  });
 
   it('hides pending, consecutive, and historical Ask interactions', () => {
-    const pending: AIChatItemValueItemType = {
-      interactive: { ...askValue.interactive, params: { ...ask.params, submitted: undefined } }
-    };
+    const pending = askValue;
     expect(getGroups([pending])).toEqual([]);
     expect(getGroups([pending], { isLastChild: false })).toEqual([]);
     expect(getGroups([askValue, askValue])).toEqual([]);

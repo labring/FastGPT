@@ -21,90 +21,9 @@ import {
   removeAIResponseCite,
   hasContextCheckpoint,
   isToolExecutionResponse,
-  findFailedResponseNode,
-  getUserChatInteractiveReply
+  findFailedResponseNode
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-
-describe('getUserChatInteractiveReply', () => {
-  const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
-  const ask: WorkflowInteractiveResponseType = {
-    ...runtime,
-    type: 'agentAsk',
-    askId: 'ask-1',
-    params: {
-      description: '',
-      questions: [
-        { question: '方向？', options: [{ summary: '上传文件', value: 'upload' }], answer: '' },
-        { question: '补充？', options: [], answer: '' },
-        { question: '格式？', options: [], answer: '' }
-      ]
-    }
-  };
-
-  it('snapshots selected labels, custom text and skipped answers without changing model input', () => {
-    const original = structuredClone(ask);
-    expect(
-      getUserChatInteractiveReply({
-        interactive: ask,
-        text: JSON.stringify({ answers: ['upload', '自定义说明', ''] })
-      })
-    ).toEqual({
-      type: 'agentAsk',
-      interactionId: 'ask-1',
-      questions: [
-        { question: '方向？', answer: '上传文件' },
-        { question: '补充？', answer: '自定义说明' },
-        { question: '格式？', answer: '' }
-      ]
-    });
-    expect(ask).toEqual(original);
-  });
-
-  it('supports nested Ask and missing answers', () => {
-    const nested: WorkflowInteractiveResponseType = {
-      type: 'childrenInteractive',
-      ...runtime,
-      params: { childrenResponse: ask }
-    };
-    const result = getUserChatInteractiveReply({ interactive: nested, text: 'invalid payload' });
-    expect(result?.questions.map(({ answer }) => answer)).toEqual(['', '', '']);
-    expect(checkInteractiveResponseStatus({ interactive: nested, input: 'upload' })).toBe('query');
-  });
-
-  it.each(['确认并开始搭建', '增加审核分支', '取消'])('snapshots the preview answer %s', (text) => {
-    const preview: WorkflowInteractiveResponseType = {
-      type: 'workflowBuilderPreview',
-      ...runtime,
-      previewId: 'preview-1',
-      params: { title: '确认工作流？', mermaid: '', sections: [], actions: [] }
-    };
-    for (const interactive of [
-      preview,
-      { type: 'childrenInteractive' as const, ...runtime, params: { childrenResponse: preview } }
-    ]) {
-      expect(getUserChatInteractiveReply({ interactive, text })).toEqual({
-        type: 'workflowBuilderPreview',
-        interactionId: 'preview-1',
-        questions: [{ question: '确认工作流？', answer: text }]
-      });
-    }
-  });
-
-  it('leaves unrelated interactions alone', () => {
-    expect(
-      getUserChatInteractiveReply({
-        interactive: {
-          type: 'userSelect',
-          ...runtime,
-          params: { description: '', userSelectOptions: [] }
-        },
-        text: 'A'
-      })
-    ).toBeUndefined();
-  });
-});
 
 describe('concatHistories', () => {
   it('should concat two history arrays', () => {
@@ -768,8 +687,7 @@ describe('checkInteractiveResponseStatus', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -801,7 +719,6 @@ describe('checkInteractiveResponseStatus', () => {
                 askId: 'ask_1',
                 params: {
                   description: '',
-                  submitted: false,
                   questions: [
                     {
                       question: 'Choose one',
@@ -809,8 +726,7 @@ describe('checkInteractiveResponseStatus', () => {
                         { summary: 'A', value: 'A' },
                         { summary: 'B', value: 'B' },
                         { summary: 'C', value: 'C' }
-                      ],
-                      answer: ''
+                      ]
                     }
                   ]
                 }

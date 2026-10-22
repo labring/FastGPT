@@ -5,12 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { delChatRecordById, getChatRecords } from '@/web/core/chat/record/api';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import {
-  isAgentAskInteractive,
-  extractDeepestInteractive
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
+import { delChatRecordById } from '@/web/core/chat/record/api';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
@@ -60,28 +56,25 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    *
    * 这里只软删除 chat item 记录；聊天附件由 chat 级资源清理流程统一回收，避免单条消息删除
    * 误删后续重试、编辑流程仍可能复用的文件。
-   * retry 仅由显式重试传入，普通删除不修改原问题的已回答状态。
    */
-  const onDelMessages = useMemoizedFn((contentIds: string[], retry = false) => {
+  const onDelMessages = useMemoizedFn((contentIds: string[]) => {
     const targetContentIds = uniqueDataIds(contentIds);
     if (targetContentIds.length === 0) return Promise.resolve();
 
     return delChatRecordById({
       ...chatAuthTarget,
       chatId,
-      contentIds: targetContentIds,
-      ...(retry ? { retry: true } : {})
+      contentIds: targetContentIds
     });
   });
 
   /**
    * 生成某条 human 消息的“重试”回调。
    *
-   * 重试不是简单地重新发送当前文本，而是先定位目标 `dataId`：
-   * 1. 保存原输入及对应交互；分页缺少原问题时先补取，Preview 保留原动作和反馈。
-   * 2. 以 retry 模式裁剪该消息及后续记录，恢复原交互供自动重发。
-   * 3. 重新加载历史窗口及分页锚点，避免继续用已删除的消息查询上下页。
-   * 4. 将原 text/files 和交互回答交给 `sendPrompt` 重新发送。
+   * 按目标 `dataId` 裁剪该条及后续消息，再原样重发输入：
+   * 1. 保存目标 user 的 text/files/select，裁剪该消息及后续记录。
+   * 2. 重新加载历史窗口和分页锚点，原 Ask/Preview 自然成为末轮待回答交互。
+   * 3. 原样重发结构化输入；不补查原问题、不回写旧 AI。
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
    */
@@ -96,69 +89,13 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       try {
         const user = delHistory[0];
         if (index < 0 || user?.obj !== ChatRoleEnum.Human) return;
-        const history = chatRecords.slice(0, index);
-        const reply = user.value.find((value) => value.interactiveReply)?.interactiveReply;
-
-        // 重试问答要恢复原交互；Preview 还需保留 confirm/revise/cancel，避免确认被当成修改建议。
-        const interactive = await (async () => {
-          if (!reply) return;
-          const findInteractive = (histories: ChatItemMiniType[]) => {
-            for (const item of [...histories].reverse()) {
-              if (item.obj !== ChatRoleEnum.AI) continue;
-              for (const value of [...item.value].reverse()) {
-                const source = value.interactive;
-                if (!source) continue;
-                const final = extractDeepestInteractive(source);
-                if (
-                  (isAgentAskInteractive(reply) &&
-                    isAgentAskInteractive(final) &&
-                    final.askId === reply.interactionId) ||
-                  (reply.type === 'workflowBuilderPreview' &&
-                    final.type === 'workflowBuilderPreview' &&
-                    final.previewId === reply.interactionId)
-                )
-                  return source;
-              }
-            }
-          };
-          const existing = findInteractive(history);
-          if (existing) return existing;
-
-          // 分页边界可能只有 user 记录；在删除前取回其前一轮 AI，禁止猜测交互参数。
-          const previous = await getChatRecords({
-            ...chatAuthTarget,
-            chatId,
-            prevId: dataId,
-            pageSize: 2
-          });
-          const restored = findInteractive(previous.list);
-          if (!restored) throw new Error('Interactive message not found');
-          return restored;
-        })();
-        const finalInteractive = interactive ? extractDeepestInteractive(interactive) : undefined;
-        const agentPlanAskResponse = (() => {
-          if (finalInteractive?.type !== 'workflowBuilderPreview') return;
-          if (!finalInteractive.params.answerValue)
-            throw new Error('Workflow preview response not found');
-          return {
-            askId: finalInteractive.previewId,
-            optionValue: finalInteractive.params.answerValue,
-            text: finalInteractive.params.answerText ?? undefined
-          };
-        })();
-
-        await onDelMessages(
-          delHistory.map((item) => item.dataId),
-          true
-        );
+        await onDelMessages(delHistory.map((item) => item.dataId));
         const refreshedHistory = await refreshChatRecords();
 
         sendPrompt({
           ...formatChatValue2InputType(user.value),
           hideInUI: hideInUI || user.hideInUI,
-          history: refreshedHistory,
-          interactive,
-          agentPlanAskResponse
+          history: refreshedHistory
         });
       } catch (error) {
         toast({
@@ -174,12 +111,13 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
   /**
    * 生成某条 human 消息的“编辑后发送”回调。
    *
-   * 编辑和重试的核心流程一致：先删除目标 human 消息及后续记录，再用裁剪前的 history
-   * 重新发起一轮对话。text/files 使用编辑表单提交的新内容；删除旧记录时仍保留文件，
-   * 避免编辑后的消息继续引用原附件或新附件时被提前清理。
+   * 结构化 Ask/Preview 回复没有普通文本编辑器，不提供编辑回调。普通消息先删除目标及
+   * 后续记录，再用编辑后的 text/files 和重新加载的 history 发起对话；保留原附件供复用。
    */
   const editInput = useMemoizedFn((dataId?: string) => {
     if (!dataId) return;
+    const user = chatRecords.find((item) => item.dataId === dataId);
+    if (user?.obj !== ChatRoleEnum.Human || getUserChatSelect(user.value)) return;
 
     return async (input: ChatBoxInputType) => {
       setIsRecordActionLoading(true);
@@ -214,7 +152,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    * ChatBox 的一轮普通对话通常是 human 后面紧跟 AI 回复，因此删除 human 时需要同步删除
    * 紧随其后的 AI 记录，避免界面只剩下一条失去问题上下文的回答。这里只删除“紧随其后”
    * 且仍有 `dataId` 的 AI，避免误删更远处的历史或还未落库的临时消息。
-   * 已回答的 Ask/Preview 保持原状态，删除回复不会重新显示底部提问框。
+   * 删除末轮回答及 AI 后，底部输入由剩余的末轮 Ask/Preview 自然恢复。
    */
   const delOneMessage = useMemoizedFn((dataId: string) => {
     return () => {

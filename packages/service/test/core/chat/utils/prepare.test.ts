@@ -307,8 +307,15 @@ describe('prepare chat round', () => {
           userContent: {
             obj: ChatRoleEnum.Human,
             dataId: 'answer-human-id',
-            hideInUI: true,
-            value: [{ text: { content: '{"answers":["A"]}' } }]
+            hideInUI: false,
+            value: [
+              {
+                select: {
+                  type: 'agentAsk',
+                  questions: [{ question: 'Audience?', value: 'A', answer: 'A' }]
+                }
+              }
+            ]
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -346,8 +353,7 @@ describe('prepare chat round', () => {
               options: [
                 { summary: 'A', value: 'A' },
                 { summary: 'B', value: 'B' }
-              ],
-              answer: ''
+              ]
             }
           ]
         }
@@ -380,16 +386,9 @@ describe('prepare chat round', () => {
       const human = records[1];
       if (human.obj !== ChatRoleEnum.Human) throw new Error('Expected the new user record');
       expect(human.hideInUI).toBe(false);
-      expect(human.value[0]).toMatchObject({
-        askId: 'chat-agent-helper-ask',
-        interactiveReply: {
-          type: 'agentAsk',
-          interactionId: 'chat-agent-helper-ask',
-          questions: [{ question: 'Audience?', answer: 'A' }]
-        }
-      });
-      // 落库副本已经标记为 Ask 回复，运行中的原始回答仍然可供 Agent 读取。
-      expect(params.userContent.value[0].askId).toBeUndefined();
+      expect(human.value).toEqual(params.userContent.value);
+      expect(human.value[0]).not.toHaveProperty('askId');
+      expect(human.value[0]).not.toHaveProperty('interactiveReply');
       expect(chatValue2RuntimePrompt(params.userContent.value).text).toBe('{"answers":["A"]}');
       await failChatRound({
         sourceType,
@@ -447,7 +446,6 @@ describe('prepare chat round', () => {
         askId: 'call_ask',
         params: {
           description: '',
-          submitted: false,
           questions: [
             {
               question: 'Need more input',
@@ -455,8 +453,7 @@ describe('prepare chat round', () => {
                 { summary: 'Use repo', value: 'Use repo' },
                 { summary: 'Use docs', value: 'Use docs' },
                 { summary: 'Use defaults', value: 'Use defaults' }
-              ],
-              answer: ''
+              ]
             }
           ]
         }
@@ -489,7 +486,6 @@ describe('prepare chat round', () => {
             askId: 'call_ask',
             params: {
               description: '',
-              submitted: false,
               questions: [
                 {
                   question: 'Need more input',
@@ -497,8 +493,7 @@ describe('prepare chat round', () => {
                     { summary: 'Use repo', value: 'Use repo' },
                     { summary: 'Use docs', value: 'Use docs' },
                     { summary: 'Use defaults', value: 'Use defaults' }
-                  ],
-                  answer: ''
+                  ]
                 }
               ]
             }

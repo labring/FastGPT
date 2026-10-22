@@ -806,37 +806,44 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return pending agentAsk and skip submitted agentAsk', () => {
-    const interactive = {
+  it('derives a pending Ask from adjacent messages without mutating its questions', () => {
+    const interactive: WorkflowInteractiveResponseType = {
       type: 'agentAsk',
-      askId: 'call_ask',
-      entryNodeIds: ['node1'],
+      askId: 'ask-1',
+      entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: 'Choose one',
+        description: '',
         questions: [
           {
-            question: 'Choose one?',
+            question: 'Choose?',
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
-    } as WorkflowInteractiveResponseType;
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
-    (interactive.params as { submitted?: boolean }).submitted = true;
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
+    };
+    const ai: ChatItemMiniType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
+    const user: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          select: {
+            type: 'agentAsk',
+            questions: [{ question: 'Choose?', value: 'A', answer: 'A' }]
+          }
+        }
+      ]
+    };
+    expect(getLastInteractiveValue([ai])).toBe(interactive);
+    expect(getLastInteractiveValue([ai, user])).toBeUndefined();
+    expect(
+      getLastInteractiveValue([ai, user, { obj: ChatRoleEnum.AI, value: [] }])
+    ).toBeUndefined();
+    expect(getLastInteractiveValue([ai])).toBe(interactive);
   });
 
   it('should return interactive for paymentPause without continue', () => {
@@ -889,7 +896,6 @@ describe('getLastInteractiveValue', () => {
       nodeOutputs: [],
       params: {
         description: '',
-        submitted: false,
         questions: [
           {
             question: 'What do you want?',
@@ -897,8 +903,7 @@ describe('getLastInteractiveValue', () => {
               { summary: 'Use repo', value: 'Use repo' },
               { summary: 'Use docs', value: 'Use docs' },
               { summary: 'Use defaults', value: 'Use defaults' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -922,75 +927,60 @@ describe('getLastInteractiveValue', () => {
               { summary: 'Use repo', value: 'Use repo' },
               { summary: 'Use docs', value: 'Use docs' },
               { summary: 'Use defaults', value: 'Use defaults' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
     });
   });
 
-  it('should return undefined for answered agentAsk', () => {
+  it('ignores malformed old Ask records without failing history loading', () => {
     const interactive = {
       type: 'agentAsk',
-      askId: 'call_ask',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {
-        description: '',
-        submitted: true,
-        questions: [
-          {
-            question: 'What do you want?',
-            options: [
-              { summary: 'Use repo', value: 'Use repo' },
-              { summary: 'Use docs', value: 'Use docs' },
-              { summary: 'Use defaults', value: 'Use defaults' }
-            ],
-            answer: 'Use the current repository.'
-          }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
-
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
+      params: { options: ['A', 'B'] }
+    } as unknown as WorkflowInteractiveResponseType;
+    expect(
+      getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])
+    ).toBeUndefined();
   });
 
-  it.each([undefined, 'confirm'])('returns a preview only before answering: %s', (answerValue) => {
-    const interactive = {
-      type: 'workflowBuilderPreview',
-      previewId: 'preview-1',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {
-        title: 'Workflow preview',
-        answerValue,
-        mermaid: 'flowchart LR\n  A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-          { value: 'revise', label: 'Revise', inputMode: 'text' },
-          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-        ]
-      }
-    } as WorkflowInteractiveResponseType;
+  it.each([false, true])(
+    'derives preview state from an adjacent user (answered: %s)',
+    (answered) => {
+      const interactive: WorkflowInteractiveResponseType = {
+        type: 'workflowBuilderPreview',
+        previewId: 'preview-1',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: {
+          title: 'Confirm?',
+          mermaid: 'flowchart LR; A --> B',
+          sections: [],
+          actions: [
+            { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+            { value: 'revise', label: 'Revise', inputMode: 'text' },
+            { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+          ]
+        }
+      };
+      const messages: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];
+      if (answered)
+        messages.push({
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select: {
+                type: 'workflowBuilderPreview',
+                questions: [{ question: 'Confirm?', value: 'confirm', answer: 'Confirm' }]
+              }
+            }
+          ]
+        });
+      expect(getLastInteractiveValue(messages)).toBe(answered ? undefined : interactive);
+    }
+  );
 
-    expect(getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])).toBe(
-      answerValue === undefined ? interactive : undefined
-    );
-  });
-});
-
-describe('storeEdges2RuntimeEdges', () => {
   it('should convert store edges to runtime edges with waiting status', () => {
     const edges: StoreEdgeItemType[] = [
       { source: 'node1', sourceHandle: 'out1', target: 'node2', targetHandle: 'in1' }
