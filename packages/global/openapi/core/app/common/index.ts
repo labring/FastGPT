@@ -3,7 +3,7 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   CopyAppBodySchema,
   CopyAppResponseSchema,
-  CreateAppBodySchema,
+  CreateAppRequestSchema,
   CreateAppResponseSchema,
   DeleteAppQuerySchema,
   DeleteAppResponseSchema,
@@ -12,6 +12,8 @@ import {
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
   GetReferencedAppsQuerySchema,
+  HydrateWorkflowBodySchema,
+  HydrateWorkflowResponseSchema,
   ListAppBodySchema,
   ListAppResponseSchema,
   ListAppV2BodySchema,
@@ -99,7 +101,7 @@ export const AppCommonPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: CreateAppBodySchema
+            schema: CreateAppRequestSchema
           }
         }
       },
@@ -109,6 +111,30 @@ export const AppCommonPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: CreateAppResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/hydrateWorkflow': {
+    post: {
+      summary: '补全导入工作流的资源状态',
+      description: '只读补全导入节点的工具、技能和知识库展示信息及资源错误状态，不写入数据库',
+      tags: [DevApiTagsMap.appCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: HydrateWorkflowBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功补全',
+          content: {
+            'application/json': {
+              schema: HydrateWorkflowResponseSchema
             }
           }
         }

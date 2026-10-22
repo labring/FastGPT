@@ -1,7 +1,9 @@
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { getModelList } from '@/web/core/ai/model/modelData';
+import { postHydrateWorkflow } from '@/web/core/app/api';
 import { Button } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -23,6 +25,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
   const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
@@ -56,7 +59,22 @@ const ImportSettings = ({ onClose }: Props) => {
                 models: modelList,
                 modelCatalogLoaded: true
               });
-              await initData(workflowConfig);
+              // 导入的 Agent 节点可能引用目标系统不存在的工具/技能，先由服务端补全并标记为已删除。
+              let nodes = workflowConfig.nodes;
+              if (nodes.some((node) => node.flowNodeType === FlowNodeTypeEnum.agent)) {
+                try {
+                  nodes = (
+                    await postHydrateWorkflow({
+                      appId,
+                      nodes
+                    })
+                  ).nodes;
+                } catch (error) {
+                  // 资源补全失败不阻断导入；下次打开详情时会重新补全。
+                  console.error('[ImportSettings] hydrate workflow failed', error);
+                }
+              }
+              await initData({ ...workflowConfig, nodes });
               toast({
                 title: t('app:import_configs_success'),
                 status: 'success'

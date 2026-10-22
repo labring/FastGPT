@@ -17,6 +17,7 @@ import {
   migrateToolInputConfig,
   normalizeFlowNodeInputType,
   parseJsonEditorValue,
+  serializeAgentTool,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import {
@@ -1759,5 +1760,21 @@ describe('migrateToolInputConfig', () => {
     });
 
     expect(result.value).toEqual(['shared']);
+  });
+});
+
+describe('serializeAgentTool', () => {
+  it('keeps tool display snapshot for deleted-resource fallback', () => {
+    const tool = {
+      ...createMockToolTemplate([createMockInput({ key: 'query', value: 'hello' })]),
+      pluginId: 'plugin-1',
+      avatar: 'tool-avatar.png'
+    } as any;
+
+    expect(serializeAgentTool({ tool })).toMatchObject({
+      id: 'plugin-1',
+      name: 'Test Tool',
+      avatar: 'tool-avatar.png'
+    });
   });
 });

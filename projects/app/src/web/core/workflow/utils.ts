@@ -11,6 +11,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
@@ -33,7 +34,8 @@ import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import {
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
-  getWorkflowReferenceVariables
+  getWorkflowReferenceVariables,
+  nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
@@ -422,8 +424,11 @@ export const storeNode2FlowNode = ({
   };
 };
 
+const DATASET_SEARCH_PROMPT_TOKEN = `{{@${SubAppIds.datasetSearch}@}}`;
+
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
-  // 当前导出脱敏范围与历史基线保持一致，仅处理数据集选择和系统密钥输入；工具配置暂不做递归脱敏，避免误删普通 value/defaultValue。
+  // 导出脱敏在历史基线（知识库搜索节点/系统密钥）之外，补充 Agent 节点的工具、技能和知识库清理。
+  // 引用型输入只保存 [nodeId, key]，真实值在来源节点上处理，不能改写为 []。
   const cloneNodes = JSON.parse(JSON.stringify(nodes)) as StoreNodeItemType[];
 
   cloneNodes.forEach((node) => {
@@ -439,6 +444,35 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     for (const input of node.inputs) {
       if (input.key === NodeInputKeyEnum.systemInputConfig) {
         input.value = undefined;
+      }
+
+      if (node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
+      if (nodeInputIsReference(input)) continue;
+
+      if (
+        input.key === NodeInputKeyEnum.selectedTools ||
+        input.key === NodeInputKeyEnum.skills ||
+        input.key === NodeInputKeyEnum.datasetSelectList
+      ) {
+        input.value = [];
+        continue;
+      }
+
+      if (input.key === NodeInputKeyEnum.datasetParams) {
+        const value = input.value;
+        if (Array.isArray(value)) {
+          // 兼容历史列表形态，资源本身已不可分辨，直接清空。
+          input.value = [];
+        } else if (value && typeof value === 'object') {
+          // ChatAgent 聚合形态：只清空知识库列表，保留检索参数。
+          input.value = { ...(value as Record<string, unknown>), datasets: [] };
+        }
+        continue;
+      }
+
+      if (input.key === NodeInputKeyEnum.aiSystemPrompt && typeof input.value === 'string') {
+        // 仅移除知识库检索引用，其他工具/技能 token 按需求保留。
+        input.value = input.value.split(DATASET_SEARCH_PROMPT_TOKEN).join('');
       }
     }
     return node;

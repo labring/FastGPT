@@ -1,9 +1,14 @@
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -173,5 +178,75 @@ describe('create api', () => {
     expect(rawApp).not.toHaveProperty('modules');
     expect(rawApp).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('chatConfig');
+  });
+
+  const createAgentImportNodes = ({ skillId, toolId }: { skillId: string; toolId: string }) =>
+    [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.skills,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.selectSkill],
+            selectedType: FlowNodeInputTypeEnum.selectSkill,
+            value: [{ skillId, name: 'Gone skill', avatar: 'skill-avatar' }]
+          },
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            selectedType: FlowNodeInputTypeEnum.selectTool,
+            value: [{ id: toolId, name: 'Gone tool', avatar: 'tool-avatar', config: {} }]
+          }
+        ],
+        outputs: []
+      }
+    ] as unknown as AppVersionSchemaType['nodes'];
+
+  it('allows importing missing agent resources when allowUnauthorizedResources is true', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+    const skillId = String(new Types.ObjectId());
+    const toolId = String(new Types.ObjectId());
+
+    const appId = await createapi.onCreateApp({
+      name: 'imported agent app',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      allowUnauthorizedResources: true,
+      nodes: createAgentImportNodes({ skillId, toolId })
+    });
+
+    const version = await MongoAppVersion.findOne({ appId }).lean();
+    // 缺失资源不进入资源快照，但节点快照仍保留，由详情接口标记为已删除。
+    expect(version?.resources).toEqual([]);
+    const agentNode = version?.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+    const skills = agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.skills)
+      ?.value as any[];
+    const tools = agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)
+      ?.value as any[];
+
+    expect(skills[0]).toMatchObject({ skillId, name: 'Gone skill' });
+    expect(tools[0]).toMatchObject({ id: toolId, name: 'Gone tool', config: {} });
+  });
+
+  it('still rejects missing agent skills without allowUnauthorizedResources', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+
+    await expect(
+      createapi.onCreateApp({
+        name: 'rejected agent app',
+        type: AppTypeEnum.workflow,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        nodes: createAgentImportNodes({
+          skillId: String(new Types.ObjectId()),
+          toolId: String(new Types.ObjectId())
+        })
+      })
+    ).rejects.toBe(SkillErrEnum.unExist);
   });
 });

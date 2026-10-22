@@ -878,7 +878,7 @@
   "failed": "失敗",
   "field_name": "欄位名稱",
   "filter_sensitive_info": "過濾敏感信息",
-  "filter_sensitive_info_tip": "敏感資訊範圍：【系統工具】使用的臨時密鑰（外洩可能導致意外扣費，請謹慎匯出），以及【知識庫搜尋節點】配置的知識庫資訊",
+  "filter_sensitive_info_tip": "敏感資訊範圍：【系統工具】使用的臨時密鑰（外洩可能導致意外扣費，請謹慎匯出），【知識庫搜尋節點】配置的知識庫資訊，以及【Agent節點】包含的工具、技能和知識庫資訊",
   "folder.empty": "此目錄中沒有更多項目了",
   "folder_depth_limit_tip": "已達到最大目錄深度",
   "folder_description": "資料夾描述",

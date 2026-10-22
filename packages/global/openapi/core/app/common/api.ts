@@ -269,17 +269,63 @@ export const CreateAppBodySchema = z
     }
   });
 
+/**
+ * 创建接口请求追加字段。
+ *
+ * 仅创建路由使用，不放进 `CreateAppBodySchema`，避免 MCP/HTTP 工具创建等派生 Schema 继承导入标记。
+ */
+export const CreateAppRequestSchema = CreateAppBodySchema.extend({
+  allowUnauthorizedResources: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '导入场景：引用不存在或无读取权限的工具、技能、知识库时不阻断创建，仅把已授权资源写入首个版本快照；节点内快照保留，由详情/水合接口标记为已删除或无权限。'
+  })
+}).meta({
+  example: {
+    name: '新应用',
+    type: AppTypeEnum.simple,
+    nodes: [],
+    edges: [],
+    parentId: '68ad85a7463006c963799a05'
+  }
+});
+
 export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
-  CreateAppBodySchema
+  CreateAppRequestSchema
 );
-export type CreateAppBodyType = z.infer<typeof CreateAppBodySchema>;
+export type CreateAppBodyType = z.infer<typeof CreateAppRequestSchema>;
 
 export const CreateAppResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
   description: '应用 ID'
 });
 export type CreateAppResponseType = z.infer<typeof CreateAppResponseSchema>;
+
+/* ============================================================================
+ * API: 导入工作流时补全资源状态
+ * Route: POST /api/core/app/hydrateWorkflow
+ * Method: POST
+ * Description: 只读补全导入节点的工具、技能和知识库展示信息及资源错误状态。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+
+export const HydrateWorkflowBodySchema = z.object({
+  appId: AppIdSchema.meta({
+    description: '应用 ID，用作资源授权基线'
+  }),
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+    description: '待补全资源状态的 canonical 工作流节点'
+  })
+});
+export type HydrateWorkflowBodyType = z.infer<typeof HydrateWorkflowBodySchema>;
+
+export const HydrateWorkflowResponseSchema = z.object({
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
+    description: '已补全资源展示信息和错误状态的节点'
+  })
+});
+export type HydrateWorkflowResponseType = z.infer<typeof HydrateWorkflowResponseSchema>;
 
 /* ============================================================================
  * API: 获取应用列表

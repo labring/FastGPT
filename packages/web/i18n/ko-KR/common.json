@@ -869,7 +869,7 @@
   "failed": "실패",
   "field_name": "필드 이름",
   "filter_sensitive_info": "민감한 정보 필터링",
-  "filter_sensitive_info_tip": "민감한 정보에는 시스템 도구가 사용하는 임시 키(유출 시 예상치 못한 요금이 발생할 수 있으므로 내보낼 때 주의)와 데이터셋 검색 노드에 설정된 데이터셋 정보가 포함됩니다.",
+  "filter_sensitive_info_tip": "민감한 정보에는 시스템 도구가 사용하는 임시 키(유출 시 예상치 못한 요금이 발생할 수 있으므로 내보낼 때 주의), 데이터셋 검색 노드에 설정된 데이터셋 정보, 그리고 Agent 노드에 포함된 도구, 스킬 및 데이터셋 정보가 포함됩니다.",
   "folder.empty": "이 디렉터리에 더 이상 항목이 없습니다",
   "folder_depth_limit_tip": "최대 폴더 깊이에 도달했습니다",
   "folder_description": "폴더 설명",

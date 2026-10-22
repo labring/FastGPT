@@ -878,7 +878,7 @@
   "failed": "失败",
   "field_name": "字段名",
   "filter_sensitive_info": "过滤敏感信息",
-  "filter_sensitive_info_tip": "敏感信息范围：【系统工具】使用的临时密钥（泄露可能导致意外扣费，请谨慎导出），以及【知识库搜索节点】配置的知识库信息",
+  "filter_sensitive_info_tip": "敏感信息范围：【系统工具】使用的临时密钥（泄露可能导致意外扣费，请谨慎导出），【知识库搜索节点】配置的知识库信息，以及【Agent节点】包含的工具、技能和知识库信息",
   "folder.empty": "这个目录已经没东西可选了~",
   "folder_depth_limit_tip": "已达到最大目录深度",
   "folder_description": "文件夹描述",
