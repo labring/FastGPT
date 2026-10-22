@@ -183,7 +183,10 @@ Failed to shrink stream resume redis ttl
 Disabling new stream resume mirrors due to Redis memory pressure
 Failed to inspect Redis memory pressure for stream resume mirror
 Failed to persist stream resume unavailable state
-cleanStaleGeneratingChats: failed to inspect stream resume activity
+Stream resume mirror keepalive failed
+cleanStaleGeneratingChats: failed to inspect generation lease
+Chat generation lease heartbeat failed
+Failed to write interrupted generation terminal event
 ```
 
 - 阈值：内存压力状态变化 `>= 1/10 分钟`；检查或状态写入失败 `>= 3/5 分钟`。

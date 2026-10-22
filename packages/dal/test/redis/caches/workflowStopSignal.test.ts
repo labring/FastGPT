@@ -3,6 +3,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   WorkflowStopSignalCache,
   getWorkflowStopSignalKey,
+  WORKFLOW_STOP_SIGNAL_RUN_TTL_SECONDS,
   WORKFLOW_STOP_SIGNAL_TTL_SECONDS
 } from '@fastgpt/dal/redis/caches';
 
@@ -34,12 +35,35 @@ describe('WorkflowStopSignalCache', () => {
     );
   });
 
+  it('isolates stop signals by generation run id', () => {
+    expect(getWorkflowStopSignalKey({ ...params, generationRunId: 'run-1' })).toBe(
+      'agent_runtime_stopping:app:app-1:chat-1:run-1'
+    );
+  });
+
   it('writes the historical value with a one-minute TTL', async () => {
     const cache = new WorkflowStopSignalCache({ redis, logger });
 
     await cache.set(params);
 
     expect(redis.set).toHaveBeenCalledWith({
+      key: 'agent_runtime_stopping:app:app-1:chat-1',
+      value: '1',
+      ttlMs: WORKFLOW_STOP_SIGNAL_TTL_SECONDS * 1000
+    });
+  });
+
+  it('writes run-scoped and legacy stop keys during rolling upgrades', async () => {
+    const cache = new WorkflowStopSignalCache({ redis, logger });
+
+    await cache.set({ ...params, generationRunId: 'run-1' });
+
+    expect(redis.set).toHaveBeenNthCalledWith(1, {
+      key: 'agent_runtime_stopping:app:app-1:chat-1:run-1',
+      value: '1',
+      ttlMs: WORKFLOW_STOP_SIGNAL_RUN_TTL_SECONDS * 1000
+    });
+    expect(redis.set).toHaveBeenNthCalledWith(2, {
       key: 'agent_runtime_stopping:app:app-1:chat-1',
       value: '1',
       ttlMs: WORKFLOW_STOP_SIGNAL_TTL_SECONDS * 1000
@@ -53,6 +77,15 @@ describe('WorkflowStopSignalCache', () => {
     await expect(cache.isStopping(params)).resolves.toBe(true);
     await expect(cache.isStopping(params)).resolves.toBe(false);
     expect(redis.get).toHaveBeenNthCalledWith(1, 'agent_runtime_stopping:app:app-1:chat-1');
+  });
+
+  it('reads the legacy stop key when no run-scoped signal exists', async () => {
+    const cache = new WorkflowStopSignalCache({ redis, logger });
+    redis.get.mockResolvedValueOnce(null).mockResolvedValueOnce('1');
+
+    await expect(cache.isStopping({ ...params, generationRunId: 'run-1' })).resolves.toBe(true);
+    expect(redis.get).toHaveBeenNthCalledWith(1, 'agent_runtime_stopping:app:app-1:chat-1:run-1');
+    expect(redis.get).toHaveBeenNthCalledWith(2, 'agent_runtime_stopping:app:app-1:chat-1');
   });
 
   it('fails open on read errors and keeps clear best-effort', async () => {

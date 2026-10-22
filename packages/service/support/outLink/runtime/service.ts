@@ -414,6 +414,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
       uid: chatUserId || outLinkConfig.tmbId,
       chatId: preparedRound.chatId,
+      generationRunId: preparedRound.generationRunId,
       responseChatItemId: preparedRound.responseChatItemId,
       resourceContext: createWorkflowResourceContext({
         resources,
@@ -461,6 +462,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     const saveParams: SaveChatProps = {
       ...chatSource,
       chatId: preparedRound.chatId,
+      generationRunId: preparedRound.generationRunId,
       teamId: outLinkConfig.teamId,
       tmbId: outLinkConfig.tmbId,
       outLinkUid: chatUserId,
@@ -496,6 +498,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: preparedRound.chatId,
+          generationRunId: preparedRound.generationRunId,
           responseChatItemId: preparedRound.responseChatItemId,
           error
         }).catch((saveError) => {
@@ -511,7 +514,8 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: preparedRound.chatId,
-          status: ChatGenerateStatusEnum.error
+          status: ChatGenerateStatusEnum.error,
+          generationRunId: preparedRound.generationRunId
         }).catch((saveError) => {
           logger.error('Outlink runtime unlock failed', {
             shareId: outLinkConfig.shareId,

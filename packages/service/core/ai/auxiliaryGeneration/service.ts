@@ -2,6 +2,10 @@ import { createAuxiliaryGenerationStream } from './stream';
 import { createAuxiliaryGenerationUsage } from './usage';
 import { clearAuxiliaryGenerationStop, shouldAuxiliaryGenerationStop } from './stop';
 import type { AuxiliaryGenerationRunParams, AuxiliaryGenerationRunResult } from './type';
+import { getActiveChatGenerationLease } from '../../chat/generationLease';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 /**
  * 执行一次辅助生成。
@@ -21,6 +25,7 @@ export const runAuxiliaryGeneration = async <T>({
   sourceType,
   sourceId,
   chatId,
+  generationRunId,
   query,
   userAnswer,
   files,
@@ -44,27 +49,54 @@ export const runAuxiliaryGeneration = async <T>({
     teamId,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    generationRunId
   });
-  onStreamContextReady?.(streamContext);
+  let usageContext: Awaited<ReturnType<typeof createAuxiliaryGenerationUsage>>;
+  try {
+    onStreamContextReady?.(streamContext);
+    usageContext = await createAuxiliaryGenerationUsage({
+      teamId,
+      tmbId,
+      appName,
+      sourceType,
+      sourceId,
+      usageSource
+    });
+    await clearAuxiliaryGenerationStop({
+      sourceType,
+      sourceId,
+      chatId
+    });
+  } catch (error) {
+    await streamContext.flushResume().catch((flushError) => {
+      logger.warn('Failed to flush auxiliary generation stream after setup error', {
+        sourceType,
+        sourceId,
+        chatId,
+        generationRunId,
+        error: flushError
+      });
+    });
+    throw error;
+  }
 
-  const usageContext = await createAuxiliaryGenerationUsage({
-    teamId,
-    tmbId,
-    appName,
-    sourceType,
-    sourceId,
-    usageSource
-  });
-  await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-
-  res.once('close', () => {
-    stopping = true;
-  });
+  const getGenerationLeaseStopped = () => {
+    const lease = getActiveChatGenerationLease({ sourceType, sourceId, chatId }, generationRunId);
+    if (!generationRunId) return false;
+    return !lease || lease.signal.aborted;
+  };
 
   const stopCheckTimer = setInterval(async () => {
     if (stopping) return;
-    stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+    stopping =
+      getGenerationLeaseStopped() ||
+      (await shouldAuxiliaryGenerationStop({
+        sourceType,
+        sourceId,
+        chatId,
+        ...(generationRunId && { generationRunId })
+      }));
   }, 100);
 
   try {
@@ -76,7 +108,7 @@ export const runAuxiliaryGeneration = async <T>({
       histories,
       requestOrigin: req.headers.origin,
       streamWriter: streamContext.write,
-      checkIsStopping: () => stopping,
+      checkIsStopping: () => stopping || getGenerationLeaseStopped(),
       usageSink: usageContext.pushUsage,
       maxFiles,
       customPdfParse,
@@ -98,6 +130,11 @@ export const runAuxiliaryGeneration = async <T>({
     };
   } finally {
     clearInterval(stopCheckTimer);
-    await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+    await clearAuxiliaryGenerationStop({
+      sourceType,
+      sourceId,
+      chatId,
+      ...(generationRunId && { generationRunId })
+    });
   }
 };

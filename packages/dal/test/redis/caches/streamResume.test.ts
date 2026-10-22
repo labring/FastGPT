@@ -50,7 +50,19 @@ describe('StreamResumeCache', () => {
     });
   });
 
-  it('parses valid state and treats malformed state as a miss', async () => {
+  it('isolates mirror keys by generation run id', () => {
+    const cache = createCache();
+
+    expect(cache.getKeys({ ...params, generationRunId: 'run-1' })).toEqual({
+      keyOfStream: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1:run-1'),
+      keyOfUnavailable: asRedisLogicalKey(
+        'stream:resume:unavailable:team-1:app:app-1:chat-1:run-1'
+      ),
+      keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-1')
+    });
+  });
+
+  it('parses valid unavailable state and treats malformed state as a miss', async () => {
     const redis = createRedis();
     const cache = new StreamResumeCache({
       redis,
@@ -65,12 +77,8 @@ describe('StreamResumeCache', () => {
       reason: 'memoryPressure'
     });
 
-    redis.get.mockResolvedValueOnce('{"updatedAt":0}');
-    await expect(cache.getActive(params)).resolves.toBeUndefined();
     redis.get.mockResolvedValueOnce('{bad');
     await expect(cache.getUnavailable(params)).resolves.toBeUndefined();
-    redis.get.mockResolvedValueOnce('{bad');
-    await expect(cache.getActive(params)).resolves.toBeUndefined();
 
     await cache.setUnavailable(params, { reason: 'memoryPressure' });
     expect(redis.set).toHaveBeenCalledWith({
@@ -134,6 +142,42 @@ describe('StreamResumeCache', () => {
     }
   });
 
+  it('prevents an old run from clearing or shrinking a newer run mirror', async () => {
+    const redis = createRedis();
+    const cache = new StreamResumeCache({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+    const oldMirror = cache.createMirror({ ...params, generationRunId: 'run-old' });
+    const newMirror = cache.createMirror({ ...params, generationRunId: 'run-new' });
+
+    await oldMirror.enqueueRaw('old');
+    await oldMirror.flush();
+    await newMirror.enqueueRaw('new');
+    await newMirror.flush();
+    await oldMirror.shrinkTTLAfterComplete();
+
+    expect(redis.appendStreamEntry).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1:run-old'),
+      fields: { raw: 'old' }
+    });
+    expect(redis.appendStreamEntry).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1:run-new'),
+      fields: { raw: 'new' }
+    });
+    expect(redis.expireStream).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1:run-old'),
+      ttlSeconds: 30
+    });
+    expect(redis.expireStream).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-old'),
+      ttlSeconds: 30
+    });
+  });
+
   it('shrinks stream and active state TTL after completion', async () => {
     const redis = createRedis();
     const cache = new StreamResumeCache({
@@ -152,6 +196,37 @@ describe('StreamResumeCache', () => {
       ttlSeconds: 30
     });
     expect(redis.expireStream).toHaveBeenNthCalledWith(2, {
+      key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
+      ttlSeconds: 30
+    });
+  });
+
+  it('appends a terminal event and shrinks both state TTLs', async () => {
+    const redis = createRedis();
+    const cache = new StreamResumeCache({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+
+    await cache.appendTerminal({
+      params,
+      raw: 'event: error\ndata: {"message":"interrupted"}\n\n'
+    });
+
+    expect(redis.appendStreamEntry).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
+      fields: {
+        raw: 'event: error\ndata: {"message":"interrupted"}\n\n'
+      }
+    });
+    expect(redis.expireStream).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
+      ttlSeconds: 30
+    });
+    expect(redis.expireStream).toHaveBeenCalledWith({
       key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
       ttlSeconds: 30
     });

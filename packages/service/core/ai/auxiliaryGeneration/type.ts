@@ -52,6 +52,7 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
+  generationRunId?: string;
   query: string;
   userAnswer?: string;
   files: AuxiliaryGenerationChatFileType[];

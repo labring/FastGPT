@@ -14,7 +14,9 @@ export const StreamResumeParamsSchema = z.object({
   teamId: z.string().min(1),
   sourceType: z.string().min(1),
   sourceId: z.string().min(1),
-  chatId: z.string().min(1)
+  chatId: z.string().min(1),
+  /** 新 run 使用 runId 隔离 mirror；旧数据缺省时继续使用 legacy key。 */
+  generationRunId: z.string().min(1).optional()
 });
 export type StreamResumeParams = z.infer<typeof StreamResumeParamsSchema>;
 
@@ -63,7 +65,7 @@ const parsePositiveConfig = ({
 /**
  * Stream Resume Cache。
  *
- * Cache 固定历史 stream/state key 和 TTL，负责镜像写入的顺序、Stream 返回解析以及
+ * Cache 固定历史 stream key 和 TTL，负责镜像写入的顺序、Stream 返回解析以及
  * blocking reader 生命周期；HTTP/SSE response 和终止事件由 service 层继续编排。
  */
 export class StreamResumeCache {
@@ -104,23 +106,28 @@ export class StreamResumeCache {
 
   getKeys = (params: StreamResumeParams): StreamResumeKeys => {
     const parsed = this.parseParams(params);
-    const { teamId, sourceType, sourceId, chatId } = parsed;
+    const { teamId, sourceType, sourceId, chatId, generationRunId } = parsed;
+    const runSuffix = generationRunId ? `:${generationRunId}` : '';
     return {
       keyOfStream: asRedisLogicalKey(
-        `${STREAM_RESUME_NAMESPACE}:data:${teamId}:${sourceType}:${sourceId}:${chatId}`
+        `${STREAM_RESUME_NAMESPACE}:data:${teamId}:${sourceType}:${sourceId}:${chatId}${runSuffix}`
       ),
       keyOfUnavailable: asRedisLogicalKey(
-        `${STREAM_RESUME_NAMESPACE}:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}`
+        `${STREAM_RESUME_NAMESPACE}:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}${runSuffix}`
       ),
       keyOfActive: asRedisLogicalKey(
-        `${STREAM_RESUME_NAMESPACE}:active:${teamId}:${sourceType}:${sourceId}:${chatId}`
+        `${STREAM_RESUME_NAMESPACE}:active:${teamId}:${sourceType}:${sourceId}:${chatId}${runSuffix}`
       )
     };
   };
 
-  private touchState = async (keys: StreamResumeKeys) => {
+  private touchStreamTtl = async (keys: StreamResumeKeys) => {
     await Promise.all([
-      this.redis.expireStream({ key: keys.keyOfStream, ttlSeconds: this.parsedStreamTtlSeconds }),
+      this.redis.expireStream({
+        key: keys.keyOfStream,
+        ttlSeconds: this.parsedStreamTtlSeconds
+      }),
+      // 滚动发布兼容：旧实例 cleaner 仍读取 active key，新 cleaner 不依赖它。
       this.redis.set({
         key: keys.keyOfActive,
         value: JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
@@ -160,19 +167,6 @@ export class StreamResumeCache {
     }
   }
 
-  /** 读取 active 状态；损坏 JSON 按 miss 处理。 */
-  async getActive(params: StreamResumeParams) {
-    const value = await this.redis.get(this.getKeys(params).keyOfActive);
-    if (!value) return;
-
-    try {
-      const parsed = StreamResumeActiveStateSchema.safeParse(JSON.parse(value));
-      return parsed.success ? parsed.data : undefined;
-    } catch {
-      return;
-    }
-  }
-
   /** 读取 Redis 内存水位；是否阻止创建镜像由 service 的运行策略决定。 */
   getMemoryInfo = () => this.redis.getMemoryInfo();
 
@@ -197,7 +191,7 @@ export class StreamResumeCache {
           });
           const now = Date.now();
           if (lastTouchedAt === 0 || now - lastTouchedAt >= this.parsedTtlTouchIntervalMs) {
-            await this.touchState(keys);
+            await this.touchStreamTtl(keys);
             lastTouchedAt = now;
           }
         })
@@ -211,9 +205,25 @@ export class StreamResumeCache {
       return queue;
     };
 
+    const touch = () => {
+      queue = queue
+        .then(async () => {
+          await this.touchStreamTtl(keys);
+        })
+        .catch((error) => {
+          this.logger.error('Failed to touch stream resume redis ttl', {
+            params: parsedParams,
+            error
+          });
+        });
+
+      return queue;
+    };
+
     return {
       ...keys,
       enqueueRaw,
+      touch,
       flush: async () => {
         await queue;
       },
@@ -252,6 +262,23 @@ export class StreamResumeCache {
     count: number;
   }): Promise<RedisStreamEntry[]> {
     return this.redis.rangeStream({ key: this.getKeys(params).keyOfStream, start, end, count });
+  }
+
+  /** 写入 cleaner 生成的终止事件，让已经连接的 resume reader 立即结束。 */
+  async appendTerminal({ params, raw }: { params: StreamResumeParams; raw: string }) {
+    const key = this.getKeys(params).keyOfStream;
+    await this.redis.appendStreamEntry({
+      key,
+      fields: { raw }
+    });
+    await this.redis.expireStream({
+      key,
+      ttlSeconds: this.parsedPostCompleteTtlSeconds
+    });
+    await this.redis.expireStream({
+      key: this.getKeys(params).keyOfActive,
+      ttlSeconds: this.parsedPostCompleteTtlSeconds
+    });
   }
 
   /**

@@ -87,6 +87,8 @@ export type ChatDispatchProps = {
   uid: string; // Who run this workflow
 
   chatId: string;
+  /** 当前生成 run 的 fencing token；新入口必须透传。 */
+  generationRunId?: string;
   /** 当前 AI 回复 chat item 的 dataId；workflow 运行期必须有值，外部入口缺省时由 dispatchWorkFlow 补齐。 */
   responseChatItemId: string;
   histories: ChatItemMiniType[];

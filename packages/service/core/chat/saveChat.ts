@@ -44,11 +44,21 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { stopChatGenerationLease } from './generationLease';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
+class ChatGenerationOwnershipLostError extends Error {
+  constructor() {
+    super('Chat generation ownership was lost');
+    this.name = 'ChatGenerationOwnershipLostError';
+  }
+}
+
 export type Props = ChatSourceParams & {
   chatId: string;
+  /** 当前生成 run ID；新入口必须传入，用于防止旧任务覆盖新任务状态。 */
+  generationRunId?: string;
   versionId?: string;
   teamId: string;
   tmbId: string;
@@ -233,6 +243,7 @@ const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummar
 
 type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
+  generationRunId?: string;
   responseChatItemId?: string;
   error: unknown;
 };
@@ -301,117 +312,140 @@ export const finalizeChatRound = async (props: Props) => {
   });
   const now = new Date();
 
-  await mongoSessionRun(async (session) => {
-    const chat = await MongoChat.findOne(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId
-      },
-      '_id metadata'
-    )
-      .session(session)
-      .lean();
-
-    if (!chat) {
-      throw new Error(`Pending chat round chat not found: ${chatId}`);
-    }
-
-    const metadataUpdate = {
-      ...chat.metadata,
-      ...metadata
-    };
-
-    // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
-    // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
-    const humanUpdate = { ...(processedContent[0] as Record<string, unknown>) };
-    const aiUpdate = { ...(processedContent[1] as Record<string, unknown>) };
-    delete humanUpdate.obj;
-    delete aiUpdate.obj;
-
-    // MongoDB Node.js 驱动不支持同一事务中的并行操作；串行更新避免 DDM 事务 staging 栈失衡。
-    const humanDoc = await MongoChatItem.findOneAndUpdate(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId,
-        dataId: humanDataId,
-        obj: ChatRoleEnum.Human
-      },
-      {
-        $set: humanUpdate
-      },
-      {
-        session,
-        new: true
-      }
-    );
-    const aiDoc = await MongoChatItem.findOneAndUpdate(
-      { ...buildChatSourceQuery(chatSource), chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
-      {
-        $set: aiUpdate
-      },
-      {
-        session,
-        new: true
-      }
-    );
-
-    if (!humanDoc || !aiDoc) {
-      throw new Error(`Pending chat round items not found: ${chatId}`);
-    }
-
-    // chat 记录在 prepare 阶段已经存在，这里补齐运行结果相关的会话级字段并释放 generating 状态。
-    await MongoChat.updateOne(
-      {
-        ...buildChatSourceQuery(chatSource),
-        chatId
-      },
-      {
-        $set: {
-          teamId,
-          tmbId,
-          ...sourceWriteFields,
-          appVersionId: versionId,
-          chatId,
-          variableList,
-          welcomeText,
-          variables: variables || {},
-          pluginInputs,
-          source,
-          sourceName,
-          shareId,
-          outLinkUid,
-          metadata: metadataUpdate,
-          updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.done
+  try {
+    await mongoSessionRun(async (session) => {
+      const chat = await MongoChat.findOne(
+        {
+          ...buildChatSourceQuery(chatSource),
+          chatId
         },
-        $inc: {
-          'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
-          'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
-          ...(errorCount > 0 ? { errorCount } : {})
-        }
-      },
-      {
-        session
+        '_id metadata'
+      )
+        .session(session)
+        .lean();
+
+      if (!chat) {
+        throw new Error(`Pending chat round chat not found: ${chatId}`);
       }
-    );
 
-    await persistChatFiles({
-      contents: processedContent,
-      variables,
-      variableList,
-      session
+      const metadataUpdate = {
+        ...chat.metadata,
+        ...metadata
+      };
+
+      // 先做 chat 级 ownership CAS；失配时直接回滚，禁止旧 run 继续写 items/files。
+      const chatUpdateResult = await MongoChat.updateOne(
+        {
+          ...buildChatSourceQuery(chatSource),
+          chatId,
+          ...(props.generationRunId && {
+            chatGenerateStatus: ChatGenerateStatusEnum.generating,
+            generationRunId: props.generationRunId
+          })
+        },
+        {
+          $set: {
+            teamId,
+            tmbId,
+            ...sourceWriteFields,
+            appVersionId: versionId,
+            chatId,
+            variableList,
+            welcomeText,
+            variables: variables || {},
+            pluginInputs,
+            source,
+            sourceName,
+            shareId,
+            outLinkUid,
+            metadata: metadataUpdate,
+            updateTime: now,
+            hasBeenRead: false,
+            chatGenerateStatus: ChatGenerateStatusEnum.done
+          },
+          $inc: {
+            'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
+            'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
+            ...(errorCount > 0 ? { errorCount } : {})
+          }
+        },
+        {
+          session
+        }
+      );
+
+      if (props.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+        logger.warn('finalizeChatRound aborted because generation ownership was lost', {
+          ...chatSource,
+          chatId,
+          generationRunId: props.generationRunId
+        });
+        throw new ChatGenerationOwnershipLostError();
+      }
+
+      // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
+      // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
+      const humanUpdate = { ...(processedContent[0] as Record<string, unknown>) };
+      const aiUpdate = { ...(processedContent[1] as Record<string, unknown>) };
+      delete humanUpdate.obj;
+      delete aiUpdate.obj;
+
+      // MongoDB Node.js 驱动不支持同一事务中的并行操作；串行更新避免 DDM 事务 staging 栈失衡。
+      const humanDoc = await MongoChatItem.findOneAndUpdate(
+        {
+          ...buildChatSourceQuery(chatSource),
+          chatId,
+          dataId: humanDataId,
+          obj: ChatRoleEnum.Human
+        },
+        {
+          $set: humanUpdate
+        },
+        {
+          session,
+          new: true
+        }
+      );
+      const aiDoc = await MongoChatItem.findOneAndUpdate(
+        { ...buildChatSourceQuery(chatSource), chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
+        {
+          $set: aiUpdate
+        },
+        {
+          session,
+          new: true
+        }
+      );
+
+      if (!humanDoc || !aiDoc) {
+        throw new Error(`Pending chat round items not found: ${chatId}`);
+      }
+
+      await persistChatFiles({
+        contents: processedContent,
+        variables,
+        variableList,
+        session
+      });
+
+      if (chatSource.sourceType === ChatSourceTypeEnum.app) {
+        pushChatLog({
+          chatId,
+          chatItemIdHuman: String(humanDoc._id),
+          chatItemIdAi: String(aiDoc._id),
+          appId: appSourceId
+        });
+      }
     });
-
-    if (chatSource.sourceType === ChatSourceTypeEnum.app) {
-      pushChatLog({
+  } finally {
+    if (props.generationRunId) {
+      await stopChatGenerationLease({
+        ...chatSource,
         chatId,
-        chatItemIdHuman: String(humanDoc._id),
-        chatItemIdAi: String(aiDoc._id),
-        appId: appSourceId
+        generationRunId: props.generationRunId
       });
     }
-  });
+  }
 
   // App 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
   if (chatSource.sourceType === ChatSourceTypeEnum.app) {
@@ -491,41 +525,68 @@ export const failChatRound = async (params: FailChatRoundParams) => {
     const now = new Date();
     const errorMsg = getErrText(error);
 
-    await mongoSessionRun(async (session) => {
-      await MongoChat.updateOne(
-        { ...buildChatSourceQuery(chatSource), chatId },
-        {
-          $set: {
-            chatGenerateStatus: ChatGenerateStatusEnum.error,
-            updateTime: now,
-            hasBeenRead: false
-          }
-        },
-        {
-          session
-        }
-      );
-
-      if (responseChatItemId) {
-        await MongoChatItem.updateOne(
+    try {
+      await mongoSessionRun(async (session) => {
+        const chatUpdateResult = await MongoChat.updateOne(
           {
             ...buildChatSourceQuery(chatSource),
             chatId,
-            dataId: responseChatItemId,
-            obj: ChatRoleEnum.AI
+            ...(params.generationRunId && {
+              chatGenerateStatus: ChatGenerateStatusEnum.generating,
+              generationRunId: params.generationRunId
+            })
           },
           {
             $set: {
-              errorMsg
+              chatGenerateStatus: ChatGenerateStatusEnum.error,
+              updateTime: now,
+              hasBeenRead: false
             }
           },
           {
             session
           }
         );
+
+        if (params.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+          logger.warn('failChatRound aborted because generation ownership was lost', {
+            ...chatSource,
+            chatId,
+            generationRunId: params.generationRunId
+          });
+          throw new ChatGenerationOwnershipLostError();
+        }
+
+        if (responseChatItemId) {
+          await MongoChatItem.updateOne(
+            {
+              ...buildChatSourceQuery(chatSource),
+              chatId,
+              dataId: responseChatItemId,
+              obj: ChatRoleEnum.AI
+            },
+            {
+              $set: {
+                errorMsg
+              }
+            },
+            {
+              session
+            }
+          );
+        }
+      });
+    } finally {
+      if (params.generationRunId) {
+        await stopChatGenerationLease({
+          ...chatSource,
+          chatId,
+          generationRunId: params.generationRunId
+        });
       }
-    });
+    }
   } catch (saveError) {
+    if (saveError instanceof ChatGenerationOwnershipLostError) return;
     logger.error('Failed to mark chat round as error', { chatId, error: saveError });
   }
 };
@@ -793,7 +854,17 @@ export const updateInteractiveChat = async ({
     chatId,
     obj: ChatRoleEnum.AI
   }).sort({ _id: -1 });
-  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) return;
+  if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) {
+    // 没有可续写的 AI 记录时不写库，但仍要释放本 run 的生成租约。
+    if (props.generationRunId) {
+      await stopChatGenerationLease({
+        ...chatSource,
+        chatId,
+        generationRunId: props.generationRunId
+      });
+    }
+    return;
+  }
 
   const parsedUserInteractiveVal = (() => {
     try {
@@ -998,11 +1069,14 @@ export const updateInteractiveChat = async ({
 
   chatItem.markModified('value');
   await mongoSessionRun(async (session) => {
-    await chatItem.save({ session });
-    await MongoChat.updateOne(
+    const chatUpdateResult = await MongoChat.updateOne(
       {
         ...buildChatSourceQuery(chatSource),
-        chatId
+        chatId,
+        ...(props.generationRunId && {
+          chatGenerateStatus: ChatGenerateStatusEnum.generating,
+          generationRunId: props.generationRunId
+        })
       },
       {
         $set: {
@@ -1020,6 +1094,16 @@ export const updateInteractiveChat = async ({
       }
     );
 
+    if (props.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+      logger.warn('updateInteractiveChat aborted because generation ownership was lost', {
+        ...chatSource,
+        chatId,
+        generationRunId: props.generationRunId
+      });
+      throw new ChatGenerationOwnershipLostError();
+    }
+
+    await chatItem.save({ session });
     await persistChatFiles({
       contents: [userContent, aiContent],
       variables,
@@ -1027,6 +1111,14 @@ export const updateInteractiveChat = async ({
       session
     });
   });
+
+  if (props.generationRunId) {
+    await stopChatGenerationLease({
+      ...chatSource,
+      chatId,
+      generationRunId: props.generationRunId
+    });
+  }
 
   // Push app chat data logs
   if (chatSource.sourceType !== ChatSourceTypeEnum.app) {

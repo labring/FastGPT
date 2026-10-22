@@ -9,6 +9,11 @@ import {
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<StopV2ChatResponse> {
   const {
@@ -25,12 +30,34 @@ async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<Stop
     outLinkAuthData
   });
   const resolvedSourceId = authRes.sourceId;
+  const chat = await MongoChat.findOne(
+    {
+      ...buildChatSourceQuery({
+        sourceType,
+        sourceId: resolvedSourceId
+      }),
+      chatId,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating
+    },
+    'generationRunId'
+  )
+    .lean()
+    .catch((error) => {
+      logger.warn('Failed to load chat generation run id before stop', {
+        sourceType,
+        sourceId: resolvedSourceId,
+        chatId,
+        error
+      });
+      return undefined;
+    });
 
   // Stop API 只负责可靠写入停止标记；客户端收到确认后会主动断开当前流。
   await setAgentRuntimeStop({
     sourceType,
     sourceId: resolvedSourceId,
-    chatId
+    chatId,
+    ...(chat?.generationRunId && { generationRunId: chat.generationRunId })
   });
 
   return StopV2ChatResponseSchema.parse({

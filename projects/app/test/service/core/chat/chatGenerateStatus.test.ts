@@ -7,6 +7,16 @@ import {
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+const stopChatGenerationLeaseMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/core/chat/generationLease', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/chat/generationLease')>();
+  return {
+    ...actual,
+    stopChatGenerationLease: stopChatGenerationLeaseMock
+  };
+});
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -78,7 +88,13 @@ describe('chatGenerateStatus', () => {
   });
 
   it('should acquire generate slot when the chat is not already generating', async () => {
-    await expect(tryStartGenerateChat(baseParams)).resolves.toBe(true);
+    await expect(
+      tryStartGenerateChat({
+        ...baseParams,
+        generationRunId: 'run-1',
+        generationResponseChatItemId: 'ai-item-1'
+      })
+    ).resolves.toBe(true);
 
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
@@ -100,6 +116,10 @@ describe('chatGenerateStatus', () => {
           sourceName: baseParams.sourceName,
           hasBeenRead: false,
           chatGenerateStatus: ChatGenerateStatusEnum.generating,
+          generationRunId: 'run-1',
+          generationResponseChatItemId: 'ai-item-1',
+          generationHeartbeatAt: expect.any(Date),
+          generationLeaseExpiresAt: expect.any(Date),
           updateTime: expect.any(Date)
         }),
         $setOnInsert: {
@@ -197,6 +217,78 @@ describe('chatGenerateStatus', () => {
           hasBeenRead: false
         }
       }
+    );
+  });
+
+  it('should fence status updates and stop the generation lease by run id', async () => {
+    vi.mocked(MongoChat.updateOne).mockResolvedValue({ matchedCount: 1 } as any);
+
+    await expect(
+      updateChatGenerateStatus({
+        sourceType: baseParams.sourceType,
+        sourceId: baseParams.sourceId,
+        chatId: baseParams.chatId,
+        status: ChatGenerateStatusEnum.done,
+        generationRunId: 'run-1'
+      })
+    ).resolves.toBe(true);
+
+    expect(MongoChat.updateOne).toHaveBeenCalledWith(
+      {
+        ...buildChatSourceQuery({
+          sourceType: baseParams.sourceType,
+          sourceId: baseParams.sourceId
+        }),
+        chatId: baseParams.chatId,
+        generationRunId: 'run-1',
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      },
+      expect.any(Object)
+    );
+    expect(stopChatGenerationLeaseMock).toHaveBeenCalledWith({
+      sourceType: baseParams.sourceType,
+      sourceId: baseParams.sourceId,
+      chatId: baseParams.chatId,
+      generationRunId: 'run-1'
+    });
+  });
+
+  it('should not stop a newer run when a stale status update loses its CAS', async () => {
+    vi.mocked(MongoChat.updateOne).mockResolvedValue({ matchedCount: 0 } as any);
+
+    await expect(
+      updateChatGenerateStatus({
+        sourceType: baseParams.sourceType,
+        sourceId: baseParams.sourceId,
+        chatId: baseParams.chatId,
+        status: ChatGenerateStatusEnum.error,
+        generationRunId: 'old-run'
+      })
+    ).resolves.toBe(false);
+
+    expect(stopChatGenerationLeaseMock).toHaveBeenCalledWith({
+      sourceType: baseParams.sourceType,
+      sourceId: baseParams.sourceId,
+      chatId: baseParams.chatId,
+      generationRunId: 'old-run'
+    });
+  });
+
+  it('should stop the local lease even when the status write fails', async () => {
+    vi.mocked(MongoChat.updateOne).mockRejectedValueOnce(new Error('mongo down'));
+
+    await expect(
+      updateChatGenerateStatus({
+        sourceType: baseParams.sourceType,
+        sourceId: baseParams.sourceId,
+        chatId: baseParams.chatId,
+        status: ChatGenerateStatusEnum.error,
+        generationRunId: 'run-1'
+      })
+    ).rejects.toThrow('mongo down');
+
+    expect(stopChatGenerationLeaseMock).toHaveBeenCalledWith(
+      expect.objectContaining({ generationRunId: 'run-1' })
     );
   });
 });

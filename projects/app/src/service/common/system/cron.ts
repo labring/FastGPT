@@ -65,7 +65,7 @@ const scheduleTriggerAppCron = () => {
   getScheduleTriggerApp();
 };
 
-/** 基于 Redis stream activity 快速纠正异常中断的 generating 会话，保留 30 分钟兜底 */
+/** 基于生成 lease/heartbeat 快速纠正异常中断的 generating 会话，保留 legacy 30 分钟兜底 */
 const cleanStaleGeneratingChatCron = () => {
   setCron('*/1 * * * *', async () => {
     if (

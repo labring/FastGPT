@@ -349,6 +349,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: runningAppId,
       chatId: saveChatId,
+      generationRunId: preparedRound.generationRunId,
       responseId: saveChatId,
       showNodeStatus: showRunningStatus
     });
@@ -397,6 +398,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       uid: String(outLinkUserId || tmbId),
 
       chatId: saveChatId,
+      generationRunId: preparedRound.generationRunId,
       responseChatItemId: finalResponseChatItemId,
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
@@ -435,6 +437,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const params: SaveChatProps = {
       ...chatSource,
       chatId: saveChatId,
+      generationRunId: preparedRound.generationRunId,
       versionId,
       teamId,
       tmbId: tmbId,
@@ -468,7 +471,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await updateChatGenerateStatus({
         ...chatSource,
         chatId: saveChatId,
-        status: ChatGenerateStatusEnum.done
+        status: ChatGenerateStatusEnum.done,
+        generationRunId: preparedRound.generationRunId
       });
     }
     const isOwnerUse = !shareId;
@@ -570,6 +574,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
+          generationRunId: preparedRound.generationRunId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
@@ -578,7 +583,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
-          status: ChatGenerateStatusEnum.error
+          status: ChatGenerateStatusEnum.error,
+          generationRunId: preparedRound.generationRunId
         });
       }
     }

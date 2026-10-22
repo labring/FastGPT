@@ -27,6 +27,7 @@ describe('v2 chat stop skill edit target', () => {
   let chatId: string;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     testUser = await getUser(`skill-stop-${getNanoid(6)}`);
     const skill = await MongoAgentSkills.create({
@@ -95,6 +96,58 @@ describe('v2 chat stop skill edit target', () => {
       success: true,
       completed: false,
       chatGenerateStatus: ChatGenerateStatusEnum.generating
+    });
+  });
+
+  it('should fence the stop signal with the current generation run id', async () => {
+    await MongoChat.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      appId: skillId,
+      chatId,
+      source: ChatSourceEnum.test,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating,
+      generationRunId: 'run-1'
+    });
+
+    await Call<StopV2ChatParams, any, StopV2ChatResponse>(handler, {
+      auth: testUser,
+      body: {
+        skillId,
+        chatId
+      }
+    });
+
+    expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId,
+      generationRunId: 'run-1'
+    });
+  });
+
+  it('should still write the legacy stop signal when reading the run id fails', async () => {
+    const originalFindOne = MongoChat.findOne.bind(MongoChat);
+    vi.spyOn(MongoChat, 'findOne')
+      .mockImplementationOnce(originalFindOne as any)
+      .mockReturnValueOnce({
+        lean: () => Promise.reject(new Error('mongo down'))
+      } as any);
+
+    const res = await Call<StopV2ChatParams, any, StopV2ChatResponse>(handler, {
+      auth: testUser,
+      body: {
+        skillId,
+        chatId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId
     });
   });
 

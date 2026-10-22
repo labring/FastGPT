@@ -19,6 +19,7 @@ import {
   syncGeneratedChatTitleFromUserContent
 } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
+import { startChatGenerationLease, stopChatGenerationLease } from '../generationLease';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -52,6 +53,7 @@ export type EnsurePendingChatRoundParams = ChatSourceParams & {
 
 export type PrepareChatRoundParams = ChatSourceParams & {
   chatId: string;
+  generationRunId?: string;
   teamId: string;
   tmbId: string;
   source: `${ChatSourceEnum}`;
@@ -78,6 +80,7 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
 export type PreChatRoundResult = {
   chatId: string;
   responseChatItemId: string;
+  generationRunId?: string;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
   titleGeneration?: Promise<string | undefined>;
@@ -118,8 +121,17 @@ export const getPreparedRoundDataIds = ({
 export const prepareChatRound = async (
   params: PrepareChatRoundParams
 ): Promise<PrepareChatRoundResult> => {
-  const { chatId, teamId, tmbId, source, sourceName, shareId, outLinkUid, responseChatItemId } =
-    params;
+  const {
+    chatId,
+    generationRunId,
+    teamId,
+    tmbId,
+    source,
+    sourceName,
+    shareId,
+    outLinkUid,
+    responseChatItemId
+  } = params;
   const chatSource = {
     sourceType: params.sourceType,
     sourceId: params.sourceId
@@ -157,7 +169,8 @@ export const prepareChatRound = async (
     const previousChat = await MongoChat.findOneAndUpdate(
       {
         ...buildChatSourceQuery(chatSource),
-        chatId
+        chatId,
+        ...(generationRunId && { generationRunId })
       },
       {
         $set: {
@@ -165,6 +178,7 @@ export const prepareChatRound = async (
           tmbId,
           ...sourceWriteFields,
           chatId,
+          ...(generationRunId && { generationRunId }),
           source,
           sourceName,
           shareId,
@@ -228,6 +242,7 @@ export const prepareChatRound = async (
 export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatRoundResult> => {
   const chatId = resolvePreChatRoundChatId(params.chatId);
   const responseChatItemId = params.responseChatItemId || getNanoid(24);
+  const generationRunId = getNanoid(24);
   const shouldPersistChatRound = !isSkipSaveChatId(chatId);
   const interactiveStatus = getInteractiveResponseStatus({
     interactive: params.interactive,
@@ -253,7 +268,9 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     source: params.source,
     sourceName: params.sourceName,
     shareId: params.shareId,
-    outLinkUid: params.outLinkUid
+    outLinkUid: params.outLinkUid,
+    generationRunId,
+    generationResponseChatItemId: responseChatItemId
   });
 
   if (!canStartGenerate) {
@@ -261,6 +278,13 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
   }
 
   try {
+    await startChatGenerationLease({
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatId,
+      generationRunId
+    });
+
     if (isInteractiveContinue) {
       const previousAiItem = await MongoChatItem.findOne(
         {
@@ -278,9 +302,26 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         throw new Error(`Interactive continue chat item not found: ${chatId}`);
       }
 
+      const interactiveUpdateResult = await MongoChat.updateOne(
+        {
+          ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
+          chatId,
+          generationRunId
+        },
+        {
+          $set: {
+            generationResponseChatItemId: previousAiItem.dataId
+          }
+        }
+      );
+      if ((interactiveUpdateResult.matchedCount ?? 0) === 0) {
+        throw new Error('Interactive chat generation lease was lost');
+      }
+
       return {
         chatId,
         responseChatItemId: previousAiItem.dataId,
+        generationRunId,
         shouldPersistChatRound: true,
         shouldFinalizePreparedRound: false
       };
@@ -297,6 +338,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     const preparedChatRound = await prepareChatRound({
       ...params,
       chatId,
+      generationRunId,
       responseChatItemId
     });
 
@@ -334,16 +376,24 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     return {
       chatId,
       responseChatItemId,
+      generationRunId,
       shouldPersistChatRound: true,
       shouldFinalizePreparedRound: true,
       titleGeneration
     };
   } catch (error) {
+    await stopChatGenerationLease({
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatId,
+      generationRunId
+    });
     await updateChatGenerateStatus({
       sourceType: params.sourceType,
       sourceId: params.sourceId,
       chatId,
-      status: ChatGenerateStatusEnum.error
+      status: ChatGenerateStatusEnum.error,
+      generationRunId
     });
     throw error;
   }

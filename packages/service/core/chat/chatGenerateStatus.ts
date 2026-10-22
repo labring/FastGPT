@@ -5,6 +5,10 @@
 import { MongoChat } from './chatSchema';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { CHAT_GENERATION_LEASE_TTL_MS, stopChatGenerationLease } from './generationLease';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 type EnsureGenerateChatParams = ChatSourceParams & {
   chatId: string;
@@ -14,6 +18,8 @@ type EnsureGenerateChatParams = ChatSourceParams & {
   sourceName?: string;
   shareId?: string;
   outLinkUid?: string;
+  generationRunId?: string;
+  generationResponseChatItemId?: string;
 };
 
 const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
@@ -32,7 +38,15 @@ const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
       ...buildChatSourceWriteFields(chatSource),
       updateTime: now,
       hasBeenRead: false,
-      chatGenerateStatus: ChatGenerateStatusEnum.generating
+      chatGenerateStatus: ChatGenerateStatusEnum.generating,
+      ...(params.generationRunId && {
+        generationRunId: params.generationRunId,
+        ...(params.generationResponseChatItemId && {
+          generationResponseChatItemId: params.generationResponseChatItemId
+        }),
+        generationHeartbeatAt: now,
+        generationLeaseExpiresAt: new Date(now.getTime() + CHAT_GENERATION_LEASE_TTL_MS)
+      })
     },
     $setOnInsert: {
       createTime: now,
@@ -107,11 +121,12 @@ type UpdateChatGenerateStatusParams = Pick<
   'sourceType' | 'sourceId' | 'chatId'
 > & {
   status: ChatGenerateStatusEnum;
+  generationRunId?: string;
   /** 若传入则覆盖；否则在 done/error 时默认未读（前台看完可再调 markRead） */
   hasBeenRead?: boolean;
 };
 export const updateChatGenerateStatus = async (params: UpdateChatGenerateStatusParams) => {
-  const { chatId, status, hasBeenRead } = params;
+  const { chatId, status, generationRunId, hasBeenRead } = params;
   const chatSource = {
     sourceType: params.sourceType,
     sourceId: params.sourceId
@@ -126,5 +141,43 @@ export const updateChatGenerateStatus = async (params: UpdateChatGenerateStatusP
   } else if (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error) {
     $set.hasBeenRead = false;
   }
-  await MongoChat.updateOne({ ...buildChatSourceQuery(chatSource), chatId }, { $set });
+  let updated = false;
+  try {
+    const result = await MongoChat.updateOne(
+      {
+        ...buildChatSourceQuery(chatSource),
+        chatId,
+        ...(generationRunId && {
+          generationRunId,
+          ...(status !== ChatGenerateStatusEnum.generating && {
+            chatGenerateStatus: ChatGenerateStatusEnum.generating
+          })
+        })
+      },
+      { $set }
+    );
+    updated = (result.matchedCount ?? 0) > 0;
+
+    if (generationRunId && !updated) {
+      logger.warn('Chat generate status update lost run ownership', {
+        ...chatSource,
+        chatId,
+        generationRunId,
+        status
+      });
+    }
+  } finally {
+    if (
+      generationRunId &&
+      (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error)
+    ) {
+      await stopChatGenerationLease({
+        ...chatSource,
+        chatId,
+        generationRunId
+      });
+    }
+  }
+
+  return updated;
 };

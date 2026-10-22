@@ -6,7 +6,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -28,13 +28,18 @@ import {
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { CHAT_GENERATION_LEASE_TTL_MS } from '@fastgpt/service/core/chat/generationLease';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
 const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
-type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
+type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'> & {
+  generationRunId?: string;
+};
 const resumeGeneratingRequiresSseMessage =
   'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
+const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
@@ -52,6 +57,21 @@ const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
 const writeSseComment = (res: NextApiResponse, comment: string) => {
   if (isResponseClosed(res)) return;
   res.write(`: ${comment}\n\n`);
+};
+
+const resolveResumeGenerationRunId = (chat: {
+  generationRunId?: string;
+  generationHeartbeatAt?: Date;
+  updateTime?: Date;
+}) => {
+  if (!chat.generationRunId || !chat.generationHeartbeatAt) return;
+  if (
+    chat.updateTime &&
+    chat.updateTime.getTime() - chat.generationHeartbeatAt.getTime() > CHAT_GENERATION_LEASE_TTL_MS
+  ) {
+    return;
+  }
+  return chat.generationRunId;
 };
 
 const writeResumeUnavailable = (
@@ -107,14 +127,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const findCurrentChat = async (): Promise<CurrentChatState> => {
     const chat = await MongoChat.findOne(
       { chatId, ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }) },
-      { hasBeenRead: 1, chatGenerateStatus: 1 }
+      {
+        hasBeenRead: 1,
+        chatGenerateStatus: 1,
+        generationRunId: 1,
+        generationHeartbeatAt: 1,
+        updateTime: 1
+      }
     ).lean();
     if (!chat) {
       return Promise.reject(new Error('Chat not found'));
     }
     return {
       hasBeenRead: chat.hasBeenRead ?? false,
-      chatGenerateStatus: chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done
+      chatGenerateStatus: chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      generationRunId: resolveResumeGenerationRunId(chat)
     };
   };
 
@@ -137,6 +164,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ...item,
       id: item.dataId!
     }));
+    const lastAi = list.findLast((item) => item.obj === ChatRoleEnum.AI);
+    if (!lastAi || (!lastAi.value?.length && !lastAi.errorMsg)) {
+      logger.warn('Resume returned a completed chat without a finalized AI response', {
+        sourceType,
+        sourceId: resolvedSourceId,
+        chatId,
+        generationRunId: chat.generationRunId
+      });
+    }
 
     return {
       ...chat,
@@ -178,7 +214,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   };
 
-  const { chatGenerateStatus } = await findCurrentChat();
+  const { chatGenerateStatus, generationRunId } = await findCurrentChat();
 
   // Chat has been completed, no need to catch up history items and resume stream
   if (chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
@@ -216,7 +252,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamId,
     sourceType,
     sourceId: resolvedSourceId,
-    chatId
+    chatId,
+    generationRunId
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.catchup);
@@ -237,11 +274,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamId,
     sourceType,
     sourceId: resolvedSourceId,
-    chatId
+    chatId,
+    generationRunId
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
-  await _resume({ res, teamId, sourceType, sourceId: resolvedSourceId, chatId, cursor });
+  await _resume({
+    res,
+    teamId,
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatId,
+    generationRunId,
+    cursor
+  });
 
   res.end();
 }
