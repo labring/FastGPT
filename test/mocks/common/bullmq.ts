@@ -1,15 +1,11 @@
 import { vi } from 'vitest';
 
-// 直接 mock 定义模块，让直接导入和旧聚合入口共享同一套队列替身。
-vi.mock('@fastgpt/dal/redis/bullmq/binding', async (importOriginal) => {
+// Mock BullMQ to prevent queue connection errors
+vi.mock('@fastgpt/dal/redis/bullmq', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
 
   const mockQueue = {
     add: vi.fn().mockResolvedValue({ id: '1' }),
-    addBulk: vi.fn().mockResolvedValue([]),
-    removeGlobalConcurrency: vi.fn().mockResolvedValue(undefined),
-    client: Promise.resolve({ eval: vi.fn().mockResolvedValue(0) }),
-    toKey: vi.fn((key: string) => key),
     getJob: vi.fn().mockResolvedValue(undefined),
     getDeduplicationJobId: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),

@@ -1,11 +1,6 @@
 # Service Integration Tests
 
 - `vectorDB/`: real vector database integration tests and local compose files
-- `dataset/vectorRowsUpdate.integration.test.ts`: vector statistics queue against real Redis.
-  Set `REDIS_INTEGRATION_URL` to an isolated Redis instance and run with
-  `pnpm test packages/service/test/integrations/dataset/vectorRowsUpdate.integration.test.ts`.
-  The suite creates independent runtimes and a unique queue, removes its test data afterward,
-  and skips when the URL is absent.
 - `sandbox/`: FastGPT Agent Sandbox business chains against the dev infrastructure
 - `ai/sandbox/`: independent OpenSandbox resource requests integration tests. Run with
   `pnpm test packages/service/test/integrations/ai/sandbox/resourceRequests.integration.test.ts`

@@ -18,7 +18,6 @@ vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
 }));
 
 import { checkInvalidVector } from '@/service/common/system/cronTask';
-import { notifyVectorRowsChanged } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 const VECTOR_ID = '1234567890123456';
 
@@ -34,7 +33,7 @@ describe('checkInvalidVector orphan cleanup', () => {
      * 被测函数名: checkInvalidVector  等级: 3-High
      * 单测函数思路(异常场景-孤儿行):
      * modeldata_v2 行按向量 id 反查 MongoDatasetData('indexes.dataId' === 向量 id),
-     * count=0 视为悬空行，删除时补齐知识库上下文并注入统计通知回调。
+     * count=0 视为悬空行，删除时补齐知识库上下文以失效计数缓存。
      */
     mockGetVectorDataByTime.mockResolvedValue([
       { id: VECTOR_ID, teamId: 'team-1', datasetId: 'dataset-1' }
@@ -51,8 +50,7 @@ describe('checkInvalidVector orphan cleanup', () => {
     expect(mockDeleteDatasetDataVector).toHaveBeenCalledWith({
       teamId: 'team-1',
       datasetId: 'dataset-1',
-      id: VECTOR_ID,
-      onVectorRowsChanged: notifyVectorRowsChanged
+      id: VECTOR_ID
     });
   });
 

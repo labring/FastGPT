@@ -4,7 +4,6 @@ import {
   insertDatasetDataVector
 } from '@fastgpt/service/common/vectorDB/controller';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
-import { notifyVectorRowsChanged } from '@fastgpt/service/core/dataset/vectorData/mq';
 import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
@@ -553,7 +552,6 @@ export class DatasetDataIndexOperation {
 
     const insertResult = vectorInputItems.length
       ? await insertDatasetDataVector({
-          onVectorRowsChanged: notifyVectorRowsChanged,
           inputs: vectorInputItems.map((item) => item.input),
           // 全文文本与向量一一对应(provider=milvus 时写 modeldata_v2 的 text)。
           // imageEmbedding 只写稠密向量,BM25 文本必须为空串(不写图片 URL/S3 key),与迁移行为保持一致。
@@ -677,7 +675,6 @@ export class DatasetDataIndexOperation {
   }) {
     if (idList.length === 0) return;
     await deleteDatasetDataVector({
-      onVectorRowsChanged: notifyVectorRowsChanged,
       teamId,
       datasetId,
       idList
