@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BullMQBinding } from '@fastgpt/dal/redis/bullmq/binding';
-import { VectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
+import { VectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 describe('VectorRowsUpdateMQService', () => {
   const client = { eval: vi.fn().mockResolvedValue(1) };
