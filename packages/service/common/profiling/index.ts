@@ -4,7 +4,6 @@ import type { Histogram } from '@opentelemetry/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../logger';
-import { getMeter } from '../metrics';
 
 export type RequestProfileKind = 'tools/list' | 'tools/call';
 
@@ -127,7 +126,7 @@ type ProfileInstruments = {
   mongoDuration: Histogram;
 };
 
-let instruments: ProfileInstruments | undefined;
+let instrumentsPromise: Promise<ProfileInstruments> | undefined;
 
 /**
  * 惰性创建指标仪表。
@@ -135,29 +134,34 @@ let instruments: ProfileInstruments | undefined;
  * `@opentelemetry/api` 在 MeterProvider 注册前返回的是永久 no-op meter，
  * 之后再注册 provider 也不会回填已创建的 instrument，因此不能在模块顶层获取。
  */
-const getInstruments = (): ProfileInstruments => {
-  if (instruments) return instruments;
+const getInstruments = (): Promise<ProfileInstruments> => {
+  instrumentsPromise ??= (async () => {
+    // 动态引入 metrics：`common/metrics` 会在模块加载时引入 `node:os`，
+    // 而本模块被 `common/mongo` 静态引用。静态引入会让 os 在测试 setup 阶段就被实例化，
+    // 破坏依赖 `vi.mock('node:os')` 的用例，也会让所有请求提前加载指标 SDK。
+    const { getMeter } = await import('../metrics');
+    const meter = getMeter('fastgpt.request.profile');
 
-  const meter = getMeter('fastgpt.request.profile');
-  instruments = {
-    duration: meter.createHistogram('fastgpt.request.profile.duration', {
-      description: 'Request profile total duration',
-      unit: 'ms'
-    }),
-    stageDuration: meter.createHistogram('fastgpt.request.profile.stage.duration', {
-      description: 'Request profile stage duration',
-      unit: 'ms'
-    }),
-    mongoOps: meter.createHistogram('fastgpt.request.profile.mongo.ops', {
-      description: 'Mongo operations per profiled request'
-    }),
-    mongoDuration: meter.createHistogram('fastgpt.request.profile.mongo.duration', {
-      description: 'Mongo time per profiled request',
-      unit: 'ms'
-    })
-  };
+    return {
+      duration: meter.createHistogram('fastgpt.request.profile.duration', {
+        description: 'Request profile total duration',
+        unit: 'ms'
+      }),
+      stageDuration: meter.createHistogram('fastgpt.request.profile.stage.duration', {
+        description: 'Request profile stage duration',
+        unit: 'ms'
+      }),
+      mongoOps: meter.createHistogram('fastgpt.request.profile.mongo.ops', {
+        description: 'Mongo operations per profiled request'
+      }),
+      mongoDuration: meter.createHistogram('fastgpt.request.profile.mongo.duration', {
+        description: 'Mongo time per profiled request',
+        unit: 'ms'
+      })
+    };
+  })();
 
-  return instruments;
+  return instrumentsPromise;
 };
 
 const getTopCollections = (byCollection: Map<string, number>) =>
@@ -165,7 +169,7 @@ const getTopCollections = (byCollection: Map<string, number>) =>
     [...byCollection.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_MONGO_COLLECTIONS)
   );
 
-const emit = (state: ProfileState) => {
+const emit = async (state: ProfileState) => {
   const totalMs = round(performance.now() - state.startedAt);
   const cpu = process.cpuUsage(state.cpu);
   const elu = performance.eventLoopUtilization(state.elu);
@@ -203,7 +207,7 @@ const emit = (state: ProfileState) => {
   }
 
   try {
-    const profileInstruments = getInstruments();
+    const profileInstruments = await getInstruments();
     const status = state.ok ? 'ok' : 'error';
     const baseAttributes = { kind: state.kind, status };
 
@@ -265,7 +269,7 @@ export const withRequestProfile = async <T>(
 
     // 最后一层兜底：任何埋点异常都不能影响业务结果。
     try {
-      emit(state);
+      await emit(state);
     } catch {
       // ignore
     }
