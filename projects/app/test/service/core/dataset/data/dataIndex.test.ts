@@ -981,7 +981,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should skip vector delete when id list is empty', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 
-      await operation.deleteVectors({ teamId: 'team_id', idList: [] });
+      await operation.deleteVectors({ teamId: 'team_id', datasetId: 'dataset_id', idList: [] });
 
       expect(mockVectorDelete).not.toHaveBeenCalled();
     });
