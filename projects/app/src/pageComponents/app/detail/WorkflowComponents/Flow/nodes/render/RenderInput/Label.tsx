@@ -25,16 +25,21 @@ import { WorkflowActionsContext } from '../../../../context/workflowActionsConte
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import {
+  createEmptyTagFilterValue,
+  isDatasetTagFilterOpen,
+  isDatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/search/tagFilter';
+import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
 type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
   RightComponent?: React.JSX.Element;
-  rightInline?: boolean;
   isTool?: boolean;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Props) => {
+const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useSafeTranslation();
 
   const labelText = t(input.label as any);
@@ -45,13 +50,16 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const { required, renderTypeList, valueType, valueDesc } = input;
+  const node = getNodeById(nodeId);
   const isUserSelectOptions =
-    getNodeById(nodeId)?.flowNodeType === FlowNodeTypeEnum.userSelect &&
+    node?.flowNodeType === FlowNodeTypeEnum.userSelect &&
     input.key === NodeInputKeyEnum.userSelectOptions;
+  const isCollectionFilter = input.key === NodeInputKeyEnum.collectionFilterMatch;
+  const isLegacyTagFilter = isCollectionFilter && datasetSearchUsesLegacyFilter(node?.inputs ?? []);
+  const isTagFilterClosed =
+    isCollectionFilter && !isLegacyTagFilter && !isDatasetTagFilterOpen(input.value);
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
-  const shouldRenderRightInline =
-    rightInline ?? renderType === FlowNodeInputTypeEnum.datasetTagFilter;
   const displayRenderTypeList = useMemo(
     () =>
       getToolInputDisplayRenderTypeList({
@@ -63,11 +71,25 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
   const onChangeRenderType = useCallback(
     (e: string) => {
       const nextRenderType = e as FlowNodeInputTypeEnum;
-      const nextValue = isUserSelectOptions
-        ? nextRenderType === FlowNodeInputTypeEnum.reference
-          ? []
-          : USER_SELECT_DEFAULT_OPTIONS.map((item) => ({ ...item }))
-        : undefined;
+
+      const nextValue = (() => {
+        if (isUserSelectOptions) {
+          return nextRenderType === FlowNodeInputTypeEnum.reference
+            ? []
+            : USER_SELECT_DEFAULT_OPTIONS.map((item) => ({ ...item }));
+        }
+        if (isCollectionFilter && !isLegacyTagFilter) {
+          return nextRenderType === FlowNodeInputTypeEnum.reference
+            ? []
+            : {
+                ...(isDatasetTagFilterValue(input.value)
+                  ? input.value
+                  : createEmptyTagFilterValue()),
+                open: true
+              };
+        }
+        return undefined;
+      })();
 
       const nextInput = {
         ...input,
@@ -116,7 +138,16 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         });
       }
     },
-    [displayRenderTypeList, input, isUserSelectOptions, nodeId, onChangeNode, setEdges]
+    [
+      displayRenderTypeList,
+      input,
+      isCollectionFilter,
+      isLegacyTagFilter,
+      isUserSelectOptions,
+      nodeId,
+      onChangeNode,
+      setEdges
+    ]
   );
 
   return (
@@ -128,13 +159,14 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         {descriptionText && <QuestionTip ml={1} label={descriptionText}></QuestionTip>}
       </Flex>
       {/* value type */}
-      {!isUserSelectOptions &&
+      {!isTagFilterClosed &&
+        !isUserSelectOptions &&
         [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(
           renderType
         ) && <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />}
 
       {/* input type select */}
-      {displayRenderTypeList && displayRenderTypeList.length > 1 && (
+      {!isTagFilterClosed && displayRenderTypeList && displayRenderTypeList.length > 1 && (
         <Box ml={2} className="nodrag">
           <NodeInputSelect
             renderTypeList={displayRenderTypeList}
@@ -181,8 +213,8 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
       {/* Right Component */}
       {!input.deprecated && RightComponent && (
         <>
-          {!shouldRenderRightInline && <Box flex={'1'} />}
-          {shouldRenderRightInline ? <Box ml={2}>{RightComponent}</Box> : RightComponent}
+          <Box flex={'1'} />
+          {RightComponent}
         </>
       )}
     </Box>

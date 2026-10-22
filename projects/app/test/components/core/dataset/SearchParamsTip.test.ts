@@ -82,7 +82,7 @@ describe('SearchParamsTip', () => {
     expect(render('active')).toContain('common:model_loading_label');
     expect(render('active')).not.toContain('data-spinner');
     expect(render('active')).not.toContain('该模型已下架');
-    expect(render('active', false)).toContain('❌');
+    expect(render('active', false)).toContain('common:core.app.whisper.Close');
   });
   it('shows request failure without claiming the model was deleted', () => {
     mocks.error = true;
