@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createSseStreamContext } from '@fastgpt/service/common/response/sse';
@@ -38,5 +39,46 @@ describe('SSE stream resume cleanup', () => {
     expect(mirror.shrinkTTLAfterComplete).toHaveBeenCalledOnce();
     expect(errorLog).toHaveBeenCalledWith(expect.any(String), { error });
     context.cleanup();
+  });
+});
+
+describe('SSE stream heartbeat after client disconnect', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('keeps the resume mirror active after close until the owner cleans up', () => {
+    vi.useFakeTimers();
+    const response = Object.assign(new EventEmitter(), {
+      closed: false,
+      destroyed: false,
+      writableEnded: false,
+      headersSent: true,
+      write: vi.fn()
+    });
+    const enqueueRaw = vi.fn();
+    const context = createSseStreamContext({
+      res: response as any,
+      keepHeartbeatAfterClose: true,
+      heartbeat: {
+        intervalMs: 1000,
+        write: (writer) => writer({ event: 'ping', data: '' })
+      },
+      streamResumeMirror: { enqueueRaw }
+    });
+
+    response.closed = true;
+    response.destroyed = true;
+    response.emit('close');
+    vi.advanceTimersByTime(1000);
+
+    expect(enqueueRaw).toHaveBeenCalledWith('event: ping\ndata: \n\n');
+    expect(response.write).not.toHaveBeenCalled();
+
+    context.cleanup();
+    enqueueRaw.mockClear();
+    vi.advanceTimersByTime(1000);
+
+    expect(enqueueRaw).not.toHaveBeenCalled();
   });
 });

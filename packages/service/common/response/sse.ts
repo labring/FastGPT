@@ -16,6 +16,8 @@ type CreateSseStreamContextParams = {
   res?: NodeHttpResponse;
   stream?: boolean;
   streamResumeMirror?: SseStreamResumeMirror;
+  /** 客户端断开后继续维护恢复镜像，直到生成任务所属调用方显式清理。 */
+  keepHeartbeatAfterClose?: boolean;
   heartbeat?: {
     intervalMs?: number;
     write: (writer: SseStreamWriter) => void;
@@ -37,6 +39,7 @@ export const createSseStreamContext = ({
   res,
   stream = true,
   streamResumeMirror,
+  keepHeartbeatAfterClose = false,
   heartbeat,
   onCleanup,
   onError
@@ -94,9 +97,11 @@ export const createSseStreamContext = ({
   };
 
   res.once('finish', cleanup);
-  res.once('close', cleanup);
+  res.once('close', () => {
+    if (!keepHeartbeatAfterClose) cleanup();
+  });
   res.on('error', () => {
-    cleanup();
+    if (!keepHeartbeatAfterClose) cleanup();
     onError?.();
     res.end();
   });

@@ -27,6 +27,7 @@ export type AuxiliaryGenerationStreamContext = {
   writeError: (error: unknown) => void;
   writeDone: () => void;
   flushResume: () => Promise<void>;
+  cleanup: () => void;
 };
 
 /**
@@ -54,6 +55,7 @@ export const createAuxiliaryGenerationStream = async ({
   const sseContext = createSseStreamContext({
     res,
     streamResumeMirror: mirror,
+    keepHeartbeatAfterClose: true,
     heartbeat: {
       write: (writer) => {
         writer({
@@ -96,6 +98,7 @@ export const createAuxiliaryGenerationStream = async ({
     },
     async flushResume() {
       await sseContext.flushResume();
-    }
+    },
+    cleanup: sseContext.cleanup
   };
 };

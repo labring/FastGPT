@@ -2,11 +2,88 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   agentForm2AppWorkflow,
-  appWorkflow2AgentForm
+  appWorkflow2AgentForm,
+  loadGeneratedTools
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
+import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+
+vi.mock('@/web/core/app/api/tool', () => ({ getNewToolPreviewNode: vi.fn() }));
+
+describe('loadGeneratedTools', () => {
+  const toolId = 'systemTool-shared';
+  const createTool = (source?: string): SelectedToolItemType => ({
+    id: toolId,
+    pluginId: toolId,
+    source,
+    name: 'Shared tool',
+    flowNodeType: FlowNodeTypeEnum.tool,
+    inputs: [],
+    outputs: []
+  });
+
+  beforeEach(() => {
+    vi.mocked(getNewToolPreviewNode).mockReset();
+    vi.mocked(getNewToolPreviewNode).mockImplementation(async ({ source }) => createTool(source));
+  });
+
+  it('loads team tools from their own source without reusing a same-ID system tool', async () => {
+    const systemTool = createTool('system');
+    const teamSource = 'teamId:team-1';
+    const result = await loadGeneratedTools({
+      newToolIds: [
+        { id: toolId, source: 'system' },
+        { id: toolId, source: teamSource }
+      ],
+      existsTools: [systemTool]
+    });
+
+    expect(result[0]).toBe(systemTool);
+    expect(result[1]).toMatchObject({ id: toolId, source: teamSource });
+    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
+      appId: toolId,
+      source: teamSource
+    });
+    const form = getDefaultAppForm();
+    form.selectedTools = result;
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const savedTools = workflow.nodes
+      .find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+    expect(savedTools).toEqual([
+      expect.objectContaining({ id: toolId, source: 'system' }),
+      expect.objectContaining({ id: toolId, source: teamSource })
+    ]);
+  });
+
+  it('continues loading legacy string tool references', async () => {
+    const result = await loadGeneratedTools({ newToolIds: [toolId] });
+
+    expect(result).toEqual([expect.objectContaining({ id: toolId })]);
+    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
+      appId: toolId,
+      source: undefined
+    });
+  });
+
+  it.each([undefined, 'system'])(
+    'preserves existing system configuration when the saved source is %s',
+    async (source) => {
+      const tool = createTool(source);
+      const result = await loadGeneratedTools({
+        newToolIds: [{ id: toolId, source: 'system' }],
+        existsTools: [tool]
+      });
+
+      expect(result).toEqual([tool]);
+      expect(result[0]).toBe(tool);
+      expect(getNewToolPreviewNode).not.toHaveBeenCalled();
+    }
+  );
+});
 
 const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }) => {
   const form = getDefaultAppForm();
@@ -209,7 +286,7 @@ describe('agentForm2AppWorkflow model reference', () => {
         inputs: [],
         metadataLocale: 'en',
         outputs: []
-      },
+      }
     ];
 
     const workflow = agentForm2AppWorkflow(form, (key: string) => key);
