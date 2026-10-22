@@ -26,7 +26,7 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
-import MyBox from '@fastgpt/web/components/common/MyBox';
+import ResourceListCard from '@/pageComponents/dashboard/ResourceListCard';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -188,60 +188,25 @@ function List() {
     );
 
     return (
-      <MyBox
+      <ResourceListCard
         key={dataset._id}
-        data-virtual-item=""
-        display={'flex'}
-        flexDirection={'column'}
         lineHeight={1.5}
         h="100%"
         pt={5}
         pb={3}
         px={5}
-        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         borderWidth={1.5}
         border={'base'}
-        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : undefined}
         boxShadow={'2'}
-        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
         borderRadius={'lg'}
-        position={'relative'}
         minH={'150px'}
-        {...(!isBatchMode &&
-          getBoxProps({
-            dataId: dataset._id,
-            isFolder: dataset.type === DatasetTypeEnum.folder
-          }))}
-        _hover={
-          isBatchMode
-            ? {
-                borderColor: canBatchOperate
-                  ? isSelected
-                    ? 'primary.600'
-                    : 'primary.300'
-                  : 'myGray.200',
-                boxShadow: canBatchOperate ? '1.5' : undefined,
-                '& .time': {
-                  display: 'flex !important'
-                },
-                '& .more': {
-                  display: 'none !important'
-                }
-              }
-            : {
-                borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .delete': {
-                  display: 'block'
-                },
-                '& .more': {
-                  display: 'flex'
-                },
-                '& .time': {
-                  display: ['flex', 'none']
-                }
-              }
-        }
+        isBatchMode={isBatchMode}
+        isSelected={isSelected}
+        canSelect={canBatchOperate}
+        dragProps={getBoxProps({
+          dataId: dataset._id,
+          isFolder: dataset.type === DatasetTypeEnum.folder
+        })}
         onClick={() => {
           if (isBatchMode) {
             if (canBatchOperate) {
@@ -470,7 +435,7 @@ function List() {
               )}
           </HStack>
         </Flex>
-      </MyBox>
+      </ResourceListCard>
     );
   };
 
