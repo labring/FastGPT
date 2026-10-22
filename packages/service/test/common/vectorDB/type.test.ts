@@ -6,6 +6,8 @@ import type {
 } from '@fastgpt/service/common/vectorDB/type';
 import {
   InsertVectorControllerPropsSchema,
+  DelDatasetVectorCtrlPropsSchema,
+  DeleteVectorControllerPropsSchema,
   GetVectorDataByTimeResponseSchema
 } from '@fastgpt/service/common/vectorDB/type';
 
@@ -46,6 +48,18 @@ describe('vectorDB type schemas', () => {
       expect(res.data[0].teamId).toBe('t');
     }
   });
+
+  it.each([{ id: '1' }, { idList: ['1'] }])(
+    'requires dataset context for business deletion while keeping provider filters unchanged',
+    (scope) => {
+      const filter = { teamId: 't', ...scope };
+      expect(DelDatasetVectorCtrlPropsSchema.safeParse(filter).success).toBe(false);
+      expect(DeleteVectorControllerPropsSchema.safeParse(filter).success).toBe(true);
+      expect(DelDatasetVectorCtrlPropsSchema.safeParse({ ...filter, datasetId: 'a' }).success).toBe(
+        true
+      );
+    }
+  );
 
   it('TC-5.3 FullTextStore type exposes search + write/delete (compile-time contract)', () => {
     // 被测: FullTextStore / FullTextSearchProps / FullTextSearchItem / FullTextWriteProps  等级: 3-High

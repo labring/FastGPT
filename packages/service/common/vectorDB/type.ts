@@ -32,13 +32,13 @@ export const InsertVectorResponseSchema = z.object({
 });
 export type InsertVectorResponseType = z.infer<typeof InsertVectorResponseSchema>;
 
-// Delete vector props schema (union type for different delete scenarios)
+/** 业务删除入参：按 id 或 idList 删除时，必须提供知识库统计上下文。 */
 export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     id: z.string(),
-    // 仅用于删除后的统计通知，不参与删除范围，调用方已有上下文时补齐。
-    datasetId: z.string().optional(),
+    // 仅用于删除后的知识库统计，不参与删除范围。
+    datasetId: z.string(),
     retry: z.number().optional()
   }),
   z.object({
@@ -50,11 +50,19 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     idList: z.array(z.string()),
-    datasetId: z.string().optional(),
+    datasetId: z.string(),
     retry: z.number().optional()
   })
 ]);
 export type DelDatasetVectorCtrlPropsType = z.infer<typeof DelDatasetVectorCtrlPropsSchema>;
+
+/** 向量适配器只接收物理删除参数，统计用的单库上下文由业务层剥离。 */
+export const DeleteVectorControllerPropsSchema = z.union([
+  DelDatasetVectorCtrlPropsSchema.options[0].omit({ datasetId: true }),
+  DelDatasetVectorCtrlPropsSchema.options[1],
+  DelDatasetVectorCtrlPropsSchema.options[2].omit({ datasetId: true })
+]);
+export type DeleteVectorControllerPropsType = z.infer<typeof DeleteVectorControllerPropsSchema>;
 
 /** 刷新待替换向量的清理扫描时间；已不存在的向量无需补建。 */
 export const RefreshVectorCreateTimePropsSchema = z.object({
@@ -114,7 +122,7 @@ export interface VectorControllerType {
   /**
    * Delete vectors from the database
    */
-  delete(props: DelDatasetVectorCtrlPropsType): Promise<void>;
+  delete(props: DeleteVectorControllerPropsType): Promise<void>;
 
   /** 保留原向量内容，只刷新 createTime，使替换后的孤儿向量能重新进入 cron 扫描窗口。 */
   refreshCreateTime(props: RefreshVectorCreateTimeProps): Promise<void>;

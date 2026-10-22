@@ -108,18 +108,27 @@ describe('VectorDB Controller', () => {
 
   describe('vector rows notifications', () => {
     it.each([
-      { props: { teamId: 't', datasetIds: ['a', 'b'] }, datasets: ['a', 'b'] },
-      { props: { teamId: 't', id: '1', datasetId: 'a' }, datasets: ['a'] },
-      { props: { teamId: 't', idList: ['1'], datasetId: 'a' }, datasets: ['a'] },
-      { props: { teamId: 't', idList: ['1'] }, datasets: [] }
+      {
+        props: { teamId: 't', datasetIds: ['a', 'b'] },
+        datasets: ['a', 'b'],
+        filter: { teamId: 't', datasetIds: ['a', 'b'] }
+      },
+      {
+        props: { teamId: 't', id: '1', datasetId: 'a' },
+        datasets: ['a'],
+        filter: { teamId: 't', id: '1' }
+      },
+      {
+        props: { teamId: 't', idList: ['1'], datasetId: 'a' },
+        datasets: ['a'],
+        filter: { teamId: 't', idList: ['1'] }
+      }
     ])(
       'notifies the affected scopes without changing the provider deletion filter',
-      async ({ props, datasets }) => {
+      async ({ props, datasets, filter }) => {
         await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
         expect(onVectorRowsChanged).toHaveBeenCalledWith({ teamId: 't', datasetIds: datasets });
-        const expected = { ...props };
-        if ('datasetId' in expected) delete expected.datasetId;
-        expect(mockVectorDelete).toHaveBeenCalledWith(expected);
+        expect(mockVectorDelete).toHaveBeenCalledWith(filter);
         expect(mockVectorDelete.mock.invocationCallOrder[0]).toBeLessThan(
           onVectorRowsChanged.mock.invocationCallOrder[0]
         );
@@ -730,7 +739,7 @@ describe('VectorDB Controller', () => {
         id: 'vector_id_1'
       };
 
-      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+      await deleteDatasetDataVector({ ...props, datasetId: 'dataset_456', onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -764,7 +773,7 @@ describe('VectorDB Controller', () => {
         idList: ['id_1', 'id_2', 'id_3']
       };
 
-      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+      await deleteDatasetDataVector({ ...props, datasetId: 'dataset_456', onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -777,7 +786,11 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+      const result = await deleteDatasetDataVector({
+        ...props,
+        datasetId: 'dataset_456',
+        onVectorRowsChanged
+      });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -793,7 +806,11 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+      const result = await deleteDatasetDataVector({
+        ...props,
+        datasetId: 'dataset_456',
+        onVectorRowsChanged
+      });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -814,7 +831,11 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const resultPromise = deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+      const resultPromise = deleteDatasetDataVector({
+        ...props,
+        datasetId: 'dataset_456',
+        onVectorRowsChanged
+      });
 
       await vi.advanceTimersByTimeAsync(3000);
 
