@@ -968,10 +968,12 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'legacy-plan',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        submitted: false,
+        questions: [{ question: 'Need confirmation', options: [], answer: '' }]
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1115,10 +1117,12 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask_1',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        submitted: false,
+        questions: [{ question: 'Need confirmation', options: [], answer: '' }]
       }
     };
     props.histories[props.histories.length - 1].memories = {

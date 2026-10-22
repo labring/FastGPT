@@ -223,19 +223,6 @@ describe('getChatItems', () => {
                 params: '{}',
                 planId: 'legacy-plan'
               }
-            },
-            {
-              interactive: {
-                type: 'agentPlanAskQuery',
-                planId: 'legacy-plan',
-                entryNodeIds: ['agent_node'],
-                memoryEdges: [],
-                nodeOutputs: [],
-                params: {
-                  content: 'Which option?',
-                  options: ['A', 'B', 'C']
-                }
-              }
             }
           ]
         },
@@ -268,8 +255,6 @@ describe('getChatItems', () => {
 
       expect(aiValue[0].agentAsk).toMatchObject({ askId: 'legacy-plan' });
       expect(aiValue[0].agentAsk).not.toHaveProperty('planId');
-      expect(aiValue[1].interactive).toMatchObject({ askId: 'legacy-plan' });
-      expect(aiValue[1].interactive).not.toHaveProperty('planId');
       expect(humanValue).toMatchObject({ askId: 'legacy-plan' });
       expect(humanValue).not.toHaveProperty('planId');
       expect(() => AIChatItemSchema.parse(result.histories[0])).not.toThrow();

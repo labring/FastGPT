@@ -96,26 +96,6 @@ export async function getChatItems({
       delete value.planId;
     };
 
-    const normalizeInteractiveAsk = (interactive: unknown) => {
-      let current = isObjectRecord(interactive) ? interactive : undefined;
-      let depth = 0;
-
-      while (current && depth < 100) {
-        const params = isObjectRecord(current.params) ? current.params : undefined;
-        const childrenResponse = isObjectRecord(params?.childrenResponse)
-          ? params.childrenResponse
-          : undefined;
-        if (!childrenResponse) break;
-
-        current = childrenResponse;
-        depth++;
-      }
-
-      if (current?.type === 'agentPlanAskQuery') {
-        normalizeLegacyAskId(current);
-      }
-    };
-
     histories.forEach((item) => {
       if (!item.value) return;
 
@@ -128,7 +108,6 @@ export async function getChatItems({
 
       item.value.forEach((value) => {
         normalizeLegacyAskId(value.agentAsk);
-        normalizeInteractiveAsk(value.interactive);
 
         if (!value.plan) return;
 

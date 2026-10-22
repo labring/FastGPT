@@ -315,10 +315,7 @@ const areSameInteractive = (
   if (finalA.type !== finalB.type) return false;
 
   // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
-  if (
-    (finalA.type === 'agentAsk' || finalA.type === 'agentPlanAskQuery') &&
-    (finalB.type === 'agentAsk' || finalB.type === 'agentPlanAskQuery')
-  ) {
+  if (finalA.type === 'agentAsk' && finalB.type === 'agentAsk') {
     return finalA.askId === finalB.askId;
   }
   if (finalA.type === 'workflowBuilderPreview' && finalB.type === 'workflowBuilderPreview') {

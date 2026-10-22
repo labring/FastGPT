@@ -636,12 +636,22 @@ describe('getHistories', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'ask_1',
               params: {
-                content: 'Choose one',
-                options: ['A', 'B', 'C'],
-                answer: 'A'
+                description: '',
+                submitted: true,
+                questions: [
+                  {
+                    question: 'Choose one',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' },
+                      { summary: 'C', value: 'C' }
+                    ],
+                    answer: 'A'
+                  }
+                ]
               }
             }
           }

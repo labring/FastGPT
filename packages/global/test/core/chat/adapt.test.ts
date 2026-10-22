@@ -1856,18 +1856,29 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
-  it('should handle interactive agentPlanAskQuery', () => {
+  it('should handle interactive agentAsk', () => {
     const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask',
               params: {
-                content: 'What would you like to know?',
-                options: ['Use repo', 'Use docs', 'Use defaults']
+                description: '',
+                submitted: false,
+                questions: [
+                  {
+                    question: 'What would you like to know?',
+                    options: [
+                      { summary: 'Use repo', value: 'Use repo' },
+                      { summary: 'Use docs', value: 'Use docs' },
+                      { summary: 'Use defaults', value: 'Use defaults' }
+                    ],
+                    answer: ''
+                  }
+                ]
               }
             }
           } as any
@@ -2367,11 +2378,12 @@ describe('chats2GPTMessages', () => {
           },
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask',
               params: {
-                content: 'Need confirmation?',
-                answer: 'Confirmed.'
+                description: '',
+                submitted: true,
+                questions: [{ question: 'Need confirmation?', options: [], answer: 'Confirmed.' }]
               }
             }
           }
@@ -2400,7 +2412,7 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask',
-        content: 'Confirmed.'
+        content: '## Need confirmation?\n\n回答：Confirmed.'
       }
     ]);
   });
@@ -2430,11 +2442,12 @@ describe('chats2GPTMessages', () => {
                   params: {
                     childrenId: 'child_1',
                     childrenResponse: {
-                      type: 'agentPlanAskQuery',
+                      type: 'agentAsk',
                       askId: 'call_nested_ask',
                       params: {
-                        content: 'Choose one',
-                        answer: 'Choice A'
+                        description: '',
+                        submitted: true,
+                        questions: [{ question: 'Choose one', options: [], answer: 'Choice A' }]
                       }
                     }
                   }
@@ -2469,7 +2482,7 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_nested_ask',
-        content: 'Choice A'
+        content: '## Choose one\n\n回答：Choice A'
       }
     ]);
   });
@@ -2497,11 +2510,12 @@ describe('chats2GPTMessages', () => {
           },
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask_1',
               params: {
-                content: 'First question?',
-                answer: 'First answer.'
+                description: '',
+                submitted: true,
+                questions: [{ question: 'First question?', options: [], answer: 'First answer.' }]
               }
             }
           },
@@ -2515,11 +2529,12 @@ describe('chats2GPTMessages', () => {
           },
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask_2',
               params: {
-                content: 'Second question?',
-                answer: 'Second answer.'
+                description: '',
+                submitted: true,
+                questions: [{ question: 'Second question?', options: [], answer: 'Second answer.' }]
               }
             }
           }
@@ -2546,7 +2561,7 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask_1',
-        content: 'First answer.'
+        content: '## First question?\n\n回答：First answer.'
       },
       {
         dataId: undefined,
@@ -2566,7 +2581,7 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
         tool_call_id: 'call_ask_2',
-        content: 'Second answer.'
+        content: '## Second question?\n\n回答：Second answer.'
       }
     ]);
   });
@@ -3602,11 +3617,22 @@ describe('GPTMessages2Chats', () => {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: '',
         interactive: {
-          type: 'agentPlanAskQuery',
+          type: 'agentAsk',
           askId: 'call_ask',
           params: {
-            content: 'What would you like to know?',
-            options: ['Use repo', 'Use docs', 'Use defaults']
+            description: '',
+            submitted: false,
+            questions: [
+              {
+                question: 'What would you like to know?',
+                options: [
+                  { summary: 'Use repo', value: 'Use repo' },
+                  { summary: 'Use docs', value: 'Use docs' },
+                  { summary: 'Use defaults', value: 'Use defaults' }
+                ],
+                answer: ''
+              }
+            ]
           }
         } as any
       }
@@ -3617,7 +3643,7 @@ describe('GPTMessages2Chats', () => {
     expect(result).toHaveLength(1);
     const interactiveValue = result[0].value[0] as any;
     expect(interactiveValue.interactive).toBeDefined();
-    expect(interactiveValue.interactive?.type).toBe('agentPlanAskQuery');
+    expect(interactiveValue.interactive?.type).toBe('agentAsk');
   });
 
   it('should preserve hideInUI property', () => {

@@ -42,13 +42,6 @@ export const getUserChatInteractiveReply = ({
       })
     };
   }
-  if (finalInteractive.type === 'agentPlanAskQuery') {
-    return {
-      type: 'agentAsk',
-      interactionId: finalInteractive.askId,
-      questions: [{ question: finalInteractive.params.content, answer: text }]
-    };
-  }
   if (finalInteractive.type === 'workflowBuilderPreview') {
     return {
       type: 'workflowBuilderPreview',
@@ -410,11 +403,7 @@ export const checkInteractiveResponseStatus = ({
   input: string;
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (
-    finalInteractive.type === 'agentPlanAskQuery' ||
-    finalInteractive.type === 'workflowBuilderPreview' ||
-    finalInteractive.type === 'agentAsk'
-  ) {
+  if (finalInteractive.type === 'workflowBuilderPreview' || finalInteractive.type === 'agentAsk') {
     return 'query';
   }
   return 'submit';

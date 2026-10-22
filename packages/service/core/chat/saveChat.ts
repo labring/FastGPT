@@ -795,24 +795,18 @@ export const updateInteractiveChat = async ({
       userContent.value[0] = { ...userContent.value[0], interactiveReply };
     }
 
-    if (finalInteractive.type === 'agentPlanAskQuery' || finalInteractive.type === 'agentAsk') {
+    if (finalInteractive.type === 'agentAsk') {
       if (!finalInteractive.askId) {
         throw new Error(`Agent ask interactive askId is required: ${chatId}`);
       }
-      if (finalInteractive.type === 'agentPlanAskQuery') {
-        // Legacy ask_user
-        finalInteractive.params.answer = userInteractiveVal;
-      } else {
-        // New (multiple questions)
-        const answers = parseAgentAskAnswers(userInteractiveVal);
-        finalInteractive.params.questions = finalInteractive.params.questions.map(
-          (question, index) => ({
-            ...question,
-            answer: answers[index] ?? question.answer
-          })
-        );
-        finalInteractive.params.submitted = true;
-      }
+      const answers = parseAgentAskAnswers(userInteractiveVal);
+      finalInteractive.params.questions = finalInteractive.params.questions.map(
+        (question, index) => ({
+          ...question,
+          answer: answers[index] ?? question.answer
+        })
+      );
+      finalInteractive.params.submitted = true;
 
       // Ask 的答案由 tool response 恢复，标记用户内容以避免重复进入普通对话上下文。
       userContent.value.forEach((item) => {
@@ -843,9 +837,8 @@ export const updateInteractiveChat = async ({
         );
       }
       return (
-        (previousInteractive.type === 'agentAsk' ||
-          previousInteractive.type === 'agentPlanAskQuery') &&
-        (finalInteractive.type === 'agentAsk' || finalInteractive.type === 'agentPlanAskQuery') &&
+        previousInteractive.type === 'agentAsk' &&
+        finalInteractive.type === 'agentAsk' &&
         previousInteractive.askId === finalInteractive.askId
       );
     });

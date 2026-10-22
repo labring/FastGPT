@@ -155,26 +155,4 @@ describe('getAIChatDisplayGroups', () => {
       ]);
     }
   );
-
-  it('hides both answered and pending legacy ask records', () => {
-    const legacy = {
-      interactive: {
-        type: 'agentPlanAskQuery',
-        ...runtime,
-        askId: 'legacy-1',
-        params: { content: 'Choose?', options: ['A', 'B'], answer: 'B' }
-      }
-    } satisfies AIChatItemValueItemType;
-    expect(getGroups([legacy])).toEqual([]);
-    expect(
-      getGroups([
-        {
-          interactive: {
-            ...legacy.interactive,
-            params: { content: 'Choose?', options: ['A', 'B'] }
-          }
-        }
-      ])
-    ).toEqual([]);
-  });
 });

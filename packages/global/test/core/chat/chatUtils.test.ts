@@ -92,22 +92,7 @@ describe('getUserChatInteractiveReply', () => {
     }
   });
 
-  it('supports legacy single-question replies and leaves unrelated interactions alone', () => {
-    expect(
-      getUserChatInteractiveReply({
-        interactive: {
-          type: 'agentPlanAskQuery',
-          ...runtime,
-          askId: 'legacy-1',
-          params: { content: '选择？', options: ['A', 'B'] }
-        },
-        text: 'B'
-      })
-    ).toEqual({
-      type: 'agentAsk',
-      interactionId: 'legacy-1',
-      questions: [{ question: '选择？', answer: 'B' }]
-    });
+  it('leaves unrelated interactions alone', () => {
     expect(
       getUserChatInteractiveReply({
         interactive: {
@@ -768,22 +753,6 @@ describe('checkInteractiveResponseStatus', () => {
     }
   });
 
-  it('should keep legacy agentPlanAskQuery as a query', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: {
-        type: 'agentPlanAskQuery',
-        askId: 'call_ask',
-        params: {
-          content: 'What do you want?',
-          options: ['Use repo', 'Use docs', 'Use defaults']
-        }
-      },
-      input: 'any input'
-    });
-
-    expect(result).toBe('query');
-  });
-
   it('should always create a query round for agentAsk answers', () => {
     const interactive = {
       type: 'agentAsk' as const,
@@ -828,11 +797,22 @@ describe('checkInteractiveResponseStatus', () => {
             params: {
               childrenId: 'child_1',
               childrenResponse: {
-                type: 'agentPlanAskQuery',
+                type: 'agentAsk',
                 askId: 'ask_1',
                 params: {
-                  content: 'Choose one',
-                  options: ['A', 'B', 'C']
+                  description: '',
+                  submitted: false,
+                  questions: [
+                    {
+                      question: 'Choose one',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' },
+                        { summary: 'C', value: 'C' }
+                      ],
+                      answer: ''
+                    }
+                  ]
                 }
               }
             }

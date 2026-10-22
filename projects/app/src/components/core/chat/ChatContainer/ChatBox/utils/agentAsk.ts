@@ -28,11 +28,7 @@ export const getAIChatDisplayGroups = ({
     if (value.hideInUI || !value.interactive) return false;
 
     const interactive = extractDeepestInteractive(value.interactive);
-    return (
-      interactive.type === 'agentAsk' ||
-      interactive.type === 'agentPlanAskQuery' ||
-      interactive.type === 'workflowBuilderPreview'
-    );
+    return interactive.type === 'agentAsk' || interactive.type === 'workflowBuilderPreview';
   };
 
   const groups: AIChatDisplayGroup[] = [];

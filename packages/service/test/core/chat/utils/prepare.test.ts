@@ -432,7 +432,7 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
   });
 
-  it('should treat agentPlanAskQuery interactive as a new round', async () => {
+  it('should treat agentAsk interactive as a new round', async () => {
     const params = createPreChatRoundParams(
       {
         responseChatItemId: 'agent-plan-query-data-id'
@@ -443,11 +443,22 @@ describe('prepare chat round', () => {
     const result = await preChatRound({
       ...params,
       interactive: {
-        type: 'agentPlanAskQuery',
+        type: 'agentAsk',
         askId: 'call_ask',
         params: {
-          content: 'Need more input',
-          options: ['Use repo', 'Use docs', 'Use defaults']
+          description: '',
+          submitted: false,
+          questions: [
+            {
+              question: 'Need more input',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ],
+              answer: ''
+            }
+          ]
         }
       } as any
     });
@@ -457,7 +468,7 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
   });
 
-  it('should treat an agentPlanAskQuery nested in a child tool as a new round', async () => {
+  it('should treat an agentAsk nested in a child tool as a new round', async () => {
     const params = createPreChatRoundParams(
       {
         responseChatItemId: 'nested-agent-query-data-id'
@@ -474,11 +485,22 @@ describe('prepare chat round', () => {
             toolCallId: 'tool_1'
           },
           childrenResponse: {
-            type: 'agentPlanAskQuery',
+            type: 'agentAsk',
             askId: 'call_ask',
             params: {
-              content: 'Need more input',
-              options: ['Use repo', 'Use docs', 'Use defaults']
+              description: '',
+              submitted: false,
+              questions: [
+                {
+                  question: 'Need more input',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ],
+                  answer: ''
+                }
+              ]
             }
           }
         }

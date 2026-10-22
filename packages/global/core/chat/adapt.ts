@@ -391,12 +391,7 @@ export const chats2GPTMessages = ({
           ? extractDeepestInteractive(value.interactive)
           : undefined;
 
-        // Legacy ask
-        if (finalInteractive?.type === 'agentPlanAskQuery' && finalInteractive.askId) {
-          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer || '未回答');
-        }
-
-        // New ask_user
+        // 将已提交的问答恢复为对应 ask_user 的工具结果。
         if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
           agentAskAnswerMap.set(
             finalInteractive.askId,

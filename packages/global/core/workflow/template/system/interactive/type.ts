@@ -115,42 +115,6 @@ export type LoopRunInteractive = InteractiveNodeType & {
   };
 };
 
-/**
- * 旧版单题 ask_user 的字符串选项，仅用于兼容历史数据，保持原有非空字符串约定。
- * @deprecated 新交互使用 AgentAskOptionSchema（summary/value），不再扩展此旧协议。
- */
-export const AgentPlanAskOptionSchema = z.string().min(1).meta({ deprecated: true });
-/** @deprecated 仅兼容旧版单题交互；新交互使用 AgentAskOption。 */
-export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
-
-/**
- * 旧版单题 ask_user 交互，仅用于兼容历史记录。
- *
- * @deprecated 新交互使用 AgentAskInteractiveSchema（多题问答），不再扩展此旧协议。
- */
-export const AgentPlanAskQueryInteractiveSchema = z
-  .object({
-    type: z.literal('agentPlanAskQuery'),
-    askId: z.string().min(1),
-    params: z.object({
-      content: z.string(),
-      reason: z.string().optional(),
-      blockerType: z
-        .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
-        .optional(),
-      options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
-      answer: z.string().optional()
-    })
-  })
-  .meta({
-    deprecated: true
-  });
-
-/**
- * @deprecated 仅兼容历史记录；新交互使用 AgentAskInteractive（多题问答）。
- */
-export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
-
 // User selector
 export const UserSelectOptionItemSchema = z.object({
   key: z.string(),
@@ -247,7 +211,6 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     LoopInteractiveSchema,
     LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
-    AgentPlanAskQueryInteractiveSchema,
     AgentAskInteractiveSchema,
     WorkflowBuilderPreviewInteractiveSchema
   ]),

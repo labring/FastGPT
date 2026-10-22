@@ -849,16 +849,27 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should adapt unanswered top-level agentPlanAskQuery to pending agentAsk', () => {
+  it('should return an unanswered top-level agentAsk', () => {
     const interactive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        content: 'What do you want?',
-        options: ['Use repo', 'Use docs', 'Use defaults']
+        description: '',
+        submitted: false,
+        questions: [
+          {
+            question: 'What do you want?',
+            options: [
+              { summary: 'Use repo', value: 'Use repo' },
+              { summary: 'Use docs', value: 'Use docs' },
+              { summary: 'Use defaults', value: 'Use defaults' }
+            ],
+            answer: ''
+          }
+        ]
       }
     } as WorkflowInteractiveResponseType;
 
@@ -888,45 +899,30 @@ describe('getLastInteractiveValue', () => {
     });
   });
 
-  it('should return undefined for answered agentPlanAskQuery', () => {
+  it('should return undefined for answered agentAsk', () => {
     const interactive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        content: 'What do you want?',
-        options: ['Use repo', 'Use docs', 'Use defaults'],
-        answer: 'Use the current repository.'
+        description: '',
+        submitted: true,
+        questions: [
+          {
+            question: 'What do you want?',
+            options: [
+              { summary: 'Use repo', value: 'Use repo' },
+              { summary: 'Use docs', value: 'Use docs' },
+              { summary: 'Use defaults', value: 'Use defaults' }
+            ],
+            answer: 'Use the current repository.'
+          }
+        ]
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
-  });
-
-  it('should ignore nested agentPlanAskQuery', () => {
-    const interactive = {
-      type: 'childrenInteractive',
-      params: {
-        childrenId: 'child_1',
-        childrenResponse: {
-          type: 'agentPlanAskQuery',
-          askId: 'call_ask',
-          params: {
-            content: 'What do you want?',
-            options: ['Use repo', 'Use docs']
-          }
-        }
-      }
-    } as unknown as WorkflowInteractiveResponseType;
     const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,

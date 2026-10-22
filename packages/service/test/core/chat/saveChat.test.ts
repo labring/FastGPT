@@ -1288,7 +1288,7 @@ describe('pushChatRecords', () => {
       ]);
     });
 
-    it('should require a prepared round for agentPlanAskQuery new records', async () => {
+    it('should require a prepared round for agentAsk new records', async () => {
       await MongoChatItem.create({
         chatId: 'test-chat-id',
         teamId: testTeamId,
@@ -1300,13 +1300,22 @@ describe('pushChatRecords', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask_agent',
               params: {
-                content: '请补充目标',
-                reason: '需要用户明确任务目标',
-                blockerType: 'missing_required_input',
-                options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
+                description: '需要用户明确任务目标',
+                submitted: false,
+                questions: [
+                  {
+                    question: '请补充目标',
+                    options: [
+                      { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                      { summary: '改为研究 Go', value: '改为研究 Go' },
+                      { summary: '先给出学习路线', value: '先给出学习路线' }
+                    ],
+                    answer: ''
+                  }
+                ]
               }
             }
           }
@@ -1328,17 +1337,26 @@ describe('pushChatRecords', () => {
       );
 
       const interactive = {
-        type: 'agentPlanAskQuery' as const,
+        type: 'agentAsk',
         askId: 'call_ask_agent',
-        params: {
-          content: '请补充目标',
-          reason: '需要用户明确任务目标',
-          blockerType: 'missing_required_input',
-          options: ['继续研究 Rust', '改为研究 Go', '先给出学习路线']
-        },
         entryNodeIds: [],
         memoryEdges: [],
-        nodeOutputs: []
+        nodeOutputs: [],
+        params: {
+          description: '需要用户明确任务目标',
+          submitted: false,
+          questions: [
+            {
+              question: '请补充目标',
+              options: [
+                { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                { summary: '改为研究 Go', value: '改为研究 Go' },
+                { summary: '先给出学习路线', value: '先给出学习路线' }
+              ],
+              answer: ''
+            }
+          ]
+        }
       };
 
       await expect(updateInteractiveChat({ interactive, ...props })).rejects.toThrow(
