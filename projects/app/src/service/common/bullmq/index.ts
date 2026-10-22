@@ -4,6 +4,7 @@ import { initDatasetDeleteWorker } from '@fastgpt/service/core/dataset/delete';
 import { initAppDeleteWorker } from '@fastgpt/service/core/app/delete';
 import { initTeamDeleteWorker } from '@fastgpt/service/support/user/team/delete';
 import { initCollectionUpdateWorker } from '@fastgpt/service/core/dataset/collection/mq';
+import { initVectorRowsUpdateWorker } from '@fastgpt/service/core/dataset/vectorData/service';
 import { initWechatPollWorker } from '@fastgpt/service/support/outLink/wechat/mq';
 import { initAgentSkillCreateWorker } from '@fastgpt/service/core/ai/skill/manage/creation';
 import { initAgentSkillDeleteWorker } from '@fastgpt/service/core/ai/skill/delete';
@@ -18,6 +19,7 @@ export const initBullMQWorkers = () => {
     initAppDeleteWorker(),
     initTeamDeleteWorker(),
     initCollectionUpdateWorker(),
+    initVectorRowsUpdateWorker(),
     initAgentSkillCreateWorker(),
     initAgentSkillDeleteWorker(),
     initWechatPollWorker()

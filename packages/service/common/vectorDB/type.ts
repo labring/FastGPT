@@ -31,6 +31,8 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     id: z.string(),
+    // 仅用于删除后的统计通知，不参与删除范围，调用方已有上下文时补齐。
+    datasetId: z.string().optional(),
     retry: z.number().optional()
   }),
   z.object({
@@ -42,6 +44,7 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     idList: z.array(z.string()),
+    datasetId: z.string().optional(),
     retry: z.number().optional()
   })
 ]);
