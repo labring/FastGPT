@@ -25,7 +25,8 @@ const { getVectorsMock, recallMock, rerankMock, previewMock } = vi.hoisted(() =>
 // 模型、向量引擎和对象存储无需外部凭据；过滤、Mongo 回查、融合和最终格式化保持真实。
 vi.mock('@fastgpt/service/core/ai/embedding', () => ({ getVectors: getVectorsMock }));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({
-  recallFromVectorStore: recallMock
+  recallFromVectorStore: recallMock,
+  getVectorCount: vi.fn(async () => 50)
 }));
 vi.mock('@fastgpt/service/core/ai/rerank', () => ({ reRankRecall: rerankMock }));
 vi.mock('@fastgpt/service/common/s3/accessLink', () => ({

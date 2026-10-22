@@ -135,5 +135,9 @@
   "migrations.20261025_token_prices_per_million.name": "시스템 모델 가격을 백만 단위로 마이그레이션",
   "migrations.20261025_token_prices_per_million.description": "시스템 모델을 한 번 읽고 pricing을 일괄 저장합니다. Token/TTS 단가는 1000배로 변환하고 STT 단가는 그대로 복사합니다. 기존 최상위 가격을 유지하며 유효한 pricing은 건너뜁니다. 팀 모델은 무료입니다. 백그라운드에서 실행되며 실패 시 데이터를 수정하고 재시도할 수 있습니다.",
   "migrations.20261025_token_prices_per_million.models": "시스템 모델 단가 업데이트",
-  "migrations.20261025_token_prices_per_million.result": "시스템 모델 {{migratedCount}}개의 가격을 pricing으로 이전했습니다. 기존 가격과 팀 모델은 변경하지 않았습니다."
+  "migrations.20261025_token_prices_per_million.result": "시스템 모델 {{migratedCount}}개의 가격을 pricing으로 이전했습니다. 기존 가격과 팀 모델은 변경하지 않았습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "데이터셋 벡터 인덱스 초기화",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "기존 데이터셋의 벡터 수를 백그라운드에서 집계하고 30,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약"
 }
