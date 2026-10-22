@@ -139,9 +139,11 @@ export const getVectorCountByTeamId = async (teamId: string) => {
   return count;
 };
 
-/** 后台队列直接发布本轮计数；持续增删不废弃结果，等待缓存写入返回后再完成任务。 */
-export const refreshTeamVectorCount = async (teamId: string) => {
+/** 发布本轮团队计数；超时取消后不再开始缓存回填，正常变更不废弃统计结果。 */
+export const refreshTeamVectorCount = async (teamId: string, signal?: AbortSignal) => {
+  signal?.throwIfAborted();
   const count = await Vector.getVectorCount({ teamId });
+  signal?.throwIfAborted();
   await teamVectorCountCache.set({ teamId, count });
   return count;
 };

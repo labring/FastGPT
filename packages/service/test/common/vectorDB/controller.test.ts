@@ -309,6 +309,18 @@ describe('VectorDB Controller', () => {
   });
 
   describe('refreshTeamVectorCount', () => {
+    it('does not fill the team cache with a count returned after cancellation', async () => {
+      const controller = new AbortController();
+      mockGetVectorCount.mockImplementationOnce(async () => {
+        controller.abort(new Error('execution timed out'));
+        return 100;
+      });
+      await expect(refreshTeamVectorCount('team_cancelled', controller.signal)).rejects.toThrow(
+        'execution timed out'
+      );
+      expect(mockRedisStringSet).not.toHaveBeenCalled();
+    });
+
     it('keeps cached reads available during mutations and publishes the completed count', async () => {
       mockRedisStringGet.mockResolvedValue('90');
       mockGetVectors.mockResolvedValue({ tokens: 1, vectors: [[0.1]] });

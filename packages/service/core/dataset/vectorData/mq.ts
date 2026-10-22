@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { bullMQ, type BullMQBinding } from '@fastgpt/dal/redis/bullmq/binding';
+import { DelayedError } from '@fastgpt/dal/redis/bullmq';
 import { QueueNames } from '@fastgpt/dal/redis/bullmq/names';
-import type { Processor } from '@fastgpt/dal/redis/bullmq/types';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { VectorRowsChangedCallback } from '../../../common/vectorDB/type';
@@ -14,11 +14,11 @@ const VectorRowsUpdateJobSchema = z.object({
 export type VectorRowsUpdateJobData = z.infer<typeof VectorRowsUpdateJobSchema>;
 
 const delay = 60_000;
+const maxRetryDelay = 60 * 60_000;
+const executionTimeout = 60_000;
 const retention = { age: 24 * 60 * 60, count: 1000 };
 const queueOptions = {
   defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential' as const, delay: 1000 },
     removeOnComplete: true,
     removeOnFail: retention
   }
@@ -59,29 +59,76 @@ export class VectorRowsUpdateMQService {
   }
 
   /**
-   * 全局并发设置成功后才启动消费者；每个进程的 concurrency=1 不能替代全局上限。
-   * 开始统计前仅释放本 job 持有的去重键，让处理期间的事件进入下一窗口。
+   * 每个节点只执行一个统计任务，启动前清除旧版本留下的全局并发上限。
+   * 每轮最多等待一分钟；失败后进入延迟队列，按 1、2、4……分钟无限重试，最多延迟一小时。
+   * signal 用于阻止超时后才返回的计数继续写回；底层查询仍由向量适配器的超时控制。
    */
-  async getWorker(processor: Processor<VectorRowsUpdateJobData>) {
+  async getWorker(
+    processor: (data: VectorRowsUpdateJobData, signal: AbortSignal) => Promise<void>
+  ) {
     const queue = this.getQueue();
-    await queue.setGlobalConcurrency(1);
+    await queue.removeGlobalConcurrency();
 
     return this.binding.getWorker<VectorRowsUpdateJobData>(
       QueueNames.vectorRowsUpdate,
       async (job, token) => {
         const data = VectorRowsUpdateJobSchema.parse(job.data);
-        const client = await queue.client;
-        // BullMQ 5.52 的 removeDeduplicationKey 无所有权检查，不能删除新窗口的标记。
-        await client.eval(
-          `if redis.call('GET', KEYS[1]) == ARGV[1] then
-             return redis.call('DEL', KEYS[1])
-           end
-           return 0`,
-          1,
-          queue.toKey(`de:${this.getDeduplicationId(data)}`),
-          job.id!
-        );
-        return processor(job, token);
+        const controller = new AbortController();
+        const deduplicationKey = queue.toKey(`de:${this.getDeduplicationId(data)}`);
+
+        /** 开始统计前释放自己的窗口；统计期间发生的变更可以创建下一窗口。 */
+        const run = async () => {
+          const client = await queue.client;
+          // BullMQ 5.52 的 removeDeduplicationKey 无所有权检查，不能删除新窗口的标记。
+          await client.eval(
+            `if redis.call('GET', KEYS[1]) == ARGV[1] then
+               return redis.call('DEL', KEYS[1])
+             end
+             return 0`,
+            1,
+            deduplicationKey,
+            job.id!
+          );
+          controller.signal.throwIfAborted();
+          await processor(data, controller.signal);
+        };
+
+        try {
+          await withTimeout(run(), executionTimeout, 'Vector rows update timed out');
+        } catch (error) {
+          controller.abort(error);
+          // Redis 持久化启动次数；先限制指数，避免长期重试时数值溢出。
+          const retryDelay = Math.min(
+            delay * 2 ** Math.min(job.attemptsStarted - 1, 6),
+            maxRetryDelay
+          );
+          // 已有下一窗口时由它接手；否则让事件合并到重试任务，避免故障期间堆积相同统计。
+          const client = await queue.client;
+          const claimed = await client.eval(
+            `local owner = redis.call('GET', KEYS[1])
+             if owner and owner ~= ARGV[1] then return 0 end
+             redis.call('SET', KEYS[1], ARGV[1])
+             return 1`,
+            1,
+            deduplicationKey,
+            job.id!
+          );
+          getLogger(LogCategories.INFRA.QUEUE).warn('Vector rows update failed', {
+            ...data,
+            jobId: job.id,
+            attempt: job.attemptsStarted,
+            retryDelay: claimed ? retryDelay : undefined,
+            coveredByPendingJob: !claimed,
+            error
+          });
+          if (!claimed) return;
+
+          // moveToDelayed 释放当前并发槽；DelayedError 告诉 Worker 该任务已自行转移状态。
+          await job.moveToDelayed(Date.now() + retryDelay, token);
+          throw new DelayedError();
+        } finally {
+          controller.abort();
+        }
       },
       { concurrency: 1, removeOnComplete: { count: 0 }, removeOnFail: retention }
     );
