@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
 import { SourceMemberSchema } from '../../../../../support/user/type';
-import { AuditEventEnum } from '../../../../../support/user/audit/constants';
+import { AuditEventEnum, TeamAuditEventList } from '../../../../../support/user/audit/constants';
 import { PaginationSchema } from '../../../../api';
 
 /* ============================================================================
@@ -21,7 +21,7 @@ export const AuditListBodySchema = PaginationSchema.extend({
       description: '按团队成员 ID 筛选'
     }),
   events: z
-    .array(z.enum(AuditEventEnum))
+    .array(z.enum(TeamAuditEventList))
     .optional()
     .meta({
       example: [AuditEventEnum.UPDATE_APP_INFO],
@@ -41,7 +41,7 @@ export const AuditListItemSchema = z
     sourceMember: SourceMemberSchema.meta({
       description: '发起操作的团队成员'
     }),
-    event: z.enum(AuditEventEnum).meta({
+    event: z.enum(TeamAuditEventList).meta({
       example: AuditEventEnum.UPDATE_APP_INFO,
       description: '操作事件类型'
     }),

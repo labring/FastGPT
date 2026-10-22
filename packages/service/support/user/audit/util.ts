@@ -8,8 +8,11 @@ import type {
   AdminAuditEventEnum,
   AuditEventEnum,
   AdminAuditEventParamsType,
-  AuditEventParamsType
+  AuditEventParamsType,
+  DatasetAuditEvent,
+  DatasetAuditEventParamsType
 } from '@fastgpt/global/support/user/audit/constants';
+import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -17,7 +20,7 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 export type AuditLogInput = {
   tmbId: string;
   teamId: string;
-  event: AuditEventEnum | AdminAuditEventEnum;
+  event: AuditEventEnum | AdminAuditEventEnum | DatasetAuditEvent;
   params?: Record<string, unknown>;
 };
 
@@ -94,7 +97,12 @@ export function addAuditLog<T extends AdminAuditEventEnum>(
   input: AddAuditLogInput<T, AdminAuditEventParamsType[T]>
 ): Promise<void>;
 
-export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>(
+/** 知识库事件：事件名取 DatasetAuditEventEnum 的点分 value，参数类型按 DatasetAuditEventParamsType 校验。 */
+export function addAuditLog<T extends DatasetAuditEventEnum>(
+  input: AddAuditLogInput<T, DatasetAuditEventParamsType[T]>
+): Promise<void>;
+
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum | DatasetAuditEvent>(
   input: AddAuditLogInput<T, any>
 ): Promise<void> {
   const { teamId, tmbId, scope, event, params } = input;

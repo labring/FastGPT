@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -25,6 +26,9 @@ import {
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { getTrainingAuditModelName } from '@fastgpt/service/core/dataset/training/audit';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -124,6 +128,28 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     tmbId,
     datasetId,
     billId: String(usageId)
+  });
+
+  // 审计在重建任务落库后写入；模型名查不到时退回模型 ID，不影响已提交的重建流程。
+  const [oldModelName, newModelName] = await Promise.all([
+    getTrainingAuditModelName({
+      teamId,
+      reference: getDatasetModelReference(dataset, 'embedding')
+    }),
+    getTrainingAuditModelName({
+      teamId,
+      reference: { modelId: vectorModelData.modelId, model: vectorModelData.model }
+    })
+  ]);
+  addAuditLog({
+    tmbId,
+    teamId,
+    event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
+    params: {
+      datasetName: dataset.name,
+      oldModelName,
+      newModelName
+    }
   });
 
   return RebuildEmbeddingResponseSchema.parse(undefined);

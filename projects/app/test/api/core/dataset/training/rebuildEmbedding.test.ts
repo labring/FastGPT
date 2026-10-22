@@ -15,11 +15,13 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { getRootUser } from '@test/datas/users';
 import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/core/ai/model/catalog/service');
+vi.unmock('@fastgpt/service/support/user/audit/util');
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let visionEmbeddingModel: EmbeddingModelDataType;
@@ -151,6 +153,25 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       })
     );
     expect(training?.indexes).toEqual([]);
+
+    // 审计在重建任务落库后异步写入，断言展示用的模型标识而非内部 ID。
+    await vi.waitFor(
+      async () => {
+        const logs = await MongoTeamAudit.find({
+          teamId: root.teamId,
+          event: 'dataset.index.rebuild'
+        }).lean();
+        expect(logs).toHaveLength(1);
+        expect(logs[0].metadata).toEqual(
+          expect.objectContaining({
+            datasetName: 'test dataset',
+            oldModelName: textOnlyEmbeddingModel.modelId,
+            newModelName: visionEmbeddingModel.modelId
+          })
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('should disable image index and enqueue rebuild mode when the new embedding model has no image capability', async () => {
