@@ -36,8 +36,15 @@ export const escapeCsvCell = (cell: string): string => {
   // Remove leading/trailing whitespace
   let content = cell.trim();
 
-  // If cell contains comma, double quote, or newline, wrap in quotes
-  if (content.includes(',') || content.includes('"') || content.includes('\n')) {
+  // If cell contains comma, double quote, or a line break, wrap in quotes.
+  // 换行必须同时覆盖单独的 \r：裸 CR 同样是 CSV 的记录分隔符（RFC 4180），
+  // 漏掉它会把一条记录拆成两条，后续行整体错位。
+  if (
+    content.includes(',') ||
+    content.includes('"') ||
+    content.includes('\n') ||
+    content.includes('\r')
+  ) {
     // Escape existing double quotes by doubling them
     content = content.replace(/"/g, '""');
     content = `"${content}"`;
@@ -174,7 +181,12 @@ export const parseTableToMarkdownString = (tableElement: HTMLTableElement): stri
   const grid = parseTableToGrid(tableElement);
   if (grid.length === 0) return '';
 
-  const formatCell = (val: string) => val.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|').trim();
+  // 折叠所有换行形态（CRLF / 裸 CR / LF）成空格；裸 CR 不折叠会把一行表格拆成两行。
+  const formatCell = (val: string) =>
+    val
+      .replace(/\r\n?|\n/g, ' ')
+      .replace(/\|/g, '\\|')
+      .trim();
 
   const headerRow = grid[0];
   const maxCols = headerRow.length;

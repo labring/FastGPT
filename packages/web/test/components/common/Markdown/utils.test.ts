@@ -171,4 +171,28 @@ describe('table export formats', () => {
       ['Name,Note', '"1,234","say ""hi"""', 'a|b,plain'].join('\n')
     );
   });
+
+  // 原生 HTML 表格里 `&#13;` 会解码成裸 CR，单元格正文因此可以包含 CR。
+  const tableWithBareCr = () =>
+    createTable(`
+      <table>
+        <thead><tr><th>Name</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>a&#13;b</td><td>x</td></tr>
+          <tr><td>c</td><td>y</td></tr>
+        </tbody>
+      </table>
+    `);
+
+  it('quotes CSV cells containing a bare carriage return', () => {
+    expect(parseTableToCSVString(tableWithBareCr())).toBe(
+      ['Name,Note', '"a\rb",x', 'c,y'].join('\n')
+    );
+  });
+
+  it('collapses a bare carriage return in markdown cells', () => {
+    expect(parseTableToMarkdownString(tableWithBareCr())).toBe(
+      ['| Name | Note |', '| --- | --- |', '| a b | x |', '| c | y |'].join('\n')
+    );
+  });
 });
