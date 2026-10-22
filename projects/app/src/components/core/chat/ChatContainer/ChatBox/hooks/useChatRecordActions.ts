@@ -7,7 +7,10 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { delChatRecordById, getChatRecords } from '@/web/core/chat/record/api';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
@@ -107,8 +110,8 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
                 if (!source) continue;
                 const final = extractDeepestInteractive(source);
                 if (
-                  (reply.type === 'agentAsk' &&
-                    final.type === 'agentAsk' &&
+                  (isAgentAskInteractive(reply) &&
+                    isAgentAskInteractive(final) &&
                     final.askId === reply.interactionId) ||
                   (reply.type === 'workflowBuilderPreview' &&
                     final.type === 'workflowBuilderPreview' &&

@@ -1,6 +1,7 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
+  isAgentAskInteractive,
   extractDeepestInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -23,7 +24,7 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted;
+  return isAgentAskInteractive(finalInteractive) && !finalInteractive.params.submitted;
 };
 
 /** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
@@ -112,7 +113,7 @@ export const persistAgentAskAnswersToHistories = ({
       };
     });
   }
-  if (sourceInteractive.type !== 'agentAsk') {
+  if (!isAgentAskInteractive(sourceInteractive)) {
     return histories;
   }
 
@@ -129,7 +130,7 @@ export const persistAgentAskAnswersToHistories = ({
 
       const finalInteractive = extractDeepestInteractive(val.interactive);
 
-      if (finalInteractive.type !== 'agentAsk' || finalInteractive.askId !== targetAskId) {
+      if (!isAgentAskInteractive(finalInteractive) || finalInteractive.askId !== targetAskId) {
         return val;
       }
       if (finalInteractive.params.submitted) {
@@ -299,7 +300,7 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted) {
+  } else if (isAgentAskInteractive(finalInteractive) && !finalInteractive.params.submitted) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
@@ -390,7 +391,9 @@ export const rewriteHistoriesByInteractiveResponse = ({
         value: item.value.map((value, index) => ({
           ...value,
           ...(index === 0 ? { interactiveReply } : {}),
-          ...(interactiveReply.type === 'agentAsk' ? { askId: interactiveReply.interactionId } : {})
+          ...(isAgentAskInteractive(interactiveReply)
+            ? { askId: interactiveReply.interactionId }
+            : {})
         }))
       };
     }

@@ -1,3 +1,4 @@
+import { isAgentAskInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -144,7 +145,7 @@ export const prepareChatRound = async (
       ...item,
       ...(item.file?.key ? { file: { ...item.file, url: '' } } : {}),
       // 只标记落库副本，运行中的原始回答仍要交给 Agent 处理。
-      ...(interactiveReply?.type === 'agentAsk' ? { askId: interactiveReply.interactionId } : {})
+      ...(isAgentAskInteractive(interactiveReply) ? { askId: interactiveReply.interactionId } : {})
     })),
     dataId: responseChatItemId,
     obj: ChatRoleEnum.Human

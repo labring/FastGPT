@@ -27,7 +27,10 @@ import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { MongoAppChatLog } from '../app/logs/chatLogsSchema';
 import { writePrimary } from '../../common/mongo/utils';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -795,7 +798,7 @@ export const updateInteractiveChat = async ({
       userContent.value[0] = { ...userContent.value[0], interactiveReply };
     }
 
-    if (finalInteractive.type === 'agentAsk') {
+    if (isAgentAskInteractive(finalInteractive)) {
       if (!finalInteractive.askId) {
         throw new Error(`Agent ask interactive askId is required: ${chatId}`);
       }
@@ -837,8 +840,8 @@ export const updateInteractiveChat = async ({
         );
       }
       return (
-        previousInteractive.type === 'agentAsk' &&
-        finalInteractive.type === 'agentAsk' &&
+        isAgentAskInteractive(previousInteractive) &&
+        isAgentAskInteractive(finalInteractive) &&
         previousInteractive.askId === finalInteractive.askId
       );
     });

@@ -29,7 +29,10 @@ import {
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview
 } from './utils/interactive';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -810,7 +813,7 @@ const ChatBox = ({
                         workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                       />
                     </Box>
-                    {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                    {isAgentAskPending && isAgentAskInteractive(activeInteractive) && (
                       <Box
                         w={'100%'}
                         maxW={inputBodyProps?.maxW ?? ['100%', '780px']}

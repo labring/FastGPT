@@ -19,6 +19,14 @@ import { isValidReferenceValueFormat } from '../../../common/workflow/reference'
 import { isSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
+/**
+ * 统一判断 Agent Ask 类型，供运行时交互及用户问答快照共用，并保留调用方的具体类型。
+ * 只判断当前层标记；嵌套工作流交互需先通过 extractDeepestInteractive 提取。
+ */
+export const isAgentAskInteractive = <T extends { type: string }>(
+  interactive: T | null | undefined
+): interactive is T & { type: 'agentAsk' } => interactive?.type === 'agentAsk';
+
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
@@ -189,7 +197,7 @@ export const getLastInteractiveValue = (
       return lastValue.interactive;
     }
 
-    if (lastValue.interactive.type === 'agentAsk' && !lastValue.interactive.params.submitted) {
+    if (isAgentAskInteractive(lastValue.interactive) && !lastValue.interactive.params.submitted) {
       return lastValue.interactive;
     }
 

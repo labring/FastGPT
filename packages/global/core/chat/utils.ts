@@ -12,7 +12,7 @@ import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
-import { extractDeepestInteractive } from '../workflow/runtime/utils';
+import { isAgentAskInteractive, extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
 import { parseAgentAskAnswers } from '../ai/agent/utils';
 
@@ -28,7 +28,7 @@ export const getUserChatInteractiveReply = ({
   text: string;
 }): UserChatInteractiveReplyType | undefined => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (finalInteractive.type === 'agentAsk') {
+  if (isAgentAskInteractive(finalInteractive)) {
     const answers = parseAgentAskAnswers(text);
     return {
       type: 'agentAsk',
@@ -403,7 +403,10 @@ export const checkInteractiveResponseStatus = ({
   input: string;
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (finalInteractive.type === 'workflowBuilderPreview' || finalInteractive.type === 'agentAsk') {
+  if (
+    finalInteractive.type === 'workflowBuilderPreview' ||
+    isAgentAskInteractive(finalInteractive)
+  ) {
     return 'query';
   }
   return 'submit';

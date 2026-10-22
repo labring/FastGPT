@@ -9,7 +9,10 @@ import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
 
@@ -315,7 +318,7 @@ const areSameInteractive = (
   if (finalA.type !== finalB.type) return false;
 
   // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
-  if (finalA.type === 'agentAsk' && finalB.type === 'agentAsk') {
+  if (isAgentAskInteractive(finalA) && isAgentAskInteractive(finalB)) {
     return finalA.askId === finalB.askId;
   }
   if (finalA.type === 'workflowBuilderPreview' && finalB.type === 'workflowBuilderPreview') {
@@ -337,7 +340,7 @@ const areSameInteractive = (
 const isSubmittedInteractive = (interactive: WorkflowInteractiveResponseType) => {
   if (interactive.type === 'workflowBuilderPreview') return !!interactive.params.answerValue;
   return (
-    (interactive.type === 'userInput' || interactive.type === 'agentAsk') &&
+    (interactive.type === 'userInput' || isAgentAskInteractive(interactive)) &&
     !!interactive.params.submitted
   );
 };
@@ -372,7 +375,7 @@ const mergeSubmittedInteractiveValues = ({
     const finalInteractive = extractDeepestInteractive(value.interactive);
     if (
       finalInteractive.type !== 'userInput' &&
-      finalInteractive.type !== 'agentAsk' &&
+      !isAgentAskInteractive(finalInteractive) &&
       finalInteractive.type !== 'workflowBuilderPreview'
     ) {
       return value;

@@ -1,5 +1,8 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   groupAIChatResponseValues,
   hasAiAnswerContent,
@@ -28,7 +31,7 @@ export const getAIChatDisplayGroups = ({
     if (value.hideInUI || !value.interactive) return false;
 
     const interactive = extractDeepestInteractive(value.interactive);
-    return interactive.type === 'agentAsk' || interactive.type === 'workflowBuilderPreview';
+    return isAgentAskInteractive(interactive) || interactive.type === 'workflowBuilderPreview';
   };
 
   const groups: AIChatDisplayGroup[] = [];

@@ -7,7 +7,10 @@ import { assertChatAccess, type ChatAccessScope } from './auth';
 import type { ClientSession } from '../../common/mongo';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 
 /**
  * 软删除指定消息；普通删除只更新 deleteTime，已回答的 Ask/Preview 保持原状态。
@@ -67,9 +70,9 @@ export const softDeleteChatItems = async (
     if (!value?.interactive) return;
     const interactive = extractDeepestInteractive(value.interactive);
     if (
-      interactive.type === 'agentAsk' &&
+      isAgentAskInteractive(interactive) &&
       replies.some(
-        (reply) => reply.type === 'agentAsk' && reply.interactionId === interactive.askId
+        (reply) => isAgentAskInteractive(reply) && reply.interactionId === interactive.askId
       )
     ) {
       interactive.params.submitted = false;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isAgentAskInteractive,
   extractDeepestInteractive,
   getMaxHistoryLimitFromNodes,
   valueTypeFormat,
@@ -43,6 +44,36 @@ const getReferenceVariableValue = ({
     ...props,
     variables
   });
+
+describe('isAgentAskInteractive', () => {
+  it.each([
+    { interactive: { type: 'agentAsk' }, expected: true },
+    { interactive: { type: 'workflowBuilderPreview' }, expected: false },
+    { interactive: { type: 'userSelect' }, expected: false },
+    { interactive: undefined, expected: false },
+    { interactive: null, expected: false }
+  ])('classifies the current interaction: $interactive', ({ interactive, expected }) => {
+    expect(isAgentAskInteractive(interactive)).toBe(expected);
+  });
+
+  it('requires nested interactions to be extracted before classifying their type', () => {
+    const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
+    const interactive: WorkflowInteractiveResponseType = {
+      ...runtime,
+      type: 'childrenInteractive',
+      params: {
+        childrenResponse: {
+          ...runtime,
+          type: 'agentAsk',
+          askId: 'ask-1',
+          params: { description: '', questions: [] }
+        }
+      }
+    };
+    expect(isAgentAskInteractive(interactive)).toBe(false);
+    expect(isAgentAskInteractive(extractDeepestInteractive(interactive))).toBe(true);
+  });
+});
 
 describe('extractDeepestInteractive', () => {
   it('should return the same interactive when no childrenResponse', () => {

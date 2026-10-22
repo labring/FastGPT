@@ -21,7 +21,7 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 import { formatAgentAskAnswers } from '../ai/agent/utils';
 import { normalizeToolResponseContent } from '../ai/llm/utils';
-import { extractDeepestInteractive } from '../workflow/runtime/utils';
+import { isAgentAskInteractive, extractDeepestInteractive } from '../workflow/runtime/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
 type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
@@ -392,7 +392,7 @@ export const chats2GPTMessages = ({
           : undefined;
 
         // 将已提交的问答恢复为对应 ask_user 的工具结果。
-        if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
+        if (isAgentAskInteractive(finalInteractive) && finalInteractive.params.submitted) {
           agentAskAnswerMap.set(
             finalInteractive.askId,
             formatAgentAskAnswers({
