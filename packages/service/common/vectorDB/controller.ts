@@ -6,7 +6,12 @@ import { SeekVectorCtrl } from './seekdb';
 import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
-import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
+import type {
+  VectorControllerType,
+  InsertVectorControllerPropsType,
+  DelDatasetVectorCtrlPropsType,
+  VectorRowsChangedCallback
+} from './type';
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
@@ -14,7 +19,6 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 import { isProVersion } from '../system/constants';
-import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -39,34 +43,6 @@ const RECALL_LEASE_TTL_MS = 30_000;
 const teamVectorCountCache = new TeamVectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
-
-/** 向量变更成功后通知统计，投递最多等待三秒；故障不能让调用方重试已提交的向量。 */
-const notifyVectorRowsChanged = async ({
-  teamId,
-  datasetIds
-}: {
-  teamId: string;
-  datasetIds: string[];
-}) => {
-  // lean 的 Mongo 引用运行时可能仍是 ObjectId，MQ 合同只携带稳定的字符串身份。
-  const data = { teamId: String(teamId), datasetIds: datasetIds.map(String) };
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([
-      vectorRowsUpdateMQService.pushJobs(data),
-      new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error('Vector rows notification timed out')), 3000);
-      })
-    ]);
-  } catch (error) {
-    getLogger(LogCategories.INFRA.QUEUE).error('Failed to queue vector rows update', {
-      ...data,
-      error
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-};
 
 export const initVectorStore = Vector.init;
 /**
@@ -106,14 +82,17 @@ type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
  * `inputs` 的 text/image 类型只用于告诉 embedding 模型如何生成向量；
  * 进入向量库时已经统一成 number[][]，向量库本身不区分文本向量或图片向量。
  * 传入 string 时保持旧行为，默认按文本生成 embedding。
+ * 写入成功后调用上层业务通知；回调不传入向量适配器，失败隔离由回调实现方负责。
  */
 export const insertDatasetDataVector = async ({
   model,
   inputs,
+  onVectorRowsChanged,
   ...props
 }: Omit<InsertVectorControllerPropsType, 'vectors'> & {
   inputs: DatasetVectorInput[];
   model: EmbeddingModelDataType;
+  onVectorRowsChanged: VectorRowsChangedCallback;
 }) => {
   if (inputs.length === 0) {
     return {
@@ -143,7 +122,7 @@ export const insertDatasetDataVector = async ({
   );
 
   await teamVectorCountCache.invalidate(props.teamId);
-  await notifyVectorRowsChanged({ teamId: props.teamId, datasetIds: [props.datasetId] });
+  await onVectorRowsChanged({ teamId: props.teamId, datasetIds: [props.datasetId] });
 
   return {
     tokens,
@@ -151,7 +130,11 @@ export const insertDatasetDataVector = async ({
   };
 };
 
-export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
+/** 按原范围删除向量，成功后调用上层业务通知；统计上下文与回调均不传给向量适配器。 */
+export const deleteDatasetDataVector = async ({
+  onVectorRowsChanged,
+  ...props
+}: DelDatasetVectorCtrlPropsType & { onVectorRowsChanged: VectorRowsChangedCallback }) => {
   const deleteProps = { ...props };
   // datasetId 仅补充统计上下文，不改变适配器原有的删除参数或过滤条件。
   if ('datasetId' in deleteProps) delete deleteProps.datasetId;
@@ -159,7 +142,7 @@ export const deleteDatasetDataVector: VectorControllerType['delete'] = async (pr
   await teamVectorCountCache.invalidate(props.teamId);
   const datasetIds =
     'datasetIds' in props ? props.datasetIds : props.datasetId ? [props.datasetId] : [];
-  await notifyVectorRowsChanged({ teamId: props.teamId, datasetIds });
+  await onVectorRowsChanged({ teamId: props.teamId, datasetIds });
   return result;
 };
 

@@ -1,6 +1,12 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
 
+/** 向量成功变更后的业务通知；实现方负责隔离通知故障，避免已提交的写入被误判失败。 */
+export type VectorRowsChangedCallback = (props: {
+  teamId: string;
+  datasetIds: string[];
+}) => Promise<void>;
+
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
   id: z.string(),

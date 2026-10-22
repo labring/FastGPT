@@ -1,6 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BullMQBinding } from '@fastgpt/dal/redis/bullmq/binding';
-import { VectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
+import {
+  VectorRowsUpdateMQService,
+  notifyVectorRowsChanged,
+  vectorRowsUpdateMQService
+} from '@fastgpt/service/core/dataset/vectorData/mq';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { Types } from '@fastgpt/service/common/mongo';
 
 describe('VectorRowsUpdateMQService', () => {
   const client = { eval: vi.fn().mockResolvedValue(1) };
@@ -107,5 +113,69 @@ describe('VectorRowsUpdateMQService', () => {
       await expect(process({ id: '2', data: { teamId: '' } })).rejects.toThrow();
       expect(processor).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('notifyVectorRowsChanged', () => {
+  const pushJobs = vi.spyOn(vectorRowsUpdateMQService, 'pushJobs');
+  const loggerError = vi.spyOn(getLogger(LogCategories.INFRA.QUEUE), 'error');
+
+  beforeEach(() => {
+    pushJobs.mockReset().mockResolvedValue([]);
+    loggerError.mockReset().mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('normalizes Mongo identities before sending a bounded notification', async () => {
+    vi.useFakeTimers();
+    const teamId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    // lean 引用的声明类型是 string，但运行时仍可能是 ObjectId。
+    await notifyVectorRowsChanged({ teamId, datasetIds: [datasetId] } as unknown as Parameters<
+      typeof notifyVectorRowsChanged
+    >[0]);
+    expect(pushJobs).toHaveBeenCalledWith({
+      teamId: String(teamId),
+      datasetIds: [String(datasetId)]
+    });
+    expect(loggerError).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('logs MQ failure without rejecting a notification for committed vector data', async () => {
+    const error = new Error('Redis unavailable');
+    pushJobs.mockRejectedValueOnce(error);
+    await expect(
+      notifyVectorRowsChanged({ teamId: 't', datasetIds: ['a'] })
+    ).resolves.toBeUndefined();
+    expect(loggerError).toHaveBeenCalledWith('Failed to queue vector rows update', {
+      teamId: 't',
+      datasetIds: ['a'],
+      error
+    });
+  });
+
+  it('stops waiting after three seconds and handles a late delivery failure', async () => {
+    vi.useFakeTimers();
+    let rejectDelivery!: (error: Error) => void;
+    pushJobs.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectDelivery = reject;
+      })
+    );
+    const result = notifyVectorRowsChanged({ teamId: 't', datasetIds: ['a'] });
+    await vi.advanceTimersByTimeAsync(3000);
+    await expect(result).resolves.toBeUndefined();
+    expect(loggerError).toHaveBeenCalledWith('Failed to queue vector rows update', {
+      teamId: 't',
+      datasetIds: ['a'],
+      error: expect.objectContaining({ message: 'Vector rows notification timed out' })
+    });
+    rejectDelivery(new Error('late Redis failure'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -14,6 +14,7 @@ import type {
 import { getRootUser } from '@test/datas/users';
 import { mockGetVectors, createMockVectorsResponse } from '@test/mocks/core/ai/embedding';
 import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
+import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 import { serviceEnv } from '@fastgpt/service/env';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
@@ -152,7 +153,10 @@ const createData = async (
 };
 
 describe('DatasetDataIndexOperation', () => {
+  const pushStatistics = vi.spyOn(vectorRowsUpdateMQService, 'pushJobs');
+
   beforeEach(() => {
+    pushStatistics.mockReset().mockResolvedValue([]);
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     resetVectorMocks();
@@ -931,6 +935,10 @@ describe('DatasetDataIndexOperation', () => {
         { type: DatasetDataIndexTypeEnum.custom, text: 'one', dataId: 'id_1' },
         { type: DatasetDataIndexTypeEnum.default, text: 'two', dataId: 'id_2' }
       ]);
+      expect(pushStatistics).toHaveBeenCalledWith({
+        teamId: 'team_id',
+        datasetIds: ['dataset_id']
+      });
     });
 
     it('should skip image embedding indexes when the model does not support image input', async () => {
@@ -984,6 +992,21 @@ describe('DatasetDataIndexOperation', () => {
       await operation.deleteVectors({ teamId: 'team_id', datasetId: 'dataset_id', idList: [] });
 
       expect(mockVectorDelete).not.toHaveBeenCalled();
+      expect(pushStatistics).not.toHaveBeenCalled();
+    });
+
+    it('injects statistics notifications for vector deletion without changing the provider filter', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      await operation.deleteVectors({
+        teamId: 'team_id',
+        datasetId: 'dataset_id',
+        idList: ['id_1']
+      });
+      expect(mockVectorDelete).toHaveBeenCalledWith({ teamId: 'team_id', idList: ['id_1'] });
+      expect(pushStatistics).toHaveBeenCalledWith({
+        teamId: 'team_id',
+        datasetIds: ['dataset_id']
+      });
     });
   });
 

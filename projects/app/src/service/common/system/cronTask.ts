@@ -8,6 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { notifyVectorRowsChanged } from '@fastgpt/service/core/dataset/vectorData/mq';
 const logger = getLogger(LogCategories.MODULE.DATASET.QUEUES);
 
 /*
@@ -73,6 +74,7 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
               collectionIds: [item.collectionId]
             }),
             deleteDatasetDataVector({
+              onVectorRowsChanged: notifyVectorRowsChanged,
               teamId: item.teamId,
               datasetIds: [item.datasetId],
               collectionIds: [item.collectionId]
@@ -122,6 +124,7 @@ export async function checkInvalidVector(start: Date, end: Date) {
       // 3. if not found, delete vector
       if (hasData === 0) {
         await deleteDatasetDataVector({
+          onVectorRowsChanged: notifyVectorRowsChanged,
           teamId: item.teamId,
           datasetId: item.datasetId,
           id: item.id
