@@ -306,19 +306,29 @@ function List() {
           )}
         </Flex>
 
-        <Box
-          flex={1}
-          className={'textEllipsis3'}
-          whiteSpace={'pre-wrap'}
-          py={3}
-          fontSize={'xs'}
-          color={'myGray.500'}
-        >
-          {dataset.intro ||
+        <MyTooltip
+          label={
+            dataset.intro ||
             (dataset.type === DatasetTypeEnum.folder
               ? t('common:core.dataset.Folder placeholder')
-              : t('common:core.dataset.Intro Placeholder'))}
-        </Box>
+              : t('common:core.dataset.Intro Placeholder'))
+          }
+          showOnlyWhenOverflow
+        >
+          <Box
+            flex={1}
+            className={'textEllipsis3'}
+            whiteSpace={'pre-wrap'}
+            py={3}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            {dataset.intro ||
+              (dataset.type === DatasetTypeEnum.folder
+                ? t('common:core.dataset.Folder placeholder')
+                : t('common:core.dataset.Intro Placeholder'))}
+          </Box>
+        </MyTooltip>
 
         <Flex
           h={'24px'}
