@@ -152,6 +152,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     return mcpClient;
   };
 
+  const formatToolResult = <T>(result: T): RunToolResponse => ({
+    data: { [NodeOutputKeyEnum.rawResponse]: result },
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      toolInput,
+      toolRes: result,
+      moduleLogo: avatar
+    },
+    [DispatchNodeResponseKeyEnum.toolResponse]: result
+  });
+
   const callHttpTool = async ({
     tool,
     baseUrl,
