@@ -1337,7 +1337,7 @@
   "confirm_delete": "确认删除",
   "batch_partial_failed": "部分选中项操作失败",
   "related_count": "关联",
-  "related_apps_hidden": "其余 {{count}} 个应用无权限查看",
+  "related_apps_hidden": "{{count}} 个不可见应用",
   "video_preparing": "视频就绪中...",
   "video_cannot_play": "视频无法直接播放",
   "audio_preparing": "音频就绪中...",
