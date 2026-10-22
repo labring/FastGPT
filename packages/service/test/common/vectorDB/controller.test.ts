@@ -10,7 +10,6 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
-import { vectorRowsUpdateMQService } from '@fastgpt/service/core/dataset/vectorData/mq';
 
 // Import controller functions after mocks are set up
 import {
@@ -72,9 +71,11 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 });
 
 describe('VectorDB Controller', () => {
-  const pushStatistics = vi.spyOn(vectorRowsUpdateMQService, 'pushJobs');
+  const onVectorRowsChanged = vi.fn().mockResolvedValue(undefined);
   beforeEach(() => {
     resetVectorMocks();
+    mockVectorInsert.mockReset().mockResolvedValue({ insertIds: ['id_1', 'id_2', 'id_3'] });
+    mockVectorDelete.mockReset().mockResolvedValue(undefined);
     mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     mockRedisStringGet.mockReset();
     mockRedisStringSet.mockReset();
@@ -83,7 +84,7 @@ describe('VectorDB Controller', () => {
     mockRedisStringDelete.mockResolvedValue(false);
     mockLoggerWarn.mockReset();
     mockGetVectors.mockClear();
-    pushStatistics.mockReset().mockResolvedValue([]);
+    onVectorRowsChanged.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -99,29 +100,39 @@ describe('VectorDB Controller', () => {
     ])(
       'notifies the affected scopes without changing the provider deletion filter',
       async ({ props, datasets }) => {
-        await deleteDatasetDataVector(props);
-        expect(pushStatistics).toHaveBeenCalledWith({ teamId: 't', datasetIds: datasets });
+        await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
+        expect(onVectorRowsChanged).toHaveBeenCalledWith({ teamId: 't', datasetIds: datasets });
         const expected = { ...props };
         if ('datasetId' in expected) delete expected.datasetId;
         expect(mockVectorDelete).toHaveBeenCalledWith(expected);
+        expect(mockVectorDelete.mock.invocationCallOrder[0]).toBeLessThan(
+          onVectorRowsChanged.mock.invocationCallOrder[0]
+        );
       }
     );
 
-    it('does not turn a successful vector mutation into a failure when MQ delivery fails', async () => {
-      pushStatistics.mockRejectedValueOnce(new Error('Redis unavailable'));
-      await expect(
-        deleteDatasetDataVector({ teamId: 't', datasetIds: ['a'] })
-      ).resolves.toBeUndefined();
-      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not keep a committed vector deletion waiting indefinitely for MQ delivery', async () => {
+    it.each(['insert', 'delete'])('does not notify after a failed vector %s', async (operation) => {
       vi.useFakeTimers();
-      pushStatistics.mockReturnValueOnce(new Promise(() => undefined));
-      const result = deleteDatasetDataVector({ teamId: 't', datasetIds: ['a'] });
-      await vi.advanceTimersByTimeAsync(3000);
-      await expect(result).resolves.toBeUndefined();
-      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+      const error = new Error('vector database unavailable');
+      mockVectorInsert.mockRejectedValue(error);
+      mockVectorDelete.mockRejectedValue(error);
+      mockGetVectors.mockResolvedValue({ vectors: [[0.1]], tokens: 1 });
+      const pending =
+        operation === 'insert'
+          ? insertDatasetDataVector({
+              teamId: 't',
+              datasetId: 'a',
+              collectionId: 'c',
+              model: {} as any,
+              inputs: ['text'],
+              onVectorRowsChanged
+            })
+          : deleteDatasetDataVector({ teamId: 't', datasetIds: ['a'], onVectorRowsChanged });
+      const rejected = expect(pending).rejects.toThrow(error);
+      await vi.advanceTimersByTimeAsync(2000);
+      await rejected;
+      expect(onVectorRowsChanged).not.toHaveBeenCalled();
+      expect(mockRedisStringDelete).not.toHaveBeenCalled();
     });
   });
 
@@ -333,6 +344,7 @@ describe('VectorDB Controller', () => {
       });
 
       const result = await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
@@ -377,6 +389,7 @@ describe('VectorDB Controller', () => {
       });
 
       const result = await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
@@ -421,6 +434,7 @@ describe('VectorDB Controller', () => {
       });
 
       await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_abc',
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
@@ -429,7 +443,7 @@ describe('VectorDB Controller', () => {
       });
 
       expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
-      expect(pushStatistics).toHaveBeenCalledWith({
+      expect(onVectorRowsChanged).toHaveBeenCalledWith({
         teamId: 'team_abc',
         datasetIds: ['dataset_def']
       });
@@ -446,6 +460,7 @@ describe('VectorDB Controller', () => {
       mockRedisStringDelete.mockRejectedValueOnce(new Error('redis down'));
 
       const result = await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_abc',
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
@@ -476,6 +491,7 @@ describe('VectorDB Controller', () => {
       mockRedisStringDelete.mockReturnValueOnce(new Promise(() => {}));
 
       const resultPromise = insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_abc',
         datasetId: 'dataset_def',
         collectionId: 'col_ghi',
@@ -498,6 +514,7 @@ describe('VectorDB Controller', () => {
 
     it('should handle empty inputs', async () => {
       const result = await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
@@ -512,6 +529,7 @@ describe('VectorDB Controller', () => {
       expect(mockGetVectors).not.toHaveBeenCalled();
       expect(mockVectorInsert).not.toHaveBeenCalled();
       expect(mockRedisStringDelete).not.toHaveBeenCalled();
+      expect(onVectorRowsChanged).not.toHaveBeenCalled();
     });
 
     /**
@@ -533,6 +551,7 @@ describe('VectorDB Controller', () => {
       });
 
       const result = await insertDatasetDataVector({
+        onVectorRowsChanged,
         teamId: 'team_123',
         datasetId: 'dataset_456',
         collectionId: 'col_789',
@@ -562,7 +581,7 @@ describe('VectorDB Controller', () => {
         id: 'vector_id_1'
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -573,7 +592,7 @@ describe('VectorDB Controller', () => {
         datasetIds: ['dataset_1', 'dataset_2']
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -585,7 +604,7 @@ describe('VectorDB Controller', () => {
         collectionIds: ['col_1', 'col_2']
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -596,7 +615,7 @@ describe('VectorDB Controller', () => {
         idList: ['id_1', 'id_2', 'id_3']
       };
 
-      await deleteDatasetDataVector(props);
+      await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
     });
@@ -609,7 +628,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector(props);
+      const result = await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -625,7 +644,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const result = await deleteDatasetDataVector(props);
+      const result = await deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       expect(mockVectorDelete).toHaveBeenCalledWith(props);
       expect(result).toEqual({ deletedCount: 5 });
@@ -646,7 +665,7 @@ describe('VectorDB Controller', () => {
         id: 'some_id'
       };
 
-      const resultPromise = deleteDatasetDataVector(props);
+      const resultPromise = deleteDatasetDataVector({ ...props, onVectorRowsChanged });
 
       await vi.advanceTimersByTimeAsync(3000);
 
