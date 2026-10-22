@@ -123,5 +123,9 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "為歷史 Agent 沙箱實例回填 teamId：從 App/Skill 來源解析團隊歸屬。來源已刪除的孤兒記錄只跳過並計數；來源存在但缺少 teamId 的記錄進入失敗明細，修復後可重試。",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱團隊歸屬",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校驗沙箱團隊歸屬回填結果",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已掃描 {{scannedCount}} 個沙箱實例，回填團隊歸屬 {{backfilledCount}} 個，跳過孤兒記錄 {{orphanCount}} 個。"
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已掃描 {{scannedCount}} 個沙箱實例，回填團隊歸屬 {{backfilledCount}} 個，跳過孤兒記錄 {{orphanCount}} 個。",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "初始化知識庫向量索引",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "在背景統計既有知識庫的向量數，為超過三萬筆的知識庫延遲排入 FP16 局部索引建置任務；索引完成前繼續精確檢索。",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "已統計 {{scannedCount}} 個知識庫，{{eligibleCount}} 個符合索引建置條件；實際建置由佇列繼續執行。",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "統計知識庫並排入索引任務"
 }

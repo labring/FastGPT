@@ -123,5 +123,9 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "为历史 Agent 沙箱实例回填 teamId：从 App/Skill 源解析团队归属。源已删除的孤儿记录只跳过并计数；源存在但缺少 teamId 的记录进入失败明细，修复后可重试。",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱团队归属",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校验沙箱团队归属回填结果",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已扫描 {{scannedCount}} 个沙箱实例，回填团队归属 {{backfilledCount}} 个，跳过孤儿记录 {{orphanCount}} 个。"
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已扫描 {{scannedCount}} 个沙箱实例，回填团队归属 {{backfilledCount}} 个，跳过孤儿记录 {{orphanCount}} 个。",
+  "migrations.20261022_initialize_dataset_vector_indexes.name": "初始化知识库向量索引",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "后台统计已有知识库的向量数，超过三万条的知识库延迟投递 FP16 局部索引构建任务；索引未完成时继续精确检索。",
+  "migrations.20261022_initialize_dataset_vector_indexes.result": "已统计 {{scannedCount}} 个知识库，{{eligibleCount}} 个达到索引构建条件；实际构建由队列继续执行。",
+  "migrations.20261022_initialize_dataset_vector_indexes.datasets": "统计知识库并投递索引任务"
 }

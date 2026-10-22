@@ -6,6 +6,8 @@
     "./redis": "./redis/index.ts",
     "./redis/adapter": "./redis/adapter.ts",
     "./redis/bullmq": "./redis/bullmq/index.ts",
+    "./redis/bullmq/binding": "./redis/bullmq/binding.ts",
+    "./redis/bullmq/names": "./redis/bullmq/names.ts",
     "./redis/bullmq/services/*": "./redis/bullmq/services/*.ts",
     "./redis/caches": "./redis/caches/index.ts",
     "./redis/caches/vectorCount": "./redis/caches/vectorCount.ts",
