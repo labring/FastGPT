@@ -10,6 +10,7 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
+import { vectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
 
 // Import controller functions after mocks are set up
 import {
@@ -41,7 +42,14 @@ vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
           redis: {
             set: (...args: any[]) => mockRedisStringSet(...args),
             get: (...args: any[]) => mockRedisStringGet(...args),
-            delete: (...args: any[]) => mockRedisStringDelete(...args)
+            delete: (...args: any[]) => mockRedisStringDelete(...args),
+            evalScript: ({ keys, args }: { keys: string[]; args: any[] }) => {
+              // 这里仅模拟缓存协议；Lua 原子性由 DAL 的真实 Redis 测试验证。
+              if (keys.length === 1) return Promise.resolve('revision');
+              if (args.length === 3)
+                return mockRedisStringSet({ key: keys[1], value: String(args[1]), ttlMs: args[2] });
+              return mockRedisStringDelete(keys[1]);
+            }
           }
         });
       }
@@ -64,6 +72,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 });
 
 describe('VectorDB Controller', () => {
+  const pushStatistics = vi.spyOn(vectorRowsUpdateMQService, 'pushJobs');
   beforeEach(() => {
     resetVectorMocks();
     mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
@@ -74,10 +83,46 @@ describe('VectorDB Controller', () => {
     mockRedisStringDelete.mockResolvedValue(false);
     mockLoggerWarn.mockReset();
     mockGetVectors.mockClear();
+    pushStatistics.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('vector rows notifications', () => {
+    it.each([
+      { props: { teamId: 't', datasetIds: ['a', 'b'] }, datasets: ['a', 'b'] },
+      { props: { teamId: 't', id: '1', datasetId: 'a' }, datasets: ['a'] },
+      { props: { teamId: 't', idList: ['1'], datasetId: 'a' }, datasets: ['a'] },
+      { props: { teamId: 't', idList: ['1'] }, datasets: [] }
+    ])(
+      'notifies the affected scopes without changing the provider deletion filter',
+      async ({ props, datasets }) => {
+        await deleteDatasetDataVector(props);
+        expect(pushStatistics).toHaveBeenCalledWith({ teamId: 't', datasetIds: datasets });
+        const expected = { ...props };
+        if ('datasetId' in expected) delete expected.datasetId;
+        expect(mockVectorDelete).toHaveBeenCalledWith(expected);
+      }
+    );
+
+    it('does not turn a successful vector mutation into a failure when MQ delivery fails', async () => {
+      pushStatistics.mockRejectedValueOnce(new Error('Redis unavailable'));
+      await expect(
+        deleteDatasetDataVector({ teamId: 't', datasetIds: ['a'] })
+      ).resolves.toBeUndefined();
+      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not keep a committed vector deletion waiting indefinitely for MQ delivery', async () => {
+      vi.useFakeTimers();
+      pushStatistics.mockReturnValueOnce(new Promise(() => undefined));
+      const result = deleteDatasetDataVector({ teamId: 't', datasetIds: ['a'] });
+      await vi.advanceTimersByTimeAsync(3000);
+      await expect(result).resolves.toBeUndefined();
+      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('refreshDatasetDataVectorCreateTime', () => {
@@ -384,6 +429,10 @@ describe('VectorDB Controller', () => {
       });
 
       expect(mockRedisStringDelete).toHaveBeenCalledWith('cache:team_vector_count:team_abc');
+      expect(pushStatistics).toHaveBeenCalledWith({
+        teamId: 'team_abc',
+        datasetIds: ['dataset_def']
+      });
     });
 
     it('should return insert result when team vector cache invalidation fails', async () => {

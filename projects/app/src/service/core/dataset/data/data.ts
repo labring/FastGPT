@@ -153,8 +153,16 @@ export class DatasetDataOperation {
   }
 
   /** 已提交的新索引不能因旧向量清理失败被补偿删除；清理失败记录原始 ID 以便排查。 */
-  private async cleanupReplacedVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
-    await this.indexOperation.deleteVectors({ teamId, idList }).catch((error) => {
+  private async cleanupReplacedVectors({
+    teamId,
+    datasetId,
+    idList
+  }: {
+    teamId: string;
+    datasetId: string;
+    idList: string[];
+  }) {
+    await this.indexOperation.deleteVectors({ teamId, datasetId, idList }).catch((error) => {
       logger.error('Failed to clean up replaced dataset vectors', { error, teamId, idList });
     });
   }
@@ -235,7 +243,7 @@ export class DatasetDataOperation {
       if (!synonymContext) return;
       if (await synonymContext.isCurrent()) return;
       await this.indexOperation
-        .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
+        .deleteVectors({ teamId, datasetId, idList: results.map((index) => index.dataId) })
         .catch(() => {});
       throw new Error('同义词配置已变化，请重试数据写入');
     };
@@ -293,7 +301,7 @@ export class DatasetDataOperation {
       });
     } catch (error) {
       await this.indexOperation
-        .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
+        .deleteVectors({ teamId, datasetId, idList: results.map((index) => index.dataId) })
         .catch(() => {});
       throw error;
     }
@@ -481,14 +489,22 @@ export class DatasetDataOperation {
     } catch (error) {
       if (synonymContext || commit || isFailed) {
         await this.indexOperation
-          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .deleteVectors({
+            teamId: mongoData.teamId,
+            datasetId: mongoData.datasetId,
+            idList: newVectorIdList
+          })
           .catch(() => {});
       }
       throw error;
     }
 
     // lease.complete 包含 training 删除和事务提交；此前必须保留旧向量供回滚或重跑使用。
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
+    await this.cleanupReplacedVectors({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      idList: deleteVectorIdList
+    });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,
@@ -629,13 +645,21 @@ export class DatasetDataOperation {
       });
     } catch (error) {
       await this.indexOperation
-        .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIds })
+        .deleteVectors({
+          teamId: mongoData.teamId,
+          datasetId: mongoData.datasetId,
+          idList: newVectorIds
+        })
         .catch(() => {});
       throw error;
     }
 
     // 9. 提交成功后再删除被替换的旧向量，并通知集合更新统计。
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: oldVectorIds });
+    await this.cleanupReplacedVectors({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      idList: oldVectorIds
+    });
     this.pushCollectionUpdate({
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
@@ -827,13 +851,21 @@ export class DatasetDataOperation {
     } catch (error) {
       if (synonymContext || isFailed) {
         await this.indexOperation
-          .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
+          .deleteVectors({
+            teamId: mongoData.teamId,
+            datasetId: mongoData.datasetId,
+            idList: newVectorIdList
+          })
           .catch(() => {});
       }
       throw error;
     }
 
-    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
+    await this.cleanupReplacedVectors({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      idList: deleteVectorIdList
+    });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,
@@ -874,6 +906,7 @@ export class DatasetDataOperation {
         // data.indexes 中的 dataId 即向量 id，删除数据时需要全部清理。
         await this.indexOperation.deleteVectors({
           teamId: data.teamId,
+          datasetId: data.datasetId,
           idList: data.indexes.map((item) => item.dataId)
         });
       }

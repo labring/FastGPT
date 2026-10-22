@@ -12,6 +12,7 @@ import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
+import { vectorRowsUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/vectorRowsUpdate';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -33,6 +34,34 @@ const Vector = getVectorObj();
 const teamVectorCountCache = new TeamVectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
+
+/** 向量变更成功后通知统计，投递最多等待三秒；故障不能让调用方重试已提交的向量。 */
+const notifyVectorRowsChanged = async ({
+  teamId,
+  datasetIds
+}: {
+  teamId: string;
+  datasetIds: string[];
+}) => {
+  // lean 的 Mongo 引用运行时可能仍是 ObjectId，MQ 合同只携带稳定的字符串身份。
+  const data = { teamId: String(teamId), datasetIds: datasetIds.map(String) };
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      vectorRowsUpdateMQService.pushJobs(data),
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('Vector rows notification timed out')), 3000);
+      })
+    ]);
+  } catch (error) {
+    getLogger(LogCategories.INFRA.QUEUE).error('Failed to queue vector rows update', {
+      ...data,
+      error
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 export const initVectorStore = Vector.init;
 export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
@@ -83,6 +112,7 @@ export const insertDatasetDataVector = async ({
   );
 
   await teamVectorCountCache.invalidate(props.teamId);
+  await notifyVectorRowsChanged({ teamId: props.teamId, datasetIds: [props.datasetId] });
 
   return {
     tokens,
@@ -91,8 +121,14 @@ export const insertDatasetDataVector = async ({
 };
 
 export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
-  const result = await retryFn(() => Vector.delete(props));
+  const deleteProps = { ...props };
+  // datasetId 仅补充统计上下文，不改变适配器原有的删除参数或过滤条件。
+  if ('datasetId' in deleteProps) delete deleteProps.datasetId;
+  const result = await retryFn(() => Vector.delete(deleteProps));
   await teamVectorCountCache.invalidate(props.teamId);
+  const datasetIds =
+    'datasetIds' in props ? props.datasetIds : props.datasetId ? [props.datasetId] : [];
+  await notifyVectorRowsChanged({ teamId: props.teamId, datasetIds });
   return result;
 };
 
@@ -115,12 +151,20 @@ export const getVectorCountByTeamId = async (teamId: string) => {
     return cacheCount;
   }
 
+  return refreshTeamVectorCount(teamId);
+};
+
+/** 后台主动刷新与缓存 miss 共用计数逻辑，始终从实际向量库统计整个团队。 */
+export const refreshTeamVectorCount = async (teamId: string) => {
+  const revision = await teamVectorCountCache.getRevision(teamId);
   const count = await Vector.getVectorCount({ teamId });
 
-  void teamVectorCountCache.set({
-    teamId,
-    count
-  });
+  if (revision)
+    void teamVectorCountCache.set({
+      teamId,
+      count,
+      revision
+    });
 
   return count;
 };
