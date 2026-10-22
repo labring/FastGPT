@@ -5,7 +5,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../logger';
 
-export type RequestProfileKind = 'tools/list' | 'tools/call';
+/** 入口标识，用于区分 chat / tools/list / tools/call 等调用来源。 */
+export type RequestProfileKind = string;
 
 type StageStat = {
   n: number;
@@ -33,7 +34,7 @@ const MAX_ERROR_LENGTH = 200;
 const MAX_MONGO_COLLECTIONS = 5;
 
 const storage = new AsyncLocalStorage<ProfileState>();
-const logger = getLogger(LogCategories.MODULE.MCP.PROFILE);
+const logger = getLogger(LogCategories.REQUEST.PROFILE);
 
 /** 进程内在途的 profile 数量，用于判断调用发生时的并发水位。 */
 let inflightCount = 0;
@@ -47,9 +48,9 @@ const round = (value: number) => Math.round(value * 100) / 100;
  * 不创建 AsyncLocalStorage 上下文，调用方只剩一次属性访问的开销。
  */
 const shouldProfile = () => {
-  if (!serviceEnv.MCP_CALL_PROFILE_ENABLE) return false;
+  if (!serviceEnv.REQUEST_PROFILE_ENABLE) return false;
 
-  const sampleRate = serviceEnv.MCP_CALL_PROFILE_SAMPLE_RATE;
+  const sampleRate = serviceEnv.REQUEST_PROFILE_SAMPLE_RATE;
   if (sampleRate >= 1) return true;
   if (sampleRate <= 0) return false;
 
@@ -201,7 +202,7 @@ const emit = async (state: ProfileState) => {
     // 转义花括号后直接拼进消息，避免日志框架把 JSON 当成占位符，也避免给字符串加引号，
     // 保证输出是单行、可直接 grep / jq 的原始 JSON。
     const payloadText = JSON.stringify(payload).replaceAll('{', '{{').replaceAll('}', '}}');
-    logger.info(`MCP call profile ${payloadText}`);
+    logger.info(`Request profile ${payloadText}`);
   } catch (error) {
     logger.warn('Failed to write request profile log', { error });
   }

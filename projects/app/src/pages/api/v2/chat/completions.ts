@@ -49,6 +49,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
+import { withRequestProfile } from '@fastgpt/service/common/profiling';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -94,7 +95,7 @@ import {
 } from '@fastgpt/service/core/chat/completionMessage';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+const handleChatCompletions = async (req: NextApiRequest, res: NextApiResponse) => {
   const completionBody = parseApiInput({ req, bodySchema: CompletionsPropsSchema }).body;
   const {
     chatId,
@@ -603,6 +604,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.end();
     }
   }
+};
+
+/** chat 与 MCP 共用同一套分段耗时采集，便于对比两类入口的耗时构成。 */
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  return withRequestProfile({ kind: 'chat' }, () => handleChatCompletions(req, res));
 }
 export default NextAPI(handler);
 

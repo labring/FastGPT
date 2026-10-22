@@ -316,12 +316,12 @@ export const serviceEnv = createEnv({
     LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
     LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     LOG_OTEL_URL: UrlSchema.optional(),
-    // MCP 调用分段耗时采集
-    MCP_CALL_PROFILE_ENABLE: BoolSchema.default(false).meta({
-      description: '是否启用 MCP 调用分段耗时采集（每次调用输出一行结构化日志）'
+    // 请求分段耗时采集（chat / MCP 等入口共用）
+    REQUEST_PROFILE_ENABLE: BoolSchema.default(false).meta({
+      description: '是否启用请求分段耗时采集（每次请求输出一行结构化日志）'
     }),
-    MCP_CALL_PROFILE_SAMPLE_RATE: NumSchema.min(0).max(1).default(1).meta({
-      description: 'MCP 分段耗时采集采样率，1 表示全量采集'
+    REQUEST_PROFILE_SAMPLE_RATE: NumSchema.min(0).max(1).default(1).meta({
+      description: '请求分段耗时采集采样率，1 表示全量采集'
     }),
     // 指标
     METRICS_ENABLE_OTEL: BoolSchema.default(false),

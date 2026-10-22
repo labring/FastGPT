@@ -27,7 +27,7 @@ const getLastPayload = (): ProfilePayload => {
 
   const message = String(lastCall![0]);
   const json = message
-    .replace(/^MCP call profile /, '')
+    .replace(/^Request profile /, '')
     .replaceAll('{{', '{')
     .replaceAll('}}', '}');
 
@@ -45,10 +45,8 @@ beforeEach(async () => {
       warn: loggerMocks.warn
     }),
     LogCategories: {
-      MODULE: {
-        MCP: {
-          PROFILE: ['mcp', 'profile']
-        }
+      REQUEST: {
+        PROFILE: ['request', 'profile']
       }
     }
   }));
@@ -56,8 +54,8 @@ beforeEach(async () => {
   ({ serviceEnv } = await import('@fastgpt/service/env'));
   profiling = await import('@fastgpt/service/common/profiling');
 
-  serviceEnv.MCP_CALL_PROFILE_ENABLE = true;
-  serviceEnv.MCP_CALL_PROFILE_SAMPLE_RATE = 1;
+  serviceEnv.REQUEST_PROFILE_ENABLE = true;
+  serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 1;
 });
 
 afterEach(() => {
@@ -67,7 +65,7 @@ afterEach(() => {
 
 describe('withRequestProfile', () => {
   it('关闭时不创建上下文，也不输出日志', async () => {
-    serviceEnv.MCP_CALL_PROFILE_ENABLE = false;
+    serviceEnv.REQUEST_PROFILE_ENABLE = false;
 
     const result = await profiling.withRequestProfile(
       { kind: 'tools/call', toolName: 'demo' },
@@ -79,7 +77,7 @@ describe('withRequestProfile', () => {
   });
 
   it('采样率为 0 时不采集', async () => {
-    serviceEnv.MCP_CALL_PROFILE_SAMPLE_RATE = 0;
+    serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 0;
 
     await profiling.withRequestProfile({ kind: 'tools/list' }, async () => undefined);
 

@@ -123,7 +123,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
           logger.warn('MongoDB slow query (>500ms)', getLogData());
         }
 
-        // 只有 MCP 分段采集开启且当前请求处于采集上下文时才统计，避免影响普通请求。
+        // 只有请求处于分段采集上下文时才统计，普通请求不受影响。
         if (isProfiling()) {
           recordMongoOperation({
             collectionName: this.model?.collection?.name || this._model?.collection?.name,
