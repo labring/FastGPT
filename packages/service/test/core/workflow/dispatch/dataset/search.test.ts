@@ -165,17 +165,19 @@ describe('dispatchDatasetSearch', () => {
   };
 
   it('preserves mappings across quoteQA, node response and tool cites', async () => {
-    const quote = {
+    const rawRecall = {
       id: 'chunk',
       q: 'alias',
       a: '',
-      sourceName: 'source',
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
+      sourceName: 'source'
+    };
+    const quote = {
+      ...rawRecall,
+      synonymMappings: { alias: 'standard' }
     };
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [quote],
-      retrievalResults: [quote],
+      retrievalResults: [rawRecall],
       embeddingTokens: 0,
       reRankInputTokens: 0,
       usingReRank: false
@@ -190,11 +192,11 @@ describe('dispatchDatasetSearch', () => {
     }
     expect(result.data?.quoteQA[0]).toMatchObject(quote);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
-    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.[0]).toMatchObject(
-      quote
-    );
+    expect(
+      result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.[0]
+    ).not.toHaveProperty('synonymMappings');
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
-      cites: [{ synonymMappings: { alias: 'standard' }, synonymMappingsTruncated: true }]
+      cites: [{ synonymMappings: { alias: 'standard' } }]
     });
   });
 

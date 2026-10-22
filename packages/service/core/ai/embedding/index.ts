@@ -107,7 +107,6 @@ export async function getVectors({
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
 
-  // Annotate the accumulator so an empty batch list remains compatible with strict inference.
   const chunks: GetVectorInputItem[][] = [];
   for (let i = 0; i < inputs.length; i += chunkSize) {
     chunks.push(inputs.slice(i, i + chunkSize));

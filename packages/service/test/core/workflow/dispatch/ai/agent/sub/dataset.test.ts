@@ -142,7 +142,6 @@ describe('dispatchAgentDatasetSearch', () => {
         a: 'answer',
         sourceName: 'doc.md',
         synonymMappings: { alias: 'standard' },
-        synonymMappingsTruncated: true,
         score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
       };
       defaultSearchDatasetDataMock.mockResolvedValue({
@@ -170,15 +169,12 @@ describe('dispatchAgentDatasetSearch', () => {
         expect(response.cites[0].content).toBe('alias\nanswer');
         if (enabled) {
           expect(response.prompt).toContain('synonymMappings');
-          expect(response.prompt).toContain('synonymMappingsTruncated');
           expect(response.cites[0]).toMatchObject({
-            synonymMappings: { alias: 'standard' },
-            synonymMappingsTruncated: true
+            synonymMappings: { alias: 'standard' }
           });
         } else {
           expect(response.prompt).toBe(getDatasetSearchToolResponsePrompt());
           expect(response.cites[0]).not.toHaveProperty('synonymMappings');
-          expect(response.cites[0]).not.toHaveProperty('synonymMappingsTruncated');
         }
       } finally {
         serviceEnv.DATASET_SYNONYM_ENABLED = previous;

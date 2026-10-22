@@ -23,12 +23,9 @@ const transformConfigCache = new Map<
   { expiresAt: number; promise: Promise<DatasetSynonymConfigType | null> }
 >();
 
-/** 判断服务端是否启用知识库同义词能力，默认关闭。 */
-export const isDatasetSynonymEnabled = () => serviceEnv.DATASET_SYNONYM_ENABLED;
-
 /** 阻止关闭状态下的同义词管理操作进入解析、鉴权和数据访问链路。 */
 export const assertDatasetSynonymEnabled = () => {
-  if (!isDatasetSynonymEnabled()) {
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) {
     throw new Error('知识库同义词功能未启用');
   }
 };
@@ -194,7 +191,7 @@ export const getDatasetSynonymRuntimeConfig = async ({
   teamId: string;
   datasetId: string;
 }) => {
-  if (!isDatasetSynonymEnabled()) return null;
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return null;
 
   const config = await getDatasetSynonymConfig({ teamId, datasetId });
   if (!config) return null;
@@ -219,7 +216,7 @@ export const getDatasetSynonymTransformContext = async ({
   teamId: string;
   datasetId: string;
 }) => {
-  if (!isDatasetSynonymEnabled()) {
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) {
     return {
       version: 0,
       transformText: (text: string) => text,

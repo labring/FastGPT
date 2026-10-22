@@ -52,7 +52,7 @@ const extensionModel: LLMModelDataType = {
 };
 
 describe('defaultSearchDatasetData', () => {
-  it('decorates Deep RAG final results and candidates without changing billing metadata', async () => {
+  it('decorates Deep RAG final results without decorating retrievalResults or changing billing metadata', async () => {
     const quote: SearchDataResponseItemType = {
       id: 'external',
       q: 'alias',
@@ -80,8 +80,7 @@ describe('defaultSearchDatasetData', () => {
     mockAttachMappings.mockImplementation(async ({ results }) =>
       results.map((item: SearchDataResponseItemType) => ({
         ...item,
-        synonymMappings: { alias: 'standard' },
-        synonymMappingsTruncated: true
+        synonymMappings: { alias: 'standard' }
       }))
     );
     try {
@@ -94,12 +93,12 @@ describe('defaultSearchDatasetData', () => {
         limit: 5000
       });
       expect(result.searchRes[0].synonymMappings).toEqual({ alias: 'standard' });
-      expect(result.retrievalResults?.[0].synonymMappingsTruncated).toBe(true);
+      expect(result.retrievalResults?.[0].synonymMappings).toBeUndefined();
       expect(result).toMatchObject({ embeddingTokens: 7, reRankInputTokens: 9, usingReRank: true });
       expect(mockAttachMappings).toHaveBeenCalledWith({
         teamId: 'team-1',
         datasetIds: ['dataset-1'],
-        results: [quote, quote]
+        results: [quote]
       });
       expect(raw.searchRes[0].synonymMappings).toBeUndefined();
     } finally {

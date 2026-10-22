@@ -148,7 +148,6 @@ export type FullTextWriteProps = {
   datasetId: string;
   collectionId: string;
   fullText: string;
-  skipUnchanged?: boolean;
 };
 
 /**

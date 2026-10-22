@@ -74,16 +74,12 @@ export const deepRagSearch = async (
   data: DeepRagSearchProps
 ): Promise<SearchDatasetDataResponse> => {
   const result = await global.deepRagHandler(data);
-  const decorated = await attachSynonymMappingsToSearchResults({
-    teamId: data.teamId,
-    datasetIds: data.datasetIds,
-    results: [...result.searchRes, ...(result.retrievalResults ?? [])]
-  });
   return {
     ...result,
-    searchRes: decorated.slice(0, result.searchRes.length),
-    ...(result.retrievalResults
-      ? { retrievalResults: decorated.slice(result.searchRes.length) }
-      : {})
+    searchRes: await attachSynonymMappingsToSearchResults({
+      teamId: data.teamId,
+      datasetIds: data.datasetIds,
+      results: result.searchRes
+    })
   };
 };

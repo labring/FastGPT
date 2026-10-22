@@ -40,7 +40,7 @@ const makeResponse = (
 });
 
 describe('createChatItemResponseRows', () => {
-  it('keeps mapping snapshots and truncation in slim quotes and retrieval candidates', async () => {
+  it('strips synonymMappings alongside q/a in slim quotes and retrieval candidates', async () => {
     const quote = {
       id: 'quote',
       datasetId: 'dataset',
@@ -49,8 +49,7 @@ describe('createChatItemResponseRows', () => {
       chunkIndex: 0,
       score: [],
       q: 'body',
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
+      synonymMappings: { alias: 'standard' }
     };
     const create = vi.fn().mockResolvedValue(undefined);
     const writer = new WorkflowNodeResponseWriter({
@@ -62,30 +61,13 @@ describe('createChatItemResponseRows', () => {
       makeResponse({
         id: 'search',
         moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        quoteList: [
-          quote,
-          { ...quote, id: 'empty', synonymMappings: {}, synonymMappingsTruncated: undefined },
-          {
-            ...quote,
-            id: 'missing',
-            synonymMappings: undefined,
-            synonymMappingsTruncated: undefined
-          }
-        ],
+        quoteList: [quote],
         retrievalResults: [quote]
       })
     ]);
     const response = create.mock.calls[0][0][0].data;
-    expect(response.quoteList?.[0]).toMatchObject({
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
-    });
-    expect(response.retrievalResults?.[0]).toMatchObject({
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
-    });
-    expect(response.quoteList?.[1].synonymMappings).toEqual({});
-    expect(response.quoteList?.[2]).not.toHaveProperty('synonymMappings');
+    expect(response.quoteList?.[0]).not.toHaveProperty('synonymMappings');
+    expect(response.retrievalResults?.[0]).not.toHaveProperty('synonymMappings');
     expect(response.quoteList?.[0]).not.toHaveProperty('q');
   });
 

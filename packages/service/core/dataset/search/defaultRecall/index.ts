@@ -181,15 +181,11 @@ export async function searchDatasetData(
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
   // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
-  const decorated = await attachSynonymMappingsToSearchResults({
+  const decoratedFinal = await attachSynonymMappingsToSearchResults({
     teamId,
     datasetIds,
-    results: [...filterMaxTokensResult, ...(retrievalResults ?? [])]
+    results: filterMaxTokensResult
   });
-  const decoratedFinal = decorated.slice(0, filterMaxTokensResult.length);
-  const decoratedRetrieval = retrievalResults
-    ? decorated.slice(filterMaxTokensResult.length)
-    : undefined;
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 最终输出不暴露仅供格式化使用的 imageId。
   // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
@@ -219,6 +215,6 @@ export async function searchDatasetData(
     usingReRank: finalUsingReRank,
     usingSimilarityFilter,
     imageCaptionResult,
-    retrievalResults: decoratedRetrieval
+    retrievalResults
   };
 }

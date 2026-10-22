@@ -190,7 +190,6 @@ export const getClbsInfo = async ({
   ownerTmbId?: string;
   showUsername?: boolean;
 }): Promise<CollaboratorItemDetailType[]> => {
-  // Explicit element types keep empty permission buckets valid under strict TypeScript inference.
   const tmbIds: string[] = [];
   const orgIds: string[] = [];
   const groupIds: string[] = [];

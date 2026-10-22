@@ -1,13 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const mocks = vi.hoisted(() => ({
-  enabled: true,
   reRankRecall: vi.fn(),
   runtimeConfig: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/synonym/entity', () => ({
-  isDatasetSynonymEnabled: () => mocks.enabled,
   getDatasetSynonymRuntimeConfig: mocks.runtimeConfig
 }));
 vi.mock('@fastgpt/service/core/ai/rerank', () => ({
@@ -16,6 +15,7 @@ vi.mock('@fastgpt/service/core/ai/rerank', () => ({
 
 import { rerankDatasetWithSynonyms } from '@fastgpt/service/core/dataset/synonym/rerank';
 
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const matcher = {
   hasMappings: true,
   transform: (text: string) => ({
@@ -27,12 +27,16 @@ const documents = [{ id: 'a', datasetId: 'd1', text: 'plain text' }];
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.enabled = true;
+  Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
   mocks.runtimeConfig.mockResolvedValue({
     config: { enabled: true, version: 2 },
     active: { version: 2, matcher }
   });
   mocks.reRankRecall.mockResolvedValue({ results: [{ id: 'a', score: 0.2 }], inputTokens: 10 });
+});
+
+afterAll(() => {
+  Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: originalDatasetSynonymEnabled });
 });
 
 describe('rerankDatasetWithSynonyms', () => {
@@ -103,7 +107,7 @@ describe('rerankDatasetWithSynonyms', () => {
     await rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
     expect(mocks.reRankRecall).toHaveBeenCalledTimes(1);
 
-    mocks.enabled = false;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     await rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
     expect(mocks.reRankRecall).toHaveBeenCalledTimes(2);
   });

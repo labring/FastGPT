@@ -63,10 +63,6 @@ const getResponseId = (response: ChatHistoryItemResType) => response.id || getNa
 const getParentId = (response: ChatHistoryItemResType) => response.parentId;
 
 const slimQuoteItem = (quote: SearchDataResponseQuoteListItemType) => ({
-  ...(quote.synonymMappings !== undefined ? { synonymMappings: quote.synonymMappings } : {}),
-  ...(quote.synonymMappingsTruncated !== undefined
-    ? { synonymMappingsTruncated: quote.synonymMappingsTruncated }
-    : {}),
   id: quote.id,
   chunkIndex: quote.chunkIndex,
   datasetId: quote.datasetId,

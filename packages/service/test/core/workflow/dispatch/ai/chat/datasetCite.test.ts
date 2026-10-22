@@ -1,20 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getDatasetCiteData } from '@fastgpt/service/core/workflow/dispatch/ai/chat/datasetCite';
+import { serviceEnv } from '@fastgpt/service/env';
 
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const tokenMocks = vi.hoisted(() => ({
-  countPromptTokens: vi.fn(async (text: string) => text.length),
   countPromptTokensBatch: vi.fn(async (texts: string[]) => texts.map((text) => text.length))
 }));
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => tokenMocks);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  tokenMocks.countPromptTokens.mockImplementation(async (text: string) => text.length);
+  Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
   tokenMocks.countPromptTokensBatch.mockImplementation(async (texts: string[]) =>
     texts.map((text) => text.length)
   );
+});
+
+afterAll(() => {
+  Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: originalDatasetSynonymEnabled });
 });
 const item: SearchDataResponseItemType = {
   id: 'id',
@@ -53,37 +58,22 @@ describe('dataset citation synonym compatibility', () => {
   it('keeps custom legacy templates unchanged', async () => {
     expect((await run({ quoteTemplate: '{{q}}' })).userInput).toBe('alias Question: question');
   });
-  it('counts rendered mappings and allows no references instead of exceeding the budget', async () => {
+  it('uses filterSearchResultsByMaxChars fallback to keep the first item when over budget', async () => {
     expect(
-      (await run({ model: { config: { quoteMaxToken: 5 } } as LLMModelDataType })).userInput
-    ).toBe(' Question: question');
+      (await run({ model: { config: { quoteMaxToken: 1 } } as LLMModelDataType })).userInput
+    ).toBe('alias {"alias":"standard"} Question: question');
   });
-  it('includes separators in the strict budget', async () => {
+  it('truncates subsequent items once cumulative q+a tokens exceed quoteMaxToken', async () => {
+    const longItem = { ...item, q: 'a'.repeat(600) };
     expect(
       (
         await run({
-          quoteQA: [item, item],
+          quoteQA: [longItem, item],
           quoteTemplate: '{{q}}',
-          model: { config: { quoteMaxToken: 10 } } as LLMModelDataType
+          model: { config: { quoteMaxToken: 100 } } as LLMModelDataType
         })
       ).userInput
-    ).toBe('alias Question: question');
-  });
-  it('rolls back whole chunks when joined tokenization exceeds the per-chunk sum', async () => {
-    // BPE merges across chunk boundaries: the joined text counts 6 tokens more than the
-    // per-chunk sum, which must trigger the batch rollback instead of a per-item recount.
-    tokenMocks.countPromptTokens.mockImplementation(async (text: string) => text.length + 6);
-
-    const result = await run({
-      quoteQA: [item, item, item],
-      quoteTemplate: '{{q}}',
-      model: { config: { quoteMaxToken: 19 } } as LLMModelDataType
-    });
-
-    // Two chunks fit the per-chunk budget; the joined recount overflows, so the last one is dropped.
-    expect(result.userInput).toBe('alias Question: question');
-    expect(tokenMocks.countPromptTokensBatch).toHaveBeenCalledTimes(1);
-    expect(tokenMocks.countPromptTokens).toHaveBeenCalledTimes(2);
+    ).toBe(`${'a'.repeat(600)} Question: question`);
   });
   it('does not recursively expand placeholders within retrieved content or mappings', async () => {
     const result = await run({
@@ -95,5 +85,19 @@ describe('dataset citation synonym compatibility', () => {
     const result = await run({ aiChatQuoteRole: 'system', datasetQuotePrompt: '{{quote}}' });
     expect(result.systemPrompt).toBe('alias {"alias":"standard"}');
     expect(result.userInput).toBe('question');
+  });
+  it('omits standard template mapping fields when enabled but a chunk has no reliable mapping', async () => {
+    const quoteQA = [{ ...item, synonymMappings: undefined }];
+    const jsonTemplate = '{\n  "q": "{{q}}",\n  "synonymMappings": {{synonymMappings}}\n}';
+    const xmlTemplate =
+      '<Question>\n{{q}}\n</Question>\n<SynonymMappings>\n{{synonymMappings}}\n</SynonymMappings>';
+    expect(
+      (await run({ quoteQA, quoteTemplate: jsonTemplate, datasetQuotePrompt: '{{quote}}' }))
+        .userInput
+    ).toBe('{\n  "q": "alias"\n}');
+    expect(
+      (await run({ quoteQA, quoteTemplate: xmlTemplate, datasetQuotePrompt: '{{quote}}' }))
+        .userInput
+    ).toBe('<Question>\nalias\n</Question>');
   });
 });

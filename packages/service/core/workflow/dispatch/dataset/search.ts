@@ -412,9 +412,7 @@ export const dispatchDatasetSearch = async (
         ...(retrievalResults?.length ? { retrievalResults } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
-        searchRes.length > 0
-          ? formatDatasetSearchToolResponse(searchRes, (item) => `${item.q}\n${item.a}`.trim())
-          : 'No results'
+        searchRes.length > 0 ? formatDatasetSearchToolResponse(searchRes) : 'No results'
     };
   } catch (error) {
     if (isDatasetResourceMissingError(error)) {

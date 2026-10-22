@@ -9,14 +9,10 @@ const mockAggregate = vi.hoisted(() => vi.fn());
 const mockBulkWrite = vi.hoisted(() => vi.fn());
 const mockDeleteMany = vi.hoisted(() => vi.fn());
 const mockJiebaSplit = vi.hoisted(() => vi.fn());
-const mockFind = vi.hoisted(() => vi.fn());
-const mockReadSession = vi.hoisted(() => vi.fn());
-const mockLean = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/dataset/data/dataTextSchema', () => ({
   MongoDatasetDataText: {
     aggregate: mockAggregate,
-    find: mockFind,
     bulkWrite: mockBulkWrite,
     deleteMany: mockDeleteMany
   }
@@ -57,9 +53,6 @@ beforeEach(() => {
     { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }
   ]);
   mockBulkWrite.mockReset().mockResolvedValue({});
-  mockFind.mockReset().mockReturnValue({ session: mockReadSession });
-  mockReadSession.mockReset().mockReturnValue({ lean: mockLean });
-  mockLean.mockReset().mockResolvedValue([]);
   // deleteMany 返回 Query,链式 .maxTimeMS() 需可调用并返回 thenable
   mockDeleteMany
     .mockReset()
@@ -71,160 +64,6 @@ afterEach(() => {
 });
 
 describe('textStore', () => {
-  it('skips identical stored tokens only inside the supplied transaction', async () => {
-    const { MongoFullTextStore } = await loadTextStore('mongo');
-    const session = { inTransaction: () => true } as never;
-    const item = {
-      dataId: 'd1',
-      teamId: 't1',
-      datasetId: 'ds1',
-      collectionId: 'c1',
-      fullText: 'new source text',
-      skipUnchanged: true
-    };
-    mockLean.mockResolvedValue([{ ...item, fullTextToken: 'token' }]);
-
-    await new MongoFullTextStore().write([item], session);
-
-    expect(mockJiebaSplit).toHaveBeenCalledWith({ text: 'new source text' });
-    expect(mockFind).toHaveBeenCalledWith(
-      { dataId: { $in: ['d1'] } },
-      'dataId teamId datasetId collectionId fullTextToken'
-    );
-    expect(mockReadSession).toHaveBeenCalledWith(session);
-    expect(mockBulkWrite).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    { name: 'changed tokens', stored: { fullTextToken: 'old token' } },
-    { name: 'missing tokens', stored: {} },
-    { name: 'different team', stored: { teamId: 'other', fullTextToken: 'token' } },
-    { name: 'different dataset', stored: { datasetId: 'other', fullTextToken: 'token' } },
-    { name: 'different collection', stored: { collectionId: 'other', fullTextToken: 'token' } }
-  ])('writes when the stored record has $name', async ({ stored }) => {
-    const { MongoFullTextStore } = await loadTextStore('mongo');
-    const session = { inTransaction: () => true } as never;
-    const item = {
-      dataId: 'd1',
-      teamId: 't1',
-      datasetId: 'ds1',
-      collectionId: 'c1',
-      fullText: 'target',
-      skipUnchanged: true
-    };
-    mockLean.mockResolvedValue([{ ...item, ...stored }]);
-
-    await new MongoFullTextStore().write([item], session);
-
-    expect(mockBulkWrite).toHaveBeenCalledExactlyOnceWith(
-      [
-        {
-          updateOne: {
-            filter: { dataId: 'd1' },
-            update: {
-              $set: {
-                dataId: 'd1',
-                teamId: 't1',
-                datasetId: 'ds1',
-                collectionId: 'c1',
-                fullTextToken: 'token'
-              }
-            },
-            upsert: true
-          }
-        }
-      ],
-      { ordered: false, session }
-    );
-  });
-
-  it('writes only changed and missing records in a mixed batch', async () => {
-    const { MongoFullTextStore } = await loadTextStore('mongo');
-    const session = { inTransaction: () => true } as never;
-    const items = ['same', 'changed', 'missing'].map((dataId) => ({
-      dataId,
-      teamId: 't1',
-      datasetId: 'ds1',
-      collectionId: 'c1',
-      fullText: 'target',
-      skipUnchanged: true
-    }));
-    mockLean.mockResolvedValue([
-      { ...items[0], fullTextToken: 'token' },
-      { ...items[1], fullTextToken: 'old token' }
-    ]);
-
-    await new MongoFullTextStore().write(items, session);
-
-    expect(
-      mockBulkWrite.mock.calls[0][0].map(
-        (operation: { updateOne: { filter: { dataId: string } } }) =>
-          operation.updateOne.filter.dataId
-      )
-    ).toEqual(['changed', 'missing']);
-  });
-
-  it.each([undefined, { inTransaction: () => false }])(
-    'does not compare outside a transaction',
-    async (session) => {
-      const { MongoFullTextStore } = await loadTextStore('mongo');
-      await new MongoFullTextStore().write(
-        [
-          {
-            dataId: 'd1',
-            teamId: 't1',
-            datasetId: 'ds1',
-            collectionId: 'c1',
-            fullText: 'target',
-            skipUnchanged: true
-          }
-        ],
-        session as never
-      );
-      expect(mockFind).not.toHaveBeenCalled();
-      expect(mockBulkWrite).toHaveBeenCalledTimes(1);
-    }
-  );
-
-  it('does not perform comparison reads for ordinary writes', async () => {
-    const { MongoFullTextStore } = await loadTextStore('mongo');
-    await new MongoFullTextStore().write(
-      [
-        {
-          dataId: 'd1',
-          teamId: 't1',
-          datasetId: 'ds1',
-          collectionId: 'c1',
-          fullText: 'target'
-        }
-      ],
-      { inTransaction: () => true } as never
-    );
-    expect(mockFind).not.toHaveBeenCalled();
-    expect(mockBulkWrite).toHaveBeenCalledTimes(1);
-  });
-
-  it('propagates comparison failures without writing', async () => {
-    const { MongoFullTextStore } = await loadTextStore('mongo');
-    mockLean.mockRejectedValue(new Error('read failed'));
-    await expect(
-      new MongoFullTextStore().write(
-        [
-          {
-            dataId: 'd1',
-            teamId: 't1',
-            datasetId: 'ds1',
-            collectionId: 'c1',
-            fullText: 'target',
-            skipUnchanged: true
-          }
-        ],
-        { inTransaction: () => true } as never
-      )
-    ).rejects.toThrow('read failed');
-    expect(mockBulkWrite).not.toHaveBeenCalled();
-  });
-
   it('TC-7.1 FullTextStore interface exposes search + write/delete', async () => {
     const { MongoFullTextStore } = await loadTextStore('mongo');
     const mongo: InstanceType<typeof MongoFullTextStore> = new MongoFullTextStore();

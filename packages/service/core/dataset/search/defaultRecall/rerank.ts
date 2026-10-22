@@ -13,7 +13,7 @@ const datasetDataReRank = async ({
   rerankModel?: RerankModelDataType;
   data: SearchDataResponseItemType[];
   query: string;
-  teamId?: string;
+  teamId: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
@@ -69,7 +69,7 @@ export const reRankSearchResults = async ({
   rerankModel?: RerankModelDataType;
   query: string;
   rerankWeight: number;
-  teamId?: string;
+  teamId: string;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;

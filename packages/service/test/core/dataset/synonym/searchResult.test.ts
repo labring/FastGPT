@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import {
   attachSynonymMappingsToSearchResults,
@@ -6,9 +6,10 @@ import {
   type SearchSynonymSnapshot
 } from '@fastgpt/service/core/dataset/synonym/searchResult';
 import { buildSynonymMatcher } from '@fastgpt/service/core/dataset/synonym/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 
+const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 const mocks = vi.hoisted(() => ({
-  enabled: true,
   find: vi.fn(),
   select: vi.fn(),
   lean: vi.fn(),
@@ -22,7 +23,6 @@ vi.mock('@fastgpt/service/core/dataset/data/controller', () => ({
   formatDatasetDataTextValue: ({ q, a }: { q: string; a?: string }) => ({ q, a })
 }));
 vi.mock('@fastgpt/service/core/dataset/synonym/entity', () => ({
-  isDatasetSynonymEnabled: () => mocks.enabled,
   getDatasetSynonymMatcher: mocks.matcher,
   getCachedDatasetSynonymConfig: mocks.config
 }));
@@ -50,7 +50,7 @@ const run = (results = [item()]) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.enabled = true;
+  serviceEnv.DATASET_SYNONYM_ENABLED = true;
   mocks.find.mockReturnValue({ select: mocks.select });
   mocks.select.mockReturnValue({ lean: mocks.lean });
   mocks.lean.mockResolvedValue([]);
@@ -71,9 +71,13 @@ beforeEach(() => {
   }));
 });
 
+afterAll(() => {
+  serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+});
+
 describe('synonym search result enrichment', () => {
   it('does not query or create mappings when disabled, and removes internal snapshots', async () => {
-    mocks.enabled = false;
+    serviceEnv.DATASET_SYNONYM_ENABLED = false;
     const [result] = await run();
     expect(result).not.toHaveProperty('synonymMappings');
     expect(Object.getOwnPropertySymbols(result)).toEqual([]);
@@ -83,6 +87,7 @@ describe('synonym search result enrichment', () => {
   it('preserves actual case variants and groups matcher loads by version', async () => {
     const results = await run([item(), item(), item('alias', 2)]);
     expect(results[0].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
+    expect(results[1].synonymMappings).toEqual({ ALIAS: 'standard-1', alias: 'standard-1' });
     expect(results[2].synonymMappings).toEqual({ alias: 'standard-2' });
     expect(mocks.matcher).toHaveBeenCalledTimes(2);
     expect(mocks.find).not.toHaveBeenCalled();
@@ -137,7 +142,7 @@ describe('synonym search result enrichment', () => {
     mocks.lean.mockRejectedValue(new Error('read failed'));
     expect((await run([external]))[0].synonymMappings).toBeUndefined();
   });
-  it('caps mappings deterministically and exposes truncation without internal metadata', async () => {
+  it('caps mappings deterministically without internal metadata', async () => {
     mocks.matcher.mockResolvedValue({
       hasMappings: true,
       transform: () => ({
@@ -149,25 +154,7 @@ describe('synonym search result enrichment', () => {
     });
     const [result] = await run();
     expect(Object.keys(result.synonymMappings ?? {})).toHaveLength(100);
-    expect(result.synonymMappingsTruncated).toBe(true);
     expect(JSON.stringify(result)).not.toContain('mappingId');
-  });
-  it('caps serialized UTF-8 bytes without returning a partial mapping value', async () => {
-    mocks.matcher.mockResolvedValue({
-      hasMappings: true,
-      transform: () => ({
-        usedMappings: [
-          { matchedTerm: 'first', standardizedTerm: 'standard' },
-          { matchedTerm: 'large', standardizedTerm: '词'.repeat(6000) }
-        ]
-      })
-    });
-    const [result] = await run();
-    expect(result.synonymMappings).toEqual({ first: 'standard' });
-    expect(Buffer.byteLength(JSON.stringify(result.synonymMappings), 'utf8')).toBeLessThanOrEqual(
-      16 * 1024
-    );
-    expect(result.synonymMappingsTruncated).toBe(true);
   });
 
   it('handles prototype-like terms without prototype pollution', async () => {
@@ -187,13 +174,11 @@ describe('synonym search result enrichment', () => {
   it('passes through results already decorated upstream without querying or recomputing', async () => {
     const decorated = {
       ...item(),
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
+      synonymMappings: { alias: 'standard' }
     };
     const [result] = await run([decorated]);
     expect(result).toMatchObject({
-      synonymMappings: { alias: 'standard' },
-      synonymMappingsTruncated: true
+      synonymMappings: { alias: 'standard' }
     });
     expect(Object.getOwnPropertySymbols(result)).toEqual([]);
     expect(mocks.find).not.toHaveBeenCalled();

@@ -8,6 +8,8 @@
 
 能力由服务端环境变量 `DATASET_SYNONYM_ENABLED` 控制，默认关闭。关闭时管理 API 直接拒绝请求，搜索和数据写入链路不读取同义词配置、不构建 matcher，也不执行同义词转换；已存在的同义词 training 暂停领取，重新启用后继续处理。
 
+本期只考虑默认关闭的兼容行为，以及从关闭到开启的能力接入。不考虑开启后再关闭时的逻辑差异，不提供已保存提示词、映射数据或派生索引的反向清理与回退；关闭态的链路隔离不代表支持完整回退到启用前的状态。
+
 ## 2. 核心语义
 
 ### 2.1 映射规则
@@ -116,7 +118,7 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 
 | 层 | 载体 | 作用 | 读取方 |
 | --- | --- | --- | --- |
-| 运行开关 | `serviceEnv.DATASET_SYNONYM_ENABLED`（默认 false） | 决定索引、检索、重排、Prompt 代入是否走同义词链路 | 服务端，只通过 `isDatasetSynonymEnabled()` |
+| 运行开关 | `serviceEnv.DATASET_SYNONYM_ENABLED`（默认 false） | 决定索引、检索、重排、Prompt 代入是否走同义词链路 | 服务端，直接读取 `serviceEnv.DATASET_SYNONYM_ENABLED` |
 | 能力投影 | `feConfigs.datasetSynonymEnabled` | 决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板 | 前端 |
 
 服务端逻辑**不得**读取 `feConfigs.datasetSynonymEnabled`，否则会出现 env 与配置不一致的双开关。
@@ -127,9 +129,9 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 
 - 每个分块可带 `synonymMappings`：key 是该分块正文/标题里**实际命中**的原词（保留原文大小写），value 是标准词。
 - 字段缺失表示没有得到可靠映射（功能关闭、快照不可用、跨租户），空对象 `{}` 表示确认未命中。
-- 单分块最多 100 条、序列化 JSON ≤ 16 KiB，超出按整条映射截断并置 `synonymMappingsTruncated: true`。
+- 单分块最多保留 100 条映射，超出按整条映射截断。
 - 装饰在 `defaultRecall` 中、`formatDatasetDataValues` **之前**完成，避免图片短链改写 q/a 后与库内原文比对失败。
-- AI 对话运行时只在已保存模板包含 `{{synonymMappings}}` 时代入；关闭功能或分块无映射时，模板里的映射片段会被剥离，保证 prompt 无残留。
+- AI 对话运行时只在已保存模板包含 `{{synonymMappings}}` 时代入；分块未提供可靠映射时省略标准内容模板的映射字段。默认关闭时不注入同义词数据，不要求对曾经启用后保存的模板及静态说明做反向清理。
 
 ### 8.3 装饰的幂等与可信边界
 
@@ -148,10 +150,9 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 
 ### 8.5 独立部署启用步骤
 
-1. 设置 `DATASET_SYNONYM_ENABLED=true`，开启全部服务端行为。
-2. 在 `projects/app/src/service/common/system/index.ts` 的 `initSystemConfig()` 中与 `isPlus` 等派生字段并列增加 `datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED`。
-3. 前端在引用模板设置与新节点默认模板处用 `withSynonymQuoteTemplates` 装饰模板，`enabled` 取 `feConfigs.datasetSynonymEnabled === true`。
-4. 校验：`getInitData` 返回 true、检索结果带映射、编辑器出现占位符；关闭 env 后三者消失。
+1. 设置 `DATASET_SYNONYM_ENABLED=true`，开启全部服务端行为；`projects/app/src/service/common/system/index.ts` 的 `initSystemConfig()` 会自动派生 `feConfigs.datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED`。
+2. 前端在引用模板设置与新节点默认模板处用 `withSynonymQuoteTemplates` 装饰模板，`enabled` 取 `feConfigs.datasetSynonymEnabled === true`。
+3. 校验默认关闭时沿用原有链路；开启后 `getInitData` 返回 true、检索结果带映射、编辑器提供占位符。开启后再关闭的差异不纳入本期验收。
 
 ### 8.6 与重排的关系
 

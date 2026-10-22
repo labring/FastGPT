@@ -20,8 +20,9 @@ import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLoc
 import { BLOCKED_LOCK_TIME } from './query';
 import { MongoDatasetData } from '../data/schema';
 import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
-import { getDatasetSynonymTransformContext, isDatasetSynonymEnabled } from '../synonym/entity';
+import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -431,7 +432,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     return { insertLen: 0, dataIds: [] };
   }
 
-  const synonymContext = isDatasetSynonymEnabled()
+  const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
     ? await getDatasetSynonymTransformContext({ teamId, datasetId })
     : undefined;
 

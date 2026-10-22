@@ -261,7 +261,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
       expect(result).toMatchObject([
         {
           name: 'search',
-            id: 'http-507f1f77bcf86cd799439011/search'
+          id: 'http-507f1f77bcf86cd799439011/search'
         }
       ]);
     });
@@ -588,14 +588,6 @@ describe('SSRF Vulnerability Fix Tests', () => {
 
       expect(result.errorMsg).toBe(PRIVATE_URL_TEXT);
       expect(result.data).toBeUndefined();
-    });
-  });
-
-  describe('Legitimate External URLs', () => {
-    // 注意：这些测试会实际发起网络请求，可能需要 mock
-    it('should allow legitimate external URLs (example.com)', async () => {
-      // 这个测试需要 mock axios 或者跳过
-      // 因为我们不想在测试中实际发起外部请求
     });
   });
 });

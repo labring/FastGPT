@@ -1213,40 +1213,30 @@ describe('Dataset data service', () => {
     });
 
     it.each([
-      { name: 'identical tokens', storedText: '退款\n稳定文本', expectedWrites: 0 },
-      { name: 'legacy body tokens', storedText: 'old question\nold answer', expectedWrites: 1 },
-      { name: 'missing record', storedText: undefined, expectedWrites: 1 }
-    ])(
-      'compares actual full-text storage during synonym rebuild: $name',
-      async ({ storedText, expectedWrites }) => {
-        const { data } = await createSynonymRebuildData({ previousVersion: 1 });
-        if (storedText !== undefined) {
-          await MongoDatasetDataText.updateOne(
-            { dataId: data._id },
-            {
-              $set: { fullTextToken: await jiebaSplit({ text: storedText }) }
-            }
-          );
-        } else {
-          await MongoDatasetDataText.deleteMany({ dataId: data._id });
-        }
-        const writeSpy = vi.spyOn(MongoDatasetDataText, 'bulkWrite');
-        try {
-          await rebuildDatasetDataIndexes({
-            dataId: String(data._id),
-            model: visionEmbeddingModel,
-            diffSynonym: true
-          });
-          expect(writeSpy).toHaveBeenCalledTimes(expectedWrites);
-          expect(
-            (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
-          ).toBe(await jiebaSplit({ text: '退款\n稳定文本' }));
-          expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(2);
-        } finally {
-          writeSpy.mockRestore();
-        }
+      { name: 'existing legacy body tokens', storedText: 'old question\nold answer' },
+      { name: 'missing record', storedText: undefined }
+    ])('upserts full-text storage during synonym rebuild: $name', async ({ storedText }) => {
+      const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      if (storedText !== undefined) {
+        await MongoDatasetDataText.updateOne(
+          { dataId: data._id },
+          {
+            $set: { fullTextToken: await jiebaSplit({ text: storedText }) }
+          }
+        );
+      } else {
+        await MongoDatasetDataText.deleteMany({ dataId: data._id });
       }
-    );
+      await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: visionEmbeddingModel,
+        diffSynonym: true
+      });
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        await jiebaSplit({ text: '退款\n稳定文本' })
+      );
+      expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(2);
+    });
 
     it('rolls back full-text changes together with the synonym version', async () => {
       const { data } = await createSynonymRebuildData({ previousVersion: 1 });

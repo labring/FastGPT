@@ -270,7 +270,6 @@ export const pathData2ToolList = async (
       const inputRequired: string[] = [];
       const outputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const outputRequired: string[] = [];
-      // Keep the empty state explicit so strict TypeScript does not infer never[]-like shapes.
       let requestSchema: JSONSchemaInputType | undefined;
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
