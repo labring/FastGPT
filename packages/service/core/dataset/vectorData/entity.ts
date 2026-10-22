@@ -23,16 +23,19 @@ export const findDatasetForVectorRows = ({
 /**
  * 首次完整初始化，后续仅回写行数，避免覆盖未来索引维护状态；不复活已删除知识库。
  * 旧快照只允许覆盖更早快照，进程接管后迟到的结果不能回退统计时间。
+ * signal 只阻止取消后的后续写入，不能撤销已经发给数据库的请求。
  */
 export const updateDatasetVectorRows = async (
   {
     teamId,
     datasetId,
-    snapshot
+    snapshot,
+    signal
   }: {
     teamId: string;
     datasetId: string;
     snapshot: DatasetVectorDataType;
+    signal?: AbortSignal;
   },
   session?: ClientSession
 ) => {
@@ -42,6 +45,7 @@ export const updateDatasetVectorRows = async (
     deleteTime: null,
     type: { $ne: DatasetTypeEnum.folder }
   };
+  signal?.throwIfAborted();
   const initialized = await MongoDataset.updateOne(
     { ...filter, vectorData: { $exists: false } },
     { $set: { vectorData: snapshot } },
@@ -49,6 +53,7 @@ export const updateDatasetVectorRows = async (
   );
   if (initialized.matchedCount) return;
 
+  signal?.throwIfAborted();
   await MongoDataset.updateOne(
     { ...filter, 'vectorData.rowsUpdatedAt': { $lte: snapshot.rowsUpdatedAt } },
     {

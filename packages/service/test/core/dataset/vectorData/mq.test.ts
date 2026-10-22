@@ -9,10 +9,11 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { Types } from '@fastgpt/service/common/mongo';
 
 describe('VectorRowsUpdateMQService', () => {
+  const loggerWarn = vi.spyOn(getLogger(LogCategories.INFRA.QUEUE), 'warn');
   const client = { eval: vi.fn().mockResolvedValue(1) };
   const queue = {
     addBulk: vi.fn().mockResolvedValue([]),
-    setGlobalConcurrency: vi.fn().mockResolvedValue(undefined),
+    removeGlobalConcurrency: vi.fn().mockResolvedValue(undefined),
     client: Promise.resolve(client),
     toKey: (key: string) => `test:${key}`
   };
@@ -26,8 +27,13 @@ describe('VectorRowsUpdateMQService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    queue.setGlobalConcurrency.mockResolvedValue(undefined);
+    loggerWarn.mockImplementation(() => undefined);
+    queue.removeGlobalConcurrency.mockResolvedValue(undefined);
     client.eval.mockResolvedValue(1);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('pushJobs', () => {
@@ -64,9 +70,9 @@ describe('VectorRowsUpdateMQService', () => {
   });
 
   describe('getWorker', () => {
-    it('waits for the global limit before creating a local single-concurrency worker', async () => {
+    it('clears a legacy global limit before starting a node-local single-concurrency worker', async () => {
       let ready!: () => void;
-      queue.setGlobalConcurrency.mockImplementationOnce(
+      queue.removeGlobalConcurrency.mockImplementationOnce(
         () =>
           new Promise<void>((resolve) => {
             ready = resolve;
@@ -74,7 +80,7 @@ describe('VectorRowsUpdateMQService', () => {
       );
       const processor = vi.fn();
       const starting = service.getWorker(processor);
-      expect(queue.setGlobalConcurrency).toHaveBeenCalledWith(1);
+      expect(queue.removeGlobalConcurrency).toHaveBeenCalledOnce();
       expect(binding.getWorker).not.toHaveBeenCalled();
       ready();
       await starting;
@@ -92,26 +98,123 @@ describe('VectorRowsUpdateMQService', () => {
         'test:de:dataset/t/a',
         'old-job'
       );
-      expect(processor).toHaveBeenCalledWith(job, 'token');
+      expect(processor).toHaveBeenCalledWith(job.data, expect.any(AbortSignal));
+      expect(processor.mock.calls[0][1].aborted).toBe(true);
       expect(client.eval.mock.invocationCallOrder[0]).toBeLessThan(
         processor.mock.invocationCallOrder[0]
       );
     });
 
-    it('does not start an unrestricted worker when the global setting fails', async () => {
-      queue.setGlobalConcurrency.mockRejectedValueOnce(new Error('offline'));
+    it('does not start a worker with a stale global limit when cleanup fails', async () => {
+      queue.removeGlobalConcurrency.mockRejectedValueOnce(new Error('offline'));
       await expect(service.getWorker(vi.fn())).rejects.toThrow('offline');
       expect(binding.getWorker).not.toHaveBeenCalled();
     });
 
-    it('does not count when ownership release or job validation fails', async () => {
+    it('retries an ownership release failure without counting, but rejects invalid identities', async () => {
       const processor = vi.fn();
       await service.getWorker(processor);
       const process = binding.getWorker.mock.calls[0][1];
       client.eval.mockRejectedValueOnce(new Error('offline'));
-      await expect(process({ id: '1', data: { teamId: 't' } })).rejects.toThrow('offline');
+      const moveToDelayed = vi.fn().mockResolvedValue(undefined);
+      await expect(
+        process({ id: '1', data: { teamId: 't' }, attemptsStarted: 1, moveToDelayed }, 'token')
+      ).rejects.toMatchObject({ name: 'DelayedError' });
+      expect(moveToDelayed).toHaveBeenCalledWith(expect.any(Number), 'token');
       await expect(process({ id: '2', data: { teamId: '' } })).rejects.toThrow();
       expect(processor).not.toHaveBeenCalled();
+    });
+
+    it('keeps retrying with exponential delay capped at one hour, beyond a finite retry budget', async () => {
+      vi.useFakeTimers();
+      const now = new Date('2026-10-22T00:00:00Z');
+      vi.setSystemTime(now);
+      const processor = vi.fn().mockRejectedValue(new Error('database offline'));
+      await service.getWorker(processor);
+      const process = binding.getWorker.mock.calls[0][1];
+      const job = {
+        id: 'retry',
+        data: { teamId: 't', datasetId: 'a' },
+        attemptsStarted: 1,
+        moveToDelayed: vi.fn().mockResolvedValue(undefined)
+      };
+
+      for (const [attempt, retryDelay] of [
+        [1, 60_000],
+        [2, 120_000],
+        [6, 1_920_000],
+        [7, 3_600_000],
+        [100_000, 3_600_000]
+      ]) {
+        job.attemptsStarted = attempt;
+        await expect(process(job, 'token')).rejects.toMatchObject({ name: 'DelayedError' });
+        expect(job.moveToDelayed).toHaveBeenLastCalledWith(now.getTime() + retryDelay, 'token');
+        expect(processor.mock.calls.at(-1)?.[1].aborted).toBe(true);
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('lets a newer pending window take over a failure instead of accumulating duplicate retries', async () => {
+      client.eval.mockResolvedValueOnce(1).mockResolvedValueOnce(0);
+      await service.getWorker(vi.fn().mockRejectedValue(new Error('database offline')));
+      const process = binding.getWorker.mock.calls[0][1];
+      const job = {
+        id: 'old',
+        data: { teamId: 't' },
+        attemptsStarted: 1,
+        moveToDelayed: vi.fn()
+      };
+
+      await expect(process(job, 'token')).resolves.toBeUndefined();
+      expect(job.moveToDelayed).not.toHaveBeenCalled();
+    });
+
+    it('aborts a stalled attempt after sixty seconds and releases it into delayed retry', async () => {
+      vi.useFakeTimers();
+      let finish!: () => void;
+      const processor = vi.fn(
+        (_data: unknown, _signal: AbortSignal) =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          })
+      );
+      await service.getWorker(processor);
+      const process = binding.getWorker.mock.calls[0][1];
+      const job = {
+        id: 'slow',
+        data: { teamId: 't' },
+        attemptsStarted: 1,
+        moveToDelayed: vi.fn().mockResolvedValue(undefined)
+      };
+      const attempt = expect(process(job, 'token')).rejects.toMatchObject({ name: 'DelayedError' });
+
+      await vi.advanceTimersByTimeAsync(59_999);
+      const signal = processor.mock.calls[0][1];
+      expect(signal.aborted).toBe(false);
+      expect(job.moveToDelayed).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await attempt;
+      expect(signal.aborted).toBe(true);
+      expect(signal.reason.message).toBe('Vector rows update timed out');
+      expect(job.moveToDelayed).toHaveBeenCalledOnce();
+
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(job.moveToDelayed).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('surfaces a failed state transition rather than completing a lost retry', async () => {
+      await service.getWorker(vi.fn().mockRejectedValue(new Error('database offline')));
+      const process = binding.getWorker.mock.calls[0][1];
+      await expect(
+        process({
+          id: 'retry',
+          data: { teamId: 't' },
+          attemptsStarted: 1,
+          moveToDelayed: vi.fn().mockRejectedValue(new Error('Redis offline'))
+        })
+      ).rejects.toThrow('Redis offline');
     });
   });
 });

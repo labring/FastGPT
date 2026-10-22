@@ -80,12 +80,53 @@ describe('dataset vector statistics', () => {
     it('uses the explicit team refresh path for a team-only job', async () => {
       const refresh = vi.spyOn(vectorController, 'refreshTeamVectorCount').mockResolvedValue(123);
       await updateVectorRows({ teamId });
-      expect(refresh).toHaveBeenCalledWith(teamId);
+      expect(refresh).toHaveBeenCalledWith(teamId, undefined);
       expect(mockGetVectorCount).not.toHaveBeenCalled();
+    });
+
+    it('does not start cancelled work or publish a dataset count returned after cancellation', async () => {
+      const dataset = await seed();
+      const scope = { teamId, datasetId: String(dataset._id) };
+      const cancelled = AbortSignal.abort(new Error('execution timed out'));
+      await expect(updateVectorRows(scope, cancelled)).rejects.toThrow('execution timed out');
+      expect(mockGetVectorCount).not.toHaveBeenCalled();
+
+      const controller = new AbortController();
+      mockGetVectorCount.mockImplementationOnce(async () => {
+        controller.abort(new Error('execution timed out'));
+        return 100;
+      });
+      await expect(updateVectorRows(scope, controller.signal)).rejects.toThrow(
+        'execution timed out'
+      );
+      expect((await read(scope.datasetId))?.vectorData).toBeUndefined();
     });
   });
 
   describe('updateDatasetVectorRows', () => {
+    it('does not start a second update if the task is cancelled during the initialization attempt', async () => {
+      const controller = new AbortController();
+      const update = vi.spyOn(MongoDataset, 'updateOne').mockImplementationOnce(() => {
+        controller.abort(new Error('execution timed out'));
+        return Promise.resolve({ matchedCount: 0 }) as any;
+      });
+      const snapshot = DatasetVectorDataSchema.parse({
+        rows: 20,
+        rowsUpdatedAt: new Date(),
+        pgIndex: 'none',
+        pgIndexCheckedAt: new Date()
+      });
+      await expect(
+        updateDatasetVectorRows({
+          teamId,
+          datasetId: String(new Types.ObjectId()),
+          snapshot,
+          signal: controller.signal
+        })
+      ).rejects.toThrow('execution timed out');
+      expect(update).toHaveBeenCalledOnce();
+    });
+
     it('keeps newer counts and independently managed PG status during later writes', async () => {
       const dataset = await seed();
       const snapshot = DatasetVectorDataSchema.parse({
