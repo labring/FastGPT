@@ -10,7 +10,8 @@ import type {
   AdminAuditEventParamsType,
   AuditEventParamsType,
   DatasetAuditEvent,
-  DatasetAuditEventParamsType
+  DatasetAuditEventParamsType,
+  TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
 import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -20,7 +21,7 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 export type AuditLogInput = {
   tmbId: string;
   teamId: string;
-  event: AuditEventEnum | AdminAuditEventEnum | DatasetAuditEvent;
+  event: TeamAuditEvent | AdminAuditEventEnum;
   params?: Record<string, unknown>;
 };
 

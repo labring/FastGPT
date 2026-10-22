@@ -489,8 +489,12 @@ export const auditLogMap = {
     params: {} as {
       name?: string;
       datasetName: string;
+      /** 展示名，日志正文使用；目录查不到模型时退回模型 ID。 */
       oldModelName: string;
       newModelName: string;
+      /** 稳定模型 ID，正文不展示，仅供排查模型改名场景。 */
+      oldModelId: string;
+      newModelId: string;
     }
   },
   //Data

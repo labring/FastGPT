@@ -27,7 +27,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { getTrainingAuditModelName } from '@fastgpt/service/core/dataset/training/audit';
+import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/training/audit';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
@@ -131,26 +131,31 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   });
 
   // 审计在重建任务落库后写入；模型名查不到时退回模型 ID，不影响已提交的重建流程。
-  const [oldModelName, newModelName] = await Promise.all([
-    getTrainingAuditModelName({
+  // 同时保留稳定 ID：日志展示读名称，排查改名前后的同一模型时按 ID 追踪。
+  {
+    const [oldModel, newModel] = await Promise.all([
+      getTrainingAuditModelLabel({
+        teamId,
+        reference: getDatasetModelReference(dataset, 'embedding')
+      }),
+      getTrainingAuditModelLabel({
+        teamId,
+        reference: { modelId: vectorModelData.modelId, model: vectorModelData.model }
+      })
+    ]);
+    addAuditLog({
+      tmbId,
       teamId,
-      reference: getDatasetModelReference(dataset, 'embedding')
-    }),
-    getTrainingAuditModelName({
-      teamId,
-      reference: { modelId: vectorModelData.modelId, model: vectorModelData.model }
-    })
-  ]);
-  addAuditLog({
-    tmbId,
-    teamId,
-    event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
-    params: {
-      datasetName: dataset.name,
-      oldModelName,
-      newModelName
-    }
-  });
+      event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
+      params: {
+        datasetName: dataset.name,
+        oldModelName: oldModel.modelName,
+        newModelName: newModel.modelName,
+        oldModelId: oldModel.modelId,
+        newModelId: newModel.modelId
+      }
+    });
+  }
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
 }

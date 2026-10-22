@@ -154,7 +154,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     );
     expect(training?.indexes).toEqual([]);
 
-    // 审计在重建任务落库后异步写入，断言展示用的模型标识而非内部 ID。
+    // 审计在重建任务落库后异步写入：正文用模型展示名，内部 ID 单独保留以便排查改名。
     await vi.waitFor(
       async () => {
         const logs = await MongoTeamAudit.find({
@@ -165,8 +165,10 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
         expect(logs[0].metadata).toEqual(
           expect.objectContaining({
             datasetName: 'test dataset',
-            oldModelName: textOnlyEmbeddingModel.modelId,
-            newModelName: visionEmbeddingModel.modelId
+            oldModelName: textOnlyEmbeddingModel.name,
+            newModelName: visionEmbeddingModel.name,
+            oldModelId: textOnlyEmbeddingModel.modelId,
+            newModelId: visionEmbeddingModel.modelId
           })
         );
       },
