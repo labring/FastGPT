@@ -143,8 +143,7 @@ export const confirmedPreview: AIChatItemValueItemType = {
         { value: 'confirm', label: 'Confirm', inputMode: 'none' },
         { value: 'revise', label: 'Revise', inputMode: 'text' },
         { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-      ],
-      answerValue: 'confirm'
+      ]
     }
   }
 };
