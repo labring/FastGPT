@@ -27,6 +27,7 @@ export type AuxiliaryGenerationStreamContext = {
   writeError: (error: unknown) => void;
   writeDone: () => void;
   flushResume: () => Promise<void>;
+  cleanup: () => void;
 };
 
 /**
@@ -94,8 +95,7 @@ export const createAuxiliaryGenerationStream = async ({
         data: '[DONE]'
       });
     },
-    async flushResume() {
-      await sseContext.flushResume();
-    }
+    flushResume: sseContext.flushResume,
+    cleanup: sseContext.cleanup
   };
 };

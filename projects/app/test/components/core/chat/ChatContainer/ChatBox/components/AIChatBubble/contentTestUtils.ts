@@ -58,6 +58,15 @@ vi.mock('@/components/core/chat/components/AIResponseBox', () => ({
         )
       );
     }
+    if (value.chatAgentBuilderVersion) {
+      elements.push(
+        React.createElement(
+          'button',
+          { key: 'config', 'data-content': 'config' },
+          'Apply configuration'
+        )
+      );
+    }
     if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
       elements.push(
         React.createElement(

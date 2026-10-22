@@ -9,6 +9,7 @@ import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Pro
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { useChatInputForm } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatInputForm';
 import { useChatGenerate } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatGenerate';
+import { useChatResume } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatResume';
 import { useChatRecordActions } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatRecordActions';
 import { getInteractiveByHistories } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
 import ChatInput from '@/components/core/chat/ChatContainer/ChatBox/Input/ChatInput';
@@ -27,9 +28,16 @@ import { clearChatInputDrafts, readChatInputDraft } from '@/web/core/chat/inputD
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
+import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
+import type { streamResumeFetch } from '@/web/common/api/fetch';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
+  resume: vi.fn(),
+  onGeneratingMessage: vi.fn(),
+  applyConfig: vi.fn(),
   toast: vi.fn(),
   startAudio: vi.fn(),
   finishAudio: vi.fn(),
@@ -45,6 +53,10 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/hooks/useSystem', () => ({ useSystem: () => mocks.system }));
+vi.mock('@/web/common/api/fetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/web/common/api/fetch')>()),
+  streamResumeFetch: mocks.resume
+}));
 vi.mock('@/web/core/chat/record/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/web/core/chat/record/api')>()),
   delChatRecordById: mocks.deleteRecords,
@@ -90,16 +102,20 @@ describe('useChatGenerate.sendPrompt', () => {
     chatId,
     pending,
     tmbId,
-    withComposer
+    withComposer,
+    resume
   }: {
     chatId: string;
     pending: boolean;
     tmbId: string;
     withComposer: boolean;
+    resume: boolean;
   }) => {
     const textarea = useRef<HTMLTextAreaElement>(null);
     const activeSource = useRef<string | undefined>(sourceKey);
     const activeChat = useRef<string | undefined>(chatId);
+    const resumeController = useRef<AbortController>();
+    const resumedChatTarget = useRef<string>();
     useLayoutEffect(() => {
       activeChat.current = chatId;
     }, [chatId]);
@@ -115,12 +131,13 @@ describe('useChatGenerate.sendPrompt', () => {
     });
     generate = useChatGenerate({
       onStartChat: mocks.start,
+      onGeneratingMessage: mocks.onGeneratingMessage,
       isRoundPending: pending,
       chatControllerRef: useRef(new AbortController()),
       questionGuideControllerRef: useRef(new AbortController()),
       pluginControllerRef: useRef(new AbortController()),
-      resumeControllerRef: useRef(undefined),
-      resumedChatTargetRef: useRef(undefined),
+      resumeControllerRef: resumeController,
+      resumedChatTargetRef: resumedChatTarget,
       activeSourceKeyRef: activeSource,
       activeChatIdRef: activeChat,
       TextareaDom: textarea,
@@ -133,6 +150,19 @@ describe('useChatGenerate.sendPrompt', () => {
       scrollToBottom: () => {},
       generatingScroll: mocks.scroll,
       notifyChatGenerateStatusChange: mocks.notifyStatus,
+      finishChatGenerateStatus: mocks.finishStatus
+    });
+    useChatResume({
+      enableAutoResume: resume,
+      isReady: true,
+      resumeTargetAiDataId: records.at(-1)?.dataId,
+      activeSourceKeyRef: activeSource,
+      activeChatIdRef: activeChat,
+      resumedChatTargetRef: resumedChatTarget,
+      resumeControllerRef: resumeController,
+      generatingMessage: generate.generatingMessage,
+      flushGeneratingMessages: generate.flushGeneratingMessages,
+      scrollToBottom: mocks.scroll,
       finishChatGenerateStatus: mocks.finishStatus
     });
     recordActions = useChatRecordActions({ sendPrompt: generate.sendPrompt });
@@ -155,25 +185,40 @@ describe('useChatGenerate.sendPrompt', () => {
     required,
     pending,
     tmbId,
-    withComposer
+    withComposer,
+    resume
   }: {
     chatId: string;
     required: boolean;
     pending: boolean;
     tmbId: string;
     withComposer: boolean;
+    resume: boolean;
   }) => {
     const variablesForm = useForm<ChatBoxInputFormType>({
       defaultValues: { input: '', files: [], chatStarted: false, variables: { required: '' } }
     });
     variablesForm.register('variables.required', { required });
-    const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+    const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>(
+      resume
+        ? [
+            {
+              id: 'resumed-ai',
+              dataId: 'resumed-ai',
+              obj: ChatRoleEnum.AI,
+              status: ChatStatusEnum.loading,
+              value: []
+            }
+          ]
+        : []
+    );
     records = chatRecords;
     setRecords = setChatRecords;
     const [chatBoxData, setChatBoxData] = useState({
       appId: 'app',
       sourceKey,
       chatId,
+      chatGenerateStatus: resume ? ChatGenerateStatusEnum.generating : undefined,
       app: { name: 'App' }
     });
     const runtime: React.ComponentProps<typeof WorkflowRuntimeContext.Provider>['value'] = {
@@ -195,6 +240,7 @@ describe('useChatGenerate.sendPrompt', () => {
     const record = {
       chatRecords,
       setChatRecords,
+      isChatRecordsLoaded: true,
       refreshChatRecords: async () => {
         const history = await mocks.refreshRecords();
         setChatRecords(history);
@@ -202,6 +248,7 @@ describe('useChatGenerate.sendPrompt', () => {
       }
     } as unknown as React.ComponentProps<typeof ChatRecordContext.Provider>['value'];
     const chat = {
+      isChatting: false,
       variableList: [],
       startSegmentedAudio: mocks.startAudio,
       finishSegmentedAudio: mocks.finishAudio,
@@ -220,7 +267,7 @@ describe('useChatGenerate.sendPrompt', () => {
           value: record,
           children: React.createElement(ChatBoxContext.Provider, {
             value: chat,
-            children: React.createElement(Harness, { chatId, pending, tmbId, withComposer })
+            children: React.createElement(Harness, { chatId, pending, tmbId, withComposer, resume })
           })
         })
       })
@@ -232,10 +279,13 @@ describe('useChatGenerate.sendPrompt', () => {
     required = false,
     pending = false,
     tmbId = identity.tmbId,
-    withComposer = false
+    withComposer = false,
+    resume = false
   } = {}) =>
     act(async () =>
-      root.render(React.createElement(Wrapper, { chatId, required, pending, tmbId, withComposer }))
+      root.render(
+        React.createElement(Wrapper, { chatId, required, pending, tmbId, withComposer, resume })
+      )
     );
   const edit = async (text: string, files: (typeof file)[] = []) =>
     act(async () => input.resetInputVal({ text, files }));
@@ -265,6 +315,12 @@ describe('useChatGenerate.sendPrompt', () => {
     vi.clearAllMocks();
     mocks.system.isPc = false;
     mocks.start.mockResolvedValue({ responseText: 'answer' });
+    mocks.resume.mockResolvedValue({ responseText: '' });
+    mocks.onGeneratingMessage.mockImplementation((message: generatingMessageProps) => {
+      if (message.event === AuxiliaryGenerationEventEnum.chatAgentConfig && message.formData) {
+        mocks.applyConfig(message.formData);
+      }
+    });
     mocks.deleteRecords.mockResolvedValue(undefined);
     mocks.startAudio.mockResolvedValue(undefined);
     root = createRoot(document.getElementById('root')!);
@@ -276,6 +332,72 @@ describe('useChatGenerate.sendPrompt', () => {
     clearChatInputDrafts();
     dom.window.close();
     vi.unstubAllGlobals();
+  });
+
+  it.each(['normal', 'resume'] as const)(
+    'applies generated agent configuration once through the %s stream',
+    async (mode) => {
+      const formData = ChatAgentConfigFormDataSchema.parse({
+        systemPrompt: 'Use the generated agent',
+        tools: [{ id: 'systemTool-shared', source: 'system' }]
+      });
+      const chatAgentBuilderVersion = {
+        s3Key: 'chat/helper/config.json',
+        expiresAt: '2099-01-01T00:00:00.000Z'
+      };
+      const event = {
+        event: AuxiliaryGenerationEventEnum.chatAgentConfig,
+        formData,
+        chatAgentBuilderVersion
+      };
+      mocks.start.mockImplementation(async ({ generatingMessage }) => {
+        generatingMessage(event);
+        return { responseText: '' };
+      });
+      mocks.resume.mockImplementation(
+        async ({ onmessage }: Parameters<typeof streamResumeFetch>[0]) => {
+          onmessage(event);
+          return { responseText: '' };
+        }
+      );
+
+      await render({ resume: mode === 'resume' });
+      if (mode === 'normal') await send();
+
+      expect(mocks.applyConfig).toHaveBeenCalledExactlyOnceWith(formData);
+      expect(mocks.onGeneratingMessage).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining(event)
+      );
+      expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentBuilderVersion }]));
+      expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
+      expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
+    }
+  );
+
+  it('retains a completed configuration reference after reopening without replaying or auto-applying', async () => {
+    const chatAgentBuilderVersion = {
+      s3Key: 'chat/helper/completed.json',
+      expiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    mocks.resume.mockResolvedValue({
+      responseText: '',
+      completedChat: {
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
+        records: {
+          list: [
+            {
+              id: 'resumed-ai',
+              dataId: 'resumed-ai',
+              obj: ChatRoleEnum.AI,
+              value: [{ chatAgentBuilderVersion }]
+            }
+          ]
+        }
+      }
+    });
+    await render({ resume: true });
+    expect(records.at(-1)?.value).toEqual([{ chatAgentBuilderVersion }]);
+    expect(mocks.applyConfig).not.toHaveBeenCalled();
   });
 
   it.each(
