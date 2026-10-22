@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
@@ -19,10 +19,12 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
+    getModelData: mocks.getLLMModelData,
     getLLMModelData: mocks.getLLMModelData,
     getDefaultModelData: vi.fn()
   }),
   getTeamModelHandle: async () => ({
+    getModelData: mocks.getLLMModelData,
     getLLMModelData: mocks.getLLMModelData,
     getDefaultModelData: vi.fn()
   })
@@ -70,5 +72,47 @@ describe('createQuestionGuide model resource permission', () => {
     ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
 
     expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
+  });
+
+  it('enforces model resource check when only legacy model is configured', async () => {
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            questionGuide: { open: true, model: 'legacy-model' }
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+
+    expect(mocks.createQuestionGuide).not.toHaveBeenCalled();
+
+    mocks.getAppLatestVersion.mockResolvedValueOnce({
+      resources: [{ type: 'model', id: 'model-id' }],
+      chatConfig: {}
+    });
+    mocks.createQuestionGuide.mockResolvedValue({
+      result: ['q1'],
+      inputTokens: 1,
+      outputTokens: 1
+    });
+
+    await expect(
+      handler(
+        {
+          body: {
+            appId: '65f000000000000000000071',
+            chatId: 'chat-id',
+            questionGuide: { open: true, model: 'legacy-model' }
+          }
+        } as any,
+        {} as any
+      )
+    ).resolves.toEqual(['q1']);
+
+    expect(mocks.createQuestionGuide).toHaveBeenCalledOnce();
   });
 });

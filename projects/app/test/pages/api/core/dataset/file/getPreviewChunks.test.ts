@@ -30,12 +30,16 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
-    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
-    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+    getModelData: vi.fn((_ref: unknown, options?: { type?: string }) => ({
+      modelId: options?.type === 'embedding' ? 'embedding-id' : 'llm-id',
+      config: {}
+    }))
   }),
   getTeamModelHandle: async () => ({
-    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
-    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+    getModelData: vi.fn((_ref: unknown, options?: { type?: string }) => ({
+      modelId: options?.type === 'embedding' ? 'embedding-id' : 'llm-id',
+      config: {}
+    }))
   })
 }));
 

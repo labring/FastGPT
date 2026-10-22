@@ -21,6 +21,7 @@ export type OpenSandboxConfigType = Pick<
   | 'entrypoint'
   | 'timeoutSeconds'
   | 'resourceLimits'
+  | 'resourceRequests'
   | 'env'
   | 'networkPolicy'
   | 'extensions'

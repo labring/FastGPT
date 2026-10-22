@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AProps } from '../components/A';
+import type { MarkdownActionProps } from '../type';
 
 export type MarkdownRendererRuntimeContextValue = {
   showAnimation?: boolean;
@@ -8,7 +9,7 @@ export type MarkdownRendererRuntimeContextValue = {
   chatAuthData?: AProps['chatAuthData'];
   allowedCitationIds?: AProps['allowedCitationIds'];
   onOpenCiteModal?: AProps['onOpenCiteModal'];
-};
+} & MarkdownActionProps;
 
 /**
  * 仅用于给 react-markdown 的稳定 components 传递 renderer 运行时参数。

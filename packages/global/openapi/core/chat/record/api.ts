@@ -35,6 +35,14 @@ export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
 
+/* ============================================================================
+ * API: 删除对话消息
+ * Route: DELETE /api/core/chat/record/delete
+ * Method: DELETE
+ * Description: 软删除指定消息；Ask/Preview 的待回答状态由剩余消息推导
+ * Tags: ['Chat', 'Delete']
+ * ============================================================================ */
+
 const DeleteChatRecordPropsSchema = {
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({

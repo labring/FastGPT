@@ -13,7 +13,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { SkillListContext } from './context';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import {
   AgentSkillSourceEnum,
@@ -40,7 +39,9 @@ import type { EditResourceInfoFormType } from '@/components/common/Modal/EditRes
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import ResourceListCard from '@/pageComponents/dashboard/ResourceListCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
+import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -76,7 +77,6 @@ const List = ({
     isEmpty,
     searchKey,
     setSearchKey,
-    folderDetail,
     ScrollData,
     listFilters,
     columnCount,
@@ -93,7 +93,6 @@ const List = ({
     isEmpty: v.isEmpty,
     searchKey: v.searchKey,
     setSearchKey: v.setSearchKey,
-    folderDetail: v.folderDetail,
     ScrollData: v.ScrollData,
     listFilters: v.listFilters,
     columnCount: v.columnCount,
@@ -199,6 +198,35 @@ const List = ({
       errorToast: t('skill:move_failed')
     }
   );
+
+  const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
+    type: 'common',
+    title: t('common:move.confirm'),
+    content: t('skill:move_skill_hint')
+  });
+  const { runAsync: onDragMoveSkill } = useRequest(
+    (dragId: string, targetId: string) =>
+      batchMoveSkills({
+        ids: [dragId],
+        parentId: targetId
+      }),
+    {
+      onSuccess() {
+        refreshSkills();
+      },
+      errorToast: t('skill:move_failed')
+    }
+  );
+  const { getBoxProps } = useFolderDrag({
+    activeStyles: {
+      borderColor: 'primary.600'
+    },
+    onDrop: (dragId: string, targetId: string) => {
+      openMoveConfirm({
+        onConfirm: () => onDragMoveSkill(dragId, targetId)
+      })();
+    }
+  });
 
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const displayTime = getResourceListDisplayTime({
@@ -308,60 +336,33 @@ const List = ({
     const hasBatchPer = Boolean(skill.permission?.hasManagePer || skill.permission?.isOwner);
 
     return (
-      <MyBox
+      <ResourceListCard
         key={skill._id}
-        data-virtual-item=""
         pt={5}
         pb={3}
         px={5}
-        cursor={'pointer'}
-        border={'base'}
-        bg={'white'}
-        borderRadius={'10px'}
-        position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        minW={0}
-        _hover={
-          isBatchMode
-            ? {
-                borderColor: isSelected ? 'primary.600' : 'primary.300',
-                boxShadow: '1.5'
-              }
-            : {
-                borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .more': {
-                  display: 'flex'
-                },
-                '& .time': {
-                  display: ['flex', 'none']
-                }
-              }
-        }
-        {...(isBatchMode && {
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
+        isBatchMode={isBatchMode}
+        isSelected={isSelected}
+        canSelect={hasBatchPer}
+        dragProps={getBoxProps({
+          dataId: skill._id,
+          isFolder
+        })}
+        onClick={() => {
+          if (isBatchMode) {
             if (hasBatchPer) {
               onToggleSelectSkill(skill._id);
             }
-          },
-          ...(isSelected && {
-            borderColor: 'primary.600',
-            bg: 'primary.50'
-          })
-        })}
-        {...(!isBatchMode && {
-          onClick: () => {
-            if (isFolder) {
-              setSearchKey('');
-              router.push({ query: { ...router.query, parentId: skill._id } });
-            } else {
-              if (isSkillReady && !guardSkillSandboxOperation()) return;
-              router.push(`/skill/detail?skillId=${skill._id}`);
-            }
+            return;
           }
-        })}
+          if (isFolder) {
+            setSearchKey('');
+            router.push({ query: { ...router.query, parentId: skill._id } });
+          } else {
+            if (isSkillReady && !guardSkillSandboxOperation()) return;
+            router.push(`/skill/detail?skillId=${skill._id}`);
+          }
+        }}
       >
         <Grid templateColumns={'auto minmax(0, 1fr) auto'} alignItems={'center'} gap={2}>
           {isFolder ? (
@@ -481,7 +482,7 @@ const List = ({
               )}
           </HStack>
         </HStack>
-      </MyBox>
+      </ResourceListCard>
     );
   };
 
@@ -509,27 +510,13 @@ const List = ({
           >
             {renderVirtualGridItems(renderSkillCard)}
           </Grid>
-        ) : skills.length === 0 && !folderDetail ? (
-          hasActiveFilter ? (
-            <EmptyTip />
-          ) : onClickCreate && onClickImport ? (
-            <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
-          ) : (
-            <Grid
-              py={4}
-              gridTemplateColumns={[
-                '1fr',
-                'repeat(2,1fr)',
-                'repeat(2,1fr)',
-                'repeat(3,1fr)',
-                'repeat(4,1fr)'
-              ]}
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              <ForbiddenCreateButton />
-            </Grid>
-          )
+        ) : isEmpty &&
+          !parentId &&
+          !hasActiveFilter &&
+          !isBatchMode &&
+          onClickCreate &&
+          onClickImport ? (
+          <SkillDashboardEmptyHero onClickImport={onClickImport} onClickCreate={onClickCreate} />
         ) : (
           <Grid
             ref={gridRef}
@@ -553,6 +540,7 @@ const List = ({
         )}
         <DeleteConfirmModal />
         <ConfirmCopyModal />
+        <MoveConfirmModal />
         {!!editedSkill && (
           <EditResourceModal
             {...editedSkill}

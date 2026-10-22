@@ -21,7 +21,9 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
-import { NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema } from '../../common/zod';
+import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
+import { UserChatSelectSchema } from './input/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -42,6 +44,7 @@ export const ToolModuleResponseItemSchema = z.object({
   toolAvatar: z.string(),
   params: z.string(),
   response: z.string().nullish(),
+  hideDetails: BoolSchema.optional().meta({ description: '仅展示工具信息，不提供参数或响应详情' }),
   functionName: z.string()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
@@ -174,7 +177,11 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
-  askId: z.string().nullish(),
+  askId: z.string().nullish().meta({
+    deprecated: true,
+    description: '旧版用户回复的交互关联 ID，保留兼容，新消息不再写入'
+  }),
+  select: UserChatSelectSchema.optional(),
   text: z
     .object({
       content: z.string()
@@ -242,6 +249,7 @@ export const AIChatItemValueSchema = z.object({
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
+  workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()

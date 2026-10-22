@@ -26,7 +26,7 @@ import type {
   FastAgentLoopResult,
   PendingMainContext
 } from './type';
-import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
+import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 /**
@@ -223,6 +223,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
 
   const result = await runAgentLoop({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
+    completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.batchToolSize ?? 5,
     childrenInteractiveParams: input.childrenInteractiveParams,
     body: {
@@ -373,6 +374,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(parsed.error, { skipResponseCompress: true });
         }
 
+        const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
+        if (validationError) {
+          return createToolResponse(validationError, { skipResponseCompress: true });
+        }
+
         emitAgentLoopEvent(runtime, {
           type: 'ask_start',
           ask: parsed.ask,
@@ -440,14 +446,15 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         const sandboxToolName = toSandboxToolName(call.function.name);
 
         if (!runtime.sandboxToolContext) {
-          const response = 'Sandbox executor is not available.';
+          const response = 'Sandbox client is not available.';
           return createToolResponse(response, { skipResponseCompress: true });
         }
 
         const sandboxResult = await runSandboxTools({
           toolName: sandboxToolName,
           args: call.function.arguments ?? '',
-          sandboxClient: runtime.sandboxToolContext.client
+          sandboxClient: runtime.sandboxToolContext.client,
+          validate: runtime.sandboxToolContext.validate
         });
         return createToolResponse(sandboxResult.response, {
           skipResponseCompress: true,

@@ -448,7 +448,7 @@ const LogTable = ({
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
-      <Flex alignItems={'flex-start'} gap={3} flexWrap={'wrap'}>
+      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
         <DateRangePicker
           defaultDate={dateRange}
           onSuccess={setDateRange}

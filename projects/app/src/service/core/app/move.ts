@@ -18,7 +18,6 @@ import { shouldInheritResourcePermission } from '@fastgpt/service/support/permis
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
@@ -50,12 +49,13 @@ const logAppMove = ({
 export const moveApp = async ({
   req,
   appId,
-  parentId
+  parentId: rawParentId
 }: {
   req: ApiRequestProps;
   appId: string;
   parentId: ParentIdType;
 }) => {
+  const parentId = rawParentId || null;
   const { app, teamId, tmbId } = await authApp({
     req,
     authToken: true,
@@ -106,7 +106,7 @@ export const moveApp = async ({
       await MongoApp.updateOne(
         { _id: appId },
         {
-          ...parseParentIdInMongo(parentId),
+          parentId,
           updateTime: new Date()
         },
         { session }
@@ -160,7 +160,7 @@ export const moveApp = async ({
     await MongoApp.updateOne(
       { _id: appId },
       {
-        ...parseParentIdInMongo(parentId),
+        parentId,
         inheritPermission: true,
         updateTime: new Date()
       },

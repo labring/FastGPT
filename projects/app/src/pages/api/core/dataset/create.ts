@@ -1,4 +1,3 @@
-import { authDatasetCreateModels } from '@/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -23,6 +22,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -61,34 +61,36 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
         per: TeamDatasetCreatePermissionVal
       });
 
-  // check model valid
+  // check model valid & permission
   const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelStore =
-    modelHandle.getEmbeddingModelData(
-      { modelId: vectorModelId, model: vectorModel },
-      { optional: true }
-    ) ?? modelHandle.getDefaultModelData('embedding');
-  const agentModelStore =
-    modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
-    modelHandle.getDefaultModelData('llm');
-  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
-  const explicitVlm = vlmModelId !== undefined || vlmModel !== undefined;
-  const rawVlmModel = (() => {
-    if (vlmModelId !== undefined)
-      return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
-    if (vlmModel !== undefined)
-      return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
-    return modelHandle.getDefaultModelData('datasetImageLLM');
-  })();
-
-  const vlmModelStore = await authDatasetCreateModels({
+  const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot },
-    handle: modelHandle,
-    vectorModel: vectorModelStore,
-    agentModel: agentModelStore,
-    vlmModel: rawVlmModel,
-    explicitVlm
+    handle: modelHandle
   });
+  const vectorModelStore =
+    modelHandle.getModelData(
+      { modelId: vectorModelId, model: vectorModel },
+      { type: 'embedding', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('embedding', { authorizedIds });
+  const agentModelStore =
+    modelHandle.getModelData(
+      { modelId: agentModelId, model: agentModel },
+      { type: 'llm', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('llm', { authorizedIds });
+  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认（无权限默认 VLM 自动降级为 undefined）。
+  const vlmModelStore = (() => {
+    if (vlmModelId !== undefined)
+      return modelHandle.getModelData(
+        { modelId: vlmModelId },
+        { type: 'llm', vision: true, optional: true, authorizedIds }
+      );
+    if (vlmModel !== undefined)
+      return modelHandle.getModelData(
+        { model: vlmModel },
+        { type: 'llm', vision: true, optional: true, authorizedIds }
+      );
+    return modelHandle.getDefaultModelData('datasetImageLLM', { authorizedIds });
+  })();
 
   // check limit
   await checkTeamDatasetLimit(teamId);

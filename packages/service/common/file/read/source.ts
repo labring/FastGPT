@@ -8,7 +8,7 @@ import path from 'node:path';
 import { readStreamToBuffer } from '../../s3/utils';
 import { DEFAULT_CONTENT_TYPE, normalizeMimeType, resolveMimeExtension } from '../../s3/utils/mime';
 import { readExternalFileBuffer } from './external';
-import { isLikelyTextBuffer } from './text';
+import { isLikelyTextBuffer, detectUtf16Text } from './text';
 
 const documentExtensionSet = new Set(
   documentFileExtensions.map((extension) => extension.replace(/^\./, '').toLowerCase())
@@ -119,7 +119,11 @@ export const resolveFileSourceEncoding = ({
   if (metadata.encoding) return metadata.encoding;
 
   const charset = /charset=([^;]+)/i.exec(metadata.contentType ?? '')?.[1]?.trim();
-  return charset || detectFileEncoding(buffer);
+  if (charset) return charset;
+
+  // 文本判定已经按 UTF-16 识别时，编码探测必须复用同一结论：无 BOM 的 UTF-16
+  // 会被通用探测判成 utf-8，文件被按 txt 收下后解析出乱码。
+  return detectUtf16Text(buffer)?.encoding || detectFileEncoding(buffer);
 };
 
 /** 创建已鉴权、已知可信大小的 S3 文件来源。 */

@@ -495,32 +495,39 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   };
 };
 
+/** 批量写入解析任务，支持整批共用账单或逐集合账单；保留单条调用入参兼容。 */
 export const pushDatasetToParseQueue = async ({
   teamId,
   tmbId,
   datasetId,
-  collectionId,
-  billId,
-  session
+  session,
+  ...input
 }: {
   teamId: string;
   tmbId: string;
   datasetId: string;
-  collectionId: string;
-  billId: string;
   session: ClientSession;
-}) => {
-  await MongoDatasetTraining.create(
-    [
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        billId,
-        mode: TrainingModeEnum.parse
-      }
-    ],
+} & (
+  | { collectionId: string | string[]; billId: string }
+  | { items: { collectionId: string; billId: string }[] }
+)) => {
+  const items =
+    'items' in input
+      ? input.items
+      : (Array.isArray(input.collectionId) ? input.collectionId : [input.collectionId]).map(
+          (collectionId) => ({ collectionId, billId: input.billId })
+        );
+  if (items.length === 0) return;
+
+  await MongoDatasetTraining.insertMany(
+    items.map(({ collectionId, billId }) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      billId,
+      mode: TrainingModeEnum.parse
+    })),
     { session, ordered: true }
   );
 };

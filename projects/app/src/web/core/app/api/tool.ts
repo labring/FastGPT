@@ -183,7 +183,7 @@ export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
  * 显式切换版本和加载已保存配置仍使用 getClientToolPreviewNode，避免覆盖用户的固定版本。
  */
 export const getNewToolPreviewNode = async (
-  data: Omit<GetPreviewNodeQuery, 'versionId' | 'getLatestVersion'>
+  data: Pick<GetPreviewNodeQuery, 'appId' | 'source' | 'lang'>
 ) => {
   const preview = await getClientToolPreviewNode({ ...data, getLatestVersion: true });
 

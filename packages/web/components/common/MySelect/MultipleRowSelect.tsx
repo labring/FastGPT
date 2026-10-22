@@ -5,7 +5,6 @@ import {
   useDisclosure,
   Box,
   Flex,
-  useOutsideClick,
   Checkbox,
   css,
   Menu,
@@ -19,6 +18,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 
 type RenderListProps = {
+  isOpen: boolean;
   index: number;
   list: MultipleSelectProps['list'];
   cloneValue: (string | undefined)[];
@@ -35,6 +35,7 @@ type RenderListProps = {
 };
 
 const RenderList = React.memo(function RenderList({
+  isOpen,
   index,
   list,
   cloneValue,
@@ -61,6 +62,17 @@ const RenderList = React.memo(function RenderList({
       MenuRef.current[index]!.scrollTop = currentScrollTop;
     }
   }, [currentScrollTop, index, MenuRef]);
+
+  // 每列挂载、展开或选中项位置变化后再定位，覆盖异步加载和后续出现的子列。
+  // 依赖实际选中值与位置，避免父级用新数组重渲染时打断用户手动滚动。
+  useEffect(() => {
+    if (!isOpen || selectedIndex < 0) return;
+    const menu = MenuRef.current[index];
+    const selectedItem = SelectedItemRef.current[index];
+    if (menu && selectedItem) {
+      menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+    }
+  }, [isOpen, selectedValue, selectedIndex, index, MenuRef, SelectedItemRef]);
 
   return (
     <>
@@ -135,6 +147,7 @@ const RenderList = React.memo(function RenderList({
       </Box>
       {children.length > 0 && (
         <RenderList
+          isOpen={isOpen}
           list={children}
           index={index + 1}
           cloneValue={cloneValue}
@@ -187,18 +200,6 @@ export const MultipleRowSelect = ({
   const resolvedCloneValue =
     isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
 
-  useEffect(() => {
-    if (isOpen) {
-      for (let i = 0; i < MenuRef.current.length; i++) {
-        const menu = MenuRef.current[i];
-        const selectedItem = SelectedItemRef.current[i];
-        if (menu && selectedItem) {
-          menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
-        }
-      }
-    }
-  }, [isOpen]);
-
   const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -245,8 +246,15 @@ export const MultipleRowSelect = ({
               }
             : {})}
         >
-          {/* data-preserve-width：避免外层 width:auto 冲掉触发器截断 */}
-          <Flex alignItems={'center'} minW={0} w={'100%'} overflow={'hidden'} data-preserve-width>
+          {/* 保留截断宽度，并恢复 MenuButton 默认屏蔽的标签 hover 事件。 */}
+          <Flex
+            alignItems={'center'}
+            minW={0}
+            w={'100%'}
+            overflow={'hidden'}
+            pointerEvents={'auto'}
+            data-preserve-width
+          >
             <Box
               data-preserve-width
               flex={'1 1 0'}
@@ -298,6 +306,7 @@ export const MultipleRowSelect = ({
             </Box>
           ) : (
             <RenderList
+              isOpen={isOpen}
               list={list}
               index={0}
               cloneValue={resolvedCloneValue}
@@ -331,7 +340,7 @@ export const MultipleRowArraySelect = ({
   ButtonProps
 }: MultipleArraySelectProps) => {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
+  const ButtonRef = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -341,11 +350,6 @@ export const MultipleRowArraySelect = ({
     return Array.isArray(value) ? value.filter((v) => Array.isArray(v)) : [];
   }, [value]);
 
-  // Close when clicking outside
-  useOutsideClick({
-    ref: ref,
-    handler: onClose
-  });
   const onChange = useCallback(
     (val: any[][]) => {
       // Filter invalid value
@@ -417,7 +421,14 @@ export const MultipleRowArraySelect = ({
                   onClick={() => handleSelect(item)}
                   {...(isSelected ? { color: 'primary.600' } : {})}
                 >
-                  {showCheckbox && <Checkbox isChecked={isChecked} mr={1} />}
+                  {showCheckbox && (
+                    <Checkbox
+                      isChecked={isChecked}
+                      mr={1}
+                      icon={<MyIcon name={'common/check'} w={'12px'} />}
+                      pointerEvents={'none'}
+                    />
+                  )}
                   <Box>{item.label}</Box>
                 </Flex>
               );
@@ -439,68 +450,80 @@ export const MultipleRowArraySelect = ({
   }, [onOpen]);
 
   return (
-    <Box ref={ref} position={'relative'}>
-      <Button
-        width={'100%'}
-        variant={'whitePrimaryOutline'}
-        size={'lg'}
-        fontSize={'sm'}
-        px={3}
-        outline={'none'}
-        rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
-        iconSpacing={2}
-        h={'auto'}
-        _active={{
-          transform: 'none'
-        }}
-        _hover={{
-          borderColor: 'primary.500'
-        }}
-        {...ButtonProps}
-        {...(isOpen
-          ? {
-              borderColor: 'primary.600',
-              color: 'primary.700',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-              bg: 'white !important'
-            }
-          : {
-              borderColor: 'myGray.200',
-              boxShadow: 'none'
-            })}
-        onClick={() => (isOpen ? onClose() : onOpenSelect())}
-        className="nowheel"
+    <Box>
+      <Menu
+        autoSelect={false}
+        isOpen={isOpen}
+        onOpen={onOpenSelect}
+        onClose={onClose}
+        strategy={'fixed'}
+        placement={popDirection === 'top' ? 'top-start' : 'bottom-start'}
+        closeOnSelect={false}
       >
-        <Box w={'100%'} textAlign={'left'}>
-          {label ?? placeholder}
-        </Box>
-      </Button>
-      {isOpen && (
-        <Box
-          position={'absolute'}
-          {...(popDirection === 'top'
+        <MenuButton
+          as={Button}
+          ref={ButtonRef}
+          width={'100%'}
+          variant={'whitePrimaryOutline'}
+          size={'lg'}
+          fontSize={'sm'}
+          px={3}
+          outline={'none'}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
+          iconSpacing={2}
+          h={'auto'}
+          _active={{
+            transform: 'none'
+          }}
+          _hover={{
+            borderColor: 'primary.500'
+          }}
+          {...ButtonProps}
+          {...(isOpen
             ? {
-                transform: 'translateY(-105%)',
-                top: '0'
+                borderColor: 'primary.600',
+                color: 'primary.700',
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                bg: 'white !important'
               }
             : {
-                transform: 'translateY(105%)',
-                bottom: '0'
+                borderColor: 'myGray.200',
+                boxShadow: 'none'
               })}
-          py={2}
-          bg={'white'}
-          border={'1px solid #fff'}
-          boxShadow={'5'}
-          borderRadius={'md'}
-          zIndex={1000}
-          minW={'100%'}
-          w={'max-content'}
+          className="nowheel"
         >
-          <Flex>
-            <RenderList list={list} index={0} />
-          </Flex>
-        </Box>
-      )}
+          <Box w={'100%'} textAlign={'left'} pointerEvents={'auto'}>
+            {label ?? placeholder}
+          </Box>
+        </MenuButton>
+        <MenuList
+          className={ButtonProps?.className}
+          minW={(() => {
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+
+            const width = ButtonProps?.width;
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : width
+                ? `${width} !important`
+                : '100%';
+          })()}
+          w={'max-content'}
+          py={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          }
+          zIndex={99}
+          display={'flex'}
+          userSelect={'none'}
+        >
+          <RenderList list={list} index={0} />
+        </MenuList>
+      </Menu>
     </Box>
   );
 };

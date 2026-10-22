@@ -16,7 +16,7 @@ Before writing code, you need to create a development project in the skills list
 Click the "Create" card (the dashed box area with a plus icon) on the page. In the popup, set the skill name, icon, description, and **requirements**. When the system initializes the skill in the background, it takes different approaches based on your input:
 
 - **Using Default Template**: If you leave the default "Goal/Process/Requirements" template unchanged, the system will use the built-in basic structure and boilerplate code to generate the skill workspace (without invoking AI models, consuming no points).
-- **AI-Assisted Generation**: If you input custom functional requirements here (e.g., "help me write a skill that extracts all email addresses from a text"), the system will invoke the **configured default system LLM model** in the background to automatically generate the `SKILL.md` scheme and initialize the code, which will consume points.
+- **AI-Assisted Generation**: If you input custom functional requirements here (e.g., "help me write a skill that extracts all email addresses from a text"), the system will invoke the **configured default system LLM model** in the background to automatically generate the `SKILL.md` instructions and initialize the code, which will consume points.
 
 ### 1.2 Import an Existing Skill ZIP Archive
 
@@ -26,7 +26,7 @@ If you have a skill backed up or shared by others, click the "Import Skill" butt
 
 ## 2. Workspace File Management
 
-When you open the skill details page, the system initializes and provisions an isolated run workspace in a secure sandbox container, loading your project via the file tree on the right.
+When you open the skill details page, the system initializes and provisions an isolated workspace in a secure sandbox container, loading your project via the file tree on the right.
 
 ![Workspace File Management](/imgs/workspace_file_management.png)
 
@@ -46,7 +46,7 @@ Clicking any file in the tree opens it in the center editor:
 
 The command line terminal at the bottom right connects directly to the backend sandbox:
 
-- **Running Commands**: You can enter various command line operations, such as installing required code dependencies online or executing various custom running and debugging scripts.
+- **Running Commands**: You can enter various command line operations, such as installing required code dependencies online or running custom test and debugging scripts.
 - **Log Feedback**: The terminal streams command execution logs in real time. If code or script execution errors occur, you can view the error messages directly in the terminal output to assist with debugging.
 
 ---

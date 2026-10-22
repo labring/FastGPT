@@ -1,15 +1,18 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
+import { WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum } from '../diagnostic/constants';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
+import { FlowNodeTemplateOutputItemTypeSchema } from '../template/output';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
 import { ToolSetToolSummarySchema } from '../../app/tool/toolSet/type';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
 import { InteractiveNodeResponseTypeSchema } from '../template/system/interactive/type';
 import { StoreSecretValueTypeSchema } from '../../../common/secret/type';
-import { PluginStatusSchema } from '../../plugin/type';
+import { PluginStatusSchema, PluginTextSchema } from '../../plugin/type';
 import { SourceMemberSchema } from '../../../support/user/type';
 import z from 'zod';
 import { BoolSchema, NumSchema } from '../../../common/zod';
+import { LanguageSchema } from '../../../common/i18n/type';
 
 export const McpToolSetRuntimeConfigSchema = z.object({
   url: z.string().meta({
@@ -179,12 +182,9 @@ export const FlowNodeCommonTypeSchema = z.object({
   colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
-  toolDescription: z.string().optional().meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  }),
   showStatus: BoolSchema.optional(), // chatting response step status
 
+  metadataLocale: LanguageSchema.optional(), // Plugin UI metadata locale captured when added
   version: z.string().optional(), // version
   versionLabel: z.string().optional(), // Just ui show
   isLatestVersion: BoolSchema.optional(), // Just ui show
@@ -222,6 +222,7 @@ const HandleTypeSchema = z.object({
 // system template
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   id: z.string(),
+  outputs: z.array(FlowNodeTemplateOutputItemTypeSchema),
   status: PluginStatusSchema.optional(),
 
   showSourceHandle: BoolSchema.optional(),
@@ -283,12 +284,8 @@ export const NodeTemplateListItemTypeSchema = z.object({
   templateType: z.string().optional(),
   tags: z.array(z.string()).nullish(),
   avatar: z.string().optional(),
-  name: z.string(),
-  intro: z.string().optional(), // template list intro
-  toolDescription: z.string().optional().meta({
-    description: '已废弃：节点作为工具被调用时的能力说明',
-    deprecated: true
-  }),
+  name: PluginTextSchema,
+  intro: PluginTextSchema.optional(), // template list intro
   isTool: BoolSchema.optional(),
   hasToolInput: BoolSchema.optional(),
 
@@ -327,7 +324,7 @@ export const WorkflowCheckIssueSchema = z.object({
   nodeName: z.string().optional(),
   nodeType: z.enum(FlowNodeTypeEnum),
   level: WorkflowCheckIssueLevelSchema,
-  code: z.string(),
+  code: z.union([z.enum(WorkflowDiagnosticCodeEnum), z.enum(WorkflowCheckIssueCodeEnum)]),
   message: z.string(),
   inputKey: z.string().optional()
 });
@@ -358,6 +355,7 @@ export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 // store node type
 export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
+  isFolded: BoolSchema.optional(),
   position: z
     .object({
       x: NumSchema,

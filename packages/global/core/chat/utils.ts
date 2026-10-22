@@ -11,8 +11,9 @@ import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
-import { extractDeepestInteractive } from '../workflow/runtime/utils';
+import { isAskInteractive, extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
+import { getUserChatSelect } from './input/utils';
 
 /**
  * 合并两段历史，并把 system 消息排到最前。
@@ -37,17 +38,13 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
  * 且已在消息内部的工具折叠卡片中展示，不应被提升为整轮对话或工作流的顶层失败错误。
  *
  * 判定依据：
- * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet / toolCall）；
+ * 1. 显式工具节点类型（FlowNodeTypeEnum.tool / toolSet）；
  * 2. 具备 Function Calling 调用与消费特征：
  *    - 绑定了 Agent 调度的 toolId；
  *    - 或产生并挂载了供大模型继续推理消费的 toolRes（子应用工具、自定义工具、系统工具在被调用时均会生成 toolRes）。
  */
 export const isToolExecutionResponse = (item: ChatHistoryItemResType): boolean => {
-  if (
-    item.moduleType === FlowNodeTypeEnum.tool ||
-    item.moduleType === FlowNodeTypeEnum.toolSet ||
-    item.moduleType === FlowNodeTypeEnum.toolCall
-  ) {
+  if (item.moduleType === FlowNodeTypeEnum.tool || item.moduleType === FlowNodeTypeEnum.toolSet) {
     return true;
   }
 
@@ -301,6 +298,8 @@ export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | strin
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {
   return (
     input?.filter((item) => {
+      // 全部跳过也是一次有效的结构化提交。
+      if (getUserChatSelect([item])) return true;
       // 有文本内容，保留
       if (item.text?.content?.trim()) {
         return true;
@@ -321,6 +320,7 @@ export const getPluginOutputsFromChatResponses = (responses: ChatHistoryItemResT
   return outputs;
 };
 
+/** 将发布渠道映射为聊天来源，企微 Webhook 与长连接共用现有企微统计来源。 */
 export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum) => {
   switch (publishChannel) {
     case PublishChannelEnum.share:
@@ -332,6 +332,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
     case PublishChannelEnum.feishu:
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:
+    case PublishChannelEnum.wecomWebsocket:
       return ChatSourceEnum.wecom;
     case PublishChannelEnum.wechat:
       return ChatSourceEnum.wechat;
@@ -368,11 +369,5 @@ export const checkInteractiveResponseStatus = ({
   input: string;
 }): 'submit' | 'query' => {
   const finalInteractive = extractDeepestInteractive(interactive);
-  if (
-    finalInteractive.type === 'agentPlanAskQuery' ||
-    (finalInteractive.type === 'agentAsk' && finalInteractive.responseMode !== 'submit')
-  ) {
-    return 'query';
-  }
-  return 'submit';
+  return isAskInteractive(finalInteractive) ? 'query' : 'submit';
 };

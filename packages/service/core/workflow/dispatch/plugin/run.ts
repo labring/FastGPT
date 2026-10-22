@@ -11,7 +11,6 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -40,11 +39,9 @@ import {
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import {
-  createSystemToolResourceContext,
-  loadChildWorkflowWithResource,
-  type WorkflowResourceContext
-} from '../../utils/resource';
+import { createSystemToolResourceContext } from '../../resource/context';
+import { loadChildWorkflowWithResource } from '../../resource/service';
+import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 
 type RunPluginProps = ModuleDispatchProps<{
@@ -142,8 +139,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         pluginId,
         version
       });
-      // 系统工具由管理员发布：内部静态资源直接使用，动态引用仍按运行人鉴权。
-      workflowToolResourceContext = createSystemToolResourceContext();
+      // 系统工具由管理员发布：内部静态资源命中快照直接使用，未命中快照的动态引用按运行人鉴权。
+      workflowToolResourceContext = createSystemToolResourceContext({
+        nodes: systemTool.nodes,
+        chatConfig: systemTool.chatConfig
+      });
 
       workflowTool = {
         id: pluginId,

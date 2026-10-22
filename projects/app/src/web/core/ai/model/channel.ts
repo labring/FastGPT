@@ -75,7 +75,7 @@ export const postBatchUpdateChannelStatus = ({
     channelType
   });
 
-/** 获取渠道提供商协议默认配置与提示 */
+/** 按需获取渠道类型的展示信息、表单默认配置与创建能力。 */
 export const getChannelProviders = () =>
   GET<ProviderMetasResponse>(`${channelBasePath}/providerMetas`);
 

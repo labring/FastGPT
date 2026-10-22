@@ -25,7 +25,6 @@ import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobil
 import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -83,13 +82,8 @@ const AppChatWindow = () => {
   });
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
-  const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
-  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
-    ChatPageContext,
-    (v) => v.upsertRecentlyUsedAppPlaceholder
-  );
   const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
 
   const { loading } = useRequest(
@@ -104,15 +98,6 @@ const AppChatWindow = () => {
         appId,
         sourceKey: getAppChatSourceKey(appId)
       });
-      const isHomeApp = pane === ChatSidebarPaneEnum.HOME || appId === chatSettings?.appId;
-      if (!isHomeApp) {
-        upsertRecentlyUsedAppPlaceholder({
-          appId,
-          name: res.app.name,
-          avatar: res.app.avatar
-        });
-      }
-
       resetVariables({
         variables: res.variables,
         variableList: res.app?.chatConfig?.variables
@@ -126,9 +111,6 @@ const AppChatWindow = () => {
           if (e?.statusText === ChatErrEnum.unAuthChat) {
             onChangeChatId();
             return;
-          }
-          if (e?.statusText === AppErrEnum.unAuthApp) {
-            refreshRecentlyUsed();
           }
           handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
         }
@@ -166,7 +148,8 @@ const AppChatWindow = () => {
         onMessage: generatingMessage
       });
 
-      refreshRecentlyUsed();
+      // 离开会话也可能让流正常返回，此时服务端可能还未结束并记录应用使用。
+      if (!controller.signal.aborted) refreshRecentlyUsed(appId);
 
       return { responseText, isNewChat: forbidLoadChatRef.current };
     },

@@ -3,14 +3,36 @@ import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
+import { assertChatAccess, type ChatAccessScope } from './auth';
+import type { ClientSession } from '../../common/mongo';
+/** 软删除指定消息；交互状态由剩余消息推导，删除和重试均不回写原问题。 */
+export const softDeleteChatItems = async (
+  {
+    sourceType,
+    sourceId,
+    chatId,
+    contentIds
+  }: ChatSourceParams & { chatId: string; contentIds: string[] },
+  session?: ClientSession
+) => {
+  if (contentIds.length === 0) return;
+  await MongoChatItem.updateMany(
+    { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: { $in: contentIds } },
+    { $set: { deleteTime: new Date() } },
+    { session }
+  );
+};
 
 export type DeleteChatResourcesBySourceParams = ChatSourceParams & {
   chatIds?: string[];
+  /** 用户操作传入授权范围；资源删除任务省略，继续按整个 source 清理。 */
+  scope?: ChatAccessScope;
 };
 
 type ChatResourceRecord = {
   chatId: string;
-  tmbId?: unknown;
+  teamId: string;
+  tmbId: string;
   outLinkUid?: unknown;
 };
 
@@ -45,7 +67,8 @@ const deleteChatFilesBySourcePrefix = async ({
 export async function deleteChatResourcesBySource({
   sourceType,
   sourceId,
-  chatIds
+  chatIds,
+  scope
 }: DeleteChatResourcesBySourceParams) {
   if (chatIds && chatIds.length === 0) {
     // 显式传空数组表示没有目标 chat，不能退化为整 source 删除。
@@ -62,9 +85,18 @@ export async function deleteChatResourcesBySource({
     ...chatIdQuery
   };
 
-  const rawChatList = (await MongoChat.find(chatQuery, 'chatId tmbId outLinkUid').lean()) as
+  const rawChatList = (await MongoChat.find(chatQuery, 'chatId teamId tmbId outLinkUid').lean()) as
     | ChatResourceRecord[]
     | null;
+  // 写入前校验整批归属，混入他人会话时整批拒绝。
+  if (scope) {
+    for (const chat of rawChatList ?? []) assertChatAccess({ chat, scope });
+  }
+  // 成员级授权必须先确认父会话归属；资源级授权仍可清理指定 ID 的历史孤立记录。
+  if (scope?.tmbId !== undefined) {
+    if (!rawChatList?.length) return;
+    Object.assign(chatQuery, { chatId: { $in: rawChatList.map((chat) => chat.chatId) } });
+  }
   const chatList = (() => {
     if (!chatIds?.length) return rawChatList || [];
 
@@ -82,9 +114,10 @@ export async function deleteChatResourcesBySource({
   await MongoChatItemResponse.deleteMany(chatQuery);
 
   await MongoChatItem.deleteMany(chatQuery);
-  await MongoChat.deleteMany(chatQuery);
+  // 子表不统一存储成员字段，使用已校验的 chatId 集合清理；主表写入仍约束授权范围。
+  await MongoChat.deleteMany({ ...chatQuery, ...scope });
 
-  if (!chatIds?.length) {
+  if (!chatIds?.length && !scope) {
     await deleteChatFilesBySourcePrefix({
       sourceType,
       sourceId

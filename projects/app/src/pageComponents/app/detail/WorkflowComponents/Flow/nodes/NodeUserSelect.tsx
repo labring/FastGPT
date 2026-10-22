@@ -2,17 +2,17 @@ import React, { useMemo } from 'react';
 import { type NodeProps, Position, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { useContextSelector } from 'use-context-selector';
-import { type UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
@@ -118,7 +118,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
       </Container>

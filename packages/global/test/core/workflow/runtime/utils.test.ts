@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isAgentAskInteractive,
+  isAskInteractive,
   extractDeepestInteractive,
   getMaxHistoryLimitFromNodes,
   valueTypeFormat,
@@ -43,6 +45,66 @@ const getReferenceVariableValue = ({
     ...props,
     variables
   });
+
+describe('isAskInteractive', () => {
+  it.each([
+    { interactive: { type: 'agentAsk' }, expected: true },
+    { interactive: { type: 'workflowBuilderPreview' }, expected: true },
+    { interactive: { type: 'userSelect' }, expected: false },
+    { interactive: { type: 'userInput' }, expected: false },
+    { interactive: { type: 'agentPlanAskQuery' }, expected: false },
+    { interactive: undefined, expected: false },
+    { interactive: null, expected: false }
+  ])('classifies the current Ask interaction: $interactive', ({ interactive, expected }) => {
+    expect(isAskInteractive(interactive)).toBe(expected);
+  });
+
+  it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
+    'requires nested %s interactions to be extracted before classifying them',
+    (type) => {
+      const interactive: WorkflowInteractiveResponseType = {
+        type: 'childrenInteractive',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: { childrenResponse: { type } }
+      };
+
+      expect(isAskInteractive(interactive)).toBe(false);
+      expect(isAskInteractive(extractDeepestInteractive(interactive))).toBe(true);
+    }
+  );
+});
+
+describe('isAgentAskInteractive', () => {
+  it.each([
+    { interactive: { type: 'agentAsk' }, expected: true },
+    { interactive: { type: 'workflowBuilderPreview' }, expected: false },
+    { interactive: { type: 'userSelect' }, expected: false },
+    { interactive: undefined, expected: false },
+    { interactive: null, expected: false }
+  ])('classifies the current interaction: $interactive', ({ interactive, expected }) => {
+    expect(isAgentAskInteractive(interactive)).toBe(expected);
+  });
+
+  it('requires nested interactions to be extracted before classifying their type', () => {
+    const runtime = { entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
+    const interactive: WorkflowInteractiveResponseType = {
+      ...runtime,
+      type: 'childrenInteractive',
+      params: {
+        childrenResponse: {
+          ...runtime,
+          type: 'agentAsk',
+          askId: 'ask-1',
+          params: { description: '', questions: [] }
+        }
+      }
+    };
+    expect(isAgentAskInteractive(interactive)).toBe(false);
+    expect(isAgentAskInteractive(extractDeepestInteractive(interactive))).toBe(true);
+  });
+});
 
 describe('extractDeepestInteractive', () => {
   it('should return the same interactive when no childrenResponse', () => {
@@ -256,10 +318,13 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('3.14', WorkflowIOValueTypeEnum.number)).toBe(3.14);
   });
 
-  it('should convert to boolean type', () => {
+  it('should convert to boolean type with native Boolean semantics', () => {
     expect(valueTypeFormat('true', WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat('TRUE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
-    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(false);
+    // JS 原生 Boolean：非空字符串（含 'false'）均为 true
+    expect(valueTypeFormat('false', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('FALSE', WorkflowIOValueTypeEnum.boolean)).toBe(true);
+    expect(valueTypeFormat('', WorkflowIOValueTypeEnum.boolean)).toBe(false);
     expect(valueTypeFormat(1, WorkflowIOValueTypeEnum.boolean)).toBe(true);
     expect(valueTypeFormat(0, WorkflowIOValueTypeEnum.boolean)).toBe(false);
   });
@@ -328,7 +393,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'a',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'true',
@@ -338,7 +403,7 @@ describe('valueTypeFormat', () => {
     {
       value: 'false',
       type: WorkflowIOValueTypeEnum.boolean,
-      result: false
+      result: true
     },
     {
       value: 'false',
@@ -772,37 +837,44 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return pending agentAsk and skip submitted agentAsk', () => {
-    const interactive = {
+  it('derives a pending Ask from adjacent messages without mutating its questions', () => {
+    const interactive: WorkflowInteractiveResponseType = {
       type: 'agentAsk',
-      askId: 'call_ask',
-      entryNodeIds: ['node1'],
+      askId: 'ask-1',
+      entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: 'Choose one',
+        description: '',
         questions: [
           {
-            question: 'Choose one?',
+            question: 'Choose?',
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
-    } as WorkflowInteractiveResponseType;
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
-    (interactive.params as { submitted?: boolean }).submitted = true;
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
+    };
+    const ai: ChatItemMiniType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
+    const user: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          select: {
+            type: 'agentAsk',
+            questions: [{ question: 'Choose?', value: 'A' }]
+          }
+        }
+      ]
+    };
+    expect(getLastInteractiveValue([ai])).toBe(interactive);
+    expect(getLastInteractiveValue([ai, user])).toBeUndefined();
+    expect(
+      getLastInteractiveValue([ai, user, { obj: ChatRoleEnum.AI, value: [] }])
+    ).toBeUndefined();
+    expect(getLastInteractiveValue([ai])).toBe(interactive);
   });
 
   it('should return interactive for paymentPause without continue', () => {
@@ -846,16 +918,25 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should adapt unanswered top-level agentPlanAskQuery to pending agentAsk', () => {
+  it('should return an unanswered top-level agentAsk', () => {
     const interactive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        content: 'What do you want?',
-        options: ['Use repo', 'Use docs', 'Use defaults']
+        description: '',
+        questions: [
+          {
+            question: 'What do you want?',
+            options: [
+              { summary: 'Use repo', value: 'Use repo' },
+              { summary: 'Use docs', value: 'Use docs' },
+              { summary: 'Use defaults', value: 'Use defaults' }
+            ]
+          }
+        ]
       }
     } as WorkflowInteractiveResponseType;
 
@@ -877,65 +958,60 @@ describe('getLastInteractiveValue', () => {
               { summary: 'Use repo', value: 'Use repo' },
               { summary: 'Use docs', value: 'Use docs' },
               { summary: 'Use defaults', value: 'Use defaults' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
     });
   });
 
-  it('should return undefined for answered agentPlanAskQuery', () => {
+  it('ignores malformed old Ask records without failing history loading', () => {
     const interactive = {
-      type: 'agentPlanAskQuery',
-      askId: 'call_ask',
-      entryNodeIds: ['node1'],
-      memoryEdges: [],
-      nodeOutputs: [],
-      params: {
-        content: 'What do you want?',
-        options: ['Use repo', 'Use docs', 'Use defaults'],
-        answer: 'Use the current repository.'
-      }
-    } as WorkflowInteractiveResponseType;
-
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
-
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
+      type: 'agentAsk',
+      params: { options: ['A', 'B'] }
+    } as unknown as WorkflowInteractiveResponseType;
+    expect(
+      getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])
+    ).toBeUndefined();
   });
 
-  it('should ignore nested agentPlanAskQuery', () => {
-    const interactive = {
-      type: 'childrenInteractive',
-      params: {
-        childrenId: 'child_1',
-        childrenResponse: {
-          type: 'agentPlanAskQuery',
-          askId: 'call_ask',
-          params: {
-            content: 'What do you want?',
-            options: ['Use repo', 'Use docs']
-          }
+  it.each([false, true])(
+    'derives preview state from an adjacent user (answered: %s)',
+    (answered) => {
+      const interactive: WorkflowInteractiveResponseType = {
+        type: 'workflowBuilderPreview',
+        previewId: 'preview-1',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: {
+          title: 'Confirm?',
+          mermaid: 'flowchart LR; A --> B',
+          sections: [],
+          actions: [
+            { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+            { value: 'revise', label: 'Revise', inputMode: 'text' },
+            { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+          ]
         }
-      }
-    } as WorkflowInteractiveResponseType;
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [{ text: { content: 'response' }, interactive }]
-      }
-    ];
+      };
+      const messages: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];
+      if (answered)
+        messages.push({
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select: {
+                type: 'workflowBuilderPreview',
+                questions: [{ question: 'Confirm?', value: 'Confirm' }]
+              }
+            }
+          ]
+        });
+      expect(getLastInteractiveValue(messages)).toBe(answered ? undefined : interactive);
+    }
+  );
 
-    expect(getLastInteractiveValue(histories)).toBeUndefined();
-  });
-});
-
-describe('storeEdges2RuntimeEdges', () => {
   it('should convert store edges to runtime edges with waiting status', () => {
     const edges: StoreEdgeItemType[] = [
       { source: 'node1', sourceHandle: 'out1', target: 'node2', targetHandle: 'in1' }
@@ -1074,27 +1150,6 @@ describe('getWorkflowEntryNodeIds', () => {
     expect(result).toEqual(['start1']);
   });
 
-  it('should return workflowStart node ids', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
-        nodeId: 'start1',
-        name: 'start',
-        flowNodeType: FlowNodeTypeEnum.workflowStart,
-        inputs: [],
-        outputs: []
-      },
-      {
-        nodeId: 'chat1',
-        name: 'chat',
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        inputs: [],
-        outputs: []
-      }
-    ];
-    const result = getWorkflowEntryNodeIds(nodes);
-    expect(result).toEqual(['start1']);
-  });
-
   it('should return pluginInput node ids', () => {
     const nodes: RuntimeNodeItemType[] = [
       {
@@ -1188,6 +1243,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -1210,6 +1266,7 @@ describe('storeNodes2RuntimeNodes', () => {
         nodeId: 'node1',
         name: 'Test Node',
         avatar: 'avatar.png',
+        metadataLocale: 'zh-CN',
         intro: 'Test intro',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         showStatus: true,
@@ -1361,7 +1418,7 @@ describe('getReferenceVariableValue', () => {
   });
 
   it('should keep two-column table data as a two-dimensional array', () => {
-    const tableData = [
+    const tableData: [string, string][] = [
       ['指标', '金额（元）'],
       ['资产总额（期末余额）', '22,701,764,055.63'],
       ['负债总额（期末余额）', '4,809,415,705.17']

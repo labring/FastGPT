@@ -69,7 +69,7 @@ SeekDB uses MySQL protocol, fully compatible with OceanBase:
 
 - Supports 1536-dimensional vector retrieval
 - Built-in HNSW index algorithm
-- Batch insert and query rewriting
+- Batch insertion and query optimization
 - Automatic retry and connection pool management
 
 </Alert>
@@ -227,7 +227,7 @@ If you use an internal Harbor, private registry, or image mirror, download `dock
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 ```
 
-If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](../config/sandbox/opensandbox) for details.
+If Agent/Skill Sandbox is enabled, also replace the sandbox-related images in the Compose file and update `AGENT_SANDBOX_SEALOS_IMAGE` or `AGENT_SANDBOX_OPENSANDBOX_IMAGE` so the sandbox provider can pull the matching images. See [OpenSandbox Configuration](/en/self-host/config/sandbox/opensandbox) for details.
 
 ### 2. Modify Environment Variables
 
@@ -273,7 +273,7 @@ If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_P
 ### 6. Configure Models
 
 - After first login, the system prompts that `Language Model` and `Embedding model` are not configured and automatically redirects to the model configuration page. At least these two model types are required.
-- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](../config/model/intro.en.mdx)
+- If the redirect doesn't happen, go to `Admin - Model provider` to configure models. [View tutorial](/en/self-host/config/model/intro)
 - Known issue: after first entering the system, the browser tab may become unresponsive. Close the tab and reopen it.
 
 ### 7. Install System Plugins as Needed
@@ -305,7 +305,7 @@ Check the `STORAGE_EXTERNAL_ENDPOINT` variable — it must be accessible by both
 
 > Don't use `127.0.0.1` or `localhost` or other loopback addresses. Use the host machine's local IP when deploying with Docker, but set it to a static IP; or use a fixed domain name. This prevents 403 errors caused by URL mismatches when signing object storage URLs.
 >
-> See [Object Storage Configuration & Common Issues](../config/object-storage.en.mdx)
+> See [Object Storage Configuration & Common Issues](/en/self-host/config/object-storage)
 
 ### Browser Unresponsive After Login
 
@@ -396,7 +396,7 @@ docker compose up -d
 
 ### How to Update Versions?
 
-1. Check the [update documentation](../upgrading/upgrade-instruction.en.mdx) to confirm the target version — avoid skipping versions.
+1. Check the [update documentation](/en/self-host/upgrading/upgrade-instruction) to confirm the target version — avoid skipping versions.
 2. Change the image tag to the target version
 3. Run these commands to pull and restart:
 
@@ -408,7 +408,7 @@ docker compose up -d
 
 ### How to Customize Environment Variables?
 
-Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](../config/env.en.mdx).
+Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](/en/self-host/config/env).
 
 ### How to Check if Environment Variables Loaded
 

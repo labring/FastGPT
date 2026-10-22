@@ -1,5 +1,7 @@
 import * as createapi from '@/pages/api/core/app/create';
 import * as transitionapi from '@/pages/api/core/app/transitionWorkflow';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { configureAgentQuota } from './quotaTestUtils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
@@ -82,5 +84,40 @@ describe('Transition workflow', () => {
     if (!createNew) {
       expect(version?.resources).toEqual(copiedResources);
     }
+  });
+
+  it('rejects a new workflow at the Agent limit but allows conversion in place', async () => {
+    configureAgentQuota();
+    const { owner } = await getFakeUsers(0);
+    const sourceId = await createapi.onCreateApp({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'source',
+      type: AppTypeEnum.simple,
+      nodes: []
+    });
+    await MongoApp.insertMany(
+      Array.from({ length: 9 }, () => ({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'existing Agent',
+        type: AppTypeEnum.chatAgent
+      }))
+    );
+
+    const denied = await Call<TransitionWorkflowBodyType>(transitionapi.default, {
+      auth: owner,
+      body: { appId: sourceId, createNew: true }
+    });
+    expect(denied.error).toBe(TeamErrEnum.appAmountNotEnough);
+    expect(await MongoAppVersion.countDocuments()).toBe(1);
+
+    const converted = await Call<TransitionWorkflowBodyType>(transitionapi.default, {
+      auth: owner,
+      body: { appId: sourceId, createNew: false }
+    });
+    expect(converted.code).toBe(200);
+    expect((await MongoApp.findById(sourceId).lean())?.type).toBe(AppTypeEnum.workflow);
+    expect(await MongoApp.countDocuments({ teamId: owner.teamId })).toBe(10);
   });
 });

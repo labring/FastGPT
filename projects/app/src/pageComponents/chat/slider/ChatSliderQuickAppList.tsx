@@ -8,7 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 
 /**
  * 移动端侧边抽屉内的最近使用应用入口。
- * 仅展示最近 2 个真实使用的应用；当前正在使用的应用会由页面上下文提前占位到列表前方。
+ * 仅展示服务端最近使用列表中的前 2 个应用，点击入口不会改变列表顺序。
  */
 const ChatSliderRecentAppList = () => {
   const { appId: activeAppId, setChatId } = useChatStore();
@@ -16,10 +16,6 @@ const ChatSliderRecentAppList = () => {
   const recentlyUsedApps = useContextSelector(ChatPageContext, (v) => v.myApps.slice(0, 2));
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
-  const upsertRecentlyUsedAppPlaceholder = useContextSelector(
-    ChatPageContext,
-    (v) => v.upsertRecentlyUsedAppPlaceholder
-  );
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
   if (recentlyUsedApps.length === 0) return null;
@@ -47,7 +43,6 @@ const ChatSliderRecentAppList = () => {
               color: 'primary.600'
             }}
             onClick={() => {
-              upsertRecentlyUsedAppPlaceholder(app);
               handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, app.appId);
               onCloseSlider();
               setChatId();

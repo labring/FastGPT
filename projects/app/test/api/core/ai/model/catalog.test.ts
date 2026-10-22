@@ -23,7 +23,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: mocks.getAuthorizedModelIds
 }));
-vi.mock('@/service/support/permission/auth/outLink', () => ({
+vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({
   authOutLink: mocks.authOutLink
 }));
 

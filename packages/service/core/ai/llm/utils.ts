@@ -260,21 +260,15 @@ export const loadRequestMessages = async ({
   });
 
   /**
-   * 创建音频 content part。
-   * input_audio 需要显式 format，因此必须从文件名或 URL 扩展名推断格式。
+   * 已识别为音频的输入始终生成 input_audio。
+   * 已知 URL 格式时保留 format；未知时省略，不按名称过滤附件或猜测编码。
    */
-  const createAudioContentPart = (
-    data: string,
-    filename = data
-  ): ChatCompletionContentPart | undefined => {
-    const extension = getFileExtension(filename);
-    if (!matchFileType(audioFileType, extension)) return;
-
+  const createAudioContentPart = (data: string, format = ''): ChatCompletionContentPart => {
     return {
       type: 'input_audio',
       input_audio: {
         data,
-        format: extension
+        ...(matchFileType(audioFileType, format) ? { format } : {})
       }
     };
   };
@@ -292,7 +286,7 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
+   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
    */
   const shouldLoadMediaAsBase64 = (url: string) =>
     url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
@@ -328,7 +322,7 @@ export const loadRequestMessages = async ({
     }
 
     if (fileType === 'audio' && useAudio) {
-      return createAudioContentPart(url, getFilenameFromUrl(url));
+      return createAudioContentPart(url, getFileExtension(getFilenameFromUrl(url)));
     }
 
     if (fileType === 'video' && useVideo) {
@@ -457,12 +451,11 @@ export const loadRequestMessages = async ({
     // input_audio / video_url。普通 file 当前不直接透传给 LLM。
     if (fileType === 'audio' && useAudio) {
       const fileUrl = fileItem.url;
-      const filename = getFilenameFromUrl(fileUrl, fileItem.name);
       const audioUrl = shouldLoadMediaAsBase64(fileUrl)
         ? await loadUrlAsBase64Data(fileUrl)
         : fileUrl;
 
-      return createAudioContentPart(audioUrl, filename);
+      return createAudioContentPart(audioUrl, getFileExtension(getFilenameFromUrl(fileUrl)));
     }
 
     if (fileType === 'video' && useVideo) {

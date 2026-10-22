@@ -1,9 +1,10 @@
 /**
  * 沙盒业务层：编排 Skill Edit runtime 的状态解释、初始化、升级和工作区打包。
  *
- * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务应通过
- * sandbox/interface/skillEdit 调用，不直接依赖 provider、repository 或 archive 原子能力。
+ * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
+ * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
  */
+import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -38,16 +39,13 @@ import {
 } from '../../infrastructure/provider/lifecycle';
 import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
-import { SandboxLifecycleStateError } from '../archive';
+import { SandboxLifecycleStateError } from '../lifecycle/error';
 import {
-  countRunningSandboxInstancesBySourceType,
   findSandboxInstanceBySandboxIdAndSource,
   findSandboxResourcesBySource,
   updateSandboxInstanceRecordBySandboxId
 } from '../../infrastructure/instance/repository';
-import { SandboxInstanceStatusEnum } from '../../type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
 import { getAgentSandboxSkillMaxBytes } from '../../config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { assertSandboxAvailable } from '../availability';
@@ -70,7 +68,6 @@ import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandb
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 const RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE = SandboxErrEnum.runtimeUpgradeInProgress;
-export const SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR = 'Edit sandbox not found or not running';
 const EDIT_DEBUG_SANDBOX_SCENARIO = 'edit-debug';
 
 export type SkillEditRuntimeContext = {
@@ -256,26 +253,6 @@ export async function initSkillEditRuntimeSandbox({
   const reportProgress = (sandboxId: string) => (phase: SandboxStatusItemType['phase']) =>
     onProgress?.({ sandboxId, phase });
 
-  const maxEditDebug =
-    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
-
-  const ensureCanActivateEditDebugSandbox = async (params: {
-    sandboxId: string;
-    status?: string;
-  }) => {
-    if (maxEditDebug === undefined || params.status === SandboxStatusEnum.running) return;
-
-    const activeCount = await countRunningSandboxInstancesBySourceType(
-      ChatSourceTypeEnum.skillEdit,
-      providerConfig.provider
-    );
-    if (activeCount < maxEditDebug) return;
-
-    const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
-    onProgress?.({ sandboxId: params.sandboxId, phase: 'failed', message });
-    throw new Error(message);
-  };
-
   if (runtimeStatusInstance) {
     addLog.info('[Sandbox] Existing edit-debug sandbox will be activated by runtime client', {
       sandboxId: runtimeStatusInstance.sandboxId,
@@ -283,12 +260,6 @@ export async function initSkillEditRuntimeSandbox({
     });
   }
 
-  if (existingLifecycleStatus !== SandboxInstanceStatusEnum.restoring) {
-    await ensureCanActivateEditDebugSandbox({
-      sandboxId: sessionId,
-      status: runtimeStatusInstance?.status
-    });
-  }
   let sandbox: ISandbox | null = null;
   let sandboxClient: SandboxClient | null = null;
   const shouldCleanupCreatedSandboxOnFailure = !runtimeStatusInstance;

@@ -193,7 +193,7 @@ export type SandboxCheckExistResponse = z.infer<typeof SandboxCheckExistResponse
  * API: 获取沙盒 WebSocket 临时访问凭证
  * Route: POST /api/core/ai/sandbox/getTicket
  * Method: POST
- * Description: 鉴权并返回 proxy ticket，以及当前 Chat 的会话工作目录
+ * Description: 鉴权并返回包含短期 ticket 的 WebSocket 地址、文件大小限制和当前 Chat 会话工作目录
  * Tags: ['Sandbox', 'Read']
  * ============================================================================ */
 export const SandboxChannelSchema = z.enum(['fs', 'terminal']).describe('沙盒 WebSocket 通道');
@@ -213,9 +213,17 @@ export const SandboxGetTicketBodySchema = withSandboxTarget({
     .describe('fs 通道支持 read/write；terminal 通道固定需要 write')
 });
 export const SandboxGetTicketResponseSchema = z.object({
-  ticket: z.string().meta({
-    example: 'eyJhbGciOiJIUzI1NiJ9...',
-    description: '沙盒 WebSocket 临时访问凭证'
+  wsUrl: z
+    .string()
+    .url()
+    .regex(/^wss?:\/\//)
+    .meta({
+      example: 'wss://agent-proxy.example.com/fs?ticket=eyJhbGciOiJIUzI1NiJ9...',
+      description: '包含短期凭证和对应通道的完整 WebSocket 地址；前端可直接连接'
+    }),
+  maxFileBytes: IntSchema.positive().meta({
+    example: 379584512,
+    description: '沙盒单文件大小限制（字节），与服务端及 IDE 使用同一配置来源'
   }),
   workspaceRoot: z.string().meta({
     example: '/workspace',
@@ -249,8 +257,7 @@ export const SandboxGetHtmlPreviewLinkBodySchema = withSandboxTarget({
   })
 });
 export const SandboxGetHtmlPreviewLinkResponseSchema = z.string().url().meta({
-  example:
-    'https://agent-proxy.example.com/preview/app-0123456789abcdef/a12345678901234567890123/dist/index.html',
+  example: 'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html',
   description: '由 agent-proxy 直接读取 sandbox workspace 的短期 HTML 预览链接'
 });
 export type SandboxGetHtmlPreviewLinkBody = z.input<typeof SandboxGetHtmlPreviewLinkBodySchema>;

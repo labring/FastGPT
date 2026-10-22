@@ -32,6 +32,55 @@ export const hasAiStandaloneProcessingContent = (item: AIChatItemValueItemType) 
   return Boolean(item.skills?.length || item.plan || item.planStatus?.status === 'generating');
 };
 
+/**
+ * 按正文与交互边界将一条 AI 记录分成气泡，连续的思考与工具调用跟随后续正文展示。
+ * 返回值始终至少包含一个组，当前交互恢复生成时保留空响应占位。
+ */
+export const groupAIChatResponseValues = ({
+  chatValue,
+  isLastChild,
+  isChatting
+}: {
+  chatValue: AIChatItemValueItemType[];
+  isLastChild: boolean;
+  isChatting: boolean;
+}) => {
+  const filterList = chatValue.filter((item) => !shouldFilterAiValue(item));
+
+  const groupedValues: AIChatItemValueItemType[][] = [];
+  let currentGroup: AIChatItemValueItemType[] = [];
+  filterList.forEach((value) => {
+    if (value.interactive) {
+      if (currentGroup.length > 0) {
+        groupedValues.push(currentGroup);
+        currentGroup = [];
+      }
+
+      groupedValues.push([value]);
+      return;
+    }
+
+    currentGroup.push(value);
+    if (hasAiAnswerContent(value)) {
+      groupedValues.push(currentGroup);
+      currentGroup = [];
+    }
+  });
+
+  if (currentGroup.length > 0) groupedValues.push(currentGroup);
+
+  const lastGroup = groupedValues[groupedValues.length - 1];
+  if (isLastChild && (isChatting || groupedValues.length === 0)) {
+    if (lastGroup?.[lastGroup.length - 1]?.interactive || groupedValues.length === 0) {
+      groupedValues.push([{ text: { content: '' } }]);
+    }
+  } else if (groupedValues.length === 0) {
+    groupedValues.push([{ text: { content: '' } }]);
+  }
+
+  return groupedValues;
+};
+
 export const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
   if (item.hideInUI) return true;
   if (item.text?.content?.trim() || item.reasoning?.content?.trim()) return false;
@@ -46,7 +95,8 @@ export const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
     item.planStatus ||
     item.agentPlanUpdate ||
     item.agentAsk ||
-    item.contextCheckpoint
+    item.contextCheckpoint ||
+    item.workflowBuilderVersion
   );
 };
 

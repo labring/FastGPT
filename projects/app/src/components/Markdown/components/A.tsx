@@ -1,4 +1,3 @@
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import {
   Button,
   Link,
@@ -32,6 +31,8 @@ type MarkdownChatAuthData = ChatAuthTargetInput & {
 };
 
 export type AProps = {
+  /** 快捷问题点击由渲染方处理；未提供时空链接只展示文本。 */
+  onSendQuestion?: (text: string) => void;
   chatAuthData?: MarkdownChatAuthData;
   allowedCitationIds?: Set<string>;
   onOpenCiteModal?: (e?: {
@@ -44,8 +45,12 @@ export type AProps = {
   }) => void;
 };
 
-const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
+const EmptyHrefLink = function EmptyHrefLink({
+  content,
+  onSendQuestion
+}: { content: string } & Pick<AProps, 'onSendQuestion'>) {
   const { t } = useTranslation();
+  if (!onSendQuestion) return <Box as="span">{content}</Box>;
   return (
     <MyTooltip label={t('common:core.chat.markdown.Quick Question')}>
       <Button
@@ -53,7 +58,7 @@ const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
         size={'xs'}
         borderRadius={'md'}
         my={1}
-        onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text: content })}
+        onClick={() => onSendQuestion(content)}
       >
         {content}
       </Button>
@@ -225,6 +230,7 @@ const A = ({
   chatAuthData,
   allowedCitationIds,
   onOpenCiteModal,
+  onSendQuestion,
   showAnimation,
   ...props
 }: AProps & {
@@ -236,7 +242,7 @@ const A = ({
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {
-    return <EmptyHrefLink content={content} />;
+    return <EmptyHrefLink content={content} onSendQuestion={onSendQuestion} />;
   }
 
   // Cite

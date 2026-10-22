@@ -1,12 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -33,7 +32,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 /**
  * 更新知识库接口
  * 1. 若包含 parentId，则复用 moveDataset 服务完成鉴权、层级检查、权限继承与移动操作；
- * 2. 若包含基础信息或模型配置，则校验写权限并更新。
+ * 2. 若包含基础信息或模型配置，则校验管理员权限并更新。
  */
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const {
@@ -91,43 +90,49 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   }
 
   // 2. 基础属性更新
-  const { dataset, permission, tmbId, teamId, isRoot } = await authDataset({
+  const { dataset, tmbId, teamId, isRoot } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: id,
-    per: ReadPermissionVal
+    per: ManagePermissionVal
   });
-
-  if (!permission.hasWritePer) {
-    return Promise.reject(DatasetErrEnum.unAuthDataset);
-  }
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: modelHandle.getLLMModelData({
-          modelId: dataset.agentModelId,
-          model: dataset.agentModel
-        }),
-        vectorModel: modelHandle.getEmbeddingModelData({
-          modelId: dataset.vectorModelId,
-          model: dataset.vectorModel
-        })
+        llmModel: modelHandle.getModelData(
+          {
+            modelId: dataset.agentModelId,
+            model: dataset.agentModel
+          },
+          { type: 'llm' }
+        ),
+        vectorModel: modelHandle.getModelData(
+          {
+            modelId: dataset.vectorModelId,
+            model: dataset.vectorModel
+          },
+          { type: 'embedding' }
+        )
       })
     : undefined;
 
-  const agentModelData = modelHandle.getLLMModelData(
+  const agentModelData = modelHandle.getModelData(
     { modelId: agentModelId, model: agentModel },
-    { optional: true }
+    { type: 'llm', optional: true }
   );
   // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
   const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
-  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
+  const vlmModelData = modelHandle.getModelData(vlmReference, {
+    type: 'llm',
+    vision: true,
+    optional: true
+  });
   const selectedModels = [agentModelData, vlmModelData].filter((model) => model !== undefined);
   await assertAuthModels({
     actor: { teamId, tmbId, isRoot },

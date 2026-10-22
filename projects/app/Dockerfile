@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:24-bookworm-slim AS maindeps
+FROM node:24.22.1-bookworm-slim AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24-bookworm-slim AS builder
+FROM node:24.22.1-bookworm-slim AS builder
 WORKDIR /app
 
 ARG proxy
@@ -46,6 +46,7 @@ ENV NEXT_PUBLIC_BASE_URL=$base_url
 # Build SDK workspace packages first so subpath exports like
 # @fastgpt-sdk/otel/logger have generated dist type files.
 RUN pnpm build:sdks
+RUN pnpm --filter @fastgpt/workflow-core build
 RUN pnpm --filter=app build
 
 # Remove build-time-only packages from standalone output before copying to runner.
@@ -53,7 +54,7 @@ RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
     projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-musl@*/
 
 # --------- runner -----------
-FROM node:24-bookworm-slim AS runner
+FROM node:24.22.1-bookworm-slim AS runner
 WORKDIR /app
 
 ARG proxy

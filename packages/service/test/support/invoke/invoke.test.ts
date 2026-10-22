@@ -99,3 +99,27 @@ describe('InvokeProcessor.handleFileUpload', () => {
     expect(mockRemoveS3TTL).not.toHaveBeenCalled();
   });
 });
+
+describe('InvokeProcessor.session', () => {
+  it('返回构造时传入的 session，而不是 getter 自递归', () => {
+    const processor = createProcessor();
+
+    expect(() => processor.session).not.toThrow();
+    expect(processor.session).toEqual({
+      appId: 'app-1',
+      chatId: 'chat-1',
+      uId: 'user-1',
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      permissions: [PluginPermissionEnum['file-upload:allow']]
+    });
+  });
+
+  it('权限不足时 getSessionWithPermission 抛未授权', () => {
+    const processor = createProcessor();
+
+    expect(() =>
+      processor.getSessionWithPermission(PluginPermissionEnum['userInfo:read'])
+    ).toThrow();
+  });
+});

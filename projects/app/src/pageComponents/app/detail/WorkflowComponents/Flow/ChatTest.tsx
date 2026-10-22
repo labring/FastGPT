@@ -2,8 +2,7 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import React, { useCallback, useMemo } from 'react';
 import { Box, CloseButton, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useChatTest } from '../../useChatTest';
@@ -18,7 +17,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import RunPreviewHeader from './RunPreviewHeader';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 

@@ -1,4 +1,3 @@
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
@@ -11,14 +10,13 @@ import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
-import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   decodeToolSetNodesFromStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
-import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
+import { resolveStoredAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -97,10 +95,7 @@ const isFolderApp = (type: unknown) =>
     type === AppTypeEnum.hidden);
 
 /** 从历史工作流字段确定性生成资源快照。 */
-export const buildAppResourceSnapshot = (
-  record: AppResourceMigrationRecord,
-  models: readonly AIModelDataType[] = []
-) => {
+export const buildAppResourceSnapshot = (record: AppResourceMigrationRecord) => {
   const storedNodes = Array.isArray(record.nodes)
     ? record.nodes
     : Array.isArray(record.modules)
@@ -115,8 +110,7 @@ export const buildAppResourceSnapshot = (
     resources: record.resources,
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    resourceRefs: record.resourceRefs,
-    models
+    resourceRefs: record.resourceRefs
   });
 
   return {
@@ -274,12 +268,11 @@ const runWithConcurrency = async <Input, Output>({
 
 /**
  * 使用工作流读取快照作为 compare-and-set 条件回填 Version.resources。
- * 1. 批量预加载模型列表，避免每条记录重复查询模型 handle；
- * 2. 内存快速跳过已有合法快照的记录；
- * 3. 批量查询关联 App 的应用所有者 tmbId，严格按应用所有者权限过滤资源快照；
- * 4. 找不到应用所有者 tmbId 时直接记录失败，不进行模糊兜底；
- * 5. 使用 Worker Pool (并发度 20) 并发执行工作流解析、权限过滤与 CAS 写入；
- * 6. 已有合法快照保持不变，并发写已产出合法快照也视为该记录完成。
+ * 1. 内存快速跳过已有合法快照的记录；
+ * 2. 批量查询关联 App 的应用所有者 tmbId，严格按应用所有者权限过滤资源快照；
+ * 3. 找不到应用所有者 tmbId 时直接记录失败，不进行模糊兜底；
+ * 4. 使用 Worker Pool (并发度 20) 并发执行工作流解析、权限过滤与 CAS 写入；
+ * 5. 已有合法快照保持不变，并发写已产出合法快照也视为该记录完成。
  */
 export const backfillAppVersionResourceRecords = async (
   records: AppResourceMigrationRecord[]
@@ -310,8 +303,6 @@ export const backfillAppVersionResourceRecords = async (
   }
 
   if (recordsToProcess.length === 0) return result;
-
-  const models = (await getSystemModelHandle()).getAllModels();
 
   const appIds = recordsToProcess.map((record) => record.appId).filter(Boolean);
   const apps =
@@ -364,7 +355,7 @@ export const backfillAppVersionResourceRecords = async (
           };
         }
 
-        const snapshot = buildAppResourceSnapshot(record, models);
+        const snapshot = buildAppResourceSnapshot(record);
         const authorizedResources = await filterAuthorizedAppResources({
           resources: snapshot.resources,
           tmbId: appOwnerTmbId
@@ -501,11 +492,7 @@ const updatePublishedVersionPointer = async ({
  * 对无正式 Version App，在同一事务内重读权威 App 图、创建正式 Version 并写入指针。
  * 事务回滚覆盖写入后退出，事务内的“仍无正式 Version”检查使整个最小单元可重放。
  */
-const createMissingPublishedVersion = async (
-  record: AppResourceMigrationRecord,
-  models?: readonly AIModelDataType[]
-) => {
-  const loadedModels = models ?? (await getSystemModelHandle()).getAllModels();
+const createMissingPublishedVersion = async (record: AppResourceMigrationRecord) => {
   return mongoSessionRun(async (session) => {
     const currentApp = (await MongoApp.collection.findOne(
       { _id: record._id as never },
@@ -571,8 +558,7 @@ const createMissingPublishedVersion = async (
     }
 
     const snapshot = buildAppResourceSnapshot(
-      mcpModulesOverride ? { ...currentApp, modules: mcpModulesOverride } : currentApp,
-      loadedModels
+      mcpModulesOverride ? { ...currentApp, modules: mcpModulesOverride } : currentApp
     );
     const authorizedResources = await filterAuthorizedAppResources({
       resources: snapshot.resources,
@@ -649,10 +635,6 @@ export const backfillAppResourceRecords = async (
 
   if (actionableRecords.length === 0) return result;
 
-  const models = actionableRecords.some((item) => item.action === 'create_version')
-    ? (await getSystemModelHandle()).getAllModels()
-    : [];
-
   const processResults = await runWithConcurrency({
     items: actionableRecords,
     action: async (
@@ -683,7 +665,7 @@ export const backfillAppResourceRecords = async (
           };
         }
 
-        const created = await createMissingPublishedVersion(record, models);
+        const created = await createMissingPublishedVersion(record);
         return {
           updatedCount: created?.appUpdated ? 1 : 0,
           createdVersionCount: created?.versionCreated ? 1 : 0

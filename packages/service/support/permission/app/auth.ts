@@ -22,6 +22,7 @@ import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import { checkIsAgentUser } from '../../user/systemUser';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -48,16 +49,18 @@ export const authAppByTmbId = async ({
   tmbId,
   appId,
   per,
-  isRoot
+  isRoot,
+  tmbInfo
 }: {
   tmbId: string;
   appId: string;
   per: PermissionValueType;
   isRoot?: boolean;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }): Promise<{
   app: AppWithPermissionType;
 }> => {
-  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
+  const { teamId, permission: tmbPer } = tmbInfo ?? (await getTmbInfoByTmbId({ tmbId }));
 
   const app = await (async () => {
     const app = await MongoApp.findOne({ _id: appId, deleteTime: null }).lean();

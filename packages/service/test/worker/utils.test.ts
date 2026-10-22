@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { Worker } from 'node:worker_threads';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { WorkerPoolLogger } from '@fastgpt/service/worker/utils';
+import type { WorkerPool as WorkerPoolType } from '@fastgpt/service/worker/utils';
 
 const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {
@@ -19,7 +20,7 @@ vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: mockEnv
 }));
 
-const { getSafeEnv, WorkerPool, WorkerNameEnum, isExpectedWorkerTaskError } =
+const { getSafeEnv, getWorkerController, WorkerPool, WorkerNameEnum, isExpectedWorkerTaskError } =
   await import('@fastgpt/service/worker/utils');
 
 const workerScript = `
@@ -112,15 +113,14 @@ describe('worker/utils getSafeEnv', () => {
 describe('worker/utils WorkerPool', () => {
   let tmpDir: string;
   let cwdSpy: ReturnType<typeof vi.spyOn>;
-  const pools: Array<WorkerPool<any, any>> = [];
+  const pools: Array<WorkerPoolType<any, any>> = [];
 
-  const createLogger = () =>
-    ({
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }) as unknown as WorkerPoolLogger;
+  const createLogger = () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  });
 
   const createPool = <Props, Response>(
     options: ConstructorParameters<typeof WorkerPool<Props, Response>>[0]
@@ -153,9 +153,39 @@ describe('worker/utils WorkerPool', () => {
       pool.waitQueue.forEach((task) => clearTimeout(task.queueTimeoutId));
     });
     pools.length = 0;
+    if (global.workerPoll) delete global.workerPoll[WorkerNameEnum.workflowBuilderMermaid];
     cwdSpy.mockRestore();
     fs.rmSync(tmpDir, { recursive: true, force: true });
     vi.useRealTimers();
+  });
+
+  it('复用构建后的线程，运行时保持引用，空闲时释放引用', async () => {
+    fs.writeFileSync(path.join(tmpDir, 'worker', 'workflowBuilderMermaid.js'), workerScript);
+    const ref = vi.spyOn(Worker.prototype, 'ref');
+    const unref = vi.spyOn(Worker.prototype, 'unref');
+    const options = {
+      name: WorkerNameEnum.workflowBuilderMermaid,
+      maxReservedThreads: 1,
+      logger: createLogger()
+    };
+    const pool = getWorkerController<{ simple: true; payload: string }, { payload: string }>(
+      options
+    );
+    pools.push(pool);
+    expect(getWorkerController(options)).toBe(pool);
+
+    try {
+      for (const payload of ['first', 'second']) {
+        await expect(pool.run({ simple: true, payload })).resolves.toEqual({ payload });
+      }
+      expect(pool.workerQueue).toHaveLength(1);
+      expect(ref).toHaveBeenCalledTimes(2);
+      expect(unref).toHaveBeenCalledTimes(3);
+      expect(pool.workerQueue[0].status).toBe('idle');
+    } finally {
+      ref.mockRestore();
+      unref.mockRestore();
+    }
   });
 
   it('处理 worker 通用 uploadFile 中间事件，不提前结束任务', async () => {
@@ -631,10 +661,13 @@ describe('worker/utils WorkerPool', () => {
 
     const result = pool.run({ simple: true, payload: 'wake', delayMs: 1, resourceBytes: 50 });
     expect(pool.waitQueue).toHaveLength(1);
+    expect(pool.queuePollTimeoutId?.hasRef()).toBe(true);
+    expect(pool.waitQueue[0].queueTimeoutId?.hasRef()).toBe(true);
 
     availableResourceBytes = 100;
     await expect(result).resolves.toEqual({ payload: 'wake' });
     expect(pool.waitQueue).toHaveLength(0);
+    expect(pool.queuePollTimeoutId).toBeUndefined();
   });
 
   it('执行超时销毁 worker 并释放预留资源', async () => {

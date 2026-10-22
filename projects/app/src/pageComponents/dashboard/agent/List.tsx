@@ -45,8 +45,8 @@ import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { getDashboardAppListScene } from './utils/appListTypes';
 import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import ResourceListCard from '@/pageComponents/dashboard/ResourceListCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
@@ -218,47 +218,18 @@ const List = () => {
     const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
 
     return (
-      <MyBox
+      <ResourceListCard
         key={app._id}
-        data-virtual-item=""
         pt={5}
         pb={3}
         px={5}
-        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
-        border={'1px solid'}
-        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : 'myGray.200'}
-        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
-        borderRadius={'10px'}
-        position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        _hover={
-          isBatchMode
-            ? {
-                borderColor: canBatchOperate
-                  ? isSelected
-                    ? 'primary.600'
-                    : 'primary.300'
-                  : 'myGray.200',
-                boxShadow: canBatchOperate ? '1.5' : undefined,
-                '& .time': {
-                  display: 'flex !important'
-                },
-                '& .more': {
-                  display: 'none !important'
-                }
-              }
-            : {
-                borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .more': {
-                  display: 'flex'
-                },
-                '& .time': {
-                  display: ['flex', 'none']
-                }
-              }
-        }
+        isBatchMode={isBatchMode}
+        isSelected={isSelected}
+        canSelect={canBatchOperate}
+        dragProps={getBoxProps({
+          dataId: app._id,
+          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+        })}
         onClick={() => {
           if (isBatchMode) {
             if (canBatchOperate) {
@@ -283,11 +254,6 @@ const List = () => {
             );
           }
         }}
-        {...(!isBatchMode &&
-          getBoxProps({
-            dataId: app._id,
-            isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-          }))}
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
@@ -518,7 +484,7 @@ const List = () => {
             )}
           </HStack>
         </HStack>
-      </MyBox>
+      </ResourceListCard>
     );
   };
 
@@ -546,44 +512,24 @@ const List = () => {
           >
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
-        ) : isEmpty && !folderDetail ? (
-          hasActiveFilter || isBatchMode ? (
-            <EmptyTip />
-          ) : isPc && hasCreatePer ? (
-            <CreateButton appType={appType} />
-          ) : (
-            <Grid
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-            </Grid>
-          )
+        ) : isEmpty && !parentId && !hasActiveFilter && !isBatchMode && isPc && hasCreatePer ? (
+          <CreateButton appType={appType} />
         ) : (
-          <>
-            <Grid
-              ref={gridRef}
-              py={4}
-              gridTemplateColumns={
-                parentId
-                  ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-                  : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-              }
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {!isBatchMode &&
-                (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-              {renderVirtualGridItems(renderAppCard)}
-            </Grid>
-          </>
+          <Grid
+            ref={gridRef}
+            py={4}
+            gridTemplateColumns={
+              parentId
+                ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
+                : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            }
+            gridGap={5}
+            alignItems={'stretch'}
+          >
+            {!isBatchMode &&
+              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+            {renderVirtualGridItems(renderAppCard)}
+          </Grid>
         )}
         <DeleteConfirmModal />
         <ConfirmCopyModal />

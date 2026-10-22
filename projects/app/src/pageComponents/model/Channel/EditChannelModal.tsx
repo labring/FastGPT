@@ -51,7 +51,6 @@ const EditChannelModal = ({
 }) => {
   const { t, i18n } = useSafeTranslation();
   const {
-    aiproxyChannels,
     getModelProvider,
     models: availableModels,
     loading: loadingModels
@@ -72,24 +71,31 @@ const EditChannelModal = ({
   );
   const providerList = useMemo(
     () =>
-      aiproxyChannels.flatMap((channel) => {
-        const mapData = channelProviderMetas[channel.channelId];
-        if (!mapData) return [];
+      Object.entries(channelProviderMetas)
+        .sort(
+          ([, a], [, b]) =>
+            (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER)
+        )
+        .flatMap(([channelId, mapData]) => {
+          if (!mapData.canCreate) return [];
 
-        return [
-          {
-            defaultBaseUrl: mapData.defaultBaseUrl,
-            keyHelp: mapData.keyHelp,
-            icon: channel.avatar,
-            label: parseI18nString(channel.name, i18n.language as localeType),
-            value: channel.channelId
-          }
-        ];
-      }),
-    [aiproxyChannels, channelProviderMetas, i18n.language]
+          return [
+            {
+              defaultBaseUrl: mapData.defaultBaseUrl,
+              keyHelp: mapData.keyHelp,
+              icon: mapData.avatar,
+              label: parseI18nString(
+                mapData.displayName ?? mapData.name,
+                i18n.language as localeType
+              ),
+              value: Number(channelId)
+            }
+          ];
+        }),
+    [channelProviderMetas, i18n.language]
   );
 
-  const selectedChannel = aiproxyChannels.find((channel) => channel.channelId === providerType);
+  const selectedChannel = channelProviderMetas[providerType];
   const selectedProvider = useMemo(() => {
     const res = providerList.find((item) => item.value === providerType);
     return res;

@@ -32,7 +32,7 @@ export class InvokeProcessor {
   static jwtSecret = serviceEnv.INVOKE_TOKEN_SECRET;
 
   public get session(): InvokeSessionType {
-    return this.session;
+    return this._session;
   }
 
   constructor(options: InvokeSessionType) {

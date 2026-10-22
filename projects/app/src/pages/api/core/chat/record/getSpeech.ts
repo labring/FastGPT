@@ -2,16 +2,17 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import type { NextApiResponse } from 'next';
 
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+import { authTargetModelResource } from '@fastgpt/service/core/app/resource/service';
 
 /*
 1. get tts from chatItem store
@@ -45,10 +46,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       outLinkAuthData
     });
     const modelHandle = await getTeamModelHandle({ teamId });
-    const ttsModel = modelHandle.getTTSModelData({
-      modelId: ttsConfig.modelId,
-      model: ttsConfig.model
-    });
+    const ttsModel = modelHandle.getModelData(
+      {
+        modelId: ttsConfig.modelId,
+        model: ttsConfig.model
+      },
+      { type: ModelTypeEnum.tts }
+    );
     await authTargetModelResource({
       targetType: resolvedSourceType,
       targetId: resolvedSourceId,

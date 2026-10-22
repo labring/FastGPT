@@ -19,6 +19,15 @@ export const isDatasetDataSystemIndexType = (type?: DatasetDataIndexTypeEnum) =>
   datasetDataSystemIndexTypeSet.has(type || DatasetDataIndexTypeEnum.custom);
 
 /**
+ * 用户可手动编辑的索引，即系统索引的补集。
+ *
+ * 系统索引的文本就是 q/a 或图片描述，原样导出会在回导时被当成用户索引重新写入。
+ */
+export const getDatasetDataExternalIndexes = <T extends { type?: DatasetDataIndexTypeEnum }>(
+  indexes?: T[] | null
+): T[] => (indexes || []).filter((index) => !isDatasetDataSystemIndexType(index.type));
+
+/**
  * 数据是否已完成索引。
  *
  * 字段缺失代表变更前创建的历史数据：其创建路径先写向量再写主数据，业务语义上已完成

@@ -388,12 +388,12 @@ export const assertModelAvailable = ({
   vision = false
 }: {
   model?: Pick<AIModelDataType, 'name' | 'model' | 'type' | 'isActive' | 'config'>;
-  type: ModelTypeEnum;
+  type?: `${ModelTypeEnum}`;
   vision?: boolean;
 }) => {
   if (!model) throw new UserError(ModelErrEnum.unExist);
   const name = model.name || model.model;
-  if (model.type !== type) {
+  if (type && model.type !== type) {
     throw new UserError(ModelErrEnum.unExist, `Model type mismatch: ${name}`);
   }
   if (!model.isActive) {

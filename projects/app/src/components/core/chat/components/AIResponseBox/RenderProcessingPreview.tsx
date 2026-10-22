@@ -1,7 +1,7 @@
 import { Box } from '@chakra-ui/react';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import React, { useEffect, useMemo, useRef } from 'react';
-import type { TFunction } from 'next-i18next';
+import { getWorkflowBuilderToolDisplayName } from './WorkflowBuilder/utils';
 
 const PROCESSING_PREVIEW_MAX_LENGTH = 8192;
 
@@ -22,7 +22,7 @@ export const getProcessingPreviewTarget = (
   value: AIChatItemValueItemType
 ): ProcessingPreviewTarget | undefined => {
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
-  if (tool?.params) {
+  if (tool?.params && !tool.hideDetails) {
     return {
       type: 'tool',
       toolId: tool.id
@@ -94,9 +94,15 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   );
 });
 
-export const getProcessingPreviewLabelKey = (value: AIChatItemValueItemType, t: TFunction) => {
+/** 使用调用方当前语言生成预览标题，翻译函数必须显式传入。 */
+export const getProcessingPreviewLabel = (
+  value: AIChatItemValueItemType,
+  t: (key: string) => string
+) => {
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
-  if (tool) return tool.toolName;
+  if (tool) {
+    return getWorkflowBuilderToolDisplayName({ ...tool, t });
+  }
   if (value.reasoning?.content && !value.hideReason) {
     return t('chat:history_generating');
   }
@@ -114,7 +120,7 @@ const RenderProcessingPreview = React.memo(function RenderProcessingPreview({
   const tool = value.tools?.[value.tools.length - 1] ?? value.tool;
   const reasoningContent = value.reasoning?.content ?? '';
   const previewContent = useMemo(
-    () => getProcessingPreview(tool ? tool.params : reasoningContent),
+    () => getProcessingPreview(tool ? (tool.hideDetails ? '' : tool.params) : reasoningContent),
     [tool, reasoningContent]
   );
 

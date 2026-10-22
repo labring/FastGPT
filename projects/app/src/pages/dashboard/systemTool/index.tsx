@@ -33,7 +33,7 @@ import { useRouter } from 'next/router';
 import { getDocPath } from '@/web/common/system/doc';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -151,8 +151,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     return tools
       .filter((tool) => {
         if (!searchText) return true;
-        const name = tool.name.toLowerCase();
-        const intro = tool.intro?.toLowerCase() || '';
+        const name = selectPluginText(tool.name, i18n.language).toLowerCase();
+        const intro = selectPluginText(tool.intro, i18n.language).toLowerCase();
         const search = searchText.toLowerCase();
         return name.includes(search) || intro.includes(search);
       })
@@ -162,8 +162,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       })
       .map<ToolCardItemType>((tool) => ({
         id: tool.id,
-        name: tool.name,
-        description: tool.intro,
+        name: selectPluginText(tool.name, i18n.language),
+        description: selectPluginText(tool.intro, i18n.language),
         icon: tool.avatar,
         author: tool.author,
         tags: tool.tags?.map((tagId) =>
@@ -197,7 +197,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       customContent: t('app:team_plugin_confirm_delete_content'),
       confirmText: t('app:toolkit_uninstall'),
       confirmButtonVariant: 'dangerOutline',
-      inputConfirmText: tool.name,
+      inputConfirmText: selectPluginText(tool.name, i18n.language),
       onConfirm: () => deleteTeamTool(tool)
     })();
   };

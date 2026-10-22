@@ -1,8 +1,64 @@
 import { describe, expect, it } from 'vitest';
 import {
   isStreamCompletionResponse,
-  normalizeCompletionFinishReason
+  normalizeCompletionFinishReason,
+  normalizeNativeToolCalls
 } from '@fastgpt/service/core/ai/llm/request/response/normalize';
+
+describe('normalizeNativeToolCalls', () => {
+  it('should normalize copies and keep only declared tools', () => {
+    const toolCalls = [
+      {
+        id: 'a',
+        type: 'function' as const,
+        function: { name: 'functions.search', arguments: ' \t' }
+      },
+      { id: 'b', type: 'function' as const, function: { name: 'unknown', arguments: '{}' } }
+    ];
+    const result = normalizeNativeToolCalls({
+      toolCalls,
+      toolNames: new Set(['search'])
+    });
+    expect(result).toEqual([
+      { id: 'a', type: 'function', function: { name: 'search', arguments: '{}' } }
+    ]);
+    expect(toolCalls[0].function).toEqual({ name: 'functions.search', arguments: ' \t' });
+  });
+
+  it('should tolerate non-string or missing name and arguments from raw provider responses', () => {
+    const toolCalls = [
+      { id: 'null_args', type: 'function', function: { name: 'search', arguments: null } },
+      { id: 'missing_args', type: 'function', function: { name: 'search' } },
+      { id: 'object_args', type: 'function', function: { name: 'search', arguments: { q: 1 } } },
+      { id: 'number_args', type: 'function', function: { name: 'search', arguments: 1 } },
+      { id: 'missing_function', type: 'function' },
+      { id: 'null_name', type: 'function', function: { name: null, arguments: '{}' } }
+    ] as any[];
+
+    const result = normalizeNativeToolCalls({
+      toolCalls,
+      toolNames: new Set(['search'])
+    });
+
+    expect(result).toEqual([
+      { id: 'null_args', type: 'function', function: { name: 'search', arguments: '{}' } },
+      { id: 'missing_args', type: 'function', function: { name: 'search', arguments: '{}' } },
+      { id: 'object_args', type: 'function', function: { name: 'search', arguments: '{"q":1}' } },
+      { id: 'number_args', type: 'function', function: { name: 'search', arguments: '1' } }
+    ]);
+  });
+
+  it('should filter malformed tools without modifying the raw calls', () => {
+    const result = normalizeNativeToolCalls({
+      toolCalls: [
+        { id: 'broken', type: 'function', function: { name: null, arguments: null } }
+      ] as any,
+      toolNames: new Set(['search'])
+    });
+
+    expect(result).toEqual([]);
+  });
+});
 
 describe('normalizeCompletionFinishReason', () => {
   it('should prefer error over raw finish reason', () => {

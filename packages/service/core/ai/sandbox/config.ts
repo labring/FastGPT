@@ -1,13 +1,11 @@
 /**
  * Sandbox 领域共享配置派生。
  *
- * 这里只把已校验的环境配置换算为领域使用的字节限制，不依赖 interface、application
+ * 这里只派生已在入口校验的系统配置和环境配置，不依赖 interface、application
  * 或 infrastructure，供各层单向引用。
  */
+import { MB_BYTES, RESERVED_DISK_MB } from './constants';
 import { serviceEnv } from '../../../env';
-
-const MB_BYTES = 1024 * 1024;
-const RESERVED_DISK_MB = 150;
 
 /** 获取 Agent sandbox 磁盘基准字节数，按存储容量换算并预留 150MB。 */
 export const getAgentSandboxDiskBytes = () => {
@@ -36,3 +34,16 @@ export const getAgentSandboxSkillMaxBytes = getAgentSandboxDiskBytes;
 
 /** 获取 IDE 单文件大小上限，等于磁盘基准。 */
 export const getAgentSandboxMaxFileBytes = getAgentSandboxDiskBytes;
+
+/**
+ * 获取 Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池）。
+ * 服务端系统配置（管理台 systemEnv）优先，env 兜底；undefined 表示不限制。
+ */
+export const getAgentSandboxMax = (): number | undefined =>
+  global.systemEnv?.agentSandboxMax ?? serviceEnv.AGENT_SANDBOX_MAX;
+
+/**
+ * 获取单团队 Agent sandbox 活跃实例配额；系统配置优先、env 兜底，undefined 表示不限制。
+ */
+export const getAgentSandboxMaxPerTeam = (): number | undefined =>
+  global.systemEnv?.agentSandboxMaxPerTeam ?? serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM;

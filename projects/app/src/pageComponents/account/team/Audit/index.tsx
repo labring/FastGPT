@@ -6,7 +6,10 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  TeamAuditEventList,
+  type TeamAuditEvent
+} from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import {
@@ -19,17 +22,19 @@ import {
 import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
+
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
-    useState<MultiSelectFilterValue<AuditEventEnum>>(createMultiSelectFilter());
+    useState<MultiSelectFilterValue<TeamAuditEvent>>(createMultiSelectFilter());
 
+  // 筛选项包含成员事件与知识库事件；只列出 auditLogMap 中存在文案的事件，避免历史枚举缺文案时报错
   const eventOptions = useMemo(
     () =>
-      Object.values(AuditEventEnum).map((event) => ({
+      TeamAuditEventList.filter((event) => auditLogMap[event]).map((event) => ({
         label: t(auditLogMap[event].typeLabel),
         value: event
       })),
@@ -39,7 +44,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const processMetadataByEvent = useCallback(
     (event: string, metadata: any) => {
       const defaultFormat = defaultMetadataProcessor(metadata, t);
-      const specialFormat = specialProcessors[event as AuditEventEnum]?.(defaultFormat, t);
+      const specialFormat = specialProcessors[event as TeamAuditEvent]?.(defaultFormat, t);
       return specialFormat || defaultFormat;
     },
     [t]

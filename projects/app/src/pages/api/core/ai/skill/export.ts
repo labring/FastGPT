@@ -9,10 +9,8 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import {
-  packageSkillEditWorkspace,
-  SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
-} from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
+import { packageSkillEditWorkspace } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
+import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
 
 export const config = {
   api: {

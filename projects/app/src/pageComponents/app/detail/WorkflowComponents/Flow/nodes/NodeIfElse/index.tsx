@@ -9,12 +9,12 @@ import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import {
   createIfElseBranchId,
   getIfElseBranchHandleKey
-} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+} from '@fastgpt/global/common/workflow/condition';
 import { useContextSelector } from 'use-context-selector';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
 import { MySourceHandle } from '../render/Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import ListItem from './ListItem';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -52,7 +52,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
+    <NodeCard selected={selected} minW={'686px'} maxW={'1000px'} {...data}>
       <Flex flexDirection={'column'} cursor={'default'}>
         <DndDrag<IfElseListItemType>
           onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
@@ -76,6 +76,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   key={getIfElseBranchHandleKey(conditionItem)}
                   draggableId={getIfElseBranchHandleKey(conditionItem)}
                   index={conditionIndex}
+                  isDragDisabled={ifElseList.length <= 1}
                 >
                   {(provided, snapshot) => (
                     <ListItem

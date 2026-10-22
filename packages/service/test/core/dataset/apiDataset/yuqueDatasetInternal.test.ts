@@ -32,14 +32,17 @@ describe('useYuqueDatasetRequest 访问内网 API 数据集服务', () => {
     vi.resetModules();
   });
 
-  it('CHECK_INTERNAL_IP=true 时仍然访问私网 API 数据集服务', async () => {
+  it('CHECK_INTERNAL_IP=true 时仍然访问私网 API 数据集服务', async ({ skip }) => {
     proxyEnvKeys.forEach((key) => delete process.env[key]);
 
     // 取一个非 loopback 的本机地址：loopback/metadata 在开关关闭时也会被拦截，无法验证私网放行行为。
     const privateHost = Object.values(os.networkInterfaces())
       .flatMap((items) => items ?? [])
       .find((item) => item.family === 'IPv4' && !item.internal)?.address;
-    if (!privateHost) return;
+    if (!privateHost) {
+      skip('当前运行器没有非 loopback IPv4，无法验证私网传输');
+      return;
+    }
 
     const requestedPaths: string[] = [];
     const server = http.createServer((req, res) => {

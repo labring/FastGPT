@@ -3,14 +3,15 @@
  *
  * 统一锁顺序为 Source Mutation Lease -> Sandbox Lifecycle Lease；调用方不得反向嵌套。
  */
+import {
+  SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS,
+  SANDBOX_LIFECYCLE_LEASE_TTL_MS,
+  LEGACY_MIGRATION_JOB_LEASE_TTL_MS
+} from '../constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { LeaseCache } from '@fastgpt/dal/redis/caches';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../../common/logger';
-
-const SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS = 11 * 60 * 1000;
-const SANDBOX_LIFECYCLE_LEASE_TTL_MS = 11 * 60 * 1000;
-const LEGACY_MIGRATION_JOB_LEASE_TTL_MS = 3 * 60 * 1000;
 const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 
 type LeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;

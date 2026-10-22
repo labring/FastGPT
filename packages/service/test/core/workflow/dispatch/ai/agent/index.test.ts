@@ -7,10 +7,9 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  getRunningSandboxId,
-  getSandboxRuntimeProfile
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
@@ -44,6 +43,7 @@ const {
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
   ensureAppSandboxRuntimeReadyMock,
+  authSkillByTmbIdMock,
   getLLMModelDataMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
@@ -52,7 +52,6 @@ const {
     AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: 100,
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
@@ -71,7 +70,17 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
   ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/permission/skill/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/permission/skill/auth')>()),
+  authSkillByTmbId: authSkillByTmbIdMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
@@ -80,12 +89,14 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal)
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   }),
   getTeamModelHandle: async () => ({
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   })
 }));
@@ -116,9 +127,9 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/application/runtime')>();
 
   return {
     ...original,
@@ -126,12 +137,32 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
       sandboxClient: await getSandboxClientMock(params),
       workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
       workDirectory: original.getSandboxRuntimeProfile().workDirectory
-    })),
-    ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock,
-    getAgentSkillInfos: getAgentSkillInfosMock,
-    injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    }))
   };
 });
+vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
+  const original =
+    await importOriginal<
+      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
+    >();
+
+  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
+});
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/skill/core')
+      >();
+
+    return {
+      ...original,
+      getAgentSkillInfos: getAgentSkillInfosMock,
+      injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
+    };
+  }
+);
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: checkTeamSandboxPermissionMock
@@ -573,31 +604,34 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the runtime member for skill injection without an App resource context', async () => {
+  it('authorizes skills as the runtime member before sandbox injection without an App resource context', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const skillId = '507f1f77bcf86cd799439011';
+    const skill = { _id: skillId, name: 'Report' };
+    authSkillByTmbIdMock.mockResolvedValueOnce({ skill });
     const props = createProps();
     props.params.useAgentSandbox = true;
-    props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+    props.params.skills = [{ skillId, name: 'Report' }];
     props.runningAppInfo.tmbId = 'app_owner_tmb';
     props.runningUserInfo.tmbId = 'external_user_tmb';
 
-    let result: any;
-    runWithContext(
+    const result = await runWithContext(
       {
         mcpClientMemory: {}
       },
-      () => {
-        result = dispatchRunAgent(props);
-      }
+      () => dispatchRunAgent(props)
     );
-    await result;
 
     expect(result.error).toBeUndefined();
+    expect(authSkillByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'external_user_tmb',
+      skillId,
+      per: ReadPermissionVal,
+      isRoot: false
+    });
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        teamId: 'team_1',
-        tmbId: 'external_user_tmb',
-        skillIds: ['skill_1']
+        skills: [skill]
       })
     );
   });
@@ -930,14 +964,15 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
+  it('ignores legacy unwrapped Ask memory without crashing a new run', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'legacy-plan',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -986,25 +1021,9 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'fastAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: {
-            pendingMainContext: expect.objectContaining({
-              askToolCallId: 'call_ask',
-              activePlan: {
-                planId: 'legacy-plan',
-                name: 'Legacy plan',
-                description: 'Legacy description',
-                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
-              }
-            })
-          }
-        })
-      })
-    );
+    const input = runAgentLoopMock.mock.calls[0][0].input;
+    expect(input.providerState).toBeUndefined();
+    expect(input.userAnswer).toBeUndefined();
     expect(result.data.answerText).toBe('continued answer');
   });
 
@@ -1022,16 +1041,14 @@ describe('dispatchRunAgent user context', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           },
           {
             question: 'Second?',
             options: [
               { summary: 'C', value: 'C' },
               { summary: 'D', value: 'D' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -1081,10 +1098,11 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask_1',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {

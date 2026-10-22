@@ -45,9 +45,9 @@ export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType
   if (trainingData.collection.imageIndex) {
     const modelHandle = await getTeamModelHandle({ teamId: String(trainingData.teamId) });
     try {
-      supportVlm = !!modelHandle.getVlmModelData(
+      supportVlm = !!modelHandle.getModelData(
         getDatasetModelReference(trainingData.dataset, 'vlm'),
-        { optional: true }
+        { type: 'llm', vision: true, optional: true }
       );
     } catch (error) {
       // 视觉增强可以被跳过；配置失效时移除其旧描述索引，不能阻塞普通文本向量化。

@@ -23,10 +23,12 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
 import { BoolSchema, IntSchema } from '../../../../common/zod';
+import { ParentIdSchema } from '../../../../common/parentFolder/type';
+import { PaginationPageSizeSchema } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
-const NullableParentIdSchema = z.string().nullable().optional().meta({
+const NullableParentIdSchema = ParentIdSchema.meta({
   description: '父级目录 ID'
 });
 
@@ -43,7 +45,7 @@ const createListSkillsQuerySchema = () =>
     parentId: NullableParentIdSchema,
     offset: IntSchema.optional().describe('偏移量'),
     page: z.coerce.number().int().positive().optional().describe('页码'),
-    pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
+    pageSize: PaginationPageSizeSchema.optional(),
     withAppCount: BoolSchema.optional().meta({
       example: true,
       description: '是否返回引用应用数量'
@@ -112,11 +114,7 @@ export const UpdateSkillBodySchema = z.object({
   description: z.string().optional(),
   category: z.array(AgentSkillCategorySchema).optional(),
   avatar: z.string().optional(),
-  parentId: z
-    .string()
-    .nullable()
-    .optional()
-    .describe('移动到指定文件夹，null 表示根目录，undefined 表示不移动')
+  parentId: ParentIdSchema.describe('移动到指定文件夹，null 表示根目录，undefined 表示不移动')
 });
 export type UpdateSkillBody = z.infer<typeof UpdateSkillBodySchema>;
 
@@ -302,7 +300,7 @@ export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema
 
 export const ImportSkillQuerySchema = z.object({
   filename: z.string().min(1).describe('上传的 .zip 文件原始文件名'),
-  parentId: z.string().nullable().optional().describe('导入的目标目录 ID'),
+  parentId: ParentIdSchema.describe('导入的目标目录 ID'),
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
   avatar: z.string().optional().describe('导入后的技能头像')
@@ -418,7 +416,7 @@ export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
 export const ListSkillVersionsBodySchema = z.object({
   skillId: IdSchema,
   pageNum: z.number().int().positive().optional().describe('页码，从 1 开始'),
-  pageSize: z.number().int().positive().describe('每页数量'),
+  pageSize: PaginationPageSizeSchema,
   isCurrent: z.boolean().optional().describe('筛选是否为当前版本')
 });
 export type ListSkillVersionsBody = z.infer<typeof ListSkillVersionsBodySchema>;

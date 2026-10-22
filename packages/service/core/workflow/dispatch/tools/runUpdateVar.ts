@@ -1,14 +1,21 @@
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  type NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getReferenceVariableValue,
+  valueTypeFormat
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { isValidReferenceValue } from '@fastgpt/global/common/workflow/reference';
+
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 

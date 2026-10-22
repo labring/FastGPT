@@ -1,7 +1,7 @@
 import { handler } from '@/pages/api/core/ai/model/summary';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { getModelTestMap } from '@test/modelCache';
-import { getModelTestDefaults, setModelTestMap } from '@test/modelCache';
+import { type getModelTestMap, getModelTestDefaults, setModelTestMap } from '@test/modelCache';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
@@ -19,12 +19,14 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
-vi.mock('@/service/support/permission/auth/outLink', () => ({ authOutLink: mocks.authOutLink }));
+vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({
+  authOutLink: mocks.authOutLink
+}));
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: mocks.permission
 }));
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
-vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+vi.mock('@fastgpt/service/core/app/resource/service', () => ({
   getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
 }));
 
@@ -133,7 +135,9 @@ describe('POST /api/core/ai/model/summary', () => {
       appId,
       per: expect.anything()
     });
-    expect(mocks.getAppDraftResourceBaseline).toHaveBeenCalledWith(appId);
+    expect(mocks.getAppDraftResourceBaseline).toHaveBeenCalledWith(
+      expect.objectContaining({ appId })
+    );
     expect(result.models).toEqual([
       { ...displayFields, modelId: 'active', status: 'active' },
       { ...displayFields, modelId: 'forbidden', status: 'active' },

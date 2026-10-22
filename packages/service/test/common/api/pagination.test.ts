@@ -1,10 +1,40 @@
 import { describe, it, expect } from 'vitest';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import type { NodeApiRequest } from '@fastgpt/service/types/http';
 
 describe('pagination.ts', () => {
   describe('parsePaginationRequest', () => {
+    it.each(['body', 'query'] as const)(
+      'caps the shared page size on %s before calculating offsets',
+      (source) => {
+        expect(
+          parsePaginationRequest({
+            [source]: { pageSize: '500', pageNum: '2' }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 500, offset: 500 });
+        expect(
+          parsePaginationRequest({
+            [source]: { pageSize: '1000', pageNum: '3' }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 500, offset: 1000 });
+        expect(
+          parsePaginationRequest({
+            [source]: { pageSize: 501, pageNum: 2, offset: 7 }
+          } as unknown as NodeApiRequest)
+        ).toEqual({ pageSize: 500, offset: 7 });
+      }
+    );
+
+    it.each([0, -1, 1.5, 'invalid'])(
+      'classifies invalid page size %j as a request input error',
+      (pageSize) => {
+        expect(() =>
+          parsePaginationRequest({ body: { pageSize }, query: {} } as NodeApiRequest)
+        ).toThrow(ApiRequestInputParseError);
+      }
+    );
+
     it.each([
       { body: { offset: 10 }, query: {}, offset: 10 },
       { body: { pageNum: 3 }, query: {}, offset: 20 },
@@ -167,7 +197,7 @@ describe('pagination.ts', () => {
         query: {}
       } as any;
 
-      expect(() => parsePaginationRequest(req)).toThrow(CommonErrEnum.missingParams);
+      expect(() => parsePaginationRequest(req)).toThrow(ApiRequestInputParseError);
     });
 
     it('应该在 body 和 query 都为空且 pageNum 和 offset 都未定义时抛出错误', () => {

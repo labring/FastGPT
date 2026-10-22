@@ -4,16 +4,20 @@ import MyModal from '../../v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '../../../hooks/useRequest';
 import FormLabel from '../MyBox/FormLabel';
-import { useForm } from 'react-hook-form';
+import RadioGroup from '../Radio/RadioGroup';
+import QuestionTip from '../MyTooltip/QuestionTip';
+import { useForm, useWatch } from 'react-hook-form';
 
 export type EditFolderFormType = {
   id?: string;
   name?: string;
   intro?: string;
+  inheritPermission?: boolean;
 };
 type CommitType = {
   name: string;
   intro?: string;
+  inheritPermission?: boolean;
 };
 
 const EditFolderModal = ({
@@ -22,20 +26,25 @@ const EditFolderModal = ({
   onEdit,
   id,
   name,
-  intro
+  intro,
+  showInheritPermission = false
 }: EditFolderFormType & {
   onClose: () => void;
   onCreate: (data: CommitType) => any;
   onEdit: (data: CommitType & { id: string }) => any;
+  showInheritPermission?: boolean;
 }) => {
   const { t } = useTranslation();
   const isEdit = !!id;
-  const { register, handleSubmit } = useForm<EditFolderFormType>({
+  const { register, handleSubmit, setValue, control } = useForm<EditFolderFormType>({
     defaultValues: {
       name,
-      intro
+      intro,
+      inheritPermission: true
     }
   });
+
+  const inheritPermission = useWatch({ control, name: 'inheritPermission' });
 
   const typeMap = useMemo(
     () =>
@@ -50,12 +59,16 @@ const EditFolderModal = ({
   );
 
   const { run: onSave, loading } = useRequest(
-    ({ name = '', intro }: EditFolderFormType) => {
+    ({ name = '', intro, inheritPermission = true }: EditFolderFormType) => {
       const trimmedName = name.trim();
       if (!trimmedName) return;
 
       if (id) return onEdit({ id, name: trimmedName, intro });
-      return onCreate({ name: trimmedName, intro });
+      return onCreate({
+        name: trimmedName,
+        intro,
+        ...(showInheritPermission ? { inheritPermission } : {})
+      });
     },
     {
       onSuccess: () => {
@@ -87,7 +100,13 @@ const EditFolderModal = ({
       <Flex flexDirection={'column'} gap={6}>
         <Box>
           <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
-          <Input {...register('name', { required: true })} size={'sm'} autoFocus maxLength={100} />
+          <Input
+            {...register('name', { required: true })}
+            size={'sm'}
+            autoFocus
+            maxLength={100}
+            placeholder={t('common:folder_name_placeholder')}
+          />
         </Box>
         <Box>
           <FormLabel mb={2}>{t('common:folder_description')}</FormLabel>
@@ -97,8 +116,36 @@ const EditFolderModal = ({
             minH={'100px'}
             maxLength={200}
             resize={'vertical'}
+            placeholder={t('common:folder_description_placeholder')}
           />
         </Box>
+        {showInheritPermission && !isEdit && (
+          <Box>
+            <Flex alignItems={'center'} mb={2}>
+              <FormLabel mb={0}>{t('common:permission.Folder permission')}</FormLabel>
+              <QuestionTip
+                ml={1}
+                maxW={'240px'}
+                label={t('common:permission.Folder permission tip')}
+              />
+            </Flex>
+            <RadioGroup
+              fontSize={'sm'}
+              list={[
+                {
+                  title: 'common:permission.Follow parent folder',
+                  value: true
+                },
+                {
+                  title: 'common:permission.Only me',
+                  value: false
+                }
+              ]}
+              value={inheritPermission ?? true}
+              onChange={(value) => setValue('inheritPermission', value)}
+            />
+          </Box>
+        )}
       </Flex>
     </MyModal>
   );

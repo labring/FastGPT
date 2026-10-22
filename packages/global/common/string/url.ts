@@ -6,6 +6,39 @@ export const isHttpUrl = (url?: string): boolean => {
   return /^https?:\/\//i.test(url.trim());
 };
 
+/**
+ * 判断字符串是否为完整、可解析的 http/https 地址（必须显式带协议）。
+ *
+ * 与 `isHttpUrl` 的区别：后者只检查前缀，本函数还会用 `URL` 解析，
+ * 以拦截 `https://` 这类缺少 host 的输入。用于保存前的严格校验。
+ */
+export const isValidHttpUrl = (url?: string): boolean => {
+  const trimmed = url?.trim();
+  if (!trimmed || !isHttpUrl(trimmed)) return false;
+
+  try {
+    new URL(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 为缺少协议头的地址补全 `https://`。
+ *
+ * 用于三方知识库 baseUrl 的归一化：schema 解析时统一补全，存量裸域名也不会在
+ * axios / `new URL()` 处抛 `ERR_INVALID_URL`。
+ * 已带任意显式协议的地址原样返回（避免把 `ftp://x` 拼成 `https://ftp://x`），
+ * 协议相对地址 `//host` 按 https 处理。
+ */
+export const ensureHttpProtocol = (url?: string): string => {
+  const trimmed = url?.trim() ?? '';
+  if (!trimmed) return '';
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed.replace(/^\/+/, '')}`;
+};
+
 export const stripUrlTrailingSlash = (value?: string) => value?.replace(/\/+$/, '') || '';
 
 const ALLOWED_PROTOCOLS = new Set(['http', 'https', 'mailto', 'tel', 'cite', 'quote']);

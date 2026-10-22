@@ -309,7 +309,7 @@ describe('sandbox provider config', () => {
     expect(
       profile.buildConfig({
         resourceLimits: { cpuCount: 3 }
-      }).resourceLimits
+      })?.resourceLimits
     ).toEqual({
       cpuCount: 3,
       memoryMiB: 4096
@@ -398,15 +398,6 @@ describe('sandbox provider config', () => {
         runtime: 'docker'
       })
     ).toThrow('Sandbox provider apiKey is required for opensandbox');
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'opensandbox',
-        baseUrl: 'http://opensandbox.local',
-        apiKey: 'opensandbox-key',
-        runtime: 'invalid' as 'docker'
-      })
-    ).toThrow('Invalid runtime: invalid');
   });
 
   it('throws for unsupported provider in config switch', async () => {

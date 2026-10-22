@@ -8,8 +8,12 @@ import type {
   AdminAuditEventEnum,
   AuditEventEnum,
   AdminAuditEventParamsType,
-  AuditEventParamsType
+  AuditEventParamsType,
+  DatasetAuditEvent,
+  DatasetAuditEventParamsType,
+  TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
+import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -17,9 +21,24 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 export type AuditLogInput = {
   tmbId: string;
   teamId: string;
-  event: AuditEventEnum | AdminAuditEventEnum;
+  event: TeamAuditEvent | AdminAuditEventEnum;
   params?: Record<string, unknown>;
 };
+
+type AddAuditLogInput<T, P> = {
+  teamId: string;
+  event: T;
+  params?: P;
+} & (
+  | {
+      tmbId: string;
+      scope?: 'member';
+    }
+  | {
+      tmbId?: never;
+      scope: 'system';
+    }
+);
 
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
@@ -70,50 +89,34 @@ export function getI18nInformLevel(level: string): string {
   return i18nT('common:UnKnow');
 }
 
-/** 写入单条审计并在内部重试、记录最终失败；调用方可直接调用，无需等待或捕获异常。 */
-export function addAuditLog<T extends AuditEventEnum>({
-  teamId,
-  tmbId,
-  event,
-  params
-}: {
-  tmbId: string;
-  teamId: string;
-  event: T;
-  params?: AuditEventParamsType[T];
-}): Promise<void>;
+/** 写入单条审计并在内部重试、记录最终失败；scope 为 member（或省略）时必须提供 tmbId。 */
+export function addAuditLog<T extends AuditEventEnum>(
+  input: AddAuditLogInput<T, AuditEventParamsType[T]>
+): Promise<void>;
 
-export function addAuditLog<T extends AdminAuditEventEnum>({
-  teamId,
-  tmbId,
-  event,
-  params
-}: {
-  tmbId: string;
-  teamId: string;
-  event: T;
-  params?: AdminAuditEventParamsType[T];
-}): Promise<void>;
-export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
-  teamId,
-  tmbId,
-  event,
-  params
-}: {
-  tmbId: string;
-  teamId: string;
-  event: T;
-  params?: any;
-}): Promise<void> {
+export function addAuditLog<T extends AdminAuditEventEnum>(
+  input: AddAuditLogInput<T, AdminAuditEventParamsType[T]>
+): Promise<void>;
+
+/** 知识库事件：事件名取 DatasetAuditEventEnum 的点分 value，参数类型按 DatasetAuditEventParamsType 校验。 */
+export function addAuditLog<T extends DatasetAuditEventEnum>(
+  input: AddAuditLogInput<T, DatasetAuditEventParamsType[T]>
+): Promise<void>;
+
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum | DatasetAuditEvent>(
+  input: AddAuditLogInput<T, any>
+): Promise<void> {
+  const { teamId, tmbId, scope, event, params } = input;
+
   return retryFn(async () => {
     await MongoTeamAudit.create({
-      tmbId: tmbId,
-      teamId: teamId,
+      ...(scope === 'system' ? { scope } : { ...(scope ? { scope } : {}), tmbId }),
+      teamId,
       event,
       metadata: params
     });
   }).catch((error) => {
-    logger.error('Audit log write failed', { error, teamId, tmbId, event });
+    logger.error('Audit log write failed', { error, teamId, tmbId, scope, event });
   });
 }
 

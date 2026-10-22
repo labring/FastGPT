@@ -6,7 +6,6 @@
 import { serviceEnv } from '../../../../../env';
 
 export type VolumeManagerConfig = {
-  enable: boolean;
   url: string;
   token?: string;
   volumeNamePrefix: string;
@@ -19,9 +18,10 @@ export type VolumeManagerConfig = {
  * volume-manager 只负责分配持久卷，OpenSandbox 的挂载路径由运行态固定为 /workspace。
  */
 export function getVolumeManagerEnvConfig(): VolumeManagerConfig {
+  const url = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL;
+  if (!url) throw new Error('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required');
   return {
-    enable: true,
-    url: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL!,
+    url,
     token: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
     volumeNamePrefix: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
     storageSize: `${serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI}Gi`

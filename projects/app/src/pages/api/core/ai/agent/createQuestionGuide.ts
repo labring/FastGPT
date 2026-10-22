@@ -2,7 +2,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import type { NextApiResponse } from 'next';
 
 import { NextAPI } from '@/service/middleware/entry';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
+import { authOutLink } from '@fastgpt/service/support/permission/publish/authChat';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
@@ -16,6 +16,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 
 async function handler(
@@ -24,13 +25,20 @@ async function handler(
 ): Promise<CreateQuestionGuideResponseType> {
   const { messages } = parseApiInput({ req, bodySchema: CreateQuestionGuideBodySchema }).body;
 
-  const { tmbId, teamId } = await authChatCert({
+  const { tmbId, teamId, authType, isRoot } = await authChatCert({
     req,
     authToken: true,
     authApiKey: true
   });
   const modelHandle = await getTeamModelHandle({ teamId });
-  const qgModel = modelHandle.getDefaultModelData('llm');
+  const authorizedIds = await getAuthorizedModelIds({
+    actor:
+      authType === AuthUserTypeEnum.outLink
+        ? { source: 'outLink', teamId, tmbId }
+        : { teamId, tmbId, isRoot: Boolean(isRoot) },
+    handle: modelHandle
+  });
+  const qgModel = modelHandle.getDefaultModelData('llm', { authorizedIds });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],
@@ -65,6 +73,7 @@ async function authChatCert(props: AuthModeType): Promise<{
   apikey: string;
   isOwner: boolean;
   canWrite: boolean;
+  isRoot?: boolean;
   outLinkUid?: string;
 }> {
   const { shareId, outLinkUid } =

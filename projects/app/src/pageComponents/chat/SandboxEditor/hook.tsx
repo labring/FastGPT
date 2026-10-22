@@ -6,7 +6,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   checkSandboxExist,
   downloadSandbox,
-  getSandboxProxyWsUrl,
   getSandboxTicket,
   readSandboxFile,
   uploadSandboxFile
@@ -20,7 +19,6 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLatest, useMemoizedFn } from 'ahooks';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
@@ -441,9 +439,7 @@ export const useSandboxFileStore = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const sandboxTargetId = getSandboxTargetId(sandboxTarget);
-  const maxFileBytes =
-    useSystemStore((state) => state.feConfigs.limit?.agentSandboxMaxFileBytes) ??
-    DEFAULT_MAX_FILE_SIZE_MB * 1024 * 1024;
+  const [maxFileBytes, setMaxFileBytes] = useState(DEFAULT_MAX_FILE_SIZE_MB * 1024 * 1024);
   const maxFileSizeMB = Math.ceil(maxFileBytes / 1024 / 1024);
 
   const [fileTree, setFileTree] = useState<TreeNode[]>([]);
@@ -836,21 +832,15 @@ export const useSandboxFileStore = ({
           channel: 'fs',
           permission: canWrite ? 'write' : 'read'
         });
-        const ticket = res.ticket;
-
-        if (!ticket) {
-          throw new Error('Ticket not found in response: ' + JSON.stringify(res));
-        }
         if (isDestroyed) return;
+        setMaxFileBytes(res.maxFileBytes);
 
         ideSessionRootRef.current = getSandboxIdeSessionRoot(
           res.workspaceRoot,
           res.sessionWorkDirectory
         );
 
-        const wsUrl = getSandboxProxyWsUrl({ channel: 'fs', ticket });
-
-        ws = new WebSocket(wsUrl);
+        ws = new WebSocket(res.wsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {

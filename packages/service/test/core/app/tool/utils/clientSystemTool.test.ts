@@ -135,6 +135,85 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.versionLabel).toBeUndefined();
   });
 
+  it('selects plugin metadata and x-i18n strings for the preview snapshot', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-search',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: true,
+      avatar: 'search.svg',
+      name: { en: 'Document search', 'zh-CN': '文档搜索' },
+      intro: { en: 'Search summary', 'zh-CN': '搜索简介' },
+      author: 'FastGPT',
+      tags: [],
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      readmeUrl: 'https://example.com/legacy.md',
+      readmeUrls: {
+        en: 'https://example.com/en.md',
+        'zh-CN': 'https://example.com/zh.md'
+      },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            'x-i18n': {
+              title: { en: 'Query', 'zh-CN': '查询' },
+              description: { en: 'Search text', 'zh-CN': '检索文本' },
+              placeholder: { en: 'Enter query', 'zh-CN': '输入查询' }
+            }
+          }
+        }
+      },
+      outputSchema: {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'string',
+            'x-i18n': { title: { en: 'Result', 'zh-CN': '结果' } }
+          }
+        }
+      },
+      children: [
+        {
+          id: 'pages',
+          name: { en: 'Search pages', 'zh-CN': '搜索页面' },
+          description: { en: 'Search the page index', 'zh-CN': '搜索页面索引' },
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} }
+        }
+      ]
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-search',
+      lang: 'en'
+    });
+
+    expect(result).toMatchObject({
+      name: 'Document search',
+      intro: 'Search summary',
+      metadataLocale: 'en',
+      readmeUrl: 'https://example.com/en.md',
+      toolConfig: {
+        systemToolSet: {
+          toolList: [{ name: 'Search pages', description: 'Search the page index' }]
+        }
+      }
+    });
+    expect(result.inputs[0]).toMatchObject({
+      key: 'query',
+      label: 'Query',
+      description: 'Search text',
+      placeholder: 'Enter query'
+    });
+    expect(result.outputs[0]).toMatchObject({ id: 'result', label: 'Result' });
+  });
+
   it('restores workflow tool input metadata before applying its default mode', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-workflow',

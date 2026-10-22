@@ -1,14 +1,13 @@
-import React from 'react';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
 import { getNodeAllSource } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
-import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  type RuntimeEdgeItemType,
-  type StoreEdgeItemType
+import type {
+  RuntimeEdgeItemType,
+  StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
@@ -31,8 +30,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import {
   checkInputShouldRenderInDebug,
@@ -77,11 +75,9 @@ export const useDebug = () => {
   const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount } = useFileUploadLimits();
   const debugFileMaxAmount = getUserFileAmountLimit({
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
   const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
@@ -114,18 +110,19 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
-      checkWorkflowBeforeRunOrPublish({
+    const { issueMap, hasError, firstErrorNodeId, errorMessages } = checkWorkflowBeforeRunOrPublish(
+      {
         nodes,
         edges,
-        models: await getWorkflowModelDetails({
+        modelData: await getWorkflowModelCheckData({
           nodes,
           chatConfig: appDetail.chatConfig,
           appId: appDetail._id
         }),
         chatConfig: appDetail.chatConfig,
         t: workflowT
-      });
+      }
+    );
 
     if (!hasError) {
       onRemoveError();
@@ -137,7 +134,6 @@ export const useDebug = () => {
 
       return JSON.stringify(storeNodes);
     }
-
     onSyncWorkflowCheckIssues(issueMap);
 
     if (firstErrorNodeId) {
@@ -154,11 +150,7 @@ export const useDebug = () => {
     toast({
       status: 'warning',
       title: t('common:core.workflow.Check Failed'),
-      description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
-        .filter((issue) => issue.level === 'error')
-        .map((issue) => issue.message)
-        .filter(Boolean)
-        .join('\n')
+      description: errorMessages.join('\n')
     });
     return Promise.reject();
   }, [

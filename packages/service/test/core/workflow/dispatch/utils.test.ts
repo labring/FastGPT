@@ -636,12 +636,20 @@ describe('getHistories', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'ask_1',
               params: {
-                content: 'Choose one',
-                options: ['A', 'B', 'C'],
-                answer: 'A'
+                description: '',
+                questions: [
+                  {
+                    question: 'Choose one',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' },
+                      { summary: 'C', value: 'C' }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -649,6 +657,20 @@ describe('getHistories', () => {
       }
     ];
 
+    completedRound.push(
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type: 'agentAsk',
+              questions: [{ question: 'Choose one', value: 'A' }]
+            }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Done' } }] }
+    );
     expect(getAgentLoopHistories(0, completedRound)).toEqual([]);
     expect(getAgentLoopHistories(0, MockHistories)).toEqual([]);
   });
@@ -992,6 +1014,71 @@ describe('rewriteRuntimeWorkFlow', () => {
       status: 'waiting',
       ...opts
     }) as any;
+
+  it.each(['mcp', 'http'] as const)(
+    'fills a standalone %s child schema outside the snapshot tool selection',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        properties: { query: { type: 'string', isToolParam: true } }
+      };
+      const node = makeNode('child', FlowNodeTypeEnum.tool, {
+        toolConfig: {
+          [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-toolset-1/memberTool` }
+        }
+      });
+      mockMongoAppFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: 'toolset-1',
+          modules: [
+            {
+              toolConfig: {
+                [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                  toolList: [
+                    {
+                      name: 'memberTool',
+                      description: 'Member tool',
+                      inputSchema: schema,
+                      requestSchema: schema
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      });
+
+      await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                'tool:toolset-1',
+                {
+                  type: 'tool',
+                  id: 'toolset-1',
+                  data: { toolNames: ['staticTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        () =>
+          rewriteRuntimeWorkFlow({
+            teamId: 'team1',
+            tmbId: 'tmb1',
+            nodes: [node],
+            edges: []
+          })
+      );
+
+      expect(node.jsonSchema).toEqual(schema);
+      expect(node.inputs).toContainEqual(expect.objectContaining({ key: 'query' }));
+    }
+  );
 
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];

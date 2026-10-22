@@ -13,18 +13,21 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { asRedisLogicalKey } from '@fastgpt/dal/redis/runtime';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import {
   prepareSandboxToolRuntime,
   runSandboxTools,
   type SandboxToolCallResult
-} from '@fastgpt/service/core/ai/sandbox/interface/toolCall';
+} from '@fastgpt/service/core/ai/sandbox/application/toolCall';
 import {
   getSandboxClient,
-  type SandboxClient,
-  type SandboxClientQuery
-} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+  getRunningSandboxClient,
+  type SandboxClient
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { type SandboxClientQuery } from '@fastgpt/service/core/ai/sandbox/application/runtime/type';
 import {
   deleteSandboxResource,
   retryStaleStoppingSandboxes
@@ -36,23 +39,41 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/state';
 import { resolveSandboxHome } from '@fastgpt/service/core/ai/sandbox/application/runtime/home';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { countActiveSandboxInstances } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
+import {
+  recoverSandboxActivation,
+  retryStaleSandboxActivations
+} from '@fastgpt/service/core/ai/sandbox/application/lifecycle/service';
+import { withSandboxLifecycleLease } from '@fastgpt/service/core/ai/sandbox/application/lease';
 import { buildSandboxResourceAdapter } from '@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter';
 import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
+import { type SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
 import {
   SandboxInstanceStatusEnum,
-  SandboxOperationTypeEnum,
-  type SandboxProviderType
-} from '@fastgpt/service/core/ai/sandbox/type';
+  SandboxOperationTypeEnum
+} from '@fastgpt/service/core/ai/sandbox/constants';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import type { ResourceLimits } from '@fastgpt-sdk/sandbox-adapter';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { getSandboxIntegrationProvider, getSandboxIntegrationTimingBudgets } from './config';
 
+import { SandboxOperationSettledError } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
+import { keepaliveSandboxSession } from '@fastgpt/service/core/ai/sandbox/interface/session';
+
+import { archiveSandboxResourceNow } from '@fastgpt/service/core/ai/sandbox/application/archive';
 const { Types } = connectionMongo;
 const integrationProvider = getSandboxIntegrationProvider();
 const timingBudgets = getSandboxIntegrationTimingBudgets();
 const originalSandboxBucket = global.sandboxBucket;
-const deleteWorkspaceArchiveNow = vi.fn(async () => undefined);
+const workspaceArchives = new Map<string, Buffer>();
+const deleteWorkspaceArchiveNow = vi.fn(async ({ sandboxId }: { sandboxId: string }) => {
+  workspaceArchives.delete(sandboxId);
+});
+const downloadWorkspaceArchive = vi.fn(async ({ sandboxId }: { sandboxId: string }) => {
+  const body = workspaceArchives.get(sandboxId);
+  if (!body) throw new Error('Integration archive missing');
+  return Buffer.from(body);
+});
 
 type TimingRecord = {
   operation: string;
@@ -183,6 +204,26 @@ const createAppSandboxQuery = async (label: string): Promise<SandboxClientQuery>
   };
 };
 
+/** 读取真实生命周期快照；记录缺失立即失败，避免可选链掩盖前置步骤未成功。 */
+const readSandboxInstance = async (query: SandboxClientQuery) => {
+  const instance = await MongoSandboxInstance.findOne({ sandboxId: query.sandboxId }).lean();
+  if (!instance) throw new Error('Integration sandbox record missing');
+  return instance;
+};
+
+/** 用独立只读连接探测真实远端，不能通过运行入口隐式重新创建资源。 */
+const readSandboxProviderInfo = async (params: {
+  provider: SandboxProviderType;
+  sandboxId: string;
+}) => {
+  const adapter = buildSandboxResourceAdapter(params);
+  try {
+    return await adapter.getInfo();
+  } finally {
+    await adapter.close();
+  }
+};
+
 /** 删除前核对 Mongo 归属，并对可重放的 FastGPT delete lifecycle 最多重试三次。 */
 const cleanupSandboxFixture = async (
   provider: SandboxProviderType,
@@ -201,6 +242,14 @@ const cleanupSandboxFixture = async (
       instance.userId !== query.userId
     ) {
       throw new Error(`Refusing to clean mismatched Sandbox resource: ${query.sandboxId}`);
+    }
+
+    // 测试请求均已 await 结束；仅对核对过归属的 fixture 解除故障隔离，避免失败用例泄漏资源。
+    if (instance.operation) {
+      await MongoSandboxInstance.updateOne(
+        { _id: instance._id, 'operation.id': instance.operation.id },
+        { $set: { 'operation.retryAfter': new Date(0) } }
+      );
     }
 
     try {
@@ -267,7 +316,12 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
 
   beforeAll(async () => {
     global.sandboxBucket = {
-      deleteWorkspaceArchiveNow
+      deleteWorkspaceArchiveNow,
+      // 对象存储使用内存替身；Mongo、Redis、Provider、PVC 和 zip/unzip 均执行真实链路。
+      uploadWorkspaceArchive: async ({ sandboxId, body }: { sandboxId: string; body: Buffer }) => {
+        workspaceArchives.set(sandboxId, Buffer.from(body));
+      },
+      downloadWorkspaceArchive
     } as unknown as typeof global.sandboxBucket;
 
     toolFixture = await createSandboxFixture(provider, 'tool-runtime', resourceLimits);
@@ -298,7 +352,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
       await redisCacheAdapter.deleteMany([
         asRedisLogicalKey(`sandbox:preview:${toolFixture.query.sandboxId}:active`),
         ...Array.from(previewSessionIds, (sessionId) =>
-          asRedisLogicalKey(`sandbox:preview:${toolFixture.query.sandboxId}:${sessionId}`)
+          asRedisLogicalKey(`sandbox:preview:session:${sessionId}`)
         )
       ]);
     }
@@ -409,9 +463,9 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
         filename: string;
       }[];
       expect(file.filename).toBe('sample.txt');
-      const pathSegments = new URL(file.fileUrl).pathname.split('/');
-      const sandboxIndex = pathSegments.indexOf(toolFixture.query.sandboxId);
-      previewSessionIds.add(pathSegments[sandboxIndex + 1]);
+      const match = new URL(file.fileUrl).pathname.match(/\/preview\/([a-z][a-zA-Z0-9]{23})\//);
+      expect(match).not.toBeNull();
+      previewSessionIds.add(match![1]);
     });
   });
 
@@ -592,57 +646,304 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
       }
     );
 
-    it.runIf(provider === 'opensandbox')(
-      'replays a persisted failed provisioning operation',
-      async () => {
-        await withSandboxFixture(provider, 'failed-provision', async (fixture) => {
+    it('rolls back failed provisioning through cron without losing workspace or ownership', async () => {
+      await withSandboxFixture(provider, 'failed-provision', async (fixture) => {
+        const { query } = fixture;
+        expect(await fixture.sandbox.exec('printf persisted > failed-provision.txt')).toMatchObject(
+          {
+            exitCode: 0
+          }
+        );
+        const before = await readSandboxInstance(query);
+        await fixture.sandbox.provider.close();
+
+        // 模拟远端创建成功后进程退出：远端仍活着，Mongo 只有旧版 claimed checkpoint。
+        const failedAt = new Date(0);
+        await MongoSandboxInstance.updateOne(
+          { _id: before._id },
+          {
+            $set: {
+              status: SandboxInstanceStatusEnum.provisioning,
+              versionId: 'integration-preserved-version',
+              operation: {
+                id: randomUUID(),
+                type: SandboxOperationTypeEnum.provision,
+                phase: 'claimed',
+                previousStatus: SandboxInstanceStatusEnum.running,
+                startedAt: failedAt,
+                heartbeatAt: failedAt,
+                failedAt,
+                error: 'injected provider timeout'
+              }
+            }
+          }
+        );
+        expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(1);
+
+        await measureOperation(
+          'lifecycle.rollback-failed-provisioning',
+          timingBudgets.lifecycleMs,
+          () => retryStaleSandboxActivations()
+        );
+        const stopped = await readSandboxInstance(query);
+        expect(stopped).toMatchObject({
+          status: 'stopped',
+          teamId: before.teamId,
+          versionId: 'integration-preserved-version'
+        });
+        expect(stopped.operation).toBeUndefined();
+        expect(stopped.storage).toEqual(before.storage);
+        expect(stopped.image).toEqual(before.image);
+        expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(0);
+        const remote = await readSandboxProviderInfo({ provider, sandboxId: query.sandboxId });
+        expect(remote?.status.state ?? 'UnExist').toBe(
+          provider === 'opensandbox' ? 'UnExist' : 'Stopped'
+        );
+
+        fixture.sandbox = (
+          await measureOperation(
+            'lifecycle.resume-after-provisioning-rollback',
+            timingBudgets.lifecycleMs,
+            () => getSandboxClient(query)
+          )
+        ).value;
+        expect(await fixture.sandbox.exec('cat failed-provision.txt')).toMatchObject({
+          stdout: 'persisted',
+          exitCode: 0
+        });
+        expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(1);
+        expect((await readSandboxInstance(query)).storage).toEqual(before.storage);
+      });
+    });
+
+    it.each([
+      ['provisioning', 'provision', 'providerEnsured'],
+      ['restoring', 'restore', 'archiveInstalled']
+    ] as const)(
+      'completes a persisted %s checkpoint only after the real lifecycle lease is released',
+      async (status, type, phase) => {
+        await withSandboxFixture(provider, `completion-${status}`, async (fixture) => {
           const { query } = fixture;
-          await fixture.sandbox.exec('printf persisted > failed-provision.txt');
-          const instance = await MongoSandboxInstance.findOne({
+          expect(await fixture.sandbox.exec('printf completed > completion.txt')).toMatchObject({
+            exitCode: 0
+          });
+          const created = await readSandboxInstance(query);
+          if (status === 'restoring') {
+            const archived = await measureOperation(
+              'lifecycle.archive',
+              timingBudgets.lifecycleMs,
+              () => archiveSandboxResourceNow(created)
+            );
+            expect(archived.value.status).toBe('success');
+            expect((await readSandboxInstance(query)).status).toBe('archived');
+            await fixture.sandbox.provider.close();
+            await keepaliveSandboxSession(query);
+            expect((await readSandboxInstance(query)).status).toBe('archived');
+            expect(
+              await readSandboxProviderInfo({ provider, sandboxId: query.sandboxId })
+            ).toBeNull();
+            fixture.sandbox = (
+              await measureOperation('lifecycle.restore', timingBudgets.lifecycleMs, () =>
+                getSandboxClient(query)
+              )
+            ).value;
+          }
+          const before = await readSandboxInstance(query);
+          expect(before.status).toBe('running');
+          expect(before.operation).toBeUndefined();
+          if (status === 'restoring' && provider === 'opensandbox') {
+            expect(before.storage?.volumes?.[0].claimName).not.toBe(
+              created.storage?.volumes?.[0].claimName
+            );
+          }
+          const remoteBefore = await readSandboxProviderInfo({
+            provider,
             sandboxId: query.sandboxId
-          }).lean();
-          expect(instance).toBeTruthy();
-          await buildSandboxResourceAdapter(instance!).delete();
+          });
+          expect(remoteBefore?.status.state).toBe('Running');
           await fixture.sandbox.provider.close();
 
-          const failedAt = new Date();
+          const operationId = randomUUID();
           await MongoSandboxInstance.updateOne(
-            { sandboxId: query.sandboxId },
+            { _id: before._id },
             {
               $set: {
-                status: SandboxInstanceStatusEnum.provisioning,
+                status,
                 operation: {
-                  id: randomUUID(),
-                  type: SandboxOperationTypeEnum.provision,
-                  phase: 'claimed',
-                  previousStatus: SandboxInstanceStatusEnum.running,
-                  startedAt: failedAt,
-                  heartbeatAt: failedAt,
-                  failedAt,
-                  error: 'injected provider timeout'
+                  id: operationId,
+                  type,
+                  phase,
+                  startedAt: new Date(0),
+                  heartbeatAt: new Date(0)
                 }
               }
             }
           );
+          await withSandboxLifecycleLease({
+            sandboxId: query.sandboxId,
+            label: 'integration-existing-lifecycle-owner',
+            fn: async () => {
+              await expect(
+                recoverSandboxActivation({ sandboxId: query.sandboxId })
+              ).rejects.toBeInstanceOf(RedisLeaseUnavailableError);
+              expect((await readSandboxInstance(query)).operation?.id).toBe(operationId);
+            }
+          });
 
-          const retried = await measureOperation(
-            'lifecycle.retry-failed-provisioning',
-            timingBudgets.lifecycleMs,
-            () => getSandboxClient(query)
-          );
-          fixture.sandbox = retried.value;
-          expect(await fixture.sandbox.exec('cat failed-provision.txt')).toMatchObject({
-            stdout: 'persisted',
+          await recoverSandboxActivation({ sandboxId: query.sandboxId });
+          const after = await readSandboxInstance(query);
+          expect(after.status).toBe('running');
+          expect(after.storage).toEqual(before.storage);
+          expect(after.image).toEqual(before.image);
+          expect(after.operation).toBeUndefined();
+          // 物理 ID 与存储 generation 都不变，不能靠重新创建一台机器伪装成补交成功。
+          const remoteAfter = await readSandboxProviderInfo({
+            provider,
+            sandboxId: query.sandboxId
+          });
+          expect(remoteAfter?.id).toBe(remoteBefore?.id);
+          fixture.sandbox = await getSandboxClient(query);
+          expect(await fixture.sandbox.exec('cat completion.txt')).toMatchObject({
+            stdout: 'completed',
             exitCode: 0
           });
-          const retriedInstance = await MongoSandboxInstance.findOne({
-            sandboxId: query.sandboxId
-          }).lean();
-          expect(retriedInstance?.status).toBe(SandboxInstanceStatusEnum.running);
-          expect(retriedInstance?.operation).toBeUndefined();
         });
       }
     );
+
+    it('retains restore quota until rollback and preserves the archive for a fresh generation', async () => {
+      await withSandboxFixture(provider, 'failed-restore', async (fixture) => {
+        const { query } = fixture;
+        const originalSystemEnv = global.systemEnv;
+        // 同一 App 的另一用户具有独立 sandboxId，但必须竞争同一团队配额。
+        const userId = `integration-contender-${randomUUID()}`;
+        const contender = {
+          ...query,
+          userId,
+          sandboxId: getRunningSandboxId({ ...query, userId })
+        };
+        let competingSandbox: SandboxClient | undefined;
+        try {
+          global.systemEnv = { ...originalSystemEnv, agentSandboxMaxPerTeam: 1 };
+          expect(
+            await fixture.sandbox.exec('printf archive-original > failed-restore.txt')
+          ).toMatchObject({ exitCode: 0 });
+          const before = await readSandboxInstance(query);
+          expect(await archiveSandboxResourceNow(before)).toMatchObject({ status: 'success' });
+          await fixture.sandbox.provider.close();
+          const originalArchive = workspaceArchives.get(query.sandboxId);
+          expect(originalArchive).toBeInstanceOf(Buffer);
+
+          // 故障发生在真实计算资源/PVC 创建后、解压前，不 mock 生命周期、数据库或 Redis。
+          downloadWorkspaceArchive.mockRejectedValueOnce(
+            new Error('injected archive download timeout')
+          );
+          await expect(getSandboxClient(query)).rejects.toThrow(
+            'injected archive download timeout'
+          );
+          const failed = await readSandboxInstance(query);
+          expect(failed).toMatchObject({
+            status: 'restoring',
+            operation: { phase: 'volumeAssigned', error: 'injected archive download timeout' }
+          });
+          const retryAfter = failed.operation?.retryAfter;
+          if (!retryAfter) throw new Error('Restore failure did not persist retryAfter');
+          expect(
+            (await readSandboxProviderInfo({ provider, sandboxId: query.sandboxId }))?.status.state
+          ).toBe('Running');
+          expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(1);
+          await expect(getSandboxClient(contender)).rejects.toMatchObject({
+            message: SandboxErrEnum.agentSandboxTeamLimitReached
+          });
+          expect(await MongoSandboxInstance.exists({ sandboxId: contender.sandboxId })).toBeNull();
+          expect(
+            await readSandboxProviderInfo({ provider, sandboxId: contender.sandboxId })
+          ).toBeNull();
+
+          // 用明确的 now 驱动生产恢复入口，验证边界而不等待二十分钟或替换全局时钟。
+          await retryStaleSandboxActivations(new Date(retryAfter.getTime() - 1));
+          expect((await readSandboxInstance(query)).operation?.id).toBe(failed.operation?.id);
+          await measureOperation(
+            'lifecycle.rollback-failed-restore',
+            timingBudgets.lifecycleMs,
+            () => retryStaleSandboxActivations(retryAfter)
+          );
+          const rolledBack = await readSandboxInstance(query);
+          expect(rolledBack.status).toBe('archived');
+          expect(rolledBack.operation).toBeUndefined();
+          expect(
+            await readSandboxProviderInfo({ provider, sandboxId: query.sandboxId })
+          ).toBeNull();
+          expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(0);
+          expect(workspaceArchives.get(query.sandboxId)).toEqual(originalArchive);
+
+          competingSandbox = await getSandboxClient(contender);
+          // 回滚释放的额度可被其他用户占用，原实例再次恢复也必须重新准入。
+          await expect(getSandboxClient(query)).rejects.toMatchObject({
+            message: SandboxErrEnum.agentSandboxTeamLimitReached
+          });
+          expect((await readSandboxInstance(query)).status).toBe('archived');
+          await competingSandbox.stop();
+          fixture.sandbox = (
+            await measureOperation(
+              'lifecycle.restore-after-rollback',
+              timingBudgets.lifecycleMs,
+              () => getSandboxClient(query)
+            )
+          ).value;
+          expect(await fixture.sandbox.exec('cat failed-restore.txt')).toMatchObject({
+            stdout: 'archive-original',
+            exitCode: 0
+          });
+          const restored = await readSandboxInstance(query);
+          expect(restored.status).toBe('running');
+          expect(restored.operation).toBeUndefined();
+          expect(await countActiveSandboxInstances({ teamId: before.teamId })).toBe(1);
+          if (provider === 'opensandbox') {
+            expect(restored.storage?.volumes?.[0].claimName).not.toBe(
+              failed.storage?.volumes?.[0].claimName
+            );
+            expect(restored.storage?.volumes?.[0].claimName).not.toBe(
+              before.storage?.volumes?.[0].claimName
+            );
+          }
+        } finally {
+          downloadWorkspaceArchive.mockReset();
+          global.systemEnv = originalSystemEnv;
+          await cleanupSandboxFixture(provider, contender, competingSandbox);
+        }
+      });
+    });
+
+    it('keeps stopped resources inactive during keepalive and connect-only client creation', async () => {
+      await withSandboxFixture(provider, 'connect-only-stop', async (fixture) => {
+        await fixture.sandbox.stop();
+        await keepaliveSandboxSession(fixture.query);
+        await expect(getRunningSandboxClient(fixture.query)).rejects.toThrow();
+        const record = await MongoSandboxInstance.findOne({
+          sandboxId: fixture.query.sandboxId
+        }).lean();
+        expect(record?.status).toBe('stopped');
+        const adapter = buildSandboxResourceAdapter({
+          provider,
+          sandboxId: fixture.query.sandboxId
+        });
+        try {
+          const info = await adapter.getInfo();
+          expect(info?.status.state ?? 'UnExist').toBe(
+            provider === 'opensandbox' ? 'UnExist' : 'Stopped'
+          );
+        } finally {
+          await adapter.close();
+        }
+        const resumed = await getSandboxClient(fixture.query);
+        fixture.sandbox = resumed;
+        expect(
+          (await MongoSandboxInstance.findOne({ sandboxId: fixture.query.sandboxId }).lean())
+            ?.status
+        ).toBe('running');
+      });
+    });
 
     it('retries a stale failed stopping operation and resumes the runtime', async () => {
       await withSandboxFixture(provider, 'failed-stop', async (fixture) => {
@@ -702,7 +1003,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
           )
         ).value;
         deleteWorkspaceArchiveNow.mockRejectedValueOnce(
-          new Error('injected archive cleanup error')
+          new SandboxOperationSettledError('injected archive cleanup error')
         );
 
         await expect(
@@ -762,7 +1063,7 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
     });
   });
 
-  it('backs up and restores the default apt sources around mirror configuration', async () => {
+  it('preserves read-only apt sources or backs up and restores writable sources', async () => {
     await withSandboxFixture(provider, 'mirror-config-lifecycle', async ({ sandbox }) => {
       const homeDirectory = await resolveSandboxHome(sandbox.provider);
       if (!homeDirectory) throw new Error('Sandbox HOME is unavailable');
@@ -815,6 +1116,16 @@ describe.skipIf(!integrationProvider).sequential('FastGPT Sandbox Integration', 
           config: { aptMirror }
         })
       );
+      const writable = await sandbox.provider.execute(
+        `test -w ${aptSourcePath} && test -w /etc/apt/sources.list.d`
+      );
+      if (writable.exitCode !== 0) {
+        // 非 root 镜像不能改写系统源：保持原内容与旧 hash，不能把失败记为已同步。
+        expect(await readTextFile(aptSourcePath)).toBe(defaultAptSource);
+        expect(await readOptionalTextFile(aptCopyPath)).toBeUndefined();
+        expect(await readMirrorHash('aptMirror')).toBe(buildRuntimeHash(''));
+        return;
+      }
       const configuredAptSource = await readTextFile(aptSourcePath);
       const aptCopy = await readTextFile(aptCopyPath);
       const configuredHash = await readMirrorHash('aptMirror');

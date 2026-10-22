@@ -5,8 +5,6 @@
  */
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun, batchRunSettled } from '@fastgpt/global/common/system/utils';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { subMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 import {
@@ -22,26 +20,24 @@ import {
 import { getSandboxProviderConfig } from '../infrastructure/provider/config';
 import { buildSandboxResourceAdapter } from '../infrastructure/provider/adapter';
 import { deleteSessionVolume, getSessionVolumeClaimName } from '../infrastructure/volume/service';
+import { type SandboxInstanceSchemaType, type SandboxSourceType } from '../type';
 import {
   SandboxInstanceStatusEnum,
-  SandboxOperationTypeEnum,
-  type SandboxInstanceStatusType,
-  type SandboxInstanceSchemaType
-} from '../type';
+  expectedOperationByStatus,
+  SANDBOX_OPERATION_ISOLATION_MS
+} from '../constants';
 import { withSandboxLifecycleLease } from './lease';
-import { SANDBOX_STALE_ARCHIVING_MINUTES, SandboxLifecycleStateError } from './archive';
-import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from './lifecycle/runner';
+import { SandboxLifecycleStateError, SandboxOperationConflictError } from './lifecycle/error';
+import {
+  runSandboxLifecycleOperation,
+  runSandboxLifecycleDeletion,
+  type SandboxLifecycleDeleteDefinition,
+  type SandboxLifecycleDefinition
+} from './lifecycle/runner';
+
+import { canResumeSandboxOperation } from './lifecycle/utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
-export const SANDBOX_STALE_STOPPING_MINUTES = 15;
-
-const deleteIsolationMinutesByStatus: Partial<Record<SandboxInstanceStatusType, number>> = {
-  provisioning: SANDBOX_STALE_STOPPING_MINUTES,
-  legacyMigrating: SANDBOX_STALE_ARCHIVING_MINUTES,
-  stopping: SANDBOX_STALE_STOPPING_MINUTES,
-  archiving: SANDBOX_STALE_ARCHIVING_MINUTES,
-  restoring: SANDBOX_STALE_ARCHIVING_MINUTES
-};
 
 export type GetSandboxInfoParams = {
   sandboxId: string;
@@ -55,17 +51,11 @@ export type DeleteSandboxParams = {
 
 /**
  * 删除接管旧过渡态前等待不可取消 Provider 请求的保守隔离窗口。
- * 明确失败的 operation 已确认调用结束，可以立即由删除流程 fencing。
+ * 错误也可能来自超时或租约丢失，不能据此认定远端请求已终止。
  */
 const assertDeleteCanFenceCurrentOperation = (resource: SandboxResourceDoc) => {
-  if (resource.status === SandboxInstanceStatusEnum.deleting) return;
-  const isolationMinutes = deleteIsolationMinutesByStatus[resource.status];
-  if (!isolationMinutes) return;
-
-  const operation = resource.operation;
-  if (operation?.error) return;
-  const staleBefore = subMinutes(new Date(), isolationMinutes);
-  if (!operation?.heartbeatAt || operation.heartbeatAt >= staleBefore) {
+  if (!expectedOperationByStatus[resource.status]) return;
+  if (!canResumeSandboxOperation(resource)) {
     throw new SandboxLifecycleStateError(
       resource.status,
       `Sandbox ${resource.sandboxId} is still inside the ${resource.status} delete isolation window`
@@ -80,40 +70,59 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
     label: `stop-sandbox:${resource.sandboxId}`,
     fn: async (lease) => {
       const current = await findSandboxInstanceBySandboxId({ sandboxId: resource.sandboxId });
-      if (
-        !current ||
-        (current.status !== SandboxInstanceStatusEnum.running &&
-          current.status !== SandboxInstanceStatusEnum.stopping)
-      ) {
-        return;
-      }
-
-      const definition: SandboxLifecycleDefinition = {
-        operationType: SandboxOperationTypeEnum.stop,
-        status: SandboxInstanceStatusEnum.stopping,
-        steps: [
-          {
-            fromPhase: 'claimed',
-            toPhase: 'providerStopped',
-            run: async ({ resource: claimed }) => {
-              await buildSandboxResourceAdapter(claimed).stop();
-            }
-          }
-        ],
-        finish: { type: 'complete', status: SandboxInstanceStatusEnum.stopped }
-      };
-      await runSandboxLifecycleOperation({
-        resource: {
-          ...current,
-          ...(resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {})
-        },
-        lease,
-        definition,
-        matchLastActiveAt:
-          current.status === SandboxInstanceStatusEnum.running && Boolean(resource.lastActiveAt),
-        allowClaimConflict: true
-      });
+      await stopSandboxResourceWithinLease({ current, resource, lease });
     }
+  });
+}
+
+/** 锁内停止当前记录；运行准备可以续跑 stopping，不重复取得 lifecycle lease。 */
+export async function stopSandboxResourceWithinLease(params: {
+  current: SandboxResourceDoc | null;
+  resource: SandboxResourceRef;
+  lease: import('@fastgpt/dal/redis/caches').RedisLeaseContext;
+}) {
+  const { current, resource, lease } = params;
+
+  if (
+    !current ||
+    (current.status !== SandboxInstanceStatusEnum.running &&
+      current.status !== SandboxInstanceStatusEnum.stopping)
+  ) {
+    return null;
+  }
+
+  if (current.status === 'stopping' && !canResumeSandboxOperation(current)) {
+    throw new SandboxLifecycleStateError(current.status);
+  }
+
+  const definition: SandboxLifecycleDefinition = {
+    status: SandboxInstanceStatusEnum.stopping,
+    steps: [
+      {
+        fromPhase: 'claimed',
+        toPhase: 'providerStopped',
+        run: async ({ resource: claimed }) => {
+          await buildSandboxResourceAdapter(claimed).stop();
+        }
+      }
+    ],
+    finish: { type: 'complete', status: SandboxInstanceStatusEnum.stopped }
+  };
+  return runSandboxLifecycleOperation({
+    resource: {
+      ...current,
+      ...(resource.lastActiveAt ? { lastActiveAt: resource.lastActiveAt } : {})
+    },
+    lease,
+    definition,
+    claim: {
+      type: 'claim',
+      matchLastActiveAt:
+        current.status === SandboxInstanceStatusEnum.running && Boolean(resource.lastActiveAt)
+    }
+  }).catch((error) => {
+    if (error instanceof SandboxOperationConflictError) return null;
+    throw error;
   });
 }
 
@@ -131,8 +140,7 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
       if (!current) return;
       assertDeleteCanFenceCurrentOperation(current);
 
-      const definition: SandboxLifecycleDefinition = {
-        operationType: SandboxOperationTypeEnum.delete,
+      const definition: SandboxLifecycleDeleteDefinition = {
         status: SandboxInstanceStatusEnum.deleting,
         steps: [
           {
@@ -169,7 +177,7 @@ export async function deleteSandboxResource(resource: SandboxResourceRef): Promi
         ],
         finish: { type: 'delete' }
       };
-      await runSandboxLifecycleOperation({
+      await runSandboxLifecycleDeletion({
         resource: current,
         lease,
         definition
@@ -229,12 +237,12 @@ const deleteSandboxResourceBatch = async (instances: SandboxResourceRef[]) => {
   throw new Error(`Failed to delete ${failures.length} sandbox resources`);
 };
 
-/** 调用方持有 Source Mutation Lease 时，清理某个 App 的全部 v2 资源。 */
-export const deleteAppSandboxes = async (appId: string) => {
-  const instances = await findSandboxResourcesBySource({
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: appId
-  });
+/** 调用方须持有对应 Source Mutation Lease 并确认业务已删除，再查询、清理该 source 的全部资源。 */
+export const deleteSandboxResourcesBySource = async (params: {
+  sourceType: SandboxSourceType;
+  sourceId: string;
+}) => {
+  const instances = await findSandboxResourcesBySource(params);
   await deleteSandboxResourceBatch(instances);
 };
 
@@ -261,7 +269,8 @@ export async function stopSandboxResources(resources: SandboxResourceRef[]): Pro
 export async function retryStaleStoppingSandboxes(now = new Date()): Promise<void> {
   const stale = await findStaleSandboxOperations({
     statuses: [SandboxInstanceStatusEnum.stopping],
-    heartbeatBefore: subMinutes(now, SANDBOX_STALE_STOPPING_MINUTES)
+    now,
+    heartbeatBefore: new Date(now.getTime() - SANDBOX_OPERATION_ISOLATION_MS.stop)
   });
   await stopSandboxResources(stale);
 }

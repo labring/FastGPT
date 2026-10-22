@@ -6,19 +6,34 @@ describe('resolveTestPlan', () => {
     const plan = resolveTestPlan();
 
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.args).toContain('--concurrency=1');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/app');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/web');
+    expect(plan[0]?.args).toEqual(
+      expect.arrayContaining([
+        '--concurrency=1',
+        '--filter=@fastgpt/app',
+        '--filter=@fastgpt/web',
+        '--filter=@fastgpt/workflow-core',
+        '--filter=@fastgpt/workflow-cli'
+      ])
+    );
     expect(plan[1]?.args).toContain('vitest.config.mts');
   });
 
-  it('filters unit tests to one or more requested scopes', () => {
-    const plan = resolveTestPlan({ scopeValue: 'global,service' });
+  it.each([
+    {
+      scopeValue: 'global,service',
+      filters: ['--filter=@fastgpt/global', '--filter=@fastgpt/service']
+    },
+    {
+      scopeValue: 'workflow-core,workflow-cli',
+      filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/workflow-cli']
+    }
+  ])('filters unit tests to the requested $scopeValue scopes', ({ scopeValue, filters }) => {
+    const plan = resolveTestPlan({ scopeValue });
 
     expect(plan).toHaveLength(1);
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/global');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/service');
-    expect(plan[0]?.args).not.toContain('--filter=@fastgpt/app');
+    expect(plan[0]?.args.filter((argument: string) => argument.startsWith('--filter='))).toEqual(
+      filters
+    );
   });
 
   it('supports repo-only and workspace-only unit tests', () => {

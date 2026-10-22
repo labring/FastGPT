@@ -151,6 +151,8 @@ export const UpdateWorkflowToolBodySchema = AdminSystemToolDetailSchema.pick({
   .partial()
   .extend({
     id: z.string(),
+    name: z.string().optional(),
+    intro: z.string().optional(),
     secretsVal: UpdateToolSecretsValSchema,
     associatedPluginId: z.string().optional()
   });

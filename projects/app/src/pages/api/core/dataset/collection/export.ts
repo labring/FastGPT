@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {

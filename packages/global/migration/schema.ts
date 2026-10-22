@@ -1,9 +1,19 @@
 import { z } from 'zod';
+import { i18nT } from '../common/i18n/utils';
 import {
   systemMigrationLimits,
   SystemMigrationFailurePolicyEnum,
   SystemMigrationStatusEnum
 } from './constants';
+
+/** 依赖未完成时的 API 错误；名称来自静态注册表，由客户端按当前语言翻译。 */
+export const SystemMigrationDependencyErrorResponseSchema = z.object({
+  code: z.literal(409),
+  message: z.literal(i18nT('system_migration:prerequisite_not_succeeded')),
+  data: z.object({
+    prerequisiteNameKey: z.string().min(1).meta({ description: '未成功的前置任务名称 i18n key' })
+  })
+});
 
 /** 迁移状态中的业务数据只允许标量，确保可稳定写入 Mongo、日志和 API JSON。 */
 export const SystemMigrationDataValueSchema = z.union([

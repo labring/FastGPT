@@ -46,11 +46,11 @@ export const getWorkflowFileLimits = async ({
   return {
     maxFileAmount: getUserFileAmountLimit({
       teamMaxFileAmount: planStatus.standard?.maxUploadFileCount,
-      systemMaxFileAmount: global.feConfigs.uploadFileMaxAmount
+      systemMaxFileAmount: global.feConfigs.limit.uploadFileMaxAmount
     }),
     maxBytesPerFile: getFileSizeLimitBytes({
       teamMaxFileSize: planStatus.standard?.maxUploadFileSize,
-      systemMaxFileSize: global.feConfigs.uploadFileMaxSize
+      systemMaxFileSize: global.feConfigs.limit.uploadFileMaxSize
     })
   };
 };

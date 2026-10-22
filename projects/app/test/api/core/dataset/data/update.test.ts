@@ -56,8 +56,8 @@ vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) }),
-  getTeamModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) })
+  getSystemModelHandle: async () => ({ getModelData: vi.fn(() => mockEmbeddingModel) }),
+  getTeamModelHandle: async () => ({ getModelData: vi.fn(() => mockEmbeddingModel) })
 }));
 
 import handler from '@/pages/api/core/dataset/data/update';

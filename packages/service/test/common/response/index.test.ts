@@ -7,13 +7,17 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { EventEmitter } from 'node:events';
 
 vi.unmock('@fastgpt/service/common/response');
 
-const logger = {
-  info: vi.fn(),
-  error: vi.fn()
-};
+const { logger } = vi.hoisted(() => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn()
+  }
+}));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => logger,
@@ -152,7 +156,11 @@ describe('jsonRes HTTP status mapping', () => {
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
-    [SandboxErrEnum.agentSandboxInitializing, 409]
+    [SandboxErrEnum.agentSandboxInitializing, 409],
+    [SandboxErrEnum.agentSandboxLimitReached, 409],
+    [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
+    [AppErrEnum.workflowBuilderVersionExpired, 410],
+    [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const res = createResponse();
 
@@ -224,5 +232,87 @@ describe('getSseErrorResponse logging', () => {
     expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
     expect(response.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('Provider error response messages', () => {
+  it.each([
+    { data: { message: 'hourly quota exhausted' }, expected: 'hourly quota exhausted' },
+    { data: { msg: '飞书 Token 已过期' }, expected: '飞书 Token 已过期' },
+    { data: { errmsg: 'access denied' }, expected: 'access denied' },
+    { data: { error: { message: '具体权限缺失' } }, expected: '具体权限缺失' },
+    { data: 'upstream text error', expected: 'upstream text error' },
+    { data: { message: ' ' }, expected: 'Request failed with status code 429' },
+    { data: { message: { unexpected: 'object' } }, expected: 'Request failed with status code 429' }
+  ])('JSON 和 SSE 保留响应体原因：$expected', ({ data, expected }) => {
+    const error = {
+      message: 'Request failed with status code 429',
+      response: { status: 429, statusText: 'Too Many Requests', data }
+    };
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { code: 500, error });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 500, message: expected, data: null })
+    );
+    expect(processError({ error }).shouldClearCookie).toBe(false);
+    expect(JSON.parse(getSseErrorResponse(error).data).message).toBe(expected);
+  });
+
+  it('上游原因仍经过统一脱敏，不返回请求配置', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, {
+      code: 500,
+      error: {
+        response: { data: { msg: 'request https://private.example/path failed' } },
+        config: { headers: { Authorization: 'secret' } }
+      }
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'request https://xxx failed' })
+    );
+    expect(JSON.stringify(vi.mocked(res.json).mock.calls)).not.toContain('secret');
+  });
+});
+
+describe('SSE stream resume mirror', () => {
+  it('keeps mirroring events after the original HTTP response is closed', async () => {
+    const { createSseStreamContext } = await import('../../../common/response/sse');
+    const response = Object.assign(new EventEmitter(), {
+      closed: true,
+      destroyed: true,
+      writableEnded: false,
+      headersSent: true,
+      setHeader: vi.fn(),
+      write: vi.fn(),
+      end: vi.fn()
+    });
+    const mirroredEvents: string[] = [];
+    const flushMirror = vi.fn(async () => undefined);
+    const context = createSseStreamContext({
+      res: response as any,
+      streamResumeMirror: {
+        enqueueRaw: (event) => {
+          mirroredEvents.push(event);
+        },
+        flush: flushMirror,
+        shrinkTTLAfterComplete: vi.fn(async () => undefined)
+      }
+    });
+
+    context.write({ event: 'answer', data: 'continued output' });
+    context.write({ event: 'done', data: '[DONE]' });
+    await context.flushResume();
+
+    expect(mirroredEvents).toEqual([
+      'event: answer\ndata: continued output\n\n',
+      'event: done\ndata: [DONE]\n\n'
+    ]);
+    expect(flushMirror).toHaveBeenCalledTimes(1);
+    expect(response.write).not.toHaveBeenCalled();
   });
 });
