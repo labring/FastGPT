@@ -1,12 +1,17 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import {
+  DatasetAuditEventEnum,
+  DatasetConfigAuditItemEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
@@ -18,7 +23,9 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetConfigAuditChanges } from '@fastgpt/service/core/dataset/audit';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { isEqual } from 'lodash-es';
 import { type ClientSession } from 'mongoose';
 
@@ -141,6 +148,144 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     handle: modelHandle
   });
 
+  /**
+   * 待写入的审计条目。
+   *
+   * 对象型配置（分块参数、网站抓取、第三方来源）会被拆成「字段路径」粒度，
+   * 一次保存可能产生多条；标量配置固定一条。展示形态由 buildDatasetConfigAuditChanges 决定。
+   */
+  const configAuditLogs: Array<{
+    changeItem: string;
+    oldValue: string;
+    newValue: string;
+  }> = [];
+
+  /**
+   * 比较并登记一个配置项：未传、值相同都不记录，避免前端回传原值也产生日志。
+   *
+   * `enabled` 用于区分「没传这个字段」与「传了空值」，两者语义不同：
+   * 前者是未修改，后者是一次真实的清空/置空操作。
+   */
+  const addConfigAudit = ({
+    item,
+    oldValue,
+    newValue,
+    enabled = true
+  }: {
+    item: DatasetConfigAuditItemEnum;
+    oldValue: unknown;
+    newValue: unknown;
+    enabled?: boolean;
+  }) => {
+    if (!enabled) return;
+
+    configAuditLogs.push(...buildDatasetConfigAuditChanges({ item, oldValue, newValue }));
+  };
+
+  /**
+   * 解析审计展示用的模型名。
+   *
+   * 审计给使用者看，写模型 ID（一串 ObjectId）无法辨认，因此：
+   * 1. 优先用模型配置的展示名；
+   * 2. 模型刚被删掉 / 停用时查不到运行时数据，退回库里存的旧模型标识（历史 version 的可读值）；
+   * 3. 旧数据连标识也没有时，显式写成「未知模型」，而不是把 ObjectId 露出来。
+   */
+  const resolveAuditModelName = ({
+    reference,
+    modelData,
+    options
+  }: {
+    reference: { modelId?: string | null; model?: string | null };
+    modelData?: { name?: string; model?: string; modelId?: string };
+    options?: { type: 'llm'; vision: boolean };
+  }): string => {
+    if (modelData?.name) return modelData.name;
+
+    // 当前引用不可用时，用模型目录里的历史数据拼出可读名
+    const fallbackModel = modelHandle.findModelData(reference, options);
+    if (fallbackModel?.name) return fallbackModel.name;
+
+    // 旧名称可能是一个历史 model 标识（可读），但绝不能是 modelId
+    if (reference.model && reference.model !== reference.modelId) return reference.model;
+
+    return i18nT('common:UnKnow');
+  };
+
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.NAME,
+    oldValue: dataset.name,
+    newValue: name,
+    enabled: Boolean(name)
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.INTRO,
+    oldValue: dataset.intro,
+    newValue: intro,
+    enabled: intro !== undefined
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.AVATAR,
+    oldValue: dataset.avatar,
+    newValue: avatar,
+    enabled: Boolean(avatar)
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.AGENT_MODEL,
+    oldValue: resolveAuditModelName({
+      reference: getDatasetModelReference(dataset, 'agent'),
+      options: { type: 'llm', vision: false }
+    }),
+    newValue: agentModelData?.name,
+    enabled: (agentModelId !== undefined || agentModel !== undefined) && !!agentModelData
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.VLM_MODEL,
+    // 显式清空时 agentModelData 为 undefined，审计要能看出「从 A 变成空」
+    oldValue: resolveAuditModelName({
+      reference: getDatasetModelReference(dataset, 'vlm'),
+      options: { type: 'llm', vision: true }
+    }),
+    newValue: clearVlmModel ? undefined : vlmModelData?.name,
+    enabled:
+      (vlmModelId !== undefined || vlmModel !== undefined) && (clearVlmModel || !!vlmModelData)
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.WEBSITE_CONFIG,
+    oldValue: dataset.websiteConfig,
+    newValue: websiteConfig,
+    enabled: websiteConfig !== undefined
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.EXTERNAL_READ_URL,
+    oldValue: dataset.externalReadUrl,
+    newValue: externalReadUrl,
+    enabled: externalReadUrl !== undefined
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
+    oldValue: dataset.apiDatasetServer,
+    newValue: apiDatasetServer,
+    enabled: apiDatasetServer !== undefined
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.AUTO_SYNC,
+    oldValue: dataset.autoSync,
+    newValue: autoSync,
+    enabled: typeof autoSync === 'boolean'
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.CHUNK_SETTINGS,
+    oldValue: dataset.chunkSettings,
+    newValue: chunkSettings,
+    enabled: rawChunkSettings !== undefined
+  });
+  addConfigAudit({
+    item: DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG,
+    oldValue: dataset.sangforFileParseConfig,
+    newValue: sangforFileParseConfig,
+    enabled: sangforFileParseConfig !== undefined
+  });
+
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
     if (
@@ -234,10 +379,25 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
-  await mongoSessionRun(async (session) => {
-    logDatasetUpdate({ tmbId, teamId, dataset });
-    return onUpdate(session);
-  });
+  await mongoSessionRun((session) => onUpdate(session));
+
+  // 事务提交成功后才写审计：失败回滚的更新不应该出现在操作日志里。
+  // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。
+  if (configAuditLogs.length > 0) {
+    void addAuditLogs(
+      configAuditLogs.map(({ changeItem, oldValue, newValue }) => ({
+        tmbId,
+        teamId,
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        params: {
+          datasetName: name ?? dataset.name,
+          changeItem,
+          oldValue,
+          newValue
+        }
+      }))
+    );
+  }
 }
 export default NextAPI(handler);
 
@@ -258,26 +418,4 @@ const updateSyncSchedule = async ({
     // remove Job Scheduler
     return removeDatasetSyncJobScheduler(dataset._id);
   }
-};
-
-const logDatasetUpdate = ({
-  tmbId,
-  teamId,
-  dataset
-}: {
-  tmbId: string;
-  teamId: string;
-  dataset: any;
-}) => {
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_DATASET,
-      params: {
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
 };

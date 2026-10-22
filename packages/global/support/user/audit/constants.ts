@@ -67,6 +67,7 @@ export enum AuditEventEnum {
   DELETE_EVALUATION = 'DELETE_EVALUATION',
   //Dataset
   CREATE_DATASET = 'CREATE_DATASET',
+  /** @deprecated 知识库配置变更已统一由 DatasetAuditEventEnum.DATASET_CONFIG_UPDATE 记录，保留枚举仅为兼容历史日志展示。 */
   UPDATE_DATASET = 'UPDATE_DATASET',
   DELETE_DATASET = 'DELETE_DATASET',
   MOVE_DATASET = 'MOVE_DATASET',
