@@ -95,9 +95,7 @@ export const createAuxiliaryGenerationStream = async ({
         data: '[DONE]'
       });
     },
-    async flushResume() {
-      await sseContext.flushResume();
-    },
+    flushResume: sseContext.flushResume,
     cleanup: sseContext.cleanup
   };
 };
