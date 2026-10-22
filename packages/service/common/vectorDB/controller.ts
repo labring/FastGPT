@@ -121,7 +121,6 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  await teamVectorCountCache.invalidate(props.teamId);
   await onVectorRowsChanged({ teamId: props.teamId, datasetIds: [props.datasetId] });
 
   return {
@@ -143,7 +142,6 @@ export const deleteDatasetDataVector = async ({
     return { datasetIds: [datasetId], deleteProps };
   })();
   const result = await retryFn(() => Vector.delete(deleteProps));
-  await teamVectorCountCache.invalidate(props.teamId);
   await onVectorRowsChanged({ teamId: props.teamId, datasetIds });
   return result;
 };
@@ -160,28 +158,22 @@ export const refreshDatasetDataVectorCreateTime: VectorControllerType['refreshCr
 
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
-// Count vector
+/** 读取最近成功的团队计数快照；缺失时回源，缓存写入不阻塞请求返回。 */
 export const getVectorCountByTeamId = async (teamId: string) => {
   const cacheCount = await teamVectorCountCache.get(teamId);
   if (cacheCount !== undefined) {
     return cacheCount;
   }
 
-  return refreshTeamVectorCount(teamId);
+  const count = await Vector.getVectorCount({ teamId });
+  void teamVectorCountCache.set({ teamId, count });
+  return count;
 };
 
-/** 后台主动刷新与缓存 miss 共用计数逻辑，始终从实际向量库统计整个团队。 */
+/** 后台队列直接发布本轮计数；持续增删不废弃结果，等待缓存写入返回后再完成任务。 */
 export const refreshTeamVectorCount = async (teamId: string) => {
-  const revision = await teamVectorCountCache.getRevision(teamId);
   const count = await Vector.getVectorCount({ teamId });
-
-  if (revision)
-    void teamVectorCountCache.set({
-      teamId,
-      count,
-      revision
-    });
-
+  await teamVectorCountCache.set({ teamId, count });
   return count;
 };
 export const getVectorCount = Vector.getVectorCount;
