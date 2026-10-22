@@ -1,3 +1,4 @@
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { WorkflowBuilderChatBodySchema } from '@fastgpt/global/openapi/core/workflow/builder/api';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
@@ -23,6 +24,27 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 describe('handleEventSourceData', () => {
+  it('passes a generated configuration archive reference through normal and replayed events', () => {
+    const chatAgentConfig = {
+      s3Key: 'chat/helper/config.json',
+      expiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    const payload = { systemPrompt: 'Generated prompt', chatAgentConfig };
+    const onmessage = vi.fn();
+    handleEventSourceData({
+      event: AuxiliaryGenerationEventEnum.chatAgentConfig,
+      data: JSON.stringify(payload),
+      enqueue: vi.fn(),
+      onmessage,
+      onerror: vi.fn()
+    });
+    expect(onmessage).toHaveBeenCalledExactlyOnceWith({
+      event: AuxiliaryGenerationEventEnum.chatAgentConfig,
+      formData: { systemPrompt: payload.systemPrompt },
+      chatAgentConfig
+    });
+  });
+
   it('preserves candidate metadata without changing ordinary answer events in the same stream', () => {
     const version = {
       versionNo: 1,

@@ -96,7 +96,8 @@ export const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
     item.agentPlanUpdate ||
     item.agentAsk ||
     item.contextCheckpoint ||
-    item.workflowBuilderVersion
+    item.workflowBuilderVersion ||
+    item.chatAgentConfig
   );
 };
 

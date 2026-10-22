@@ -616,5 +616,8 @@
   "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_apps_tip": "Deleting the following apps will also delete their associated chat history.",
-  "delete_following_folders_tip": "Once deleted, these folders, all apps inside them, and associated chat history will be deleted."
+  "delete_following_folders_tip": "Once deleted, these folders, all apps inside them, and associated chat history will be deleted.",
+  "chat_agent_config_ready": "Configuration generated",
+  "chat_agent_config_apply": "Apply configuration",
+  "chat_agent_config_expired": "Configuration expired"
 }

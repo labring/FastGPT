@@ -59,7 +59,14 @@ const AIChatBubbleContent = (props: AIChatBubbleContentProps) => {
     const hasAnswer = hasAiAnswerContent(value);
     const hasInteractive = hasAiInteractiveContent(value);
 
-    if (!hasProcessing && !hasAnswer && !hasInteractive && !value.workflowBuilderVersion) return;
+    if (
+      !hasProcessing &&
+      !hasAnswer &&
+      !hasInteractive &&
+      !value.workflowBuilderVersion &&
+      !value.chatAgentConfig
+    )
+      return;
 
     if (hasFoldableProcessing) {
       processingGroup.push({ value, index });

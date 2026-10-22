@@ -1,4 +1,4 @@
-import React, { type ReactNode, useEffect, useImperativeHandle, useMemo } from 'react';
+import React, { type ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -14,6 +14,7 @@ import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryG
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
@@ -33,7 +34,7 @@ export type ChatAgentHelperProps = {
 } & {
   type: typeof ChatAgentHelperTypeEnum.chatAgent;
   metadata: ChatAgentHelperMetadataType;
-  onApply: (e: ChatAgentConfigFormDataType) => void;
+  onApply: (e: ChatAgentConfigFormDataType) => void | Promise<void>;
 };
 
 const ChatAgentHelperChatBox = ({
@@ -205,12 +206,35 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }
   }, [chatId, chatIdCacheKey, ensureSourceChatId]);
 
+  const applyingConfigRef = useRef(false);
+  const { run: applyConfig, loading: isApplyingConfig } = useRequest(
+    async (responseChatItemId: string) => {
+      if (applyingConfigRef.current) return;
+      applyingConfigRef.current = true;
+      try {
+        const { formData } = await loadChatAgentConfig({
+          appId: props.appId,
+          chatId,
+          responseChatItemId
+        });
+        await props.onApply(formData);
+      } finally {
+        applyingConfigRef.current = false;
+      }
+    }
+  );
+  const chatAgentConfigActions = useMemo(
+    () => ({ isApplying: isApplyingConfig, applyConfig }),
+    [isApplyingConfig, applyConfig]
+  );
+
   const onRestart = () => {
     setSourceChatId(chatIdCacheKey);
   };
 
   return (
     <ChatItemContextProvider
+      chatAgentConfigActions={chatAgentConfigActions}
       showRouteToDatasetDetail={false}
       canDownloadSource={false}
       isShowCite={false}

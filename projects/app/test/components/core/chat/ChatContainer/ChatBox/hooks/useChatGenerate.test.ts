@@ -341,7 +341,15 @@ describe('useChatGenerate.sendPrompt', () => {
         systemPrompt: 'Use the generated agent',
         tools: [{ id: 'systemTool-shared', source: 'system' }]
       });
-      const event = { event: AuxiliaryGenerationEventEnum.chatAgentConfig, formData };
+      const chatAgentConfig = {
+        s3Key: 'chat/helper/config.json',
+        expiresAt: '2099-01-01T00:00:00.000Z'
+      };
+      const event = {
+        event: AuxiliaryGenerationEventEnum.chatAgentConfig,
+        formData,
+        chatAgentConfig
+      };
       mocks.start.mockImplementation(async ({ generatingMessage }) => {
         generatingMessage(event);
         return { responseText: '' };
@@ -360,10 +368,37 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(mocks.onGeneratingMessage).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining(event)
       );
+      expect(records.at(-1)?.value).toEqual(expect.arrayContaining([{ chatAgentConfig }]));
       expect(mode === 'resume' ? mocks.resume : mocks.start).toHaveBeenCalledOnce();
       expect(mode === 'resume' ? mocks.start : mocks.resume).not.toHaveBeenCalled();
     }
   );
+
+  it('retains a completed configuration reference after reopening without replaying or auto-applying', async () => {
+    const chatAgentConfig = {
+      s3Key: 'chat/helper/completed.json',
+      expiresAt: '2099-01-01T00:00:00.000Z'
+    };
+    mocks.resume.mockResolvedValue({
+      responseText: '',
+      completedChat: {
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
+        records: {
+          list: [
+            {
+              id: 'resumed-ai',
+              dataId: 'resumed-ai',
+              obj: ChatRoleEnum.AI,
+              value: [{ chatAgentConfig }]
+            }
+          ]
+        }
+      }
+    });
+    await render({ resume: true });
+    expect(records.at(-1)?.value).toEqual([{ chatAgentConfig }]);
+    expect(mocks.applyConfig).not.toHaveBeenCalled();
+  });
 
   it.each(
     (['agentAsk', 'confirm', 'revise', 'cancel'] as const).flatMap((action) => [

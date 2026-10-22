@@ -51,6 +51,7 @@ export const getAIChatDisplayGroups = ({
           (hasAiAnswerContent(value) ||
             hasAiProcessingContent(value) ||
             value.workflowBuilderVersion ||
+            value.chatAgentConfig ||
             (value.interactive &&
               (!isReplyInteractive(value) ||
                 extractDeepestInteractive(value.interactive)?.type === 'workflowBuilderPreview')))

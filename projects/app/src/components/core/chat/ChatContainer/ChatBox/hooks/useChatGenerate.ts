@@ -206,6 +206,7 @@ export const useChatGenerate = ({
         sandboxStatus,
         skill,
         workflowBuilderVersion,
+        chatAgentConfig,
         variables,
         nodeResponse,
         durationSeconds,
@@ -522,6 +523,13 @@ export const useChatGenerate = ({
           return {
             ...item,
             value: item.value.concat(val)
+          };
+        }
+        if (event === AuxiliaryGenerationEventEnum.chatAgentConfig && chatAgentConfig) {
+          // 一轮内多次生成时展示最后一次成功配置，与最终落库的引用保持一致。
+          return {
+            ...item,
+            value: item.value.filter((value) => !value.chatAgentConfig).concat({ chatAgentConfig })
           };
         }
         if (event === SseResponseEventEnum.workflowBuilderVersion && workflowBuilderVersion) {

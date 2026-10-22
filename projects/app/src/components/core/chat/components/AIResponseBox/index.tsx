@@ -12,6 +12,7 @@ import {
 } from '@/web/core/chat/context/chatItemContext';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
+import RenderChatAgentConfig from './RenderChatAgentConfig';
 import RenderPlanStatus from './RenderPlanStatus';
 import RenderProcessingCollapse from './RenderProcessingCollapse';
 import type { ProcessingPreviewTarget } from './RenderProcessingPreview';
@@ -213,6 +214,17 @@ const AIResponseBox = ({
         <RenderWorkflowBuilderPreview key="interactive" interactive={interactive} />
       );
     }
+  }
+
+  if (value.chatAgentConfig) {
+    responseBlocks.push(
+      <RenderChatAgentConfig
+        key={`chatAgentConfig-${value.chatAgentConfig.s3Key}`}
+        config={value.chatAgentConfig}
+        responseChatItemId={chatItemDataId}
+        isChatting={isChatting}
+      />
+    );
   }
 
   if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {

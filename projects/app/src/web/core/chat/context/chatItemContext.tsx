@@ -24,6 +24,11 @@ export type WorkflowBuilderVersionActions = {
   notifyVersionExpired: () => void;
 };
 
+type ChatAgentConfigActions = {
+  isApplying: boolean;
+  applyConfig: (responseChatItemId: string) => void;
+};
+
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
   canDownloadSource: boolean;
@@ -115,6 +120,7 @@ type ChatItemContextType = {
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
   resetUIState: () => void;
   workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
+  chatAgentConfigActions?: ChatAgentConfigActions;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -173,10 +179,12 @@ const ChatItemContextProvider = ({
   showPoints = false,
   showAvatar = true,
   showSandboxAction = true,
-  workflowBuilderVersionActions
+  workflowBuilderVersionActions,
+  chatAgentConfigActions
 }: {
   children: ReactNode;
   workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
+  chatAgentConfigActions?: ChatAgentConfigActions;
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
@@ -271,7 +279,8 @@ const ChatItemContextProvider = ({
       isVariableVisible,
       setIsVariableVisible,
       resetUIState,
-      workflowBuilderVersionActions
+      workflowBuilderVersionActions,
+      chatAgentConfigActions
     };
   }, [
     chatBoxData,
@@ -295,7 +304,8 @@ const ChatItemContextProvider = ({
     isVariableVisible,
     setIsVariableVisible,
     resetUIState,
-    workflowBuilderVersionActions
+    workflowBuilderVersionActions,
+    chatAgentConfigActions
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;
