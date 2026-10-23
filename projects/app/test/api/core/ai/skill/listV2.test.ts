@@ -736,7 +736,7 @@ describe('POST /api/core/ai/skill/listV2', () => {
     expect(deniedDetail.error).toBe(SkillErrEnum.unAuthSkill);
   });
 
-  it('普通查询默认返回 50 条，按 ID 跨目录返回全部匹配项并排除已删除资源', async () => {
+  it('普通查询默认返回 20 条，按 ID 跨目录返回全部匹配项并排除已删除资源', async () => {
     const user = await getUser(`skill-v2-ids-${getNanoid(6)}`);
     const parentId = new Types.ObjectId();
     const skills = await MongoAgentSkills.create(
@@ -764,7 +764,7 @@ describe('POST /api/core/ai/skill/listV2', () => {
     });
     expect(page.code).toBe(200);
     expect(page.data.total).toBe(51);
-    expect(page.data.list).toHaveLength(50);
+    expect(page.data.list).toHaveLength(20);
 
     const response = await Call<unknown, Record<string, never>, ListSkillsResponse>(handler, {
       auth: user,
