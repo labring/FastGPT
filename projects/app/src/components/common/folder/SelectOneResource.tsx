@@ -63,7 +63,7 @@ const SelectOneResource = ({
   }, [currentParentId, onCurrentParentIdChange]);
 
   const { data, ScrollData } = useScrollPagination(server, {
-    pageSize: 50,
+    pageSize: 20,
     params: { parentId: currentParentId },
     refreshDeps: [currentParentId],
     showNoMoreTip: false,

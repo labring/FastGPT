@@ -194,7 +194,7 @@ describe('App OpenAPI contracts', () => {
     });
     expect(ListEvaluationItemsBodySchema.parse({ evalId: objectId })).toEqual({
       evalId: objectId,
-      pageSize: 10,
+      pageSize: 20,
       pageNum: 1
     });
     expect(

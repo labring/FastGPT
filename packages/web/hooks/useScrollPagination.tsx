@@ -45,7 +45,7 @@ export function useScrollPagination<
   {
     scrollLoadType = 'bottom',
 
-    pageSize = 10,
+    pageSize = 20,
     params,
     EmptyTip,
     showErrorToast = true,

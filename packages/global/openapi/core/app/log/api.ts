@@ -334,7 +334,7 @@ export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
 
 /* Get log users */
 export const GetLogUsersBodySchema = createPaginationSchema({
-  pageSize: PaginationPageSizeSchema.default(50).optional(),
+  pageSize: PaginationPageSizeSchema.default(20).optional(),
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'

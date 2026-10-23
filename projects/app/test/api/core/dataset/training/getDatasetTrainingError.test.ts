@@ -230,7 +230,7 @@ describe('dataset training error list test', () => {
     >(handler, { auth: root, body: { datasetId: dataset._id } });
     expect(defaultPage.code).toBe(200);
     expect(defaultPage.data.total).toBe(21);
-    expect(defaultPage.data.list).toHaveLength(10);
+    expect(defaultPage.data.list).toHaveLength(20);
 
     const largerPage = await Call<
       getDatasetTrainingErrorBody,

@@ -72,7 +72,7 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
-import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';

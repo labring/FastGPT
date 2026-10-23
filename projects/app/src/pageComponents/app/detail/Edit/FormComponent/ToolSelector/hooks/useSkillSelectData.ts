@@ -32,7 +32,7 @@ export const useSkillSelectData = () => {
       parentId,
       searchKey: searchKey || undefined
     },
-    pageSize: 50,
+    pageSize: 20,
     refreshDeps: [parentId, searchKey],
     throttleWait: 300
   });

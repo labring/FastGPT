@@ -120,7 +120,7 @@ const ChatRecordContextProvider = ({
       };
     },
     {
-      pageSize: 10,
+      pageSize: 20,
       params,
       currentData,
       defaultScroll: 'bottom',

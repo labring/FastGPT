@@ -112,7 +112,7 @@ export const SkillListContext = createContext<SkillListContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50,
+  pageSize: 20,
 
   isBatchMode: false,
   setIsBatchMode: () => {},
@@ -187,7 +187,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     fetchData,
     refreshItems
   } = useScrollPagination(
-    ({ offset = 0, pageSize = 50 }, cancelToken) =>
+    ({ offset = 0, pageSize = 20 }, cancelToken) =>
       fetchSkills(
         { ...listParams, parentId, offset, pageSize: getGridRequestPageSize(pageSize, offset) },
         cancelToken

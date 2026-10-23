@@ -5,14 +5,14 @@ import z from 'zod';
 
 export const PaginationPageSizeLimit = 500;
 
-/** 通用分页默认每页 10 条，超限自动截断；业务接口可覆盖默认值或缩小条数上限。 */
+/** 通用分页默认每页 20 条，超限自动截断；业务接口可缩小条数上限。 */
 export const PaginationPageSizeSchema = IntSchema.positive()
   .overwrite((value) => Math.min(value, PaginationPageSizeLimit))
   .max(PaginationPageSizeLimit)
-  .default(10)
+  .default(20)
   .meta({
     example: 20,
-    description: `每页条数，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理`
+    description: `每页条数，默认 20，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理`
   });
 
 /** 缺省按第一页查询；保留可选类型，允许客户端省略该字段。 */
@@ -21,12 +21,12 @@ export const PaginationPageNumSchema = IntSchema.positive().default(1).optional(
   description: '页码，从 1 开始；传入 offset 时忽略'
 });
 
-/** 资源列表按页查询默认每页 50 条；ID 查询不使用此字段。 */
-export const ResourceListPageSizeSchema = PaginationPageSizeSchema.default(50)
+/** 资源列表按页查询默认每页 20 条；ID 查询不使用此字段。 */
+export const ResourceListPageSizeSchema = PaginationPageSizeSchema.default(20)
   .optional()
   .meta({
-    example: 50,
-    description: `每页条数，最大 ${PaginationPageSizeLimit}`
+    example: 20,
+    description: `每页条数，默认 20，最大 ${PaginationPageSizeLimit}`
   });
 
 /**

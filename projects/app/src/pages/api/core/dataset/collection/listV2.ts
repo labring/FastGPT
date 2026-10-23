@@ -164,7 +164,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const { datasetId, parentId, searchText: rawSearchText, selectFolder, tagFilters, simple } = body;
   const { pageSize, offset } = normalizePagination({
     ...body,
-    pageSize: Math.min(body.pageSize ?? 10, 100)
+    pageSize: Math.min(body.pageSize ?? 20, 100)
   });
   const searchText = rawSearchText?.replace(/'/g, '');
 

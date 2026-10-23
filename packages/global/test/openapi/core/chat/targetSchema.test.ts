@@ -596,10 +596,10 @@ describe('openapi/core/chat target schema', () => {
 
     for (const target of [{ appId }, { skillId }, { outLinkAuthData: { shareId, outLinkUid } }]) {
       const offsetResult = GetHistoriesBodySchema.parse({ ...target, offset: 0, pageNum: -1 });
-      expect(offsetResult).toMatchObject({ offset: 0, pageSize: 10 });
+      expect(offsetResult).toMatchObject({ offset: 0, pageSize: 20 });
       expect(offsetResult).not.toHaveProperty('pageNum');
       const pageResult = GetHistoriesBodySchema.parse({ ...target, pageNum: 2 });
-      expect(pageResult).toMatchObject({ pageNum: 2, pageSize: 10 });
+      expect(pageResult).toMatchObject({ pageNum: 2, pageSize: 20 });
       expect(pageResult).not.toHaveProperty('offset');
       expect(() => GetHistoriesBodySchema.parse({ ...target, offset: -1, pageNum: 2 })).toThrow();
     }

@@ -45,7 +45,7 @@ import {
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash-es';
-import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatItemErrorText } from '@/global/core/chat/utils';
 import {

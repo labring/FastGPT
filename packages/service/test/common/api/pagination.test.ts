@@ -9,8 +9,8 @@ import type { NodeApiRequest } from '@fastgpt/service/types/http';
 describe('pagination.ts', () => {
   describe('normalizePagination', () => {
     it.each([
-      { input: {}, expected: { pageSize: 10, offset: 0 } },
-      { input: { pageNum: 3 }, expected: { pageSize: 10, offset: 20 } },
+      { input: {}, expected: { pageSize: 20, offset: 0 } },
+      { input: { pageNum: 3 }, expected: { pageSize: 20, offset: 40 } },
       { input: { pageSize: 20, pageNum: 3 }, expected: { pageSize: 20, offset: 40 } },
       { input: { pageSize: 50, pageNum: 2 }, expected: { pageSize: 50, offset: 50 } },
       { input: { pageSize: 50, pageNum: 2, offset: 0 }, expected: { pageSize: 50, offset: 0 } },
@@ -28,7 +28,7 @@ describe('pagination.ts', () => {
           parsePaginationRequest({
             [source]: { offset: '0', pageNum: 'ignored' }
           } as unknown as NodeApiRequest)
-        ).toEqual({ pageSize: 10, offset: 0 });
+        ).toEqual({ pageSize: 20, offset: 0 });
         expect(() =>
           parsePaginationRequest({
             [source]: { offset: 'invalid', pageNum: 2 }
@@ -74,16 +74,16 @@ describe('pagination.ts', () => {
 
     it.each([
       { body: { offset: 10 }, query: {}, offset: 10 },
-      { body: { pageNum: 3 }, query: {}, offset: 20 },
+      { body: { pageNum: 3 }, query: {}, offset: 40 },
       { body: { offset: 0 }, query: {}, offset: 0 },
       { body: { pageNum: 1 }, query: {}, offset: 0 },
       { body: {}, query: { offset: '10' }, offset: 10 },
-      { body: {}, query: { pageNum: '3' }, offset: 20 },
+      { body: {}, query: { pageNum: '3' }, offset: 40 },
       { body: {}, query: { offset: '0' }, offset: 0 },
       { body: {}, query: { pageNum: '1' }, offset: 0 }
     ])('省略 pageSize 时保留分页位置：%j', ({ body, query, offset }) => {
       expect(parsePaginationRequest({ body, query } as NodeApiRequest)).toEqual({
-        pageSize: 10,
+        pageSize: 20,
         offset
       });
     });
@@ -92,17 +92,17 @@ describe('pagination.ts', () => {
       {
         body: { offset: 10 },
         query: { pageSize: '20', pageNum: '3' },
-        expected: { pageSize: 10, offset: 10 }
+        expected: { pageSize: 20, offset: 10 }
       },
       {
         body: { pageNum: 3 },
         query: { pageSize: '20', offset: '30' },
-        expected: { pageSize: 10, offset: 20 }
+        expected: { pageSize: 20, offset: 40 }
       },
       {
         body: { offset: 0 },
         query: { pageSize: '20', pageNum: '3' },
-        expected: { pageSize: 10, offset: 0 }
+        expected: { pageSize: 20, offset: 0 }
       },
       {
         body: { pageSize: 20 },
@@ -112,12 +112,12 @@ describe('pagination.ts', () => {
       {
         body: { searchText: 'example' },
         query: { offset: '30' },
-        expected: { pageSize: 10, offset: 30 }
+        expected: { pageSize: 20, offset: 30 }
       },
       {
         body: { searchText: 'example' },
         query: { searchText: 'other' },
-        expected: { pageSize: 10, offset: 0 }
+        expected: { pageSize: 20, offset: 0 }
       }
     ])('整组选取分页参数，body 优先且不混用 query：%j', ({ body, query, expected }) => {
       expect(parsePaginationRequest({ body, query } as NodeApiRequest)).toEqual(expected);
@@ -191,7 +191,7 @@ describe('pagination.ts', () => {
       });
     });
 
-    it('应该使用默认值（pageSize=10, pageNum=1）', () => {
+    it('应该使用默认值（pageSize=20, pageNum=1）', () => {
       const req = {
         body: {},
         query: {}
@@ -200,8 +200,8 @@ describe('pagination.ts', () => {
       const result = parsePaginationRequest(req);
 
       expect(result).toEqual({
-        pageSize: 10,
-        offset: 0 // (1 - 1) * 10
+        pageSize: 20,
+        offset: 0 // (1 - 1) * 20
       });
     });
 
@@ -244,10 +244,10 @@ describe('pagination.ts', () => {
       } as any;
 
       // 由于有默认值，这个情况实际上不会抛出错误
-      // 默认值: pageSize=10, pageNum=1, offset=0
+      // 默认值: pageSize=20, pageNum=1, offset=0
       const result = parsePaginationRequest(req);
       expect(result).toEqual({
-        pageSize: 10,
+        pageSize: 20,
         offset: 0
       });
     });
@@ -346,7 +346,7 @@ describe('pagination.ts', () => {
           query: { offset: '10' }
         } as unknown as NodeApiRequest)
       ).toEqual({
-        pageSize: 10,
+        pageSize: 20,
         offset: 10
       });
 
@@ -356,7 +356,7 @@ describe('pagination.ts', () => {
           query: undefined
         } as unknown as NodeApiRequest)
       ).toEqual({
-        pageSize: 10,
+        pageSize: 20,
         offset: 10
       });
     });

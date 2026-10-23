@@ -29,7 +29,7 @@ import {
 } from '../utils/resume';
 import type { ChatGeneratingConflictRecovery, ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
-import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { getChatHistoryStatus } from '@/web/core/chat/history/api';
 

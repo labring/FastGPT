@@ -36,7 +36,7 @@ const AuditTable = () => {
 
   // 获取团队成员列表
   const { data: members } = usePagination(getTeamMembers, {
-    defaultPageSize: 50,
+    defaultPageSize: 20,
     pageSizeCacheKey: 'audit-members',
     type: 'scroll',
     params: {}

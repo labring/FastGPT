@@ -111,7 +111,7 @@ const CollectionQuoteBodyPropsSchema = {
     description: '对话消息 dataId'
   }),
   collectionId: ObjectIdSchema.describe('集合 ID'),
-  pageSize: z.number().int().min(1).max(30).default(15).describe('每页条数，范围 [1, 30]'),
+  pageSize: z.number().int().min(1).max(30).default(20).describe('每页条数，默认 20，范围 [1, 30]'),
   anchor: z.number().optional().describe('当前锚点 chunkIndex'),
   initialId: z.string().optional().describe('初始定位数据 ID'),
   nextId: z.string().optional().describe('向后翻页的游标 ID'),

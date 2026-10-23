@@ -1,13 +1,9 @@
-import type {
-  ChatTargetInputType,
-  createOutLinkChatTargetInputSchema,
-  createOptionalOutLinkChatTargetInputSchema
-} from '@fastgpt/global/openapi/core/chat/api';
-import type { z } from 'zod';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { useMemo } from 'react';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { OptionalChatAuthTargetInput, ResolvedChatAuthTargetInput } from './type';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>> & {
   sourceType?:
@@ -26,13 +22,6 @@ type ChatAuthQueryInputSource = Partial<Record<'appId' | 'skillId', string>> &
 export type ChatAuthTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: OutLinkChatAuthProps;
 };
-/** 已确定的会话鉴权上下文，复用接口 union 类型，避免客户端重新放宽为全可选字段。 */
-export type ResolvedChatAuthTargetInput = z.infer<
-  ReturnType<typeof createOutLinkChatTargetInputSchema<Record<never, never>>>
->;
-type OptionalChatAuthTargetInput = z.infer<
-  ReturnType<typeof createOptionalOutLinkChatTargetInputSchema<Record<never, never>>>
->;
 export type ChatAuthQueryTargetInput = OptionalChatTargetInput & {
   outLinkAuthData?: string;
 };

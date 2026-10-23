@@ -110,7 +110,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50,
+  pageSize: 20,
 
   isBatchMode: false,
   setIsBatchMode: () => {},
@@ -177,7 +177,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     isLoading: isFetchingDatasets,
     isEmpty
   } = useScrollPagination(
-    ({ offset = 0, pageSize = 50 }, cancelToken) =>
+    ({ offset = 0, pageSize = 20 }, cancelToken) =>
       getDatasetsV2({ ...listParams, parentId, offset, pageSize }, cancelToken),
     {
       refreshByIds: {

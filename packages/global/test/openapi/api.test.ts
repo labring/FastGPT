@@ -60,9 +60,9 @@ describe('shared API schemas', () => {
   );
 
   it('applies the common page-size default and allows explicit business limits', () => {
-    expect(PaginationPageSizeSchema.parse(undefined)).toBe(10);
-    expect(PaginationSchema.parse({})).toEqual({ pageNum: 1, pageSize: 10 });
-    expect(LinkedPaginationSchema().parse({}).pageSize).toBe(10);
+    expect(PaginationPageSizeSchema.parse(undefined)).toBe(20);
+    expect(PaginationSchema.parse({})).toEqual({ pageNum: 1, pageSize: 20 });
+    expect(LinkedPaginationSchema().parse({}).pageSize).toBe(20);
     const special = LinkedPaginationSchema({ pageSize: z.number().int().positive().max(30) });
     expect(special.parse({ pageSize: 30 }).pageSize).toBe(30);
     expect(special.safeParse({ pageSize: 31 }).success).toBe(false);
@@ -81,12 +81,12 @@ describe('shared API schemas', () => {
     });
     expect(schema).toMatchObject({
       anyOf: [
-        { properties: { offset: { example: 0 }, pageSize: { default: 10 } } },
-        { properties: { pageNum: { default: 1 }, pageSize: { default: 10 } } }
+        { properties: { offset: { example: 0 }, pageSize: { default: 20 } } },
+        { properties: { pageNum: { default: 1 }, pageSize: { default: 20 } } }
       ]
     });
     expect(schema).not.toHaveProperty('anyOf.0.properties.offset.default');
-    expect(PaginationSchema.parse({ pageNum: 2 })).toEqual({ pageNum: 2, pageSize: 10 });
+    expect(PaginationSchema.parse({ pageNum: 2 })).toEqual({ pageNum: 2, pageSize: 20 });
   });
 
   it.each([
@@ -100,7 +100,7 @@ describe('shared API schemas', () => {
       name: 'toolset tools',
       schema: ListToolSetV2BodySchema,
       input: { parentId: '68ad85a7463006c963799a05' },
-      pageSize: 50
+      pageSize: 20
     },
     {
       name: 'log users',
@@ -110,7 +110,7 @@ describe('shared API schemas', () => {
         dateStart: '2026-01-01T00:00:00Z',
         dateEnd: '2026-01-31T23:59:59Z'
       },
-      pageSize: 50
+      pageSize: 20
     }
   ])(
     'retains the $name page-size default in parsing and OpenAPI',
@@ -139,7 +139,7 @@ describe('shared API schemas', () => {
     expect(GetChannelLogsQuerySchema.parse({ ...query, pageSize: '501' }).pageSize).toBe(500);
     expect(ListChannelsQuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
     expect(ListChannelsQuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
-    expect(ListChannelsQuerySchema.parse({}).pageSize).toBeUndefined();
+    expect(ListChannelsQuerySchema.parse({}).pageSize).toBe(20);
     expect(ListSkillsV2QuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
     expect(ListSkillsV2QuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
     expect(ListSkillVersionsBodySchema.parse({ skillId: 'skill-1', pageSize: 500 }).pageSize).toBe(
@@ -175,13 +175,13 @@ describe('exclusive pagination', () => {
   const schema = createPaginationSchema({ searchKey: z.string().optional() });
 
   it.each([
-    { input: {}, expected: { pageNum: 1, pageSize: 10 } },
+    { input: {}, expected: { pageNum: 1, pageSize: 20 } },
     { input: { pageSize: '20' }, expected: { pageSize: 20, pageNum: 1 } },
     { input: { pageNum: '2', pageSize: 20 }, expected: { pageNum: 2, pageSize: 20 } },
-    { input: { offset: '0', pageNum: 5 }, expected: { offset: 0, pageSize: 10 } },
+    { input: { offset: '0', pageNum: 5 }, expected: { offset: 0, pageSize: 20 } },
     {
       input: { offset: 3, pageNum: -1, searchKey: 'retained', unknown: 'removed' },
-      expected: { offset: 3, pageSize: 10, searchKey: 'retained' }
+      expected: { offset: 3, pageSize: 20, searchKey: 'retained' }
     }
   ])('parses $input as $expected', ({ input, expected }) => {
     expect(schema.parse(input)).toEqual(expected);
@@ -204,16 +204,16 @@ describe('exclusive pagination', () => {
       { pageSize: ResourceListPageSizeSchema },
       { page: PaginationPageNumSchema }
     );
-    expect(skillSchema.parse({})).toEqual({ page: 1, pageSize: 50 });
-    expect(skillSchema.parse({ offset: 0, page: 'ignored' })).toEqual({ offset: 0, pageSize: 50 });
-    expect(skillSchema.parse({ page: '2' })).toEqual({ page: 2, pageSize: 50 });
+    expect(skillSchema.parse({})).toEqual({ page: 1, pageSize: 20 });
+    expect(skillSchema.parse({ offset: 0, page: 'ignored' })).toEqual({ offset: 0, pageSize: 20 });
+    expect(skillSchema.parse({ page: '2' })).toEqual({ page: 2, pageSize: 20 });
   });
 
   it('uses common training-error pagination limits and defaults in validation and documentation', () => {
     const datasetId = '68ad85a7463006c963799a05';
     expect(GetDatasetTrainingErrorBodySchema.parse({ datasetId })).toEqual({
       datasetId,
-      pageSize: 10,
+      pageSize: 20,
       pageNum: 1
     });
     expect(
@@ -227,7 +227,7 @@ describe('exclusive pagination', () => {
     expect(GetDatasetTrainingErrorBodySchema.parse({ datasetId, pageNum: 5001 })).toEqual({
       datasetId,
       pageNum: 5001,
-      pageSize: 10
+      pageSize: 20
     });
     expect(
       GetDatasetTrainingErrorBodySchema.parse({
@@ -245,13 +245,13 @@ describe('exclusive pagination', () => {
         {
           properties: {
             offset: { maximum: Number.MAX_SAFE_INTEGER },
-            pageSize: { maximum: PaginationPageSizeLimit, default: 10 }
+            pageSize: { maximum: PaginationPageSizeLimit, default: 20 }
           }
         },
         {
           properties: {
             pageNum: { maximum: Number.MAX_SAFE_INTEGER, default: 1 },
-            pageSize: { maximum: PaginationPageSizeLimit, default: 10 }
+            pageSize: { maximum: PaginationPageSizeLimit, default: 20 }
           }
         }
       ]
@@ -352,7 +352,7 @@ describe('resource listV2 query modes', () => {
   );
 
   it.each(cases)('$name 不传 IDs 时保留默认列表和分页参数解析', ({ schema, pageKey }) => {
-    expect(schema.parse({})).toEqual({ [pageKey]: 1, pageSize: 50 });
+    expect(schema.parse({})).toEqual({ [pageKey]: 1, pageSize: 20 });
     expect(schema.parse({ parentId: id, [pageKey]: '2', pageSize: '20' })).toEqual({
       parentId: id,
       [pageKey]: 2,
@@ -367,7 +367,7 @@ describe('resource listV2 query modes', () => {
     });
     expect(schema.parse({ offset: 0, [pageKey]: 'ignored', searchKey: 'Selected' })).toEqual({
       offset: 0,
-      pageSize: 50,
+      pageSize: 20,
       searchKey: 'Selected'
     });
   });
@@ -406,7 +406,7 @@ describe('resource listV2 query modes', () => {
     pagination?.anyOf?.forEach((branch) => {
       expect(branch).toMatchObject({
         properties: {
-          pageSize: { default: 50 },
+          pageSize: { default: 20 },
           parentId: { description: expect.stringContaining('不传时不限目录') }
         }
       });
