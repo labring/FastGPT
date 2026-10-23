@@ -358,16 +358,19 @@ const ListAppV2FiltersSchema = ListAppBodySchema.omit({ parentId: true }).extend
 
 // ID 分支优先匹配，由 Zod 过滤目录和分页字段；分页分支拒绝已有但无效的 ID，避免意外扩大查询范围。
 export const ListAppV2BodySchema = z.union([
-  ListAppV2FiltersSchema.extend({
-    appIds: z
-      .array(ObjectIdSchema)
-      .min(1)
-      .max(PaginationPageSizeLimit)
-      .meta({
-        example: ['68ad85a7463006c963799a05'],
-        description: `按应用或文件夹 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
-      })
-  }).meta({ title: '按 IDs 获取' }),
+  z
+    .object({
+      appIds: z
+        .array(ObjectIdSchema)
+        .min(1)
+        .max(PaginationPageSizeLimit)
+        .meta({
+          example: ['68ad85a7463006c963799a05'],
+          description: `按应用或文件夹 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
+        }),
+      ...ListAppV2FiltersSchema.shape
+    })
+    .meta({ title: '按 IDs 获取' }),
   createPaginationSchema({
     ...ListAppV2FiltersSchema.shape,
     pageSize: ResourceListPageSizeSchema,
