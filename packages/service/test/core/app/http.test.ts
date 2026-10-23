@@ -132,6 +132,26 @@ describe('runHTTPTool request routing', () => {
     expect(result.errorMsg).toContain('OpenAPI operation not found');
     expect(axiosMock).not.toHaveBeenCalled();
   });
+
+  it('includes the HTTP response body in the error text', async () => {
+    axiosMock.mockRejectedValueOnce({
+      message: 'Request failed with status code 400',
+      response: {
+        status: 400,
+        data: { code: 'E_DETAIL', detail: 'invalid payload' }
+      }
+    });
+
+    const result = await runHTTPTool({
+      baseUrl: 'https://example.com',
+      toolPath: '/echo',
+      method: 'POST',
+      params: {}
+    });
+
+    expect(result.errorMsg).toContain('Request failed with status code 400');
+    expect(result.errorMsg).toContain('invalid payload');
+  });
 });
 
 describe('SSRF Vulnerability Fix Tests', () => {
