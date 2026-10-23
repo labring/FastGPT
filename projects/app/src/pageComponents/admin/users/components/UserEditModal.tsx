@@ -35,8 +35,8 @@ export default function UserEditModal(props: { data: any; getData: any }) {
   const { data, getData } = props;
   const { toast } = useToast();
 
-  const { register, handleSubmit, reset, control } = useForm({
-    defaultValues: data
+  const { register, handleSubmit, reset, control } = useForm<TFormData>({
+    defaultValues: { ...data, password: '' }
   });
   // 服务端在「改名 + 同时设密码」时会校验新旧两个用户名，前端必须同口径，
   // 否则会出现密码框可填但提交必被 ssoPasswordUnavailable 拒绝的错位。
@@ -95,7 +95,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
         size={'sm'}
         onClick={() => {
           onOpen();
-          reset(data);
+          reset({ ...data, password: '' });
         }}
       >
         编辑
@@ -174,6 +174,9 @@ export default function UserEditModal(props: { data: any; getData: any }) {
               </Radio>
               <Radio {...register('status')} value="forbidden" size="lg">
                 forbidden
+              </Radio>
+              <Radio {...register('status')} value="inactive" size="lg">
+                inactive
               </Radio>
             </HStack>
           </RadioGroup>

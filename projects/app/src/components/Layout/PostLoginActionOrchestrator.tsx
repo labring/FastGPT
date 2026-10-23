@@ -13,6 +13,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getInviteLinkIdFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 import {
   finishPostLoginAction,
@@ -33,6 +34,10 @@ const HandleInviteModal = dynamic(
 const ForceMemberNameModal = dynamic(() => import('./ForceMemberNameModal'), { ssr: false });
 const ResetExpiredPswModal = dynamic(
   () => import('@/components/support/user/safe/ResetExpiredPswModal'),
+  { ssr: false }
+);
+const AccountActivationModal = dynamic(
+  () => import('@/components/support/user/safe/AccountActivationModal'),
   { ssr: false }
 );
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
@@ -124,6 +129,9 @@ const POST_LOGIN_ACTION_VIEWS: Record<
   memberName: ({ onFinishOneTimeAction }) => (
     <ForceMemberNameModal onSuccess={() => onFinishOneTimeAction('memberName')} />
   ),
+  accountActivation: ({ onFinishOneTimeAction }) => (
+    <AccountActivationModal onFinish={() => onFinishOneTimeAction('accountActivation')} />
+  ),
   resetExpiredPassword: ({ onFinishOneTimeAction }) => (
     <ResetExpiredPswModal enabled onFinish={() => onFinishOneTimeAction('resetExpiredPassword')} />
   ),
@@ -199,11 +207,12 @@ const PostLoginActionOrchestrator = ({
     contact: userInfo?.contact
   });
 
-  const baseReady = isPlus && !!userId && !!teamId;
+  const needsAccountActivation = userInfo?.status === UserStatusEnum.inactive;
+  const baseReady = !!userId && !!teamId;
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。
-  const canStartMandatory = baseReady && canRunMandatoryActions;
-  const canStartOptional = baseReady && canRunOptionalActions && unreadQueryFetched;
+  const canStartMandatory = (isPlus || needsAccountActivation) && baseReady && canRunMandatoryActions;
+  const canStartOptional = isPlus && baseReady && canRunOptionalActions && unreadQueryFetched;
 
   const finishOneTimeAction = useCallback(
     (action: OneTimePostLoginAction) => {
@@ -234,7 +243,8 @@ const PostLoginActionOrchestrator = ({
     shouldShowContact,
     contactHandled,
     isPlus,
-    hasImportantInform: importantInforms.length > 0
+    hasImportantInform: importantInforms.length > 0,
+    needsAccountActivation
   });
 
   useEffect(() => {
@@ -283,7 +293,7 @@ const PostLoginActionOrchestrator = ({
         refetchImportantInforms,
         onFinishContact: finishContact,
         onFinishImportantInform: finishImportantInform,
-        onFinishOneTimeAction: finishOneTimeAction
+        onFinishOneTimeAction: finishOneTimeAction,
       })}
     </>
   );

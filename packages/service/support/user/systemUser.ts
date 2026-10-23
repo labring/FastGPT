@@ -2,6 +2,7 @@ import { serviceEnv } from '../../env';
 import { MongoTeamMember } from './team/teamMemberSchema';
 import { MongoUser } from './schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { createDefaultTeam } from './team/controller';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -16,6 +17,9 @@ const SYSTEM_USER_INIT_LEASE_KEY = 'system-user-init';
 const LEASE_TTL_MS = 60 * 1000;
 const LEASE_RENEW_INTERVAL_MS = 10 * 1000;
 const WAIT_POLL_INTERVAL_MS = 1000;
+
+/** root 初始密码固定值。 */
+const DEFAULT_ROOT_PASSWORD = '123456';
 
 /**
  * 解析环境变量中配置的内置 Agent 用户名列表。
@@ -56,22 +60,24 @@ export const checkIsAgentUser = (tmbId: string | unknown): boolean => {
 /**
  * 实际执行用户创建的内部逻辑（在获取到 lease 后由胜出者执行）。
  */
-const executeSystemUserCreation = async (defaultRootPassword: string): Promise<void> => {
+const executeSystemUserCreation = async (): Promise<void> => {
   const agentUsernames = getConfiguredAgentUsernames();
   const defaultAgentPassword = serviceEnv.DEFAULT_AGENT_PSW;
   if (agentUsernames.length > 0 && !defaultAgentPassword) {
     throw new Error('DEFAULT_AGENT_PSW is required when AGENT_USERS is configured');
   }
 
+  let isRootCreated = false;
+
   const { agentUserTmbIds } = await mongoSessionRun(async (session) => {
     // 1. 初始化 root 用户与默认团队
     const rootUser = await MongoUser.findOne({ username: 'root' }, undefined, { session });
     const rootUId = await (async () => {
       if (rootUser) {
-        await rootUser.updateOne(
-          {
-            password: hashStr(defaultRootPassword)
-          },
+        // 旧库中 root 缺少持久化状态时也需首次进入激活流程；已保存为 active 的 root 不受重启影响。
+        await MongoUser.updateOne(
+          { _id: rootUser._id, status: { $exists: false } },
+          { $set: { status: UserStatusEnum.inactive } },
           { session }
         );
         return rootUser._id;
@@ -80,11 +86,13 @@ const executeSystemUserCreation = async (defaultRootPassword: string): Promise<v
           [
             {
               username: 'root',
-              password: hashStr(defaultRootPassword)
+              password: hashStr(DEFAULT_ROOT_PASSWORD),
+              status: UserStatusEnum.inactive
             }
           ],
           { session, ordered: true }
         );
+        isRootCreated = true;
         return _id;
       }
     })();
@@ -158,7 +166,7 @@ const executeSystemUserCreation = async (defaultRootPassword: string): Promise<v
 
   logger.info('Root and agent users initialized', {
     username: 'root',
-    fromEnvPassword: defaultRootPassword !== '123456',
+    rootCreated: isRootCreated,
     agentUserCount: agentUsernames.length
   });
 };
@@ -171,14 +179,8 @@ const executeSystemUserCreation = async (defaultRootPassword: string): Promise<v
  * 2. 租约持有者在执行初始化期间每 10 秒自动续期，TTL 为 60 秒；
  * 3. 未获得租约的节点（抛出 RedisLeaseUnavailableError）进入轮询等待；
  * 4. 租约释放后，等待节点直接从数据库同步最新数据至全局缓存，保证全节点状态一致。
- *
- * @param defaultRootPassword 初始 root 用户密码（默认 123456，可通过环境变量覆盖）
  */
-export const initSystemUser = async ({
-  defaultRootPassword = '123456'
-}: {
-  defaultRootPassword?: string;
-} = {}): Promise<void> => {
+export const initSystemUser = async (): Promise<void> => {
   while (true) {
     try {
       await systemUserLease.withLease({
@@ -187,7 +189,7 @@ export const initSystemUser = async ({
         ttlMs: LEASE_TTL_MS,
         renewIntervalMs: LEASE_RENEW_INTERVAL_MS,
         fn: async () => {
-          await executeSystemUserCreation(defaultRootPassword);
+          await executeSystemUserCreation();
         }
       });
       return;

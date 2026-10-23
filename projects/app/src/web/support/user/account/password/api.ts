@@ -22,9 +22,14 @@ export const updatePassword = ({
   passwordChangeSession
 }: {
   newPassword: string;
-  passwordChangeSession: string;
+  passwordChangeSession?: string;
 }) =>
   POST<void>('/support/user/account/password/update', {
     newPsw: hashStr(newPassword),
-    passwordChangeSession
+    ...(passwordChangeSession ? { passwordChangeSession } : {})
+  });
+
+export const activateAccount = ({ newPassword }: { newPassword: string }) =>
+  POST<void>('/support/user/account/password/activate', {
+    newPsw: hashStr(newPassword)
   });
