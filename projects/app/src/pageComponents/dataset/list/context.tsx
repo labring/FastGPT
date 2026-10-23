@@ -200,11 +200,11 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       showPaginationTip: false
     }
   );
-  /** 权限变更按 ID 原位同步；未指定目标的静默刷新同步已加载资源，普通刷新重新分页。 */
+  /** 普通资源按 ID 同步；文件夹等未指定 ID 的刷新重新分页，静默模式保留旧快照至成功。 */
   const loadMyDatasets = useCallback(
     ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
-      if (resourceId || silent) return refreshItems(resourceId ? [resourceId] : undefined);
-      return fetchData({ init: true });
+      if (resourceId) return refreshItems([resourceId]);
+      return fetchData({ init: true, silent });
     },
     [fetchData, refreshItems]
   );

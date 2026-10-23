@@ -424,29 +424,36 @@ describe('useScrollPagination.refreshItems', () => {
     expect(onState.mock.lastCall?.[0].data).toBe(previousData);
     expect(onState.mock.lastCall?.[0].total).toBe(5);
     expect(onState.mock.lastCall?.[0].isEmpty).toBe(false);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].refreshItems(['outside-cache']);
+    });
+    await act(async () => refreshRequests[2].resolve(['outside-cache:updated']));
+    expect(onState.mock.lastCall?.[0].data).toBe(previousData);
     await act(async () => root.unmount());
   });
 
-  it('cancels an in-flight page and preserves its cache and retry offset if the ID request fails', async () => {
+  it('waits for an in-flight page and keeps its result when the ID refresh fails', async () => {
     const { api, requests } = createDeferredApi();
     const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
     const onState = vi.fn();
     const root = createRoot(document.createElement('div'));
 
     await renderHarness(root, { query: 'failed', api, refreshApi, onState });
-    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 6 }));
     await act(async () => {
       void onState.mock.lastCall?.[0].fetchData();
     });
     await act(async () => {
       void onState.mock.lastCall?.[0].refreshItems(['two']);
     });
-    expect(requests[1].controller?.signal.aborted).toBe(true);
+    expect(requests[1].controller?.signal.aborted).toBe(false);
+    expect(refreshRequests).toHaveLength(0);
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 6 }));
+    expect(refreshRequests[0].ids).toEqual(['two']);
     await act(async () => refreshRequests[0].reject(new Error('offline')));
-    await act(async () => requests[1].resolve({ list: ['stale'], total: 3 }));
 
-    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two']);
-    expect(onState.mock.lastCall?.[0].total).toBe(4);
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two', 'three', 'four']);
+    expect(onState.mock.lastCall?.[0].total).toBe(6);
     expect(onState.mock.lastCall?.[0].error).toBe(null);
     expect(onState.mock.lastCall?.[0].refreshError?.message).toBe('offline');
     expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
@@ -456,6 +463,39 @@ describe('useScrollPagination.refreshItems', () => {
     await act(async () => refreshRequests[1].resolve(['two:updated']));
     expect(onState.mock.lastCall?.[0].error).toBe(null);
     expect(onState.mock.lastCall?.[0].refreshError).toBe(null);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(requests[2].params.offset).toBe(4);
+    await act(async () => root.unmount());
+  });
+
+  it('keeps the new directory first page when old saves finish late and merges queued IDs', async () => {
+    const { api, requests } = createDeferredApi();
+    const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'old-directory', api, refreshApi, onState });
+    await act(async () => requests[0].resolve({ list: ['one', 'old-only'], total: 2 }));
+    const refreshAfterSave = onState.mock.lastCall?.[0].refreshItems;
+    await renderHarness(root, { query: 'new-directory', api, refreshApi, onState });
+    await act(async () => {
+      void refreshAfterSave(['one', 'old-only']);
+      void refreshAfterSave(['one', 'two']);
+    });
+
+    expect(requests[1].controller?.signal.aborted).toBe(false);
+    expect(refreshRequests).toHaveLength(0);
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(true);
+    await act(async () => requests[1].resolve({ list: ['one', 'two'], total: 3 }));
+    expect(refreshRequests[0].ids).toEqual(['one', 'old-only', 'two']);
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two']);
+    await act(async () => refreshRequests[0].resolve(['old-only:updated', 'two:updated']));
+
+    expect(onState.mock.lastCall?.[0].data).toEqual(['one', 'two:updated']);
+    expect(onState.mock.lastCall?.[0].total).toBe(3);
+    expect(onState.mock.lastCall?.[0].isLoading).toBe(false);
     await act(async () => {
       void onState.mock.lastCall?.[0].fetchData();
     });
@@ -578,25 +618,39 @@ describe('useScrollPagination.refreshItems', () => {
     await act(async () => refreshRequests[1].reject(new Error('cancelled')));
   });
 
-  it('merges pending IDs when edits overlap instead of losing the first update', async () => {
+  it('serializes overlapping edits and lets the later save update the same ID last', async () => {
     const { api, requests } = createDeferredApi();
     const { refreshApi, requests: refreshRequests } = createDeferredRefreshApi();
     const onState = vi.fn();
     const root = createRoot(document.createElement('div'));
 
     await renderHarness(root, { query: 'overlap', api, refreshApi, onState });
-    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 2 }));
+    await act(async () => requests[0].resolve({ list: ['one', 'two'], total: 4 }));
     await act(async () => {
       void onState.mock.lastCall?.[0].refreshItems(['one']);
     });
     await act(async () => {
-      void onState.mock.lastCall?.[0].refreshItems(['two', 'two']);
+      void onState.mock.lastCall?.[0].refreshItems(['one', 'two', 'two']);
     });
-    expect(refreshRequests[0].controller?.signal.aborted).toBe(true);
+    expect(refreshRequests[0].controller?.signal.aborted).toBe(false);
+    expect(refreshRequests).toHaveLength(1);
+    await act(async () => {
+      void onState.mock.lastCall?.[0].fetchData();
+    });
+    expect(requests).toHaveLength(1);
+    await act(async () => refreshRequests[0].resolve(['one:earlier']));
     expect(refreshRequests[1].ids).toEqual(['one', 'two']);
     await act(async () => refreshRequests[1].resolve(['two:updated', 'one:updated']));
-    await act(async () => refreshRequests[0].resolve(['one:stale']));
     expect(onState.mock.lastCall?.[0].data).toEqual(['one:updated', 'two:updated']);
+    expect(requests).toHaveLength(2);
+    expect(requests[1].params.offset).toBe(2);
+    await act(async () => requests[1].resolve({ list: ['three', 'four'], total: 4 }));
+    expect(onState.mock.lastCall?.[0].data).toEqual([
+      'one:updated',
+      'two:updated',
+      'three',
+      'four'
+    ]);
     await act(async () => root.unmount());
   });
 

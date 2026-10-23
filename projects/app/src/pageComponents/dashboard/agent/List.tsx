@@ -45,6 +45,7 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
+import { useResourceSelection } from '@fastgpt/web/hooks/useResourceSelection';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -104,7 +105,17 @@ const List = () => {
   });
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
-  const [editPerAppId, setEditPerAppId] = useState<string>();
+  const { selectedResource: editPerApp, selectResource: setEditPerApp } = useResourceSelection({
+    resources: myApps,
+    scopeKey: JSON.stringify([
+      userInfo?.team.teamId,
+      router.pathname,
+      parentId,
+      searchKey,
+      appType,
+      listFilters
+    ])
+  });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
@@ -121,14 +132,6 @@ const List = () => {
       : 0,
     renderLoadingItem: () => <ResourceCardSkeleton />
   });
-
-  const editPerApp = useMemo(
-    () =>
-      editPerAppId !== undefined
-        ? myApps.find((item) => String(item._id) === String(editPerAppId))
-        : undefined,
-    [editPerAppId, myApps]
-  );
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
 
@@ -181,16 +184,21 @@ const List = () => {
     successToast: t('app:create_copy_success')
   });
 
+  /** 文件夹 ACL 会传播到继承子树，需重建搜索结果；普通资源只同步目标 ID。 */
+  const refreshPermissionResource = (app: (typeof myApps)[number]) =>
+    loadMyApps({
+      silent: true,
+      resourceId: AppFolderTypeList.includes(app.type) ? undefined : app._id
+    });
+
   const { runAsync: onResumeInheritPermission } = useRequest(
-    () => {
-      return resumeInheritPer(editPerApp!._id);
+    async (app: (typeof myApps)[number]) => {
+      await resumeInheritPer(app._id);
+      await refreshPermissionResource(app);
     },
     {
       manual: true,
-      errorToast: t('common:permission.Resume InheritPermission Failed'),
-      onSuccess() {
-        loadMyApps({ silent: true, resourceId: editPerAppId });
-      }
+      errorToast: t('common:permission.Resume InheritPermission Failed')
     }
   );
   const renderAppCard = (app: (typeof myApps)[number]) => {
@@ -425,7 +433,7 @@ const List = () => {
                                       icon: 'key',
                                       type: 'grayBg' as MenuItemType,
                                       label: t('common:permission.Permission'),
-                                      onClick: () => setEditPerAppId(app._id)
+                                      onClick: () => setEditPerApp(app)
                                     }
                                   ]
                                 : [])
@@ -555,11 +563,11 @@ const List = () => {
                 changeOwner({
                   appId: editPerApp._id,
                   ownerId: tmbId
-                }).then(() => loadMyApps({ silent: true, resourceId: editPerApp._id }))
+                }).then(() => refreshPermissionResource(editPerApp))
             })}
-            refetchResource={() => loadMyApps({ silent: true, resourceId: editPerApp._id })}
+            refetchResource={() => refreshPermissionResource(editPerApp)}
             hasParent={Boolean(parentId)}
-            resumeInheritPermission={onResumeInheritPermission}
+            resumeInheritPermission={() => onResumeInheritPermission(editPerApp)}
             isInheritPermission={editPerApp.inheritPermission}
             avatar={editPerApp.avatar}
             name={editPerApp.name}
@@ -575,7 +583,7 @@ const List = () => {
                 }),
               refreshDeps: [editPerApp.inheritPermission]
             }}
-            onClose={() => setEditPerAppId(undefined)}
+            onClose={() => setEditPerApp(undefined)}
           />
         )}
         <MoveConfirmModal />

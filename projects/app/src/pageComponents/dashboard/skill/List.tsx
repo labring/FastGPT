@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -52,6 +52,8 @@ import {
 } from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
+import { useResourceSelection } from '@fastgpt/web/hooks/useResourceSelection';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -69,6 +71,7 @@ const List = ({
   const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
+  const { userInfo } = useUserStore();
 
   const {
     skills,
@@ -108,7 +111,17 @@ const List = ({
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
-  const [editPerSkillId, setEditPerSkillId] = useState<string>();
+  const { selectedResource: selectedSkill, selectResource: setSelectedSkill } =
+    useResourceSelection({
+      resources: skills,
+      scopeKey: JSON.stringify([
+        userInfo?.team.teamId,
+        router.pathname,
+        parentId,
+        searchKey,
+        listFilters
+      ])
+    });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
   const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
@@ -133,13 +146,12 @@ const List = ({
     renderLoadingItem: () => <ResourceCardSkeleton />
   });
 
-  const selectedSkill = useMemo(
-    () =>
-      editPerSkillId !== undefined
-        ? skills.find((item) => String(item._id) === String(editPerSkillId))
-        : undefined,
-    [editPerSkillId, skills]
-  );
+  /** 文件夹 ACL 会传播到继承子树，需重建搜索结果；普通资源只同步目标 ID。 */
+  const refreshPermissionResource = (skill: (typeof skills)[number]) =>
+    refreshSkills({
+      silent: true,
+      resourceId: skill.type === AgentSkillTypeEnum.folder ? undefined : skill._id
+    });
 
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
     content: t('skill:copy_skill_confirm')
@@ -281,7 +293,7 @@ const List = ({
                         type: 'grayBg' as const,
                         label: t('common:permission.Permission'),
                         onClick: () => {
-                          setEditPerSkillId(skill._id);
+                          setSelectedSkill(skill);
                         }
                       }
                     ]
@@ -580,14 +592,14 @@ const List = ({
               postChangeSkillOwner({
                 skillId: selectedSkill._id,
                 ownerId: tmbId
-              }).then(() => refreshSkills({ silent: true, resourceId: selectedSkill._id }))
+              }).then(() => refreshPermissionResource(selectedSkill))
             }
             hasParent={!!selectedSkill.parentId}
-            refetchResource={() => refreshSkills({ silent: true, resourceId: selectedSkill._id })}
+            refetchResource={() => refreshPermissionResource(selectedSkill)}
             isInheritPermission={selectedSkill.inheritPermission}
             resumeInheritPermission={() =>
               resumeInheritPer(selectedSkill._id).then(() =>
-                refreshSkills({ silent: true, resourceId: selectedSkill._id })
+                refreshPermissionResource(selectedSkill)
               )
             }
             avatar={selectedSkill.avatar}
@@ -604,7 +616,7 @@ const List = ({
                 }),
               refreshDeps: [selectedSkill._id, selectedSkill.inheritPermission]
             }}
-            onClose={() => setEditPerSkillId(undefined)}
+            onClose={() => setSelectedSkill(undefined)}
           />
         )}
       </>

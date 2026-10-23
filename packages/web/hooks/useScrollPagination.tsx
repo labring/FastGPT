@@ -34,6 +34,7 @@ export type ScrollListType = ({
 /**
  * 管理滚动分页及请求竞争。普通初始化清空列表；静默初始化在响应成功前保留旧快照。
  * 配置 refreshByIds 后按 ID 原位同步条目，保留其他缓存、分页状态及滚动容器。
+ * ID 同步等待当前分页请求完成，连续保存合并待刷新 ID，不取消 list 或其他 ID 请求。
  * 分页错误通过 error 暴露并暂停自动加载；ID 同步错误通过 refreshError 暴露，不阻断分页。
  */
 export function useScrollPagination<
@@ -89,7 +90,10 @@ export function useScrollPagination<
   const requestControllerRef = useRef<AbortController>();
   const requestIdRef = useRef(0);
   const isRequestingRef = useRef(false);
-  const pendingRefreshIdsRef = useRef<string[]>([]);
+  const listRequestRef = useRef<Promise<void>>();
+  const refreshRequestRef = useRef<Promise<void>>();
+  const refreshControllerRef = useRef<AbortController>();
+  const pendingRefreshIdsRef = useRef(new Set<string>());
   const isEmpty = hasLoaded && total === 0 && data.length === 0 && !isLoading;
 
   const noMore = data.length >= total;
@@ -98,33 +102,33 @@ export function useScrollPagination<
     async ({
       init = false,
       ScrollContainerRef,
-      silent = false,
-      itemIds
+      silent = false
     }: {
       init?: boolean;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
       silent?: boolean;
-      /** 由 refreshItems 发起；使用 ID 接口同步缓存，不走分页接口。 */
-      itemIds?: string[];
-    } = {}) => {
-      const refreshIds =
-        itemIds && refreshByIds
-          ? [...new Set([...pendingRefreshIdsRef.current, ...itemIds])]
-          : undefined;
-      if (refreshIds?.length === 0) return;
+    } = {}): Promise<void> => {
+      const previousRequestId = requestIdRef.current;
+      // 触底发生在 ID 同步期间时等待同步完成，避免吞掉唯一一次触底事件。
+      while (!init && refreshRequestRef.current) {
+        await refreshRequestRef.current;
+        if (previousRequestId !== requestIdRef.current) return;
+      }
       if (!init && (noMore || isRequestingRef.current)) return;
 
       const offset = init ? 0 : dataRef.current.length;
 
       // 请求完成到 React 提交列表更新之间，滚动监听可能再次读到旧 data.length。
       // 用同步游标拦截相同 offset，避免同一页在这个时间窗口被重复请求。
-      if (!init && requestedOffsetRef.current === offset) return;
+      if (!init && requestedOffsetRef.current === offset) return Promise.resolve();
 
       if (init) {
-        // 新筛选或后台同步都立即接管请求；连续编辑不同资源时合并尚未完成的 ID，避免漏刷。
+        // 只有重新初始化列表才能取消旧请求；旧目录的 ID 响应也不能写回新快照。
         requestControllerRef.current?.abort();
+        refreshControllerRef.current?.abort();
+        refreshRequestRef.current = undefined;
         requestedOffsetRef.current = undefined;
-        pendingRefreshIdsRef.current = refreshIds ?? [];
+        pendingRefreshIdsRef.current.clear();
       } else {
         requestedOffsetRef.current = offset;
       }
@@ -140,13 +144,8 @@ export function useScrollPagination<
       } else if (init) {
         setFalse();
       }
-      // 两种请求分别清理自身错误；重新初始化列表时一并丢弃旧快照的同步错误。
-      if (refreshIds) {
-        setRefreshError(null);
-      } else {
-        setError(null);
-        if (init) setRefreshError(null);
-      }
+      setError(null);
+      if (init) setRefreshError(null);
 
       if (init && !silent) {
         setData([]);
@@ -154,107 +153,85 @@ export function useScrollPagination<
         setHasLoaded(false);
       }
 
-      try {
-        if (refreshIds && refreshByIds) {
-          const refreshedItems = new Map<string, TData['list'][number]>();
-          // 已加载缓存可能超过接口 ID 上限，全部请求成功后再一次性提交快照。
-          for (let start = 0; start < refreshIds.length; start += PaginationPageSizeLimit) {
-            const list = await refreshByIds.api(
-              refreshIds.slice(start, start + PaginationPageSizeLimit),
-              requestController
-            );
-            if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
-            list.forEach((item) => refreshedItems.set(refreshByIds.getId(item), item));
+      const request = (async () => {
+        try {
+          const res = await api(
+            {
+              offset,
+              pageSize,
+              ...params
+            } as TParams,
+            requestController
+          );
+
+          if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
+
+          setTotal(res.total);
+          if (offset === 0) {
+            setHasLoaded(true);
           }
 
-          // 只替换实际返回的条目；未返回的 ID 保留旧缓存，不改变列表总数和分页位置。
-          if (refreshedItems.size > 0) {
-            const ids = new Set(refreshIds);
-            setData(
-              dataRef.current.map((item) => {
-                const id = refreshByIds.getId(item);
-                return ids.has(id) ? (refreshedItems.get(id) ?? item) : item;
-              })
-            );
-          }
-          pendingRefreshIdsRef.current = [];
-          return;
-        }
+          if (scrollLoadType === 'top') {
+            const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
+            const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
 
-        const res = await api(
-          {
-            offset,
-            pageSize,
-            ...params
-          } as TParams,
-          requestController
-        );
-
-        if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
-
-        setTotal(res.total);
-        if (offset === 0) {
-          setHasLoaded(true);
-        }
-
-        if (scrollLoadType === 'top') {
-          const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
-          const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
-
-          function adjustScrollPosition() {
-            requestAnimationFrame(
-              ScrollContainerRef?.current
-                ? () => {
-                    if (ScrollContainerRef?.current) {
-                      const newHeight = ScrollContainerRef.current.scrollHeight;
-                      const heightDiff = newHeight - prevHeight;
-                      ScrollContainerRef.current.scrollTop = prevScrollTop + heightDiff;
+            function adjustScrollPosition() {
+              requestAnimationFrame(
+                ScrollContainerRef?.current
+                  ? () => {
+                      if (ScrollContainerRef?.current) {
+                        const newHeight = ScrollContainerRef.current.scrollHeight;
+                        const heightDiff = newHeight - prevHeight;
+                        ScrollContainerRef.current.scrollTop = prevScrollTop + heightDiff;
+                      }
                     }
-                  }
-                : adjustScrollPosition
-            );
+                  : adjustScrollPosition
+              );
+            }
+
+            const newData = offset === 0 ? res.list : [...res.list, ...dataRef.current];
+            setData(newData);
+            adjustScrollPosition();
+          } else {
+            const newData = offset === 0 ? res.list : [...dataRef.current, ...res.list];
+            setData(newData);
           }
+        } catch (error: any) {
+          if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
 
-          const newData = offset === 0 ? res.list : [...res.list, ...dataRef.current];
-          setData(newData);
-          adjustScrollPosition();
-        } else {
-          const newData = offset === 0 ? res.list : [...dataRef.current, ...res.list];
-          setData(newData);
-        }
-      } catch (error: any) {
-        if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
-
-        const requestError = error instanceof Error ? error : new Error(String(error));
-        if (refreshIds) {
-          setRefreshError(requestError);
-        } else {
           requestedOffsetRef.current = undefined;
-          setError(requestError);
-        }
-        if (showErrorToast) {
-          toast({
-            title: t(getErrText(error, t('common:core.chat.error.data_error'))),
-            status: 'error'
-          });
-        }
-        console.log(error);
-      } finally {
-        if (requestId === requestIdRef.current) {
-          requestControllerRef.current = undefined;
-          isRequestingRef.current = false;
-          if (!silent) {
-            setFalse();
+          setError(error instanceof Error ? error : new Error(String(error)));
+          if (showErrorToast) {
+            toast({
+              title: t(getErrText(error, t('common:core.chat.error.data_error'))),
+              status: 'error'
+            });
+          }
+          console.log(error);
+        } finally {
+          if (requestId === requestIdRef.current) {
+            requestControllerRef.current = undefined;
+            isRequestingRef.current = false;
+            if (!silent) {
+              setFalse();
+            }
           }
         }
-      }
+      })();
+      listRequestRef.current = request;
+      return request.finally(() => {
+        if (listRequestRef.current === request) listRequestRef.current = undefined;
+      });
     }
   );
 
   useEffect(() => {
+    const pendingRefreshIds = pendingRefreshIdsRef.current;
     return () => {
       requestIdRef.current += 1;
       requestControllerRef.current?.abort();
+      refreshControllerRef.current?.abort();
+      pendingRefreshIds.clear();
     };
   }, []);
 
@@ -363,14 +340,82 @@ export function useScrollPagination<
     loadData({ init: true });
   });
 
-  /** 按 ID 同步已加载条目；省略 IDs 时同步整个缓存，返回顺序不影响当前列表顺序。 */
-  const refreshItems = useMemoizedFn((ids?: string[]) => {
-    if (!refreshByIds) return Promise.resolve();
-    return loadData({
-      init: true,
-      silent: true,
-      itemIds: ids ?? dataRef.current.map(refreshByIds.getId)
-    });
+  /**
+   * 合并保存成功后待同步的 ID，等待 list 完成后串行读取；省略 IDs 时同步整个缓存。
+   * 返回后只替换当前缓存中实际存在的条目，未返回或已离开当前目录的资源不增删缓存。
+   */
+  const refreshItems = useMemoizedFn(async (ids?: string[]): Promise<void> => {
+    if (!refreshByIds) return;
+    const requestId = requestIdRef.current;
+    (ids ?? dataRef.current.map(refreshByIds.getId)).forEach((id) =>
+      pendingRefreshIdsRef.current.add(id)
+    );
+    if (pendingRefreshIdsRef.current.size === 0) return;
+
+    while (refreshRequestRef.current) {
+      await refreshRequestRef.current;
+      if (requestId !== requestIdRef.current) return;
+    }
+    if (pendingRefreshIdsRef.current.size === 0) return;
+
+    const controller = new AbortController();
+    refreshControllerRef.current = controller;
+    setRefreshError(null);
+
+    const request = (async () => {
+      // 晚到的保存不能抢占新目录首屏；先等 list 落盘，再尝试更新当前缓存。
+      if (listRequestRef.current) await listRequestRef.current;
+      if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+
+      while (pendingRefreshIdsRef.current.size > 0) {
+        const refreshIds = [...pendingRefreshIdsRef.current];
+        pendingRefreshIdsRef.current.clear();
+        setRefreshError(null);
+
+        try {
+          const refreshedItems = new Map<string, TData['list'][number]>();
+          // 已加载缓存可能超过接口 ID 上限，整批成功后再提交，失败时保留旧快照。
+          for (let start = 0; start < refreshIds.length; start += PaginationPageSizeLimit) {
+            const list = await refreshByIds.api(
+              refreshIds.slice(start, start + PaginationPageSizeLimit),
+              controller
+            );
+            if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+            list.forEach((item) => refreshedItems.set(refreshByIds.getId(item), item));
+          }
+
+          if (refreshedItems.size > 0) {
+            const ids = new Set(refreshIds);
+            const current = dataRef.current;
+            const updated = current.map((item) => {
+              const id = refreshByIds.getId(item);
+              return ids.has(id) ? (refreshedItems.get(id) ?? item) : item;
+            });
+            if (updated.some((item, index) => item !== current[index])) setData(updated);
+          }
+        } catch (error) {
+          if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+          setRefreshError(error instanceof Error ? error : new Error(String(error)));
+          if (showErrorToast) {
+            toast({
+              title: t(getErrText(error, t('common:core.chat.error.data_error'))),
+              status: 'error'
+            });
+          }
+          console.log(error);
+        }
+      }
+    })();
+
+    refreshRequestRef.current = request;
+    try {
+      await request;
+    } finally {
+      if (refreshRequestRef.current === request) {
+        refreshRequestRef.current = undefined;
+        refreshControllerRef.current = undefined;
+      }
+    }
   });
 
   return {

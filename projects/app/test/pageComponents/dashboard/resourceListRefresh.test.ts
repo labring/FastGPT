@@ -152,9 +152,10 @@ describe('resource list ID refresh integration', () => {
       expect(mocks.refreshItems).toHaveBeenLastCalledWith([item._id]);
       expect(mocks.fetchData).not.toHaveBeenCalled();
       await refresh!({ silent: true });
-      expect(mocks.refreshItems).toHaveBeenLastCalledWith(undefined);
+      expect(mocks.fetchData).toHaveBeenLastCalledWith({ init: true, silent: true });
+      expect(mocks.refreshItems).toHaveBeenCalledTimes(1);
       await refresh!();
-      expect(mocks.fetchData).toHaveBeenLastCalledWith({ init: true });
+      expect(mocks.fetchData).toHaveBeenLastCalledWith({ init: true, silent: false });
 
       const [loadPage, options] = mocks.pagination.mock.lastCall!;
       const controller = new AbortController();
