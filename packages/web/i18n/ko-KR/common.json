@@ -1373,6 +1373,7 @@
   "core.workflow.check.edge_handle_unsupported": "{{source}}에서 {{target}}으로 가는 연결 핸들이 지원되지 않습니다: {{sourceHandle}} → {{targetHandle}}",
   "core.workflow.check.edge_cross_scope": "노드 {{source}}와 {{target}}는 서로 다른 범위에 있어 직접 연결할 수 없습니다",
   "core.workflow.check.edge_self_connection": "노드 {{nodeId}}는 자기 자신에 연결할 수 없습니다",
+  "core.workflow.check.edge_creates_cycle": "노드 {{source}}에서 상위 노드 {{target}}로 다시 연결하면 순환이 생성되므로 연결할 수 없습니다",
   "core.workflow.check.tool_edge_invalid": "{{source}}에서 {{target}}으로 가는 도구 연결 방식이 잘못되었습니다",
   "core.workflow.check.catch_not_enabled": "오류 분기를 연결하기 전에 노드 {{nodeId}}의 오류 처리를 활성화하세요",
   "core.workflow.check.next_port_unsupported": "노드 {{nodeId}}는 일반 실행 출력을 지원하지 않습니다",

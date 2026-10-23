@@ -32,6 +32,7 @@ export enum WorkflowDiagnosticCodeEnum {
   dynamicInputUnsupported = 'WORKFLOW_DYNAMIC_INPUT_UNSUPPORTED',
   dynamicOutputUnsupported = 'WORKFLOW_DYNAMIC_OUTPUT_UNSUPPORTED',
   edgeCrossScope = 'WORKFLOW_EDGE_CROSS_SCOPE',
+  edgeCreatesCycle = 'WORKFLOW_EDGE_CREATES_CYCLE',
   edgeDuplicated = 'WORKFLOW_EDGE_DUPLICATED',
   edgeHandleUnsupported = 'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
   edgeInvalid = 'WORKFLOW_EDGE_INVALID',

@@ -273,7 +273,10 @@ describe('workflow handles with real ReactFlow measurements', () => {
     ['tool-root', 'other-tail', false],
     ['other-tool', 'tool-tail', false],
     ['tool-root', 'tool-tail', true],
-    ['main', 'main-tail', true]
+    ['main', 'main-tail', true],
+    ['main-mid', 'main', false],
+    ['main-tail', 'main', false],
+    ['tool-tail', 'tool-mid', false]
   ])(
     'shows only eligible target handles while dragging %s -> %s',
     async (source, target, allowed) => {

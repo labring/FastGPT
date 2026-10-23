@@ -396,6 +396,96 @@ describe('checkExecutionConnection', () => {
     });
   });
 
+  it.each(['next', 'catch', 'branch', 'sourceOutput'] as const)(
+    'rejects direct and transitive upstream connections through any %s port',
+    async (kind) => {
+      const source = node(
+        'source',
+        kind === 'branch' ? FlowNodeTypeEnum.ifElseNode : FlowNodeTypeEnum.chatNode
+      );
+      source.catchError = true;
+      source.outputs.push({
+        id: 'custom',
+        key: 'custom',
+        label: '',
+        type: FlowNodeOutputTypeEnum.source
+      });
+      const middle = { ...node('middle'), catchError: true };
+      const nodes = [node('upstream', FlowNodeTypeEnum.ifElseNode), middle, source];
+      const candidate: WorkflowExecutionEdge = {
+        source: (() => {
+          if (kind === 'branch') return { kind, nodeId: 'source', branchKey: 'ELSE' };
+          if (kind === 'sourceOutput') return { kind, nodeId: 'source', outputKey: 'custom' };
+          return { kind, nodeId: 'source' };
+        })(),
+        target: { kind: 'target', nodeId: 'upstream' }
+      };
+      for (const targetId of ['source', 'middle']) {
+        const document = createWorkflowDocument({
+          nodes,
+          executionEdges: [
+            {
+              source: { kind: 'branch', nodeId: 'upstream', branchKey: 'ELSE' },
+              target: { kind: 'target', nodeId: targetId }
+            },
+            ...(targetId === 'middle'
+              ? [
+                  {
+                    source: { kind: 'catch' as const, nodeId: 'middle' },
+                    target: { kind: 'target' as const, nodeId: 'source' }
+                  }
+                ]
+              : [])
+          ]
+        });
+        const before = structuredClone(document);
+        for (const connection of [candidate, compileExecutionEdge(candidate, document)]) {
+          // Core 语义边与画布原始 handle 均使用相同的有向可达关系。
+          for (const edges of [
+            document.executionEdges,
+            document.executionEdges.map((edge) => compileExecutionEdge(edge, document))
+          ])
+            expect(evaluate({ connection, edges, nodes })).toMatchObject({
+              allowed: false,
+              reason: { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle }
+            });
+        }
+        await expect(
+          applyWorkflowCommand({
+            document,
+            command: { type: 'edge.connect', edge: candidate },
+            dependencies: { templateProvider: builtinTemplateProvider }
+          })
+        ).rejects.toThrow(WorkflowDiagnosticCodeEnum.edgeCreatesCycle);
+        expect(() =>
+          assertExecutionEdge(
+            { ...document, executionEdges: [...document.executionEdges, candidate] },
+            candidate
+          )
+        ).toThrow(WorkflowDiagnosticCodeEnum.edgeCreatesCycle);
+        expect(document).toEqual(before);
+      }
+    }
+  );
+
+  it('allows forward branches and merges while safely traversing unrelated historical cycles', () => {
+    const nodes = ['source', 'left', 'right', 'target', 'cycle-a', 'cycle-b'].map((id) => node(id));
+    const edges = [
+      ordinary('source', 'left'),
+      ordinary('source', 'right'),
+      ordinary('left', 'target'),
+      ordinary('right', 'target'),
+      ordinary('cycle-a', 'cycle-b'),
+      ordinary('cycle-b', 'cycle-a')
+    ];
+    expect(evaluate({ nodes, edges, connection: ordinary('source', 'target') })).toEqual({
+      allowed: true
+    });
+    expect(evaluate({ nodes, edges, connection: ordinary('source', 'cycle-a') })).toEqual({
+      allowed: true
+    });
+  });
+
   it('requires an explicit detach before assigning a tool entry to another caller', async () => {
     const nodes = [
       node('caller-a', FlowNodeTypeEnum.toolCall),

@@ -83,6 +83,28 @@ describe('validateWorkflow', () => {
     expect(codes).toContain(WorkflowDiagnosticCodeEnum.requiredInputMissing);
   });
 
+  it('reports existing execution cycles without deleting their edges', () => {
+    const document = makeDocument();
+    document.nodes.push({ ...document.nodes[1], nodeId: 'downstream' });
+    document.executionEdges.push(
+      {
+        source: { kind: 'next', nodeId: 'target' },
+        target: { kind: 'target', nodeId: 'downstream' }
+      },
+      {
+        source: { kind: 'next', nodeId: 'downstream' },
+        target: { kind: 'target', nodeId: 'target' }
+      }
+    );
+    const before = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toHaveLength(2);
+    expect(document).toEqual(before);
+  });
+
   it('reports incomplete variable update rows', async () => {
     const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
     const start = await applyWorkflowCommand({

@@ -41,6 +41,25 @@ describe('formatWorkflowDiagnostic', () => {
     ).toMatchObject({ level: 'error', message: workflowZh.tool_target_already_attached });
   });
 
+  it('explains why connecting back to an upstream node is forbidden', () => {
+    expect(
+      formatWorkflowDiagnostic({
+        diagnostic: {
+          code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle,
+          severity: 'error',
+          params: {
+            edge: {
+              source: { kind: 'next', nodeId: 'B' },
+              target: { kind: 'target', nodeId: 'A' }
+            }
+          }
+        },
+        node,
+        t
+      }).message
+    ).toBe('节点 B 不能回连上游节点 A，连线不能形成环');
+  });
+
   it('keeps existing variable-update and model field labels while preserving severity', () => {
     expect(
       formatWorkflowDiagnostic({
