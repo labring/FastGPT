@@ -21,14 +21,6 @@ export const PaginationPageNumSchema = IntSchema.positive().default(1).optional(
   description: '页码，从 1 开始；传入 offset 时忽略'
 });
 
-/** 资源列表按页查询默认每页 20 条；ID 查询不使用此字段。 */
-export const ResourceListPageSizeSchema = PaginationPageSizeSchema.default(20)
-  .optional()
-  .meta({
-    example: 20,
-    description: `每页条数，默认 20，最大 ${PaginationPageSizeLimit}`
-  });
-
 /**
  * 将业务筛选字段与互斥分页分支组合。offset 分支优先并移除页码字段；
  * 无 offset 时按页码查询，默认第一页。pageShape 用于兼容 Skill 的 page 字段。

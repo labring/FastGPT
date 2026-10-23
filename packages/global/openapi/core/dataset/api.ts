@@ -23,8 +23,7 @@ import {
 import {
   createPaginationSchema,
   PaginationPageSizeLimit,
-  PaginationResponseSchema,
-  ResourceListPageSizeSchema
+  PaginationResponseSchema
 } from '../../api';
 
 /* ============================================================================
@@ -279,7 +278,6 @@ export const GetDatasetListV2BodySchema = z.union([
     .meta({ title: '按 IDs 获取' }),
   createPaginationSchema({
     ...GetDatasetListV2FiltersSchema.shape,
-    pageSize: ResourceListPageSizeSchema,
     parentId: GetDatasetListBodySchema.shape.parentId.meta({
       example: null,
       description:

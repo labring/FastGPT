@@ -168,7 +168,6 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const fields = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
     pinnedFirst ? ' isPinned pinnedAt' : ''
   }`;
-  const skip = offset;
   let myApps: Awaited<ReturnType<typeof findAppsPage>>['list'];
   let total: number;
   const folderAccessModeMap = new Map<string, 'read' | 'navigate'>();
@@ -240,14 +239,14 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       return String(a._id).localeCompare(String(b._id));
     });
     total = visibleApps.length;
-    myApps = visibleApps.slice(skip, skip + pageSize);
+    myApps = visibleApps.slice(offset, offset + pageSize);
   } else {
     const result = await findAppsPage({
       filter: findAppsQuery,
       fields,
       sort,
       pinnedFirst,
-      offset: skip,
+      offset,
       limit: isAppIdsQuery ? appIds.length : pageSize
     });
     myApps = result.list;

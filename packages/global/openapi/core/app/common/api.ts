@@ -23,8 +23,7 @@ import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../..
 import {
   createPaginationSchema,
   PaginationPageSizeLimit,
-  PaginationResponseSchema,
-  ResourceListPageSizeSchema
+  PaginationResponseSchema
 } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
@@ -373,7 +372,6 @@ export const ListAppV2BodySchema = z.union([
     .meta({ title: '按 IDs 获取' }),
   createPaginationSchema({
     ...ListAppV2FiltersSchema.shape,
-    pageSize: ResourceListPageSizeSchema,
     parentId: ListAppBodySchema.shape.parentId.meta({
       example: null,
       description:

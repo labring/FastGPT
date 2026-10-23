@@ -28,8 +28,7 @@ import {
   PaginationPageSizeLimit,
   PaginationPageSizeSchema,
   createPaginationSchema,
-  PaginationPageNumSchema,
-  ResourceListPageSizeSchema
+  PaginationPageNumSchema
 } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
@@ -77,7 +76,6 @@ export const ListSkillsV2QuerySchema = z.union([
   createPaginationSchema(
     {
       ...ListSkillsV2FiltersSchema.shape,
-      pageSize: ResourceListPageSizeSchema,
       parentId: NullableParentIdSchema.meta({
         example: null,
         description:

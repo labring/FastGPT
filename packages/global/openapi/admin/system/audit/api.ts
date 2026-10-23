@@ -2,7 +2,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { AdminAuditEventEnum } from '../../../../support/user/audit/constants';
-import { createPaginationSchema, PaginationPageSizeSchema } from '../../../api';
+import { createPaginationSchema } from '../../../api';
 
 /* ============================================================================
  * API: 获取管理员审计日志
@@ -13,7 +13,6 @@ import { createPaginationSchema, PaginationPageSizeSchema } from '../../../api';
  * ============================================================================ */
 
 export const AdminAuditListBodySchema = createPaginationSchema({
-  pageSize: PaginationPageSizeSchema.default(20).optional(),
   tmbIds: z
     .array(ObjectIdSchema)
     .optional()

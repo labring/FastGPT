@@ -1,9 +1,5 @@
 import z from 'zod';
-import {
-  PaginationPageSizeSchema,
-  PaginationResponseSchema,
-  createPaginationSchema
-} from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
@@ -334,7 +330,6 @@ export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
 
 /* Get log users */
 export const GetLogUsersBodySchema = createPaginationSchema({
-  pageSize: PaginationPageSizeSchema.default(20).optional(),
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'

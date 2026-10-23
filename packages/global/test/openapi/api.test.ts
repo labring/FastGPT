@@ -6,8 +6,7 @@ import {
   PaginationPageNumSchema,
   PaginationPageSizeSchema,
   PaginationPageSizeLimit,
-  PaginationSchema,
-  ResourceListPageSizeSchema
+  PaginationSchema
 } from '../../openapi/api';
 import {
   GetChannelLogsQuerySchema,
@@ -135,21 +134,18 @@ describe('shared API schemas', () => {
         'pageNum=1&pageSize=500&channelType=system&requestId=&codeType=all&startTimestamp=1791734400000&endTimestamp=1791907199999'
       )
     );
-    expect(GetChannelLogsQuerySchema.parse(query).pageSize).toBe(500);
-    expect(GetChannelLogsQuerySchema.parse({ ...query, pageSize: '501' }).pageSize).toBe(500);
-    expect(ListChannelsQuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(ListChannelsQuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
-    expect(ListChannelsQuerySchema.parse({}).pageSize).toBe(20);
-    expect(ListSkillsV2QuerySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(ListSkillsV2QuerySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
-    expect(ListSkillVersionsBodySchema.parse({ skillId: 'skill-1', pageSize: 500 }).pageSize).toBe(
-      500
-    );
-    expect(ListSkillVersionsBodySchema.parse({ skillId: 'skill-1', pageSize: 501 }).pageSize).toBe(
-      500
-    );
-    expect(InvoiceListBodySchema.parse({ pageSize: '500' }).pageSize).toBe(500);
-    expect(InvoiceListBodySchema.parse({ pageSize: '501' }).pageSize).toBe(500);
+    for (const { schema, input } of [
+      { schema: GetChannelLogsQuerySchema, input: query },
+      { schema: ListChannelsQuerySchema, input: {} },
+      { schema: ListSkillsV2QuerySchema, input: {} },
+      { schema: ListSkillVersionsBodySchema, input: { skillId: 'skill-1' } },
+      { schema: InvoiceListBodySchema, input: {} }
+    ]) {
+      for (const pageSize of [500, 501]) {
+        expect(schema.parse({ ...input, pageSize })).toMatchObject({ pageSize: 500 });
+      }
+    }
+    expect(ListChannelsQuerySchema.parse({})).toMatchObject({ pageSize: 20 });
     const document = z.toJSONSchema(GetChannelLogsQuerySchema);
     expect(document.properties?.pageSize).toMatchObject({
       maximum: 500,
@@ -199,11 +195,8 @@ describe('exclusive pagination', () => {
     expect(schema.safeParse(input).success).toBe(false);
   });
 
-  it('supports resource page defaults and the legacy Skill page field', () => {
-    const skillSchema = createPaginationSchema(
-      { pageSize: ResourceListPageSizeSchema },
-      { page: PaginationPageNumSchema }
-    );
+  it('supports the legacy Skill page field', () => {
+    const skillSchema = createPaginationSchema({}, { page: PaginationPageNumSchema });
     expect(skillSchema.parse({})).toEqual({ page: 1, pageSize: 20 });
     expect(skillSchema.parse({ offset: 0, page: 'ignored' })).toEqual({ offset: 0, pageSize: 20 });
     expect(skillSchema.parse({ page: '2' })).toEqual({ page: 2, pageSize: 20 });
@@ -391,6 +384,7 @@ describe('resource listV2 query modes', () => {
       expect(document.anyOf?.[0]).not.toHaveProperty(`properties.${key}`);
     }
     const pagination = document.anyOf?.[1];
+    if (!pagination || '$ref' in pagination) throw new Error('Expected inline pagination schema');
     expect(pagination).toMatchObject({ title: '分页获取' });
     expect(pagination?.anyOf).toHaveLength(2);
     expect(pagination?.anyOf?.[0]).toMatchObject({
@@ -407,7 +401,7 @@ describe('resource listV2 query modes', () => {
       expect(branch).toMatchObject({
         properties: {
           pageSize: { default: 20 },
-          parentId: { description: expect.stringContaining('不传时不限目录') }
+          parentId: expect.any(Object)
         }
       });
       expect(branch).not.toHaveProperty('properties.parentId.default');

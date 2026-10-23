@@ -1,11 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { NumSchema, optionalEmptyToUndefined } from '../../../../common/zod';
-import {
-  PaginationPageSizeSchema,
-  PaginationResponseSchema,
-  createPaginationSchema
-} from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { SubTypeEnum, StandardSubLevelEnum } from '../../../../support/wallet/sub/constants';
 
 export const PlanItemSchema = z.object({
@@ -46,7 +42,6 @@ export type PlanItemType = z.infer<typeof PlanItemSchema>;
  * ============================================================================ */
 
 export const GetPlansBodySchema = createPaginationSchema({
-  pageSize: PaginationPageSizeSchema.default(20).optional(),
   search: z.string().trim().max(100).optional().meta({ description: '搜索关键词（用户名）' })
 });
 export type GetPlansBodyType = z.infer<typeof GetPlansBodySchema>;

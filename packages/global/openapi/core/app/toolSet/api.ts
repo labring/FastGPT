@@ -1,9 +1,5 @@
 import z from 'zod';
-import {
-  PaginationPageSizeSchema,
-  PaginationResponseSchema,
-  createPaginationSchema
-} from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { NodeTemplateListItemTypeSchema } from '../../../../core/workflow/type/node';
@@ -13,7 +9,6 @@ import { NodeTemplateListItemTypeSchema } from '../../../../core/workflow/type/n
  * Route: POST /core/app/toolSet/listV2
  */
 export const ListToolSetV2BodySchema = createPaginationSchema({
-  pageSize: PaginationPageSizeSchema.default(20).optional(),
   parentId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: 'MCP 或 HTTP 工具集应用 ID'
