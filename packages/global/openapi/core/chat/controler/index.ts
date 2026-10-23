@@ -1,4 +1,4 @@
-import { createChatTargetQueryDocumentSchema } from '../api';
+import { createChatTargetQueryParameters } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -20,9 +20,7 @@ export const ChatControllerPath: OpenAPIPath = {
         'Skill 编辑沙盒的启动、恢复或复用使用 POST /api/core/ai/skill/runtime/init，与本接口的会话初始化用途不同。'
       ].join('\n\n'),
       tags: [DevApiTagsMap.chatHistory, DevApiTagsMap.skillDebug, SystemOpenApiTagMap.chatHistory],
-      requestParams: {
-        query: createChatTargetQueryDocumentSchema(InitChatQueryRawSchema)
-      },
+      parameters: createChatTargetQueryParameters(InitChatQueryRawSchema),
       responses: {
         200: {
           description: '成功返回聊天初始化信息',

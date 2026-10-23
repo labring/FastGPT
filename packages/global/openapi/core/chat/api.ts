@@ -357,38 +357,22 @@ export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(sh
 };
 
 /**
- * OpenAPI query parameters 只能平铺，zod-openapi 不支持直接注册对象 union。
- * 仅为文档投影各分支字段及必填组合；API 入参校验继续使用原始 union。
+ * 将整组会话 Query 注册为 form/explode 对象参数，保留与 Body 一致的 union 分支展示。
+ * query 仅是文档参数名，实际仍展开为 appId、skillId、chatId 等独立 Query 键；
+ * 运行时继续使用原始 Schema 校验，代码示例由公共生成器取第一个分支。
  */
-export const createChatTargetQueryDocumentSchema = <
-  T extends readonly z.ZodObject<Record<string, z.ZodType>>[]
->(
-  schema: z.ZodUnion<T>
-) => {
-  const branches = schema.options;
-  const shape: Record<string, z.ZodType> = {};
-  const isDisabled = (field: z.core.$ZodType): boolean =>
-    field instanceof z.ZodNever ||
-    ((field instanceof z.ZodOptional || field instanceof z.ZodCatch) && isDisabled(field.unwrap()));
-
-  for (const branch of branches) {
-    for (const [key, field] of Object.entries(branch.shape)) {
-      if (key in shape || isDisabled(field)) continue;
-      const requiredInAll = branches.every(
-        (option) => option.shape[key] && !option.shape[key].safeParse(undefined).success
-      );
-      shape[key] = requiredInAll ? field : field.optional();
+export const createChatTargetQueryParameters = (schema: z.ZodType) => [
+  schema.meta({
+    ...schema.meta(),
+    param: {
+      name: 'query',
+      in: 'query',
+      required: true,
+      style: 'form',
+      explode: true
     }
-  }
-  return z.object(shape).meta({
-    anyOf: branches.map((branch) => ({
-      title: branch.meta()?.title,
-      required: Object.entries(branch.shape)
-        .filter(([, field]) => !field.safeParse(undefined).success)
-        .map(([key]) => key)
-    }))
-  });
-};
+  })
+];
 
 /**
  * API route runtime schema helper.
