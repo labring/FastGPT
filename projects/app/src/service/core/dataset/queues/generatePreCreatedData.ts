@@ -20,6 +20,7 @@ import {
 } from '@fastgpt/service/core/dataset/training/service';
 import { getIndexTrainingUpdateInput } from './indexInput';
 import { checkTeamAiPointsAndLock } from './utils';
+import { isDatasetTrainingWindowOpen } from '../training/schedule';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -48,6 +49,8 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
  * 该队列与普通 vector/rebuild 队列隔离，避免一个 worker 根据 dataId 和状态猜测任务类型。
  */
 export async function generatePreCreatedData(): Promise<any> {
+  if (!isDatasetTrainingWindowOpen()) return;
+
   const max = global.systemEnv?.vectorMaxProcess || 10;
   logger.debug('Pre-created data queue size check', {
     queueSize: global.preCreatedQueueLen,
@@ -59,7 +62,7 @@ export async function generatePreCreatedData(): Promise<any> {
   global.preCreatedQueueLen++;
 
   try {
-    while (true) {
+    while (isDatasetTrainingWindowOpen()) {
       const start = Date.now();
       let claimed;
       try {

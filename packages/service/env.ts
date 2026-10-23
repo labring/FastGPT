@@ -461,6 +461,33 @@ export const serviceEnv = createEnv({
     QA_MAX_PROCESS: IntSchema.min(1).default(10).meta({
       description: '问答拆分最大并发数'
     }),
+    DATASET_TRAINING_WINDOW: z
+      .string()
+      .regex(
+        /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/,
+        'DATASET_TRAINING_WINDOW must use HH:mm-HH:mm'
+      )
+      .refine((value) => value.slice(0, 5) !== value.slice(6), {
+        message: 'DATASET_TRAINING_WINDOW start and end must differ'
+      })
+      .optional()
+      .meta({
+        description: '知识库训练每日执行窗口（HH:mm-HH:mm，结束时间不包含在窗口内）'
+      }),
+    DATASET_TRAINING_TIMEZONE: z
+      .string()
+      .refine((value) => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: value }).format();
+          return true;
+        } catch {
+          return false;
+        }
+      }, 'DATASET_TRAINING_TIMEZONE must be a valid IANA time zone')
+      .default('UTC')
+      .meta({
+        description: '知识库训练执行窗口使用的 IANA 时区'
+      }),
     VLM_MAX_PROCESS: IntSchema.min(1).default(10).meta({
       description: '图片理解模型最大处理并发数'
     }),

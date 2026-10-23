@@ -25,6 +25,7 @@ import {
 } from '@fastgpt/service/core/dataset/training/service';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { checkTeamAiPointsAndLock } from './utils';
+import { isDatasetTrainingWindowOpen } from '../training/schedule';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -44,6 +45,8 @@ type PopulateType = {
 
 /** 消费 QA 任务并在成功后创建索引数据；任务最外层管理心跳，业务失败保留重试。 */
 export async function generateQA(): Promise<any> {
+  if (!isDatasetTrainingWindowOpen()) return;
+
   const max = global.systemEnv?.qaMaxProcess || 10;
   logger.debug('QA queue size check', { queueSize: global.qaQueueLen, max });
 
@@ -51,7 +54,7 @@ export async function generateQA(): Promise<any> {
   global.qaQueueLen++;
 
   try {
-    while (true) {
+    while (isDatasetTrainingWindowOpen()) {
       const startTime = Date.now();
       // get training data
       let claimed;

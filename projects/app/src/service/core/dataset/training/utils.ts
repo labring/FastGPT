@@ -7,6 +7,7 @@ import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/typ
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createResilientChangeStream } from '@fastgpt/service/common/mongo/watch';
 import { datasetParseQueue } from '../queues/datasetParse';
+import { isDatasetTrainingWindowOpen } from './schedule';
 
 type DatasetTrainingChange = {
   operationType?: string;
@@ -42,6 +43,8 @@ export const createDatasetTrainingMongoWatch = () =>
   });
 
 export const startTrainingQueue = (fast?: boolean) => {
+  if (!isDatasetTrainingWindowOpen()) return;
+
   const max = global.systemEnv?.qaMaxProcess || 10;
 
   for (let i = 0; i < (fast ? max : 1); i++) {

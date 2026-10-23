@@ -41,6 +41,7 @@ import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/cont
 import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { checkTeamAiPointsAndLock } from './utils';
+import { isDatasetTrainingWindowOpen } from '../training/schedule';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -124,13 +125,15 @@ const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
 
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
+  if (!isDatasetTrainingWindowOpen()) return;
+
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
   logger.debug('Parse queue size check', { queueSize: global.datasetParseQueueLen, max });
   if (global.datasetParseQueueLen >= max) return;
   global.datasetParseQueueLen++;
 
   try {
-    while (true) {
+    while (isDatasetTrainingWindowOpen()) {
       const startTime = Date.now();
 
       let claimed;

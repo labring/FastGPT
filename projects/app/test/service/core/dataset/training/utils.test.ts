@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => {
     generateRebuildIndex: vi.fn(),
     generateRebuildSynonym: vi.fn(),
     generatePreCreatedData: vi.fn(),
-    datasetParseQueue: vi.fn()
+    datasetParseQueue: vi.fn(),
+    trainingWindowOpen: true
   };
 });
 
@@ -36,8 +37,14 @@ vi.mock('@/service/core/dataset/queues/generatePreCreatedData', () => ({
 vi.mock('@/service/core/dataset/queues/datasetParse', () => ({
   datasetParseQueue: mocks.datasetParseQueue
 }));
+vi.mock('@/service/core/dataset/training/schedule', () => ({
+  isDatasetTrainingWindowOpen: () => mocks.trainingWindowOpen
+}));
 
-import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
+import {
+  createDatasetTrainingMongoWatch,
+  startTrainingQueue
+} from '@/service/core/dataset/training/utils';
 
 const streamAt = (index: number) => mocks.streams[index] as FakeChangeStream;
 
@@ -45,6 +52,7 @@ describe('createDatasetTrainingMongoWatch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.streams.length = 0;
+    mocks.trainingWindowOpen = true;
   });
 
   it('按训练模式唤醒对应队列，非 insert 事件不触发', async () => {
@@ -105,5 +113,34 @@ describe('createDatasetTrainingMongoWatch', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
     vi.useRealTimers();
+  });
+});
+
+describe('startTrainingQueue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.trainingWindowOpen = true;
+  });
+
+  it('does not wake workers outside the configured training window', () => {
+    mocks.trainingWindowOpen = false;
+
+    startTrainingQueue();
+
+    expect(mocks.generateQA).not.toHaveBeenCalled();
+    expect(mocks.generateRebuildIndex).not.toHaveBeenCalled();
+    expect(mocks.generateRebuildSynonym).not.toHaveBeenCalled();
+    expect(mocks.generatePreCreatedData).not.toHaveBeenCalled();
+    expect(mocks.datasetParseQueue).not.toHaveBeenCalled();
+  });
+
+  it('wakes every worker while the training window is open', () => {
+    startTrainingQueue();
+
+    expect(mocks.generateQA).toHaveBeenCalledOnce();
+    expect(mocks.generateRebuildIndex).toHaveBeenCalledOnce();
+    expect(mocks.generateRebuildSynonym).toHaveBeenCalledOnce();
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
+    expect(mocks.datasetParseQueue).toHaveBeenCalledOnce();
   });
 });
