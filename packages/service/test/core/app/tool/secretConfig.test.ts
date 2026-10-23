@@ -15,7 +15,7 @@ describe('resolveToolInputValues', () => {
         { key: 'token', label: 'Token', inputType: 'secret' }
       ],
       resolveReference: (ref) =>
-        ({ count: '12', enabled: 'false', token: 'raw-token' })[ref[1] as string]
+        ({ count: '12', enabled: false, token: 'raw-token' })[ref[1] as string]
     });
 
     expect(result).toEqual({ count: 12, enabled: false, token: 'raw-token' });
