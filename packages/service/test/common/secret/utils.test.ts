@@ -137,6 +137,13 @@ describe('getSecretValue', () => {
     expect(result).toEqual({ 'X-Api-Key': 'my-api-key' });
   });
 
+  it('should resolve deprecated legacy secret objects and JSON strings', () => {
+    const legacyValue = { value: '', secret: encryptSecret('legacy-password') };
+
+    expect(resolveSecretValue({ value: legacyValue })).toBe('legacy-password');
+    expect(resolveSecretValue({ value: JSON.stringify(legacyValue) })).toBe('legacy-password');
+  });
+
   it('should resolve a plain value wrapper', () => {
     const result = getSecretValue({
       storeSecret: {
@@ -294,6 +301,13 @@ describe('anyValueDecrypt', () => {
     const input = { secret: encrypted };
 
     expect(anyValueDecrypt(input)).toBe('my-secret');
+  });
+
+  it('should decrypt deprecated legacy secret objects and JSON strings', () => {
+    const legacyValue = { value: '', secret: encryptSecret('legacy-password') };
+
+    expect(anyValueDecrypt(legacyValue)).toBe('legacy-password');
+    expect(anyValueDecrypt(JSON.stringify(legacyValue))).toBe('legacy-password');
   });
 
   it('should resolve a plain value object', () => {

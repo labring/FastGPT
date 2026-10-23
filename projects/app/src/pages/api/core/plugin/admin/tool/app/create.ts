@@ -32,6 +32,7 @@ export async function handler(
     avatar,
     intro,
     tags,
+    secretsVal,
     originCost,
     currentCost,
     systemKeyCost,
@@ -52,6 +53,7 @@ export async function handler(
   await MongoSystemTool.create({
     pluginId,
     status: status ?? PluginStatusEnum.Normal,
+    secretsVal,
     originCost,
     currentCost,
     systemKeyCost,

@@ -107,9 +107,11 @@ const CustomHeaderModeSelect = ({
   return (
     <Box className="nodrag" flexShrink={0}>
       <MyTooltip
-        label={t(
-          isReference ? 'workflow:click_to_change_reference' : 'workflow:click_to_change_value'
-        )}
+        label={
+          isReference
+            ? t('workflow:click_to_change_reference')
+            : t('workflow:click_to_change_value')
+        }
       >
         <HStack
           w={'4rem'}

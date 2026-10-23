@@ -1,5 +1,7 @@
 import { SecretRefValueSchema } from '../../../common/secret/type';
+import { normalizeLegacySecretValue } from '../../../common/secret/utils';
 import { NodeInputKeyEnum } from '../constants';
+import { FlowNodeInputTypeEnum } from '../node/constant';
 
 type RecordValue = Record<string, unknown>;
 
@@ -14,27 +16,30 @@ const isRecord = (value: unknown): value is RecordValue =>
 
 /** 将单个旧密钥值收敛为唯一的明文、密文或引用分支。 */
 export const migrateSecretValueToCurrent = (value: unknown): unknown => {
-  if (!isRecord(value)) return value;
+  const normalizedValue = normalizeLegacySecretValue(value);
+  if (!isRecord(normalizedValue)) return normalizedValue;
 
-  if ('ref' in value) {
-    // 引用必须在迁移边界校验，避免空引用进入 canonical workflow。
-    return SecretRefValueSchema.parse(value);
+  const reference = SecretRefValueSchema.safeParse(normalizedValue);
+  if (reference.success) return reference.data;
+
+  if (!('value' in normalizedValue) && !('secret' in normalizedValue)) return normalizedValue;
+
+  const keys = Object.keys(normalizedValue);
+  if (keys.some((key) => key !== 'value' && key !== 'secret')) return normalizedValue;
+  if (normalizedValue.value !== undefined && typeof normalizedValue.value !== 'string') {
+    return normalizedValue;
+  }
+  if (normalizedValue.secret !== undefined && typeof normalizedValue.secret !== 'string') {
+    return normalizedValue;
   }
 
-  if (!('value' in value) && !('secret' in value)) return value;
-
-  const keys = Object.keys(value);
-  if (keys.some((key) => key !== 'value' && key !== 'secret')) return value;
-  if (value.value !== undefined && typeof value.value !== 'string') return value;
-  if (value.secret !== undefined && typeof value.secret !== 'string') return value;
-
-  if (typeof value.value === 'string' && value.value.length > 0) {
-    return { value: value.value };
+  if (typeof normalizedValue.value === 'string' && normalizedValue.value.length > 0) {
+    return { value: normalizedValue.value };
   }
-  if (typeof value.secret === 'string') return { secret: value.secret };
-  if (typeof value.value === 'string') return { value: value.value };
+  if (typeof normalizedValue.secret === 'string') return { secret: normalizedValue.secret };
+  if (typeof normalizedValue.value === 'string') return { value: normalizedValue.value };
 
-  return value;
+  return normalizedValue;
 };
 
 const migrateSecretStoreToCurrent = (value: unknown): unknown => {
@@ -92,27 +97,8 @@ const migrateSelectedToolsSecrets = (value: unknown): unknown => {
   if (!Array.isArray(value)) return value;
 
   return value.map((tool) => {
-    if (!isRecord(tool)) return tool;
-
-    const migratedTool = {
-      ...tool,
-      ...(isRecord(tool.toolConfig)
-        ? { toolConfig: migrateNodeToolConfigSecrets(tool.toolConfig) }
-        : {})
-    };
-
-    if (!isRecord(tool.config)) return migratedTool;
-
-    const config = Object.fromEntries(
-      Object.entries(tool.config).map(([key, item]) => [
-        key,
-        key === NodeInputKeyEnum.systemInputConfig
-          ? migrateSystemInputConfigSecrets(item)
-          : migrateSecretValueToCurrent(item)
-      ])
-    );
-
-    return { ...migratedTool, config };
+    if (!isRecord(tool) || !isRecord(tool.toolConfig)) return tool;
+    return { ...tool, toolConfig: migrateNodeToolConfigSecrets(tool.toolConfig) };
   });
 };
 
@@ -122,9 +108,16 @@ const migrateInputSecrets = (value: unknown): unknown => {
   const input = { ...value };
   if (Array.isArray(input.inputList)) {
     input.inputList = input.inputList.map((item) => {
-      if (!isRecord(item) || !('value' in item)) return item;
+      if (!isRecord(item) || item.inputType !== 'secret' || !('value' in item)) return item;
       return { ...item, value: migrateSecretValueToCurrent(item.value) };
     });
+  }
+  if (
+    Array.isArray(input.renderTypeList) &&
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.password) &&
+    'value' in input
+  ) {
+    input.value = migrateSecretValueToCurrent(input.value);
   }
   if (input.key === NodeInputKeyEnum.headerSecret && 'value' in input) {
     input.value = migrateSecretStoreToCurrent(input.value);

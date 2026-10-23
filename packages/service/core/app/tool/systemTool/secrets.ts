@@ -4,7 +4,8 @@ import {
   getSecretValueField,
   hasSecretValueField,
   isSecretCipherValue,
-  isSecretValueLike
+  isSecretValueLike,
+  normalizeLegacySecretValue
 } from '@fastgpt/global/common/secret/utils';
 import { type InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import { decryptSecret, encryptSecret } from '../../../../common/secret/aes256gcm';
@@ -79,16 +80,23 @@ export const encryptSystemToolSecrets = ({
 }) => {
   if (secretsVal === null || secretsVal === undefined) return secretsVal;
 
-  const result: SecretsVal = { ...(existingSecretsVal ?? {}) };
+  const result: SecretsVal = Object.fromEntries(
+    Object.entries(existingSecretsVal ?? {}).map(([key, value]) => [
+      key,
+      secretKeys.has(key) ? normalizeLegacySecretValue(value) : value
+    ])
+  );
 
-  Object.entries(secretsVal).forEach(([key, value]) => {
+  Object.entries(secretsVal).forEach(([key, submittedValue]) => {
     if (!secretKeys.has(key)) {
-      result[key] = value;
+      result[key] = submittedValue;
       return;
     }
 
+    const value = normalizeLegacySecretValue(submittedValue);
+
     if (isMaskedValue(value)) {
-      const existingValue = existingSecretsVal?.[key];
+      const existingValue = result[key];
       if (isConfiguredValue(existingValue)) {
         result[key] = encryptValue(existingValue);
       } else {
@@ -119,12 +127,17 @@ export const maskSystemToolSecrets = ({
   if (!secretsVal) return secretsVal;
 
   return Object.fromEntries(
-    Object.entries(secretsVal).map(([key, value]) => [
-      key,
-      secretKeys.has(key) && isConfiguredValue(value) && !hasSecretValueField(value, 'ref')
-        ? SystemToolSecretMaskedValue
-        : value
-    ])
+    Object.entries(secretsVal).map(([key, value]) => {
+      const normalizedValue = secretKeys.has(key) ? normalizeLegacySecretValue(value) : value;
+      return [
+        key,
+        secretKeys.has(key) &&
+        isConfiguredValue(normalizedValue) &&
+        !hasSecretValueField(normalizedValue, 'ref')
+          ? SystemToolSecretMaskedValue
+          : normalizedValue
+      ];
+    })
   );
 };
 
@@ -135,7 +148,7 @@ export const decryptSystemToolSecrets = (secretsVal?: SecretsVal) => {
   return Object.fromEntries(
     Object.entries(secretsVal).flatMap(([key, value]) => {
       if (isMaskedValue(value)) return [];
-      return [[key, decryptValue(value)]];
+      return [[key, decryptValue(normalizeLegacySecretValue(value))]];
     })
   );
 };

@@ -39,6 +39,36 @@ describe('system tool secrets', () => {
     expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('api-key');
   });
 
+  it('recognizes, masks, preserves, and decrypts deprecated legacy values', () => {
+    const legacyValue = { value: '', secret: encryptSecret('legacy-api-key') };
+    const legacyJson = JSON.stringify(legacyValue);
+
+    expect(decryptSystemToolSecrets({ apiKey: legacyValue })).toEqual({ apiKey: 'legacy-api-key' });
+    expect(decryptSystemToolSecrets({ apiKey: legacyJson })).toEqual({ apiKey: 'legacy-api-key' });
+    expect(
+      maskSystemToolSecrets({
+        secretsVal: { apiKey: legacyValue },
+        secretKeys
+      })
+    ).toEqual({ apiKey: SystemToolSecretMaskedValue });
+    expect(
+      maskSystemToolSecrets({
+        secretsVal: { apiKey: legacyJson },
+        secretKeys
+      })
+    ).toEqual({ apiKey: SystemToolSecretMaskedValue });
+
+    for (const existingValue of [legacyValue, legacyJson]) {
+      expect(
+        encryptSystemToolSecrets({
+          secretsVal: { apiKey: SystemToolSecretMaskedValue },
+          existingSecretsVal: { apiKey: existingValue },
+          secretKeys
+        })
+      ).toEqual({ apiKey: { secret: legacyValue.secret } });
+    }
+  });
+
   it('encrypts a plain secret wrapper and clears an edited empty value', () => {
     const stored = encryptSystemToolSecrets({
       secretsVal: { apiKey: { value: 'new-api-key' } },

@@ -52,6 +52,32 @@ export const getSecretPlainValue = (value: unknown): string | undefined => {
   return typeof plainValue === 'string' ? plainValue : undefined;
 };
 
+/** @deprecated Remove after legacy `{ value: '', secret: string }` data has been migrated. */
+export const normalizeLegacySecretValue = <T>(value: T): T | { secret: string } => {
+  let candidate: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      candidate = JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  if (
+    hasSecretValueField(candidate, 'value') &&
+    hasSecretValueField(candidate, 'secret') &&
+    Object.keys(candidate).length === 2 &&
+    Object.prototype.hasOwnProperty.call(candidate, 'value') &&
+    Object.prototype.hasOwnProperty.call(candidate, 'secret') &&
+    candidate.value === '' &&
+    typeof candidate.secret === 'string'
+  ) {
+    return { secret: candidate.secret };
+  }
+
+  return value;
+};
+
 /** 提取密文值。 */
 export const getSecretCipherValue = (value: unknown): string | undefined => {
   const cipherValue = getSecretValueField(value, 'secret');

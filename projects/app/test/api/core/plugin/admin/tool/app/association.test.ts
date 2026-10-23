@@ -111,7 +111,7 @@ describe('system tool workflow association validation', () => {
     expect(mocks.findOneAndUpdateSystemTool).not.toHaveBeenCalled();
   });
 
-  it('does not persist compatibility secretsVal fields for workflow tools', async () => {
+  it('persists secretsVal fields for workflow tools', async () => {
     await expect(
       createHandler(
         createRequest({
@@ -121,7 +121,9 @@ describe('system tool workflow association validation', () => {
       )
     ).resolves.toEqual({});
 
-    expect(mocks.createSystemTool.mock.calls[0][0]).not.toHaveProperty('secretsVal');
+    expect(mocks.createSystemTool.mock.calls[0][0]).toHaveProperty('secretsVal', {
+      apiKey: 'plain-value'
+    });
 
     mocks.findOneSystemTool.mockResolvedValueOnce(updatePlugin);
     await expect(
@@ -133,6 +135,8 @@ describe('system tool workflow association validation', () => {
       )
     ).resolves.toEqual({});
 
-    expect(mocks.findOneAndUpdateSystemTool.mock.calls[0][1]).not.toHaveProperty('secretsVal');
+    expect(mocks.findOneAndUpdateSystemTool.mock.calls[0][1]).toHaveProperty('secretsVal', {
+      apiKey: 'plain-value'
+    });
   });
 });

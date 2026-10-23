@@ -4,6 +4,7 @@ import {
   migrateWorkflowSecretValues
 } from '@fastgpt/global/core/workflow/migration/secret';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('migrateSecretValueToCurrent', () => {
   it('uses non-empty value before legacy secret and keeps canonical branches', () => {
@@ -20,8 +21,11 @@ describe('migrateSecretValueToCurrent', () => {
     });
   });
 
-  it('rejects malformed references and leaves unrelated values alone', () => {
-    expect(() => migrateSecretValueToCurrent({ ref: [] })).toThrow();
+  it('leaves ordinary ref-shaped JSON and unrelated values alone', () => {
+    expect(migrateSecretValueToCurrent({ ref: [] })).toEqual({ ref: [] });
+    expect(migrateSecretValueToCurrent({ ref: 'ordinary-data' })).toEqual({
+      ref: 'ordinary-data'
+    });
     expect(migrateSecretValueToCurrent('plain')).toBe('plain');
     expect(migrateSecretValueToCurrent({ other: 'value' })).toEqual({ other: 'value' });
     expect(migrateSecretValueToCurrent({ value: 1 })).toEqual({ value: 1 });
@@ -35,7 +39,20 @@ describe('migrateWorkflowSecretValues', () => {
         {
           inputs: [
             {
-              inputList: [{ key: 'token', value: { value: 'plain', secret: 'cipher' } }]
+              inputList: [
+                { key: 'token', inputType: 'secret', value: { value: 'plain', secret: 'cipher' } },
+                { key: 'text', inputType: 'input', value: { value: '', secret: 'keep' } }
+              ]
+            },
+            {
+              key: 'password',
+              renderTypeList: [FlowNodeInputTypeEnum.password],
+              value: { value: '', secret: 'cipher' }
+            },
+            {
+              key: 'text',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: { value: '', secret: 'keep' }
             },
             {
               key: NodeInputKeyEnum.headerSecret,
@@ -44,8 +61,12 @@ describe('migrateWorkflowSecretValues', () => {
             {
               key: NodeInputKeyEnum.systemInputConfig,
               inputList: [
-                { key: 'token', value: { value: 'default', secret: 'ignored' } },
-                { key: 'refToken', value: { ref: ['node-1', 'token'] } }
+                {
+                  key: 'token',
+                  inputType: 'secret',
+                  value: { value: 'default', secret: 'ignored' }
+                },
+                { key: 'refToken', inputType: 'secret', value: { ref: ['node-1', 'token'] } }
               ],
               value: {
                 type: 'manual',
@@ -104,13 +125,32 @@ describe('migrateWorkflowSecretValues', () => {
     const result = migrateWorkflowSecretValues(input);
     expect(result.nodes[0]).toEqual({
       inputs: [
-        { inputList: [{ key: 'token', value: { value: 'plain' } }] },
+        {
+          inputList: [
+            { key: 'token', inputType: 'secret', value: { value: 'plain' } },
+            { key: 'text', inputType: 'input', value: { value: '', secret: 'keep' } }
+          ]
+        },
+        {
+          key: 'password',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { secret: 'cipher' }
+        },
+        {
+          key: 'text',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: { value: '', secret: 'keep' }
+        },
         { key: NodeInputKeyEnum.headerSecret, value: { Authorization: { secret: 'cipher' } } },
         {
           key: NodeInputKeyEnum.systemInputConfig,
           inputList: [
-            { key: 'token', value: { value: 'default' } },
-            { key: 'refToken', value: { ref: ['node-1', 'token'] } }
+            { key: 'token', inputType: 'secret', value: { value: 'default' } },
+            {
+              key: 'refToken',
+              inputType: 'secret',
+              value: { ref: ['node-1', 'token'] }
+            }
           ],
           value: {
             type: 'manual',
@@ -131,8 +171,11 @@ describe('migrateWorkflowSecretValues', () => {
             {
               id: 'tool-1',
               config: {
-                apiKey: { value: 'plain' },
-                system_input_config: { type: 'system', value: { token: { secret: 'cipher' } } },
+                apiKey: { value: 'plain', secret: 'cipher' },
+                system_input_config: {
+                  type: 'system',
+                  value: { token: { value: '', secret: 'cipher' } }
+                },
                 ordinary: { nested: true }
               },
               toolConfig: {

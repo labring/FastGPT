@@ -4,6 +4,7 @@ import {
   getSecretReferenceValue,
   getSecretValueField,
   hasSecretValueField,
+  normalizeLegacySecretValue,
   type SecretValueReferenceResolver
 } from '@fastgpt/global/common/secret/utils';
 import type { SecretValueType, StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -17,10 +18,11 @@ export const resolveSecretValue = ({
   value: unknown;
   resolveReference?: SecretValueReferenceResolver;
 }) => {
-  if (typeof value !== 'object' || value === null) return value;
+  const normalizedValue = normalizeLegacySecretValue(value);
+  if (typeof normalizedValue !== 'object' || normalizedValue === null) return normalizedValue;
 
-  if (hasSecretValueField(value, 'ref')) {
-    const ref = getSecretReferenceValue(value);
+  if (hasSecretValueField(normalizedValue, 'ref')) {
+    const ref = getSecretReferenceValue(normalizedValue);
     if (!ref) throw new Error('Invalid secret reference');
     if (!resolveReference) {
       throw new Error('Secret reference requires workflow context');
@@ -32,30 +34,31 @@ export const resolveSecretValue = ({
     return resolvedValue;
   }
 
-  if (hasSecretValueField(value, 'value')) {
-    return getSecretValueField(value, 'value');
+  if (hasSecretValueField(normalizedValue, 'value')) {
+    return getSecretValueField(normalizedValue, 'value');
   }
 
-  if (hasSecretValueField(value, 'secret')) {
-    const secret = getSecretValueField(value, 'secret');
+  if (hasSecretValueField(normalizedValue, 'secret')) {
+    const secret = getSecretValueField(normalizedValue, 'secret');
     return decryptSecret(typeof secret === 'string' ? secret : undefined);
   }
 
-  return value;
+  return normalizedValue;
 };
 
 export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
-  if (typeof value !== 'object' || value === null) return value;
-  if (hasSecretValueField(value, 'ref')) return value;
-  if (hasSecretValueField(value, 'value')) {
-    const plainValue = getSecretPlainValue(value);
+  const normalizedValue = normalizeLegacySecretValue(value);
+  if (typeof normalizedValue !== 'object' || normalizedValue === null) return normalizedValue;
+  if (hasSecretValueField(normalizedValue, 'ref')) return normalizedValue;
+  if (hasSecretValueField(normalizedValue, 'value')) {
+    const plainValue = getSecretPlainValue(normalizedValue);
     if (plainValue === undefined) return value;
     return {
       secret: encryptSecret(plainValue)
     };
   }
 
-  return value;
+  return normalizedValue;
 };
 
 export const storeSecretValue = (storeSecret: StoreSecretValueType = {}): StoreSecretValueType => {
@@ -104,11 +107,12 @@ export const getSecretValue = ({
 };
 
 export const anyValueDecrypt = (value: any) => {
+  const normalizedValue = normalizeLegacySecretValue(value);
   const val = (() => {
     try {
-      return JSON.parse(value);
+      return JSON.parse(normalizedValue);
     } catch {
-      return value;
+      return normalizedValue;
     }
   })();
 
