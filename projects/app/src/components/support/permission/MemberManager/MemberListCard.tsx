@@ -15,13 +15,13 @@ const MemberListCard = ({ tagStyle, ...props }: MemberListCardProps) => {
   const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
 
-  const { collaboratorList, isFetchingCollaborator } = useContextSelector(
+  const { collaboratorList, isLoadingCollaborator } = useContextSelector(
     CollaboratorContext,
     (v) => v
   );
 
   return (
-    <MyBox isLoading={isFetchingCollaborator} userSelect={'none'} {...props}>
+    <MyBox isLoading={isLoadingCollaborator} userSelect={'none'} {...props}>
       {collaboratorList?.length === 0 ? (
         <Box p={3} color="myGray.600" fontSize={'xs'} textAlign={'center'}>
           {t('common:permission.Not collaborator')}

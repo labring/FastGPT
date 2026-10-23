@@ -442,7 +442,7 @@ export const DatasetListItemSchema = z.object({
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    description: '被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回',
     example: 0
   }),
   fileCount: IntSchema.optional().meta({

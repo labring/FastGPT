@@ -1,5 +1,6 @@
 import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import type { ClientSession } from '../../../common/mongo';
+import { normalizePagination } from '../../../common/api/pagination';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
@@ -53,21 +54,24 @@ export const getDatasetSynonymDetail = async ({
   };
 };
 
-/** 分页搜索当前生效的 mappings。 */
+/** 分页搜索当前生效的 mappings；offset（包含 0）优先，否则按页码定位，默认第一页。 */
 export const searchDatasetSynonymMappings = async ({
   teamId,
   datasetId,
   search,
   pageNum,
-  pageSize
+  pageSize,
+  offset
 }: {
   teamId: string;
   datasetId: string;
   search?: string;
-  pageNum: number;
+  pageNum?: number;
   pageSize: number;
+  offset?: number;
 }) => {
   assertDatasetSynonymEnabled();
+  const { offset: skip } = normalizePagination({ pageSize, pageNum, offset });
 
   const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }).lean();
   if (!config?.enabled) return { total: 0, list: [] };
@@ -82,7 +86,7 @@ export const searchDatasetSynonymMappings = async ({
     MongoDatasetSynonymMapping.countDocuments(match),
     MongoDatasetSynonymMapping.find(match)
       .sort({ normalizedStandardizedTerm: 1 })
-      .skip((pageNum - 1) * pageSize)
+      .skip(skip)
       .limit(pageSize)
       .lean()
   ]);

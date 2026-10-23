@@ -102,7 +102,7 @@ const SelectAppModal = ({
     isLoading: loadingApps
   } = useVirtualList(getMyAppsV2, {
     params: { searchKey, parentId },
-    pageSize: 50,
+    pageSize: 20,
     itemHeight: 40,
     EmptyTip: <EmptyTip text={t('common:folder.empty')} />,
     refreshDeps: [searchKey, parentId]

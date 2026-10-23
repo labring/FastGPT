@@ -55,8 +55,8 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     pageSize,
     Pagination
   } = usePagination(getOperationLogs, {
-    defaultPageSize: 100,
-    pageSizeOptions: [50, 100, 200],
+    defaultPageSize: 20,
+    pageSizeOptions: [20, 50, 100, 200],
     pageSizeCacheKey: 'account-team-audit',
     refreshDeps: [searchParams],
     params: searchParams,

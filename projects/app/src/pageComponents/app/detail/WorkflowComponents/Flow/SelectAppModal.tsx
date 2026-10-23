@@ -42,7 +42,7 @@ const SelectAppModal = ({
       parentId,
       type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
     },
-    pageSize: 50,
+    pageSize: 20,
     itemHeight: 40,
     EmptyTip: <EmptyTip text={t('common:folder.empty')} />,
     refreshDeps: [parentId, filterAppIdsKey]

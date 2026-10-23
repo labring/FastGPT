@@ -1,9 +1,5 @@
 import z from 'zod';
-import {
-  PaginationPageSizeLimit,
-  PaginationPageSizeSchema,
-  PaginationResponseSchema
-} from '../../../../api';
+import { PaginationPageSizeSchema, PaginationResponseSchema } from '../../../../api';
 import { IntSchema, NumSchema, queryArrayParam } from '../../../../../common/zod';
 import {
   ChannelConfigSchema,
@@ -151,9 +147,7 @@ export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema
 // ═══ GET /api/core/ai/model/channel/list ═══
 export const ListChannelsQuerySchema = z.object({
   pageNum: NumSchema.optional().meta({ description: '页码，从 1 开始' }),
-  pageSize: PaginationPageSizeSchema.optional().meta({
-    description: `每页条数，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理；不传返回全量`
-  }),
+  pageSize: PaginationPageSizeSchema.optional(),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
   channelType: ChannelTypeSchema.optional().meta({
     description: 'system=系统渠道（仅 root）；team=当前登录成员本人的私有渠道'
