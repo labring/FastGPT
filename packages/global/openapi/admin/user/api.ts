@@ -8,7 +8,9 @@ export const UserItemSchema = z.object({
   username: z.string().meta({ description: '用户名' }),
   contact: z.string().nullish().meta({ description: '联系方式' }),
   avatar: z.string().optional().meta({ description: '用户头像' }),
-  status: z.enum(UserStatusEnum).meta({ description: '用户状态' }),
+  status: z.enum(UserStatusEnum).meta({
+    description: '用户实际状态；注销仅为管理端按用户名推断的虚拟状态，不改变此字段'
+  }),
   createTime: z.date().meta({ description: '创建时间' }),
   isSsoUser: z
     .boolean()
@@ -20,9 +22,13 @@ export type UserItemType = z.infer<typeof UserItemSchema>;
  * API: 获取用户列表
  * Route: POST /proApi/admin/user/getUsers
  * Method: POST
- * Description: 分页获取用户列表，支持按用户名搜索
+ * Description: 分页获取用户列表，支持按用户名搜索与活跃、禁用、注销状态过滤
  * Tags: ['Admin', 'Users', 'Read']
  * ============================================================================ */
+
+// cancelled 只用于管理端筛选与展示，不能写入 users.status。
+export const AdminUserStatusFilterEnum = z.enum({ ...UserStatusEnum, cancelled: 'cancelled' });
+export type AdminUserStatusFilterType = z.infer<typeof AdminUserStatusFilterEnum>;
 
 export const GetUsersBodySchema = PaginationSchema.extend({
   username: z
@@ -30,7 +36,15 @@ export const GetUsersBodySchema = PaginationSchema.extend({
     .trim()
     .max(100)
     .optional()
-    .meta({ description: '搜索用户名（支持模糊匹配）' })
+    .meta({ description: '搜索用户名（支持模糊匹配）' }),
+  statuses: z
+    .array(AdminUserStatusFilterEnum)
+    .optional()
+    .meta({
+      description:
+        '状态多选过滤：active、forbidden 按实际 status 匹配，可包含注销账号；cancelled 仅按当前或历史匿名用户名格式推断注销。不传或空数组表示不限制状态；管理端默认只查 active',
+      example: ['cancelled']
+    })
 });
 export type GetUsersBodyType = z.infer<typeof GetUsersBodySchema>;
 export const GetUsersResponseSchema = PaginationResponseSchema(UserItemSchema);
