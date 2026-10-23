@@ -499,6 +499,102 @@ describe('update dataset', () => {
     }
   );
 
+  it('rebases nested Dataset folder paths when an independent folder moves to root', async () => {
+    const { owner } = await getFakeUsers(1);
+    const rootFolder = await MongoDataset.create({
+      name: 'root-folder',
+      type: DatasetTypeEnum.folder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const movingFolder = await MongoDataset.create({
+      name: 'moving-folder',
+      type: DatasetTypeEnum.folder,
+      parentId: rootFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      inheritPermission: false,
+      ancestorIds: [rootFolder._id]
+    });
+    const childFolder = await MongoDataset.create({
+      name: 'child-folder',
+      type: DatasetTypeEnum.folder,
+      parentId: movingFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      ancestorIds: [rootFolder._id, movingFolder._id]
+    });
+    const leaf = await MongoDataset.create({
+      name: 'leaf-dataset',
+      type: DatasetTypeEnum.dataset,
+      parentId: childFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    const response = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(movingFolder._id), parentId: null }
+    });
+    expect(response.error).toBeUndefined();
+    expect(await MongoDataset.findById(movingFolder._id).lean()).toMatchObject({
+      parentId: null,
+      ancestorIds: []
+    });
+    const updatedChildFolder = await MongoDataset.findById(childFolder._id).lean();
+    expect(String(updatedChildFolder?.parentId)).toBe(String(movingFolder._id));
+    expect(updatedChildFolder?.ancestorIds?.map(String)).toEqual([String(movingFolder._id)]);
+    expect(await MongoDataset.findById(leaf._id).lean()).not.toHaveProperty('ancestorIds');
+  });
+
+  it('rebases inherited Dataset folder paths when a folder moves under another tree', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const createFolder = (name: string) =>
+      createDatasetWithOwnerSnapshot({
+        teamId,
+        tmbId: String(owner.tmbId),
+        name,
+        type: DatasetTypeEnum.folder
+      });
+    const targetRoot = await createFolder('target-root');
+    const targetParent = await createFolder('target-parent');
+    await MongoDataset.updateOne(
+      { _id: targetParent._id },
+      { $set: { parentId: targetRoot._id, ancestorIds: [targetRoot._id] } }
+    );
+    const sourceRoot = await createFolder('source-root');
+    const movingFolder = await createFolder('moving-folder');
+    await MongoDataset.updateOne(
+      { _id: movingFolder._id },
+      { $set: { parentId: sourceRoot._id, ancestorIds: [sourceRoot._id] } }
+    );
+    const descendant = await createFolder('descendant-folder');
+    await MongoDataset.updateOne(
+      { _id: descendant._id },
+      { $set: { parentId: movingFolder._id, ancestorIds: [sourceRoot._id, movingFolder._id] } }
+    );
+
+    const response = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(movingFolder._id), parentId: String(targetParent._id) }
+    });
+    expect(response.error).toBeUndefined();
+
+    const moved = await MongoDataset.findById(movingFolder._id).lean();
+    const movedDescendant = await MongoDataset.findById(descendant._id).lean();
+    expect(moved?.ancestorIds?.map(String)).toEqual([
+      String(targetRoot._id),
+      String(targetParent._id)
+    ]);
+    expect(movedDescendant?.ancestorIds?.map(String)).toEqual([
+      String(targetRoot._id),
+      String(targetParent._id),
+      String(movingFolder._id)
+    ]);
+    expect(String(movedDescendant?.parentId)).toBe(String(movingFolder._id));
+  });
+
   it('does not re-materialize collection permissions when an independent dataset is moved', async () => {
     const { owner, members } = await getFakeUsers(1);
     const member = members[0];

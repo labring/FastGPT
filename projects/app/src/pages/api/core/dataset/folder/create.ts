@@ -18,12 +18,13 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import {
   CreateDatasetFolderBodySchema,
   type CreateDatasetFolderBody
 } from '@fastgpt/global/openapi/core/dataset/api';
 
-async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
+async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<void> {
   const { parentId, name, intro, inheritPermission } = parseApiInput({
     req,
     bodySchema: CreateDatasetFolderBodySchema
@@ -49,10 +50,21 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
   await checkCreateFolderDepth({ parentId, teamId, model: MongoDataset });
 
   await mongoSessionRun(async (session) => {
+    // parentId 是权威来源，兼容尚未完成回填的历史目录。
+    const ancestorIds = await getFolderAncestorIdsFromParentId({
+      parentId: parentId ? String(parentId) : null,
+      findFolder: (id) =>
+        MongoDataset.findOne({ _id: id, teamId, type: DatasetTypeEnum.folder })
+          .select('_id parentId')
+          .session(session)
+          .lean()
+    });
+
     const [dataset] = await MongoDataset.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ancestorIds,
           avatar: FolderImgUrl,
           name,
           intro,
@@ -83,7 +95,5 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
       }
     });
   })();
-
-  return {};
 }
 export default NextAPI(handler);

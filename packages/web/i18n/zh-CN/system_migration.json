@@ -123,5 +123,11 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "为历史 Agent 沙箱实例回填 teamId：从 App/Skill 源解析团队归属。源已删除的孤儿记录只跳过并计数；源存在但缺少 teamId 的记录进入失败明细，修复后可重试。",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱团队归属",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校验沙箱团队归属回填结果",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已扫描 {{scannedCount}} 个沙箱实例，回填团队归属 {{backfilledCount}} 个，跳过孤儿记录 {{orphanCount}} 个。"
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已扫描 {{scannedCount}} 个沙箱实例，回填团队归属 {{backfilledCount}} 个，跳过孤儿记录 {{orphanCount}} 个。",
+  "migrations.20261022_backfill_folder_ancestor_ids.name": "回填目录祖先路径",
+  "migrations.20261022_backfill_folder_ancestor_ids.description": "以 parentId 重建 App、工具和知识库文件夹路径，并清理非文件夹上的残留字段。无法安全迁移的记录会列出，修复后可重试。",
+  "migrations.20261022_backfill_folder_ancestor_ids.result": "已扫描 {{scannedCount}} 条目录和资源记录，未解决异常 {{failedCount}} 条。",
+  "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 与工具文件夹路径",
+  "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知识库文件夹路径",
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径"
 }

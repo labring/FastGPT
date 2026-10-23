@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { ParentIdSchema } from '../../../common/parentFolder/type';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../../common/parentFolder/type';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
@@ -291,6 +291,9 @@ export const DatasetPathItemSchema = z.object({
   parentName: z.string().meta({
     example: '产品文档',
     description: '节点名称'
+  }),
+  folderAccessMode: FolderAccessModeSchema.optional().meta({
+    description: '当前目录权限模式；navigate 表示仅可通过可读后代浏览'
   })
 });
 export const GetDatasetPathsResponseSchema = z.array(DatasetPathItemSchema);

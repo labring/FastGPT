@@ -80,9 +80,10 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     });
   };
 
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer
-    : userInfo?.team.permission.hasSkillCreatePer;
+  // 进入目录后只认目录自身的写权限，不能把根目录的团队创建权限继承进来。
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer)
+    : Boolean(userInfo?.team.permission.hasSkillCreatePer);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

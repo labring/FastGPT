@@ -99,8 +99,8 @@ const List = () => {
     onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
 
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer && folderDetail.type !== AppTypeEnum.httpPlugin)
     : userInfo?.team.permission.hasAppCreatePer;
   const hasActiveFilter = hasAppListActiveFilter({
     searchKey,
@@ -214,6 +214,7 @@ const List = () => {
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
+    const isNavigableItem = app.folderAccessMode === 'navigate';
     const isSelected = selectedAppIds.includes(app._id);
     const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
 
@@ -228,7 +229,8 @@ const List = () => {
         canSelect={canBatchOperate}
         dragProps={getBoxProps({
           dataId: app._id,
-          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder,
+          isDisabled: isNavigableItem
         })}
         onClick={() => {
           if (isBatchMode) {
@@ -294,13 +296,22 @@ const List = () => {
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <MyTooltip label={app.intro || t('common:no_intro')} showOnlyWhenOverflow>
+          <MyTooltip
+            label={isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
+            showOnlyWhenOverflow
+          >
             <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-              {app.intro || t('common:no_intro')}
+              {isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
             </Box>
           </MyTooltip>
         </Box>
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+        <HStack
+          h={'24px'}
+          fontSize={'mini'}
+          color={'myGray.500'}
+          w="full"
+          display={isNavigableItem ? 'none' : 'flex'}
+        >
           <HStack flex={'1 0 0'}>
             <UserBox
               sourceMember={app.sourceMember}
@@ -529,7 +540,11 @@ const List = () => {
             alignItems={'stretch'}
           >
             {!isBatchMode &&
-              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+              (hasCreatePer ? (
+                <ListCreateButton appType={appType} />
+              ) : !parentId ? (
+                <ForbiddenCreateButton />
+              ) : null)}
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
         )}

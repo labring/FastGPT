@@ -137,6 +137,8 @@ const CollectionCard = () => {
 
         return {
           ...collection,
+          // 导航目录仅用于通往可读后代，没有真实权限，行内只展示名称
+          isNavigableFolder: collection.folderAccessMode === 'navigate',
           icon,
           canOpenTrainingStates: canOpenCollectionTrainingStates(collection),
           statusText,
@@ -144,6 +146,11 @@ const CollectionCard = () => {
         };
       }),
     [collections]
+  );
+
+  const selectableCollections = useMemo(
+    () => formatCollections.filter((collection) => !collection.isNavigableFolder),
+    [formatCollections]
   );
 
   const {
@@ -156,7 +163,8 @@ const CollectionCard = () => {
     isSelecteAll,
     selectAllTrigger
   } = useTableMultipleSelect({
-    list: formatCollections,
+    // 导航目录不参与多选，全选也不应包含它们
+    list: selectableCollections,
     getItemId: (e) => e._id
   });
 
@@ -293,6 +301,13 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
+  // 批量标签操作看所选 Collection 自身的写权限，不依赖当前 Dataset 或父目录权限。
+  const writableSelectedCollections = useMemo(
+    () => selectedItems.filter((item) => item.permission.hasWritePer),
+    [selectedItems]
+  );
+  const hasFilteredUnWritableItems = writableSelectedCollections.length < selectedItems.length;
+
   // 删除是 owner 专属操作：批量删除仅作用于选中项中的 owner 项，其余项被过滤并提示。
   const ownedSelectedItems = useMemo(
     () => selectedItems.filter((item) => item.permission.isOwner),
@@ -379,6 +394,11 @@ const CollectionCard = () => {
                         {t('dataset:collection.filtered_no_delete_permission_tip')}
                       </Box>
                     )}
+                    {hasFilteredUnWritableItems && (
+                      <Box color={'myGray.500'} userSelect={'none'} fontSize={'sm'}>
+                        {t('common:read_only_no_batch_permission')}
+                      </Box>
+                    )}
                     {canBatchDownloadDatasetCollections(datasetDetail.type) && (
                       <Button
                         variant={'whiteBase'}
@@ -390,7 +410,7 @@ const CollectionCard = () => {
                         {t('dataset:batch_download')}
                       </Button>
                     )}
-                    {datasetDetail.permission.hasWritePer &&
+                    {writableSelectedCollections.length > 0 &&
                       datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
                       feConfigs?.isPlus && (
                         <Button variant={'whiteBase'} onClick={() => setIsBatchTagModalOpen(true)}>
@@ -467,12 +487,20 @@ const CollectionCard = () => {
                 <Tr
                   key={collection._id}
                   _hover={{ bg: 'myGray.50' }}
+                  sx={
+                    collection.isNavigableFolder
+                      ? { '&:hover > td': { backgroundColor: 'myGray.50' } }
+                      : undefined
+                  }
                   {...getBoxProps({
                     dataId: collection._id,
-                    isFolder: collection.type === DatasetCollectionTypeEnum.folder
+                    isFolder: collection.type === DatasetCollectionTypeEnum.folder,
+                    isDisabled: collection.isNavigableFolder
                   })}
                   draggable={false}
                   {...getRowSelectionProps(collection, {
+                    // 导航目录不能被多选切换，点击始终进入目录
+                    forceClick: collection.isNavigableFolder,
                     onClick: () => {
                       if (collection.type === DatasetCollectionTypeEnum.folder) {
                         router.push({
@@ -493,13 +521,26 @@ const CollectionCard = () => {
                     }
                   })}
                 >
-                  <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
+                  <Td
+                    minW={'150px'}
+                    maxW={['200px', '300px']}
+                    draggable={!collection.isNavigableFolder}
+                    py={2}
+                  >
                     <HStack minW={0}>
                       <HStack onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          isChecked={isSelected(collection)}
-                          onChange={() => toggleSelect(collection)}
-                        />
+                        {collection.isNavigableFolder ? (
+                          <MyTooltip label={t('common:no_operation_permission')}>
+                            <Box display="inline-flex" cursor="not-allowed">
+                              <Checkbox isChecked={false} isDisabled />
+                            </Box>
+                          </MyTooltip>
+                        ) : (
+                          <Checkbox
+                            isChecked={isSelected(collection)}
+                            onChange={() => toggleSelect(collection)}
+                          />
+                        )}
                       </HStack>
                       <Flex flexDirection={'column'} gap={'6px'} minW={0} flex={1}>
                         <Flex alignItems={'center'} minW={0}>
@@ -528,17 +569,22 @@ const CollectionCard = () => {
                     </HStack>
                   </Td>
                   <Td py={2}>
-                    {collection.trainingType
-                      ? t(
-                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
-                            '-') as any
-                        )
-                      : '-'}
+                    {!collection.isNavigableFolder &&
+                      (collection.trainingType
+                        ? t(
+                            (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                              '-') as any
+                          )
+                        : '-')}
                   </Td>
-                  <Td py={2}>{collection.dataAmount || '-'}</Td>
+                  <Td py={2}>{!collection.isNavigableFolder && (collection.dataAmount || '-')}</Td>
                   <Td fontSize={'xs'} py={2} color={'myGray.500'}>
-                    <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                    <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
+                    <Box visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                      {formatTime2YMDHM(collection.createTime)}
+                    </Box>
+                    <Box visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}>
+                      {formatTime2YMDHM(collection.updateTime)}
+                    </Box>
                   </Td>
                   <Td py={2}>
                     <MyTooltip
@@ -547,6 +593,7 @@ const CollectionCard = () => {
                       }
                     >
                       <MyTag
+                        visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
                         showDot
                         colorSchema={collection.statusColorSchema}
                         type={'fill'}
@@ -573,6 +620,7 @@ const CollectionCard = () => {
                   </Td>
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
+                      visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
                       isChecked={!collection.forbid}
                       isDisabled={!collection.permission.hasWritePer}
                       size={'sm'}
@@ -585,7 +633,7 @@ const CollectionCard = () => {
                     />
                   </Td>
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
-                    {collection.permission.hasWritePer && (
+                    {collection.permission.hasWritePer && !collection.isNavigableFolder && (
                       <MyMenu
                         strategy="fixed"
                         placement="bottom-end"
@@ -759,7 +807,7 @@ const CollectionCard = () => {
 
         {isBatchTagModalOpen && (
           <CollectionTagBatchModal
-            collections={selectedItems}
+            collections={writableSelectedCollections}
             onClose={() => setIsBatchTagModalOpen(false)}
             onSuccess={() => {
               getData(pageNum);

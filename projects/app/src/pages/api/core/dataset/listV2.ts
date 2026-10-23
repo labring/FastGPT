@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -17,9 +17,7 @@ import {
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { Types } from '@fastgpt/service/common/mongo';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
@@ -36,66 +34,13 @@ import {
 } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-
-/** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
-const maxSubtreeDepth = 20;
-/** 层序遍历累计访问的文件夹数上限，用于约束搜索谓词里 `$in` 数组的长度。 */
-const maxSubtreeNodes = 20000;
-const subtreeLogger = getLogger(LogCategories.MODULE.DATASET);
-
-/**
- * 收集 datasetId 子树内全部**文件夹** ID（不含自身）。
- *
- * 一次性把团队下全部知识库文件夹读进内存（只投影 `_id parentId`），按 parentId 分桶后层序下行，
- * 因此恒定 1 次查询、延迟不随子树规模变化；代价是无论搜在哪都要扫全量文件夹。
- * 与 findDatasetAndAllChildren 的区别：后者是逐节点串行递归（每节点一次查询、不区分文件夹与知识库），
- * 服务删除这类低 QPS 场景没问题；本函数服务搜索范围这类交互热路径。
- * 通用遍历见 global/common/parentFolder/subtree.ts。
- *
- * 触达上限时返回已收集的部分（调用方须接受搜索范围可能不完整）。
- */
-const findSubtreeDatasetFolderIds = async ({
-  teamId,
-  datasetId
-}: {
-  teamId: string;
-  datasetId: string;
-}): Promise<string[]> => {
-  const folders = await MongoDataset.find(
-    {
-      teamId: new Types.ObjectId(teamId),
-      type: DatasetTypeEnum.folder,
-      deleteTime: null
-    },
-    '_id parentId',
-    { ...readFromSecondary }
-  ).lean();
-
-  // 按 parentId 分桶。根级文件夹（parentId 为空）不会成为「谁的子级」的查询键，跳过。
-  const childrenByParent = new Map<string, string[]>();
-  for (const folder of folders) {
-    const parentKey = folder.parentId ? String(folder.parentId) : '';
-    if (!parentKey) continue;
-    const children = childrenByParent.get(parentKey);
-    if (children) children.push(String(folder._id));
-    else childrenByParent.set(parentKey, [String(folder._id)]);
-  }
-
-  const { ids, truncated } = await getDescendantFolderIds({
-    rootIds: [datasetId],
-    maxDepth: maxSubtreeDepth,
-    maxNodes: maxSubtreeNodes,
-    findChildFolders: async (folderIds) => folderIds.flatMap((id) => childrenByParent.get(id) ?? [])
-  });
-
-  if (truncated) {
-    subtreeLogger.warn(
-      `[findSubtreeDatasetFolderIds] traversal truncated, search scope may miss deeper folders: datasetId=${datasetId} collected=${ids.length}`
-    );
-  }
-
-  return ids;
-};
+import { getVisibleChildren } from '@fastgpt/global/common/parentFolder/visibleChildren';
+import {
+  getDatasetFolderListScope,
+  hasReadableDatasetFolderChild
+} from '@/service/core/dataset/visibleList';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
 /**
  * 分页读取可见知识库，仅为当前页按需计算文件数和应用引用数。
@@ -119,20 +64,18 @@ async function handler(
     req,
     bodySchema: GetDatasetListV2BodySchema
   }).body;
-  const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
-    authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
-    ...(parentId
-      ? [
-          authDataset({
-            req,
-            authToken: true,
-            authApiKey: true,
-            per: ReadPermissionVal,
-            datasetId: parentId
-          })
-        ]
-      : [])
-  ]);
+  const currentFolderId = normalizeParentId(parentId);
+
+  const {
+    tmbId,
+    teamId,
+    permission: teamPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
     return GetDatasetListV2ResponseSchema.parse({ list: [], total: 0 });
@@ -159,39 +102,70 @@ async function handler(
     return { readableResourceIds, groupIds, orgIds };
   })();
 
-  // 搜索范围限定在当前路径及其子树，先枚举子树内的文件夹 ID（根目录搜索无需枚举）。
-  const subtreeFolderIds =
-    searchKey && parentId ? await findSubtreeDatasetFolderIds({ teamId, datasetId: parentId }) : [];
-
-  const findDatasetQuery = (() => {
-    const searchMatch = searchKey
-      ? {
-          $or: [
-            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
-            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
-          ]
-        }
-      : {};
-    const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
-    const baseQuery = {
-      teamId,
-      deleteTime: null,
-      ...permissionQuery,
-      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
-      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
-    };
-    if (searchKey) {
-      // 搜索：当前路径自身 + 其下整个子树；不含祖先、不含路径外内容（根目录即全库）
-      return {
-        $and: [
-          baseQuery,
-          searchMatch,
-          ...(parentId ? [{ parentId: { $in: [parentId, ...subtreeFolderIds] } }] : [])
-        ]
-      };
+  const folderScope =
+    parentId || !teamPer.isOwner || searchKey
+      ? await getDatasetFolderListScope({ teamId, currentFolderId })
+      : { folders: [], folderIds: [] };
+  if (parentId) {
+    const currentFolder = folderScope.folders.find(({ _id }) => _id === parentId);
+    if (!currentFolder) {
+      await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: ReadPermissionVal,
+        datasetId: parentId
+      });
+      throw CommonErrEnum.invalidParams;
     }
-    return { ...baseQuery, ...parseParentIdInMongo(parentId) };
+    if (
+      !teamPer.isOwner &&
+      !readableResourceIds.some((id) => String(id) === parentId) &&
+      !(await hasReadableDatasetFolderChild({
+        teamId,
+        folderIds: folderScope.folderIds,
+        readableResourceIds
+      }))
+    ) {
+      await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: ReadPermissionVal,
+        datasetId: parentId
+      });
+    }
+  }
+
+  const searchMatch = searchKey
+    ? {
+        $or: [
+          { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+          { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+        ]
+      }
+    : undefined;
+  const baseQuery = {
+    teamId,
+    deleteTime: null,
+    ...(teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } }),
+    ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
+    ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
+  };
+  const isMergedList = !teamPer.isOwner && !searchKey;
+  const parentScopeQuery = (() => {
+    if (!searchKey && teamPer.isOwner) return parseParentIdInMongo(parentId);
+    if (parentId) return { parentId: { $in: folderScope.folderIds } };
+    return {
+      $or: [
+        { parentId: null },
+        ...(folderScope.folderIds.length ? [{ parentId: { $in: folderScope.folderIds } }] : [])
+      ]
+    };
   })();
+  const findDatasetQuery = {
+    $and: [baseQuery, parentScopeQuery, ...(searchMatch ? [searchMatch] : [])]
+  };
 
   const skip = offset ?? (pageNum - 1) * pageSize;
   const datasetSort = ((): Record<string, 1 | -1> => {
@@ -199,10 +173,62 @@ async function handler(
     if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
     return { updateTime: -1, _id: -1 };
   })();
-  const [myDatasets, total] = await Promise.all([
-    MongoDataset.find(findDatasetQuery).sort(datasetSort).skip(skip).limit(pageSize).lean(),
-    MongoDataset.countDocuments(findDatasetQuery)
-  ]);
+  let myDatasets: DatasetSchemaType[];
+  let total: number;
+  const folderAccessModeMap = new Map<string, 'read' | 'navigate'>();
+  if (isMergedList) {
+    const readableResources = await MongoDataset.find(findDatasetQuery, '_id parentId type').lean();
+    const includedFolderTypes = type
+      ? (Array.isArray(type) ? type : [type]).filter((item) => item === DatasetTypeEnum.folder)
+      : [DatasetTypeEnum.folder];
+    const visibleChildren = getVisibleChildren({
+      currentFolderId,
+      readableResources: readableResources.map((dataset) => ({
+        _id: String(dataset._id),
+        parentId: dataset.parentId ? String(dataset.parentId) : null,
+        type: dataset.type
+      })),
+      folders: folderScope.folders,
+      folderTypes: [DatasetTypeEnum.folder],
+      includedFolderTypes
+    });
+    visibleChildren.forEach(({ id, folderAccessMode }) => {
+      if (folderAccessMode) folderAccessModeMap.set(id, folderAccessMode);
+    });
+    const visibleIds = visibleChildren.map(({ id }) => id);
+    const visibleDatasets = visibleIds.length
+      ? await MongoDataset.find(
+          { _id: { $in: visibleIds }, teamId, deleteTime: null },
+          '_id parentId teamId avatar name intro type vectorModelId agentModelId vlmModelId vectorModel agentModel vlmModel inheritPermission tmbId createTime updateTime'
+        ).lean()
+      : [];
+    const [sortField, direction] = Object.entries(datasetSort)[0];
+    visibleDatasets.sort((a, b) => {
+      const leftValue = a[sortField as keyof typeof a];
+      const rightValue = b[sortField as keyof typeof b];
+      const left = leftValue instanceof Date ? leftValue.getTime() : String(leftValue ?? '');
+      const right = rightValue instanceof Date ? rightValue.getTime() : String(rightValue ?? '');
+      const comparison =
+        typeof left === 'number' && typeof right === 'number'
+          ? left - right
+          : String(left).localeCompare(String(right), undefined, { numeric: true });
+      return comparison ? comparison * direction : String(a._id).localeCompare(String(b._id));
+    });
+    total = visibleDatasets.length;
+    myDatasets = visibleDatasets.slice(skip, skip + pageSize);
+  } else {
+    const [datasets, count] = await Promise.all([
+      MongoDataset.find(findDatasetQuery).sort(datasetSort).skip(skip).limit(pageSize).lean(),
+      MongoDataset.countDocuments(findDatasetQuery)
+    ]);
+    myDatasets = datasets;
+    total = count;
+  }
+  for (const dataset of myDatasets) {
+    if (dataset.type === DatasetTypeEnum.folder && !folderAccessModeMap.has(String(dataset._id))) {
+      folderAccessModeMap.set(String(dataset._id), 'read');
+    }
+  }
   const pageRoleList = await getResourcePermissionsByResourceIds({
     resourceType: PerResourceTypeEnum.dataset,
     teamId,
@@ -261,7 +287,10 @@ async function handler(
       createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
       updateTime: dataset.updateTime,
       permission: Per,
-      private: privateDataset
+      private: privateDataset,
+      ...(folderAccessModeMap.has(String(dataset._id))
+        ? { folderAccessMode: folderAccessModeMap.get(String(dataset._id)) }
+        : {})
     };
   });
 

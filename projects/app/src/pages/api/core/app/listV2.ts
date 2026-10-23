@@ -5,8 +5,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getVisibleChildren } from '@fastgpt/global/common/parentFolder/visibleChildren';
+import { AppTypeEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
 import {
   countTeamAppsByPublishedResourceGroups,
   getAppPublishedResourceType
@@ -34,6 +36,8 @@ import {
   type ListAppV2ResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getAppFolderListScope, hasReadableAppFolderChild } from '@/service/core/app/visibleList';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListAppV2ResponseType> {
   const {
@@ -52,21 +56,18 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     req,
     bodySchema: ListAppV2BodySchema
   }).body;
+  const currentFolderId = normalizeParentId(parentId);
 
-  const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
-    authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
-    ...(parentId
-      ? [
-          authApp({
-            req,
-            authToken: true,
-            authApiKey: true,
-            appId: parentId,
-            per: ReadPermissionVal
-          })
-        ]
-      : [])
-  ]);
+  const {
+    tmbId,
+    teamId,
+    permission: teamPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
     return ListAppV2ResponseSchema.parse({ list: [], total: 0 });
@@ -94,45 +95,177 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     return { readableResourceIds, groupIds, orgIds };
   })();
 
-  const findAppsQuery = (() => {
-    const searchMatch = searchKey
-      ? {
-          $or: [
-            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
-            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
-          ]
-        }
-      : {};
-    const _type = (() => {
-      if (type) return Array.isArray(type) ? { $in: type } : type;
-      return { $ne: AppTypeEnum.hidden } as const;
-    })();
-    const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
-    const baseQuery = {
-      teamId,
-      type: _type,
-      deleteTime: null,
-      ...permissionQuery,
-      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
-    };
-    const scopedQuery = excludeAppId
-      ? { $and: [baseQuery, { _id: { $ne: excludeAppId } }] }
-      : baseQuery;
-    if (searchKey) return { $and: [scopedQuery, searchMatch] };
-    return { ...scopedQuery, ...parseParentIdInMongo(parentId) };
-  })();
+  const folderScope =
+    parentId || !teamPer.isOwner || searchKey
+      ? await getAppFolderListScope({ teamId, currentFolderId })
+      : { folders: [], folderIds: [] };
+  if (parentId) {
+    const currentFolder = folderScope.folders.find(({ _id }) => _id === parentId);
+    if (!currentFolder) {
+      await authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId: parentId,
+        per: ReadPermissionVal
+      });
+      throw CommonErrEnum.invalidParams;
+    }
+    if (
+      !teamPer.isOwner &&
+      !readableResourceIds.some((id) => String(id) === parentId) &&
+      !(await hasReadableAppFolderChild({
+        teamId,
+        folderIds: folderScope.folderIds,
+        readableResourceIds
+      }))
+    ) {
+      await authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId: parentId,
+        per: ReadPermissionVal
+      });
+    }
+  }
 
+  const searchMatch = searchKey
+    ? {
+        $or: [
+          { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+          { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+        ]
+      }
+    : undefined;
+  const appTypeFilter = type
+    ? Array.isArray(type)
+      ? { $in: type }
+      : type
+    : { $ne: AppTypeEnum.hidden };
+  const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
+  const baseQuery = {
+    teamId,
+    type: appTypeFilter,
+    deleteTime: null,
+    ...permissionQuery,
+    ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
+  };
+  const isMergedList = !teamPer.isOwner && !searchKey;
+  const parentScopeQuery = (() => {
+    if (!searchKey && teamPer.isOwner) return parseParentIdInMongo(parentId);
+    if (parentId) return { parentId: { $in: folderScope.folderIds } };
+    return {
+      $or: [
+        { parentId: null },
+        ...(folderScope.folderIds.length ? [{ parentId: { $in: folderScope.folderIds } }] : [])
+      ]
+    };
+  })();
+  const findAppsQuery = {
+    $and: [
+      baseQuery,
+      parentScopeQuery,
+      ...(excludeAppId ? [{ _id: { $ne: excludeAppId } }] : []),
+      ...(searchMatch ? [searchMatch] : [])
+    ]
+  };
+  const fields = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
+    pinnedFirst ? ' isPinned pinnedAt' : ''
+  }`;
   const skip = offset ?? (pageNum - 1) * pageSize;
-  const { list: myApps, total } = await findAppsPage({
-    filter: findAppsQuery,
-    fields: `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
-      pinnedFirst ? ' isPinned' : ''
-    }`,
-    sort,
-    pinnedFirst,
-    offset: skip,
-    limit: pageSize
-  });
+  let myApps: Awaited<ReturnType<typeof findAppsPage>>['list'];
+  let total: number;
+  const folderAccessModeMap = new Map<string, 'read' | 'navigate'>();
+
+  if (isMergedList) {
+    const readableResources = await MongoApp.find(findAppsQuery, '_id parentId type').lean();
+    const includedFolderTypes = type
+      ? (Array.isArray(type) ? type : [type]).filter(
+          (item): item is AppTypeEnum.folder | AppTypeEnum.toolFolder =>
+            item === AppTypeEnum.folder || item === AppTypeEnum.toolFolder
+        )
+      : [AppTypeEnum.folder, AppTypeEnum.toolFolder];
+    const visibleChildren = getVisibleChildren({
+      currentFolderId,
+      readableResources: readableResources.map((app) => ({
+        _id: String(app._id),
+        parentId: app.parentId ? String(app.parentId) : null,
+        type: app.type
+      })),
+      folders: folderScope.folders,
+      folderTypes: [AppTypeEnum.folder, AppTypeEnum.toolFolder],
+      includedFolderTypes
+    });
+    visibleChildren.forEach(({ id, folderAccessMode }) => {
+      if (folderAccessMode) folderAccessModeMap.set(id, folderAccessMode);
+    });
+
+    const visibleIds = visibleChildren.map(({ id }) => id);
+    const visibleApps = visibleIds.length
+      ? await MongoApp.find({ _id: { $in: visibleIds }, teamId, deleteTime: null }, fields).lean()
+      : [];
+    const sortField = sort
+      ? Object.entries(appListSortMongoMap[sort])[0]
+      : (['updateTime', -1] as const);
+    const compareValue = (left: unknown, right: unknown, direction: number) => {
+      const leftValue = left instanceof Date ? left.getTime() : String(left ?? '');
+      const rightValue = right instanceof Date ? right.getTime() : String(right ?? '');
+      if (leftValue === rightValue) return 0;
+      const comparison =
+        typeof leftValue === 'number' && typeof rightValue === 'number'
+          ? leftValue - rightValue
+          : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true });
+      return comparison * direction;
+    };
+    visibleApps.sort((a, b) => {
+      if (pinnedFirst) {
+        const pinRank = Number(b.isPinned === true) - Number(a.isPinned === true);
+        if (pinRank) return pinRank;
+        const primarySort = sort
+          ? compareValue(
+              a[sortField[0] as keyof typeof a],
+              b[sortField[0] as keyof typeof b],
+              sortField[1]
+            )
+          : compareValue(
+              a.isPinned ? a.pinnedAt : a.updateTime,
+              b.isPinned ? b.pinnedAt : b.updateTime,
+              -1
+            );
+        if (primarySort) return primarySort;
+      } else {
+        const primarySort = compareValue(
+          a[sortField[0] as keyof typeof a],
+          b[sortField[0] as keyof typeof b],
+          sortField[1]
+        );
+        if (primarySort) return primarySort;
+      }
+      return String(a._id).localeCompare(String(b._id));
+    });
+    total = visibleApps.length;
+    myApps = visibleApps.slice(skip, skip + pageSize);
+  } else {
+    const result = await findAppsPage({
+      filter: findAppsQuery,
+      fields,
+      sort,
+      pinnedFirst,
+      offset: skip,
+      limit: pageSize
+    });
+    myApps = result.list;
+    total = result.total;
+  }
+  for (const app of myApps) {
+    if (
+      (app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder) &&
+      !folderAccessModeMap.has(String(app._id))
+    ) {
+      folderAccessModeMap.set(String(app._id), 'read');
+    }
+  }
 
   const pageRoleList = await getResourcePermissionsByResourceIds({
     resourceType: PerResourceTypeEnum.app,
@@ -183,7 +316,10 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       parentId: app.parentId,
       permission: Per,
       private: privateApp,
-      hasInteractiveNode: interactiveAppIds.has(String(app._id))
+      hasInteractiveNode: interactiveAppIds.has(String(app._id)),
+      ...(folderAccessModeMap.has(String(app._id))
+        ? { folderAccessMode: folderAccessModeMap.get(String(app._id)) }
+        : {})
     };
   });
 

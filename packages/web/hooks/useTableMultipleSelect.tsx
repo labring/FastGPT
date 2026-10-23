@@ -14,6 +14,8 @@ export type TableMultipleSelectRowOptions = {
   onClick?: React.MouseEventHandler<HTMLElement>;
   /** 禁止当前行通过行点击切换选中状态。 */
   isDisabled?: boolean;
+  /** 即使已进入多选状态，点击行仍执行 onClick，不切换选中（用于不可被选择的行）。 */
+  forceClick?: boolean;
   /** 追加需要保留原交互、不触发行选择的热区选择器。 */
   additionalInteractiveSelector?: string;
 };
@@ -86,7 +88,12 @@ export const useTableMultipleSelect = <T = any,>({
    */
   const getRowSelectionProps = useCallback(
     (item: T, options: TableMultipleSelectRowOptions = {}) => {
-      const { onClick, isDisabled = false, additionalInteractiveSelector } = options;
+      const {
+        onClick,
+        isDisabled = false,
+        forceClick = false,
+        additionalInteractiveSelector
+      } = options;
       const interactiveSelector = additionalInteractiveSelector
         ? `${rowInteractiveSelector}, ${additionalInteractiveSelector}`
         : rowInteractiveSelector;
@@ -99,7 +106,7 @@ export const useTableMultipleSelect = <T = any,>({
           const target = event.target as HTMLElement;
           if (target.closest?.(interactiveSelector)) return;
 
-          if (hasSelections) {
+          if (hasSelections && !forceClick) {
             toggleSelect(item);
             return;
           }

@@ -123,5 +123,11 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "Backfills teamId for legacy agent sandbox instances from their App/Skill source. Orphan records whose source was deleted are skipped and counted; records whose source exists without a teamId are reported as failed records for repair and retry.",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "Backfill sandbox team ownership",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "Validate sandbox team ownership backfill",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records."
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "Scanned {{scannedCount}} sandbox instances, backfilled {{backfilledCount}} team bindings, skipped {{orphanCount}} orphan records.",
+  "migrations.20261022_backfill_folder_ancestor_ids.name": "Backfill folder ancestor paths",
+  "migrations.20261022_backfill_folder_ancestor_ids.description": "Rebuild App, tool, and Dataset folder paths from parentId, and remove stale values from non-folders. Records that cannot be migrated safely are listed for repair and retry.",
+  "migrations.20261022_backfill_folder_ancestor_ids.result": "Scanned {{scannedCount}} resource records; {{failedCount}} unresolved records remain.",
+  "migrations.20261022_backfill_folder_ancestor_ids.apps": "Backfill App and tool folder paths",
+  "migrations.20261022_backfill_folder_ancestor_ids.datasets": "Backfill Dataset folder paths",
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths"
 }

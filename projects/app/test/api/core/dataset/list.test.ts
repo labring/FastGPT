@@ -467,6 +467,121 @@ describe('POST /api/core/dataset/list', () => {
     expect(visibleDataset?.appCount).toBeUndefined();
   });
 
+  it('lists navigable Dataset folders separately from readable empty folders', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [rootFolder, nestedFolder, readableDataset, readableEmptyFolder, hiddenEmptyFolder] =
+      await MongoDataset.create([
+        { name: 'Root', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        { name: 'Nested', type: DatasetTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        {
+          name: 'Readable child',
+          type: DatasetTypeEnum.dataset,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Readable empty',
+          type: DatasetTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Hidden empty',
+          type: DatasetTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        }
+      ]);
+    await MongoDataset.updateOne({ _id: nestedFolder._id }, { $set: { parentId: rootFolder._id } });
+    await MongoDataset.updateOne(
+      { _id: readableDataset._id },
+      { $set: { parentId: nestedFolder._id } }
+    );
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: owner.teamId,
+        resourceId: readableDataset._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.dataset,
+        teamId: owner.teamId,
+        resourceId: readableEmptyFolder._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const firstPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, { auth: members[0], body: { pageSize: 1 } });
+    const secondPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, { auth: members[0], body: { pageNum: 2, pageSize: 1 } });
+    const rootItems = [...firstPage.data.list, ...secondPage.data.list];
+    expect(firstPage.data.total).toBe(2);
+    expect(secondPage.data.total).toBe(2);
+    expect(rootItems.map(({ _id }) => String(_id))).toContain(String(rootFolder._id));
+    expect(rootItems.map(({ _id }) => String(_id))).toContain(String(readableEmptyFolder._id));
+    expect(rootItems.map(({ _id }) => String(_id))).not.toContain(String(hiddenEmptyFolder._id));
+    expect(
+      rootItems.find(({ _id }) => String(_id) === String(rootFolder._id))?.folderAccessMode
+    ).toBe('navigate');
+    expect(
+      rootItems.find(({ _id }) => String(_id) === String(readableEmptyFolder._id))?.folderAccessMode
+    ).toBe('read');
+
+    const emptyRootPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, { auth: members[0], body: { parentId: '' } });
+    expect(emptyRootPage.data.total).toBe(2);
+    expect(emptyRootPage.data.list.map(({ _id }) => String(_id))).toContain(String(rootFolder._id));
+
+    const childPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, { auth: members[0], body: { parentId: String(rootFolder._id) } });
+    expect(childPage.data.list).toMatchObject([
+      { _id: String(nestedFolder._id), folderAccessMode: 'navigate' }
+    ]);
+
+    const searchPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: members[0],
+      body: { parentId: String(rootFolder._id), searchKey: 'Readable child' }
+    });
+    expect(searchPage.data.total).toBe(1);
+    expect(searchPage.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableDataset._id)
+    ]);
+    expect(searchPage.data.list[0]).not.toHaveProperty('folderAccessMode');
+
+    const rootSearchPage = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: members[0],
+      body: { searchKey: 'Readable child' }
+    });
+    expect(rootSearchPage.data.total).toBe(1);
+    expect(rootSearchPage.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableDataset._id)
+    ]);
+  });
+
   it('normalizes nullish avatar and intro from legacy records in V2', async () => {
     const user = await getUser(`dataset-list-v2-legacy-${getNanoid(6)}`);
     const dataset = await MongoDataset.create({
