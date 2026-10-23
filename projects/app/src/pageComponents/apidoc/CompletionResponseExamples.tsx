@@ -4,6 +4,7 @@ import {
 } from '@fastgpt/global/openapi/core/chat/completion/examples';
 import React, { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
+import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@chakra-ui/react';
 import styles from './CompletionResponseExamples.module.scss';
 
 type ExampleTarget = {
@@ -12,7 +13,40 @@ type ExampleTarget = {
   version: CompletionExampleVersion;
   contentType: 'application/json' | 'text/event-stream';
 };
-/** JSON 模式展示非流式示例，text 模式用四个 tab 对比 stream/detail 组合，不修改请求参数。 */
+/** 复用 Scalar 自带的代码块：由其负责高亮、复制和滚动，React 只负责挂载及回收 Vue 实例。 */
+const ScalarResponseCode = ({ content, language }: { content: string; language: string }) => {
+  const codeRef = useRef<HTMLDivElement>(null);
+  const id = useId();
+
+  useEffect(() => {
+    const element = codeRef.current;
+    if (!element) return;
+    let disposed = false;
+    let app: import('vue').App | undefined;
+
+    // 延迟加载，避免 Vue 的 DOM 运行时和 Scalar 代码块参与服务端渲染。
+    void Promise.all([import('vue'), import('@scalar/components/code-block')]).then(
+      ([{ createApp, h }, { ScalarCodeBlock }]) => {
+        if (disposed) return;
+        app = createApp({
+          render: () =>
+            h(ScalarCodeBlock, { prettyPrintedContent: content, lang: language, copy: 'always' })
+        });
+        app.config.idPrefix = `completion-code-${id}`;
+        app.mount(element);
+      }
+    );
+
+    return () => {
+      disposed = true;
+      app?.unmount();
+    };
+  }, [content, language, id]);
+
+  return <div ref={codeRef} className={styles.codeHost} role="region" aria-label="响应示例内容" />;
+};
+
+/** 标准 Tabs 展示 stream/detail 组合；标题保持单行，窄卡片内横向滚动。 */
 const ResponseExamplePanel = ({
   version,
   contentType
@@ -32,98 +66,47 @@ const ResponseExamplePanel = ({
     [examples, contentType]
   );
   const [selectedIndex, setSelectedIndex] = useState(contentType === 'text/event-stream' ? 2 : 0);
-  const [copyMessage, setCopyMessage] = useState('');
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const id = useId();
-  const sample = modes[selectedIndex];
-  const content =
-    typeof sample.value === 'string' ? sample.value : JSON.stringify(sample.value, null, 2);
-  const lines = content.split('\n');
-  const panelId = `${id}-panel`;
-
-  const selectMode = (index: number) => {
-    setSelectedIndex(index);
-    setCopyMessage('');
-  };
-  const copyExample = async () => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopyMessage('已复制');
-    } catch {
-      setCopyMessage('复制失败，请手动选择示例内容');
-    }
-  };
 
   return (
-    <section className={styles.panel} aria-label={`${version} 响应示例选择`}>
-      <div
-        className={styles.tabs}
-        role="tablist"
-        aria-label="stream / detail 组合"
-        data-count={modes.length}
-      >
-        {modes.map((mode, index) => (
-          <button
+    <Tabs
+      className={styles.panel}
+      aria-label={`${version} 响应示例选择`}
+      display="flex"
+      flexDirection="column"
+      flex="1"
+      minH={0}
+      index={selectedIndex}
+      onChange={setSelectedIndex}
+      variant="unstyled"
+      isLazy
+    >
+      <TabList className={styles.tabs} aria-label="stream / detail 组合">
+        {modes.map((mode) => (
+          <Tab
             key={mode.id}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
             className={styles.tab}
-            type="button"
-            role="tab"
-            id={`${id}-${mode.id}`}
-            aria-label={`stream=${mode.stream}, detail=${mode.detail}`}
-            aria-controls={panelId}
-            aria-selected={index === selectedIndex}
-            tabIndex={index === selectedIndex ? 0 : -1}
-            onClick={() => selectMode(index)}
-            onKeyDown={(event) => {
-              const nextIndex = (() => {
-                if (event.key === 'ArrowRight') return (index + 1) % modes.length;
-                if (event.key === 'ArrowLeft') return (index + modes.length - 1) % modes.length;
-                if (event.key === 'Home') return 0;
-                if (event.key === 'End') return modes.length - 1;
-              })();
-              if (nextIndex === undefined) return;
-              event.preventDefault();
-              selectMode(nextIndex);
-              tabRefs.current[nextIndex]?.focus();
-            }}
+            fontSize="12px"
+            whiteSpace="nowrap"
+            flexShrink={0}
           >
-            <span>stream={String(mode.stream)}</span>
-            <span>detail={String(mode.detail)}</span>
-          </button>
+            {`stream=${mode.stream}, detail=${mode.detail}`}
+          </Tab>
         ))}
-      </div>
-      <div role="tabpanel" id={panelId} aria-labelledby={`${id}-${sample.id}`}>
-        <p className={styles.description}>{sample.description}</p>
-        <div className={styles.codeHeader}>
-          <span>{sample.stream ? 'text/event-stream' : 'application/json'}</span>
-          <button type="button" onClick={copyExample} aria-label="复制响应示例">
-            {copyMessage === '已复制' ? '已复制' : '复制示例'}
-          </button>
-        </div>
-        <pre className={styles.code} tabIndex={0} aria-label="响应示例内容">
-          <code>
-            {lines.map((line, index) => (
-              <span
-                key={index}
-                className={line.startsWith('event:') ? styles.eventLine : undefined}
-              >
-                {line}
-                {index < lines.length - 1 ? '\n' : ''}
-              </span>
-            ))}
-          </code>
-        </pre>
-        <div className={styles.note}>
-          <span>
-            仅切换示例，不修改请求参数。流片段省略 id / object / created / model 占位字段。
-          </span>
-          <span role="status">{copyMessage}</span>
-        </div>
-      </div>
-    </section>
+      </TabList>
+      <TabPanels className={styles.content}>
+        {modes.map((mode) => (
+          <TabPanel key={mode.id} p={0}>
+            <p className={styles.description}>{mode.description}</p>
+            <ScalarResponseCode
+              content={
+                typeof mode.value === 'string' ? mode.value : JSON.stringify(mode.value, null, 2)
+              }
+              language={mode.stream ? 'plaintext' : 'json'}
+            />
+          </TabPanel>
+        ))}
+      </TabPanels>
+    </Tabs>
   );
 };
 

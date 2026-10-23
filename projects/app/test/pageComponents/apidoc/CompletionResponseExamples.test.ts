@@ -1,8 +1,8 @@
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CompletionResponseExamples } from '@/pageComponents/apidoc/CompletionResponseExamples';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+let CompletionResponseExamples: (typeof import('@/pageComponents/apidoc/CompletionResponseExamples'))['CompletionResponseExamples'];
 
 /** 模拟 Scalar 的延迟 operation/响应卡片，测试真实 portal 挂载，不依赖 Vue 运行时。 */
 const operation = (version: 'v1' | 'v2', contentType = 'application/json') => `
@@ -25,15 +25,28 @@ describe('CompletionResponseExamples', () => {
   let container: HTMLDivElement;
   const writeText = vi.fn();
 
-  beforeEach(async () => {
-    dom = new JSDOM('<!doctype html><html><body></body></html>');
-    vi.stubGlobal('window', dom.window);
-    vi.stubGlobal('document', dom.window.document);
-    vi.stubGlobal('navigator', dom.window.navigator);
-    vi.stubGlobal('MutationObserver', dom.window.MutationObserver);
-    vi.stubGlobal('Event', dom.window.Event);
+  beforeAll(async () => {
+    dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true });
+    for (const name of [
+      'window',
+      'document',
+      'navigator',
+      'MutationObserver',
+      'Event',
+      'Element',
+      'HTMLElement',
+      'SVGElement',
+      'Node'
+    ]) {
+      vi.stubGlobal(name, name === 'window' ? dom.window : (dom.window as any)[name]);
+    }
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    ({ CompletionResponseExamples } =
+      await import('@/pageComponents/apidoc/CompletionResponseExamples'));
+  });
+
+  beforeEach(async () => {
     writeText.mockReset().mockResolvedValue(undefined);
     wrapper = document.createElement('div');
     container = document.createElement('div');
@@ -45,30 +58,51 @@ describe('CompletionResponseExamples', () => {
         React.createElement(CompletionResponseExamples, { rootRef: { current: wrapper } })
       )
     );
+    await ready('v1');
+    await ready('v2');
   });
 
   afterEach(async () => {
     await act(async () => root.unmount());
     wrapper.remove();
     container.remove();
+  });
+
+  afterAll(() => {
     dom.window.close();
     vi.unstubAllGlobals();
   });
 
   const card = (version = 'v2') =>
     wrapper.querySelector<HTMLElement>(`[data-version="${version}"]`)!;
-  const code = (version = 'v2') => card(version).querySelector('pre')!.textContent!;
+  const code = (version = 'v2') =>
+    card(version).querySelector('[role="tabpanel"]:not([hidden]) pre')!.textContent!;
+  const ready = async (version = 'v2') => {
+    await act(async () => {
+      await vi.waitFor(
+        () =>
+          expect(
+            card(version).querySelector('[role="tabpanel"]:not([hidden]) .scalar-code-block pre')
+          ).not.toBeNull(),
+        { timeout: 10000 }
+      );
+    });
+  };
   const format = async (value: string, version = 'v2') => {
     const label = card(version).closest('section')!.querySelector('[data-content-type]')!;
-    // Vue 会原地更新文本节点；只有监听 characterData 才能捕获这种格式切换。
     await act(async () => {
       label.firstChild!.textContent = value;
     });
+    await ready(version);
   };
   const tab = (label: string, version = 'v2') =>
-    card(version).querySelector<HTMLButtonElement>(`[role="tab"][aria-label="${label}"]`)!;
-  const selectMode = async (label: string, version = 'v2') =>
-    act(async () => tab(label, version).click());
+    [...card(version).querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
+      (element) => element.textContent === label
+    )!;
+  const selectMode = async (label: string, version = 'v2') => {
+    await act(async () => tab(label, version).click());
+    await ready(version);
+  };
 
   it('shows two JSON tabs and all four stream/detail combinations in text mode without dropdowns', async () => {
     expect(card().querySelectorAll('[role="tab"]')).toHaveLength(2);
@@ -97,27 +131,14 @@ describe('CompletionResponseExamples', () => {
     expect(card().querySelector('input[aria-label="显示 Schema"]')).not.toBeNull();
   });
 
-  it('supports keyboard selection with wrapping, Home/End and an associated tabpanel', async () => {
-    await format('text/event-stream');
-    const press = async (label: string, key: string) =>
-      act(async () => {
-        tab(label).dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true }));
-      });
-    await press('stream=true, detail=false', 'End');
-    expect(document.activeElement).toBe(tab('stream=true, detail=true'));
-    await press('stream=true, detail=true', 'ArrowRight');
-    expect(document.activeElement).toBe(tab('stream=false, detail=false'));
-    await press('stream=false, detail=false', 'ArrowLeft');
-    expect(document.activeElement).toBe(tab('stream=true, detail=true'));
-    await press('stream=true, detail=true', 'Home');
-    await press('stream=false, detail=false', 'Enter');
-    await press('stream=false, detail=false', 'ArrowRight');
-    expect(document.activeElement).toBe(tab('stream=false, detail=true'));
-    expect(card().querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
-    expect(card().querySelector('[role="tabpanel"]')!.getAttribute('aria-labelledby')).toBe(
-      tab('stream=false, detail=true').id
-    );
-    expect(JSON.parse(code())).toHaveProperty('responseData');
+  it('uses Scalar code rendering and native copy controls with single-line tab labels', async () => {
+    expect(card().querySelector('.scalar-code-block')).not.toBeNull();
+    expect(card().querySelector('.scalar-code-copy')).not.toBeNull();
+    expect(card().querySelector('.hljs-attr')).not.toBeNull();
+    for (const element of card().querySelectorAll('[role="tab"]')) {
+      expect(element.textContent).toMatch(/^stream=false, detail=(false|true)$/);
+      expect(element.querySelector('br')).toBeNull();
+    }
   });
 
   it('offers the v1 aggregation event and keeps operations independent', async () => {
@@ -126,21 +147,6 @@ describe('CompletionResponseExamples', () => {
     expect(code('v1')).toContain('event: flowResponses');
     expect(code('v1')).not.toContain('event: flowNodeResponse');
     expect(JSON.parse(code())).not.toHaveProperty('responseData');
-  });
-
-  it('copies the visible example, clears status on tab/format changes and reports clipboard errors', async () => {
-    const copy = () => card().querySelector<HTMLButtonElement>('[aria-label="复制响应示例"]')!;
-    await format('text/event-stream');
-    await act(async () => copy().click());
-    expect(writeText).toHaveBeenLastCalledWith(code());
-    expect(card().querySelector('[role="status"]')!.textContent).toBe('已复制');
-    await selectMode('stream=true, detail=true');
-    expect(card().querySelector('[role="status"]')!.textContent).toBe('');
-    writeText.mockRejectedValueOnce(new Error('denied'));
-    await act(async () => copy().click());
-    expect(card().querySelector('[role="status"]')!.textContent).toContain('复制失败');
-    await format('application/json');
-    expect(card().querySelector('[role="status"]')!.textContent).toBe('');
   });
 
   it('mounts later cards once, replaces removed portals and ignores unrelated responses', async () => {
@@ -152,6 +158,7 @@ describe('CompletionResponseExamples', () => {
     await act(async () => {
       wrapper.insertAdjacentHTML('beforeend', operation('v2', 'text/event-stream'));
     });
+    await ready();
     expect(card().querySelectorAll('[role="tablist"]')).toHaveLength(1);
     expect(card().querySelectorAll('[role="tab"]')).toHaveLength(4);
     expect(code()).toContain('data: [DONE]');

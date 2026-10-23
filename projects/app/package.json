@@ -58,6 +58,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@node-rs/jieba": "catalog:",
     "@scalar/api-reference-react": "^0.9.59",
+    "@scalar/components": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
@@ -123,6 +124,7 @@
     "use-context-selector": "^1.4.4",
     "vaul": "catalog:",
     "vfile": "^6.0.3",
+    "vue": "catalog:",
     "xml2js": "catalog:",
     "zod": "catalog:"
   },
