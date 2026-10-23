@@ -68,6 +68,20 @@ describe('Workflow Core command adapters', () => {
       })
     ).toEqual({ status: 'success', data: undefined });
     expect(checkWorkflowBeforeRunOrPublish(graph)).toMatchObject({ hasError: false });
+    const escape = {
+      id: 'escape',
+      source: 'text',
+      sourceHandle: 'text-source-right',
+      target: 'caller',
+      targetHandle: 'caller-target-left'
+    };
+    expect(validateConnectionWithCore({ ...graph, connection: escape })).toMatchObject({
+      status: 'domain-error',
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.edgeCrossScope }]
+    });
+    const invalidGraph = { ...graph, edges: [...graph.edges, escape] };
+    expect(checkWorkflowBeforeRunOrPublish(invalidGraph)).toMatchObject({ hasError: true });
+    expect(graph.edges).toHaveLength(3);
   });
 
   it('allows a reply before later processing through connection and publish checks', () => {

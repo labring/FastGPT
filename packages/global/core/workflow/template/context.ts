@@ -1,5 +1,6 @@
 import { FlowNodeTypeEnum, isInteractiveNodeType, isNestedParentNodeType } from '../node/constant';
 import { NodeOutputKeyEnum } from '../constants';
+import { isToolWorkflowConnectionAllowed } from '../../../common/workflow/connection';
 import type {
   FlowNodeTemplateType,
   FlowNodeItemType,
@@ -61,13 +62,26 @@ export const isNodeConnectionAllowed = ({
   getNodeById
 }: {
   targetTemplate?: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
-  targetNode: Pick<FlowNodeItemType, 'parentNodeId'>;
+  targetNode: Pick<FlowNodeItemType, 'nodeId' | 'parentNodeId'>;
   sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>;
   edges: { source?: string; target: string; targetHandle?: string | null }[];
   handleId?: string | null;
-  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+  getNodeById: (
+    nodeId: string | undefined | null
+  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
 }) => {
   if (sourceNode.parentNodeId !== targetNode.parentNodeId) return false;
+  if (
+    !isToolWorkflowConnectionAllowed({
+      source: sourceNode.nodeId,
+      target: targetNode.nodeId,
+      isToolConnection: handleId === NodeOutputKeyEnum.selectedTools,
+      edges,
+      getNodeById
+    })
+  ) {
+    return false;
+  }
 
   const sourceContext = buildNodeTemplateContext({
     sourceNode,
@@ -180,7 +194,9 @@ export const buildNodeTemplateContext = ({
     | undefined;
   edges: { source?: string; target: string; targetHandle?: string | null }[];
   handleId?: string | null;
-  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+  getNodeById: (
+    nodeId: string | undefined | null
+  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
   isSidebar?: boolean;
   hasToolNode?: boolean;
   hasLoopRunNode?: boolean;

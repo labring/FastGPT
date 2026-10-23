@@ -10,6 +10,8 @@ import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import { createWorkflowDocument } from '../../src/domain/document';
 import { builtinTemplateProvider } from '../template/provider';
@@ -17,6 +19,61 @@ import fixture from '../fixtures/basic-static/workflow.json';
 import { describe, expect, it } from 'vitest';
 
 describe('assertExecutionConnection', () => {
+  it('rejects tool-flow escapes through both direct validation and write commands without deleting edges', async () => {
+    const document = WorkflowDocumentSchema.parse(fixture);
+    document.nodes = [
+      document.nodes.find((node) => node.nodeId === 'start')!,
+      ...['caller', 'tool', 'tail', 'outer', 'free'].map((nodeId) =>
+        StoreNodeItemTypeSchema.parse({
+          ...(nodeId === 'caller' ? ToolCallNode : AiChatModule),
+          nodeId
+        })
+      )
+    ];
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'caller' } },
+      { source: { kind: 'next', nodeId: 'caller' }, target: { kind: 'target', nodeId: 'outer' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'caller' },
+        target: { kind: 'selectedTools', nodeId: 'tool' }
+      },
+      { source: { kind: 'next', nodeId: 'tool' }, target: { kind: 'target', nodeId: 'tail' } }
+    ];
+    const before = structuredClone(document);
+    for (const target of ['caller', 'outer']) {
+      const edge = {
+        source: { kind: 'next' as const, nodeId: 'tail' },
+        target: { kind: 'target' as const, nodeId: target }
+      };
+      expect(() => assertExecutionConnection({ document, edge })).toThrow(
+        WorkflowDiagnosticCodeEnum.edgeCrossScope
+      );
+      await expect(
+        applyWorkflowCommand({
+          document,
+          command: { type: 'edge.connect', edge },
+          dependencies: { templateProvider: builtinTemplateProvider }
+        })
+      ).rejects.toThrow(WorkflowDiagnosticCodeEnum.edgeCrossScope);
+      // 保存前的整图检查也必须识别已有越界边，不能依赖鼠标拖线入口。
+      expect(() =>
+        assertExecutionEdge(
+          { ...document, executionEdges: [...document.executionEdges, edge] },
+          edge
+        )
+      ).toThrow(WorkflowDiagnosticCodeEnum.edgeCrossScope);
+    }
+    expect(
+      assertExecutionConnection({
+        document,
+        edge: {
+          source: { kind: 'next', nodeId: 'tail' },
+          target: { kind: 'target', nodeId: 'free' }
+        }
+      })
+    ).toBeUndefined();
+    expect(document).toEqual(before);
+  });
   it('checks the same connection as the write command without modifying the document', async () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     const edge = document.executionEdges.shift()!;

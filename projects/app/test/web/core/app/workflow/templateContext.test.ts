@@ -34,6 +34,30 @@ const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
 });
 
 describe('template context', () => {
+  it('普通目标柄与最终提交共用工具流程边界，未归属节点仍可接入', () => {
+    const nodes = ['caller', 'tool', 'tail', 'outer', 'free'].map((nodeId) => ({
+      ...AiChatModule,
+      nodeId
+    }));
+    const edges = [
+      { source: 'caller', target: 'tool', targetHandle: NodeOutputKeyEnum.selectedTools },
+      { source: 'tool', target: 'tail' },
+      { source: 'caller', target: 'outer' }
+    ];
+    const check = (target: string) =>
+      isNodeConnectionAllowed({
+        sourceNode: nodes[2],
+        targetNode: nodes.find((node) => node.nodeId === target)!,
+        targetTemplate: AiChatModule,
+        edges,
+        handleId: 'tail-source-right',
+        getNodeById: (nodeId) => nodes.find((node) => node.nodeId === nodeId)
+      });
+    expect(check('caller')).toBe(false);
+    expect(check('outer')).toBe(false);
+    expect(check('tool')).toBe(true);
+    expect(check('free')).toBe(true);
+  });
   it('buildNodeTemplateContext：源节点不存在返回 null，字段正确映射', () => {
     const node = {
       nodeId: 'n1',
@@ -79,7 +103,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n1',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: undefined
       },
@@ -95,7 +119,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n3',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: undefined
       },
@@ -174,7 +198,7 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
+        targetNode: { nodeId: 'target', parentNodeId: undefined },
         sourceNode,
         edges: [],
         handleId: NodeOutputKeyEnum.selectedTools,
@@ -184,7 +208,7 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
+        targetNode: { nodeId: 'target', parentNodeId: undefined },
         sourceNode,
         edges: [],
         handleId: '普通输出',
@@ -194,8 +218,8 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: ToolParamsNode,
-        targetNode: { parentNodeId: undefined },
-        sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.aiChat },
+        targetNode: { nodeId: 'target', parentNodeId: undefined },
+        sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.chatNode },
         edges: [],
         handleId: NodeOutputKeyEnum.selectedTools,
         getNodeById
@@ -206,11 +230,11 @@ describe('template context', () => {
   it('连接节点必须属于同一容器并满足容器规则', () => {
     const sourceNode = {
       nodeId: 'source',
-      flowNodeType: FlowNodeTypeEnum.aiChat,
+      flowNodeType: FlowNodeTypeEnum.chatNode,
       isTool: false,
       parentNodeId: 'parallel'
     };
-    const targetNode = { parentNodeId: 'parallel' };
+    const targetNode = { nodeId: 'target', parentNodeId: 'parallel' };
     const getNodeById = (nodeId: string | undefined | null) =>
       nodeId === 'parallel'
         ? ({
@@ -232,7 +256,7 @@ describe('template context', () => {
     expect(
       isNodeConnectionAllowed({
         targetTemplate: UserSelectNode,
-        targetNode: { parentNodeId: 'other' },
+        targetNode: { nodeId: 'target', parentNodeId: 'other' },
         sourceNode,
         edges: [],
         handleId: 'source',
@@ -365,7 +389,7 @@ describe('template context', () => {
     const result = buildNodeTemplateContext({
       sourceNode: {
         nodeId: 'n1',
-        flowNodeType: FlowNodeTypeEnum.aiChat,
+        flowNodeType: FlowNodeTypeEnum.chatNode,
         isTool: false,
         parentNodeId: 'loop1'
       },

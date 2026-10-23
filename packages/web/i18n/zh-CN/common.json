@@ -1380,7 +1380,7 @@
   "core.workflow.check.edge_duplicated": "节点 {{source}} 到 {{target}} 存在重复连线",
   "core.workflow.check.edge_invalid": "节点 {{source}} 到 {{target}} 的连线无效：{{reason}}",
   "core.workflow.check.edge_handle_unsupported": "节点 {{source}} 到 {{target}} 的连线端口无效：{{sourceHandle}} → {{targetHandle}}",
-  "core.workflow.check.edge_cross_scope": "节点 {{source}} 与 {{target}} 不在同一容器，不能直接连线",
+  "core.workflow.check.edge_cross_scope": "节点 {{source}} 与 {{target}} 不在同一流程作用域，不能直接连线",
   "core.workflow.check.edge_self_connection": "节点 {{nodeId}} 不能连接自身",
   "core.workflow.check.tool_edge_invalid": "节点 {{source}} 到 {{target}} 的工具连接方式无效",
   "core.workflow.check.catch_not_enabled": "节点 {{nodeId}} 尚未开启异常捕获，不能连接异常分支",

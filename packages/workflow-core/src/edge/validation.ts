@@ -8,7 +8,8 @@ import {
 } from '@fastgpt/global/core/workflow/type/edge';
 
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { isToolWorkflowConnectionAllowed } from '@fastgpt/global/common/workflow/connection';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
@@ -180,6 +181,26 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
   }
   assertBranchKey(document, edge);
   compileExecutionEdge(edge, document);
+
+  const nodesById = new Map(document.nodes.map((node) => [node.nodeId, node]));
+  if (
+    !isToolWorkflowConnectionAllowed({
+      source: sourceNode.nodeId,
+      target: targetNode.nodeId,
+      isToolConnection: sourceIsTool,
+      edges: document.executionEdges.map((item) => ({
+        source: item.source.nodeId,
+        target: item.target.nodeId,
+        targetHandle:
+          item.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
+      })),
+      getNodeById: (nodeId) => nodesById.get(nodeId)
+    })
+  ) {
+    throw new WorkflowCommandError([
+      { code: WorkflowDiagnosticCodeEnum.edgeCrossScope, severity: 'error', params: { edge } }
+    ]);
+  }
 };
 
 /** 校验新连线且不写入文档，供同步 Web 回调和内部写入命令共用。 */
