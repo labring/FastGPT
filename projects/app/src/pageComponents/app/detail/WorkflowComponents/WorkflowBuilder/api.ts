@@ -7,7 +7,6 @@ import {
   WorkflowBuilderVersionCommitResponseSchema,
   WorkflowBuilderVersionLoadBodySchema,
   WorkflowBuilderVersionLoadResponseSchema,
-  WorkflowBuilderRuntimePrewarmBodySchema,
   type WorkflowBuilderChatBody,
   type WorkflowBuilderVersionCommitBody,
   type WorkflowBuilderVersionCommitResponse,
@@ -31,13 +30,6 @@ export const streamWorkflowBuilderChat = ({
     onMessage,
     abortCtrl
   });
-
-/** 打开 Workflow Builder 后后台预热按成员隔离的 Sandbox 运行环境。 */
-export const prewarmWorkflowBuilderRuntime = (data: { appId: string; chatId: string }) =>
-  POST(
-    '/proApi/core/workflow/builder/runtime/prewarm',
-    WorkflowBuilderRuntimePrewarmBodySchema.parse(data)
-  );
 
 /**
  * 查询当前成员在应用下最近一次 Builder 会话。

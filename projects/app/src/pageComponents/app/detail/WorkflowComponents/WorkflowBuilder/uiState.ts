@@ -28,26 +28,6 @@ export const getWorkflowBuilderWatchChatId = (value?: string | string[]) => {
   return chatId?.trim() || undefined;
 };
 
-/** 仅允许可用的 Builder 在当前应用和成员首次打开时主动预热运行环境。 */
-export const shouldPrewarmWorkflowBuilderRuntime = ({
-  workflowBuilderEnabled,
-  isOpen,
-  chatId,
-  runtimeKey,
-  prewarmStartedRuntimeKey
-}: {
-  workflowBuilderEnabled: boolean;
-  isOpen: boolean;
-  chatId: string;
-  runtimeKey: string;
-  prewarmStartedRuntimeKey: string;
-}) =>
-  workflowBuilderEnabled &&
-  isOpen &&
-  Boolean(chatId) &&
-  Boolean(runtimeKey) &&
-  runtimeKey !== prewarmStartedRuntimeKey;
-
 /**
  * 决定 Builder 入口展示方式。
  * 社区版保留升级入口；无编辑权限或商业版管理员关闭依赖能力时直接隐藏。

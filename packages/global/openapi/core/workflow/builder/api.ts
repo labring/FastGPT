@@ -143,34 +143,3 @@ export const WorkflowBuilderVersionCommitResponseSchema = WorkflowBuilderVersion
 export type WorkflowBuilderVersionCommitResponse = z.infer<
   typeof WorkflowBuilderVersionCommitResponseSchema
 >;
-
-/* ============================================================================
- * API: Workflow Builder 运行环境预热
- * Route: POST /api/proApi/core/workflow/builder/runtime/prewarm
- * Method: POST
- * Description: 在打开 Workflow Builder 后提前准备可复用的 Sandbox 运行环境
- * Tags: ['Workflow Builder']
- * ============================================================================ */
-
-export const WorkflowBuilderRuntimePrewarmBodySchema = z
-  .object({
-    appId: ObjectIdSchema.meta({
-      description: '当前 Workflow 应用 ID',
-      example: '67f4c91c79a4d61b1f116b2a'
-    }),
-    chatId: z.string().min(1).meta({
-      description: '工作流辅助生成独立会话 ID',
-      example: 'workflow-builder-chat-id'
-    })
-  })
-  .strict();
-export type WorkflowBuilderRuntimePrewarmBody = z.infer<
-  typeof WorkflowBuilderRuntimePrewarmBodySchema
->;
-
-export const WorkflowBuilderRuntimePrewarmResponseSchema = z.undefined().meta({
-  description: '运行环境预热完成'
-});
-export type WorkflowBuilderRuntimePrewarmResponse = z.infer<
-  typeof WorkflowBuilderRuntimePrewarmResponseSchema
->;

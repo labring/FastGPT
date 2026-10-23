@@ -8,8 +8,7 @@ import {
   getWorkflowBuilderPendingInteractiveKey,
   getWorkflowBuilderWatchChatId,
   hasUnseenWorkflowBuilderAttention,
-  isWorkflowBuilderVersionGenerating,
-  shouldPrewarmWorkflowBuilderRuntime
+  isWorkflowBuilderVersionGenerating
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/uiState';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -42,58 +41,6 @@ describe('getWorkflowBuilderWatchChatId', () => {
     expect(getWorkflowBuilderWatchChatId(['chat-2', 'chat-3'])).toBe('chat-2');
     expect(getWorkflowBuilderWatchChatId('   ')).toBeUndefined();
     expect(getWorkflowBuilderWatchChatId()).toBeUndefined();
-  });
-});
-
-describe('shouldPrewarmWorkflowBuilderRuntime', () => {
-  it.each([
-    {
-      name: 'the Builder is unavailable',
-      workflowBuilderEnabled: false,
-      isOpen: true,
-      chatId: 'chat-1',
-      runtimeKey: 'app-1:tmb-1',
-      prewarmStartedRuntimeKey: '',
-      expected: false
-    },
-    {
-      name: 'the Builder has not been opened',
-      workflowBuilderEnabled: true,
-      isOpen: false,
-      chatId: 'chat-1',
-      runtimeKey: 'app-1:tmb-1',
-      prewarmStartedRuntimeKey: '',
-      expected: false
-    },
-    {
-      name: 'the chat id is not ready',
-      workflowBuilderEnabled: true,
-      isOpen: true,
-      chatId: '',
-      runtimeKey: 'app-1:tmb-1',
-      prewarmStartedRuntimeKey: '',
-      expected: false
-    },
-    {
-      name: 'the current runtime has already started prewarming',
-      workflowBuilderEnabled: true,
-      isOpen: true,
-      chatId: 'chat-1',
-      runtimeKey: 'app-1:tmb-1',
-      prewarmStartedRuntimeKey: 'app-1:tmb-1',
-      expected: false
-    },
-    {
-      name: 'an available Builder is opened for the first time',
-      workflowBuilderEnabled: true,
-      isOpen: true,
-      chatId: 'chat-1',
-      runtimeKey: 'app-1:tmb-1',
-      prewarmStartedRuntimeKey: '',
-      expected: true
-    }
-  ])('prewarms the runtime only when $name', ({ expected, ...state }) => {
-    expect(shouldPrewarmWorkflowBuilderRuntime(state)).toBe(expected);
   });
 });
 

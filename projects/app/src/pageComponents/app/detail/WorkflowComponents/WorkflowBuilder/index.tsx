@@ -370,8 +370,6 @@ const WorkflowBuilder = () => {
                 ref={chatPanelRef}
                 appId={appId}
                 appDetail={appDetail}
-                isOpen={isOpen}
-                workflowBuilderEnabled={workflowBuilderEnabled}
                 workflowBuilderVersionActions={versionActions}
                 onChatIdChange={setBuilderChatId}
                 focusRequestId={focusRequestId}

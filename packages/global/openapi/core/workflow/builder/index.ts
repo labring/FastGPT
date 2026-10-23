@@ -5,9 +5,7 @@ import {
   WorkflowBuilderVersionCommitBodySchema,
   WorkflowBuilderVersionCommitResponseSchema,
   WorkflowBuilderVersionLoadBodySchema,
-  WorkflowBuilderVersionLoadResponseSchema,
-  WorkflowBuilderRuntimePrewarmBodySchema,
-  WorkflowBuilderRuntimePrewarmResponseSchema
+  WorkflowBuilderVersionLoadResponseSchema
 } from './api';
 
 export const WorkflowBuilderPath: OpenAPIPath = {
@@ -67,23 +65,6 @@ export const WorkflowBuilderPath: OpenAPIPath = {
         200: {
           description: '归档后的版本信息',
           content: { 'application/json': { schema: WorkflowBuilderVersionCommitResponseSchema } }
-        }
-      }
-    }
-  },
-  '/core/workflow/builder/runtime/prewarm': {
-    post: {
-      summary: '预热工作流辅助生成环境',
-      description:
-        '在用户打开工作流辅助生成后提前准备可复用的 Sandbox、内置 Skill 和 Workflow CLI。',
-      tags: [DevApiTagsMap.workflowHelper],
-      requestBody: {
-        content: { 'application/json': { schema: WorkflowBuilderRuntimePrewarmBodySchema } }
-      },
-      responses: {
-        200: {
-          description: '运行环境预热完成',
-          content: { 'application/json': { schema: WorkflowBuilderRuntimePrewarmResponseSchema } }
         }
       }
     }

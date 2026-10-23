@@ -534,6 +534,12 @@ describe('dispatchRunAgent user context', () => {
     let sandboxReadyBeforeLoop = false;
     runAgentLoopMock.mockImplementationOnce(async () => {
       sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
+      expect(
+        props.workflowStreamResponse.mock.calls
+          .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+          .filter((event: { event: string }) => event.event === 'sandboxStatus')
+          .map((event: { data: { phase: string } }) => event.data.phase)
+      ).toEqual(['lazyInit', 'ready']);
       return {
         status: 'done',
         completeMessages: [],
@@ -664,8 +670,8 @@ describe('dispatchRunAgent user context', () => {
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
-    expect(sandboxStatusEvents).toEqual([
-      {
+    expect(sandboxStatusEvents).toEqual(
+      ['lazyInit', 'upgrading', 'lazyInit', 'ready'].map((phase) => ({
         event: 'sandboxStatus',
         data: {
           sandboxId: getRunningSandboxId({
@@ -673,21 +679,10 @@ describe('dispatchRunAgent user context', () => {
             sourceId: 'app_1',
             userId: 'user_1'
           }),
-          phase: 'upgrading'
+          phase
         }
-      },
-      {
-        event: 'sandboxStatus',
-        data: {
-          sandboxId: getRunningSandboxId({
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: 'app_1',
-            userId: 'user_1'
-          }),
-          phase: 'lazyInit'
-        }
-      }
-    ]);
+      }))
+    );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
     expect(result.error).toBeUndefined();
@@ -713,6 +708,12 @@ describe('dispatchRunAgent user context', () => {
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+    expect(
+      props.workflowStreamResponse.mock.calls
+        .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+        .filter((event: { event: string }) => event.event === 'sandboxStatus')
+        .map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit']);
     expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 

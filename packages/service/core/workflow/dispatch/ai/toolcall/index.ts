@@ -124,46 +124,44 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
-    if (useSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse: props.workflowStreamResponse,
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: props.uid,
-        chatId: props.chatId
-      });
-    }
-
     // 初始化沙盒
     const sandboxClient = useSandbox
-      ? await withAgentSandboxInitLease({
-          sandboxId: getRunningSandboxId({
-            sourceType: props.runningAppInfo.sourceType,
-            sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid
-          }),
-          fn: async () => {
-            const runtime = await prepareSandboxToolRuntime({
-              sourceType: props.runningAppInfo.sourceType,
-              sourceId: props.runningAppInfo.sourceId,
-              userId: props.uid,
-              chatId: props.chatId,
-              readInputFile: (url) => readWorkflowFileBuffer({ url }),
-              files: currentInputFiles.map((file) => ({
-                path: file.sandboxPath!,
-                url: file.url
-              }))
-            });
-            const effectiveEntrypoint = sandboxEntrypoint?.trim();
-            if (effectiveEntrypoint) {
-              await runAgentSandboxEntrypoint({
-                sandbox: runtime.provider,
-                sandboxEntrypoint: effectiveEntrypoint,
-                workDirectory: getSandboxRuntimeProfile().workDirectory
-              });
-            }
-            return runtime;
-          }
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse: props.workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: props.uid,
+          chatId: props.chatId,
+          prepareRuntime: () =>
+            withAgentSandboxInitLease({
+              sandboxId: getRunningSandboxId({
+                sourceType: props.runningAppInfo.sourceType,
+                sourceId: props.runningAppInfo.sourceId,
+                userId: props.uid
+              }),
+              fn: async () => {
+                const runtime = await prepareSandboxToolRuntime({
+                  sourceType: props.runningAppInfo.sourceType,
+                  sourceId: props.runningAppInfo.sourceId,
+                  userId: props.uid,
+                  chatId: props.chatId,
+                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  files: currentInputFiles.map((file) => ({
+                    path: file.sandboxPath!,
+                    url: file.url
+                  }))
+                });
+                const effectiveEntrypoint = sandboxEntrypoint?.trim();
+                if (effectiveEntrypoint) {
+                  await runAgentSandboxEntrypoint({
+                    sandbox: runtime.provider,
+                    sandboxEntrypoint: effectiveEntrypoint,
+                    workDirectory: getSandboxRuntimeProfile().workDirectory
+                  });
+                }
+                return runtime;
+              }
+            })
         })
       : undefined;
 
