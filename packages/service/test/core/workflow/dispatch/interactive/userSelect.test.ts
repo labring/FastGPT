@@ -5,6 +5,42 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { dispatchUserSelect } from '@fastgpt/service/core/workflow/dispatch/interactive/userSelect';
 
 describe('dispatchUserSelect', () => {
+  it.each([
+    ['Option A', ['b']],
+    ['Option B', ['a']],
+    ['Unknown option', ['a', 'b']]
+  ] as const)('only activates a matching manual branch for %s', async (selected, skippedKeys) => {
+    const result = await dispatchUserSelect({
+      histories: [],
+      node: {
+        nodeId: 'selectNode',
+        isEntry: true,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userSelectOptions,
+            renderTypeList: [FlowNodeInputTypeEnum.custom],
+            selectedType: FlowNodeInputTypeEnum.custom
+          }
+        ]
+      },
+      runtimeNodesMap: new Map(),
+      params: {
+        [NodeInputKeyEnum.description]: 'Choose one',
+        [NodeInputKeyEnum.userSelectOptions]: [
+          { key: 'a', value: 'Option A' },
+          { key: 'b', value: 'Option B' }
+        ]
+      },
+      query: [{ text: { content: selected } }],
+      lastInteractive: { type: 'userSelect' }
+    } as unknown as Parameters<typeof dispatchUserSelect>[0]);
+
+    expect(result.data?.[NodeOutputKeyEnum.selectResult]).toBe(selected);
+    expect(result[DispatchNodeResponseKeyEnum.skipHandleId]).toEqual(
+      skippedKeys.map((key) => `selectNode-source-${key}`)
+    );
+  });
+
   it('resolves dynamic reference options into userSelect interactive params', async () => {
     const runtimeNodesMap = new Map([
       [
