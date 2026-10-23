@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   PASSWORD_CHANGE_SESSION_TTL_SECONDS,
@@ -7,7 +10,7 @@ import {
   getUserPasswordAvailability,
   isSsoPasswordDisabled,
   isSsoUserByUsername,
-  updatePasswordWithChangeSession
+  updatePassword
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
@@ -41,13 +44,59 @@ describe('password change session service', () => {
 
   it('rejects a missing, expired, mismatched, or reused session', async () => {
     await expect(
-      updatePasswordWithChangeSession({
+      updatePassword({
         sessionId: 'missing',
         userId: 'user-1',
         loginSessionId: 'login-1',
         newPassword: 'new'
       })
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
+  });
+
+  it('activates an inactive account after setting a password with a change session', async () => {
+    const user = await MongoUser.create({
+      username: 'update-password-activation',
+      password: hashStr('old-password'),
+      status: UserStatusEnum.inactive
+    });
+    const userId = String(user._id);
+    const loginSessionId = 'login-activation';
+    const { sessionId } = await createPasswordChangeSession({ userId, loginSessionId });
+
+    await updatePassword({
+      sessionId,
+      userId,
+      loginSessionId,
+      newPassword: hashStr('new-password')
+    });
+
+    const updated = await MongoUser.findById(user._id).lean();
+    expect(updated?.status).toBe(UserStatusEnum.active);
+    expect(updated?.passwordUpdateTime).toBeInstanceOf(Date);
+  });
+
+  it('does not activate a forbidden account when its password is changed', async () => {
+    const user = await MongoUser.create({
+      username: 'update-password-forbidden',
+      password: hashStr('old-password'),
+      status: UserStatusEnum.forbidden
+    });
+    const userId = String(user._id);
+    const loginSessionId = 'login-forbidden';
+    const { sessionId } = await createPasswordChangeSession({ userId, loginSessionId });
+
+    await expect(
+      updatePassword({
+        sessionId,
+        userId,
+        loginSessionId,
+        newPassword: hashStr('new-password')
+      })
+    ).rejects.toThrow('Failed to update password');
+
+    const updated = await MongoUser.findById(user._id).select('+password').lean();
+    expect(updated?.status).toBe(UserStatusEnum.forbidden);
+    expect(updated?.password).toBe(hashStr(hashStr('old-password')));
   });
 });
 

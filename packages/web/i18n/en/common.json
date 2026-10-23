@@ -1327,6 +1327,8 @@
   "password_wechat_load_failed": "The QR code could not be loaded. Try again.",
   "password_wechat_qr": "WeChat verification QR code",
   "password_wechat_scan": "Sign in with WeChat QR code",
+  "account_activation_title": "Account activation",
+  "account_activation_description": "Set a new password to activate your account.",
   "update_password": "Change password",
   "batch_manage": "Batch Manage",
   "batch_move": "Batch Move",

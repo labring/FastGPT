@@ -143,11 +143,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { isPc } = useSystem();
   const { toast } = useToast();
   const canManagePassword = canManagePasswordFromAccountInfo({
-    isPlus: feConfigs?.isPlus,
     username: userInfo?.username,
     passwordAvailable: userInfo?.passwordAvailable
   });
-  const isRoot = userInfo?.username === 'root';
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -255,15 +253,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
 
   const handlePasswordAction = useCallback(() => {
-    if (isRoot) {
-      toast({
-        status: 'info',
-        title: t('account_info:root_password_change_tip')
-      });
-      return;
-    }
     onOpenUpdatePsw();
-  }, [isRoot, onOpenUpdatePsw, t, toast]);
+  }, [onOpenUpdatePsw]);
 
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,

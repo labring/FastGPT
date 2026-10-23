@@ -4,6 +4,7 @@ import {
   CheckPswExpiredResponseSchema,
   CreatePasswordVerificationBodySchema,
   CreatePasswordVerificationResponseSchema,
+  ActivateAccountBodySchema,
   PasswordAuthorizationBodySchema,
   PasswordAuthorizationResponseSchema,
   UpdatePasswordBodySchema,
@@ -51,6 +52,22 @@ export const PasswordPath: OpenAPIPath = {
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: { 'application/json': { schema: UpdatePasswordBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '密码设置成功'
+        }
+      }
+    }
+  },
+  '/support/user/account/password/activate': {
+    post: {
+      summary: '激活账号',
+      description:
+        '未激活账号首次设置密码的入口；成功后将账号标记为已激活，并注销其他 Session',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: { 'application/json': { schema: ActivateAccountBodySchema } }
       },
       responses: {
         200: {
