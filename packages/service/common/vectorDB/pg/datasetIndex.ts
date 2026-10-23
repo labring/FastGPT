@@ -165,12 +165,7 @@ export const ensurePgDatasetIndex = async ({
       rows: Number(counts[0].count),
       dimensions: table.dimensions
     });
-    if (memory.source === 'postgres') {
-      logger.warn('PG index memory detection unavailable; keeping database budget', {
-        datasetId,
-        ...memory
-      });
-    } else if (memory.budgetMB < memory.estimatedMB) {
+    if (memory.budgetMB < memory.estimatedMB) {
       logger.warn('PG index memory budget capped; disk-based build may be needed', {
         datasetId,
         ...memory

@@ -76,10 +76,10 @@ beforeEach(() => {
   mocks.end.mockResolvedValue(undefined);
   mocks.monitor.mockResolvedValue({ rows: [] });
   mocks.memory.mockResolvedValue({
-    source: 'detected',
+    source: 'estimate',
     estimatedMB: 256,
     budgetMB: 256,
-    parallelWorkers: 2
+    configuredMB: 64
   });
   mocks.query.mockImplementation(async (sql: string) => {
     if (sql.includes('pg_try_advisory_lock')) return { rows: [{ locked }] };
@@ -150,15 +150,14 @@ describe('ensurePgDatasetIndex', () => {
   it.each([
     {
       source: 'postgres',
-      estimatedMB: 256,
-      budgetMB: 64,
-      detectionError: 'permission denied',
-      warning: 'PG index memory detection unavailable; keeping database budget'
+      estimatedMB: 8192,
+      budgetMB: 8192,
+      warning: undefined
     },
     {
-      source: 'detected',
+      source: 'capped',
       estimatedMB: 8192,
-      budgetMB: 512,
+      budgetMB: 2048,
       warning: 'PG index memory budget capped; disk-based build may be needed'
     }
   ])(
@@ -168,17 +167,21 @@ describe('ensurePgDatasetIndex', () => {
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toMatchObject({
         created: true
       });
-      expect(mocks.warn).toHaveBeenCalledWith(
-        warning,
-        expect.objectContaining({ budgetMB: memory.budgetMB })
-      );
+      if (warning) {
+        expect(mocks.warn).toHaveBeenCalledWith(
+          warning,
+          expect.objectContaining({ budgetMB: memory.budgetMB })
+        );
+      } else {
+        expect(mocks.warn).not.toHaveBeenCalled();
+      }
     }
   );
 
-  it('retries later under PG memory pressure without dropping an index or starting DDL', async () => {
-    mocks.memory.mockRejectedValue(new Error('Insufficient available PG memory'));
+  it('does not start DDL when reading or setting the session budget fails', async () => {
+    mocks.memory.mockRejectedValue(new Error('PG connection lost'));
     await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
-      'Insufficient available PG memory'
+      'PG connection lost'
     );
     expect(callbacks.onBuilding).not.toHaveBeenCalled();
     expect(mocks.query.mock.calls.some(([sql]) => /DROP INDEX|CREATE INDEX/.test(sql))).toBe(false);
