@@ -409,9 +409,9 @@ When designing a workflow, first determine the responsibility of each node to av
 
 The following prompt returns a plain-text label that the decision node can compare directly. The screenshot also illustrates a JSON output variant; keep the output format and downstream conditions consistent with the prompt you use.
 
-   The output of the review node should be as stable as possible, because it directly affects the decision node's branching. For a quick demo, you can output only the three labels "Safe / Sensitive but Rewritable / Prohibited"; if you need stricter automation integration later, you can switch to structured output, such as returning the classification, reason, and matched rules together, making it easier for downstream nodes to perform precise matching and logging.
+The output of the review node should be as stable as possible, because it directly affects the decision node's branching. For a quick demo, you can output only the three labels "Safe / Sensitive but Rewritable / Prohibited"; if you need stricter automation integration later, you can switch to structured output, such as returning the classification, reason, and matched rules together, making it easier for downstream nodes to perform precise matching and logging.
 
-   ![Configure the review prompt, Dataset References, and User Question](/imgs/guide/getting-started/quick-start/image-26.png)
+![Configure the review prompt, Dataset References, and User Question](/imgs/guide/getting-started/quick-start/image-26.png)
 
 5. **Test the Review Node**
 
@@ -437,9 +437,9 @@ The following prompt returns a plain-text label that the decision node can compa
 
 Use the same English labels in the review prompt and branch conditions.
 
-   The decision node acts as a switch in the workflow. The more stable the output from the previous step, the easier it is to configure the decision node; if the review node's output contains explanatory text, the condition may fail to match. Therefore, in branching workflows, it is common to first constrain the output format of the upstream node before configuring the decision node conditions.
+The decision node acts as a switch in the workflow. The more stable the output from the previous step, the easier it is to configure the decision node; if the review node's output contains explanatory text, the condition may fail to match. Therefore, in branching workflows, it is common to first constrain the output format of the upstream node before configuring the decision node conditions.
 
-   ![Compare the review node response in the Decision node](/imgs/guide/getting-started/quick-start/image-29.png)
+![Compare the review node response in the Decision node](/imgs/guide/getting-started/quick-start/image-29.png)
 
 8. **Configure the Safe Branch**
 
@@ -481,7 +481,7 @@ Use the same English labels in the review prompt and branch conditions.
 - **Rewrite Again**: Connect back to the **Content Rewrite** node.
 - **Abandon Publication**: Return the original text from **Workflow Start → User Question** with a message confirming that publication was abandoned.
 
-   ![Connect each user choice to its output or rewrite path](/imgs/guide/getting-started/quick-start/image-34.png)
+  ![Connect each user choice to its output or rewrite path](/imgs/guide/getting-started/quick-start/image-34.png)
 
 10. **Configure the Prohibited Branch**
 

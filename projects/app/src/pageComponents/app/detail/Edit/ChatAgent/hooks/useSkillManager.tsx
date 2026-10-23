@@ -246,7 +246,9 @@ export const useSkillManager = ({
         }
       );
       return {
-        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined, i18n.language)),
+        list: response.list.map((item) =>
+          toTeamAppItem(item, parentId ?? undefined, i18n.language)
+        ),
         total: response.total
       };
     },

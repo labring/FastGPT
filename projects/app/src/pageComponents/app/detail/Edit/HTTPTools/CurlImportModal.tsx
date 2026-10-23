@@ -57,8 +57,7 @@ const CurlImportModal = ({ onClose, onImport }: CurlImportModalProps) => {
               const token = authValue.substring(7).trim();
               headerSecret = {
                 Bearer: {
-                  value: token,
-                  secret: ''
+                  value: token
                 }
               };
               return false;
@@ -67,8 +66,7 @@ const CurlImportModal = ({ onClose, onImport }: CurlImportModalProps) => {
               const credentials = authValue.substring(6).trim();
               headerSecret = {
                 Basic: {
-                  value: credentials,
-                  secret: ''
+                  value: credentials
                 }
               };
               return false;

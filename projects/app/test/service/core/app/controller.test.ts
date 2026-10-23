@@ -126,8 +126,7 @@ describe('beforeUpdateAppFormat', () => {
 
     const value = nodes[0].inputs[0].value as any;
     expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
-    expect(value.value.apiKey.value).toBe('');
-    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.apiKey).toEqual({ secret: expect.any(String) });
     expect(value.value.region).toBe('cn');
   });
 
@@ -167,8 +166,7 @@ describe('beforeUpdateAppFormat', () => {
     await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
 
     const config = (nodes[0].inputs[0].value as any)[0].config;
-    expect(config.system_input_config.value.apiKey.value).toBe('');
-    expect(config.system_input_config.value.apiKey.secret).toEqual(expect.any(String));
+    expect(config.system_input_config.value.apiKey).toEqual({ secret: expect.any(String) });
   });
 
   it('保存 Agent 嵌套团队工具配置时把 teamId 传给预览接口', async () => {

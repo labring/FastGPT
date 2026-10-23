@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { AdminSystemToolDetailSchema, SystemToolDetailSchema } from '@fastgpt/global/core/app/tool/systemTool/type';
+import {
+  AdminSystemToolDetailSchema,
+  SystemToolDetailSchema
+} from '@fastgpt/global/core/app/tool/systemTool/type';
 import { SystemToolVersionSchema } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { MarketplaceToolBaseSchema } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import { UploadPkgPluginResponseItemSchema } from '@fastgpt/global/openapi/core/plugin/admin/api';
@@ -160,7 +163,7 @@ describe('plugin metadata response schemas', () => {
         {
           id: 'child',
           name: metadata,
-          description: 'Legacy child description',
+          description: 'Legacy child description'
         }
       ]
     });
@@ -174,7 +177,10 @@ describe('plugin metadata response schemas', () => {
       description: metadata,
       versionDescription: metadata
     });
-    const version = SystemToolVersionSchema.parse({ version: '1.0.0', versionDescription: metadata });
+    const version = SystemToolVersionSchema.parse({
+      version: '1.0.0',
+      versionDescription: metadata
+    });
 
     expect(marketplace.readmeUrls).toEqual({
       en: 'https://example.com/en.md',
@@ -184,7 +190,6 @@ describe('plugin metadata response schemas', () => {
     expect(version.versionDescription).toEqual(metadata);
   });
 });
-
 
 describe('TeamToolDetailSchema', () => {
   it('accepts null tool schemas from legacy plugin definitions', () => {

@@ -136,8 +136,7 @@ describe('httpTool type schemas', () => {
         },
         headerSecret: {
           'X-API-Key': {
-            value: 'secret-value',
-            secret: ''
+            value: 'secret-value'
           }
         }
       };

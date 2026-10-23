@@ -54,7 +54,7 @@ export const UpdateHttpToolsBodySchema = z
       description: 'OpenAPI Schema 原始字符串'
     }),
     headerSecret: StoreSecretValueTypeSchema.optional().meta({
-      example: { Authorization: { value: 'token', secret: '' } },
+      example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),
     customHeaders: z.string().optional().meta({

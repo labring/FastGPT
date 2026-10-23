@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   encryptSecretValue,
+  resolveSecretValue,
   storeSecretValue,
   getSecretValue,
   anyValueDecrypt
@@ -20,45 +21,50 @@ describe('encryptSecretValue', () => {
     expect(encryptSecretValue(undefined)).toBe(undefined);
   });
 
-  it('should return value as-is when value field is empty', () => {
-    const input = { value: '', secret: 'existing-secret' };
+  it('should encrypt an empty plain value into the canonical secret shape', () => {
+    const input = { value: '' };
     const result = encryptSecretValue(input);
-    expect(result).toEqual(input);
+
+    expect(result).toHaveProperty('secret');
+    expect('value' in result).toBe(false);
+    expect(decryptSecret(result.secret)).toBe('');
   });
 
   it('should encrypt when value field is present', () => {
-    const input = { value: 'my-api-key', secret: '' };
+    const input = { value: 'my-api-key' };
     const result = encryptSecretValue(input);
 
-    expect(result.value).toBe('');
     expect(result.secret).toBeTruthy();
     expect(result.secret).not.toBe('my-api-key');
     // Verify the encrypted secret can be decrypted back
     expect(decryptSecret(result.secret)).toBe('my-api-key');
   });
 
-  it('should encrypt and clear value field', () => {
-    const input = { value: 'test-token', secret: 'old-secret' };
+  it('should preserve an existing secret value', () => {
+    const input = { secret: 'already-encrypted' };
     const result = encryptSecretValue(input);
 
-    expect(result.value).toBe('');
-    expect(decryptSecret(result.secret)).toBe('test-token');
+    expect(result).toEqual(input);
   });
 
   it('should handle special characters in value', () => {
-    const input = { value: 'p@ss!w0rd#$%^&*()', secret: '' };
+    const input = { value: 'p@ss!w0rd#$%^&*()' };
     const result = encryptSecretValue(input);
 
-    expect(result.value).toBe('');
     expect(decryptSecret(result.secret)).toBe('p@ss!w0rd#$%^&*()');
   });
 
   it('should handle unicode characters in value', () => {
-    const input = { value: '密钥值🔑', secret: '' };
+    const input = { value: '密钥值🔑' };
     const result = encryptSecretValue(input);
 
-    expect(result.value).toBe('');
     expect(decryptSecret(result.secret)).toBe('密钥值🔑');
+  });
+
+  it('should preserve structured references without encrypting them', () => {
+    const input = { ref: ['node-1', 'token'] as [string, string] };
+
+    expect(encryptSecretValue(input)).toEqual(input);
   });
 });
 
@@ -73,36 +79,41 @@ describe('storeSecretValue', () => {
 
   it('should encrypt all values in the store', () => {
     const input = {
-      'X-Api-Key': { value: 'key-123', secret: '' },
-      'X-Token': { value: 'token-456', secret: '' }
+      'X-Api-Key': { value: 'key-123' },
+      'X-Token': { value: 'token-456' }
     };
     const result = storeSecretValue(input);
 
-    expect(result['X-Api-Key'].value).toBe('');
     expect(decryptSecret(result['X-Api-Key'].secret)).toBe('key-123');
-    expect(result['X-Token'].value).toBe('');
     expect(decryptSecret(result['X-Token'].secret)).toBe('token-456');
   });
 
-  it('should skip encryption for entries with empty value', () => {
+  it('should preserve an existing secret entry', () => {
     const input = {
-      'X-Api-Key': { value: '', secret: 'already-encrypted' }
+      'X-Api-Key': { secret: 'already-encrypted' }
     };
     const result = storeSecretValue(input);
 
-    expect(result['X-Api-Key']).toEqual({ value: '', secret: 'already-encrypted' });
+    expect(result['X-Api-Key']).toEqual(input['X-Api-Key']);
   });
 
   it('should handle mixed entries', () => {
     const input = {
-      'X-Api-Key': { value: 'new-key', secret: '' },
-      'X-Token': { value: '', secret: 'already-encrypted' }
+      'X-Api-Key': { value: 'new-key' },
+      'X-Token': { secret: 'already-encrypted' }
     };
     const result = storeSecretValue(input);
 
-    expect(result['X-Api-Key'].value).toBe('');
     expect(decryptSecret(result['X-Api-Key'].secret)).toBe('new-key');
-    expect(result['X-Token']).toEqual({ value: '', secret: 'already-encrypted' });
+    expect(result['X-Token']).toEqual({ secret: 'already-encrypted' });
+  });
+
+  it('should preserve structured references in the store', () => {
+    const input = {
+      Bearer: { ref: ['node-1', 'token'] as [string, string] }
+    };
+
+    expect(storeSecretValue(input)).toEqual(input);
   });
 });
 
@@ -119,18 +130,24 @@ describe('getSecretValue', () => {
     const encrypted = encryptSecret('my-api-key');
     const result = getSecretValue({
       storeSecret: {
-        'X-Api-Key': { value: '', secret: encrypted }
+        'X-Api-Key': { secret: encrypted }
       }
     });
 
     expect(result).toEqual({ 'X-Api-Key': 'my-api-key' });
   });
 
-  it('should prefer value field over secret field', () => {
-    const encrypted = encryptSecret('old-key');
+  it('should resolve deprecated legacy secret objects and JSON strings', () => {
+    const legacyValue = { value: '', secret: encryptSecret('legacy-password') };
+
+    expect(resolveSecretValue({ value: legacyValue })).toBe('legacy-password');
+    expect(resolveSecretValue({ value: JSON.stringify(legacyValue) })).toBe('legacy-password');
+  });
+
+  it('should resolve a plain value wrapper', () => {
     const result = getSecretValue({
       storeSecret: {
-        'X-Api-Key': { value: 'new-key', secret: encrypted }
+        'X-Api-Key': { value: 'new-key' }
       }
     });
 
@@ -141,7 +158,7 @@ describe('getSecretValue', () => {
     const encrypted = encryptSecret('my-token');
     const result = getSecretValue({
       storeSecret: {
-        [HeaderSecretTypeEnum.Bearer]: { value: '', secret: encrypted }
+        [HeaderSecretTypeEnum.Bearer]: { secret: encrypted }
       }
     });
 
@@ -152,7 +169,7 @@ describe('getSecretValue', () => {
     const encrypted = encryptSecret('dXNlcjpwYXNz');
     const result = getSecretValue({
       storeSecret: {
-        [HeaderSecretTypeEnum.Basic]: { value: '', secret: encrypted }
+        [HeaderSecretTypeEnum.Basic]: { secret: encrypted }
       }
     });
 
@@ -163,7 +180,7 @@ describe('getSecretValue', () => {
     const encrypted = encryptSecret('custom-value');
     const result = getSecretValue({
       storeSecret: {
-        'X-Custom-Header': { value: '', secret: encrypted }
+        'X-Custom-Header': { secret: encrypted }
       }
     });
 
@@ -173,7 +190,7 @@ describe('getSecretValue', () => {
   it('should filter out entries with empty actual value', () => {
     const result = getSecretValue({
       storeSecret: {
-        'X-Api-Key': { value: '', secret: '' }
+        'X-Api-Key': { secret: '' }
       }
     });
 
@@ -184,7 +201,7 @@ describe('getSecretValue', () => {
     const encrypted = encryptSecret('some-value');
     const result = getSecretValue({
       storeSecret: {
-        '': { value: '', secret: encrypted }
+        '': { secret: encrypted }
       }
     });
 
@@ -209,15 +226,56 @@ describe('getSecretValue', () => {
 
     const result = getSecretValue({
       storeSecret: {
-        [HeaderSecretTypeEnum.Bearer]: { value: '', secret: bearerEncrypted },
-        [HeaderSecretTypeEnum.Basic]: { value: '', secret: basicEncrypted },
-        'X-Custom': { value: '', secret: customEncrypted }
+        [HeaderSecretTypeEnum.Bearer]: { secret: bearerEncrypted },
+        [HeaderSecretTypeEnum.Basic]: { secret: basicEncrypted },
+        'X-Custom': { secret: customEncrypted }
       }
     });
 
     // Bearer and Basic both write to Authorization, last one wins
     expect(result['X-Custom']).toBe('custom-val');
     expect(result['Authorization']).toBeDefined();
+  });
+
+  it('should resolve raw references and add auth schemes once', () => {
+    expect(
+      getSecretValue({
+        storeSecret: {
+          [HeaderSecretTypeEnum.Bearer]: { ref: ['node-1', 'token'] },
+          'X-Custom': { ref: ['node-1', 'header'] }
+        },
+        resolveReference: (ref) => (ref[1] === 'token' ? 'token-value' : 'raw-value')
+      })
+    ).toEqual({
+      Authorization: 'Bearer token-value',
+      'X-Custom': 'raw-value'
+    });
+  });
+
+  it('should reject non-scalar header references', () => {
+    expect(() =>
+      getSecretValue({
+        storeSecret: {
+          [HeaderSecretTypeEnum.Basic]: { ref: ['node-1', 'credentials'] }
+        },
+        resolveReference: () => ({ user: 'name' })
+      })
+    ).toThrow('must resolve to a string');
+  });
+
+  it('should reject unresolved references instead of forwarding undefined', () => {
+    expect(() =>
+      resolveSecretValue({
+        value: { ref: ['node-1', 'token'] }
+      })
+    ).toThrow('requires workflow context');
+
+    expect(() =>
+      resolveSecretValue({
+        value: { ref: ['node-1', 'token'] },
+        resolveReference: () => undefined
+      })
+    ).toThrow('resolved to undefined');
   });
 });
 
@@ -240,26 +298,33 @@ describe('anyValueDecrypt', () => {
 
   it('should decrypt secret object', () => {
     const encrypted = encryptSecret('my-secret');
-    const input = { secret: encrypted, value: '' };
+    const input = { secret: encrypted };
 
     expect(anyValueDecrypt(input)).toBe('my-secret');
   });
 
-  it('should prefer value field when present in object', () => {
-    const input = { secret: 'some-encrypted', value: 'plain-value' };
+  it('should decrypt deprecated legacy secret objects and JSON strings', () => {
+    const legacyValue = { value: '', secret: encryptSecret('legacy-password') };
+
+    expect(anyValueDecrypt(legacyValue)).toBe('legacy-password');
+    expect(anyValueDecrypt(JSON.stringify(legacyValue))).toBe('legacy-password');
+  });
+
+  it('should resolve a plain value object', () => {
+    const input = { value: 'plain-value' };
 
     expect(anyValueDecrypt(input)).toBe('plain-value');
   });
 
   it('should decrypt JSON string containing secret object', () => {
     const encrypted = encryptSecret('my-secret');
-    const jsonStr = JSON.stringify({ secret: encrypted, value: '' });
+    const jsonStr = JSON.stringify({ secret: encrypted });
 
     expect(anyValueDecrypt(jsonStr)).toBe('my-secret');
   });
 
-  it('should prefer value field in JSON string secret object', () => {
-    const jsonStr = JSON.stringify({ secret: 'some-encrypted', value: 'plain-value' });
+  it('should resolve a plain value in JSON string', () => {
+    const jsonStr = JSON.stringify({ value: 'plain-value' });
 
     expect(anyValueDecrypt(jsonStr)).toBe('plain-value');
   });
@@ -291,15 +356,14 @@ describe('anyValueDecrypt', () => {
 
   it('should handle encrypt then decrypt round-trip via anyValueDecrypt', () => {
     const original = 'round-trip-test-value';
-    const encrypted = encryptSecretValue({ value: original, secret: '' });
-    // encrypted has { secret: '...', value: '' }
+    const encrypted = encryptSecretValue({ value: original });
 
     expect(anyValueDecrypt(encrypted)).toBe(original);
   });
 
   it('should handle JSON-stringified encrypted value', () => {
     const original = 'json-round-trip';
-    const encrypted = encryptSecretValue({ value: original, secret: '' });
+    const encrypted = encryptSecretValue({ value: original });
     const jsonStr = JSON.stringify(encrypted);
 
     expect(anyValueDecrypt(jsonStr)).toBe(original);

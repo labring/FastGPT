@@ -507,7 +507,10 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
     const repo = SystemToolRepo.getInstance();
     const english = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'en' });
-    const chinese = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'zh-CN' });
+    const chinese = await repo.getSystemToolDetail({
+      pluginId: 'systemTool-search',
+      lang: 'zh-CN'
+    });
 
     expect(english).toMatchObject({ name, intro, readmeUrls });
     expect(english.readmeUrl).toBe('https://example.com/legacy.md');
@@ -572,7 +575,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
   it('masks configured system secrets for administrator details', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-weather',
-      secretsVal: { apiKey: { secret: encryptSecret('production-secret'), value: '' } },
+      secretsVal: { apiKey: { secret: encryptSecret('production-secret') } },
       customConfig: {}
     });
     mocks.findSystemTools.mockResolvedValue([]);
@@ -1336,7 +1339,7 @@ describe('SystemToolRepo.getSystemToolRuntime', () => {
       pluginId: 'systemTool-weather',
       currentCost: 1,
       systemKeyCost: 2,
-      secretsVal: { apiKey: { secret: encryptSecret('encrypted-prod-secret'), value: '' } },
+      secretsVal: { apiKey: { secret: encryptSecret('encrypted-prod-secret') } },
       customConfig: {}
     });
     mocks.getTool.mockResolvedValue({

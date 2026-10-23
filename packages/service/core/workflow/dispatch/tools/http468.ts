@@ -178,7 +178,14 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
   })();
   const sensitiveHeaders = getSecretValue({
-    storeSecret: headerSecret
+    storeSecret: headerSecret,
+    resolveReference: (value) =>
+      getReferenceVariableValue({
+        value,
+        nodesMap: runtimeNodesMap,
+        variables: allVariables,
+        isReferenceVal: true
+      })
   });
 
   const params = formatHttpProps(httpParams).reduce((acc: Record<string, string>, item) => {

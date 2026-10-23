@@ -5,7 +5,6 @@ import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import { isDebugToolSource } from '../utils';
 
-
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;
 };
@@ -86,9 +85,8 @@ export const SystemToolCodec = {
     const isDebugSource = isDebugToolSource(source) || isDebugToolSource(tool.source);
     const configuredSecretsVal = isDebugSource ? undefined : this.getConfiguredSecretsVal(config);
     const hasSystemSecret = !!configuredSecretsVal;
-    const systemTitle = (
-      globalThis as typeof globalThis & { feConfigs?: { systemTitle?: string } }
-    ).feConfigs?.systemTitle;
+    const systemTitle = (globalThis as typeof globalThis & { feConfigs?: { systemTitle?: string } })
+      .feConfigs?.systemTitle;
 
     return {
       id: this.getDBPluginId(tool.pluginId),

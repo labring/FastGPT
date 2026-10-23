@@ -25,7 +25,7 @@ export const MarketplaceToolChildSchema = z.object({
   description: PluginTextSchema.optional().meta({
     example: { en: 'Search the web', 'zh-CN': '搜索互联网内容' },
     description: '子工具简介'
-  }),
+  })
 });
 export type MarketplaceToolChildType = z.infer<typeof MarketplaceToolChildSchema>;
 

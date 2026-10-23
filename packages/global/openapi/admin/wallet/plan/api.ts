@@ -95,13 +95,21 @@ export const UpdatePlanBodySchema = z.discriminatedUnion('type', [
     maxDataset: optionalEmptyToUndefined(NumSchema).meta({ description: '最大知识库数' }),
     maxDatasetSize: optionalEmptyToUndefined(NumSchema).meta({ description: '最大知识库容量' }),
     requestsPerMinute: optionalEmptyToUndefined(NumSchema).meta({ description: '每分钟请求数' }),
-    websiteSyncPerDataset: optionalEmptyToUndefined(NumSchema).meta({ description: '每知识库站点同步数' }),
-    chatHistoryStoreDuration: optionalEmptyToUndefined(NumSchema).meta({ description: '聊天记录保存天数' }),
+    websiteSyncPerDataset: optionalEmptyToUndefined(NumSchema).meta({
+      description: '每知识库站点同步数'
+    }),
+    chatHistoryStoreDuration: optionalEmptyToUndefined(NumSchema).meta({
+      description: '聊天记录保存天数'
+    }),
     appRegistrationCount: optionalEmptyToUndefined(NumSchema).meta({ description: '应用注册数' }),
-    auditLogStoreDuration: optionalEmptyToUndefined(NumSchema).meta({ description: '审计日志保存天数' }),
+    auditLogStoreDuration: optionalEmptyToUndefined(NumSchema).meta({
+      description: '审计日志保存天数'
+    }),
     ticketResponseTime: optionalEmptyToUndefined(NumSchema).meta({ description: '工单响应时间' }),
     customDomain: optionalEmptyToUndefined(NumSchema).meta({ description: '自定义域名数' }),
-    maxUploadFileSize: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件大小' }),
+    maxUploadFileSize: optionalEmptyToUndefined(NumSchema).meta({
+      description: '最大上传文件大小'
+    }),
     maxUploadFileCount: optionalEmptyToUndefined(NumSchema).meta({ description: '最大上传文件数' }),
     enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
   }),

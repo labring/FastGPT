@@ -392,8 +392,7 @@ const RenderList = React.memo(function RenderList({
     );
     const name = t(selectPluginText(template.name, i18n.language));
     const intro =
-      t(selectPluginText(template.intro, i18n.language)) ||
-      t('common:core.workflow.Not intro');
+      t(selectPluginText(template.intro, i18n.language)) || t('common:core.workflow.Not intro');
     const isDebugTool = isDebugToolSource(template.source);
     const isSystemSource = template.source === 'system';
 

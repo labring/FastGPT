@@ -1,5 +1,7 @@
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import SecretInputModal, {
+  type SecretReferenceList
+} from '@/pageComponents/app/tool/SecretInputModal';
 import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
@@ -26,7 +28,7 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type NodeGradients,
   AppNodeFlowNodeTypeMap,
@@ -72,6 +74,7 @@ import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/Connect
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { useReference } from './RenderInput/templates/Reference';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -1265,6 +1268,10 @@ const NodeSecret = React.memo(function NodeSecret({
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.any
+  });
 
   const [
     isOpenToolParamConfigModal,
@@ -1291,6 +1298,8 @@ const NodeSecret = React.memo(function NodeSecret({
 
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
+          nodeId={nodeId}
+          referenceList={referenceList as SecretReferenceList}
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {

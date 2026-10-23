@@ -24,6 +24,7 @@ import { valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
 import { getWorkflowInputReferenceDiagnostics } from '../reference/validation';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
@@ -138,20 +139,22 @@ export const validateNodeIO = ({
       selectedType === FlowNodeInputTypeEnum.JSONEditor && !isDynamicJson
         ? valueTypeFormat(storedValue, input.valueType)
         : getWorkflowInputValueForValidation({ input: normalizedInput, value: storedValue });
-    // 历史明文字符串继续兼容；当前密码组件使用 { value, secret } 存储结构。
+    // 兼容历史密码结构后再校验当前格式；引用密钥也视为已配置。
     const secretValueResult =
       selectedType === FlowNodeInputTypeEnum.password &&
       effectiveValue !== undefined &&
       effectiveValue !== null &&
       typeof effectiveValue !== 'string'
-        ? SecretValueTypeSchema.safeParse(effectiveValue)
+        ? SecretValueTypeSchema.safeParse(migrateSecretValueToCurrent(effectiveValue))
         : undefined;
     const isReference = nodeInputIsReference(normalizedInput);
     const isMissingValue = (() => {
       if (secretValueResult?.success) {
+        const secretValue = secretValueResult.data;
+        if ('ref' in secretValue) return false;
         return (
-          !hasConfiguredValue(secretValueResult.data.value) &&
-          !hasConfiguredValue(secretValueResult.data.secret)
+          !('value' in secretValue && hasConfiguredValue(secretValue.value)) &&
+          !('secret' in secretValue && hasConfiguredValue(secretValue.secret))
         );
       }
       return isReference

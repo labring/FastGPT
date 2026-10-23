@@ -306,9 +306,7 @@ describe('dispatchTool runtime toolset auth', () => {
     for (const params of [{}, { query: 123 }, { query: 'blocked' }]) {
       const result = await dispatchTool(createDispatchToolProps(toolConfig, params));
       expect(result.errorMessage).toBeUndefined();
-      expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ params })
-      );
+      expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
       runHTTPToolMock.mockClear();
     }
     expect(getAppVersionByIdMock).toHaveBeenCalled();

@@ -287,7 +287,7 @@ describe('valueTypeFormat', () => {
   });
 
   it('should return secret value as is for string type', () => {
-    const secretVal = { secret: true, value: 'password' };
+    const secretVal = { secret: 'cipher' };
     expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string)).toBe(secretVal);
   });
 
@@ -309,6 +309,9 @@ describe('valueTypeFormat', () => {
   it('should convert to string type', () => {
     expect(valueTypeFormat(123, WorkflowIOValueTypeEnum.string)).toBe('123');
     expect(valueTypeFormat({ a: 1 }, WorkflowIOValueTypeEnum.string)).toBe('{"a":1}');
+    expect(valueTypeFormat({ value: 1, other: 'data' }, WorkflowIOValueTypeEnum.string)).toBe(
+      '{"value":1,"other":"data"}'
+    );
     expect(valueTypeFormat(true, WorkflowIOValueTypeEnum.string)).toBe('true');
   });
 
