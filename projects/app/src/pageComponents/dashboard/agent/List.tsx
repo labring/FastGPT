@@ -45,7 +45,6 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
-import { useResourceSelection } from '@fastgpt/web/hooks/useResourceSelection';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -105,17 +104,7 @@ const List = () => {
   });
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
-  const { selectedResource: editPerApp, selectResource: setEditPerApp } = useResourceSelection({
-    resources: myApps,
-    scopeKey: JSON.stringify([
-      userInfo?.team.teamId,
-      router.pathname,
-      parentId,
-      searchKey,
-      appType,
-      listFilters
-    ])
-  });
+  const [editPerAppId, setEditPerAppId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
@@ -132,6 +121,14 @@ const List = () => {
       : 0,
     renderLoadingItem: () => <ResourceCardSkeleton />
   });
+
+  const editPerApp = useMemo(
+    () =>
+      editPerAppId !== undefined
+        ? myApps.find((item) => String(item._id) === String(editPerAppId))
+        : undefined,
+    [editPerAppId, myApps]
+  );
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
 
@@ -184,17 +181,11 @@ const List = () => {
     successToast: t('app:create_copy_success')
   });
 
-  /** 文件夹 ACL 会传播到继承子树，需重建搜索结果；普通资源只同步目标 ID。 */
-  const refreshPermissionResource = (app: (typeof myApps)[number]) =>
-    loadMyApps({
-      silent: true,
-      resourceId: AppFolderTypeList.includes(app.type) ? undefined : app._id
-    });
-
   const { runAsync: onResumeInheritPermission } = useRequest(
-    async (app: (typeof myApps)[number]) => {
-      await resumeInheritPer(app._id);
-      await refreshPermissionResource(app);
+    async (appId: string) => {
+      await resumeInheritPer(appId);
+      // 保存期间可能切换目录或关闭弹窗，始终按发起操作时的 ID 同步。
+      await loadMyApps({ silent: true, resourceId: appId });
     },
     {
       manual: true,
@@ -433,7 +424,7 @@ const List = () => {
                                       icon: 'key',
                                       type: 'grayBg' as MenuItemType,
                                       label: t('common:permission.Permission'),
-                                      onClick: () => setEditPerApp(app)
+                                      onClick: () => setEditPerAppId(app._id)
                                     }
                                   ]
                                 : [])
@@ -563,11 +554,11 @@ const List = () => {
                 changeOwner({
                   appId: editPerApp._id,
                   ownerId: tmbId
-                }).then(() => refreshPermissionResource(editPerApp))
+                }).then(() => loadMyApps({ silent: true, resourceId: editPerApp._id }))
             })}
-            refetchResource={() => refreshPermissionResource(editPerApp)}
+            refetchResource={() => loadMyApps({ silent: true, resourceId: editPerApp._id })}
             hasParent={Boolean(parentId)}
-            resumeInheritPermission={() => onResumeInheritPermission(editPerApp)}
+            resumeInheritPermission={() => onResumeInheritPermission(editPerApp._id)}
             isInheritPermission={editPerApp.inheritPermission}
             avatar={editPerApp.avatar}
             name={editPerApp.name}
@@ -583,7 +574,7 @@ const List = () => {
                 }),
               refreshDeps: [editPerApp.inheritPermission]
             }}
-            onClose={() => setEditPerApp(undefined)}
+            onClose={() => setEditPerAppId(undefined)}
           />
         )}
         <MoveConfirmModal />

@@ -200,7 +200,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       showPaginationTip: false
     }
   );
-  /** 普通资源按 ID 同步；文件夹等未指定 ID 的刷新重新分页，静默模式保留旧快照至成功。 */
+  /** 列表卡片（含文件夹）按 ID 同步；侧栏权限变更等未指定 ID 的刷新从首屏重新分页。 */
   const loadMyDatasets = useCallback(
     ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
       if (resourceId) return refreshItems([resourceId]);

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { postChangeOwner, resumeInheritPer } from '@/web/core/dataset/api';
 import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { Box, Flex, Grid, HStack, Checkbox } from '@chakra-ui/react';
@@ -39,7 +39,6 @@ import {
 } from '@/pageComponents/dashboard/agent/filters/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleton';
-import { useResourceSelection } from '@fastgpt/web/hooks/useResourceSelection';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -75,17 +74,7 @@ function List() {
   const canCreateDataset = parentId
     ? Boolean(folderDetail?.permission.hasWritePer)
     : !!userInfo?.team?.permission.hasDatasetCreatePer;
-  const { selectedResource: editPerDataset, selectResource: setEditPerDataset } =
-    useResourceSelection({
-      resources: myDatasets,
-      scopeKey: JSON.stringify([
-        userInfo?.team.teamId,
-        router.pathname,
-        parentId,
-        searchKey,
-        listFilters
-      ])
-    });
+  const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const formatDatasets = useMemo(
@@ -145,12 +134,10 @@ function List() {
     }
   });
 
-  /** 文件夹 ACL 会传播到继承子树，需重建搜索结果；普通资源只同步目标 ID。 */
-  const refreshPermissionResource = (dataset: (typeof myDatasets)[number]) =>
-    loadMyDatasets({
-      silent: true,
-      resourceId: dataset.type === DatasetTypeEnum.folder ? undefined : dataset._id
-    });
+  const editPerDataset = useMemo(
+    () => myDatasets.find((item) => item._id === editPerDatasetId),
+    [editPerDatasetId, myDatasets]
+  );
 
   const { runAsync: exportDataset } = useRequest(
     async ({ _id, name }: { _id: string; name: string }) => {
@@ -415,7 +402,7 @@ function List() {
                                 {
                                   icon: 'key',
                                   label: t('common:permission.Permission'),
-                                  onClick: () => setEditPerDataset(dataset)
+                                  onClick: () => setEditPerDatasetId(dataset._id)
                                 }
                               ]
                             : [])
@@ -546,14 +533,14 @@ function List() {
               postChangeOwner({
                 datasetId: editPerDataset._id,
                 ownerId: tmbId
-              }).then(() => refreshPermissionResource(editPerDataset))
+              }).then(() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id }))
             }
             hasParent={!!parentId}
-            refetchResource={() => refreshPermissionResource(editPerDataset)}
+            refetchResource={() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id })}
             isInheritPermission={editPerDataset.inheritPermission}
             resumeInheritPermission={() =>
               resumeInheritPer(editPerDataset._id).then(() =>
-                refreshPermissionResource(editPerDataset)
+                loadMyDatasets({ silent: true, resourceId: editPerDataset._id })
               )
             }
             avatar={editPerDataset.avatar}
@@ -570,7 +557,7 @@ function List() {
                 }),
               refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
             }}
-            onClose={() => setEditPerDataset(undefined)}
+            onClose={() => setEditPerDatasetId(undefined)}
           />
         )}
         <ConfirmModal />

@@ -286,9 +286,7 @@ const Dataset = () => {
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
               isInheritPermission={folderDetail.inheritPermission}
               hasParent={!!folderDetail.parentId}
-              refetchResource={() =>
-                Promise.all([refetchFolderDetail(), loadMyDatasets({ silent: true })])
-              }
+              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyDatasets()])}
               refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
               name={folderDetail.name}
               intro={folderDetail.intro}

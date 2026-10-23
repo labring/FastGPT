@@ -83,7 +83,7 @@ vi.mock('@/web/core/skill/api', () => ({
   batchMoveSkills: vi.fn()
 }));
 
-describe('resource list ID refresh integration', () => {
+describe('resource list permission refresh integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.fetchData.mockResolvedValue(undefined);
@@ -132,11 +132,12 @@ describe('resource list ID refresh integration', () => {
       idField: 'skillIds'
     }
   ])(
-    'uses IDs and retains common filters for $name',
+    'updates folder cards by ID and resets only on list reload for $name',
     async ({ pathname, Provider, useRefresh, api, idField }) => {
       mocks.pathname = pathname;
       const item = {
         _id: '68ad85a7463006c963799a07',
+        type: 'folder',
         createTime: '2026-01-01T00:00:00.000Z',
         updateTime: '2026-02-01T00:00:00.000Z'
       };
@@ -156,6 +157,7 @@ describe('resource list ID refresh integration', () => {
       expect(mocks.refreshItems).toHaveBeenCalledTimes(1);
       await refresh!();
       expect(mocks.fetchData).toHaveBeenLastCalledWith({ init: true, silent: false });
+      expect(mocks.refreshItems).toHaveBeenCalledTimes(1);
 
       const [loadPage, options] = mocks.pagination.mock.lastCall!;
       const controller = new AbortController();
