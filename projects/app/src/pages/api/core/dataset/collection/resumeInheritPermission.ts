@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     ],
     params: {
       targetResource: collection.name,
-      parentResource: parentResourceName ?? '-'
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });
 }

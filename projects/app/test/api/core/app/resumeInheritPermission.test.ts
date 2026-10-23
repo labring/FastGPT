@@ -35,6 +35,14 @@ describe('resume app inherit permission api', () => {
     await expect(MongoApp.findById(app._id).lean()).resolves.toMatchObject({
       inheritPermission: true
     });
+
+    await vi.waitFor(async () => {
+      const audit = await MongoTeamAudit.findOne({
+        teamId: users.owner.teamId,
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+      }).lean();
+      expect(audit?.metadata).toEqual({ targetResource: 'resume-app' });
+    });
   });
 
   it('rejects a caller without app manage permission', async () => {

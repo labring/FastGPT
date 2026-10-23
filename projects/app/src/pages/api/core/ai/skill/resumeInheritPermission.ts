@@ -65,7 +65,7 @@ async function handler(
     resources: [{ skillId: String(skill._id) }],
     params: {
       targetResource: skill.name,
-      parentResource: parentResourceName ?? '-'
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });
 

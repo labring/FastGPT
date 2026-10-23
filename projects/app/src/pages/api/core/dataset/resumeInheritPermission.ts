@@ -85,7 +85,7 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
     resources: [{ datasetId: String(dataset._id) }],
     params: {
       targetResource: dataset.name,
-      parentResource: parentResourceName ?? '-'
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });
 }

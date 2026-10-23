@@ -221,7 +221,7 @@ export const auditLogMap = {
     params: {} as {
       name?: string;
       targetResource: string;
-      parentResource: string;
+      parentResource?: string;
     }
   },
   //APP

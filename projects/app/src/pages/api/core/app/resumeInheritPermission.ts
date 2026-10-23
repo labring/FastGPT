@@ -61,7 +61,7 @@ async function handler(
     resources: [{ appId: String(app._id) }],
     params: {
       targetResource: app.name,
-      parentResource: parentResourceName ?? '-'
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });
 

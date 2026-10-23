@@ -39,6 +39,14 @@ describe('resume dataset inherit permission api', () => {
     await expect(MongoDataset.findById(dataset._id).lean()).resolves.toMatchObject({
       inheritPermission: true
     });
+
+    await vi.waitFor(async () => {
+      const audit = await MongoTeamAudit.findOne({
+        teamId: users.owner.teamId,
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+      }).lean();
+      expect(audit?.metadata).toEqual({ targetResource: 'resume-dataset' });
+    });
   });
 
   it('rejects a caller without dataset manage permission', async () => {

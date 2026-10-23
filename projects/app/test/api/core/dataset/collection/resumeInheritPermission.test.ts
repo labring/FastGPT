@@ -64,7 +64,7 @@ describe('resume collection inherit permission api', () => {
     );
   });
 
-  it('uses the parent collection name in a nested collection audit', async () => {
+  it.each([true, false])('records the available parent name (%s)', async (parentExists) => {
     const users = await getFakeUsers(1);
     const dataset = await MongoDataset.create({
       name: 'nested-audit-dataset',
@@ -92,6 +92,10 @@ describe('resume collection inherit permission api', () => {
       inheritPermission: false
     });
 
+    if (!parentExists) {
+      await MongoDatasetCollection.deleteOne({ _id: parent._id });
+    }
+
     const res = await Call(handler, {
       auth: users.owner,
       body: { collectionId: String(collection._id) }
@@ -111,7 +115,7 @@ describe('resume collection inherit permission api', () => {
         ]);
         expect(audit?.metadata).toEqual({
           targetResource: 'nested-audit-collection',
-          parentResource: 'audit-folder'
+          ...(parentExists ? { parentResource: 'audit-folder' } : {})
         });
       },
       { timeout: 5000 }

@@ -36,6 +36,14 @@ describe('resume agent skill inherit permission api', () => {
     await expect(MongoAgentSkills.findById(skill._id).lean()).resolves.toMatchObject({
       inheritPermission: true
     });
+
+    await vi.waitFor(async () => {
+      const audit = await MongoTeamAudit.findOne({
+        teamId: users.owner.teamId,
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+      }).lean();
+      expect(audit?.metadata).toEqual({ targetResource: 'resume-skill' });
+    });
   });
 
   it('rejects a caller without skill manage permission', async () => {

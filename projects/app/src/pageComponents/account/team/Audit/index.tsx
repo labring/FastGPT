@@ -44,10 +44,10 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
   const processMetadataByEvent = useCallback(
     (event: string, metadata: any) => {
-      // 恢复继承审计中的路径是用户原始名称，不能将含冒号的路径当作翻译 key。
+      // 恢复继承审计保留用户原始名称，仅在展示时补齐缺失的父级占位。
       const defaultFormat =
         event === AuditEventEnum.RESUME_INHERIT_PERMISSION
-          ? metadata
+          ? { ...metadata, parentResource: metadata.parentResource ?? '-' }
           : defaultMetadataProcessor(metadata, t);
       const specialFormat = specialProcessors[event as TeamAuditEvent]?.(defaultFormat, t);
       return specialFormat || defaultFormat;
