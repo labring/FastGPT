@@ -1,0 +1,152 @@
+/* React 面板挂载成功后才隐藏原示例；勾选原生 Schema 开关时恢复 Scalar 的内容区。 */
+:global(.response-card):has(> .host > .panel) {
+  &:not(:has(:global(.scalar-card-checkbox-input):checked)) {
+    > :global(.scalar-card-content):not(:global(.scalar-card-header)),
+    > :global(.response-card-footer) {
+      display: none;
+    }
+  }
+
+  &:has(:global(.scalar-card-checkbox-input):checked) > .host {
+    display: none;
+  }
+}
+
+.host {
+  min-width: 0;
+}
+
+.panel {
+  color: var(--scalar-color-1);
+  font-family: var(--scalar-font);
+  font-size: var(--scalar-small, 13px);
+}
+
+.controls,
+.filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--scalar-border-color);
+}
+
+.controls {
+  background: var(--scalar-background-2);
+}
+
+.control {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+
+  > span {
+    color: var(--scalar-color-2);
+    font-family: var(--scalar-font-code);
+    font-size: 12px;
+  }
+
+  select {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    border: 1px solid var(--scalar-border-color);
+    border-radius: 5px;
+    padding: 0 8px;
+    background: var(--scalar-background-1);
+    color: var(--scalar-color-1);
+    font: inherit;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--scalar-color-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.description {
+  margin: 0;
+  padding: 12px;
+  color: var(--scalar-color-2);
+  line-height: 1.6;
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-block: 1px solid var(--scalar-border-color);
+  color: var(--scalar-color-3);
+  font-family: var(--scalar-font-code);
+  font-size: 11px;
+
+  button {
+    border-radius: 4px;
+    padding: 4px 6px;
+    color: var(--scalar-color-2);
+    font-family: var(--scalar-font);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--scalar-color-1);
+      background: var(--scalar-background-3);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--scalar-color-accent);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.code {
+  max-height: 440px;
+  margin: 0;
+  overflow: auto;
+  padding: 14px 12px;
+  background: var(--scalar-background-2);
+  color: var(--scalar-color-1);
+  font-family: var(--scalar-font-code);
+  font-size: 12px;
+  line-height: 1.65;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+
+  &:focus-visible {
+    outline: 2px solid var(--scalar-color-accent);
+    outline-offset: -2px;
+  }
+}
+
+.eventLine {
+  color: var(--scalar-color-green);
+  font-weight: 600;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--scalar-border-color);
+  color: var(--scalar-color-3);
+  font-size: 11px;
+  line-height: 1.6;
+
+  [role='status']:empty {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .controls,
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
