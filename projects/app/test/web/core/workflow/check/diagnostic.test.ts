@@ -7,12 +7,15 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import workflowZh from '@fastgpt/web/i18n/zh-CN/workflow.json';
 import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
 import type { TFunction } from 'next-i18next';
 
 describe('formatWorkflowDiagnostic', () => {
   const t = ((key: string, params?: Record<string, unknown>) => {
-    const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+    const resources = key.startsWith('workflow:') ? workflowZh : commonZh;
+    const text =
+      (resources as Record<string, string>)[key.replace(/^(common|workflow):/, '')] ?? key;
     return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
   }) as TFunction;
   const node: FlowNodeItemType = {
@@ -22,6 +25,40 @@ describe('formatWorkflowDiagnostic', () => {
     inputs: [],
     outputs: []
   } as FlowNodeItemType;
+
+  it('explains that an existing tool attachment must be removed before reassignment', () => {
+    expect(
+      formatWorkflowDiagnostic({
+        diagnostic: {
+          code: WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached,
+          severity: 'error',
+          nodeId: 'target',
+          params: { ownerNodeId: 'caller-a' }
+        },
+        node,
+        t
+      })
+    ).toMatchObject({ level: 'error', message: workflowZh.tool_target_already_attached });
+  });
+
+  it('explains why a cycle without a branch is forbidden', () => {
+    expect(
+      formatWorkflowDiagnostic({
+        diagnostic: {
+          code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle,
+          severity: 'error',
+          params: {
+            edge: {
+              source: { kind: 'next', nodeId: 'B' },
+              target: { kind: 'target', nodeId: 'A' }
+            }
+          }
+        },
+        node,
+        t
+      }).message
+    ).toBe('节点 B 到 A 的连线会形成纯串行回环，请通过条件或异常分支控制回流');
+  });
 
   it('keeps existing variable-update and model field labels while preserving severity', () => {
     expect(

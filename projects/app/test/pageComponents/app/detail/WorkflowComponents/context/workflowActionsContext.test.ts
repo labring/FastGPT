@@ -140,6 +140,51 @@ describe('workflow node initialization after canvas replacement', () => {
     vi.unstubAllGlobals();
   });
 
+  it('removes every edge of an explicitly deleted port and preserves other ports', async () => {
+    const sourceHandle = 'node-source_catch-right';
+    const nodes = ['node', 'target-a', 'target-b'].map((id) => ({
+      id,
+      type: FlowNodeTypeEnum.emptyNode,
+      position: { x: 0, y: 0 },
+      data: {
+        id: FlowNodeTypeEnum.emptyNode,
+        nodeId: id,
+        flowNodeType: FlowNodeTypeEnum.emptyNode,
+        name: id,
+        intro: '',
+        avatar: '',
+        inputs: [],
+        outputs: []
+      }
+    }));
+    const edges = [
+      {
+        id: 'catch-a',
+        source: 'node',
+        target: 'target-a',
+        sourceHandle,
+        targetHandle: 'target-a-target-left'
+      },
+      {
+        id: 'catch-b',
+        source: 'node',
+        target: 'target-b',
+        sourceHandle,
+        targetHandle: 'target-b-target-left'
+      },
+      {
+        id: 'normal',
+        source: 'node',
+        target: 'target-a',
+        sourceHandle: 'node-source-right',
+        targetHandle: 'target-a-target-left'
+      }
+    ];
+    await act(async () => state.replaceWorkflowData({ nodes, edges }));
+    await act(async () => actions.onDelEdge({ nodeId: 'node', sourceHandle }));
+    expect(state.edges.map((edge) => edge.id)).toEqual(['normal']);
+  });
+
   it('keeps loop mode outputs unique when applying versions with reused node IDs', async () => {
     // 实际挂载 ReactFlow：其 StoreUpdater 在 effect 中同步 props，才能复现旧属性重复补输出。
     for (const mode of [

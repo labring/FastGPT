@@ -1382,6 +1382,7 @@
   "core.workflow.check.edge_handle_unsupported": "Unsupported connection handles from {{source}} to {{target}}: {{sourceHandle}} → {{targetHandle}}",
   "core.workflow.check.edge_cross_scope": "Nodes {{source}} and {{target}} are in different scopes and cannot connect directly",
   "core.workflow.check.edge_self_connection": "Node {{nodeId}} cannot connect to itself",
+  "core.workflow.check.edge_creates_cycle": "Connecting {{source}} to {{target}} would create an unconditional cycle. Use a conditional or error branch to control the loop.",
   "core.workflow.check.tool_edge_invalid": "Invalid tool connection from {{source}} to {{target}}",
   "core.workflow.check.catch_not_enabled": "Enable error handling on node {{nodeId}} before connecting its error branch",
   "core.workflow.check.next_port_unsupported": "Node {{nodeId}} does not support a normal execution output",
