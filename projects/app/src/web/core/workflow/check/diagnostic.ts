@@ -105,6 +105,10 @@ const coreMessageKeys: Partial<Record<WorkflowDiagnosticCodeEnum, ParseKeys>> = 
   [WorkflowDiagnosticCodeEnum.edgeHandleUnsupported]: i18nT(
     'common:core.workflow.check.edge_handle_unsupported'
   ),
+  [WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges]: i18nT(
+    'workflow:tool_connection_has_normal_edges'
+  ),
+  [WorkflowDiagnosticCodeEnum.normalTargetHasToolEdges]: i18nT('workflow:connection_invalid'),
   [WorkflowDiagnosticCodeEnum.edgeCrossScope]: i18nT('common:core.workflow.check.edge_cross_scope'),
   [WorkflowDiagnosticCodeEnum.edgeSelfConnection]: i18nT(
     'common:core.workflow.check.edge_self_connection'

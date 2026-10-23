@@ -6,7 +6,6 @@ import {
   createHideInContext,
   createShowInContext,
   getNodeContainerCheckError,
-  isNodeConnectionAllowed,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
@@ -34,43 +33,6 @@ const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
 });
 
 describe('template context', () => {
-  it('普通目标柄与最终提交双向隔离流程，工具内仍可向新节点延伸', () => {
-    const nodes = ['caller', 'tool', 'tail', 'outer', 'free', 'other-tool', 'other-tail'].map(
-      (nodeId) => ({
-        ...AiChatModule,
-        nodeId
-      })
-    );
-    const edges = [
-      { source: 'caller', target: 'tool', targetHandle: NodeOutputKeyEnum.selectedTools },
-      { source: 'tool', target: 'tail' },
-      { source: 'caller', target: 'outer' },
-      { source: 'caller', target: 'other-tool', targetHandle: NodeOutputKeyEnum.selectedTools },
-      { source: 'other-tool', target: 'other-tail' }
-    ];
-    const check = (source: string, target: string) =>
-      isNodeConnectionAllowed({
-        sourceNode: nodes.find((node) => node.nodeId === source)!,
-        targetNode: nodes.find((node) => node.nodeId === target)!,
-        targetTemplate: AiChatModule,
-        edges,
-        handleId: `${source}-source-right`,
-        getNodeById: (nodeId) => nodes.find((node) => node.nodeId === nodeId)
-      });
-    for (const [source, target] of [
-      ['tail', 'caller'],
-      ['tail', 'outer'],
-      ['outer', 'tail'],
-      ['caller', 'tail'],
-      ['tail', 'other-tail'],
-      ['other-tail', 'tail'],
-      ['free', 'tail']
-    ]) {
-      expect(check(source, target), `${source} -> ${target}`).toBe(false);
-    }
-    expect(check('tool', 'tail')).toBe(true);
-    expect(check('tail', 'free')).toBe(true);
-  });
   it('buildNodeTemplateContext：源节点不存在返回 null，字段正确映射', () => {
     const node = {
       nodeId: 'n1',
@@ -196,86 +158,6 @@ describe('template context', () => {
     expect(isTemplateVisible(ToolParamsNode, ctx({ sourceType: FlowNodeTypeEnum.toolCall }))).toBe(
       false
     );
-  });
-
-  it('连接 ToolParams 时复用模板上下文白名单', () => {
-    const sourceNode = {
-      nodeId: 'source',
-      flowNodeType: FlowNodeTypeEnum.toolCall,
-      isTool: true,
-      parentNodeId: undefined
-    };
-    const getNodeById = (nodeId: string | undefined | null) =>
-      nodeId === sourceNode.nodeId ? sourceNode : undefined;
-
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { nodeId: 'target', parentNodeId: undefined },
-        sourceNode,
-        edges: [],
-        handleId: NodeOutputKeyEnum.selectedTools,
-        getNodeById
-      })
-    ).toBe(true);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { nodeId: 'target', parentNodeId: undefined },
-        sourceNode,
-        edges: [],
-        handleId: '普通输出',
-        getNodeById
-      })
-    ).toBe(false);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: ToolParamsNode,
-        targetNode: { nodeId: 'target', parentNodeId: undefined },
-        sourceNode: { ...sourceNode, flowNodeType: FlowNodeTypeEnum.chatNode },
-        edges: [],
-        handleId: NodeOutputKeyEnum.selectedTools,
-        getNodeById
-      })
-    ).toBe(false);
-  });
-
-  it('连接节点必须属于同一容器并满足容器规则', () => {
-    const sourceNode = {
-      nodeId: 'source',
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      isTool: false,
-      parentNodeId: 'parallel'
-    };
-    const targetNode = { nodeId: 'target', parentNodeId: 'parallel' };
-    const getNodeById = (nodeId: string | undefined | null) =>
-      nodeId === 'parallel'
-        ? ({
-            nodeId: 'parallel',
-            flowNodeType: FlowNodeTypeEnum.parallelRun
-          } as any)
-        : undefined;
-
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: UserSelectNode,
-        targetNode,
-        sourceNode,
-        edges: [],
-        handleId: 'source',
-        getNodeById
-      })
-    ).toBe(false);
-    expect(
-      isNodeConnectionAllowed({
-        targetTemplate: UserSelectNode,
-        targetNode: { nodeId: 'target', parentNodeId: 'other' },
-        sourceNode,
-        edges: [],
-        handleId: 'source',
-        getNodeById
-      })
-    ).toBe(false);
   });
 
   it('侧边栏按画布状态显示工具参数、工具终止和循环终止', () => {

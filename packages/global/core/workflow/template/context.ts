@@ -1,6 +1,5 @@
 import { FlowNodeTypeEnum, isInteractiveNodeType, isNestedParentNodeType } from '../node/constant';
 import { NodeOutputKeyEnum } from '../constants';
-import { isToolWorkflowConnectionAllowed } from '../../../common/workflow/connection';
 import type {
   FlowNodeTemplateType,
   FlowNodeItemType,
@@ -50,58 +49,6 @@ export const isTemplateVisible = (
   ctx: NodeTemplateContext | null
 ): boolean => {
   return !template.isShowInContext || template.isShowInContext(ctx);
-};
-
-/** 校验节点连接的容器和模板上下文，供目标柄展示与最终提交共用。 */
-export const isNodeConnectionAllowed = ({
-  targetTemplate,
-  targetNode,
-  sourceNode,
-  edges,
-  handleId,
-  getNodeById
-}: {
-  targetTemplate?: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
-  targetNode: Pick<FlowNodeItemType, 'nodeId' | 'parentNodeId'>;
-  sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>;
-  edges: { source?: string; target: string; targetHandle?: string | null }[];
-  handleId?: string | null;
-  getNodeById: (
-    nodeId: string | undefined | null
-  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
-}) => {
-  if (sourceNode.parentNodeId !== targetNode.parentNodeId) return false;
-  if (
-    !isToolWorkflowConnectionAllowed({
-      source: sourceNode.nodeId,
-      target: targetNode.nodeId,
-      isToolConnection: handleId === NodeOutputKeyEnum.selectedTools,
-      edges,
-      getNodeById
-    })
-  ) {
-    return false;
-  }
-
-  const sourceContext = buildNodeTemplateContext({
-    sourceNode,
-    edges,
-    handleId,
-    getNodeById
-  });
-
-  if (!sourceContext || !targetTemplate) return true;
-
-  if (
-    getNodeContainerCheckError({
-      node: targetTemplate,
-      context: sourceContext
-    })
-  ) {
-    return false;
-  }
-
-  return isTemplateVisible(targetTemplate, sourceContext);
 };
 
 export type NodeContainerCheckError =

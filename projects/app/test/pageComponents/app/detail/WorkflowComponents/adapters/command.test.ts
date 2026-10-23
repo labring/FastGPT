@@ -129,13 +129,30 @@ describe('Workflow Core command adapters', () => {
     });
   });
 
-  it('allows Web fallback when an existing edge cannot be projected into Core', () => {
+  it('preserves malformed historical edges but still validates new connections', () => {
     const graph = createGraph();
     graph.edges[0].targetHandle = 'legacy-handle';
     expect(getRemovalNodeIdsWithCore({ ...graph, nodeId: 'text' }).status).toBe('adapter-error');
     expect(validateConnectionWithCore({ ...graph, connection: graph.edges[1] }).status).toBe(
-      'adapter-error'
+      'domain-error'
     );
+    expect(
+      validateConnectionWithCore({
+        ...graph,
+        edges: graph.edges.slice(0, 1),
+        connection: graph.edges[1]
+      }).status
+    ).toBe('success');
+    expect(
+      validateConnectionWithCore({
+        ...graph,
+        connection: { ...graph.edges[1], targetHandle: 'invalid' }
+      })
+    ).toMatchObject({
+      status: 'domain-error',
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported }]
+    });
+    expect(graph.edges[0].targetHandle).toBe('legacy-handle');
   });
 
   it('still rejects an unsupported handle on the new connection', () => {

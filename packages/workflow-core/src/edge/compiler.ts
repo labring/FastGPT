@@ -14,7 +14,7 @@ import {
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 
-const assertNode = (document: WorkflowDocument, nodeId: string) => {
+const assertNode = (document: Pick<WorkflowDocument, 'nodes'>, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
     throw new WorkflowCommandError([
@@ -24,7 +24,10 @@ const assertNode = (document: WorkflowDocument, nodeId: string) => {
   return node;
 };
 
-const compileSourceHandle = (port: ExecutionSourcePortRef, document: WorkflowDocument): string => {
+const compileSourceHandle = (
+  port: ExecutionSourcePortRef,
+  document: Pick<WorkflowDocument, 'nodes'>
+): string => {
   const node = assertNode(document, port.nodeId);
   if (port.kind === 'next') return getHandleId(port.nodeId, 'source', 'right');
   if (port.kind === 'catch') return getHandleId(port.nodeId, 'source_catch', 'right');
@@ -50,7 +53,7 @@ const compileSourceHandle = (port: ExecutionSourcePortRef, document: WorkflowDoc
   }
 
   const output = node.outputs.find((item) => item.key === port.outputKey);
-  if (!output || output.type !== FlowNodeOutputTypeEnum.source) {
+  if (!output || output.type !== FlowNodeOutputTypeEnum.source || output.invalid === true) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.sourceOutputNotFound,
@@ -63,7 +66,10 @@ const compileSourceHandle = (port: ExecutionSourcePortRef, document: WorkflowDoc
   return getHandleId(port.nodeId, 'source', port.outputKey);
 };
 
-const compileTargetHandle = (port: ExecutionTargetPortRef, document: WorkflowDocument): string => {
+const compileTargetHandle = (
+  port: ExecutionTargetPortRef,
+  document: Pick<WorkflowDocument, 'nodes'>
+): string => {
   assertNode(document, port.nodeId);
   return port.kind === 'selectedTools'
     ? NodeOutputKeyEnum.selectedTools
@@ -73,7 +79,7 @@ const compileTargetHandle = (port: ExecutionTargetPortRef, document: WorkflowDoc
 /** 将稳定语义端口编译为 FastGPT 当前 StoreEdge handle。 */
 export const compileExecutionEdge = (
   edge: WorkflowExecutionEdge,
-  document: WorkflowDocument
+  document: Pick<WorkflowDocument, 'nodes'>
 ): StoreEdgeItemType => ({
   source: edge.source.nodeId,
   sourceHandle: compileSourceHandle(edge.source, document),
@@ -86,7 +92,7 @@ const parseSourceHandle = ({
   document
 }: {
   edge: StoreEdgeItemType;
-  document: WorkflowDocument;
+  document: Pick<WorkflowDocument, 'nodes'>;
 }): ExecutionSourcePortRef => {
   if (edge.sourceHandle === NodeOutputKeyEnum.selectedTools) {
     return { kind: 'selectedTools', nodeId: edge.source };
@@ -157,7 +163,7 @@ const parseTargetHandle = (edge: StoreEdgeItemType): ExecutionTargetPortRef => {
 /** 反编译 StoreEdge；未知 handle 会阻断，避免导入时静默丢边。 */
 export const decompileStoreEdge = (
   edge: StoreEdgeItemType,
-  document: WorkflowDocument
+  document: Pick<WorkflowDocument, 'nodes'>
 ): WorkflowExecutionEdge => {
   assertNode(document, edge.source);
   assertNode(document, edge.target);

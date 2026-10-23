@@ -1,4 +1,4 @@
-import { getConnectionConflict } from './connection';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
   type Connection,
@@ -47,10 +47,8 @@ import { type HelperLinesController } from '../components/HelperLines';
 import {
   buildNodeTemplateContext,
   getNodeContainerCheckError,
-  isNodeConnectionAllowed,
   translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { getRemovalNodeIdsWithCore, validateConnectionWithCore } from '../../adapters/command';
 
 /*
@@ -944,67 +942,25 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
-      if (!connect.sourceHandle || !connect.targetHandle) {
-        return;
-      }
-      const conflict = getConnectionConflict(connect, edges);
-      if (conflict === 'self') {
+      const result = validateConnectionWithCore({ nodes, edges, connection: connect });
+      if (result.status !== 'success') {
+        const code = result.diagnostics[0].code;
         return toast({
           status: 'warning',
-          title: t('common:core.module.Can not connect self')
+          title:
+            code === WorkflowDiagnosticCodeEnum.edgeSelfConnection
+              ? t('common:core.module.Can not connect self')
+              : code === WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges
+                ? t('workflow:tool_connection_has_normal_edges')
+                : t('workflow:connection_invalid')
         });
-      }
-      if (conflict === 'tool-target-has-normal-edges') {
-        return toast({
-          status: 'warning',
-          title: t('workflow:tool_connection_has_normal_edges')
-        });
-      }
-
-      const sourceNode = getNodeById(connect.source);
-      const targetNode = getNodeById(connect.target);
-      const targetTemplate = targetNode
-        ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
-        : undefined;
-      if (
-        !sourceNode ||
-        !targetNode ||
-        !isNodeConnectionAllowed({
-          targetTemplate,
-          targetNode,
-          sourceNode,
-          edges,
-          handleId: connect.sourceHandle,
-          getNodeById
-        })
-      ) {
-        return;
-      }
-
-      const connectionResult = validateConnectionWithCore({
-        nodes,
-        edges,
-        connection: connect,
-        chatConfig: appDetail.chatConfig
-      });
-      if (connectionResult.status === 'domain-error') {
-        return toast({
-          status: 'warning',
-          title: t('workflow:connection_invalid')
-        });
-      }
-      if (connectionResult.status === 'adapter-error') {
-        console.error(
-          '[Workflow Core Adapter] Failed to validate connection, falling back to Web behavior',
-          connectionResult.error
-        );
       }
 
       onConnect({
         connect
       });
     },
-    [appDetail.chatConfig, edges, getNodeById, nodes, onConnect, t, toast]
+    [edges, nodes, onConnect, t, toast]
   );
 
   /* edge */

@@ -8,8 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -29,29 +28,19 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
   const active = useMemo(() => {
     if (!show || connectingEdge?.handleId !== handleId) return false;
-    if (connectingEdge.nodeId === nodeId) return false;
-
-    const sourceNode = getNodeById(connectingEdge.nodeId);
-    const targetNode = getNodeById(nodeId);
-    const targetTemplate = targetNode
-      ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
-      : undefined;
-
-    return (
-      !!sourceNode &&
-      !!targetNode &&
-      isNodeConnectionAllowed({
-        targetTemplate,
-        targetNode,
-        sourceNode,
-        edges,
-        handleId: connectingEdge.handleId,
-        getNodeById
-      })
-    );
+    return checkExecutionConnection({
+      connection: {
+        source: connectingEdge.nodeId,
+        sourceHandle: connectingEdge.handleId,
+        target: nodeId,
+        targetHandle: handleId
+      },
+      edges,
+      getNodeById
+    }).allowed;
   }, [connectingEdge, edges, getNodeById, nodeId, show]);
-  // 隐藏图形时仍保留端口，保证已有工具连线始终能找到端点。
-  const showHandle = active || connected;
+  // 拖线时只显示可连接入口；空闲时显示已有端点。隐藏均保留真实端口和已有边。
+  const showHandle = connectingEdge ? active : connected;
 
   const size = active ? activeHandleSize : handleSize;
 

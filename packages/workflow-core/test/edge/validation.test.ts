@@ -3,11 +3,15 @@ import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/docum
 import { applyWorkflowCommand } from '../../src/command/apply';
 import {
   assertExecutionConnection,
+  checkExecutionConnection,
   assertExecutionEdge,
   getDefaultExecutionSourcePort
 } from '../../src/edge/validation';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
@@ -17,6 +21,17 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { builtinTemplateProvider } from '../template/provider';
 import fixture from '../fixtures/basic-static/workflow.json';
 import { describe, expect, it } from 'vitest';
+import { compileExecutionEdge } from '../../src/edge/compiler';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import type {
+  StoreEdgeItemType,
+  WorkflowExecutionEdge
+} from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 describe('assertExecutionConnection', () => {
   it('isolates main and different tool flows in both directions without deleting edges', async () => {
@@ -151,7 +166,17 @@ describe('assertExecutionEdge', () => {
         const enabled =
           direction === 'source' ? template.showSourceHandle : template.showTargetHandle;
         const message = `${template.flowNodeType} ${direction}`;
-        if (enabled) expect(connect, message).not.toThrow();
+        if (
+          enabled &&
+          direction === 'target' &&
+          [
+            FlowNodeTypeEnum.toolParams,
+            FlowNodeTypeEnum.stopTool,
+            FlowNodeTypeEnum.loopRunBreak
+          ].includes(template.flowNodeType)
+        ) {
+          expect(connect, message).toThrow(WorkflowCommandError);
+        } else if (enabled) expect(connect, message).not.toThrow();
         else
           expect(connect, message).toThrow(
             direction === 'source'
@@ -226,6 +251,237 @@ describe('getDefaultExecutionSourcePort', () => {
     expect(getDefaultExecutionSourcePort(document, 'answer')).toEqual({
       kind: 'next',
       nodeId: 'answer'
+    });
+  });
+});
+
+describe('checkExecutionConnection', () => {
+  const node = (nodeId: string, type = FlowNodeTypeEnum.chatNode): StoreNodeItemType =>
+    StoreNodeItemTypeSchema.parse({
+      ...moduleTemplatesFlat.find((item) => item.flowNodeType === type)!,
+      nodeId
+    });
+  const ordinary = (source: string, target: string): StoreEdgeItemType => ({
+    source,
+    target,
+    sourceHandle: `${source}-source-right`,
+    targetHandle: `${target}-target-left`
+  });
+  const tool = (source: string, target: string): StoreEdgeItemType => ({
+    source,
+    target,
+    sourceHandle: NodeOutputKeyEnum.selectedTools,
+    targetHandle: NodeOutputKeyEnum.selectedTools
+  });
+  const evaluate = ({
+    connection,
+    edges = [],
+    nodes = [node('source', FlowNodeTypeEnum.toolCall), node('target'), node('other')]
+  }: {
+    connection: Parameters<typeof checkExecutionConnection>[0]['connection'];
+    edges?: Parameters<typeof checkExecutionConnection>[0]['edges'];
+    nodes?: StoreNodeItemType[];
+  }) =>
+    checkExecutionConnection({
+      connection,
+      edges,
+      getNodeById: (id) => nodes.find((item) => item.nodeId === id)
+    });
+
+  it.each([
+    ['self', ordinary('source', 'source'), [], WorkflowDiagnosticCodeEnum.edgeSelfConnection],
+    ['missing node', ordinary('missing', 'target'), [], WorkflowDiagnosticCodeEnum.nodeNotFound],
+    ['missing target', ordinary('source', 'missing'), [], WorkflowDiagnosticCodeEnum.nodeNotFound],
+    [
+      'missing handle',
+      { ...ordinary('source', 'target'), sourceHandle: null },
+      [],
+      WorkflowDiagnosticCodeEnum.edgeHandleUnsupported
+    ],
+    [
+      'invalid handle',
+      { ...ordinary('source', 'target'), targetHandle: 'invalid' },
+      [],
+      WorkflowDiagnosticCodeEnum.edgeHandleUnsupported
+    ],
+    [
+      'tool port mismatch',
+      { ...ordinary('source', 'target'), sourceHandle: NodeOutputKeyEnum.selectedTools },
+      [],
+      WorkflowDiagnosticCodeEnum.toolEdgeInvalid
+    ],
+    [
+      'ordinary duplicate',
+      ordinary('source', 'target'),
+      [ordinary('source', 'target')],
+      WorkflowDiagnosticCodeEnum.edgeDuplicated
+    ],
+    [
+      'historical right duplicate',
+      ordinary('source', 'target'),
+      [{ ...ordinary('source', 'target'), targetHandle: 'target-target-right' }],
+      WorkflowDiagnosticCodeEnum.edgeDuplicated
+    ],
+    [
+      'tool duplicate',
+      tool('source', 'target'),
+      [tool('source', 'target')],
+      WorkflowDiagnosticCodeEnum.edgeDuplicated
+    ],
+    [
+      'tool with normal input',
+      tool('source', 'target'),
+      [ordinary('other', 'target')],
+      WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges
+    ],
+    [
+      'ordinary into tool root',
+      ordinary('source', 'target'),
+      [tool('other', 'target')],
+      WorkflowDiagnosticCodeEnum.normalTargetHasToolEdges
+    ]
+  ] as const)(
+    'returns a refusal reason for %s without changing edges',
+    (_name, connection, edges, code) => {
+      const before = structuredClone(edges);
+      expect(evaluate({ connection, edges: [...edges] })).toMatchObject({
+        allowed: false,
+        reason: { code }
+      });
+      expect(edges).toEqual(before);
+    }
+  );
+
+  it('keeps raw and semantic candidates, command validation and existing-edge validation consistent', () => {
+    const nodes = [node('source', FlowNodeTypeEnum.toolCall), node('target'), node('other')];
+    const document = createWorkflowDocument({ nodes });
+    for (const edge of [
+      { source: { kind: 'next', nodeId: 'source' }, target: { kind: 'target', nodeId: 'target' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'source' },
+        target: { kind: 'selectedTools', nodeId: 'target' }
+      }
+    ] as WorkflowExecutionEdge[]) {
+      const raw = compileExecutionEdge(edge, document);
+      expect(evaluate({ connection: edge, nodes })).toEqual({ allowed: true });
+      expect(evaluate({ connection: raw, nodes })).toEqual({ allowed: true });
+      document.executionEdges = [edge];
+      expect(() => assertExecutionEdge(document, edge)).not.toThrow();
+      expect(() => assertExecutionConnection({ document, edge })).toThrow(
+        WorkflowDiagnosticCodeEnum.edgeDuplicated
+      );
+      expect(evaluate({ connection: edge, edges: [edge], nodes })).toMatchObject({
+        allowed: false,
+        reason: { code: WorkflowDiagnosticCodeEnum.edgeDuplicated }
+      });
+    }
+  });
+
+  it('ignores unrelated legacy handles without bypassing the new connection rules', () => {
+    const edges = [{ ...ordinary('other', 'source'), targetHandle: 'legacy-handle' }];
+    expect(evaluate({ connection: ordinary('source', 'target'), edges })).toEqual({
+      allowed: true
+    });
+    expect(
+      evaluate({ connection: { ...ordinary('source', 'target'), sourceHandle: 'unknown' }, edges })
+    ).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported }
+    });
+    // selectedTools 的 handle ID 相同，其他调用者的旧边不能误判为当前调用者的重复边。
+    expect(
+      evaluate({ connection: tool('source', 'target'), edges: [tool('other', 'target')] })
+    ).toEqual({ allowed: true });
+  });
+
+  it('applies tool-only templates and container restrictions to raw handles and Core commands alike', () => {
+    const caller = node('source', FlowNodeTypeEnum.toolCall);
+    const params = node('target', FlowNodeTypeEnum.toolParams);
+    expect(
+      evaluate({ nodes: [caller, params], connection: ordinary('source', 'target') })
+    ).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.templateUnavailable }
+    });
+    expect(evaluate({ nodes: [caller, params], connection: tool('source', 'target') })).toEqual({
+      allowed: true
+    });
+    const stop = node('target', FlowNodeTypeEnum.stopTool);
+    expect(
+      evaluate({ nodes: [caller, stop], connection: ordinary('source', 'target') }).allowed
+    ).toBe(false);
+    expect(
+      evaluate({
+        nodes: [caller, stop, node('outer', FlowNodeTypeEnum.toolCall)],
+        edges: [tool('outer', 'source')],
+        connection: ordinary('source', 'target')
+      })
+    ).toEqual({ allowed: true });
+    const parallel = node('parallel', FlowNodeTypeEnum.parallelRun);
+    const source = { ...node('source'), parentNodeId: 'parallel' };
+    const target = { ...node('target', FlowNodeTypeEnum.userSelect), parentNodeId: 'parallel' };
+    const document = createWorkflowDocument({ nodes: [parallel, source, target] });
+    const edge: WorkflowExecutionEdge = {
+      source: { kind: 'next', nodeId: 'source' },
+      target: { kind: 'target', nodeId: 'target' }
+    };
+    expect(evaluate({ nodes: document.nodes, connection: edge })).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer }
+    });
+    expect(() => assertExecutionConnection({ document, edge })).toThrow(
+      WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer
+    );
+  });
+
+  it('checks branch configuration, catch switches and removed source outputs', () => {
+    const branch = node('source', FlowNodeTypeEnum.ifElseNode);
+    branch.inputs.find((input) => input.key === NodeInputKeyEnum.ifElseList)!.value = [
+      { branchId: 'valid' }
+    ];
+    const target = node('target');
+    expect(
+      evaluate({
+        nodes: [branch, target],
+        connection: { ...ordinary('source', 'target'), sourceHandle: 'source-source-valid' }
+      })
+    ).toEqual({ allowed: true });
+    expect(
+      evaluate({
+        nodes: [branch, target],
+        connection: { ...ordinary('source', 'target'), sourceHandle: 'source-source-removed' }
+      })
+    ).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.branchKeyNotFound }
+    });
+    const source = node('source');
+    const connection = {
+      ...ordinary('source', 'target'),
+      sourceHandle: 'source-source_catch-right'
+    };
+    expect(evaluate({ nodes: [source, target], connection })).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.catchNotEnabled }
+    });
+    source.catchError = true;
+    expect(evaluate({ nodes: [source, target], connection })).toEqual({ allowed: true });
+    source.outputs.push({
+      id: 'result-port',
+      key: 'result-port',
+      type: FlowNodeOutputTypeEnum.source,
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: 'Result',
+      invalid: true
+    });
+    expect(
+      evaluate({
+        nodes: [source, target],
+        connection: { ...ordinary('source', 'target'), sourceHandle: 'source-source-result-port' }
+      })
+    ).toMatchObject({
+      allowed: false,
+      reason: { code: WorkflowDiagnosticCodeEnum.sourceOutputNotFound }
     });
   });
 });

@@ -341,6 +341,58 @@ describe('workflow handles with real ReactFlow measurements', () => {
     }
   );
 
+  it.each([
+    ['normal-input', 'caller', NodeOutputKeyEnum.selectedTools, false],
+    ['tool-input', 'caller', NodeOutputKeyEnum.selectedTools, false],
+    ['tool-input', 'other-caller', NodeOutputKeyEnum.selectedTools, true],
+    ['tool-input', 'other-caller', 'ordinary', false],
+    ['tool-input', 'node', NodeOutputKeyEnum.selectedTools, false]
+  ] as const)(
+    'uses Core eligibility to hide tool handles for %s from %s via %s',
+    async (incoming, source, sourceHandle, allowed) => {
+      node = { ...node, flowNodeType: FlowNodeTypeEnum.chatNode, isTool: true };
+      const caller = { ...node, nodeId: 'caller', flowNodeType: FlowNodeTypeEnum.toolCall };
+      const other = { ...caller, nodeId: 'other-caller' };
+      const edges = [
+        {
+          id: 'incoming',
+          source: 'caller',
+          target: 'node',
+          sourceHandle:
+            incoming === 'tool-input' ? NodeOutputKeyEnum.selectedTools : 'caller-source-right',
+          targetHandle: incoming === 'tool-input' ? NodeOutputKeyEnum.selectedTools : targetId
+        }
+      ];
+      const graph = {
+        edges,
+        getNodeById: (id: string | null | undefined) =>
+          [node, caller, other].find((node) => node.nodeId === id)
+      };
+      const handle = createElement(ToolTargetHandle, { nodeId: 'node', show: true });
+      await render(handle, graph);
+      store.setState({ domNode: container });
+      store.getState().setNodes([{ id: 'node', position: { x: 0, y: 0 }, data: {} }]);
+      measure();
+      const element = container.querySelector<HTMLElement>('.react-flow__handle.target')!;
+      const initialBounds = bounds();
+      connectingEdge = {
+        nodeId: source,
+        handleId: sourceHandle === 'ordinary' ? `${source}-source-right` : sourceHandle,
+        handleType: 'source'
+      };
+      await render(handle, graph);
+      measure();
+      expect(element.style.visibility).toBe(allowed ? '' : 'hidden');
+      expect(element.classList.contains('connectableend')).toBe(allowed);
+      expect(container.querySelector('.react-flow__handle.target')).toBe(element);
+      expect(bounds()).toEqual(initialBounds);
+      expect(edges).toHaveLength(1);
+      connectingEdge = undefined;
+      await render(handle, graph);
+      expect(element.style.visibility).toBe(incoming === 'tool-input' ? '' : 'hidden');
+    }
+  );
+
   it('keeps all folded branch IDs and catch IDs available to the actual ReactFlow cache', async () => {
     node = {
       ...node,
