@@ -1,4 +1,5 @@
 {
+  "tool_target_already_attached": "This node is already attached to another tool call. Remove its existing tool connection first.",
   "tool_connection_has_normal_edges": "This node already has incoming workflow connections. Remove them before connecting it as a tool.",
   "Array_element": "Array element",
   "Array_element_index": "Index",

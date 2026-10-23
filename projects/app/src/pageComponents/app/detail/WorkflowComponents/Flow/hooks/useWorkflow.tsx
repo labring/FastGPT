@@ -1,4 +1,4 @@
-import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
   type Connection,
@@ -944,15 +944,9 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     (connect: Connection) => {
       const result = validateConnectionWithCore({ nodes, edges, connection: connect });
       if (result.status !== 'success') {
-        const code = result.diagnostics[0].code;
         return toast({
           status: 'warning',
-          title:
-            code === WorkflowDiagnosticCodeEnum.edgeSelfConnection
-              ? t('common:core.module.Can not connect self')
-              : code === WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges
-                ? t('workflow:tool_connection_has_normal_edges')
-                : t('workflow:connection_invalid')
+          title: formatWorkflowDiagnostic({ diagnostic: result.diagnostics[0], t }).message
         });
       }
 

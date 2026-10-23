@@ -98,6 +98,7 @@ export enum WorkflowDiagnosticCodeEnum {
   templateUnavailable = 'WORKFLOW_TEMPLATE_UNAVAILABLE',
   toolArgumentsInvalid = 'WORKFLOW_TOOL_ARGUMENTS_INVALID',
   toolEdgeInvalid = 'WORKFLOW_TOOL_EDGE_INVALID',
+  toolTargetAlreadyAttached = 'WORKFLOW_TOOL_TARGET_ALREADY_ATTACHED',
   toolTargetHasNormalEdges = 'WORKFLOW_TOOL_TARGET_HAS_NORMAL_EDGES',
   normalTargetHasToolEdges = 'WORKFLOW_NORMAL_TARGET_HAS_TOOL_EDGES',
   toolEdgeNodeInvalid = 'WORKFLOW_TOOL_EDGE_NODE_INVALID',

@@ -324,6 +324,22 @@ const assertExecutionEdgeRules = ({
       }
     ]);
   }
+  const otherOwner =
+    sourceIsTool &&
+    incoming.find(
+      (item) =>
+        item.targetHandle === NodeOutputKeyEnum.selectedTools && item.source !== sourceNode.nodeId
+    );
+  if (otherOwner) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached,
+        severity: 'error',
+        nodeId: targetNode.nodeId,
+        params: { ownerNodeId: otherOwner.source }
+      }
+    ]);
+  }
   if (
     !sourceIsTool &&
     incoming.some((item) => item.targetHandle === NodeOutputKeyEnum.selectedTools)

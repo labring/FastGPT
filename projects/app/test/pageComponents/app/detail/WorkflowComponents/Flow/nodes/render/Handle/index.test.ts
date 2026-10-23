@@ -344,7 +344,8 @@ describe('workflow handles with real ReactFlow measurements', () => {
   it.each([
     ['normal-input', 'caller', NodeOutputKeyEnum.selectedTools, false],
     ['tool-input', 'caller', NodeOutputKeyEnum.selectedTools, false],
-    ['tool-input', 'other-caller', NodeOutputKeyEnum.selectedTools, true],
+    ['tool-input', 'other-caller', NodeOutputKeyEnum.selectedTools, false],
+    ['no-input', 'caller', NodeOutputKeyEnum.selectedTools, true],
     ['tool-input', 'other-caller', 'ordinary', false],
     ['tool-input', 'node', NodeOutputKeyEnum.selectedTools, false]
   ] as const)(
@@ -353,16 +354,21 @@ describe('workflow handles with real ReactFlow measurements', () => {
       node = { ...node, flowNodeType: FlowNodeTypeEnum.chatNode, isTool: true };
       const caller = { ...node, nodeId: 'caller', flowNodeType: FlowNodeTypeEnum.toolCall };
       const other = { ...caller, nodeId: 'other-caller' };
-      const edges = [
-        {
-          id: 'incoming',
-          source: 'caller',
-          target: 'node',
-          sourceHandle:
-            incoming === 'tool-input' ? NodeOutputKeyEnum.selectedTools : 'caller-source-right',
-          targetHandle: incoming === 'tool-input' ? NodeOutputKeyEnum.selectedTools : targetId
-        }
-      ];
+      const edges =
+        incoming === 'no-input'
+          ? []
+          : [
+              {
+                id: 'incoming',
+                source: 'caller',
+                target: 'node',
+                sourceHandle:
+                  incoming === 'tool-input'
+                    ? NodeOutputKeyEnum.selectedTools
+                    : 'caller-source-right',
+                targetHandle: incoming === 'tool-input' ? NodeOutputKeyEnum.selectedTools : targetId
+              }
+            ];
       const graph = {
         edges,
         getNodeById: (id: string | null | undefined) =>
@@ -386,7 +392,7 @@ describe('workflow handles with real ReactFlow measurements', () => {
       expect(element.classList.contains('connectableend')).toBe(allowed);
       expect(container.querySelector('.react-flow__handle.target')).toBe(element);
       expect(bounds()).toEqual(initialBounds);
-      expect(edges).toHaveLength(1);
+      expect(edges).toHaveLength(incoming === 'no-input' ? 0 : 1);
       connectingEdge = undefined;
       await render(handle, graph);
       expect(element.style.visibility).toBe(incoming === 'tool-input' ? '' : 'hidden');

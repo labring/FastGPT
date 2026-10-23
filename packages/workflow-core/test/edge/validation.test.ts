@@ -335,6 +335,12 @@ describe('checkExecutionConnection', () => {
       WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges
     ],
     [
+      'tool already owned',
+      tool('source', 'target'),
+      [tool('other', 'target')],
+      WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached
+    ],
+    [
       'ordinary into tool root',
       ordinary('source', 'target'),
       [tool('other', 'target')],
@@ -388,10 +394,60 @@ describe('checkExecutionConnection', () => {
       allowed: false,
       reason: { code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported }
     });
-    // selectedTools 的 handle ID 相同，其他调用者的旧边不能误判为当前调用者的重复边。
-    expect(
-      evaluate({ connection: tool('source', 'target'), edges: [tool('other', 'target')] })
-    ).toEqual({ allowed: true });
+  });
+
+  it('requires an explicit detach before assigning a tool entry to another caller', async () => {
+    const nodes = [
+      node('caller-a', FlowNodeTypeEnum.toolCall),
+      node('caller-b', FlowNodeTypeEnum.toolCall),
+      node('entry')
+    ];
+    const document = createWorkflowDocument({ nodes });
+    const original: WorkflowExecutionEdge = {
+      source: { kind: 'selectedTools', nodeId: 'caller-a' },
+      target: { kind: 'selectedTools', nodeId: 'entry' }
+    };
+    const candidate: WorkflowExecutionEdge = {
+      source: { kind: 'selectedTools', nodeId: 'caller-b' },
+      target: { kind: 'selectedTools', nodeId: 'entry' }
+    };
+    document.executionEdges = [original];
+    const before = structuredClone(document);
+    const raw = compileExecutionEdge(candidate, document);
+    for (const connection of [candidate, raw]) {
+      expect(evaluate({ connection, nodes, edges: document.executionEdges })).toMatchObject({
+        allowed: false,
+        reason: {
+          code: WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached,
+          params: { ownerNodeId: 'caller-a' }
+        }
+      });
+    }
+    await expect(
+      applyWorkflowCommand({
+        document,
+        command: { type: 'edge.connect', edge: candidate },
+        dependencies: { templateProvider: builtinTemplateProvider }
+      })
+    ).rejects.toThrow(WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached);
+    const shared = { ...document, executionEdges: [original, candidate] };
+    for (const edge of shared.executionEdges)
+      expect(() => assertExecutionEdge(shared, edge)).toThrow(
+        WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached
+      );
+    expect(document).toEqual(before);
+    const detached = await applyWorkflowCommand({
+      document,
+      command: { type: 'edge.disconnect', edge: original },
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+    const reassigned = await applyWorkflowCommand({
+      document: detached.document,
+      command: { type: 'edge.connect', edge: candidate },
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+    expect(reassigned.document.executionEdges).toEqual([candidate]);
+    expect(document).toEqual(before);
   });
 
   it('applies tool-only templates and container restrictions to raw handles and Core commands alike', () => {
