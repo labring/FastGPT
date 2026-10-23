@@ -18,6 +18,7 @@ import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
   getWorkflowReferenceItems,
+  getWorkflowReferenceItemsFromValue,
   isWorkflowEdgeSourceHandleValid,
   isWorkflowReferenceItem
 } from '@fastgpt/global/core/workflow/editor/utils';
@@ -88,6 +89,17 @@ export const getWorkflowNodeRunParams = ({
         }, new Map())
       : undefined;
 
+  const containerNodeIds = [node.nodeId];
+  const containerNodeIdSet = new Set(containerNodeIds);
+  let parentNodeId = node.parentNodeId;
+  while (parentNodeId && !containerNodeIdSet.has(parentNodeId)) {
+    const parentNode = runtimeNodesMap.get(parentNodeId);
+    if (!parentNode) break;
+    containerNodeIds.push(parentNodeId);
+    containerNodeIdSet.add(parentNodeId);
+    parentNodeId = parentNode.parentNodeId;
+  }
+
   /** 引用输入只保留可执行来源；无效项按 main 行为过滤，不升级为参数异常。 */
   const resolveReferenceInputValue = (value: unknown) => {
     const references = getWorkflowReferenceItems(value);
@@ -103,18 +115,42 @@ export const getWorkflowNodeRunParams = ({
     const isReachableSource = (sourceNodeId: string) => {
       const byTarget = runtimeEdgeIndex?.byTarget;
       if (!reverseEdges && !byTarget) return true;
-      const pending = [node.nodeId];
+      // 编辑器把祖先容器作为遍历起点，但容器自身不因此成为子节点的可引用来源。
+      if (sourceNodeId === node.nodeId) return true;
+      const pending = [...containerNodeIds];
       const visited = new Set<string>();
       while (pending.length > 0) {
         const targetNodeId = pending.pop()!;
-        if (targetNodeId === sourceNodeId) return true;
         if (visited.has(targetNodeId)) continue;
         visited.add(targetNodeId);
-        if (byTarget) {
-          pending.push(...(byTarget.get(targetNodeId) ?? []).map((edge) => edge.source));
-        } else {
-          pending.push(...(reverseEdges?.get(targetNodeId) ?? []));
+
+        if (targetNodeId !== node.nodeId && containerNodeIdSet.has(targetNodeId)) {
+          const container = runtimeNodesMap.get(targetNodeId);
+          for (const input of container?.inputs ?? []) {
+            if (!nodeInputIsReference(input) || input.key === NodeInputKeyEnum.childrenNodeIdList) {
+              continue;
+            }
+            const references = getWorkflowReferenceItemsFromValue(
+              input.value ?? input.defaultValue
+            );
+            for (const [referenceSourceId] of references) {
+              if (
+                referenceSourceId === VARIABLE_NODE_ID ||
+                !runtimeNodesMap.has(referenceSourceId)
+              ) {
+                continue;
+              }
+              if (referenceSourceId === sourceNodeId) return true;
+              pending.push(referenceSourceId);
+            }
+          }
         }
+
+        const upstreamNodeIds = byTarget
+          ? (byTarget.get(targetNodeId) ?? []).map((edge) => edge.source)
+          : (reverseEdges?.get(targetNodeId) ?? []);
+        if (upstreamNodeIds.includes(sourceNodeId)) return true;
+        pending.push(...upstreamNodeIds);
       }
       return false;
     };

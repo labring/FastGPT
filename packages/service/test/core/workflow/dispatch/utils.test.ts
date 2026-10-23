@@ -38,6 +38,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
@@ -2161,5 +2163,121 @@ describe('runtimeSummaryToNodeSummary', () => {
       hasError: true,
       errorText: 'failed'
     });
+  });
+});
+
+describe('getWorkflowNodeRunParams', () => {
+  it('resolves direct references from container ancestors and their upstream nodes', () => {
+    const makeInput = (key: string, value: unknown, renderType: FlowNodeInputTypeEnum) => ({
+      key,
+      value,
+      selectedType: renderType,
+      renderTypeList: [renderType],
+      canEdit: true
+    });
+    const makeNode = ({
+      nodeId,
+      flowNodeType,
+      inputs = [],
+      outputs = [],
+      parentNodeId
+    }: {
+      nodeId: string;
+      flowNodeType: FlowNodeTypeEnum;
+      inputs?: ReturnType<typeof makeInput>[];
+      outputs?: Array<{ id: string; value?: unknown }>;
+      parentNodeId?: string;
+    }) => ({
+      nodeId,
+      parentNodeId,
+      name: nodeId,
+      flowNodeType,
+      inputs,
+      outputs
+    });
+    const storedNodes = [
+      makeNode({
+        nodeId: 'edge-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'edge-value' }]
+      }),
+      makeNode({
+        nodeId: 'container-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'container-value' }]
+      }),
+      makeNode({
+        nodeId: 'upstream-source',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        outputs: [{ id: 'output', value: 'upstream-value' }]
+      }),
+      makeNode({
+        nodeId: 'loop',
+        flowNodeType: FlowNodeTypeEnum.loop,
+        inputs: [
+          makeInput('loopInput', ['container-source', 'output'], FlowNodeInputTypeEnum.reference)
+        ],
+        outputs: [{ id: 'loop-output', value: 'loop-value' }]
+      }),
+      makeNode({
+        nodeId: 'inner',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        parentNodeId: 'loop',
+        inputs: [
+          makeInput('edgeReference', ['edge-source', 'output'], FlowNodeInputTypeEnum.reference),
+          makeInput(
+            'containerReference',
+            ['container-source', 'output'],
+            FlowNodeInputTypeEnum.reference
+          ),
+          makeInput(
+            'upstreamReference',
+            ['upstream-source', 'output'],
+            FlowNodeInputTypeEnum.reference
+          ),
+          makeInput('textReference', '{{$edge-source.output$}}', FlowNodeInputTypeEnum.input),
+          makeInput('ancestorReference', ['loop', 'loop-output'], FlowNodeInputTypeEnum.reference)
+        ]
+      })
+    ];
+    const runtimeNodes = storeNodes2RuntimeNodes(storedNodes as any, []);
+    const runtimeNodesMap = new Map(runtimeNodes.map((node) => [node.nodeId, node]));
+    const runtimeEdges = [
+      {
+        source: 'edge-source',
+        target: 'loop',
+        sourceHandle: 'output',
+        targetHandle: 'input'
+      },
+      {
+        source: 'upstream-source',
+        target: 'container-source',
+        sourceHandle: 'output',
+        targetHandle: 'input'
+      }
+    ] as RuntimeEdgeItemType[];
+    const runtimeEdgeIndex = {
+      byTarget: new Map<string, readonly RuntimeEdgeItemType[]>([
+        ['loop', [runtimeEdges[0]]],
+        ['container-source', [runtimeEdges[1]]]
+      ])
+    };
+    expect(runtimeNodesMap.get('inner')?.parentNodeId).toBe('loop');
+
+    const params = getWorkflowNodeRunParams({
+      node: runtimeNodesMap.get('inner')!,
+      runtimeNodesMap,
+      runtimeEdges,
+      runtimeEdgeIndex,
+      variableState: { toRuntimeRecord: () => ({}) } as any
+    });
+
+    expect(params).toMatchObject({
+      edgeReference: 'edge-value',
+      containerReference: 'container-value',
+      upstreamReference: 'upstream-value',
+      textReference: 'edge-value'
+    });
+    expect(params.ancestorReference).toBeUndefined();
   });
 });

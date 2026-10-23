@@ -47,6 +47,8 @@ const AppVersionReferenceSnapshotsSchema = z
     description: '该版本内已删除引用来源的历史展示元数据'
   });
 
+const PublishAppReferenceSnapshotsInputSchema = z.array(WorkflowReferenceSnapshotSchema);
+
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
   _id: ObjectIdSchema.meta({
     description: '版本记录 ID'
@@ -84,8 +86,9 @@ export const PublishAppBodySchema = z.object({
   chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
   }),
-  referenceSnapshots: AppVersionReferenceSnapshotsSchema.optional().meta({
-    description: '本次保存的已删除引用来源历史展示元数据；未传时按空数组保存'
+  referenceSnapshots: PublishAppReferenceSnapshotsInputSchema.optional().meta({
+    description:
+      '本次保存的已删除引用来源历史展示元数据；未传时继承当前草稿中仍被引用且来源节点或输出不可解析的快照，传入空数组时清空'
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,

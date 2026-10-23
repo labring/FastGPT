@@ -277,6 +277,7 @@ export const storeNodes2RuntimeNodes = (
     nodes.map<RuntimeNodeItemType>((node) => {
       return {
         nodeId: node.nodeId,
+        ...(node.parentNodeId !== undefined ? { parentNodeId: node.parentNodeId } : {}),
         name: node.name,
         avatar: node.avatar,
         intro: node.intro,

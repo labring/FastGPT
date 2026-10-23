@@ -209,12 +209,9 @@ export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupA
   );
 };
 
-/**
- * 优先读取 AutoSave Version，保证编辑器详情/复制使用未发布草稿；没有 AutoSave 时回退到最新 Version。
- * 返回值也作为保存增量鉴权的 baseline。
- */
+/** 读取该 App 最新写入的草稿 Version；仅在写入时间相同时优先 AutoSave。 */
 export const getAppDraftVersion = async (appId: string, session?: ClientSession) => {
-  const query = MongoAppVersion.findOne({ appId }).sort({ isAutoSave: -1, time: -1, _id: -1 });
+  const query = MongoAppVersion.findOne({ appId }).sort({ time: -1, isAutoSave: -1, _id: -1 });
   if (session) query.session(session);
   return query.lean();
 };
