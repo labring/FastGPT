@@ -229,20 +229,23 @@ describe('worker/utils WorkerPool', () => {
     );
   });
 
-  it('loadFile handler 遇外部 DNS 错误时使用 warn 记录并不掩盖任务失败', async () => {
+  it.each([
+    [
+      '外部 DNS 错误',
+      Object.assign(new Error('getaddrinfo ENOTFOUND www.lntour.gov.cn'), { code: 'ENOTFOUND' })
+    ],
+    ['用户业务错误', new UserError('File exceeds maximum allowed size', '文件过大')]
+  ])('loadFile handler 遇%s时使用 warn 记录并不掩盖任务失败', async (_name, error) => {
     const logger = createLogger();
-    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+    const pool = createPool<{ loadFile: true }, never>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
       logger
     });
-    const dnsError = Object.assign(new Error('getaddrinfo ENOTFOUND www.lntour.gov.cn'), {
-      code: 'ENOTFOUND'
-    });
-    const loadFile = vi.fn().mockRejectedValue(dnsError);
+    const loadFile = vi.fn().mockRejectedValue(error);
 
-    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
-      'getaddrinfo ENOTFOUND www.lntour.gov.cn'
+    await expect(pool.run({ loadFile: true }, undefined, { loadFile })).rejects.toThrow(
+      error.message
     );
 
     expect(logger.warn).toHaveBeenCalledWith(
@@ -254,7 +257,7 @@ describe('worker/utils WorkerPool', () => {
 
   it('loadFile handler 的网络错误不区分任务来源，内部 S3 同样降级为 warn', async () => {
     const logger = createLogger();
-    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+    const pool = createPool<{ loadFile: true; sourceKind: 's3' }, never>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
       logger
@@ -266,7 +269,7 @@ describe('worker/utils WorkerPool', () => {
     const loadFile = vi.fn().mockRejectedValue(s3Error);
 
     await expect(
-      pool.run({ loadFile: true, sourceKind: 's3' } as any, undefined, { loadFile })
+      pool.run({ loadFile: true, sourceKind: 's3' }, undefined, { loadFile })
     ).rejects.toThrow('connect ECONNREFUSED 10.0.0.5:9000');
 
     expect(logger.warn).toHaveBeenCalledWith(
@@ -276,23 +279,36 @@ describe('worker/utils WorkerPool', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('loadFile handler 遇未配置的占位符域名保留 error 记录', async () => {
+  it.each([
+    [
+      '未配置的占位符域名',
+      Object.assign(new Error('getaddrinfo ENOTFOUND seedream.example.com'), { code: 'ENOTFOUND' })
+    ],
+    [
+      '完整 URL 中的占位符域名',
+      Object.assign(new Error('Failed to download https://seedream.example.com/file'), {
+        code: 'ETIMEDOUT'
+      })
+    ],
+    [
+      '带展示文案的占位符异常',
+      new UserError('getaddrinfo ENOTFOUND seedream.example.com', 'Download failed')
+    ],
+    [
+      'DNS 内存不足',
+      Object.assign(new Error('getaddrinfo EAI_MEMORY files.acme.org'), { code: 'EAI_MEMORY' })
+    ]
+  ])('loadFile handler 遇%s保留 error 记录', async (_name, error) => {
     const logger = createLogger();
-    const pool = createPool<{ payload: string }, { key: string; src: string }>({
+    const pool = createPool<{ loadFile: true }, never>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
       logger
     });
-    const placeholderError = Object.assign(
-      new Error('getaddrinfo ENOTFOUND seedream.example.com'),
-      {
-        code: 'ENOTFOUND'
-      }
-    );
-    const loadFile = vi.fn().mockRejectedValue(placeholderError);
+    const loadFile = vi.fn().mockRejectedValue(error);
 
-    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
-      'getaddrinfo ENOTFOUND seedream.example.com'
+    await expect(pool.run({ loadFile: true }, undefined, { loadFile })).rejects.toThrow(
+      error.message
     );
 
     expect(logger.error).toHaveBeenCalledWith(
@@ -841,6 +857,10 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
     expect(isExpectedWorkerTaskError({ code: 'ECONNRESET' })).toBe(true);
     expect(isExpectedWorkerTaskError({ code: 'EAI_AGAIN' })).toBe(true);
     expect(isExpectedWorkerTaskError({ code: 'EHOSTUNREACH' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ENETUNREACH' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ECONNABORTED' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ERR_NETWORK' })).toBe(true);
+    expect(isExpectedWorkerTaskError({ code: 'ERR_NAME_NOT_RESOLVED' })).toBe(true);
     expect(isExpectedWorkerTaskError(new Error('getaddrinfo ENOTFOUND www.lntour.gov.cn'))).toBe(
       true
     );
@@ -875,13 +895,74 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
     expect(isExpectedWorkerTaskError(new Error('upload failed'))).toBe(false);
   });
 
+  it.each([
+    {
+      name: 'message 非字符串但错误码有效',
+      error: { message: 123, code: 'ENOTFOUND' },
+      expected: true
+    },
+    {
+      name: '包装错误下 cause 的网络错误码',
+      error: { code: 'ERR_BAD_RESPONSE', cause: { code: 'ENOTFOUND' } },
+      expected: true
+    },
+    {
+      name: 'DNS 内存不足',
+      error: { code: 'EAI_MEMORY', message: 'getaddrinfo EAI_MEMORY files.acme.org' },
+      expected: false
+    },
+    {
+      name: '未知错误码不受网络文案影响',
+      error: { code: 'EAI_MEMORY', message: 'getaddrinfo ENOTFOUND files.acme.org' },
+      expected: false
+    }
+  ])('优先按结构化错误码判断：$name', ({ error, expected }) => {
+    expect(isExpectedWorkerTaskError(error)).toBe(expected);
+  });
+
+  it.each([
+    {
+      name: '字符串中的网络错误码',
+      error: 'getaddrinfo ENOTFOUND files.acme.org',
+      expected: true
+    },
+    {
+      name: '字符串 cause 中的网络错误码',
+      error: new Error('fetch failed', { cause: 'connect ECONNRESET files.acme.org' }),
+      expected: true
+    },
+    {
+      name: '缺少错误码的 DNS 内存不足',
+      error: new Error('getaddrinfo EAI_MEMORY files.acme.org'),
+      expected: false
+    },
+    {
+      name: '其他标识符包含网络错误码片段',
+      error: new Error('Unexpected SOME_ENOTFOUND_SUFFIX'),
+      expected: false
+    }
+  ])('无结构化错误码时使用有限文案兼容：$name', ({ error, expected }) => {
+    expect(isExpectedWorkerTaskError(error)).toBe(expected);
+  });
+
   it('对脏输入不抛错（否则会让任务 Promise 悬挂）', () => {
-    // Worker 可能回传 message 非字符串的对象；分类器必须安全返回而非抛出
+    // 主线程 handler 可以拒绝任意值；分类器必须安全返回，让失败继续回传给 worker
     expect(() => isExpectedWorkerTaskError({ message: 123 })).not.toThrow();
     expect(isExpectedWorkerTaskError({ message: 123 })).toBe(false);
     expect(isExpectedWorkerTaskError({ message: null, code: 42 })).toBe(false);
     expect(isExpectedWorkerTaskError({ cause: 'not-an-object' })).toBe(false);
     expect(isExpectedWorkerTaskError(123)).toBe(false);
+    expect(isExpectedWorkerTaskError(null)).toBe(false);
+    expect(isExpectedWorkerTaskError(undefined)).toBe(false);
+  });
+
+  it('读取错误属性失败时保守返回非预期错误', () => {
+    const error = {
+      get message() {
+        throw new Error('Cannot read error message');
+      }
+    };
+    expect(isExpectedWorkerTaskError(error)).toBe(false);
   });
 
   it('占位符保护覆盖 cause 中的域名', () => {
@@ -904,5 +985,6 @@ describe('worker/utils isExpectedWorkerTaskError', () => {
 
   it('识别 UserError（仅在未跨线程的原始对象上有效）', () => {
     expect(isExpectedWorkerTaskError(new UserError('modelUnExist'))).toBe(true);
+    expect(isExpectedWorkerTaskError({ name: 'UserError', message: 'Invalid file' })).toBe(true);
   });
 });

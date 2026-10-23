@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
   | 'success'
@@ -67,10 +67,10 @@ type WorkerRunTaskType<T> = WorkerTaskLogContext & {
   abortController?: AbortController;
   lastLoggedResourceBytes: number;
   /**
-   * 主线程在失败发生处（此时错误尚未跨线程、仍是原始对象）判定的「预期内客户端错误」。
+   * 主线程在失败发生处（此时错误尚未跨线程、仍是原始对象）判定的预期任务错误。
    * 只用主线程状态传递，不放进 worker 消息：结构化克隆会把自定义 Error 压平成普通 Error。
    */
-  expectedClientError?: boolean;
+  expectedTaskError?: boolean;
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
@@ -196,8 +196,9 @@ const WORKER_NETWORK_ERROR_CODES = [
 ];
 
 const WORKER_PLACEHOLDER_DOMAIN_PATTERN = /(?:^|[^a-zA-Z0-9-])example\.com(?=$|[^a-zA-Z0-9-])/i;
-
-const toSafeString = (value: unknown): string => (typeof value === 'string' ? value : '');
+const WORKER_NETWORK_ERROR_PATTERN = new RegExp(
+  `\\b(?:${WORKER_NETWORK_ERROR_CODES.join('|')})\\b`
+);
 
 /**
  * 校验 Worker 任务执行错误是否属于预期的网络/DNS 故障或用户业务异常。
@@ -206,56 +207,51 @@ const toSafeString = (value: unknown): string => (typeof value === 'string' ? va
  * 判定结果记录到 task 上供 completeTask 使用。不要对跨线程克隆后的对象调用：
  * 结构化克隆会把 `UserError` 压平成 `name: 'Error'` 的普通 Error。
  *
- * 网络/DNS 故障（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn，不区分任务来源；
- * 但涉及 example.com 等未替换的配置占位符时保留 error，便于定位系统配置缺陷。
+ * 网络/DNS 故障（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn，不区分任务来源。
+ * 先检查原始消息中的配置占位符，再识别 UserError 和本层/cause 的错误码；
+ * 仅在缺少错误码时兼容明确的错误码文案与旧版文件超限错误，未知错误保留 error。
  *
- * 该函数必须对任意输入安全返回（不得抛错）：它运行在 completeTask 的日志决策路径上，
- * 一旦抛出会让本应 reject 的任务 Promise 悬挂。
+ * 该函数必须对任意输入安全返回，读取错误属性失败时保守地保留 error，
+ * 避免分类异常中断 loadFileError 回传，使任务只能等待执行超时。
  */
 export const isExpectedWorkerTaskError = (error: unknown): boolean => {
   try {
-    if (!error) return false;
-
-    const errObj =
-      typeof error === 'object' && error !== null
-        ? (error as {
-            code?: unknown;
-            name?: unknown;
-            cause?: unknown;
-          })
-        : undefined;
-
-    // getErrText 统一兼容字符串、Error、axios 响应等错误形态；脏数据会由下方 catch 兜底
-    const message = getErrText(error);
-
-    const cause =
-      typeof errObj?.cause === 'object' && errObj.cause !== null
-        ? (errObj.cause as { code?: unknown; message?: unknown })
-        : undefined;
-    const causeMessage = toSafeString(cause?.message);
+    /** 只读取分类所需的原始字段，避免展示文案或 URL 脱敏改变错误含义。 */
+    const getErrorDetails = (value: unknown) => {
+      const isObject = typeof value === 'object' && value !== null;
+      return {
+        code: isObject && 'code' in value && typeof value.code === 'string' ? value.code : '',
+        name: isObject && 'name' in value && typeof value.name === 'string' ? value.name : '',
+        message:
+          typeof value === 'string'
+            ? value
+            : isObject && 'message' in value && typeof value.message === 'string'
+              ? value.message
+              : '',
+        cause: isObject && 'cause' in value ? value.cause : undefined
+      };
+    };
+    const current = getErrorDetails(error);
+    const cause = getErrorDetails(current.cause);
+    const messages = [current.message, cause.message];
 
     // 占位符检查必须覆盖参与分类的 cause，否则 cause 里的占位域名会被误降级
-    if (
-      WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message) ||
-      WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(causeMessage)
-    ) {
+    if (messages.some((message) => WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message))) {
       return false;
     }
 
-    if (error instanceof UserError || errObj?.name === 'UserError') return true;
+    if (error instanceof UserError || current.name === 'UserError') return true;
 
-    const code = toSafeString(errObj?.code) || toSafeString(cause?.code);
-    if (WORKER_NETWORK_ERROR_CODES.includes(code)) {
-      return true;
+    // 错误码优先于文案：getaddrinfo 的 EAI_MEMORY 等基础设施故障不能因文本相似而降级。
+    const codes = [current.code, cause.code].filter(Boolean);
+    if (codes.length > 0) {
+      return codes.some((code) => WORKER_NETWORK_ERROR_CODES.includes(code));
     }
 
-    return (
-      WORKER_NETWORK_ERROR_CODES.some(
-        (networkCode) => message.includes(networkCode) || causeMessage.includes(networkCode)
-      ) ||
-      message.includes('getaddrinfo') ||
-      causeMessage.includes('getaddrinfo') ||
-      message.includes('maximum allowed size')
+    // 兼容只保留消息的旧错误；按完整错误码匹配，避免误认其他标识符中的片段。
+    return messages.some(
+      (message) =>
+        WORKER_NETWORK_ERROR_PATTERN.test(message) || message.includes('maximum allowed size')
     );
   } catch {
     // 分类失败时保守地按未知异常处理（保持 error 级别）
@@ -895,7 +891,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
     if (result.type === 'error') {
       // 使用主线程在失败处判定的结果，而不是在这里猜测跨线程克隆后的错误形态
-      const isExpected = task.expectedClientError === true;
+      const isExpected = task.expectedTaskError === true;
       const logFn = isExpected
         ? this.logger.warn.bind(this.logger)
         : this.logger.error.bind(this.logger);
@@ -1126,7 +1122,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       .catch((error) => {
         // 预期内的失败（用户业务异常、网络/DNS 故障）降级为 warn，不区分任务来源：
         // 来源相关的处理由上游调用方负责。判定在此进行：此刻 error 尚未跨线程，instanceof 与 cause 都有效。
-        task.expectedClientError = isExpectedWorkerTaskError(error);
+        task.expectedTaskError = isExpectedWorkerTaskError(error);
 
         this.logger.warn('Worker task file source failed', {
           eventName:
