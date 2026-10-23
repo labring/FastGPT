@@ -47,13 +47,14 @@ export const buildPgVectorRecallQuery = ({
   const indexedSet = new Set(indexed);
   const exact = ids.filter((id) => !indexedSet.has(id));
 
-  // 2. 候选集先物化，再将存储向量转为 FP32 计算距离；halfvec 存储不会恢复量化前的精度。
+  // 2. 参数先声明为 vector，避免 PG 从首次 halfvec 转换推断类型，提前量化重排使用的查询向量。
+  // 候选集先物化，再将存储向量转为 FP32 计算距离；halfvec 存储不会恢复量化前的精度。
   const candidates = indexed.map(
     (id, i) => `candidates_${i} AS MATERIALIZED (
       SELECT id, collection_id, vector
       FROM ${DatasetVectorTableName}
       WHERE ${baseWhere} AND dataset_id = ${pg.escapeLiteral(id)}
-      ORDER BY vector::halfvec(${vector.length}) <#> $1::halfvec(${vector.length})
+      ORDER BY vector::halfvec(${vector.length}) <#> $1::vector::halfvec(${vector.length})
       LIMIT $2
     )`
   );

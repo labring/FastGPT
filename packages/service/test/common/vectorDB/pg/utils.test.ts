@@ -22,7 +22,7 @@ describe('buildPgVectorRecallQuery', () => {
     })!;
     expect(query.usesHnsw).toBe(true);
     expect(query.text.match(/AS MATERIALIZED/g)).toHaveLength(1);
-    expect(query.text).toContain('vector::halfvec(2) <#> $1::halfvec(2)');
+    expect(query.text).toContain('vector::halfvec(2) <#> $1::vector::halfvec(2)');
     expect(query.text).toContain('vector::vector <#> $1::vector AS score');
     expect(query.text).toContain('UNION ALL');
     expect(query.text).toContain('ORDER BY (vector::vector <#> $1::vector) + 0');

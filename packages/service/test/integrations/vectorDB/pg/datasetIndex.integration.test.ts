@@ -37,10 +37,12 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
   const dimensions = Number(process.env.FASTGPT_PG_INDEX_TEST_DIMENSIONS || 16);
   const ctrl = new PgVectorCtrl();
   const admin = new Client({ connectionString: target?.address });
-  const vector = [1, ...Array.from({ length: dimensions - 1 }, () => 0)];
+  // 查询值不能被 FP16 精确表示，确保 FP32 重排不会误用已量化的查询向量。
+  const vector = [1.0001, ...Array.from({ length: dimensions - 1 }, () => 0)];
   const callbacks = { onBuilding: vi.fn(async () => {}), onProgress: vi.fn() };
   const topScores =
     storage === 'halfvec' ? [1.125, 1.25, 1.375, 1.5] : [1.0001, 1.0002, 1.0003, 1.0004];
+  const scoreFor = (value: number) => Math.fround(Math.fround(value) * Math.fround(vector[0]));
 
   beforeAll(async () => {
     await admin.connect();
@@ -53,11 +55,13 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     )`);
     await ctrl.init();
     // vector 样本核验 FP16 相同候选仍按 FP32 区分；halfvec 样本使用可精确表示的分数。
+    // 背景向量按维度缩放，保持不同维度下的范数范围，避免召回断言依赖随机建图。
     for (const id of [datasetId, repairId]) {
       await pool.query(
         `INSERT INTO modeldata (team_id, dataset_id, collection_id, vector)
         SELECT $1, $2, 'allowed', ARRAY(
-          SELECT (sin(g::float8 * d) * 0.1)::real FROM generate_series(1, ${dimensions}) d
+          SELECT (sin(g::float8 * d) * 0.1 / sqrt(${dimensions}))::real
+          FROM generate_series(1, ${dimensions}) d
         )::vector FROM generate_series(1, 30001) g`,
         [teamId, id]
       );
@@ -137,7 +141,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
       expect(JSON.stringify(plan.rows)).not.toContain('vector_index');
       const result = await ctrl.embRecall(props);
       expect(result.results.map(({ score }) => score)).toEqual(
-        [topScores[3], topScores[2], topScores[1]].map(Math.fround)
+        [topScores[3], topScores[2], topScores[1]].map(scoreFor)
       );
       expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
     }
@@ -154,6 +158,25 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     });
     expect(callbacks.onBuilding).toHaveBeenCalledOnce();
   }, 240000);
+
+  it('queries while legacy and local indexes coexist, then removes the legacy test index', async () => {
+    const result = await ctrl.embRecall({
+      teamId,
+      datasetIds: [datasetId, ...smallIds],
+      vector,
+      limit: 100,
+      forbidCollectionIdList: ['hidden'],
+      datasetVectorData: [{ datasetId, rows: 30004, pgIndex: 'ready' }]
+    });
+    expect(result.results).toHaveLength(100);
+    expect(result.results.every(({ collectionId }) => collectionId === 'allowed')).toBe(true);
+    expect(result.results.every(({ score }, i, all) => i === 0 || all[i - 1].score >= score)).toBe(
+      true
+    );
+    // halfvec 列的旧全局与局部索引表达式相同，优化器可能选择任意一个。
+    // 仅清理本测试 schema 的旧索引，后续用例验证完成清理后的局部索引路径。
+    await (await connectPg()).query('DROP INDEX CONCURRENTLY vector_index');
+  });
 
   it('hits the local HNSW and merges exact small datasets by FP32 distance with permissions', async () => {
     const props = {
@@ -172,9 +195,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     const result = await ctrl.embRecall(props);
     expect(result.results).toHaveLength(3);
     const scores = result.results.map((row) => row.score);
-    expect(scores[0]).toBeCloseTo(topScores[3], 6);
-    expect(scores[1]).toBeCloseTo(topScores[2], 6);
-    expect(scores[2]).toBeCloseTo(topScores[1], 6);
+    expect(scores).toEqual([topScores[3], topScores[2], topScores[1]].map(scoreFor));
     expect(result.results.every((row) => row.collectionId === 'allowed')).toBe(true);
 
     const exact = await ctrl.embRecall({ ...props, datasetVectorData: [] });
@@ -185,7 +206,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
     );
   });
 
-  it('inserts, refreshes, counts and deletes vectors with legacy and local indexes present', async () => {
+  it('inserts, refreshes, counts and deletes vectors with a local index present', async () => {
     const scope = { teamId, datasetId };
     const count = await ctrl.getVectorCount(scope);
     const { insertIds } = await ctrl.insert({
@@ -204,7 +225,11 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
         datasetVectorData: [{ datasetId, rows: count + 1, pgIndex: 'ready' as const }]
       };
       const indexed = await ctrl.embRecall(props);
-      expect(indexed.results[0]).toEqual({ id: insertIds[0], collectionId: 'allowed', score: 3 });
+      expect(indexed.results[0]).toEqual({
+        id: insertIds[0],
+        collectionId: 'allowed',
+        score: scoreFor(3)
+      });
       expect(indexed.results).toEqual(
         (await ctrl.embRecall({ ...props, datasetVectorData: [] })).results
       );
