@@ -1,6 +1,10 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
-import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
+import {
+  createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
+  transformChatAuthTargetInput
+} from '../../chat/api';
 import { SandboxUnavailableReasonSchema } from '../../../../core/ai/sandbox/type';
 import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { IntSchema } from '../../../../common/zod';
@@ -142,19 +146,16 @@ export const SandboxDownloadResponseSchema = z
  * Description: 通过原始二进制请求流上传文件到当前 Chat Session
  * Tags: ['Sandbox', 'Write']
  * ============================================================================ */
-export const SandboxUploadQueryRawSchema = createOutLinkChatTargetInputSchema({
+export const SandboxUploadQueryRawSchema = createOutLinkChatTargetQuerySchema({
   ...SandboxBaseShape,
   path: z.string().meta({
     example: 'src/main.py',
     description: '目标文件路径，相对于当前 Chat Session 目录'
   })
 });
-export const SandboxUploadQuerySchema = withSandboxTarget({
-  path: z.string().meta({
-    example: 'src/main.py',
-    description: '目标文件路径，相对于当前 Chat Session 目录'
-  })
-});
+export const SandboxUploadQuerySchema = SandboxUploadQueryRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export const SandboxUploadFileSchema = z.string().meta({
   format: 'binary',
   description: '文件原始二进制内容'

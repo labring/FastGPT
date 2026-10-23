@@ -19,7 +19,7 @@ import { IntSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
 
 export const ModelChannelSummarySchema = z.object({
@@ -112,7 +112,7 @@ export const ModelProviderSchema = z.object({
 
 export const GetModelCatalogQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+  outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'out-link-user-id' }),
     description: '分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限'
   })

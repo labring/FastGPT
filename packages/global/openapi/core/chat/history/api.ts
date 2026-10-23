@@ -7,6 +7,7 @@ import {
   createChatTargetInputSchema,
   createPaginatedChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
   transformChatAuthTargetInput,
   transformChatTargetInput
 } from '../api';
@@ -90,7 +91,7 @@ export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodyRawSchema>;
 export type UpdateHistoryBodyRuntimeType = z.infer<typeof UpdateHistoryBodySchema>;
 
 // Delete single chat session schema
-export const DelChatHistoryRawSchema = createOutLinkChatTargetInputSchema({
+export const DelChatHistoryRawSchema = createOutLinkChatTargetQuerySchema({
   chatId: z.string().min(1).describe('会话ID')
 });
 export const DelChatHistorySchema = DelChatHistoryRawSchema.transform(transformChatAuthTargetInput);
@@ -98,7 +99,7 @@ export type DelChatHistoryType = z.infer<typeof DelChatHistoryRawSchema>;
 export type DelChatHistoryRuntimeType = z.infer<typeof DelChatHistorySchema>;
 
 // Clear all chat sessions schema
-export const ClearChatHistoriesRawSchema = createOutLinkChatTargetInputSchema({});
+export const ClearChatHistoriesRawSchema = createOutLinkChatTargetQuerySchema({});
 export const ClearChatHistoriesSchema = ClearChatHistoriesRawSchema.transform(
   transformChatAuthTargetInput
 );

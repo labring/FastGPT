@@ -3,6 +3,7 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../core/chat/c
 import { isAuxiliaryGenerationSourceType } from '../../../common/chat/source';
 import {
   OutLinkChatAuthSchema,
+  OutLinkChatAuthQuerySchema,
   parseOutLinkChatAuthInput,
   type OutLinkChatAuthProps
 } from '../../../support/permission/chat';
@@ -41,12 +42,6 @@ type ChatTargetInput = {
   sourceType?: unknown;
   outLinkAuthData?: unknown;
   [key: string]: unknown;
-};
-
-const OutLinkChatAuthInputShape = {
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe(
-    '外链鉴权数据，包含 shareId/outLinkUid。优先于 skillId 和 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
-  )
 };
 
 export type ChatTargetInputType =
@@ -288,7 +283,18 @@ const createChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T
  * 按 outLinkAuthData > skillId > appId 兼容混合入参，文档和输出类型仍提示三选一。
  * 低优先级分支保留 never 守卫，外链格式错误时不能吞掉错误并回退为普通资源访问。
  */
-const createOutLinkChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) => {
+const createOutLinkChatTargetBranches = <T extends z.ZodRawShape, TAuth extends z.ZodType>(
+  shape: T,
+  authSchema: TAuth
+) => {
+  const outLinkAuthData = authSchema.describe(
+    `${authSchema.description ?? '外链鉴权数据，包含 shareId/outLinkUid。'}优先于 skillId 和 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。`
+  );
+  const schema = z.object({
+    ...ChatTargetInputShape,
+    outLinkAuthData: outLinkAuthData.optional(),
+    ...shape
+  });
   const [app, skill] = createChatTargetBranches(schema);
   return [
     app.extend({ outLinkAuthData: z.never().optional() }).meta(app.meta() ?? {}),
@@ -298,7 +304,7 @@ const createOutLinkChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodO
         appId: z.never().optional().catch(undefined),
         skillId: z.never().optional().catch(undefined),
         sourceType: z.never().optional().catch(undefined),
-        outLinkAuthData: OutLinkChatAuthInputShape.outLinkAuthData.nonoptional()
+        outLinkAuthData
       })
       .meta({
         title: '外链会话',
@@ -331,15 +337,11 @@ export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(sha
 
 /** 文档提示三选一，运行时按外链、Skill、App 的优先级选择；登录态可与外链数据共存。 */
 export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  z.union(
-    createOutLinkChatTargetBranches(
-      z.object({
-        ...ChatTargetInputShape,
-        ...OutLinkChatAuthInputShape,
-        ...shape
-      })
-    )
-  );
+  z.union(createOutLinkChatTargetBranches(shape, OutLinkChatAuthSchema));
+
+/** Query 使用 JSON 字符串传输外链身份，解析后仍复用对象身份与相同的分支优先级。 */
+export const createOutLinkChatTargetQuerySchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.union(createOutLinkChatTargetBranches(shape, OutLinkChatAuthQuerySchema));
 
 /** 资源直接访问或三种会话上下文；错误的显式鉴权数据不会降级为直接访问。 */
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>

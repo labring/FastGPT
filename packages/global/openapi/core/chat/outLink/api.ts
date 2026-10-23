@@ -1,6 +1,6 @@
 import z from 'zod';
 import { InitChatResponseSchema } from '../controler/api';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
  * API: 初始化外链会话
@@ -9,7 +9,7 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
  * ============================================================================ */
 export const InitOutLinkChatQuerySchema = z.object({
   chatId: z.string().optional().describe('已有会话 ID，可省略'),
-  outLinkAuthData: OutLinkChatAuthSchema.meta({
+  outLinkAuthData: OutLinkChatAuthQuerySchema.meta({
     example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'outlink-user-id' }),
     description: '外链鉴权数据，包含 shareId 与 outLinkUid。GET query 中需 JSON 序列化。'
   })

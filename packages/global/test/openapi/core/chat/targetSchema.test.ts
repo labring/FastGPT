@@ -29,6 +29,7 @@ import { ExportCollectionBodySchema } from '../../../../openapi/core/dataset/col
 import {
   buildChatTargetResponse,
   createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
   createOptionalOutLinkChatTargetInputSchema,
   createPaginatedChatTargetInputSchema
 } from '../../../../openapi/core/chat/api';
@@ -186,22 +187,25 @@ describe('openapi/core/chat target schema', () => {
   it.each([
     { name: 'required', createSchema: createOutLinkChatTargetInputSchema },
     { name: 'optional', createSchema: createOptionalOutLinkChatTargetInputSchema },
-    { name: 'paginated', createSchema: createPaginatedChatTargetInputSchema }
-  ])('keeps context priority without falling back on invalid $name input', ({ createSchema }) => {
-    const schema = createSchema({ chatId: z.string() });
-    const business = { chatId: 'chat-1' };
-    const outLinkAuthData = { shareId, outLinkUid };
-    const skill = schema.parse({
-      ...business,
-      appId: 'invalid-low-priority-app',
-      skillId,
-      sourceType: 'invalid-low-priority-source'
-    });
-    expect(skill).toMatchObject({ ...business, skillId });
-    expect(skill.appId).toBeUndefined();
-    expect(skill.sourceType).toBeUndefined();
+    { name: 'paginated', createSchema: createPaginatedChatTargetInputSchema },
+    { name: 'query', createSchema: createOutLinkChatTargetQuerySchema }
+  ])(
+    'keeps context priority without falling back on invalid $name input',
+    ({ createSchema, name }) => {
+      const schema = createSchema({ chatId: z.string() });
+      const business = { chatId: 'chat-1' };
+      const outLinkAuthData = { shareId, outLinkUid };
+      const skill = schema.parse({
+        ...business,
+        appId: 'invalid-low-priority-app',
+        skillId,
+        sourceType: 'invalid-low-priority-source'
+      });
+      expect(skill).toMatchObject({ ...business, skillId });
+      expect(skill.appId).toBeUndefined();
+      expect(skill.sourceType).toBeUndefined();
 
-    for (const external of [outLinkAuthData, JSON.stringify(outLinkAuthData)]) {
+      const external = name === 'query' ? JSON.stringify(outLinkAuthData) : outLinkAuthData;
       const share = schema.parse({
         ...business,
         appId: 'invalid-low-priority-app',
@@ -213,20 +217,26 @@ describe('openapi/core/chat target schema', () => {
       expect(share.appId).toBeUndefined();
       expect(share.skillId).toBeUndefined();
       expect(share.sourceType).toBeUndefined();
-    }
-
-    for (const invalid of [null, {}, { shareId }, 'invalid-json']) {
       expect(
-        schema.safeParse({ ...business, appId, skillId, outLinkAuthData: invalid }).success
+        schema.safeParse({
+          ...business,
+          outLinkAuthData: name === 'query' ? outLinkAuthData : JSON.stringify(outLinkAuthData)
+        }).success
       ).toBe(false);
+
+      for (const invalid of [null, {}, { shareId }, 'invalid-json']) {
+        expect(
+          schema.safeParse({ ...business, appId, skillId, outLinkAuthData: invalid }).success
+        ).toBe(false);
+      }
+      for (const invalid of [null, '', 'invalid-id']) {
+        expect(schema.safeParse({ ...business, appId, skillId: invalid }).success).toBe(false);
+      }
+      expect(schema.safeParse({ ...business, appId, sourceType: 'invalid-source' }).success).toBe(
+        false
+      );
     }
-    for (const invalid of [null, '', 'invalid-id']) {
-      expect(schema.safeParse({ ...business, appId, skillId: invalid }).success).toBe(false);
-    }
-    expect(schema.safeParse({ ...business, appId, sourceType: 'invalid-source' }).success).toBe(
-      false
-    );
-  });
+  );
 
   it('rejects required target when appId and skillId are both missing', () => {
     expect(() => MarkChatReadBodySchema.parse({ chatId: 'chat-1' })).toThrow();
@@ -433,24 +443,13 @@ describe('openapi/core/chat target schema', () => {
     });
   });
 
-  it('parses string outLinkAuthData before business transforms for chat APIs', () => {
-    const result = MarkChatReadBodySchema.parse({
-      chatId: 'chat-1',
-      outLinkAuthData: JSON.stringify({
-        shareId,
-        outLinkUid
+  it('rejects string outLinkAuthData in chat Body requests', () => {
+    expect(() =>
+      MarkChatReadBodySchema.parse({
+        chatId: 'chat-1',
+        outLinkAuthData: JSON.stringify({ shareId, outLinkUid })
       })
-    });
-
-    expect(result).toMatchObject({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: undefined,
-      outLinkAuthData: {
-        shareId,
-        outLinkUid
-      },
-      chatId: 'chat-1'
-    });
+    ).toThrow();
   });
 
   it('transforms outLink-only dataset collection export to unresolved app source', () => {
@@ -615,10 +614,7 @@ describe('openapi/core/chat target schema', () => {
 
     expect(
       ClearChatHistoriesSchema.parse({
-        outLinkAuthData: {
-          shareId,
-          outLinkUid
-        }
+        outLinkAuthData: JSON.stringify({ shareId, outLinkUid })
       })
     ).toMatchObject({
       sourceType: ChatSourceTypeEnum.app,

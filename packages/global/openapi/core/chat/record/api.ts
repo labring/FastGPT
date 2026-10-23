@@ -10,6 +10,7 @@ import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
   createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
   createPaginatedChatTargetInputSchema,
   transformChatAuthTargetInput
 } from '../api';
@@ -29,7 +30,7 @@ const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).option
  * Description: 根据 dataId 获取对话中某条 AI 回复的详细响应数据
  * ============================================================================ */
 
-export const GetResDataQueryRawSchema = createOutLinkChatTargetInputSchema({
+export const GetResDataQueryRawSchema = createOutLinkChatTargetQuerySchema({
   chatId: z.string().optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
