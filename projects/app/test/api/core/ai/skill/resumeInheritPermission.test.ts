@@ -130,8 +130,9 @@ describe('resume agent skill inherit permission api', () => {
           teamId: users.owner.teamId,
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
+        expect(audit?.resources).toEqual([{ skillId: child._id }]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'resume-child-skill-parent/resume-child-skill',
+          targetResource: 'resume-child-skill',
           parentResource: 'resume-child-skill-parent'
         });
       },

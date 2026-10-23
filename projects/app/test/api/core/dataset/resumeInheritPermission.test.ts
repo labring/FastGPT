@@ -157,8 +157,9 @@ describe('resume dataset inherit permission api', () => {
         }).lean();
         expect(audit).not.toBeNull();
         expect(audit?.tmbId).toBeDefined();
+        expect(audit?.resources).toEqual([{ datasetId: folder._id }]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'parent/folder',
+          targetResource: 'folder',
           parentResource: 'parent'
         });
       },

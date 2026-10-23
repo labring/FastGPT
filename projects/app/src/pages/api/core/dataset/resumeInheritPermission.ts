@@ -18,7 +18,6 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getParents } from './paths';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
   const { datasetId } = parseApiInput({
@@ -32,10 +31,10 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
     per: ManagePermissionVal
   });
 
-  // 复用已有的祖先链查询，一次拿到目标路径和直接上级名称。
-  const parentPaths = await getParents(dataset.parentId ?? undefined);
-  const parentResourceName = parentPaths.at(-1)?.parentName;
-
+  const parentDataset = dataset.parentId
+    ? await MongoDataset.findById(dataset.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = parentDataset?.name;
   if (dataset.parentId) {
     await mongoSessionRun(async (session) => {
       // 恢复继承会重算 dataset 自身快照（旧独立快照 → merge(父级, 自身) 全量快照），
@@ -83,8 +82,9 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ datasetId: String(dataset._id) }],
     params: {
-      targetResource: [...parentPaths.map((path) => path.parentName), dataset.name].join('/'),
+      targetResource: dataset.name,
       parentResource: parentResourceName ?? '-'
     }
   });

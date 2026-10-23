@@ -34,19 +34,8 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  // 审计展示需要完整资源路径；只查询直接父级会在嵌套目录下丢失祖先。
-  const parentResourceNames = await (async function findParentNames(
-    parentId: typeof app.parentId
-  ): Promise<string[]> {
-    if (!parentId) return [];
-
-    const parent = await MongoApp.findById(parentId, 'name parentId').lean();
-    if (!parent) return [];
-
-    return [...(await findParentNames(parent.parentId)), parent.name];
-  })(app.parentId);
-  const parentResourceName = parentResourceNames.at(-1);
-
+  const parentApp = app.parentId ? await MongoApp.findById(app.parentId, 'name').lean() : undefined;
+  const parentResourceName = parentApp?.name;
   if (app.parentId) {
     await resumeInheritPermission({
       resource: app,
@@ -69,8 +58,9 @@ async function handler(
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ appId: String(app._id) }],
     params: {
-      targetResource: [...parentResourceNames, app.name].join('/'),
+      targetResource: app.name,
       parentResource: parentResourceName ?? '-'
     }
   });

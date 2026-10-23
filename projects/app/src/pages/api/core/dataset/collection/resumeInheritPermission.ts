@@ -10,7 +10,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getDatasetCollectionPaths } from './paths';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBody>) {
   const { collectionId } = parseApiInput({
@@ -25,10 +25,11 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     per: ManagePermissionVal
   });
 
-  const collectionPaths = await getDatasetCollectionPaths({
-    parentId: String(collection._id)
-  });
-  const parentResourceName = collectionPaths.at(-2)?.parentName ?? collection.dataset.name;
+  const parentCollection = collection.parentId
+    ? await MongoDatasetCollection.findById(collection.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = collection.parentId ? parentCollection?.name : collection.dataset.name;
+
   await resumeCollectionInheritPermission({
     collection: {
       _id: String(collection._id),
@@ -45,12 +46,13 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [
+      { datasetId: String(collection.datasetId) },
+      { collectionId: String(collection._id) }
+    ],
     params: {
-      targetResource: [
-        collection.dataset.name,
-        ...collectionPaths.map((path) => path.parentName)
-      ].join('/'),
-      parentResource: parentResourceName
+      targetResource: collection.name,
+      parentResource: parentResourceName ?? '-'
     }
   });
 }

@@ -7,6 +7,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import {
+  AuditEventEnum,
   TeamAuditEventList,
   type TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
@@ -43,7 +44,11 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
   const processMetadataByEvent = useCallback(
     (event: string, metadata: any) => {
-      const defaultFormat = defaultMetadataProcessor(metadata, t);
+      // 恢复继承审计中的路径是用户原始名称，不能将含冒号的路径当作翻译 key。
+      const defaultFormat =
+        event === AuditEventEnum.RESUME_INHERIT_PERMISSION
+          ? metadata
+          : defaultMetadataProcessor(metadata, t);
       const specialFormat = specialProcessors[event as TeamAuditEvent]?.(defaultFormat, t);
       return specialFormat || defaultFormat;
     },

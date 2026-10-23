@@ -51,8 +51,12 @@ describe('resume collection inherit permission api', () => {
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
         expect(audit).not.toBeNull();
+        expect(audit?.resources).toEqual([
+          { datasetId: dataset._id },
+          { collectionId: collection._id }
+        ]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'audit-dataset/audit-collection',
+          targetResource: 'audit-collection',
           parentResource: 'audit-dataset'
         });
       },
@@ -101,8 +105,12 @@ describe('resume collection inherit permission api', () => {
           teamId: users.owner.teamId,
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
+        expect(audit?.resources).toEqual([
+          { datasetId: dataset._id },
+          { collectionId: collection._id }
+        ]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'nested-audit-dataset/audit-folder/nested-audit-collection',
+          targetResource: 'nested-audit-collection',
           parentResource: 'audit-folder'
         });
       },

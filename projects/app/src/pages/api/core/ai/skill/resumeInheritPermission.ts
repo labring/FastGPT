@@ -7,7 +7,6 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { resumeInheritPermission } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { getSkillFolderPath } from '@fastgpt/service/core/ai/skill/manage/folder';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   ResumeSkillInheritPermissionQuerySchema,
@@ -37,11 +36,10 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  // 复用 Skill 的祖先链查询，确保嵌套资源的审计路径与目录展示一致。
-  const parentPaths = skill.parentId ? await getSkillFolderPath(String(skill._id), 'parent') : [];
-  const parentResourceNames = parentPaths.map((path) => path.parentName);
-  const parentResourceName = parentResourceNames.at(-1);
-
+  const parentSkill = skill.parentId
+    ? await MongoAgentSkills.findById(skill.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = parentSkill?.name;
   if (skill.parentId) {
     await resumeInheritPermission({
       resource: skill,
@@ -64,8 +62,9 @@ async function handler(
     teamId,
     tmbId,
     event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ skillId: String(skill._id) }],
     params: {
-      targetResource: [...parentResourceNames, skill.name].join('/'),
+      targetResource: skill.name,
       parentResource: parentResourceName ?? '-'
     }
   });

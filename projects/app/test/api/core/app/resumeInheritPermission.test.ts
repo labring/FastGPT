@@ -126,8 +126,9 @@ describe('resume app inherit permission api', () => {
           teamId: users.owner.teamId,
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
+        expect(audit?.resources).toEqual([{ appId: child._id }]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'resume-child-parent/resume-child-app',
+          targetResource: 'resume-child-app',
           parentResource: 'resume-child-parent'
         });
       },
