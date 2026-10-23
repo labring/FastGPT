@@ -189,11 +189,17 @@ describe('loginByPassword API', () => {
   });
 
   it('allows an inactive user to log in and reach the account activation prompt', async () => {
-    await MongoUser.findByIdAndUpdate(testUser._id, { status: UserStatusEnum.inactive });
+    // 独立账号避免消耗其他用例共用的账号级登录限流配额。
+    const username = 'inactiveuser';
+    await MongoUser.findByIdAndUpdate(testUser._id, {
+      username,
+      status: UserStatusEnum.inactive
+    });
+    await saveLoginCode(username);
 
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
-        username: 'testuser',
+        username,
         password: 'testpassword',
         code: '123456',
         language: 'zh-CN'
