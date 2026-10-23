@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/reference';
 import { useRef } from 'react';
 import { CompletionResponseExamples } from './CompletionResponseExamples';
+import { CompletionEventExamples } from './CompletionEventExamples';
 
 // 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
 // (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
@@ -259,6 +260,7 @@ export const ScalarOpenApiPage = ({
         })}
       />
       <CompletionResponseExamples rootRef={rootRef} />
+      <CompletionEventExamples rootRef={rootRef} />
     </Box>
   );
 };
