@@ -1,3 +1,4 @@
+# Shared application image definition for release and PR preview builds.
 # --------- install dependence -----------
 FROM node:24.22.1-bookworm-slim AS maindeps
 WORKDIR /app
