@@ -48,11 +48,11 @@ export const createPaginationSchema = <
   ) as { [Key in keyof TPageShape]: typeof ignoredPageField };
   const commonSchema = z
     .object({
-      pageSize: PaginationPageSizeSchema.optional(),
       offset: IntSchema.meta({ example: 0, description: '偏移量，从 0 开始' })
     })
-    // 先声明所有分页字段，后续切换分支时保留位置，与每页条数相邻。
+    // 分支定位字段先展示，便于在格式选择下直接看到 offset 或页码，再设置每页条数。
     .extend(resolvedPageShape)
+    .extend({ pageSize: PaginationPageSizeSchema.optional() })
     .extend(extraShape ?? ({} as TShape));
 
   return z.union([

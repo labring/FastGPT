@@ -81,19 +81,31 @@ describe('setRequiredRequestExamples', () => {
       'Skill 调试会话',
       '外链会话'
     ]);
-    expect(schema.anyOf?.[0].anyOf?.map((branch) => branch.title)).toEqual([
+    expect(schema.anyOf?.[0].allOf?.[1].anyOf?.map((branch) => branch.title)).toEqual([
       '按偏移量获取',
       '按页码获取'
     ]);
-    expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('skillId');
-    expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('outLinkAuthData');
-    expect(schema.anyOf?.[1].anyOf?.[0].properties).not.toHaveProperty('appId');
-    expect(schema.anyOf?.[1].anyOf?.[0].properties).not.toHaveProperty('sourceType');
-    expect(schema.anyOf?.[1].anyOf?.[0].required).toContain('skillId');
-    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('appId');
-    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('skillId');
-    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('sourceType');
-    expect(schema.anyOf?.[2].anyOf?.[0].required).toContain('outLinkAuthData');
+    expect(schema.anyOf?.[0].allOf?.[0].properties).not.toHaveProperty('skillId');
+    expect(schema.anyOf?.[0].allOf?.[0].properties).not.toHaveProperty('outLinkAuthData');
+    expect(schema.anyOf?.[1].allOf?.[0].properties).not.toHaveProperty('appId');
+    expect(schema.anyOf?.[1].allOf?.[0].properties).not.toHaveProperty('sourceType');
+    expect(schema.anyOf?.[1].allOf?.[0].required).toContain('skillId');
+    expect(schema.anyOf?.[2].allOf?.[0].properties).not.toHaveProperty('appId');
+    expect(schema.anyOf?.[2].allOf?.[0].properties).not.toHaveProperty('skillId');
+    expect(schema.anyOf?.[2].allOf?.[0].properties).not.toHaveProperty('sourceType');
+    expect(schema.anyOf?.[2].allOf?.[0].required).toContain('outLinkAuthData');
+
+    // 身份字段独立展示在分页选择之前，避免切换会话格式后仍先看到分页参数。
+    for (const [index, field] of ['appId', 'skillId', 'outLinkAuthData'].entries()) {
+      const [target, pagination] = schema.anyOf![index].allOf!;
+      expect(Object.keys(target.properties!)[0]).toBe(field);
+      expect(target.required).toContain(field);
+      for (const [pageIndex, pageField] of ['offset', 'pageNum'].entries()) {
+        const properties = pagination.anyOf![pageIndex].properties!;
+        expect(Object.keys(properties)[0]).toBe(pageField);
+        expect(properties).not.toHaveProperty(field);
+      }
+    }
   });
 
   it('does not select a target when the entire choice is optional', () => {

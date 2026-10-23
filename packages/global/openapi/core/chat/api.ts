@@ -345,13 +345,14 @@ export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shap
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.union([createNoChatTargetSchema(shape), ...createOutLinkChatTargetInputSchema(shape).options]);
 
-/** 会话上下文和分页方式分别选择；每个鉴权分支复用公共分页校验和 offset 优先规则。 */
+/** 会话身份先展示，分页方式随后选择；两部分独立校验，保留身份优先级和 offset 优先规则。 */
 export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) => {
-  const [app, skill, outLink] = createOutLinkChatTargetInputSchema(shape).options;
+  const [app, skill, outLink] = createOutLinkChatTargetInputSchema({}).options;
+  const pagination = createPaginationSchema(shape);
   return z.union([
-    createPaginationSchema(app.shape).meta(app.meta() ?? {}),
-    createPaginationSchema(skill.shape).meta(skill.meta() ?? {}),
-    createPaginationSchema(outLink.shape).meta(outLink.meta() ?? {})
+    z.intersection(app, pagination).meta(app.meta() ?? {}),
+    z.intersection(skill, pagination).meta(skill.meta() ?? {}),
+    z.intersection(outLink, pagination).meta(outLink.meta() ?? {})
   ]);
 };
 

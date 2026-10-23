@@ -61,16 +61,19 @@ const ListSkillsV2FiltersSchema = z.object({
 
 // ID 分支优先匹配，由 Zod 过滤目录和分页字段；分页分支拒绝已有但无效的 ID，避免意外扩大查询范围。
 export const ListSkillsV2QuerySchema = z.union([
-  ListSkillsV2FiltersSchema.extend({
-    skillIds: z
-      .array(IdSchema)
-      .min(1)
-      .max(PaginationPageSizeLimit)
-      .meta({
-        example: ['68ad85a7463006c963799a05'],
-        description: `按技能 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
-      })
-  }).meta({ title: '按 IDs 获取' }),
+  z
+    .object({
+      skillIds: z
+        .array(IdSchema)
+        .min(1)
+        .max(PaginationPageSizeLimit)
+        .meta({
+          example: ['68ad85a7463006c963799a05'],
+          description: `按技能 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
+        }),
+      ...ListSkillsV2FiltersSchema.shape
+    })
+    .meta({ title: '按 IDs 获取' }),
   createPaginationSchema(
     {
       ...ListSkillsV2FiltersSchema.shape,
