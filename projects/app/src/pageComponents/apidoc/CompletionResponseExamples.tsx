@@ -2,7 +2,7 @@ import {
   getChatCompletionResponseExamples,
   type CompletionExampleVersion
 } from '@fastgpt/global/openapi/core/chat/completion/examples';
-import React, { useEffect, useMemo, useState, type RefObject } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './CompletionResponseExamples.module.scss';
 
@@ -12,9 +12,7 @@ type ExampleTarget = {
   version: CompletionExampleVersion;
   contentType: 'application/json' | 'text/event-stream';
 };
-type Scenario = 'default' | 'interactiveUserSelect' | 'interactiveUserInput';
-
-/** 返回形式跟随 Scalar 左侧的响应格式；保留 detail 和场景，格式切换时清除单个 event 和复制状态。 */
+/** JSON 模式展示非流式示例，text 模式用四个 tab 对比 stream/detail 组合，不修改请求参数。 */
 const ResponseExamplePanel = ({
   version,
   contentType
@@ -23,56 +21,28 @@ const ResponseExamplePanel = ({
   contentType: ExampleTarget['contentType'];
 }) => {
   const examples = useMemo(() => getChatCompletionResponseExamples(version), [version]);
-  const stream = contentType === 'text/event-stream';
-  const [detail, setDetail] = useState(false);
-  const [scenario, setScenario] = useState<Scenario>('default');
-  const [eventName, setEventName] = useState('all');
+  const modes = useMemo(
+    () =>
+      [
+        { id: 'json-basic', stream: false, detail: false, ...examples.json.detailFalseStreamFalse },
+        { id: 'json-detail', stream: false, detail: true, ...examples.json.detailTrueStreamFalse },
+        { id: 'sse-basic', stream: true, detail: false, ...examples.sse.detailFalseStreamTrue },
+        { id: 'sse-detail', stream: true, detail: true, ...examples.sse.detailTrueStreamTrue }
+      ].filter((mode) => contentType === 'text/event-stream' || !mode.stream),
+    [examples, contentType]
+  );
+  const [selectedIndex, setSelectedIndex] = useState(contentType === 'text/event-stream' ? 2 : 0);
   const [copyMessage, setCopyMessage] = useState('');
-  const [previousContentType, setPreviousContentType] = useState(contentType);
-
-  // 在本次渲染提交前重置，避免新格式短暂显示旧的 event 选择或复制结果。
-  if (previousContentType !== contentType) {
-    setPreviousContentType(contentType);
-    setEventName('all');
-    setCopyMessage('');
-  }
-
-  const scenarios = useMemo(() => {
-    const source = stream ? examples.sse : examples.json;
-    const basic = stream
-      ? detail
-        ? examples.sse.detailTrueStreamTrue
-        : examples.sse.detailFalseStreamTrue
-      : detail
-        ? examples.json.detailTrueStreamFalse
-        : examples.json.detailFalseStreamFalse;
-    return [
-      { id: 'default', ...basic },
-      ...(detail
-        ? [
-            { id: 'interactiveUserSelect', ...source.interactiveUserSelect },
-            { id: 'interactiveUserInput', ...source.interactiveUserInput }
-          ]
-        : [])
-    ];
-  }, [examples, stream, detail]);
-  const sample = scenarios.find((item) => item.id === scenario) ?? scenarios[0];
-  const selectedEvent =
-    stream && detail ? examples.events.find((event) => event.name === eventName) : undefined;
-  const content = (() => {
-    if (selectedEvent) {
-      if (selectedEvent.name === 'interactive' && scenario === 'interactiveUserInput') {
-        return examples.sse.interactiveUserInput.value.split('\n\n')[0] + '\n\n';
-      }
-      return selectedEvent.value;
-    }
-    return typeof sample.value === 'string' ? sample.value : JSON.stringify(sample.value, null, 2);
-  })();
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const id = useId();
+  const sample = modes[selectedIndex];
+  const content =
+    typeof sample.value === 'string' ? sample.value : JSON.stringify(sample.value, null, 2);
   const lines = content.split('\n');
+  const panelId = `${id}-panel`;
 
-  const resetSelection = () => {
-    setScenario('default');
-    setEventName('all');
+  const selectMode = (index: number) => {
+    setSelectedIndex(index);
     setCopyMessage('');
   };
   const copyExample = async () => {
@@ -86,80 +56,72 @@ const ResponseExamplePanel = ({
 
   return (
     <section className={styles.panel} aria-label={`${version} 响应示例选择`}>
-      <div className={styles.controls}>
-        <label className={styles.control}>
-          <span>detail</span>
-          <select
-            aria-label="detail"
-            value={String(detail)}
-            onChange={(event) => {
-              setDetail(event.target.value === 'true');
-              resetSelection();
+      <div
+        className={styles.tabs}
+        role="tablist"
+        aria-label="stream / detail 组合"
+        data-count={modes.length}
+      >
+        {modes.map((mode, index) => (
+          <button
+            key={mode.id}
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
+            className={styles.tab}
+            type="button"
+            role="tab"
+            id={`${id}-${mode.id}`}
+            aria-label={`stream=${mode.stream}, detail=${mode.detail}`}
+            aria-controls={panelId}
+            aria-selected={index === selectedIndex}
+            tabIndex={index === selectedIndex ? 0 : -1}
+            onClick={() => selectMode(index)}
+            onKeyDown={(event) => {
+              const nextIndex = (() => {
+                if (event.key === 'ArrowRight') return (index + 1) % modes.length;
+                if (event.key === 'ArrowLeft') return (index + modes.length - 1) % modes.length;
+                if (event.key === 'Home') return 0;
+                if (event.key === 'End') return modes.length - 1;
+              })();
+              if (nextIndex === undefined) return;
+              event.preventDefault();
+              selectMode(nextIndex);
+              tabRefs.current[nextIndex]?.focus();
             }}
           >
-            <option value="false">false · 精简</option>
-            <option value="true">true · 详细</option>
-          </select>
-        </label>
-        <label className={styles.control}>
-          <span>场景</span>
-          <select
-            aria-label="响应示例场景"
-            value={sample.id}
-            onChange={(event) => {
-              setScenario(event.target.value as Scenario);
-              setEventName('all');
-              setCopyMessage('');
-            }}
-          >
-            {scenarios.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.summary}
-              </option>
+            <span>stream={String(mode.stream)}</span>
+            <span>detail={String(mode.detail)}</span>
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={panelId} aria-labelledby={`${id}-${sample.id}`}>
+        <p className={styles.description}>{sample.description}</p>
+        <div className={styles.codeHeader}>
+          <span>{sample.stream ? 'text/event-stream' : 'application/json'}</span>
+          <button type="button" onClick={copyExample} aria-label="复制响应示例">
+            {copyMessage === '已复制' ? '已复制' : '复制示例'}
+          </button>
+        </div>
+        <pre className={styles.code} tabIndex={0} aria-label="响应示例内容">
+          <code>
+            {lines.map((line, index) => (
+              <span
+                key={index}
+                className={line.startsWith('event:') ? styles.eventLine : undefined}
+              >
+                {line}
+                {index < lines.length - 1 ? '\n' : ''}
+              </span>
             ))}
-          </select>
-        </label>
-        {stream && detail && (
-          <label className={styles.control}>
-            <span>event</span>
-            <select
-              aria-label="SSE event"
-              value={eventName}
-              onChange={(event) => {
-                setEventName(event.target.value);
-                setCopyMessage('');
-              }}
-            >
-              <option value="all">全部 event · 场景示例</option>
-              {examples.events.map((event) => (
-                <option key={event.name} value={event.name}>
-                  {event.name} · {event.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      <p className={styles.description}>{selectedEvent?.description ?? sample.description}</p>
-      <div className={styles.codeHeader}>
-        <span>{contentType}</span>
-        <button type="button" onClick={copyExample} aria-label="复制响应示例">
-          {copyMessage === '已复制' ? '已复制' : '复制示例'}
-        </button>
-      </div>
-      <pre className={styles.code} tabIndex={0} aria-label="响应示例内容">
-        <code>
-          {lines.map((line, index) => (
-            <span key={index} className={line.startsWith('event:') ? styles.eventLine : undefined}>
-              {line}
-              {index < lines.length - 1 ? '\n' : ''}
-            </span>
-          ))}
-        </code>
-      </pre>
-      <div className={styles.note}>
-        <span>仅切换示例，不修改请求参数。流片段省略 id / object / created / model 占位字段。</span>
-        <span role="status">{copyMessage}</span>
+          </code>
+        </pre>
+        <div className={styles.note}>
+          <span>
+            仅切换示例，不修改请求参数。流片段省略 id / object / created / model 占位字段。
+          </span>
+          <span role="status">{copyMessage}</span>
+        </div>
       </div>
     </section>
   );
@@ -167,7 +129,7 @@ const ResponseExamplePanel = ({
 
 /**
  * 将 React 示例面板挂到 Scalar 延迟创建的响应卡片内，保留原生 Schema 开关。
- * 只匹配 completions 的 operation，并读取左侧 200 响应的 MIME 选择作为唯一格式来源。
+ * 只匹配 completions 的 operation，并读取左侧 200 响应的 MIME 选择，确定展示两种 JSON 组合或全部四种组合。
  * Scalar 修改文本节点时也同步；卡片移除时回收 portal，页面销毁时断开监听。
  */
 export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTMLDivElement> }) => {
@@ -239,7 +201,11 @@ export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTM
   return (
     <>
       {targets.map(({ host, id, version, contentType }) =>
-        createPortal(<ResponseExamplePanel version={version} contentType={contentType} />, host, id)
+        createPortal(
+          <ResponseExamplePanel key={contentType} version={version} contentType={contentType} />,
+          host,
+          id
+        )
       )}
     </>
   );

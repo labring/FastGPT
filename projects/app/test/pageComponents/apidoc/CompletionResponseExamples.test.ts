@@ -65,99 +65,100 @@ describe('CompletionResponseExamples', () => {
       label.firstChild!.textContent = value;
     });
   };
-  const select = async (label: string, value: string, version = 'v2') => {
-    const input = card(version).querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
-    await act(async () => {
-      input.value = value;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  };
+  const tab = (label: string, version = 'v2') =>
+    card(version).querySelector<HTMLButtonElement>(`[role="tab"][aria-label="${label}"]`)!;
+  const selectMode = async (label: string, version = 'v2') =>
+    act(async () => tab(label, version).click());
 
-  it('switches all stream/detail combinations and keeps each operation independent', async () => {
+  it('shows two JSON tabs and all four stream/detail combinations in text mode without dropdowns', async () => {
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(card().querySelector('select')).toBeNull();
     expect(JSON.parse(code()).choices[0].message.content).toContain('新海诚');
-    expect(card().querySelector('select[aria-label="stream"]')).toBeNull();
-    await select('detail', 'true');
+    await selectMode('stream=false, detail=true');
     expect(JSON.parse(code())).toHaveProperty('responseData');
     await format('text/event-stream');
-    expect(code()).toContain('event: flowNodeResponse');
-    expect(code()).not.toContain('event: flowResponses\n');
-    await select('detail', 'false');
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(4);
+    expect(card().querySelector('select')).toBeNull();
+    expect(tab('stream=true, detail=false').getAttribute('aria-selected')).toBe('true');
+    await selectMode('stream=false, detail=false');
+    expect(JSON.parse(code())).not.toHaveProperty('responseData');
+    await selectMode('stream=false, detail=true');
+    expect(JSON.parse(code())).toHaveProperty('responseData');
+    await selectMode('stream=true, detail=false');
     expect(code()).toContain('data: [DONE]');
     expect(code()).not.toContain('event:');
+    await selectMode('stream=true, detail=true');
+    expect(code()).toContain('event: flowNodeResponse');
+    expect(code()).not.toContain('event: flowResponses\n');
     expect(JSON.parse(code('v1'))).not.toHaveProperty('responseData');
-    expect(card().querySelector('input[aria-label="显示 Schema"]')).not.toBeNull();
     await format('application/json');
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(JSON.parse(code())).not.toHaveProperty('responseData');
+    expect(card().querySelector('input[aria-label="显示 Schema"]')).not.toBeNull();
+  });
+
+  it('supports keyboard selection with wrapping, Home/End and an associated tabpanel', async () => {
+    await format('text/event-stream');
+    const press = async (label: string, key: string) =>
+      act(async () => {
+        tab(label).dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true }));
+      });
+    await press('stream=true, detail=false', 'End');
+    expect(document.activeElement).toBe(tab('stream=true, detail=true'));
+    await press('stream=true, detail=true', 'ArrowRight');
+    expect(document.activeElement).toBe(tab('stream=false, detail=false'));
+    await press('stream=false, detail=false', 'ArrowLeft');
+    expect(document.activeElement).toBe(tab('stream=true, detail=true'));
+    await press('stream=true, detail=true', 'Home');
+    await press('stream=false, detail=false', 'Enter');
+    await press('stream=false, detail=false', 'ArrowRight');
+    expect(document.activeElement).toBe(tab('stream=false, detail=true'));
+    expect(card().querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
+    expect(card().querySelector('[role="tabpanel"]')!.getAttribute('aria-labelledby')).toBe(
+      tab('stream=false, detail=true').id
+    );
+    expect(JSON.parse(code())).toHaveProperty('responseData');
+  });
+
+  it('offers the v1 aggregation event and keeps operations independent', async () => {
+    await format('text/event-stream', 'v1');
+    await selectMode('stream=true, detail=true', 'v1');
+    expect(code('v1')).toContain('event: flowResponses');
+    expect(code('v1')).not.toContain('event: flowNodeResponse');
     expect(JSON.parse(code())).not.toHaveProperty('responseData');
   });
 
-  it('switches interaction scenarios and individual events without exposing runtime fields', async () => {
-    await select('detail', 'true');
-    await select('响应示例场景', 'interactiveUserInput');
-    expect(JSON.parse(code()).choices[0].message.content[0].interactive.type).toBe('userInput');
+  it('copies the visible example, clears status on tab/format changes and reports clipboard errors', async () => {
+    const copy = () => card().querySelector<HTMLButtonElement>('[aria-label="复制响应示例"]')!;
     await format('text/event-stream');
-    await select('SSE event', 'interactive');
-    expect(code()).toContain('"type":"userInput"');
-    expect(code()).not.toContain('[DONE]');
-    expect(code()).not.toContain('entryNodeIds');
-    await select('SSE event', 'toolCall');
-    expect(code()).toContain('event: toolCall');
-    expect(code()).toContain('"tool"');
-    await format('application/json');
-    expect(JSON.parse(code()).choices[0].message.content[0].interactive.type).toBe('userInput');
-    expect(card().querySelector('select[aria-label="SSE event"]')).toBeNull();
-    await format('text/event-stream');
-    expect(code()).toContain('data: [DONE]');
-    expect(card().querySelector<HTMLSelectElement>('select[aria-label="SSE event"]')!.value).toBe(
-      'all'
-    );
-    await select('detail', 'false');
-    expect(card().querySelector('select[aria-label="SSE event"]')).toBeNull();
-    expect(code()).not.toContain('interactive');
-  });
-
-  it('offers v1 response aggregation rather than the v2 per-node event', async () => {
-    await format('text/event-stream', 'v1');
-    await select('detail', 'true', 'v1');
-    expect(code('v1')).toContain('event: flowResponses');
-    expect(card('v1').querySelector('option[value="flowNodeResponse"]')).toBeNull();
-  });
-
-  it('copies the visible example and reports clipboard errors', async () => {
-    await format('text/event-stream');
-    await select('detail', 'true');
-    await select('SSE event', 'error');
-    await act(async () =>
-      card().querySelector<HTMLButtonElement>('[aria-label="复制响应示例"]')!.click()
-    );
+    await act(async () => copy().click());
     expect(writeText).toHaveBeenLastCalledWith(code());
     expect(card().querySelector('[role="status"]')!.textContent).toBe('已复制');
-    await format('application/json');
+    await selectMode('stream=true, detail=true');
     expect(card().querySelector('[role="status"]')!.textContent).toBe('');
     writeText.mockRejectedValueOnce(new Error('denied'));
-    await act(async () =>
-      card().querySelector<HTMLButtonElement>('[aria-label="复制响应示例"]')!.click()
-    );
+    await act(async () => copy().click());
     expect(card().querySelector('[role="status"]')!.textContent).toContain('复制失败');
+    await format('application/json');
+    expect(card().querySelector('[role="status"]')!.textContent).toBe('');
   });
 
   it('mounts later cards once, replaces removed portals and ignores unrelated responses', async () => {
     await act(async () => {
       wrapper.innerHTML =
         '<section id="api-1/tag/其他/POST/other"><div class="examples"><div class="response-card"></div></div></section>';
-      await Promise.resolve();
     });
-    expect(wrapper.querySelector('select')).toBeNull();
+    expect(wrapper.querySelector('[role="tablist"]')).toBeNull();
     await act(async () => {
       wrapper.insertAdjacentHTML('beforeend', operation('v2', 'text/event-stream'));
-      await Promise.resolve();
     });
-    expect(card().querySelectorAll('select[aria-label="detail"]')).toHaveLength(1);
+    expect(card().querySelectorAll('[role="tablist"]')).toHaveLength(1);
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(4);
     expect(code()).toContain('data: [DONE]');
     await act(async () => {
       wrapper.append(document.createElement('div'));
-      await Promise.resolve();
     });
-    expect(card().querySelectorAll('select[aria-label="detail"]')).toHaveLength(1);
+    expect(card().querySelectorAll('[role="tablist"]')).toHaveLength(1);
   });
 
   it('ignores other status MIME controls and retains the format while its selector is absent', async () => {
@@ -168,11 +169,12 @@ describe('CompletionResponseExamples', () => {
         '<li class="parameter-item"><span class="parameter-item-name">400</span><button aria-haspopup="listbox"><span>text/event-stream</span></button></li>'
       );
     });
-    expect(JSON.parse(code()).choices[0].message.content).toContain('新海诚');
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(2);
     await format('text/event-stream');
     await act(async () => {
       operationDetails.querySelector('[data-content-type]')!.parentElement!.remove();
     });
+    expect(card().querySelectorAll('[role="tab"]')).toHaveLength(4);
     expect(code()).toContain('data: [DONE]');
   });
 });
