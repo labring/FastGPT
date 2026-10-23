@@ -58,11 +58,11 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   position
 }: Props) {
   const { t } = useTranslation();
-  const handleRef = useHandleInternals(nodeId);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const handleRef = useHandleInternals(nodeId, !!connectingEdge);
 
   const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
   const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
 
   const edgesData = useContextSelector(WorkflowBufferDataContext, (v) => {
@@ -165,11 +165,11 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
-  const handleRef = useHandleInternals(nodeId);
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const handleRef = useHandleInternals(nodeId, !!connectingEdge);
   const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
     v.edges.some((edge) => edge.targetHandle === handleId)
   );
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';

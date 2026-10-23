@@ -21,8 +21,8 @@ type ToolHandleProps = BoxProps & {
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
-  const handleRef = useHandleInternals(nodeId);
   const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const handleRef = useHandleInternals(nodeId, !!connectingEdge);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
@@ -98,15 +98,15 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const handleRef = useHandleInternals(nodeId);
   const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
-  const connectingEdge = useContextSelector(
-    WorkflowActionsContext,
-    (ctx) => ctx.connectingEdge?.nodeId === nodeId
-  );
+  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
+  const handleRef = useHandleInternals(nodeId, !!connectingEdge);
   const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
 
-  const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
+  const active = useMemo(
+    () => nodeIsHover || connectingEdge?.nodeId === nodeId,
+    [connectingEdge, nodeId, nodeIsHover]
+  );
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(
