@@ -1,4 +1,5 @@
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 
 const DEFAULT_ROOT_PASSWORD = '123456';
 
@@ -7,7 +8,7 @@ export const createRootPasswordUpdate = (password: string) => ({
   $set: {
     password: hashStr(hashStr(password)),
     passwordUpdateTime: new Date(),
-    isActivated: false
+    status: UserStatusEnum.inactive
   }
 });
 

@@ -81,6 +81,7 @@ export async function getUserDetail({
   return {
     _id: String(user._id),
     username: user.username,
+    status: user.status,
     avatar: tmb.avatar,
     timezone: user.timezone,
     team,
@@ -92,7 +93,6 @@ export async function getUserDetail({
       ? { accountCancellation: formatTeamAccountCancellationSummary(accountCancellation) }
       : {}),
     hasPassword: hasStoredPassword(user.password),
-    passwordAvailable: getUserPasswordAvailability(user.username),
-    isActivated: user.isActivated !== false
+    passwordAvailable: getUserPasswordAvailability(user.username)
   };
 }

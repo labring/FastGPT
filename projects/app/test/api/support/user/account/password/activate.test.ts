@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import type { ActivateAccountBody } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
@@ -46,7 +47,7 @@ describe('password/activate API', () => {
     pendingUser = await MongoUser.create({
       username: 'activate-api-pending',
       password: hashStr(OLD_PASSWORD),
-      isActivated: false
+      status: UserStatusEnum.inactive
     });
     // 默认已激活的账号，用于验证不能重放激活接口。
     normalUser = await MongoUser.create({
@@ -88,7 +89,7 @@ describe('password/activate API', () => {
       await MongoUser.exists({
         _id: pendingUser._id,
         password: hashStr(NEW_PASSWORD),
-        isActivated: true
+        status: UserStatusEnum.active
       })
     ).toBeTruthy();
     // 发起改密的 Session 保留，其余注销（与其他改密路径一致）。
@@ -106,7 +107,7 @@ describe('password/activate API', () => {
       await MongoUser.exists({
         _id: pendingUser._id,
         password: hashStr(OLD_PASSWORD),
-        isActivated: false
+        status: UserStatusEnum.inactive
       })
     ).toBeTruthy();
   });
@@ -144,13 +145,13 @@ describe('password/activate API', () => {
       await MongoUser.exists({
         _id: pendingUser._id,
         password: hashStr(NEW_PASSWORD),
-        isActivated: true
+        status: UserStatusEnum.active
       })
     ).toBeTruthy();
     expect(delUserAllSession).toHaveBeenCalledWith(String(pendingUser._id), ['current-session']);
   });
 
-  it('rejects reusing the current password and keeps the flag pending', async () => {
+  it('rejects reusing the current password and keeps the account inactive', async () => {
     const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
       activateAccountApi,
       { body: getBody({ newPsw: hashStr(OLD_PASSWORD) }), auth: getAuth() }
@@ -159,7 +160,7 @@ describe('password/activate API', () => {
     expect(response.code).toBe(500);
     expect(response.error).toMatchObject({ message: UserErrEnum.newPasswordSameAsOld });
     expect(
-      await MongoUser.exists({ _id: pendingUser._id, isActivated: false })
+      await MongoUser.exists({ _id: pendingUser._id, status: UserStatusEnum.inactive })
     ).toBeTruthy();
   });
 
@@ -235,7 +236,7 @@ describe('password/activate API', () => {
       await MongoUser.exists({
         _id: pendingUser._id,
         password: hashStr(OLD_PASSWORD),
-        isActivated: false
+        status: UserStatusEnum.inactive
       })
     ).toBeTruthy();
   });

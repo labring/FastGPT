@@ -3,6 +3,7 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { TmpDataEnum, TmpDataExpireTime } from '@fastgpt/global/support/tmpData/constants';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { type ClientSession } from '../../../../common/mongo';
 import { MongoTmpData } from '../../../tmpData/schema';
@@ -106,12 +107,13 @@ export const updatePassword = async ({
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
 
     const updateResult = await MongoUser.updateOne(
-      { _id: userId },
+      // 改密成功可完成 inactive 账号激活，但绝不能把管理员禁用的账号重新启用。
+      { _id: userId, status: { $ne: UserStatusEnum.forbidden } },
       {
         $set: {
           password: newPassword,
           passwordUpdateTime: new Date(),
-          isActivated: true
+          status: UserStatusEnum.active
         }
       },
       { session }
@@ -145,7 +147,7 @@ export const activateAccount = async ({
   mongoSessionRun(async (session) => {
     const isActivationPending = await MongoUser.exists({
       _id: userId,
-      isActivated: false
+      status: UserStatusEnum.inactive
     }).session(session);
     if (!isActivationPending) {
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
@@ -154,12 +156,12 @@ export const activateAccount = async ({
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
 
     const updateResult = await MongoUser.updateOne(
-      { _id: userId, isActivated: false },
+      { _id: userId, status: UserStatusEnum.inactive },
       {
         $set: {
           password: newPassword,
           passwordUpdateTime: new Date(),
-          isActivated: true
+          status: UserStatusEnum.active
         }
       },
       { session }

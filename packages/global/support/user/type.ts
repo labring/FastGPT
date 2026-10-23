@@ -3,7 +3,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
 import { TeamPermission } from '../permission/user/controller';
-import type { UserStatusEnum } from './constant';
+import { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
 import { TeamTmbItemSchema } from './team/type';
 import type { FastGPTSemType } from '../marketing/type';
@@ -27,7 +27,6 @@ export type UserModelSchema = {
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
   passwordUpdateTime?: Date;
-  isActivated?: boolean;
   fastgpt_sem?: FastGPTSemType;
   contact?: string | null;
   tags: UserTagsType[];
@@ -47,9 +46,7 @@ export const UserSchema = z.object({
   tags: z.array(UserTagsSchema).optional(),
   hasPassword: z.boolean(),
   passwordAvailable: z.boolean().optional(),
-  isActivated: z.boolean().optional().meta({
-    description: '账号是否已激活；false 时登录后提示用户自行设置新密码'
-  })
+  status: z.enum(UserStatusEnum).meta({ description: '账号状态' })
 });
 export type UserType = z.infer<typeof UserSchema>;
 

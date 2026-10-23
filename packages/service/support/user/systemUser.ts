@@ -2,6 +2,7 @@ import { serviceEnv } from '../../env';
 import { MongoTeamMember } from './team/teamMemberSchema';
 import { MongoUser } from './schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { createDefaultTeam } from './team/controller';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
@@ -73,10 +74,10 @@ const executeSystemUserCreation = async (): Promise<void> => {
     const rootUser = await MongoUser.findOne({ username: 'root' }, undefined, { session });
     const rootUId = await (async () => {
       if (rootUser) {
-        // 旧库中 root 缺少激活字段时也必须首次进入激活流程；已显式激活的 root 不受重启影响。
+        // 旧库中 root 缺少持久化状态时也需首次进入激活流程；已保存为 active 的 root 不受重启影响。
         await MongoUser.updateOne(
-          { _id: rootUser._id, isActivated: { $exists: false } },
-          { $set: { isActivated: false } },
+          { _id: rootUser._id, status: { $exists: false } },
+          { $set: { status: UserStatusEnum.inactive } },
           { session }
         );
         return rootUser._id;
@@ -86,7 +87,7 @@ const executeSystemUserCreation = async (): Promise<void> => {
             {
               username: 'root',
               password: hashStr(DEFAULT_ROOT_PASSWORD),
-              isActivated: false
+              status: UserStatusEnum.inactive
             }
           ],
           { session, ordered: true }

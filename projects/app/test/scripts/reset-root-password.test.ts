@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import {
   createRootPasswordUpdate,
@@ -13,7 +14,7 @@ describe('reset-root-password script', () => {
     expect(() => resolveRootPasswordArgument(['first', 'second'])).toThrow('用法');
   });
 
-  it('writes the root password hash using the schema storage format and marks the account unactivated', () => {
+  it('writes the root password hash using the schema storage format and marks the account inactive', () => {
     const password = '123456';
     const update = createRootPasswordUpdate(password);
     const modelHash = new MongoUser({ username: 'root', password: hashStr(password) }).toObject({
@@ -21,7 +22,7 @@ describe('reset-root-password script', () => {
     }).password;
 
     expect(update.$set.password).toBe(modelHash);
-    expect(update.$set.isActivated).toBe(false);
+    expect(update.$set.status).toBe(UserStatusEnum.inactive);
     expect(update.$set.passwordUpdateTime).toBeInstanceOf(Date);
   });
 });

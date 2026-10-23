@@ -68,7 +68,6 @@ export const UpdateUserBodySchema = z.object({
   _id: z.string().min(1).meta({ description: '用户ID' }),
   username: z.string().min(1).optional().meta({ description: '新用户名' }),
   password: z.string().min(1).optional().meta({ description: '新密码' }),
-  clearActivated: z.boolean().optional().meta({ description: '设置新密码时是否清除用户的激活状态' }),
   status: z.enum(UserStatusEnum).optional().meta({ description: '用户状态' })
 });
 export type UpdateUserBodyType = z.infer<typeof UpdateUserBodySchema>;

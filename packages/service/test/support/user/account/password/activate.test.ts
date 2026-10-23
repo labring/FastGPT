@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { activateAccount } from '@fastgpt/service/support/user/account/password/service';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
@@ -15,11 +16,12 @@ describe('activateAccount', () => {
     unactivatedUser = await MongoUser.create({
       username: 'activate-pending',
       password: hashStr(OLD_PASSWORD),
-      isActivated: false
+      status: UserStatusEnum.inactive
     });
     activatedUser = await MongoUser.create({
       username: 'activate-normal',
-      password: hashStr(OLD_PASSWORD)
+      password: hashStr(OLD_PASSWORD),
+      status: UserStatusEnum.active
     });
   });
 
@@ -33,7 +35,7 @@ describe('activateAccount', () => {
       await MongoUser.exists({
         _id: unactivatedUser._id,
         password: hashStr(NEW_PASSWORD),
-        isActivated: true
+        status: UserStatusEnum.active
       })
     ).toBeTruthy();
   });
@@ -62,6 +64,29 @@ describe('activateAccount', () => {
     ).toBeTruthy();
   });
 
+  it('does not activate a forbidden account', async () => {
+    const forbiddenUser = await MongoUser.create({
+      username: 'activate-forbidden',
+      password: hashStr(OLD_PASSWORD),
+      status: UserStatusEnum.forbidden
+    });
+
+    await expect(
+      activateAccount({
+        userId: String(forbiddenUser._id),
+        newPassword: hashStr(NEW_PASSWORD)
+      })
+    ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
+
+    expect(
+      await MongoUser.exists({
+        _id: forbiddenUser._id,
+        password: hashStr(OLD_PASSWORD),
+        status: UserStatusEnum.forbidden
+      })
+    ).toBeTruthy();
+  });
+
   it('rejects a password identical to the current one', async () => {
     await expect(
       activateAccount({
@@ -72,7 +97,7 @@ describe('activateAccount', () => {
 
     // 同密被拒后仍应保持待激活状态，用户需重新输入新密码。
     expect(
-      await MongoUser.exists({ _id: unactivatedUser._id, isActivated: false })
+      await MongoUser.exists({ _id: unactivatedUser._id, status: UserStatusEnum.inactive })
     ).toBeTruthy();
   });
 
@@ -85,13 +110,13 @@ describe('activateAccount', () => {
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
   });
 
-  it('cannot be replayed after the activation state is cleared', async () => {
+  it('cannot be replayed after the account becomes active', async () => {
     await activateAccount({
       userId: String(unactivatedUser._id),
       newPassword: hashStr(NEW_PASSWORD)
     });
 
-    // 标记在首次成功后即被清除，二次调用落到 fail-closed 分支，不能再改一次。
+    // 首次成功会把状态从 inactive 更新为 active，二次调用必须落到 fail-closed 分支。
     await expect(
       activateAccount({
         userId: String(unactivatedUser._id),

@@ -2,6 +2,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 
 const {
   mockUserFindOne,
@@ -175,7 +176,7 @@ describe('system user initialization and agent user check', () => {
     expect(mockWithLease).toHaveBeenCalledTimes(2);
   });
 
-  it('marks a legacy root without activation state as unactivated without changing its password', async () => {
+  it('marks a root without persisted status as inactive without changing its password', async () => {
     mutableServiceEnv.AGENT_USERS = undefined;
     mockUserFindOne.mockResolvedValue({ _id: 'root-id' });
 
@@ -183,21 +184,22 @@ describe('system user initialization and agent user check', () => {
 
     expect(mockUserCreate).not.toHaveBeenCalled();
     expect(mockUserUpdateOne).toHaveBeenCalledWith(
-      { _id: 'root-id', isActivated: { $exists: false } },
-      { $set: { isActivated: false } },
+      { _id: 'root-id', status: { $exists: false } },
+      { $set: { status: UserStatusEnum.inactive } },
       { session: expect.anything() }
     );
   });
 
-  it('only marks roots without activation state as unactivated', async () => {
+  it('guards root status backfill so an existing status is not overwritten', async () => {
     mutableServiceEnv.AGENT_USERS = undefined;
-    mockUserFindOne.mockResolvedValue({ _id: 'root-id', isActivated: true });
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id', status: UserStatusEnum.active });
 
     await initSystemUser();
 
+    // Mongo matches the $exists:false filter against the persisted document, not Mongoose defaults.
     expect(mockUserUpdateOne).toHaveBeenCalledWith(
-      { _id: 'root-id', isActivated: { $exists: false } },
-      { $set: { isActivated: false } },
+      { _id: 'root-id', status: { $exists: false } },
+      { $set: { status: UserStatusEnum.inactive } },
       { session: expect.anything() }
     );
   });
@@ -214,7 +216,7 @@ describe('system user initialization and agent user check', () => {
         {
           username: 'root',
           password: hashStr('123456'),
-          isActivated: false
+          status: UserStatusEnum.inactive
         }
       ],
       { session: expect.anything(), ordered: true }

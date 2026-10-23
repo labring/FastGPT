@@ -89,6 +89,7 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
     expect(res.data.user).toBeDefined();
+    expect(res.data.user.status).toBe(UserStatusEnum.active);
     expect(res.data.user.team).toBeDefined();
     expect(res.data.user.team.teamId).toBe(String(testTeam._id));
     expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
@@ -185,6 +186,23 @@ describe('loginByPassword API', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('Invalid account!');
+  });
+
+  it('allows an inactive user to log in and reach the account activation prompt', async () => {
+    await MongoUser.findByIdAndUpdate(testUser._id, { status: UserStatusEnum.inactive });
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username: 'testuser',
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user.status).toBe(UserStatusEnum.inactive);
+    expect(res.data.token).toBeDefined();
   });
 
   it('should allow a pending cancellation user to recover a login session', async () => {

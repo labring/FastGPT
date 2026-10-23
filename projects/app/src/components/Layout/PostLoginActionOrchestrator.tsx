@@ -13,6 +13,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getInviteLinkIdFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 import {
   finishPostLoginAction,
@@ -206,7 +207,7 @@ const PostLoginActionOrchestrator = ({
     contact: userInfo?.contact
   });
 
-  const needsAccountActivation = userInfo?.isActivated === false;
+  const needsAccountActivation = userInfo?.status === UserStatusEnum.inactive;
   const baseReady = !!userId && !!teamId;
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。

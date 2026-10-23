@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
@@ -52,11 +53,11 @@ describe('password change session service', () => {
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
   });
 
-  it('activates an unactivated account after setting a password with a change session', async () => {
+  it('activates an inactive account after setting a password with a change session', async () => {
     const user = await MongoUser.create({
       username: 'update-password-activation',
       password: hashStr('old-password'),
-      isActivated: false
+      status: UserStatusEnum.inactive
     });
     const userId = String(user._id);
     const loginSessionId = 'login-activation';
@@ -70,8 +71,32 @@ describe('password change session service', () => {
     });
 
     const updated = await MongoUser.findById(user._id).lean();
-    expect(updated?.isActivated).toBe(true);
+    expect(updated?.status).toBe(UserStatusEnum.active);
     expect(updated?.passwordUpdateTime).toBeInstanceOf(Date);
+  });
+
+  it('does not activate a forbidden account when its password is changed', async () => {
+    const user = await MongoUser.create({
+      username: 'update-password-forbidden',
+      password: hashStr('old-password'),
+      status: UserStatusEnum.forbidden
+    });
+    const userId = String(user._id);
+    const loginSessionId = 'login-forbidden';
+    const { sessionId } = await createPasswordChangeSession({ userId, loginSessionId });
+
+    await expect(
+      updatePassword({
+        sessionId,
+        userId,
+        loginSessionId,
+        newPassword: hashStr('new-password')
+      })
+    ).rejects.toThrow('Failed to update password');
+
+    const updated = await MongoUser.findById(user._id).select('+password').lean();
+    expect(updated?.status).toBe(UserStatusEnum.forbidden);
+    expect(updated?.password).toBe(hashStr(hashStr('old-password')));
   });
 });
 

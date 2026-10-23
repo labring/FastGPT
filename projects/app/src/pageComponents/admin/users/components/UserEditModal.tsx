@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   FormControl,
   FormLabel,
   HStack,
@@ -11,7 +10,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import React from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { deleteUser, updateUser } from '@/web/admin/user/api';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -29,7 +28,6 @@ type TFormData = {
   username: string;
   password: string;
   status: string;
-  clearActivated: boolean;
 };
 
 export default function UserEditModal(props: { data: any; getData: any }) {
@@ -38,13 +36,12 @@ export default function UserEditModal(props: { data: any; getData: any }) {
   const { toast } = useToast();
 
   const { register, handleSubmit, reset, control } = useForm<TFormData>({
-    defaultValues: { ...data, password: '', clearActivated: false }
+    defaultValues: { ...data, password: '' }
   });
   // 服务端在「改名 + 同时设密码」时会校验新旧两个用户名，前端必须同口径，
   // 否则会出现密码框可填但提交必被 ssoPasswordUnavailable 拒绝的错位。
   // 用 useWatch 而非 watch()，避开 react-hooks/incompatible-library 的缓存告警。
   const watchedUsername = useWatch({ control, name: 'username' });
-  const watchedPassword = useWatch({ control, name: 'password' });
   const passwordAvailable = useAdminPasswordAvailability([data.username, watchedUsername]);
 
   const { runAsync: onSubmit, loading } = useRequest(
@@ -53,8 +50,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
         _id: data._id,
         username: formData.username,
         status: formData.status,
-        password: formData.password ? hashStr(formData.password) : undefined,
-        clearActivated: !!formData.password && formData.clearActivated
+        password: formData.password ? hashStr(formData.password) : undefined
       });
     },
     {
@@ -99,7 +95,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
         size={'sm'}
         onClick={() => {
           onOpen();
-          reset({ ...data, password: '', clearActivated: false });
+          reset({ ...data, password: '' });
         }}
       >
         编辑
@@ -168,22 +164,6 @@ export default function UserEditModal(props: { data: any; getData: any }) {
           )}
         </FormControl>
         <FormControl mt={4}>
-          <Controller
-            name="clearActivated"
-            control={control}
-            render={({ field }) => (
-              <Checkbox
-                isChecked={field.value}
-                onChange={field.onChange}
-                isDisabled={!passwordAvailable || !watchedPassword}
-                colorScheme="blue"
-              >
-                清除激活状态，要求用户下次登录重新设置密码
-              </Checkbox>
-            )}
-          />
-        </FormControl>
-        <FormControl mt={4}>
           <FormLabel htmlFor="password" mb={0} fontWeight="bold">
             用户状态
           </FormLabel>
@@ -194,6 +174,9 @@ export default function UserEditModal(props: { data: any; getData: any }) {
               </Radio>
               <Radio {...register('status')} value="forbidden" size="lg">
                 forbidden
+              </Radio>
+              <Radio {...register('status')} value="inactive" size="lg">
+                inactive
               </Radio>
             </HStack>
           </RadioGroup>
