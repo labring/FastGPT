@@ -66,6 +66,11 @@ const scalarApiReferenceCss = `
   display: none;
 }
 
+/* Query union 的 form/explode 分组没有实际的 query 字段，直接从格式选择器开始展示。 */
+.scalar-app .property-heading:has([id$='.query.query']) {
+  display: none;
+}
+
 .scalar-app
   [data-sidebar-id*='/tag-group/']:not([data-sidebar-id*='/tag/'])
   > [aria-selected] {
@@ -247,6 +252,9 @@ export const getScalarOpenApiReferenceConfig = (
       translations: {
         common: {
           values: '可选值'
+        },
+        operation: {
+          queryParameters: 'Query'
         },
         schema: {
           anyOf: '选择一种格式',
