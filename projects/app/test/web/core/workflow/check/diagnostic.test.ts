@@ -41,7 +41,7 @@ describe('formatWorkflowDiagnostic', () => {
     ).toMatchObject({ level: 'error', message: workflowZh.tool_target_already_attached });
   });
 
-  it('explains why connecting back to an upstream node is forbidden', () => {
+  it('explains why a cycle without a branch is forbidden', () => {
     expect(
       formatWorkflowDiagnostic({
         diagnostic: {
@@ -57,7 +57,7 @@ describe('formatWorkflowDiagnostic', () => {
         node,
         t
       }).message
-    ).toBe('节点 B 不能回连上游节点 A，连线不能形成环');
+    ).toBe('节点 B 到 A 的连线会形成纯串行回环，请通过分支节点控制回流');
   });
 
   it('keeps existing variable-update and model field labels while preserving severity', () => {

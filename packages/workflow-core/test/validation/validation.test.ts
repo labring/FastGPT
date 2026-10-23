@@ -83,7 +83,7 @@ describe('validateWorkflow', () => {
     expect(codes).toContain(WorkflowDiagnosticCodeEnum.requiredInputMissing);
   });
 
-  it('reports existing execution cycles without deleting their edges', () => {
+  it('reports serial cycles and accepts branch-controlled cycles without deleting edges', () => {
     const document = makeDocument();
     document.nodes.push({ ...document.nodes[1], nodeId: 'downstream' });
     document.executionEdges.push(
@@ -103,6 +103,16 @@ describe('validateWorkflow', () => {
       )
     ).toHaveLength(2);
     expect(document).toEqual(before);
+
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.ifElseNode;
+    document.executionEdges[1].source = { kind: 'branch', nodeId: 'target', branchKey: 'ELSE' };
+    const branched = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(document).toEqual(branched);
   });
 
   it('reports incomplete variable update rows', async () => {

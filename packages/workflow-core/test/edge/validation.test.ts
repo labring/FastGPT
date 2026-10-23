@@ -396,13 +396,10 @@ describe('checkExecutionConnection', () => {
     });
   });
 
-  it.each(['next', 'catch', 'branch', 'sourceOutput'] as const)(
-    'rejects direct and transitive upstream connections through any %s port',
+  it.each(['next', 'catch', 'sourceOutput'] as const)(
+    'rejects direct and transitive serial cycles through any %s port',
     async (kind) => {
-      const source = node(
-        'source',
-        kind === 'branch' ? FlowNodeTypeEnum.ifElseNode : FlowNodeTypeEnum.chatNode
-      );
+      const source = node('source');
       source.catchError = true;
       source.outputs.push({
         id: 'custom',
@@ -411,10 +408,9 @@ describe('checkExecutionConnection', () => {
         type: FlowNodeOutputTypeEnum.source
       });
       const middle = { ...node('middle'), catchError: true };
-      const nodes = [node('upstream', FlowNodeTypeEnum.ifElseNode), middle, source];
+      const nodes = [node('upstream'), middle, source];
       const candidate: WorkflowExecutionEdge = {
         source: (() => {
-          if (kind === 'branch') return { kind, nodeId: 'source', branchKey: 'ELSE' };
           if (kind === 'sourceOutput') return { kind, nodeId: 'source', outputKey: 'custom' };
           return { kind, nodeId: 'source' };
         })(),
@@ -425,7 +421,7 @@ describe('checkExecutionConnection', () => {
           nodes,
           executionEdges: [
             {
-              source: { kind: 'branch', nodeId: 'upstream', branchKey: 'ELSE' },
+              source: { kind: 'next', nodeId: 'upstream' },
               target: { kind: 'target', nodeId: targetId }
             },
             ...(targetId === 'middle'
@@ -440,7 +436,7 @@ describe('checkExecutionConnection', () => {
         });
         const before = structuredClone(document);
         for (const connection of [candidate, compileExecutionEdge(candidate, document)]) {
-          // Core 语义边与画布原始 handle 均使用相同的有向可达关系。
+          // Core 语义边与画布原始 handle 均检查不经过分支的回流路径。
           for (const edges of [
             document.executionEdges,
             document.executionEdges.map((edge) => compileExecutionEdge(edge, document))
@@ -467,6 +463,78 @@ describe('checkExecutionConnection', () => {
       }
     }
   );
+
+  it.each([
+    FlowNodeTypeEnum.ifElseNode,
+    FlowNodeTypeEnum.classifyQuestion,
+    FlowNodeTypeEnum.userSelect
+  ])('allows a cycle controlled by %s at any position in the loop', async (branchType) => {
+    for (const branchId of ['a', 'b', 'c']) {
+      const nodes = ['a', 'b', 'c'].map((id) => node(id, id === branchId ? branchType : undefined));
+      const branch = nodes.find((item) => item.nodeId === branchId)!;
+      const inputKey =
+        branchType === FlowNodeTypeEnum.userSelect
+          ? NodeInputKeyEnum.userSelectOptions
+          : NodeInputKeyEnum.agents;
+      if (branchType !== FlowNodeTypeEnum.ifElseNode)
+        branch.inputs.find((input) => input.key === inputKey)!.value = [
+          { key: 'continue', value: 'Continue' },
+          { key: 'exit', value: 'Exit' }
+        ];
+      const source = (nodeId: string): WorkflowExecutionEdge['source'] =>
+        nodeId === branchId
+          ? {
+              kind: 'branch',
+              nodeId,
+              branchKey: branchType === FlowNodeTypeEnum.ifElseNode ? 'ELSE' : 'continue'
+            }
+          : { kind: 'next', nodeId };
+      const document = createWorkflowDocument({
+        nodes,
+        executionEdges: [
+          { source: source('a'), target: { kind: 'target', nodeId: 'b' } },
+          { source: source('b'), target: { kind: 'target', nodeId: 'c' } }
+        ]
+      });
+      const candidate: WorkflowExecutionEdge = {
+        source: source('c'),
+        target: { kind: 'target', nodeId: 'a' }
+      };
+      for (const connection of [candidate, compileExecutionEdge(candidate, document)])
+        for (const edges of [
+          document.executionEdges,
+          document.executionEdges.map((edge) => compileExecutionEdge(edge, document))
+        ])
+          expect(evaluate({ nodes, connection, edges })).toEqual({ allowed: true });
+      const before = structuredClone(document);
+      const result = await applyWorkflowCommand({
+        document,
+        command: { type: 'edge.connect', edge: candidate },
+        dependencies: { templateProvider: builtinTemplateProvider }
+      });
+      for (const edge of result.document.executionEdges)
+        expect(() => assertExecutionEdge(result.document, edge)).not.toThrow();
+      expect(document).toEqual(before);
+    }
+  });
+
+  it('checks every return path so a branch outside a serial cycle cannot bypass the rule', () => {
+    const nodes = ['source', 'target', 'middle', 'branch'].map((id) =>
+      node(id, id === 'branch' ? FlowNodeTypeEnum.ifElseNode : undefined)
+    );
+    const edges = [
+      ordinary('target', 'middle'),
+      ordinary('middle', 'source'),
+      { ...ordinary('branch', 'source'), sourceHandle: 'branch-source-ELSE' }
+    ];
+    for (const branchEdge of [ordinary('branch', 'target'), ordinary('target', 'branch')])
+      expect(
+        evaluate({ nodes, edges: [...edges, branchEdge], connection: ordinary('source', 'target') })
+      ).toMatchObject({
+        allowed: false,
+        reason: { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle }
+      });
+  });
 
   it('allows forward branches and merges while safely traversing unrelated historical cycles', () => {
     const nodes = ['source', 'left', 'right', 'target', 'cycle-a', 'cycle-b'].map((id) => node(id));

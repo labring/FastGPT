@@ -366,8 +366,9 @@ const assertExecutionEdgeRules = ({
     ]);
   }
 
-  // 候选边 source → target 成环，当且仅当已有执行边能从 target 到达 source。
-  // 按节点遍历所有出口，换分支或异常 handle 也不能绕过；迭代遍历兼容历史环且不修改旧边。
+  // 只禁止纯串行回环：从 target 沿已有边找回 source，但遇到分支节点就停止该路径。
+  // 分支可选择退出，运行时也支持其回流；仍须继续检查其他路径，不能放过绕开分支的串行环。
+  // 按节点判断所有出口，迭代遍历兼容历史环；自连和跨工具边界由前面的规则独立限制。
   const executionTargets = new Map<string, string[]>();
   for (const item of graphEdges) {
     const targets = executionTargets.get(item.source) ?? [];
@@ -378,13 +379,16 @@ const assertExecutionEdgeRules = ({
   const pending = [targetNode.nodeId];
   while (pending.length) {
     const nodeId = pending.pop()!;
+    if (visited.has(nodeId)) continue;
+    visited.add(nodeId);
+    const node = getNodeById(nodeId);
+    // 包括候选边自身来自分支的情况；不能把分支节点当成普通串行出口。
+    if (node && getExecutionBranchKeys(node).length > 0) continue;
     if (nodeId === sourceNode.nodeId) {
       throw new WorkflowCommandError([
         { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle, severity: 'error', params: { edge } }
       ]);
     }
-    if (visited.has(nodeId)) continue;
-    visited.add(nodeId);
     pending.push(...(executionTargets.get(nodeId) ?? []));
   }
 

@@ -1382,7 +1382,7 @@
   "core.workflow.check.edge_handle_unsupported": "節點 {{source}} 到 {{target}} 的連線連接埠無效：{{sourceHandle}} → {{targetHandle}}",
   "core.workflow.check.edge_cross_scope": "節點 {{source}} 與 {{target}} 不在同一流程作用域，不能直接連線",
   "core.workflow.check.edge_self_connection": "節點 {{nodeId}} 不能連接自身",
-  "core.workflow.check.edge_creates_cycle": "節點 {{source}} 不能回連上游節點 {{target}}，連線不能形成環",
+  "core.workflow.check.edge_creates_cycle": "節點 {{source}} 到 {{target}} 的連線會形成純串行迴圈，請透過分支節點控制回流",
   "core.workflow.check.tool_edge_invalid": "節點 {{source}} 到 {{target}} 的工具連接方式無效",
   "core.workflow.check.catch_not_enabled": "節點 {{nodeId}} 尚未開啟例外擷取，不能連接例外分支",
   "core.workflow.check.next_port_unsupported": "節點 {{nodeId}} 不支援一般執行出口",

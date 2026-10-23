@@ -276,10 +276,14 @@ describe('workflow handles with real ReactFlow measurements', () => {
     ['main', 'main-tail', true],
     ['main-mid', 'main', false],
     ['main-tail', 'main', false],
-    ['tool-tail', 'tool-mid', false]
+    ['tool-tail', 'tool-mid', false],
+    ['main-tail', 'main', true, 'main-mid'],
+    ['main-tail', 'main-mid', true, 'main-mid'],
+    ['main-mid', 'main', true, 'main-mid'],
+    ['main-tail', 'main-mid', false, 'main']
   ])(
     'shows only eligible target handles while dragging %s -> %s',
-    async (source, target, allowed) => {
+    async (source, target, allowed, branchId = '') => {
       node = { ...node, flowNodeType: FlowNodeTypeEnum.chatNode, showTargetHandle: true };
       const nodeId = (id: string) => (id === target ? 'node' : id);
       const edges = [
@@ -310,6 +314,12 @@ describe('workflow handles with real ReactFlow measurements', () => {
           }
         ])
       );
+      if (branchId) {
+        const branch = nodeId(branchId);
+        nodes.get(branch)!.flowNodeType = FlowNodeTypeEnum.ifElseNode;
+        for (const edge of edges)
+          if (edge.source === branch) edge.sourceHandle = getHandleId(branch, 'source', 'ELSE');
+      }
       const graph = {
         edges,
         getNodeById: (id: string | null | undefined) => (id ? nodes.get(id) : undefined)
@@ -326,7 +336,7 @@ describe('workflow handles with real ReactFlow measurements', () => {
 
       connectingEdge = {
         nodeId: source,
-        handleId: getHandleId(source, 'source', 'right'),
+        handleId: getHandleId(source, 'source', source === branchId ? 'ELSE' : 'right'),
         handleType: 'source'
       };
       await render(handle, graph);
