@@ -12,7 +12,10 @@ import {
   MyTargetHandle
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle';
 import { useNodeHandleLayout } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/useNodeHandleLayout';
-import { ConnectionSourceHandle } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/ConnectionHandle';
+import {
+  ConnectionSourceHandle,
+  ConnectionTargetHandle
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/ConnectionHandle';
 import {
   ToolSourceHandle,
   ToolTargetHandle
@@ -79,7 +82,13 @@ describe('workflow handles with real ReactFlow measurements', () => {
       createElement('div', { className: 'react-flow__node', 'data-id': 'node' }, children)
     );
   };
-  const render = async (handles: ReactNode) => {
+  const render = async (
+    handles: ReactNode,
+    graph?: Pick<
+      ComponentProps<typeof WorkflowBufferDataContext.Provider>['value'],
+      'getNodeById' | 'edges'
+    >
+  ) => {
     const children = createElement(CaptureStore, { children: handles }); // eslint-disable-line react/no-children-prop -- 测试 Harness 的 children 是必填属性。
     // 测试使用真实 Context 更新，确保 memo 端口在连接态切换时保留同一个 DOM。
     /* eslint-disable react/no-children-prop */
@@ -97,7 +106,8 @@ describe('workflow handles with real ReactFlow measurements', () => {
                   target: 'target',
                   targetHandle: targetId
                 }
-              ]
+              ],
+              ...graph
             } as unknown as ComponentProps<typeof WorkflowBufferDataContext.Provider>['value'],
             children: createElement(WorkflowActionsContext.Provider, {
               value: { connectingEdge } as ComponentProps<
@@ -256,6 +266,80 @@ describe('workflow handles with real ReactFlow measurements', () => {
         ?.classList.contains('connectableend')
     ).toBe(false);
   });
+
+  it.each([
+    ['tool-root', 'main-tail', false],
+    ['main', 'tool-tail', false],
+    ['tool-root', 'other-tail', false],
+    ['other-tool', 'tool-tail', false],
+    ['tool-root', 'tool-tail', true],
+    ['main', 'main-tail', true]
+  ])(
+    'shows only eligible target handles while dragging %s -> %s',
+    async (source, target, allowed) => {
+      node = { ...node, flowNodeType: FlowNodeTypeEnum.chatNode, showTargetHandle: true };
+      const nodeId = (id: string) => (id === target ? 'node' : id);
+      const edges = [
+        ['start', 'caller'],
+        ['caller', 'main'],
+        ['main', 'main-mid'],
+        ['main-mid', 'main-tail'],
+        ['caller', 'tool-root', NodeOutputKeyEnum.selectedTools],
+        ['tool-root', 'tool-mid'],
+        ['tool-mid', 'tool-tail'],
+        ['caller', 'other-tool', NodeOutputKeyEnum.selectedTools],
+        ['other-tool', 'other-tail']
+      ].map(([source, target, targetHandle], index) => ({
+        id: String(index),
+        source: nodeId(source),
+        target: nodeId(target),
+        sourceHandle: targetHandle ?? getHandleId(nodeId(source), 'source', 'right'),
+        targetHandle: targetHandle ?? getHandleId(nodeId(target), 'target', 'left')
+      }));
+      const nodes = new Map(
+        [...new Set(edges.flatMap((edge) => [edge.source, edge.target]))].map((id) => [
+          id,
+          {
+            ...node,
+            nodeId: id,
+            flowNodeType:
+              id === 'start' ? FlowNodeTypeEnum.workflowStart : FlowNodeTypeEnum.chatNode
+          }
+        ])
+      );
+      const graph = {
+        edges,
+        getNodeById: (id: string | null | undefined) => (id ? nodes.get(id) : undefined)
+      };
+      const before = structuredClone(edges);
+      const handle = createElement(ConnectionTargetHandle, { nodeId: 'node' });
+      await render(handle, graph);
+      store.setState({ domNode: container });
+      store.getState().setNodes([{ id: 'node', position: { x: 0, y: 0 }, data: {} }]);
+      measure();
+      const element = container.querySelector<HTMLElement>('.react-flow__handle.target')!;
+      const initialBounds = bounds();
+      expect(element.style.visibility).toBe('visible');
+
+      connectingEdge = {
+        nodeId: source,
+        handleId: getHandleId(source, 'source', 'right'),
+        handleType: 'source'
+      };
+      await render(handle, graph);
+      measure();
+      expect(element.style.visibility).toBe(allowed ? 'visible' : 'hidden');
+      expect(element.classList.contains('connectableend')).toBe(allowed);
+      // 隐藏不可连接的入口只改变展示和交互，不卸载端口或影响已有连线的测量缓存。
+      expect(container.querySelector('.react-flow__handle.target')).toBe(element);
+      expect(bounds()).toEqual(initialBounds);
+      expect(edges).toEqual(before);
+
+      connectingEdge = undefined;
+      await render(handle, graph);
+      expect(element.style.visibility).toBe('visible');
+    }
+  );
 
   it('keeps all folded branch IDs and catch IDs available to the actual ReactFlow cache', async () => {
     node = {
