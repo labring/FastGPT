@@ -114,13 +114,16 @@ type ConnectionGraphEdge = {
   targetHandle?: string | null;
 };
 
+/** 仅用于校验的拓扑信息；条件出口由真实端口和节点配置推导，不写回连线。 */
+type ConnectionTopologyEdge = ConnectionGraphEdge & { conditional: boolean };
+
 export type ExecutionConnectionResult =
   | { allowed: true }
   | { allowed: false; reason: WorkflowDiagnostic };
 
 /**
  * 唯一的执行连线判定入口：画布显隐、提交、Core 命令和整图检查共用。
- * 同时接受画布 handle 和语义端口；仅解析候选边，历史边只读取拓扑，避免无关旧 handle 阻断编辑。
+ * 同时接受画布 handle 和语义端口；历史边只提取拓扑和条件出口，避免无关旧 handle 阻断编辑。
  * 默认检查重复边；检查文档中已有边时关闭该项，其余规则完全一致。检查不修改节点或连线。
  */
 export const checkExecutionConnection = ({
@@ -171,14 +174,33 @@ export const checkExecutionConnection = ({
         document
       );
     })();
-    const graphEdges = edges.map((item): ConnectionGraphEdge => {
-      if (!isExecutionEdge(item)) return item;
-      return {
-        source: item.source.nodeId,
-        target: item.target.nodeId,
-        targetHandle:
-          item.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
-      };
+    const graphEdges = edges.map((item): ConnectionTopologyEdge => {
+      const topology = isExecutionEdge(item)
+        ? {
+            source: item.source.nodeId,
+            target: item.target.nodeId,
+            targetHandle:
+              item.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
+          }
+        : item;
+      const node = getNodeById(topology.source);
+      const conditional = (() => {
+        if (!node) return false;
+        // 按实际出口识别条件路径：错误捕获必须开启，分支 key 必须仍在配置中。
+        if (isExecutionEdge(item)) {
+          if (item.source.kind === 'catch') return node.catchError === true;
+          return (
+            item.source.kind === 'branch' &&
+            getExecutionBranchKeys(node).includes(item.source.branchKey)
+          );
+        }
+        if (item.sourceHandle === getHandleId(node.nodeId, 'source_catch', 'right'))
+          return node.catchError === true;
+        return getExecutionBranchKeys(node).some(
+          (key) => item.sourceHandle === getHandleId(node.nodeId, 'source', key)
+        );
+      })();
+      return { ...topology, conditional };
     });
     const compiled = assertExecutionEdgeRules({ document, edge, graphEdges, getNodeById });
 
@@ -219,7 +241,7 @@ const assertExecutionEdgeRules = ({
 }: {
   document: Pick<WorkflowDocument, 'nodes'>;
   edge: WorkflowExecutionEdge;
-  graphEdges: ConnectionGraphEdge[];
+  graphEdges: ConnectionTopologyEdge[];
   getNodeById: (nodeId: string) => StoreNodeItemType | undefined;
 }) => {
   const [sourceNode, targetNode] = document.nodes;
@@ -366,24 +388,23 @@ const assertExecutionEdgeRules = ({
     ]);
   }
 
-  // 只禁止纯串行回环：从 target 沿已有边找回 source，但遇到分支节点就停止该路径。
-  // 分支可选择退出，运行时也支持其回流；仍须继续检查其他路径，不能放过绕开分支的串行环。
-  // 按节点判断所有出口，迭代遍历兼容历史环；自连和跨工具边界由前面的规则独立限制。
+  // 只禁止不经过条件出口的串行回环：条件分支与已开启的异常出口都由运行结果选择路径。
+  // 从图中排除这些出口后，若 target 仍能走回 source，就存在绕过条件的串行环。
+  // 候选边本身也是条件出口时允许回流；自连和跨工具边界仍由前面的规则独立限制。
   const executionTargets = new Map<string, string[]>();
   for (const item of graphEdges) {
+    if (item.conditional) continue;
     const targets = executionTargets.get(item.source) ?? [];
     targets.push(item.target);
     executionTargets.set(item.source, targets);
   }
   const visited = new Set<string>();
-  const pending = [targetNode.nodeId];
+  const pending =
+    edge.source.kind === 'branch' || edge.source.kind === 'catch' ? [] : [targetNode.nodeId];
   while (pending.length) {
     const nodeId = pending.pop()!;
     if (visited.has(nodeId)) continue;
     visited.add(nodeId);
-    const node = getNodeById(nodeId);
-    // 包括候选边自身来自分支的情况；不能把分支节点当成普通串行出口。
-    if (node && getExecutionBranchKeys(node).length > 0) continue;
     if (nodeId === sourceNode.nodeId) {
       throw new WorkflowCommandError([
         { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle, severity: 'error', params: { edge } }

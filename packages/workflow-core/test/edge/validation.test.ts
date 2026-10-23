@@ -396,7 +396,7 @@ describe('checkExecutionConnection', () => {
     });
   });
 
-  it.each(['next', 'catch', 'sourceOutput'] as const)(
+  it.each(['next', 'sourceOutput'] as const)(
     'rejects direct and transitive serial cycles through any %s port',
     async (kind) => {
       const source = node('source');
@@ -427,7 +427,7 @@ describe('checkExecutionConnection', () => {
             ...(targetId === 'middle'
               ? [
                   {
-                    source: { kind: 'catch' as const, nodeId: 'middle' },
+                    source: { kind: 'next' as const, nodeId: 'middle' },
                     target: { kind: 'target' as const, nodeId: 'source' }
                   }
                 ]
@@ -467,54 +467,96 @@ describe('checkExecutionConnection', () => {
   it.each([
     FlowNodeTypeEnum.ifElseNode,
     FlowNodeTypeEnum.classifyQuestion,
-    FlowNodeTypeEnum.userSelect
-  ])('allows a cycle controlled by %s at any position in the loop', async (branchType) => {
-    for (const branchId of ['a', 'b', 'c']) {
-      const nodes = ['a', 'b', 'c'].map((id) => node(id, id === branchId ? branchType : undefined));
-      const branch = nodes.find((item) => item.nodeId === branchId)!;
-      const inputKey =
-        branchType === FlowNodeTypeEnum.userSelect
-          ? NodeInputKeyEnum.userSelectOptions
-          : NodeInputKeyEnum.agents;
-      if (branchType !== FlowNodeTypeEnum.ifElseNode)
-        branch.inputs.find((input) => input.key === inputKey)!.value = [
-          { key: 'continue', value: 'Continue' },
-          { key: 'exit', value: 'Exit' }
-        ];
-      const source = (nodeId: string): WorkflowExecutionEdge['source'] =>
-        nodeId === branchId
-          ? {
-              kind: 'branch',
-              nodeId,
-              branchKey: branchType === FlowNodeTypeEnum.ifElseNode ? 'ELSE' : 'continue'
-            }
-          : { kind: 'next', nodeId };
-      const document = createWorkflowDocument({
-        nodes,
-        executionEdges: [
-          { source: source('a'), target: { kind: 'target', nodeId: 'b' } },
-          { source: source('b'), target: { kind: 'target', nodeId: 'c' } }
-        ]
-      });
-      const candidate: WorkflowExecutionEdge = {
-        source: source('c'),
-        target: { kind: 'target', nodeId: 'a' }
-      };
-      for (const connection of [candidate, compileExecutionEdge(candidate, document)])
-        for (const edges of [
-          document.executionEdges,
-          document.executionEdges.map((edge) => compileExecutionEdge(edge, document))
-        ])
-          expect(evaluate({ nodes, connection, edges })).toEqual({ allowed: true });
-      const before = structuredClone(document);
-      const result = await applyWorkflowCommand({
-        document,
-        command: { type: 'edge.connect', edge: candidate },
-        dependencies: { templateProvider: builtinTemplateProvider }
-      });
-      for (const edge of result.document.executionEdges)
-        expect(() => assertExecutionEdge(result.document, edge)).not.toThrow();
-      expect(document).toEqual(before);
+    FlowNodeTypeEnum.userSelect,
+    'catch'
+  ] as const)(
+    'allows a cycle controlled by a %s port at any position in the loop',
+    async (branchType) => {
+      for (const branchId of ['a', 'b', 'c']) {
+        const nodes = ['a', 'b', 'c'].map((id) =>
+          node(id, id === branchId && branchType !== 'catch' ? branchType : undefined)
+        );
+        const branch = nodes.find((item) => item.nodeId === branchId)!;
+        const inputKey =
+          branchType === FlowNodeTypeEnum.userSelect
+            ? NodeInputKeyEnum.userSelectOptions
+            : NodeInputKeyEnum.agents;
+        if (branchType === 'catch') branch.catchError = true;
+        else if (branchType !== FlowNodeTypeEnum.ifElseNode)
+          branch.inputs.find((input) => input.key === inputKey)!.value = [
+            { key: 'continue', value: 'Continue' },
+            { key: 'exit', value: 'Exit' }
+          ];
+        const source = (nodeId: string): WorkflowExecutionEdge['source'] =>
+          nodeId === branchId
+            ? branchType === 'catch'
+              ? { kind: 'catch', nodeId }
+              : {
+                  kind: 'branch',
+                  nodeId,
+                  branchKey: branchType === FlowNodeTypeEnum.ifElseNode ? 'ELSE' : 'continue'
+                }
+            : { kind: 'next', nodeId };
+        const document = createWorkflowDocument({
+          nodes,
+          executionEdges: [
+            { source: source('a'), target: { kind: 'target', nodeId: 'b' } },
+            { source: source('b'), target: { kind: 'target', nodeId: 'c' } }
+          ]
+        });
+        const candidate: WorkflowExecutionEdge = {
+          source: source('c'),
+          target: { kind: 'target', nodeId: 'a' }
+        };
+        for (const connection of [candidate, compileExecutionEdge(candidate, document)])
+          for (const edges of [
+            document.executionEdges,
+            document.executionEdges.map((edge) => compileExecutionEdge(edge, document))
+          ])
+            expect(evaluate({ nodes, connection, edges })).toEqual({ allowed: true });
+        const before = structuredClone(document);
+        const result = await applyWorkflowCommand({
+          document,
+          command: { type: 'edge.connect', edge: candidate },
+          dependencies: { templateProvider: builtinTemplateProvider }
+        });
+        for (const edge of result.document.executionEdges)
+          expect(() => assertExecutionEdge(result.document, edge)).not.toThrow();
+        expect(document).toEqual(before);
+      }
+    }
+  );
+
+  it('does not exempt a return path merely because its node has conditional ports', () => {
+    const branch = node('branch', FlowNodeTypeEnum.ifElseNode);
+    branch.catchError = false;
+    branch.outputs.push({
+      id: 'custom',
+      key: 'custom',
+      type: FlowNodeOutputTypeEnum.source,
+      label: ''
+    });
+    const nodes = [node('source'), node('target'), branch];
+    const document = createWorkflowDocument({ nodes });
+    for (const source of [
+      { kind: 'catch', nodeId: 'branch' },
+      { kind: 'sourceOutput', nodeId: 'branch', outputKey: 'custom' },
+      { kind: 'branch', nodeId: 'branch', branchKey: 'removed' }
+    ] as WorkflowExecutionEdge['source'][]) {
+      const edges: WorkflowExecutionEdge[] = [
+        {
+          source: { kind: 'next', nodeId: 'target' },
+          target: { kind: 'target', nodeId: 'branch' }
+        },
+        { source, target: { kind: 'target', nodeId: 'source' } }
+      ];
+      for (const graph of [edges, edges.map((edge) => compileExecutionEdge(edge, document))])
+        expect(
+          evaluate({ nodes, edges: graph, connection: ordinary('source', 'target') })
+        ).toMatchObject({
+          allowed: false,
+          reason: { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle }
+        });
     }
   });
 

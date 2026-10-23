@@ -83,7 +83,7 @@ describe('validateWorkflow', () => {
     expect(codes).toContain(WorkflowDiagnosticCodeEnum.requiredInputMissing);
   });
 
-  it('reports serial cycles and accepts branch-controlled cycles without deleting edges', () => {
+  it('reports serial cycles and accepts conditional or error feedback without deleting edges', () => {
     const document = makeDocument();
     document.nodes.push({ ...document.nodes[1], nodeId: 'downstream' });
     document.executionEdges.push(
@@ -113,6 +113,17 @@ describe('validateWorkflow', () => {
       )
     ).toEqual([]);
     expect(document).toEqual(branched);
+
+    const withCatch = structuredClone(before);
+    withCatch.nodes[1].catchError = true;
+    withCatch.executionEdges[1].source = { kind: 'catch', nodeId: 'target' };
+    const caught = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(caught);
   });
 
   it('reports incomplete variable update rows', async () => {

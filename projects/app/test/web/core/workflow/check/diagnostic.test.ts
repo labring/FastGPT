@@ -57,7 +57,7 @@ describe('formatWorkflowDiagnostic', () => {
         node,
         t
       }).message
-    ).toBe('节点 B 到 A 的连线会形成纯串行回环，请通过分支节点控制回流');
+    ).toBe('节点 B 到 A 的连线会形成纯串行回环，请通过条件或异常分支控制回流');
   });
 
   it('keeps existing variable-update and model field labels while preserving severity', () => {
