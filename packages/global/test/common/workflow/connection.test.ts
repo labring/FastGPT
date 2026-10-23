@@ -42,12 +42,17 @@ describe('isToolWorkflowConnectionAllowed', () => {
     ['a-tail', 'after', false],
     ['a-tail', 'start', false],
     ['after', 'a-tail', false],
+    ['caller', 'a-tail', false],
+    ['after', 'tool-a', false],
+    ['after', 'inner-tail', false],
     ['a-tail', 'b-tail', false],
+    ['b-tail', 'a-tail', false],
     ['a-tail', 'tool-b', false],
     ['inner-tail', 'nested-caller', false],
     ['inner-tail', 'caller', false],
     ['a-tail', 'new-node', true],
-    ['new-node', 'a-tail', true]
+    ['new-node', 'a-tail', false],
+    ['new-node', 'tool-a', false]
   ])('checks %s -> %s without changing the existing graph', (source, target, expected) => {
     const before = structuredClone(edges);
     expect(allowed(source, target)).toBe(expected);
@@ -58,6 +63,15 @@ describe('isToolWorkflowConnectionAllowed', () => {
     expect(allowed('a-tail', 'bridge', [...edges, normal('bridge', 'after')])).toBe(false);
     expect(allowed('a-tail', 'bridge', [...edges, normal('bridge', 'b-tail')])).toBe(false);
     expect(allowed('a-tail', 'bridge', [...edges, normal('bridge', 'free-tail')])).toBe(true);
+    expect(allowed('bridge', 'a-tail', [...edges, normal('outside', 'bridge')])).toBe(false);
+    expect(
+      allowed('bridge', 'a-tail', [
+        ...edges,
+        normal('outside', 'bridge'),
+        normal('bridge', 'a-tail'),
+        normal('outside', 'a-tail')
+      ])
+    ).toBe(false);
   });
 
   it('rejects a return to detached callers and nested ancestors even without a main entry', () => {
@@ -104,6 +118,6 @@ describe('isToolWorkflowConnectionAllowed', () => {
       allowed('free', 'orphan-tool', [
         { target: 'orphan-tool', targetHandle: NodeOutputKeyEnum.selectedTools }
       ])
-    ).toBe(true);
+    ).toBe(false);
   });
 });

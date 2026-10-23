@@ -19,11 +19,11 @@ import fixture from '../fixtures/basic-static/workflow.json';
 import { describe, expect, it } from 'vitest';
 
 describe('assertExecutionConnection', () => {
-  it('rejects tool-flow escapes through both direct validation and write commands without deleting edges', async () => {
+  it('isolates main and different tool flows in both directions without deleting edges', async () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     document.nodes = [
       document.nodes.find((node) => node.nodeId === 'start')!,
-      ...['caller', 'tool', 'tail', 'outer', 'free'].map((nodeId) =>
+      ...['caller', 'tool', 'tail', 'outer', 'free', 'other-tool', 'other-tail'].map((nodeId) =>
         StoreNodeItemTypeSchema.parse({
           ...(nodeId === 'caller' ? ToolCallNode : AiChatModule),
           nodeId
@@ -37,12 +37,28 @@ describe('assertExecutionConnection', () => {
         source: { kind: 'selectedTools', nodeId: 'caller' },
         target: { kind: 'selectedTools', nodeId: 'tool' }
       },
-      { source: { kind: 'next', nodeId: 'tool' }, target: { kind: 'target', nodeId: 'tail' } }
+      { source: { kind: 'next', nodeId: 'tool' }, target: { kind: 'target', nodeId: 'tail' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'caller' },
+        target: { kind: 'selectedTools', nodeId: 'other-tool' }
+      },
+      {
+        source: { kind: 'next', nodeId: 'other-tool' },
+        target: { kind: 'target', nodeId: 'other-tail' }
+      }
     ];
     const before = structuredClone(document);
-    for (const target of ['caller', 'outer']) {
+    for (const [source, target] of [
+      ['tail', 'caller'],
+      ['tail', 'outer'],
+      ['outer', 'tail'],
+      ['caller', 'tail'],
+      ['tail', 'other-tail'],
+      ['other-tail', 'tail'],
+      ['free', 'tail']
+    ]) {
       const edge = {
-        source: { kind: 'next' as const, nodeId: 'tail' },
+        source: { kind: 'next' as const, nodeId: source },
         target: { kind: 'target' as const, nodeId: target }
       };
       expect(() => assertExecutionConnection({ document, edge })).toThrow(

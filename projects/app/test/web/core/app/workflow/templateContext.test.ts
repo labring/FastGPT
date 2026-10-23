@@ -34,29 +34,42 @@ const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
 });
 
 describe('template context', () => {
-  it('普通目标柄与最终提交共用工具流程边界，未归属节点仍可接入', () => {
-    const nodes = ['caller', 'tool', 'tail', 'outer', 'free'].map((nodeId) => ({
-      ...AiChatModule,
-      nodeId
-    }));
+  it('普通目标柄与最终提交双向隔离流程，工具内仍可向新节点延伸', () => {
+    const nodes = ['caller', 'tool', 'tail', 'outer', 'free', 'other-tool', 'other-tail'].map(
+      (nodeId) => ({
+        ...AiChatModule,
+        nodeId
+      })
+    );
     const edges = [
       { source: 'caller', target: 'tool', targetHandle: NodeOutputKeyEnum.selectedTools },
       { source: 'tool', target: 'tail' },
-      { source: 'caller', target: 'outer' }
+      { source: 'caller', target: 'outer' },
+      { source: 'caller', target: 'other-tool', targetHandle: NodeOutputKeyEnum.selectedTools },
+      { source: 'other-tool', target: 'other-tail' }
     ];
-    const check = (target: string) =>
+    const check = (source: string, target: string) =>
       isNodeConnectionAllowed({
-        sourceNode: nodes[2],
+        sourceNode: nodes.find((node) => node.nodeId === source)!,
         targetNode: nodes.find((node) => node.nodeId === target)!,
         targetTemplate: AiChatModule,
         edges,
-        handleId: 'tail-source-right',
+        handleId: `${source}-source-right`,
         getNodeById: (nodeId) => nodes.find((node) => node.nodeId === nodeId)
       });
-    expect(check('caller')).toBe(false);
-    expect(check('outer')).toBe(false);
-    expect(check('tool')).toBe(true);
-    expect(check('free')).toBe(true);
+    for (const [source, target] of [
+      ['tail', 'caller'],
+      ['tail', 'outer'],
+      ['outer', 'tail'],
+      ['caller', 'tail'],
+      ['tail', 'other-tail'],
+      ['other-tail', 'tail'],
+      ['free', 'tail']
+    ]) {
+      expect(check(source, target), `${source} -> ${target}`).toBe(false);
+    }
+    expect(check('tool', 'tail')).toBe(true);
+    expect(check('tail', 'free')).toBe(true);
   });
   it('buildNodeTemplateContext：源节点不存在返回 null，字段正确映射', () => {
     const node = {
