@@ -584,132 +584,170 @@ export type CreateDatasetFolderBody = WithOptionalInheritPermission<
 /* ============================================================================
  * API: 搜索测试
  * Route: POST /api/core/dataset/searchTest
+ * Method: POST
+ * Description: 对单个知识库执行文本、图片或图文检索，返回可读集合的命中片段和实际检索配置。
+ * Tags: ['Dataset', 'Read']
  * ============================================================================ */
-export const SearchDatasetTestBodySchema = z
-  .object({
-    datasetId: ObjectIdSchema.meta({
-      example: '68ad85a7463006c963799a05',
-      description: '知识库 ID'
-    }),
-    text: z.string().optional().default('').meta({
-      example: 'FastGPT 是什么',
-      description: '搜索文本'
-    }),
-    queryImageUrls: z
-      .array(z.string().min(1))
-      .max(10, '最多支持上传10张图片')
-      .optional()
-      .default([])
-      .meta({
-        example: ['temp/teamId/search-image.png'],
-        description:
-          '搜索测试图片临时 key，最多 10 张。需先调用 /api/core/dataset/file/presignSearchTestImage 获取预签名上传 URL 和 temp/${teamId}/... key，不支持直接传公网 URL、dataset key 或 chat key'
-      }),
-    similarity: z.number().optional().meta({
-      example: 0.3,
-      description: '最低相似度阈值'
-    }),
-    limit: z.number().optional().meta({
-      example: 5000,
-      description: '最大返回 token 数'
-    }),
-    searchMode: z.enum(DatasetSearchModeEnum).optional().meta({
-      example: DatasetSearchModeEnum.mixedRecall,
-      description: '搜索模式'
-    }),
-    embeddingWeight: z.number().optional().meta({
-      example: 1,
-      description: '向量搜索权重'
-    }),
-    usingReRank: z.boolean().optional().meta({
-      description: '是否使用重排序'
-    }),
-    rerankModelId: z.string().optional().meta({
-      description: '重排序模型 ID'
-    }),
-    rerankModel: z.string().optional().meta({
-      example: 'bge-reranker-v2-m3',
-      description: '旧版重排序模型标识',
-      deprecated: true
-    }),
-    rerankWeight: z.number().optional().meta({
-      description: '重排序权重'
-    }),
-    datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
-      description: '是否使用问题扩展'
-    }),
-    datasetSearchExtensionModelId: z.string().optional().meta({
-      description: '问题扩展模型 ID'
-    }),
-    datasetSearchExtensionModel: z.string().optional().meta({
-      example: 'gpt-4o-mini',
-      description: '旧版问题扩展模型标识',
-      deprecated: true
-    }),
-    datasetSearchExtensionBg: z.string().optional().meta({
-      description: '问题扩展背景描述'
-    }),
-    datasetDeepSearch: z.boolean().optional().meta({
-      description: '是否启用深度搜索'
-    }),
-    datasetDeepSearchModelId: z.string().optional().meta({
-      description: '深度搜索模型 ID'
-    }),
-    datasetDeepSearchModel: z.string().optional().meta({
-      example: 'gpt-4o-mini',
-      description: '旧版深度搜索模型标识',
-      deprecated: true
-    }),
-    datasetDeepSearchMaxTimes: z.number().optional().meta({
-      description: '深度搜索最大轮次'
-    }),
-    datasetDeepSearchBg: z.string().optional().meta({
-      description: '深度搜索背景描述'
-    })
-  })
-  .refine((data) => !!data.text.trim() || data.queryImageUrls.length > 0, {
-    message: 'text or queryImageUrls is required'
-  })
+
+const SearchDatasetTestTextSchema = z.string().meta({
+  example: 'FastGPT 是什么',
+  description: '检索文本，可与 queryImageUrls 一起进行图文检索'
+});
+
+const SearchDatasetTestImagesSchema = z
+  .array(z.string().min(1))
+  .max(10, '最多支持上传10张图片')
   .meta({
-    override: {
-      anyOf: [
-        {
-          required: ['text'],
-          properties: { text: { type: 'string', minLength: 1, example: 'FastGPT 是什么' } }
-        },
-        {
-          required: ['queryImageUrls'],
-          properties: {
-            queryImageUrls: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }
-          }
-        }
-      ]
-    }
+    example: ['temp/teamId/search-image.png'],
+    description:
+      '检索图片的临时对象 key 列表，最多 10 张，并非图片 URL。先调用 /core/dataset/file/presignSearchTestImage 并完成上传，再传返回的 temp/${teamId}/... key；仅接受当前团队的临时 key，不接受公网 URL、dataset key 或 chat key。可与 text 同时传入'
   });
+
+const SearchDatasetTestOptionsSchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  }),
+  similarity: z.number().optional().meta({
+    example: 0.3,
+    default: 0,
+    description:
+      '最低分数阈值，默认 0。实际启用重排序时按重排分数过滤，否则仅向量检索按向量相似度过滤；全文检索、混合检索未启用重排序时不按此阈值过滤'
+  }),
+  limit: z.number().optional().meta({
+    example: 5000,
+    default: 5000,
+    description: '召回内容的最大 token 预算，并非结果条数。默认 5000，超过 20000 时按 20000 处理'
+  }),
+  searchMode: z.enum(DatasetSearchModeEnum).optional().meta({
+    example: DatasetSearchModeEnum.mixedRecall,
+    default: DatasetSearchModeEnum.embedding,
+    description:
+      '召回模式：embedding=向量检索，fullTextRecall=全文检索，mixedRecall=混合检索；默认 embedding'
+  }),
+  embeddingWeight: z.number().optional().meta({
+    example: 0.5,
+    default: 0.5,
+    description: '混合检索中向量召回的融合权重，全文召回权重为 1 - embeddingWeight；默认 0.5'
+  }),
+  usingReRank: z.boolean().optional().meta({
+    example: false,
+    default: false,
+    description:
+      '是否对文本召回结果重排序，默认 false；需要非空检索文本和可用的重排序模型，纯图片检索不重排。实际是否使用以响应 usingReRank 为准'
+  }),
+  rerankModelId: z.string().optional().meta({
+    description: '重排序模型 ID，usingReRank=true 时使用；未指定或模型配置失效时尝试团队默认模型'
+  }),
+  rerankModel: z.string().optional().meta({
+    example: 'bge-reranker-v2-m3',
+    description: '旧版重排序模型标识',
+    deprecated: true
+  }),
+  rerankWeight: z.number().optional().meta({
+    example: 0.5,
+    default: 0.5,
+    description:
+      '重排结果的融合权重，原始召回结果权重为 1 - rerankWeight；默认 0.5，1 表示仅使用重排排序'
+  }),
+  datasetSearchUsingExtensionQuery: z.boolean().optional().meta({
+    example: false,
+    default: false,
+    description:
+      '是否在普通检索前对文本问题扩展，默认 false；纯图片输入不执行文本扩展，深度搜索使用独立流程'
+  }),
+  datasetSearchExtensionModelId: z.string().optional().meta({
+    description: '问题扩展模型 ID，开启问题扩展时使用；未指定或模型配置失效时尝试团队默认语言模型'
+  }),
+  datasetSearchExtensionModel: z.string().optional().meta({
+    example: 'gpt-4o-mini',
+    description: '旧版问题扩展模型标识',
+    deprecated: true
+  }),
+  datasetSearchExtensionBg: z.string().optional().meta({
+    example: '根据 FastGPT 产品文档扩展用户问题',
+    description: '问题扩展的背景信息，用于辅助生成检索问题'
+  }),
+  datasetDeepSearch: z.boolean().optional().meta({
+    example: false,
+    default: false,
+    description:
+      '是否启用深度搜索，默认 false；仅 text 包含非空白内容时进入深度搜索，纯图片输入仍使用普通检索'
+  }),
+  datasetDeepSearchModelId: z.string().optional().meta({
+    description: '深度搜索使用的语言模型 ID，需具备该模型的使用权限'
+  }),
+  datasetDeepSearchModel: z.string().optional().meta({
+    example: 'gpt-4o-mini',
+    description: '旧版深度搜索模型标识',
+    deprecated: true
+  }),
+  datasetDeepSearchMaxTimes: z.number().optional().meta({
+    example: 3,
+    description: '深度搜索的最大迭代轮次，仅在实际进入深度搜索时生效'
+  }),
+  datasetDeepSearchBg: z.string().optional().meta({
+    example: '结合产品功能与使用场景检索相关资料',
+    description: '深度搜索的背景信息，仅在实际进入深度搜索时生效'
+  })
+});
+
+/** 文本和图片至少提供一种，保留图文同时输入；分支必填字段优先展示，公共检索参数复用。 */
+export const SearchDatasetTestBodySchema = z.union([
+  z
+    .object({
+      text: SearchDatasetTestTextSchema.min(1)
+        .refine((text) => !!text.trim(), {
+          message: 'text or queryImageUrls is required'
+        })
+        .meta(SearchDatasetTestTextSchema.meta() ?? {}),
+      queryImageUrls: SearchDatasetTestImagesSchema.optional().default([]),
+      ...SearchDatasetTestOptionsSchema.shape
+    })
+    .meta({
+      title: '文本检索',
+      description:
+        'text 必填且不能全为空白；可同时传 queryImageUrls 进行图文检索，不传图片时默认为空数组。'
+    }),
+  z
+    .object({
+      queryImageUrls: SearchDatasetTestImagesSchema.min(1).meta(
+        SearchDatasetTestImagesSchema.meta() ?? {}
+      ),
+      text: SearchDatasetTestTextSchema.optional().default(''),
+      ...SearchDatasetTestOptionsSchema.shape
+    })
+    .meta({
+      title: '图片检索',
+      description:
+        'queryImageUrls 必填，包含 1～10 个已上传的当前团队临时图片 key；可同时传 text，省略时默认为空字符串。'
+    })
+]);
 export type SearchDatasetTestBody = z.infer<typeof SearchDatasetTestBodySchema>;
 
 export const SearchDatasetTestResponseSchema = z.object({
   list: z.array(SearchDataResponseItemSchema).meta({
-    description: '搜索结果列表'
+    description: '当前调用者可读集合中的命中片段列表，包含内容、来源和召回分数；没有命中时为空数组'
   }),
   duration: z.string().meta({
     example: '0.523s',
-    description: '搜索耗时'
+    description: '搜索测试耗时，单位为秒，例如 0.523s'
   }),
   limit: z.number().meta({
-    description: '实际使用的最大 token 数'
+    example: 5000,
+    description: '实际使用的召回 token 预算，上限 20000，并非结果条数'
   }),
   searchMode: z.enum(DatasetSearchModeEnum).meta({
     description: '实际使用的搜索模式'
   }),
   usingReRank: z.boolean().meta({
-    description: '是否使用了重排序'
+    description: '本次是否实际使用重排序；输入不足、模型不可用或重排失败时可能为 false'
   }),
   similarity: z.number().meta({
     description: '实际使用的相似度阈值'
   }),
   queryExtensionModel: z.string().optional().meta({
-    description: '问题扩展使用的模型'
+    description: '问题扩展实际使用的模型标识，未执行问题扩展时不返回'
   })
 });
 export type SearchDatasetTestResponse = z.infer<typeof SearchDatasetTestResponseSchema>;

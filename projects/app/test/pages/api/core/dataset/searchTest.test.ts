@@ -296,6 +296,45 @@ describe('searchTest query image auth', () => {
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
   });
 
+  it('preserves both text and authorized images for a mixed search', async () => {
+    await handler(
+      {
+        body: {
+          datasetId,
+          text: 'question',
+          queryImageUrls: ['temp/team-1/search-image.png']
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['question'],
+        imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock']
+      })
+    );
+  });
+
+  it('uses ordinary search for images without text and caps the token budget at 20000', async () => {
+    await handler(
+      {
+        body: {
+          datasetId,
+          queryImageUrls: ['temp/team-1/search-image.png'],
+          datasetDeepSearch: true,
+          limit: 25000
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockDeepRagSearch).not.toHaveBeenCalled();
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: [], limit: 20000 })
+    );
+  });
+
   it('should stop before searching when the shared team chat QPM is exhausted', async () => {
     mockTeamFrequencyLimit.mockResolvedValue(false);
 
