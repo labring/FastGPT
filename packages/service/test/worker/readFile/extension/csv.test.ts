@@ -34,4 +34,24 @@ describe('readCsvRawText', () => {
 | --- | --- |
 | Q1 | A1 |`);
   });
+
+  it('formats a CSV with more rows than the function argument limit', async () => {
+    const rowCount = 150_000;
+    const rawText = [
+      'id,,note',
+      ...Array.from({ length: rowCount }, (_, index) => `${index},,value`)
+    ].join('\n');
+
+    const result = await readCsvRawText({
+      extension: 'csv',
+      buffer: Buffer.from(rawText, 'utf-8'),
+      encoding: 'utf-8'
+    });
+
+    const lines = result.formatText?.split('\n');
+    expect(result.rawText).toBe(rawText);
+    expect(lines).toHaveLength(rowCount + 2);
+    expect(lines?.slice(0, 3)).toEqual(['| id | note |', '| --- | --- |', '| 0 | value |']);
+    expect(lines?.at(-1)).toBe(`| ${rowCount - 1} | value |`);
+  });
 });
