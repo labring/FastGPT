@@ -4,7 +4,6 @@ import {
   MenuList,
   MenuItem,
   Box,
-  Portal,
   useOutsideClick,
   MenuButton,
   type MenuItemProps,
@@ -45,13 +44,8 @@ export type Props = {
   Button: React.ReactNode;
   buttonBoxProps?: BoxProps;
   menuListProps?: MenuListProps;
-  /** 滚动容器内或被 DOM 克隆的表头使用 fixed 定位，避免弹层撑大滚动范围。 */
+  /** 滚动容器内的菜单使用 fixed 定位，避免弹层撑大滚动范围。 */
   strategy?: 'absolute' | 'fixed';
-  /**
-   * 将弹层挂载到 body。
-   * 表头等会被 cloneNode 复制到隐藏测量节点时开启，避免菜单 DOM 被复制出第二个弹层。
-   */
-  portal?: boolean;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
 
@@ -214,7 +208,6 @@ const MyMenu = ({
   buttonBoxProps,
   menuListProps,
   strategy = 'absolute',
-  portal = false,
   menuList,
   placement = 'bottom-start'
 }: Props) => {
@@ -243,9 +236,6 @@ const MyMenu = ({
     if (offset) return offset;
     return [0, 5];
   }, [offset]);
-
-  // portal 模式把 MenuList 挂到 body，避免被表头 cloneNode 复制到隐藏测量节点。
-  const MenuListWrapper: React.ElementType = portal ? Portal : React.Fragment;
 
   return (
     <Menu
@@ -306,109 +296,96 @@ const MyMenu = ({
             {Button}
           </Box>
         </Box>
-        <MenuListWrapper>
-          <MenuList
-            data-my-menu-ignore-outside-click
-            onMouseEnter={() => {
-              clearTimeout(closeTimer.current);
-            }}
-            onMouseLeave={() => {
-              if (formatTrigger === 'hover') {
-                closeTimer.current = setTimeout(() => {
-                  setIsOpen(false);
-                }, 250);
-              }
-            }}
-            minW={isOpen ? `${width}px !important` : '80px'}
-            zIndex={100}
-            maxW={'300px'}
-            p={'6px'}
-            border={'1px solid #fff'}
-            boxShadow={'3'}
-            {...menuListProps}
-          >
-            {menuList.map((item, i) => {
-              return (
-                <Box key={i}>
-                  {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
-                  {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
-                  {item.children.map((child, index) => {
-                    const menuItem = (
-                      <MenuItem
-                        key={index}
-                        w={'100%'}
-                        borderRadius={'sm'}
-                        isDisabled={child.disabled}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (child.disabled) {
-                            return;
+        <MenuList
+          minW={isOpen ? `${width}px !important` : '80px'}
+          zIndex={100}
+          maxW={'300px'}
+          p={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={'3'}
+          {...menuListProps}
+        >
+          {menuList.map((item, i) => {
+            return (
+              <Box key={i}>
+                {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
+                {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
+                {item.children.map((child, index) => {
+                  const menuItem = (
+                    <MenuItem
+                      key={index}
+                      w={'100%'}
+                      borderRadius={'sm'}
+                      isDisabled={child.disabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (child.disabled) {
+                          return;
+                        }
+                        if (child.onClick) {
+                          if (child.closeOnClick !== false) {
+                            setIsOpen(false);
                           }
-                          if (child.onClick) {
-                            if (child.closeOnClick !== false) {
-                              setIsOpen(false);
-                            }
-                            child.onClick();
+                          child.onClick();
+                        }
+                      }}
+                      alignItems={'center'}
+                      fontSize={'sm'}
+                      color={child.isActive ? 'primary.700' : 'myGray.600'}
+                      whiteSpace={'pre-wrap'}
+                      {...typeMapStyle[child.type || 'primary'].styles}
+                      {...sizeMapStyle[size].menuItemStyle}
+                      {...child.menuItemStyles}
+                    >
+                      {!!child.icon && (
+                        <Avatar
+                          src={child.icon as any}
+                          mr={2}
+                          {...sizeMapStyle[size].iconStyle}
+                          {...child.iconStyles}
+                          color={
+                            child.isActive
+                              ? 'inherit'
+                              : typeMapStyle[child.type || 'primary'].iconColor
                           }
-                        }}
-                        alignItems={'center'}
-                        fontSize={'sm'}
-                        color={child.isActive ? 'primary.700' : 'myGray.600'}
-                        whiteSpace={'pre-wrap'}
-                        {...typeMapStyle[child.type || 'primary'].styles}
-                        {...sizeMapStyle[size].menuItemStyle}
-                        {...child.menuItemStyles}
-                      >
-                        {!!child.icon && (
-                          <Avatar
-                            src={child.icon as any}
-                            mr={2}
-                            {...sizeMapStyle[size].iconStyle}
-                            {...child.iconStyles}
-                            color={
-                              child.isActive
-                                ? 'inherit'
-                                : typeMapStyle[child.type || 'primary'].iconColor
+                          sx={{
+                            '[role="menuitem"]:hover &': {
+                              color: 'inherit'
                             }
-                            sx={{
-                              '[role="menuitem"]:hover &': {
-                                color: 'inherit'
-                              }
-                            }}
-                          />
-                        )}
-                        <Box w={'100%'}>
-                          <Box
-                            w={'100%'}
-                            color={child.description ? 'myGray.900' : 'inherit'}
-                            pr={child.icon ? 4 : 0}
-                            {...sizeMapStyle[size].labelStyle}
-                          >
-                            {child.label}
-                          </Box>
-                          {child.description && !child.disabled && (
-                            <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
-                              {child.description}
-                            </Box>
-                          )}
+                          }}
+                        />
+                      )}
+                      <Box w={'100%'}>
+                        <Box
+                          w={'100%'}
+                          color={child.description ? 'myGray.900' : 'inherit'}
+                          pr={child.icon ? 4 : 0}
+                          {...sizeMapStyle[size].labelStyle}
+                        >
+                          {child.label}
                         </Box>
-                      </MenuItem>
-                    );
+                        {child.description && !child.disabled && (
+                          <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
+                            {child.description}
+                          </Box>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  );
 
-                    if (child.disabled && child.disabledTip) {
-                      return (
-                        <MyTooltip shouldWrapChildren={false} key={index} label={child.disabledTip}>
-                          <Box>{menuItem}</Box>
-                        </MyTooltip>
-                      );
-                    }
-                    return menuItem;
-                  })}
-                </Box>
-              );
-            })}
-          </MenuList>
-        </MenuListWrapper>
+                  if (child.disabled && child.disabledTip) {
+                    return (
+                      <MyTooltip shouldWrapChildren={false} key={index} label={child.disabledTip}>
+                        <Box>{menuItem}</Box>
+                      </MyTooltip>
+                    );
+                  }
+                  return menuItem;
+                })}
+              </Box>
+            );
+          })}
+        </MenuList>
       </Box>
     </Menu>
   );
