@@ -146,6 +146,28 @@ describe('dispatchHttp468Request error body', () => {
     expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toBe('sku missing');
   });
 
+  it('shares sanitized text across error outputs without losing fields after a URL', async () => {
+    const data = {
+      url: 'https://api.example.com/resource',
+      detail: 'sku missing ns-demo-secret'
+    };
+    const result = await rejectWith(
+      Object.assign(new Error('Request failed with status code 400'), {
+        response: { data }
+      })
+    );
+    const errorText =
+      'Request failed with status code 400\n{"url":"https://xxx","detail":"sku missing xxx"}';
+
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.error]).toBe(errorText);
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]?.error).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual(data);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.httpErrorResult?.data).toEqual(data);
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]).not.toHaveProperty('rawText');
+  });
+
   it('caps a huge response body in the node error text', async () => {
     const detail = 'x'.repeat(2500);
     const axiosError = Object.assign(new Error('Request failed with status code 400'), {

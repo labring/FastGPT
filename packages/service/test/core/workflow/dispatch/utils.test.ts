@@ -908,6 +908,7 @@ describe('formatHttpError', () => {
     const result = formatHttpError(error);
     expect(result.message).toBe('Request failed');
     expect(result.data).toEqual({ detail: 'not found' });
+    expect(result.rawText).toBe('Request failed\n{"detail":"not found"}');
     expect(result.name).toBe('AxiosError');
     expect(result.method).toBe('GET');
     expect(result.code).toBe('ERR_BAD_REQUEST');
@@ -917,6 +918,7 @@ describe('formatHttpError', () => {
   it('should handle error with missing fields', () => {
     const result = formatHttpError({});
     expect(result.message).toBe('');
+    expect(result.rawText).toBe('');
     expect(result.data).toBeUndefined();
     expect(result.name).toBeUndefined();
     expect(result.method).toBeUndefined();
@@ -927,6 +929,55 @@ describe('formatHttpError', () => {
   it('should handle string error', () => {
     const result = formatHttpError('something went wrong');
     expect(result.message).toBe('something went wrong');
+    expect(result.rawText).toBe('something went wrong');
+  });
+
+  it.each([
+    { name: 'string', data: 'sku missing', text: 'sku missing' },
+    { name: 'array', data: ['sku missing'], text: '["sku missing"]' },
+    { name: 'number', data: 42, text: '42' },
+    { name: 'boolean', data: false, text: 'false' },
+    { name: 'undefined', data: undefined, text: '' },
+    { name: 'null', data: null, text: '' },
+    { name: 'empty string', data: '', text: '' },
+    { name: 'whitespace', data: ' \n ', text: '' },
+    { name: 'empty serialization', data: { toJSON: () => undefined }, text: '' }
+  ])('formats a $name response body', ({ data, text }) => {
+    const result = formatHttpError({ message: 'Request failed', response: { data } });
+    expect(result.rawText).toBe(text ? `Request failed\n${text}` : 'Request failed');
+    expect(result.data).toBe(data);
+  });
+
+  it('uses the response body when the error summary is empty', () => {
+    expect(formatHttpError({ response: { data: { detail: 'sku missing' } } }).rawText).toBe(
+      '{"detail":"sku missing"}'
+    );
+  });
+
+  it.each(['message', 'msg'])('does not repeat a %s-only body, including long messages', (key) => {
+    const message = 'x'.repeat(2500);
+    const result = formatHttpError({ response: { data: { [key]: message } } });
+    expect(result.rawText).toBe(message);
+  });
+
+  it.each([2000, 2001])(
+    'limits response body snippets at the boundary: %s characters',
+    (length) => {
+      const data = 'x'.repeat(length);
+      const result = formatHttpError({ message: 'Request failed', response: { data } });
+      expect(result.rawText).toBe(
+        `Request failed\n${'x'.repeat(2000)}${length > 2000 ? '...' : ''}`
+      );
+      expect(result.data).toBe(data);
+    }
+  );
+
+  it('keeps the summary when the response body cannot be serialized', () => {
+    const data: { self?: unknown } = {};
+    data.self = data;
+    const result = formatHttpError({ message: 'Request failed', response: { data } });
+    expect(result.rawText).toBe('Request failed');
+    expect(result.data).toBe(data);
   });
 });
 
