@@ -174,6 +174,7 @@ describe('user account OpenAPI contracts', () => {
           avatar: '/icon/avatar.svg',
           timezone: 'Asia/Shanghai',
           hasPassword: true,
+          status: 'active',
           team: {
             userId: objectIdLike,
             teamId: objectIdLike,
@@ -200,6 +201,7 @@ describe('user account OpenAPI contracts', () => {
         timezone: 'Asia/Shanghai',
         contact: null,
         hasPassword: true,
+        status: 'active',
         team: {
           userId: objectIdLike,
           teamId: objectIdLike,
@@ -230,6 +232,7 @@ describe('user account OpenAPI contracts', () => {
         avatar: '/icon/avatar.svg',
         timezone: 'Asia/Shanghai',
         hasPassword: true,
+        status: 'active',
         team: {
           userId: objectIdLike,
           teamId: objectIdLike,
@@ -259,6 +262,7 @@ describe('user account OpenAPI contracts', () => {
       timezone: 'Asia/Shanghai',
       contact: null,
       hasPassword: true,
+      status: 'active',
       team: {
         userId: objectIdLike,
         teamId: objectIdLike,

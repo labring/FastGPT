@@ -1327,6 +1327,8 @@
   "password_wechat_load_failed": "二维码加载失败，请重试",
   "password_wechat_qr": "微信验证二维码",
   "password_wechat_scan": "微信扫码登录",
+  "account_activation_title": "账号激活",
+  "account_activation_description": "首次登录请设置新密码以激活账号。",
   "update_password": "修改密码",
   "batch_manage": "批量管理",
   "batch_move": "批量移动",

@@ -3,6 +3,7 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { TmpDataEnum, TmpDataExpireTime } from '@fastgpt/global/support/tmpData/constants';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { type ClientSession } from '../../../../common/mongo';
 import { MongoTmpData } from '../../../tmpData/schema';
@@ -76,44 +77,50 @@ export const createPasswordChangeSession = async ({
 };
 
 /**
- * 在同一 Mongo 事务中校验改密 Session、更新密码并消费 Session。
+ * 在同一 Mongo 事务中更新密码；提供 sessionId 时先校验并消费一次性改密 Session，
  * 只有密码更新和凭证删除都成功，事务才会提交，避免凭证被提前消费或重复使用。
  */
-export const updatePasswordWithChangeSession = async ({
+export const updatePassword = async ({
   sessionId,
   userId,
   loginSessionId,
   newPassword
 }: PasswordChangeSessionData & {
-  sessionId: string;
+  sessionId?: string;
   newPassword: string;
 }) =>
   mongoSessionRun(async (session) => {
-    const dataId = getPasswordChangeSessionDataId(sessionId);
-    const record = await MongoTmpData.findOne({
-      dataId,
-      expireAt: { $gt: new Date() },
-      'data.userId': userId,
-      'data.loginSessionId': loginSessionId
-    })
-      .session(session)
-      .lean();
+    const dataId = sessionId ? getPasswordChangeSessionDataId(sessionId) : undefined;
+    if (dataId) {
+      const record = await MongoTmpData.findOne({
+        dataId,
+        expireAt: { $gt: new Date() },
+        'data.userId': userId,
+        'data.loginSessionId': loginSessionId
+      })
+        .session(session)
+        .lean();
 
-    if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
+      if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
+    }
 
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
 
     const updateResult = await MongoUser.updateOne(
-      { _id: userId },
+      // 改密成功可完成 inactive 账号激活，但绝不能把管理员禁用的账号重新启用。
+      { _id: userId, status: { $ne: UserStatusEnum.forbidden } },
       {
         $set: {
           password: newPassword,
-          passwordUpdateTime: new Date()
+          passwordUpdateTime: new Date(),
+          status: UserStatusEnum.active
         }
       },
       { session }
     );
     if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
+
+    if (!dataId) return;
 
     const deleted = await MongoTmpData.deleteOne(
       {
@@ -127,6 +134,39 @@ export const updatePasswordWithChangeSession = async ({
     if (deleted.deletedCount !== 1) {
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
     }
+  });
+
+/** 未激活账号首次设置密码；仅此路径无需旧密码，并在成功后标记账号已激活。 */
+export const activateAccount = async ({
+  userId,
+  newPassword
+}: {
+  userId: string;
+  newPassword: string;
+}) =>
+  mongoSessionRun(async (session) => {
+    const isActivationPending = await MongoUser.exists({
+      _id: userId,
+      status: UserStatusEnum.inactive
+    }).session(session);
+    if (!isActivationPending) {
+      throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
+    }
+
+    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
+
+    const updateResult = await MongoUser.updateOne(
+      { _id: userId, status: UserStatusEnum.inactive },
+      {
+        $set: {
+          password: newPassword,
+          passwordUpdateTime: new Date(),
+          status: UserStatusEnum.active
+        }
+      },
+      { session }
+    );
+    if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
   });
 
 /** 拒绝将当前持久化密码再次设置为新密码。Schema setter 负责沿用现有双层哈希协议。 */
