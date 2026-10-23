@@ -3,7 +3,7 @@
   "Image_dataset_requires_VLM_model_to_be_configured": "Image collections require an image understanding model or a multimodal embedding model. Please configure a matching model first.",
   "file_name": "Filename",
   "file_size": "Filesize",
-  "image": "picture",
+  "image": "Picture",
   "image_description": "Image description",
   "image_description_tip": "Please enter the description of the picture",
   "reached_max_file_count": "Maximum file count reached",
