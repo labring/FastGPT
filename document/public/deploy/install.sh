@@ -689,15 +689,12 @@ normalize_deploy_base_url() {
     printf '%s/deploy\n' "$url"
 }
 
-# root 初始密码固定为 123456，首次登录需通过账号激活设置新密码；
-# 忘记密码时可用容器脚本重置：docker exec <容器> node /app/scripts/reset-root-password.cjs '新密码'
-# 省略脚本参数时会将 root 密码重置为 123456。
-ROOT_LOGIN_PASSWORD="123456"
+ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
     local system_key file_token_key aes256_secret_key invoke_token_secret
     local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
-    local mongo_password redis_password minio_password
+    local root_password mongo_password redis_password minio_password
     local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
 
     system_key="$(random_hex 32)"
@@ -709,6 +706,7 @@ randomize_compose_credentials() {
     volume_manager_token="$(random_hex 32)"
     agent_proxy_secret="$(random_hex 32)"
     aiproxy_token="$(random_hex 32)"
+    root_password="$(random_hex 8)"
     mongo_password="$(random_hex 16)"
     redis_password="$(random_hex 16)"
     minio_password="$(random_hex 16)"
@@ -719,6 +717,14 @@ randomize_compose_credentials() {
     seekdb_password="$(random_hex 16)"
     # openGauss 要求密码同时包含大小写、数字和特殊字符。放在 URL 中时 @ 需要编码。
     opengauss_password="Fg$(random_hex 12)@123"
+
+    if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
+        ROOT_LOGIN_PASSWORD="$root_password"
+        replace_text "x-default-root-psw: &x-default-root-psw '1234'" "x-default-root-psw: &x-default-root-psw '$root_password'"
+        replace_text 'x-default-root-psw: &x-default-root-psw "1234"' "x-default-root-psw: &x-default-root-psw \"$root_password\""
+    else
+        ROOT_LOGIN_PASSWORD="请查看 docker-compose.yml 中 DEFAULT_ROOT_PSW"
+    fi
 
     # YAML anchors: 多个服务共用的 token 只改锚点，引用方自动同步。
     replace_text "x-system-key: &x-system-key 'fastgpt-xxx'" "x-system-key: &x-system-key '$system_key'"
@@ -1267,8 +1273,13 @@ fi
 # ========== 随机化默认密钥 ==========
 if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
     randomize_compose_credentials
-    echo "已随机生成 docker-compose.yml 中的服务 Token、应用密钥和组件密码（root 登录密码固定为 $ROOT_LOGIN_PASSWORD）"
+    echo "已随机生成 docker-compose.yml 中的登录密码、服务 Token、应用密钥和组件密码"
 else
+    if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
+        ROOT_LOGIN_PASSWORD="1234"
+    else
+        ROOT_LOGIN_PASSWORD="请查看 docker-compose.yml 中 DEFAULT_ROOT_PSW"
+    fi
     echo "已跳过自动生成密钥，请确认 docker-compose.yml 中的默认凭证已手动修改"
 fi
 
@@ -1405,8 +1416,7 @@ if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
         echo "  3. 网络配置:   FastGPT 请按上方映射配置防火墙或反向代理"
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
-    echo "  5. 登录服务:   默认账号 'root'，初始密码 '$ROOT_LOGIN_PASSWORD'"
-    echo "                 （首次登录需完成账号激活并设置新密码）"
+    echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 else
     echo "  1. 预拉取镜像: docker compose pull"
@@ -1417,8 +1427,7 @@ else
         echo "  3. 网络配置:   FastGPT 请按上方映射配置防火墙或反向代理"
     fi
     echo "  4. 访问服务:   $FE_DOMAIN_INPUT"
-    echo "  5. 登录服务:   默认账号 'root'，初始密码 '$ROOT_LOGIN_PASSWORD'"
-    echo "                 （首次登录需完成账号激活并设置新密码）"
+    echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 fi
 echo ""
