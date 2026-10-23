@@ -274,5 +274,8 @@
   "available_to_all": "모든 멤버가 사용 가능",
   "only_available_to_self": "본인만 사용 가능",
   "shared_with_me": "나와 공유됨",
-  "system_model_tag": "시스템"
+  "system_model_tag": "시스템",
+  "model.custom_sort": "사용자 지정 정렬",
+  "model.cancel_sort": "취소",
+  "model.save_sort": "정렬 저장"
 }

@@ -21,6 +21,7 @@ import {
   UpdateDefaultModelsBodySchema,
   UpdateModelBodySchema,
   UpdateModelChannelsBodySchema,
+  UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
   UpdateSystemModelsWithJsonBodySchema
 } from './api';
@@ -156,6 +157,17 @@ export const AIModelPath: OpenAPIPath = {
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: UpdateModelStatusBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/core/ai/model/updateOrder': {
+    put: {
+      summary: '更新模型展示顺序',
+      description: '按显式作用域保存当前完整模型列表的展示顺序，不允许提交部分模型列表',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelOrderBodySchema } }
       },
       responses: { 200: { description: '更新成功' } }
     }

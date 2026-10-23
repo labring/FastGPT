@@ -27,6 +27,7 @@ import {
   deleteModels,
   testModel,
   putModelsStatus,
+  putUpdateModelOrder,
   postUpdateModelChannels
 } from '@/web/core/ai/model/api';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -61,8 +62,10 @@ import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
+import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 const modelRowHeight = 80;
+const sortModelRowHeight = 48;
 const modelTableColumnWidth = {
   selection: '48px',
   channels: '160px',
@@ -308,9 +311,37 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
   const isInitialLoading = loadingModels && modelConfigData === undefined;
 
   const [showModelId, setShowModelId] = useState(true);
+  const [isSortMode, setIsSortMode] = useState(false);
+  const [sortModels, setSortModels] = useState<ModelConfigListItem[]>([]);
+  const { runAsync: saveModelOrder, loading: savingModelOrder } = useRequest(putUpdateModelOrder, {
+    manual: true
+  });
 
   // 入口级粗筛：root 或拥有“安装模型”权限才展示管理操作；单个模型的最终判定以服务端 authModelConfig（action: config）为准
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
+
+  /** 从未过滤的完整列表创建排序草稿，避免把搜索/筛选结果误当成完整顺序提交。 */
+  const enterSortMode = useCallback(() => {
+    setSelectedItems([]);
+    setSortModels([...modelItems]);
+    setIsSortMode(true);
+  }, [modelItems, setSelectedItems]);
+
+  const cancelSortMode = useCallback(() => {
+    setSortModels([]);
+    setIsSortMode(false);
+  }, []);
+
+  /** 保存成功后才退出排序模式；请求或刷新失败时保留草稿，方便用户重试。 */
+  const handleSaveModelOrder = useLockFn(async () => {
+    await saveModelOrder({
+      channelType,
+      modelIds: sortModels.map((model) => model.modelId)
+    });
+    await refreshModels();
+    setSortModels([]);
+    setIsSortMode(false);
+  });
 
   return (
     <>
@@ -319,357 +350,521 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
           <Grid
             w={['100%', 'auto']}
             templateColumns={
-              !isTeam && isRoot ? ['repeat(3, minmax(0, 1fr))', 'repeat(3, auto)'] : ['1fr', 'auto']
+              isSortMode
+                ? ['repeat(2, minmax(0, 1fr))', 'repeat(2, auto)']
+                : !isTeam && isRoot
+                  ? ['repeat(2, minmax(0, 1fr))', 'repeat(4, minmax(0, 1fr))']
+                  : ['repeat(2, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))']
             }
             gap={2}
           >
-            {!isTeam && isRoot && (
+            {isSortMode ? (
               <>
                 <Button
-                  w={['100%', 'auto']}
+                  w={['100%', '81px']}
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
-                  onClick={onOpenDefaultModel}
+                  leftIcon={<MyIcon name={'common/closeLight'} w={'16px'} h={'16px'} />}
+                  onClick={cancelSortMode}
                 >
-                  {t('config_model:model.default_model')}
+                  {t('config_model:model.cancel_sort')}
                 </Button>
                 <Button
-                  w={['100%', 'auto']}
+                  w={['100%', '123px']}
+                  minW={0}
+                  px={[2, 4]}
+                  variant={'primary'}
+                  leftIcon={<MyIcon name={'common/check'} w={'16px'} h={'16px'} />}
+                  isLoading={savingModelOrder}
+                  onClick={handleSaveModelOrder}
+                >
+                  {t('config_model:model.save_sort')}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  w={'100%'}
                   minW={0}
                   px={[2, 4]}
                   variant={'whiteBase'}
-                  onClick={onOpenJsonConfig}
+                  isDisabled={channelMutationLoading || modelItems.length === 0}
+                  onClick={enterSortMode}
                 >
-                  {t('config_model:model.json_config')}
+                  {t('config_model:model.custom_sort')}
                 </Button>
+                {!isTeam && isRoot && (
+                  <>
+                    <Button
+                      w={'100%'}
+                      minW={0}
+                      px={[2, 4]}
+                      variant={'whiteBase'}
+                      onClick={onOpenDefaultModel}
+                    >
+                      {t('config_model:model.default_model')}
+                    </Button>
+                    <Button
+                      w={'100%'}
+                      minW={0}
+                      px={[2, 4]}
+                      variant={'whiteBase'}
+                      onClick={onOpenJsonConfig}
+                    >
+                      {t('config_model:model.json_config')}
+                    </Button>
+                  </>
+                )}
+                <AddModel
+                  installedModels={modelItems}
+                  channels={channelList}
+                  providers={modelProviders}
+                  channelType={channelType}
+                  onSuccess={refreshModels}
+                  isDisabled={channelMutationLoading}
+                  w={'100%'}
+                  minW={0}
+                  px={[2, 4]}
+                  buttonBoxProps={{ w: '100%' }}
+                />
               </>
             )}
-            <AddModel
-              installedModels={modelItems}
-              channels={channelList}
-              providers={modelProviders}
-              channelType={channelType}
-              onSuccess={refreshModels}
-              isDisabled={channelMutationLoading}
-              w={['100%', 'auto']}
-              minW={0}
-              px={[2, 4]}
-              buttonBoxProps={{ w: ['100%', 'fit-content'] }}
-            />
           </Grid>
         </ModelTabHeader>
       )}
       <Box display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'}>
         <Flex {...accountPageRootStyles} h={'100%'} flexDirection={'column'}>
-          <ModelListFilters
-            px={6}
-            providers={modelProviders}
-            models={modelItems}
-            provider={provider}
-            onProviderChange={setProvider}
-            modelType={modelType}
-            onModelTypeChange={setModelType}
-            search={search}
-            onSearchChange={setSearch}
-          />
-          <MyBox
-            {...accountContentScrollStyles}
-            display={'flex'}
-            flexDirection={'column'}
-            flex={'1 0 0'}
-            h={0}
-            mt={5}
-            isLoading={isInitialLoading}
-          >
-            <FixedTableLayout
-              scrollMode="virtual"
-              bodyRef={modelListContainerRef}
-              rootProps={{ flex: '1 0 0', h: 0 }}
-              headerProps={{ px: 6 }}
-              bodyProps={{ flex: '1 0 0', h: 0, px: 6 }}
-              renderHeader={({ headerTableWidth }) => (
-                <Table
-                  minW={isTeam ? '950px' : '980px'}
-                  sx={{
-                    tableLayout: 'fixed',
-                    width: `${headerTableWidth} !important`
-                  }}
-                >
-                  <colgroup>
-                    <col style={{ width: modelTableColumnWidth.selection }} />
-                    <col />
-                    <col style={{ width: modelTableColumnWidth.channels }} />
-                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
-                    {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
-                    <col style={{ width: modelTableColumnWidth.active }} />
-                    <col style={{ width: modelTableColumnWidth.actions }} />
-                  </colgroup>
-                  <Thead>
-                    <Tr color="myGray.600">
-                      <Th px={3}>
-                        <Checkbox
-                          isChecked={isSelecteAll}
-                          isIndeterminate={selectedItems.length > 0 && !isSelecteAll}
-                          onChange={selectAllTrigger}
-                        />
-                      </Th>
-                      <Th fontSize="xs">
-                        <HStack
-                          spacing={1}
-                          cursor="pointer"
-                          onClick={() => setShowModelId(!showModelId)}
-                        >
-                          <Box>
-                            {showModelId
-                              ? t('config_model:model.model_id')
-                              : t('common:model.name')}
-                          </Box>
-                          <MyIcon name="modal/changePer" w="1rem" />
-                        </HStack>
-                      </Th>
-                      <Th fontSize="xs">{t('config_model:model.channels')}</Th>
-                      {showBilling && <Th fontSize="xs">{t('common:model.billing')}</Th>}
-                      {isTeam && <Th fontSize="xs">{t('config_model:available_range')}</Th>}
-                      <Th fontSize="xs">
-                        <Box
-                          cursor="pointer"
-                          onClick={() => setShowActive(!showActive)}
-                          color={showActive ? 'primary.600' : 'myGray.600'}
-                        >
-                          {t('config_model:model.active')}({activeModelLength})
-                        </Box>
-                      </Th>
-                      <Th fontSize="xs">{t('common:Operation')}</Th>
-                    </Tr>
-                  </Thead>
-                </Table>
-              )}
-              renderBody={() => (
-                <Table w={'100%'} minW={isTeam ? '950px' : '980px'} sx={{ tableLayout: 'fixed' }}>
-                  <colgroup>
-                    <col style={{ width: modelTableColumnWidth.selection }} />
-                    <col />
-                    <col style={{ width: modelTableColumnWidth.channels }} />
-                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
-                    {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
-                    <col style={{ width: modelTableColumnWidth.active }} />
-                    <col style={{ width: modelTableColumnWidth.actions }} />
-                  </colgroup>
-                  <Tbody>
-                    {!isInitialLoading && modelList.length === 0 && (
-                      <Tr>
-                        <Td colSpan={tableColumnCount}>
-                          <EmptyTip
-                            py={12}
-                            text={modelItems.length === 0 ? t('config_model:no_models') : undefined}
-                          />
-                        </Td>
+          {isSortMode ? (
+            <MyBox
+              {...accountContentScrollStyles}
+              display={'flex'}
+              flexDirection={'column'}
+              flex={'1 0 0'}
+              h={0}
+              mt={5}
+            >
+              <FixedTableLayout
+                scrollMode="normal"
+                horizontalScroll={false}
+                rootProps={{ flex: '1 0 0', h: 0 }}
+                headerProps={{ px: 6 }}
+                bodyProps={{ flex: '1 0 0', h: 0, px: 6 }}
+                renderHeader={() => (
+                  <Table w={'100%'} sx={{ tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col />
+                    </colgroup>
+                    <Thead>
+                      <Tr color="myGray.600">
+                        <Th px={3} fontSize="xs">
+                          {t('config_model:model.model_id')}
+                        </Th>
                       </Tr>
-                    )}
-                    {topPlaceholderHeight > 0 && (
-                      <Tr h={`${topPlaceholderHeight}px`} aria-hidden>
-                        <Td
-                          colSpan={tableColumnCount}
-                          h={`${topPlaceholderHeight}px`}
-                          p={0}
-                          border={0}
-                        />
-                      </Tr>
-                    )}
-                    {virtualModelList.map(({ data: item }) => (
-                      <Tr
-                        key={item.modelId}
-                        h={`${modelRowHeight}px`}
-                        {...getRowSelectionProps(item)}
-                      >
-                        <Td w={modelTableColumnWidth.selection} px={3}>
-                          <Checkbox
-                            isChecked={isSelected(item)}
-                            onChange={() => toggleSelect(item)}
-                          />
-                        </Td>
-                        <Td fontSize={'sm'}>
-                          <HStack>
-                            <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                            <Flex alignItems={'center'} gap={1} minW={0}>
-                              <CopyBox
-                                value={showModelId ? item.model : item.name}
-                                data-row-action
-                                color={'myGray.900'}
-                                fontWeight={'500'}
-                                noOfLines={1}
-                              >
-                                {showModelId ? item.model : item.name}
-                              </CopyBox>
-                              {isTeam && item.scope === ModelScopeEnum.system && (
-                                <MyTag type={'borderFill'} colorSchema={'gray'}>
-                                  {t('config_model:system_model_tag')}
-                                </MyTag>
+                    </Thead>
+                  </Table>
+                )}
+                renderBody={() => (
+                  <DndDrag<ModelConfigListItem>
+                    dataList={sortModels}
+                    onDragEndCb={setSortModels}
+                    renderInnerPlaceholder={false}
+                  >
+                    {({ provided }) => (
+                      <Table w={'100%'} sx={{ tableLayout: 'fixed' }}>
+                        <colgroup>
+                          <col />
+                        </colgroup>
+                        <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                          {sortModels.map((item, index) => (
+                            <Draggable
+                              key={item.modelId}
+                              draggableId={item.modelId}
+                              index={index}
+                              isDragDisabled={sortModels.length < 2}
+                            >
+                              {(provided, snapshot) => (
+                                <Tr
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  h={`${sortModelRowHeight}px`}
+                                  cursor={sortModels.length > 1 ? 'grab' : 'not-allowed'}
+                                  bg={snapshot.isDragging ? 'primary.50' : undefined}
+                                  _hover={{ bg: 'primary.50' }}
+                                  clipPath={snapshot.isDragging ? 'inset(0 round 8px)' : undefined}
+                                  style={provided.draggableProps.style}
+                                >
+                                  <Td px={3} py={3}>
+                                    <HStack spacing={3} minW={0}>
+                                      <Box
+                                        w={'16px'}
+                                        h={'24px'}
+                                        p={'2px'}
+                                        display={'flex'}
+                                        alignItems={'center'}
+                                        justifyContent={'center'}
+                                        flexShrink={0}
+                                        borderRadius={'xs'}
+                                        _hover={{
+                                          bg: '#E5E9F4',
+                                          '& svg': { color: 'myGray.500' }
+                                        }}
+                                        cursor={sortModels.length > 1 ? 'grab' : 'not-allowed'}
+                                      >
+                                        <MyIcon name={'drag'} w={'16px'} color={'myGray.400'} />
+                                      </Box>
+                                      <Avatar
+                                        src={item.avatar}
+                                        w={'1.2rem'}
+                                        borderRadius={'50%'}
+                                        flexShrink={0}
+                                      />
+                                      <Box
+                                        minW={0}
+                                        noOfLines={1}
+                                        color={'myGray.900'}
+                                        fontSize={'sm'}
+                                        fontWeight={'500'}
+                                      >
+                                        {item.model}
+                                      </Box>
+                                    </HStack>
+                                  </Td>
+                                </Tr>
                               )}
-                              {item.testMode && <TestModeBetaTag />}
-                            </Flex>
-                          </HStack>
-                          <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
-                            <MyTag type={'borderFill'} colorSchema={item.tagColor} py={0.5}>
-                              {item.typeLabel}
-                            </MyTag>
-                            <ModelCapabilityTags
-                              contextToken={item.contextToken}
-                              showVision={!!item.vision}
-                              showVideo={!!item.video}
-                              showAudio={!!item.audio}
-                              showReasoning={!!item.reasoning}
-                            />
-                          </HStack>
-                        </Td>
-                        <Td fontSize={'sm'}>
-                          <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
-                            <ModelChannelCount
-                              channels={item.channels}
-                              onClick={() => setChannelModel(item)}
-                            />
-                          </Box>
-                        </Td>
-                        {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
-                        {isTeam && (
-                          <Td fontSize={'sm'}>
-                            <ModelScopeCell
-                              modelId={item.modelId}
-                              scope={item.scope}
-                              ownerTmbId={item.tmbId}
-                              isAccountConfig
-                              selectedHint={t('config_model:available_range')}
-                            />
-                          </Td>
-                        )}
-                        <Td fontSize={'sm'}>
-                          <Flex data-row-action w={'32px'} justifyContent={'center'}>
-                            {updatingModelIds.has(item.modelId) ? (
-                              <Spinner size={'sm'} color={'primary.600'} />
-                            ) : (
-                              <Switch
-                                size={'sm'}
-                                cursor={'pointer'}
-                                isChecked={item.isActive}
-                                onChange={(e) =>
-                                  updateModelStatus({
-                                    modelId: item.modelId,
-                                    model: item.model,
-                                    isActive: e.target.checked
-                                  })
-                                }
-                                colorScheme={'myBlue'}
-                              />
-                            )}
-                          </Flex>
-                        </Td>
-                        <Td>
-                          <HStack>
-                            <MyIconButton
-                              icon={'core/chat/sendLight'}
-                              tip={t('config_model:model.test_model')}
-                              isLoading={testingModelIds.has(item.modelId)}
-                              onClick={() => onTestModel({ modelId: item.modelId, channelType })}
-                            />
-                            <ModelEditButton
-                              model={item}
-                              providers={modelProviders}
-                              channelType={channelType}
-                              onSuccess={refreshModels}
-                              isDisabled={channelMutationLoading}
-                            />
-                            <PopoverConfirm
-                              Trigger={
-                                <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
-                                  <MyIconButton
-                                    icon={'delete'}
-                                    hoverColor={'red.500'}
-                                    opacity={channelMutationLoading ? 0.5 : 1}
-                                  />
-                                </Box>
-                              }
-                              type="delete"
-                              content={t('config_model:model.delete_model_confirm')}
-                              onConfirm={() =>
-                                handleDeleteModel({ modelId: item.modelId, channelType })
-                              }
-                            />
-                          </HStack>
-                        </Td>
-                      </Tr>
-                    ))}
-                    {bottomPlaceholderHeight > 0 && (
-                      <Tr h={`${bottomPlaceholderHeight}px`} aria-hidden>
-                        <Td
-                          colSpan={tableColumnCount}
-                          h={`${bottomPlaceholderHeight}px`}
-                          p={0}
-                          border={0}
-                        />
-                      </Tr>
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </Tbody>
+                      </Table>
                     )}
-                  </Tbody>
-                </Table>
-              )}
-              footer={
-                <FloatingActionBar
-                  borderTopWidth="1px"
-                  borderColor="myGray.100"
-                  px={3}
-                  Controler={
-                    <HStack spacing={2}>
-                      <Button
-                        variant="whiteBase"
-                        isLoading={updatingModelsStatus}
-                        onClick={() =>
-                          updateModelsStatus({
-                            modelIds: selectedItems.map((model) => model.modelId),
-                            isActive: true,
-                            channelType
-                          })
-                        }
-                      >
-                        {t('config_model:model.batch_enable')}
-                      </Button>
-                      <Button
-                        variant="whiteBase"
-                        isLoading={updatingModelsStatus}
-                        onClick={() =>
-                          updateModelsStatus({
-                            modelIds: selectedItems.map((model) => model.modelId),
-                            isActive: false,
-                            channelType
-                          })
-                        }
-                      >
-                        {t('config_model:model.batch_disable')}
-                      </Button>
-                      <Button
-                        variant="whiteBase"
-                        color="red.600"
-                        isLoading={deletingModels || channelMutationLoading}
-                        onClick={() =>
-                          openBatchDeleteConfirm({
-                            customContent: t('config_model:model.batch_delete_confirm', {
-                              count: selectedItems.length
-                            }),
-                            onConfirm: () =>
-                              handleDeleteModels({
+                  </DndDrag>
+                )}
+              />
+            </MyBox>
+          ) : (
+            <>
+              <ModelListFilters
+                px={6}
+                providers={modelProviders}
+                models={modelItems}
+                provider={provider}
+                onProviderChange={setProvider}
+                modelType={modelType}
+                onModelTypeChange={setModelType}
+                search={search}
+                onSearchChange={setSearch}
+              />
+              <MyBox
+                {...accountContentScrollStyles}
+                display={'flex'}
+                flexDirection={'column'}
+                flex={'1 0 0'}
+                h={0}
+                mt={5}
+                isLoading={isInitialLoading}
+              >
+                <FixedTableLayout
+                  scrollMode="virtual"
+                  bodyRef={modelListContainerRef}
+                  rootProps={{ flex: '1 0 0', h: 0 }}
+                  headerProps={{ px: 6 }}
+                  bodyProps={{ flex: '1 0 0', h: 0, px: 6 }}
+                  renderHeader={({ headerTableWidth }) => (
+                    <Table
+                      minW={isTeam ? '950px' : '980px'}
+                      sx={{
+                        tableLayout: 'fixed',
+                        width: `${headerTableWidth} !important`
+                      }}
+                    >
+                      <colgroup>
+                        <col style={{ width: modelTableColumnWidth.selection }} />
+                        <col />
+                        <col style={{ width: modelTableColumnWidth.channels }} />
+                        {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
+                        {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
+                        <col style={{ width: modelTableColumnWidth.active }} />
+                        <col style={{ width: modelTableColumnWidth.actions }} />
+                      </colgroup>
+                      <Thead>
+                        <Tr color="myGray.600">
+                          <Th px={3}>
+                            <Checkbox
+                              isChecked={isSelecteAll}
+                              isIndeterminate={selectedItems.length > 0 && !isSelecteAll}
+                              onChange={selectAllTrigger}
+                            />
+                          </Th>
+                          <Th fontSize="xs">
+                            <HStack
+                              spacing={1}
+                              cursor="pointer"
+                              onClick={() => setShowModelId(!showModelId)}
+                            >
+                              <Box>
+                                {showModelId
+                                  ? t('config_model:model.model_id')
+                                  : t('common:model.name')}
+                              </Box>
+                              <MyIcon name="modal/changePer" w="1rem" />
+                            </HStack>
+                          </Th>
+                          <Th fontSize="xs">{t('config_model:model.channels')}</Th>
+                          {showBilling && <Th fontSize="xs">{t('common:model.billing')}</Th>}
+                          {isTeam && <Th fontSize="xs">{t('config_model:available_range')}</Th>}
+                          <Th fontSize="xs">
+                            <Box
+                              cursor="pointer"
+                              onClick={() => setShowActive(!showActive)}
+                              color={showActive ? 'primary.600' : 'myGray.600'}
+                            >
+                              {t('config_model:model.active')}({activeModelLength})
+                            </Box>
+                          </Th>
+                          <Th fontSize="xs">{t('common:Operation')}</Th>
+                        </Tr>
+                      </Thead>
+                    </Table>
+                  )}
+                  renderBody={() => (
+                    <Table
+                      w={'100%'}
+                      minW={isTeam ? '950px' : '980px'}
+                      sx={{ tableLayout: 'fixed' }}
+                    >
+                      <colgroup>
+                        <col style={{ width: modelTableColumnWidth.selection }} />
+                        <col />
+                        <col style={{ width: modelTableColumnWidth.channels }} />
+                        {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
+                        {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
+                        <col style={{ width: modelTableColumnWidth.active }} />
+                        <col style={{ width: modelTableColumnWidth.actions }} />
+                      </colgroup>
+                      <Tbody>
+                        {!isInitialLoading && modelList.length === 0 && (
+                          <Tr>
+                            <Td colSpan={tableColumnCount}>
+                              <EmptyTip
+                                py={12}
+                                text={
+                                  modelItems.length === 0 ? t('config_model:no_models') : undefined
+                                }
+                              />
+                            </Td>
+                          </Tr>
+                        )}
+                        {topPlaceholderHeight > 0 && (
+                          <Tr h={`${topPlaceholderHeight}px`} aria-hidden>
+                            <Td
+                              colSpan={tableColumnCount}
+                              h={`${topPlaceholderHeight}px`}
+                              p={0}
+                              border={0}
+                            />
+                          </Tr>
+                        )}
+                        {virtualModelList.map(({ data: item }) => (
+                          <Tr
+                            key={item.modelId}
+                            h={`${modelRowHeight}px`}
+                            {...getRowSelectionProps(item)}
+                          >
+                            <Td w={modelTableColumnWidth.selection} px={3}>
+                              <Checkbox
+                                isChecked={isSelected(item)}
+                                onChange={() => toggleSelect(item)}
+                              />
+                            </Td>
+                            <Td fontSize={'sm'}>
+                              <HStack>
+                                <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
+                                <Flex alignItems={'center'} gap={1} minW={0}>
+                                  <CopyBox
+                                    value={showModelId ? item.model : item.name}
+                                    data-row-action
+                                    color={'myGray.900'}
+                                    fontWeight={'500'}
+                                    noOfLines={1}
+                                  >
+                                    {showModelId ? item.model : item.name}
+                                  </CopyBox>
+                                  {isTeam && item.scope === ModelScopeEnum.system && (
+                                    <MyTag type={'borderFill'} colorSchema={'gray'}>
+                                      {t('config_model:system_model_tag')}
+                                    </MyTag>
+                                  )}
+                                  {item.testMode && <TestModeBetaTag />}
+                                </Flex>
+                              </HStack>
+                              <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
+                                <MyTag type={'borderFill'} colorSchema={item.tagColor} py={0.5}>
+                                  {item.typeLabel}
+                                </MyTag>
+                                <ModelCapabilityTags
+                                  contextToken={item.contextToken}
+                                  showVision={!!item.vision}
+                                  showVideo={!!item.video}
+                                  showAudio={!!item.audio}
+                                  showReasoning={!!item.reasoning}
+                                />
+                              </HStack>
+                            </Td>
+                            <Td fontSize={'sm'}>
+                              <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
+                                <ModelChannelCount
+                                  channels={item.channels}
+                                  onClick={() => setChannelModel(item)}
+                                />
+                              </Box>
+                            </Td>
+                            {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
+                            {isTeam && (
+                              <Td fontSize={'sm'}>
+                                <ModelScopeCell
+                                  modelId={item.modelId}
+                                  scope={item.scope}
+                                  ownerTmbId={item.tmbId}
+                                  isAccountConfig
+                                  selectedHint={t('config_model:available_range')}
+                                />
+                              </Td>
+                            )}
+                            <Td fontSize={'sm'}>
+                              <Flex data-row-action w={'32px'} justifyContent={'center'}>
+                                {updatingModelIds.has(item.modelId) ? (
+                                  <Spinner size={'sm'} color={'primary.600'} />
+                                ) : (
+                                  <Switch
+                                    size={'sm'}
+                                    cursor={'pointer'}
+                                    isChecked={item.isActive}
+                                    onChange={(e) =>
+                                      updateModelStatus({
+                                        modelId: item.modelId,
+                                        model: item.model,
+                                        isActive: e.target.checked
+                                      })
+                                    }
+                                    colorScheme={'myBlue'}
+                                  />
+                                )}
+                              </Flex>
+                            </Td>
+                            <Td>
+                              <HStack>
+                                <MyIconButton
+                                  icon={'core/chat/sendLight'}
+                                  tip={t('config_model:model.test_model')}
+                                  isLoading={testingModelIds.has(item.modelId)}
+                                  onClick={() =>
+                                    onTestModel({ modelId: item.modelId, channelType })
+                                  }
+                                />
+                                <ModelEditButton
+                                  model={item}
+                                  providers={modelProviders}
+                                  channelType={channelType}
+                                  onSuccess={refreshModels}
+                                  isDisabled={channelMutationLoading}
+                                />
+                                <PopoverConfirm
+                                  Trigger={
+                                    <Box
+                                      pointerEvents={channelMutationLoading ? 'none' : undefined}
+                                    >
+                                      <MyIconButton
+                                        icon={'delete'}
+                                        hoverColor={'red.500'}
+                                        opacity={channelMutationLoading ? 0.5 : 1}
+                                      />
+                                    </Box>
+                                  }
+                                  type="delete"
+                                  content={t('config_model:model.delete_model_confirm')}
+                                  onConfirm={() =>
+                                    handleDeleteModel({ modelId: item.modelId, channelType })
+                                  }
+                                />
+                              </HStack>
+                            </Td>
+                          </Tr>
+                        ))}
+                        {bottomPlaceholderHeight > 0 && (
+                          <Tr h={`${bottomPlaceholderHeight}px`} aria-hidden>
+                            <Td
+                              colSpan={tableColumnCount}
+                              h={`${bottomPlaceholderHeight}px`}
+                              p={0}
+                              border={0}
+                            />
+                          </Tr>
+                        )}
+                      </Tbody>
+                    </Table>
+                  )}
+                  footer={
+                    <FloatingActionBar
+                      borderTopWidth="1px"
+                      borderColor="myGray.100"
+                      px={3}
+                      Controler={
+                        <HStack spacing={2}>
+                          <Button
+                            variant="whiteBase"
+                            isLoading={updatingModelsStatus}
+                            onClick={() =>
+                              updateModelsStatus({
                                 modelIds: selectedItems.map((model) => model.modelId),
+                                isActive: true,
                                 channelType
                               })
-                          })()
-                        }
-                      >
-                        {t('config_model:model.batch_delete')}
-                      </Button>
-                    </HStack>
+                            }
+                          >
+                            {t('config_model:model.batch_enable')}
+                          </Button>
+                          <Button
+                            variant="whiteBase"
+                            isLoading={updatingModelsStatus}
+                            onClick={() =>
+                              updateModelsStatus({
+                                modelIds: selectedItems.map((model) => model.modelId),
+                                isActive: false,
+                                channelType
+                              })
+                            }
+                          >
+                            {t('config_model:model.batch_disable')}
+                          </Button>
+                          <Button
+                            variant="whiteBase"
+                            color="red.600"
+                            isLoading={deletingModels || channelMutationLoading}
+                            onClick={() =>
+                              openBatchDeleteConfirm({
+                                customContent: t('config_model:model.batch_delete_confirm', {
+                                  count: selectedItems.length
+                                }),
+                                onConfirm: () =>
+                                  handleDeleteModels({
+                                    modelIds: selectedItems.map((model) => model.modelId),
+                                    channelType
+                                  })
+                              })()
+                            }
+                          >
+                            {t('config_model:model.batch_delete')}
+                          </Button>
+                        </HStack>
+                      }
+                    />
                   }
                 />
-              }
-            />
-          </MyBox>
+              </MyBox>
+            </>
+          )}
         </Flex>
       </Box>
 

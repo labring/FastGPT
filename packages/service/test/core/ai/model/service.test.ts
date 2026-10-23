@@ -20,6 +20,7 @@ import {
   importSystemModels,
   restoreModelName,
   updateModel,
+  updateModelOrder,
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
@@ -65,6 +66,33 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
+  it('saves a complete system model order atomically', async () => {
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
+
+    await updateModelOrder({ ...owner, modelIds: [second.modelId, first.modelId] });
+
+    expect(
+      (await MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()).map(
+        ({ model, sortOrder }) => ({ model, sortOrder })
+      )
+    ).toEqual([
+      { model: 'second', sortOrder: 0 },
+      { model: 'original', sortOrder: 1 }
+    ]);
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .map((model) => model.modelId)
+    ).toEqual([second.modelId, first.modelId]);
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(3);
+
+    await expect(updateModelOrder({ ...owner, modelIds: [first.modelId] })).rejects.toThrow(
+      'modelUnExist'
+    );
+    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(3);
+  });
+
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
     const model = await createModel({ ...owner, modelData: draft, channelIds: [1] });
     await updateModel({
@@ -256,6 +284,43 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
+    it('keeps team model order isolated to the owning member', async () => {
+      const ownFirst = await createModel({ ...owner, modelData: draft });
+      const ownSecond = await createModel({
+        ...owner,
+        modelData: { ...draft, model: 'second' }
+      });
+      const otherTmbId = new Types.ObjectId().toString();
+      const other = await createModel({
+        ...owner,
+        tmbId: otherTmbId,
+        modelData: { ...draft, model: 'other' }
+      });
+
+      await updateModelOrder({
+        ...owner,
+        modelIds: [ownSecond.modelId, ownFirst.modelId]
+      });
+
+      await expect(
+        MongoAIModel.find({ scope: ModelScopeEnum.team, tmbId: owner.tmbId })
+          .sort({ sortOrder: 1 })
+          .lean()
+      ).resolves.toMatchObject([
+        { model: 'second', sortOrder: 0 },
+        { model: 'custom', sortOrder: 1 }
+      ]);
+      const otherModel = await MongoAIModel.findById(other.modelId).lean();
+      expect(otherModel).toMatchObject({ model: 'other' });
+      expect(otherModel).not.toHaveProperty('sortOrder');
+      await expect(
+        updateModelOrder({
+          ...owner,
+          modelIds: [ownSecond.modelId, ownFirst.modelId, other.modelId]
+        })
+      ).rejects.toThrow('modelUnExist');
+    });
+
     it('rolls back a batch that includes another member model', async () => {
       const own = await createModel({ ...owner, modelData: draft });
       const other = await createModel({

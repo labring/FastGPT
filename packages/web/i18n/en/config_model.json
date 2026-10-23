@@ -274,5 +274,8 @@
   "available_to_all": "Available to all",
   "only_available_to_self": "Only available to self",
   "shared_with_me": "Shared with me",
-  "system_model_tag": "System"
+  "system_model_tag": "System",
+  "model.custom_sort": "Custom sort",
+  "model.cancel_sort": "Cancel",
+  "model.save_sort": "Save order"
 }

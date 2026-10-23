@@ -39,6 +39,9 @@ const MyModelBaseSchema = z.object({
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
   scope: z.nativeEnum(ModelScopeEnum).meta({ description: '模型实例作用域' }),
+  sortOrder: z.number().int().min(0).optional().meta({
+    description: '同一作用域内的模型展示顺序，数值越小越靠前'
+  }),
   tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
@@ -433,11 +436,21 @@ const UpdateModelField = {
 
 export const UpdateModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    STTModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
-    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField)
+    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    STTModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    ),
+    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true, sortOrder: true }).extend(
+      UpdateModelField
+    )
   ])
   .meta({
     description: '模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'
@@ -458,6 +471,13 @@ export const UpdateModelStatusBodySchema = z.object({
   channelType: ModelChannelTypeSchema
 });
 export type UpdateModelStatusBody = z.infer<typeof UpdateModelStatusBodySchema>;
+
+/* PUT /api/core/ai/model/updateOrder */
+export const UpdateModelOrderBodySchema = z.object({
+  modelIds: ModelIdsSchema,
+  channelType: ModelChannelTypeSchema
+});
+export type UpdateModelOrderBody = z.infer<typeof UpdateModelOrderBodySchema>;
 
 /* ============================================================================
  * API: 获取系统模型管理配置

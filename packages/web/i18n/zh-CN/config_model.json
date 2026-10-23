@@ -274,5 +274,8 @@
   "available_to_all": "全员可用",
   "only_available_to_self": "仅自己可用",
   "shared_with_me": "与我共享",
-  "system_model_tag": "系统"
+  "system_model_tag": "系统",
+  "model.custom_sort": "自定义排序",
+  "model.cancel_sort": "取消",
+  "model.save_sort": "保存排序"
 }

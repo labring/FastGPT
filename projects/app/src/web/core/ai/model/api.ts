@@ -14,6 +14,7 @@ import type {
   TestDraftModelBody,
   UpdateModelBody,
   UpdateModelChannelsBody,
+  UpdateModelOrderBody,
   UpdateModelStatusBody,
   UpdateDefaultModelsBody,
   UpdateSystemModelsWithJsonBody
@@ -65,6 +66,10 @@ export const postUpdateModelChannels = (data: UpdateModelChannelsBody) =>
 /** 批量启停模型，强制显式传递 channelType */
 export const putModelsStatus = (data: UpdateModelStatusBody) =>
   PUT(`${coreModelPath}/updateStatus`, data);
+
+/** 保存当前作用域的完整模型展示顺序，强制显式传递 channelType */
+export const putUpdateModelOrder = (data: UpdateModelOrderBody) =>
+  PUT(`${coreModelPath}/updateOrder`, data);
 
 /** 单个删除模型，内部统一转为批量格式并通过 Body 发送 */
 export const deleteModel = ({ modelId, channelType }: ModelReference) =>

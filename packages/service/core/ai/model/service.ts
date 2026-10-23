@@ -135,6 +135,47 @@ export const updateModelStatus = async ({
   await refreshMutationCatalog(context);
 };
 
+/**
+ * 原子保存一个作用域内的完整模型顺序；请求集合不完整时拒绝写入，避免筛选列表覆盖其他模型。
+ * sortOrder 只由此入口按连续下标维护，模型新增、删除和普通编辑不会改变剩余模型的相对顺序。
+ */
+export const updateModelOrder = async ({
+  modelIds,
+  ...owner
+}: { modelIds: string[] } & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  await runModelTransaction(context, async (session) => {
+    // 在事务快照内校验完整集合，鉴权后的列表与写入之间若发生并发变化也不会部分提交。
+    const existingModels = await MongoAIModel.find(filter)
+      .select({ _id: 1 })
+      .session(session)
+      .lean();
+    const existingModelIds = new Set(existingModels.map(({ _id }) => String(_id)));
+    const requestedModelIds = new Set(modelIds);
+
+    if (
+      modelIds.length !== requestedModelIds.size ||
+      existingModelIds.size !== requestedModelIds.size ||
+      [...existingModelIds].some((modelId) => !requestedModelIds.has(modelId))
+    ) {
+      throw new UserError(ModelErrEnum.unExist);
+    }
+
+    if (modelIds.length > 0) {
+      await MongoAIModel.bulkWrite(
+        modelIds.map((modelId, sortOrder) => ({
+          updateOne: {
+            filter: { _id: modelId, ...filter },
+            update: { $set: { sortOrder } }
+          }
+        })),
+        { session }
+      );
+    }
+  });
+  await refreshMutationCatalog(context);
+};
+
 /** 创建时覆盖请求中的归属字段；团队模型去除系统专用的直连配置，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
