@@ -164,7 +164,9 @@ const McpServer = () => {
         )}
       </DashboardContainer>
 
-      {!!usageWay && <UsageWay mcp={usageWay} onClose={() => setUsageWay(undefined)} />}
+      {!!usageWay && (
+        <UsageWay mcp={usageWay} siblingMcps={mcpServerList} onClose={() => setUsageWay(undefined)} />
+      )}
       {!!editMcp && (
         <EditMcpModal
           editMcp={editMcp}
