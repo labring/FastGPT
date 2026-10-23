@@ -38,6 +38,7 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 9. System plugins now support localized names, descriptions, Tools within Toolkits, input and output parameters, secret schemas, and READMEs. Existing Workflow Nodes and fixed Agent Tools retain the language snapshot captured when they were added.
 10. The OpenSandbox Kubernetes runtime now supports separate CPU and memory overcommit factors, reducing scheduling reservations while keeping resource limits unchanged.
 11. Team audit logs now record bulk retries of failed Dataset or Collection processing tasks, single-task retries, processing record deletions, and index rebuilds when switching Embedding models. These events can be filtered by type. Index rebuild logs retain both model names and stable IDs for traceability.
+12. The admin user list in the Commercial edition now supports All, Active, Disabled, and Cancelled status filters, defaults to Active, and can combine status filtering with username searches. Cancelled accounts are identified by current and legacy anonymized username formats for filtering and display; the account's stored status is unchanged.
 
 ## ⚙️ Optimizations
 
@@ -65,6 +66,7 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 22. Simplified chat loading animations and sandbox status messages. Improved collapsing, scrolling, and sticky headers for reasoning, Tool, and Skill details. Truncated model names now show their full text on hover.
 23. When applying a candidate from Workflow assisted generation, Tools with no configured credentials default to an available system secret. Tools without a system secret remain pending activation.
 24. Improved API file library service address validation. Legacy bare domains now default to `https://` when a scheme is missing, and the form displays validation guidance for complete HTTP(S) URLs.
+25. HTTP request Nodes now include the `error.data` payload in error messages for non-2xx responses, making failures easier to troubleshoot.
 
 ## 🐛 Fixes
 
@@ -120,4 +122,5 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 10. Workflow assisted generation now caches sandbox Node templates by content to reduce repeated writes across chat rounds. Missing template files are written again automatically.
 11. Updated Node.js base images for the App, documentation, code execution sandbox, MCP Server, and related services to 24.22.1, along with Hono and Vite dependencies.
 12. Fixed repeated errors when a Dataset parsing task runs out of points during processing. The task now skips the current attempt, and the team balance check pauses processing when tasks are next claimed.
-13. Fixed website Dataset synchronization continuing to crawl after model configuration errors. When quota or model configuration errors stop a crawl early, existing pages that have not yet been visited are no longer deleted as outdated content.
+13. Fixed website Dataset synchronization continuing to crawl after model configuration errors and deleting existing pages after an incomplete crawl. Outdated page cleanup is now skipped when quota or model configuration errors stop a crawl early, the page limit truncates the crawl, a page fails to load, or completion cannot be confirmed. Final task logs now include completion status, pending page counts, and failed page counts to help troubleshoot synchronization issues.
+14. File loading tasks now log expected DNS, network connection, and user errors as warnings while still returning failures to callers. Errors involving placeholder domains and unknown failures remain at the error level to reduce unnecessary alerts.
