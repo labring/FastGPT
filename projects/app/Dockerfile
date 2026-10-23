@@ -88,9 +88,6 @@ RUN node -e "require('/app/worker/node_modules/@fastgpt-sdk/anydoc')"
 
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
 
-COPY --from=builder --chown=nextjs:nodejs /app/projects/app/scripts/dist/reset-root-password.cjs /app/scripts/reset-root-password.cjs
-RUN RESET_ROOT_PASSWORD_SELFTEST=1 node /app/scripts/reset-root-password.cjs
-
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
 # copy config and data files (use --chown to avoid extra layer from chown)
