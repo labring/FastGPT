@@ -105,8 +105,6 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 35. Fixed Skill cards not supporting drag-and-drop moves into folders. Confirm the move after dropping a card. Dragging is disabled during batch selection to prevent conflicting actions.
 36. Fixed copied Markdown tables including CSV escaping quotes. Table copying and export now handle CRLF, standalone CR, and LF line breaks consistently to prevent misplaced rows.
 37. Fixed Dataset exports bypassing file-level permissions. Exported headers and data now use the same set of readable files.
-38. Fixed legacy placeholders, invalid variable bindings, or debug values on Workflow start Nodes causing static validation failures. The user question is supplied at runtime.
-39. Fixed inconsistent validation of Workflow variable bindings and structured Dataset tag filters. Canvas checks treat invalid bindings as unconfigured and retain valid entries in multiple selections. Assisted generation and the CLI continue to strictly validate binding sources, types, and scope.
 
 ## 🛠️ Code improvements
 
