@@ -214,6 +214,16 @@ export const auditLogMap = {
       newOwnerName: string;
     }
   },
+  // Resource permission
+  [AuditEventEnum.RESUME_INHERIT_PERMISSION]: {
+    content: i18nT('account_team:log_resume_inherit_permission'),
+    typeLabel: i18nT('account_team:resume_inherit_permission'),
+    params: {} as {
+      name?: string;
+      targetResource: string;
+      parentResource?: string;
+    }
+  },
   //APP
   [AuditEventEnum.CREATE_APP]: {
     content: i18nT('account_team:log_create_app'),

@@ -15,6 +15,8 @@ import {
   type ResumeSkillInheritPermissionResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type ResumeInheritPermissionQuery = ResumeSkillInheritPermissionQuery;
 export type ResumeInheritPermissionBody = Record<string, never>;
@@ -27,13 +29,17 @@ async function handler(
     req,
     querySchema: ResumeSkillInheritPermissionQuerySchema
   }).query;
-  const { skill } = await authSkill({
+  const { teamId, tmbId, skill } = await authSkill({
     skillId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
+  const parentSkill = skill.parentId
+    ? await MongoAgentSkills.findById(skill.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = parentSkill?.name;
   if (skill.parentId) {
     await resumeInheritPermission({
       resource: skill,
@@ -51,6 +57,17 @@ async function handler(
       }
     );
   }
+
+  addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ skillId: String(skill._id) }],
+    params: {
+      targetResource: skill.name,
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
+    }
+  });
 
   return ResumeSkillInheritPermissionResponseSchema.parse(undefined);
 }
