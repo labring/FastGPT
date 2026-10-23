@@ -1,3 +1,4 @@
+import { getConnectionConflict } from './connection';
 import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
   type Connection,
@@ -946,10 +947,17 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       if (!connect.sourceHandle || !connect.targetHandle) {
         return;
       }
-      if (connect.source === connect.target) {
+      const conflict = getConnectionConflict(connect, edges);
+      if (conflict === 'self') {
         return toast({
           status: 'warning',
           title: t('common:core.module.Can not connect self')
+        });
+      }
+      if (conflict === 'tool-target-has-normal-edges') {
+        return toast({
+          status: 'warning',
+          title: t('workflow:tool_connection_has_normal_edges')
         });
       }
 

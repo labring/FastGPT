@@ -1,18 +1,16 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId, nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
-import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import { getFoldedSourceHandleIds } from './utils';
 
+/** 视觉隐藏不卸载真实端口，折叠时所有分支共用右侧位置。 */
 export const ConnectionSourceHandle = ({
   nodeId,
   sourceType = 'source'
@@ -20,90 +18,35 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   sourceType?: 'source' | 'source_catch';
 }) => {
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (v) => v.connectingEdge);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  if (!node) return null;
 
-  const { showSourceHandle, RightHandle } = useMemo(() => {
-    const node = getNodeById(nodeId);
+  if (node.isFolded && sourceType === 'source') {
+    return (
+      <>
+        {getFoldedSourceHandleIds(node).map((handleId, index) => (
+          <MySourceHandle
+            key={handleId}
+            nodeId={nodeId}
+            handleId={handleId}
+            position={Position.Right}
+            translate={[4, 0]}
+            showHandle={index === 0}
+          />
+        ))}
+      </>
+    );
+  }
 
-    /* not node/not connecting node, hidden */
-    const showSourceHandle = (() => {
-      if (!node) return false;
-      if (connectingEdge && connectingEdge.nodeId !== nodeId) return false;
-      return true;
-    })();
-
-    const RightHandle = (() => {
-      // When the node is folded and has multiple branches, only render the first output.
-      if (node?.isFolded) {
-        const firstHandleId = (() => {
-          if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
-            const userSelectInput = node?.inputs?.find(
-              (input) => input.key === NodeInputKeyEnum.userSelectOptions
-            );
-            if (userSelectInput && nodeInputIsReference(userSelectInput)) {
-              return getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
-            }
-            const options = userSelectInput?.value;
-            if (options && options.length > 0) {
-              return getHandleId(nodeId, 'source', options[0].key);
-            }
-          } else if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-            const ifElseList = node.inputs.find(
-              (input) => input.key === NodeInputKeyEnum.ifElseList
-            )?.value as IfElseListItemType[] | undefined;
-            const firstIfElse = ifElseList?.[0];
-            if (firstIfElse) {
-              return getHandleId(nodeId, 'source', getIfElseBranchHandleKey(firstIfElse));
-            }
-          } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
-            const options = node?.inputs?.find(
-              (input) => input.key === NodeInputKeyEnum.agents
-            )?.value;
-            if (options && options.length > 0) {
-              return getHandleId(nodeId, 'source', options[0].key);
-            }
-          }
-        })();
-
-        if (firstHandleId) {
-          return (
-            <MySourceHandle
-              nodeId={nodeId}
-              handleId={firstHandleId}
-              position={Position.Right}
-              translate={[4, 0]}
-            />
-          );
-        }
-      }
-
-      const handleId = getHandleId(nodeId, sourceType, Position.Right);
-      const rightTargetConnected = edges.some(
-        (edge) => edge.targetHandle === getHandleId(nodeId, 'target', Position.Right)
-      );
-
-      if (!node || !node?.showSourceHandle || rightTargetConnected) {
-        return null;
-      }
-
-      return (
-        <MySourceHandle
-          nodeId={nodeId}
-          handleId={handleId}
-          position={Position.Right}
-          translate={[4, 0]}
-        />
-      );
-    })();
-
-    return {
-      showSourceHandle,
-      RightHandle
-    };
-  }, [getNodeById, nodeId, connectingEdge, sourceType, edges]);
-
-  return showSourceHandle ? <>{RightHandle}</> : null;
+  if (!node.showSourceHandle) return null;
+  return (
+    <MySourceHandle
+      nodeId={nodeId}
+      handleId={getHandleId(nodeId, sourceType, Position.Right)}
+      position={Position.Right}
+      translate={[4, 0]}
+    />
+  );
 };
 
 export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle({

@@ -1,4 +1,5 @@
 {
+  "tool_connection_has_normal_edges": "This node already has incoming workflow connections. Remove them before connecting it as a tool.",
   "Array_element": "Array element",
   "Array_element_index": "Index",
   "Click": "Click ",
