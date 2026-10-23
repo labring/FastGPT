@@ -636,7 +636,11 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
         })
       )
       .meta({ description: '评分列表' }),
-    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    synonymMappings: z
+      .record(z.string(), z.string())
+      .optional()
+      .meta({ description: '分块实际命中的原词到标准词映射' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;

@@ -204,8 +204,7 @@ const filterNodeResponseData = ({
             keepTreeFields
           });
         } else if (fieldMap[key]) {
-          // @ts-expect-error Dynamic public field copy is constrained by fieldMap.
-          obj[key] = item[key];
+          (obj as Record<string, unknown>)[key] = item[key as keyof ChatHistoryItemResType];
         }
       }
 

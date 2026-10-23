@@ -737,7 +737,11 @@ export async function createCollections({
 
     // 1. 标签可能新增文档，必须在当前事务内解析，不能随模型参数提前计算。
     const tagsByKey = new Map<string, Awaited<ReturnType<typeof createOrGetCollectionTags>>>();
-    const docs = [];
+    const docs: (Omit<CreateOneCollectionParams, 'session' | 'parentId' | 'tags'> & {
+      _id: Types.ObjectId;
+      parentId: string | null;
+      tags: Awaited<ReturnType<typeof createOrGetCollectionTags>> | undefined;
+    })[] = [];
     for (const { permissionSourceCollectionId, ...props } of collections) {
       const source = permissionSourceCollectionId
         ? sources.get(permissionSourceCollectionId)

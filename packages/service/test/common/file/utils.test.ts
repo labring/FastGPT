@@ -198,7 +198,8 @@ describe('clearTmpUploadFiles', () => {
     vi.spyOn(fs, 'stat').mockImplementation((_path: any, cb: any) =>
       cb(null, { mtime: threeHoursAgo } as fs.Stats)
     );
-    vi.spyOn(fs, 'unlink').mockImplementation((_path: any, cb: any) => cb(null));
+    const unlinkSpy = vi.spyOn(fs, 'unlink').mockImplementation((_path: any, cb: any) => cb(null));
     clearTmpUploadFiles();
+    expect(unlinkSpy).toHaveBeenCalled();
   });
 });

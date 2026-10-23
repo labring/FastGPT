@@ -150,6 +150,7 @@ export async function initSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
+      datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_coupon: appEnv.SHOW_COUPON,

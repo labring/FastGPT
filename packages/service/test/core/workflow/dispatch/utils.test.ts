@@ -93,9 +93,10 @@ describe('getWorkflowResponseWrite', () => {
   });
 
   it('should not write when res is undefined', () => {
+    vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ detail: true, streamResponse: true });
     fn(workflowSseEvent.answerDelta('hi'));
-    // No error thrown
+    expect(responseWrite).not.toHaveBeenCalled();
   });
 
   it('should not write when res.closed is true', () => {
@@ -343,9 +344,12 @@ describe('filterOrphanEdges', () => {
 
     const nodes = [makeNode('n1')];
     const edges = [makeEdge('n1', 'missing')];
-    filterOrphanEdges({ edges, nodes, workflowId: 'slow-test' });
-
-    Date.now = originalDateNow;
+    try {
+      const filtered = filterOrphanEdges({ edges, nodes, workflowId: 'slow-test' });
+      expect(filtered).toHaveLength(0);
+    } finally {
+      Date.now = originalDateNow;
+    }
   });
 
   it('should handle empty nodes array', () => {

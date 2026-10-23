@@ -3,18 +3,15 @@ import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
-import {
-  assertDatasetSynonymEnabled,
-  invalidateDatasetSynonymMatcherCache,
-  isDatasetSynonymEnabled
-} from './entity';
+import { assertDatasetSynonymEnabled, invalidateDatasetSynonymMatcherCache } from './entity';
+import { serviceEnv } from '../../../env';
 
 /** 所有数据追上当前词表后才回收历史版本；失败或在途数据仍需要旧快照重试。 */
 export const cleanupUnusedDatasetSynonymMappings = async (
   { teamId, datasetId }: { teamId: string; datasetId: string },
   session?: ClientSession
 ) => {
-  if (!isDatasetSynonymEnabled()) return;
+  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return;
   const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }, null, { session }).lean();
   if (!config) return;
   const historicalData = await MongoDatasetData.exists({
@@ -31,7 +28,11 @@ export const cleanupUnusedDatasetSynonymMappings = async (
   if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
 };
 
-/** 获取当前同义词配置及其重建进度。 */
+/**
+ * 获取当前同义词配置及其重建进度。
+ * 进度直接由 data 的重建状态和关联 training 派生，不维护第二份状态表；
+ * 管理页面只需读取该接口，无需引擎提供专用进度 API 或状态字段。
+ */
 export const getDatasetSynonymDetail = async ({
   teamId,
   datasetId

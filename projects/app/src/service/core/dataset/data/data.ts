@@ -28,9 +28,9 @@ import {
 } from '@fastgpt/global/core/dataset/data/constants';
 import {
   getDatasetSynonymMatcher,
-  getDatasetSynonymTransformContext,
-  isDatasetSynonymEnabled
+  getDatasetSynonymTransformContext
 } from '@fastgpt/service/core/dataset/synonym/entity';
+import { serviceEnv } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
 import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
@@ -219,7 +219,7 @@ export class DatasetDataOperation {
       indexPrefix
     });
 
-    const synonymContext = isDatasetSynonymEnabled()
+    const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
       ? await getDatasetSynonymTransformContext({ teamId, datasetId })
       : undefined;
 
@@ -260,6 +260,8 @@ export class DatasetDataOperation {
                 ...(metadata && { metadata }),
                 chunkIndex,
                 indexes: results,
+                // 同步写完向量和全文即已就绪；显式置状态，避免落入历史数据 missing 的兼容语义。
+                indexStatus: DatasetDataIndexStatusEnum.indexed,
                 ...(synonymContext && { synonymVersion: synonymContext.version })
               }
             ],
@@ -360,7 +362,7 @@ export class DatasetDataOperation {
       maxIndexSize: embModel.config.maxToken,
       indexPrefix
     });
-    const synonymContext = isDatasetSynonymEnabled()
+    const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
       ? await getDatasetSynonymTransformContext({
           teamId: String(mongoData.teamId),
           datasetId: String(mongoData.datasetId)
@@ -514,7 +516,7 @@ export class DatasetDataOperation {
     if (!mongoData) return Promise.reject('Data not found');
 
     // 2. 获取本次向量化使用的词表快照；功能关闭时不查询同义词配置。
-    const synonymContext = isDatasetSynonymEnabled()
+    const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
       ? await getDatasetSynonymTransformContext({
           teamId: String(mongoData.teamId),
           datasetId: String(mongoData.datasetId)
@@ -608,7 +610,7 @@ export class DatasetDataOperation {
           );
           if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
 
-          // 历史全文可能来自 q/a，不能仅凭词表 diff 跳过写入；统一从已存文本索引派生。
+          // 历史全文可能来自 q/a；从已存非图片索引派生目标全文并同步覆盖。
           const fullText = indexes
             .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
             .map((index) => index.text)
@@ -672,7 +674,7 @@ export class DatasetDataOperation {
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
     const nextImageId = imageId ?? mongoData.imageId;
-    const synonymContext = isDatasetSynonymEnabled()
+    const synonymContext = serviceEnv.DATASET_SYNONYM_ENABLED
       ? await getDatasetSynonymTransformContext({
           teamId: String(mongoData.teamId),
           datasetId: String(mongoData.datasetId)
