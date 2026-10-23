@@ -1,4 +1,4 @@
-import { act, createElement, Fragment, StrictMode, type ReactNode } from 'react';
+import { act, createElement, Fragment, StrictMode, useLayoutEffect, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,8 +8,16 @@ const mocks = vi.hoisted(() => ({ updateNodeInternals: vi.fn() }));
 vi.mock('reactflow', () => ({ useUpdateNodeInternals: () => mocks.updateNodeInternals }));
 
 /** 保留 ReactFlow 实际输出的端口 DOM，只有测量入口被替换，DOM 变更监听使用真实实现。 */
-const TestHandle = ({ nodeId, handleId }: { nodeId: string; handleId: string }) => {
-  const ref = useHandleInternals(nodeId);
+const TestHandle = ({
+  nodeId,
+  handleId,
+  isConnecting = false
+}: {
+  nodeId: string;
+  handleId: string;
+  isConnecting?: boolean;
+}) => {
+  const ref = useHandleInternals(nodeId, isConnecting);
   return createElement('div', {
     ref,
     className: 'react-flow__handle source',
@@ -23,25 +31,29 @@ const TestNode = ({
   nodeId = 'node',
   handles = ['a', 'b'],
   showNote = false,
-  showSpacer = false
+  showSpacer = false,
+  isConnecting = false
 }: {
   nodeId?: string;
   handles?: string[];
   showNote?: boolean;
   showSpacer?: boolean;
+  isConnecting?: boolean;
 }) =>
   createElement(
     'div',
     { className: 'react-flow__node', 'data-id': nodeId },
     showSpacer && createElement('span', { 'data-spacer': '' }),
-    handles.map((handleId) => createElement(TestHandle, { key: handleId, nodeId, handleId })),
+    handles.map((handleId) =>
+      createElement(TestHandle, { key: handleId, nodeId, handleId, isConnecting })
+    ),
     showNote && createElement('span', null, 'Updated input description')
   );
 
 describe('useHandleInternals', () => {
   let dom: JSDOM;
   let root: Root;
-  let container: HTMLElement;
+  let container: HTMLDivElement;
   let frameId: number;
   let frames: Map<number, FrameRequestCallback>;
 
@@ -60,7 +72,7 @@ describe('useHandleInternals', () => {
   };
 
   beforeEach(() => {
-    mocks.updateNodeInternals.mockClear();
+    mocks.updateNodeInternals.mockReset();
     frameId = 0;
     frames = new Map();
     dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
@@ -73,7 +85,7 @@ describe('useHandleInternals', () => {
       frames.set(++frameId, callback);
       return frameId;
     });
-    container = document.getElementById('root')!;
+    container = document.querySelector<HTMLDivElement>('#root')!;
     root = createRoot(container);
   });
 
@@ -164,6 +176,117 @@ describe('useHandleInternals', () => {
     await flushFrame();
     expect(mocks.updateNodeInternals).toHaveBeenCalledExactlyOnceWith('node');
   });
+
+  it('defers handle changes during a connection and refreshes their final layout once', async () => {
+    await render(createElement(TestNode));
+    mocks.updateNodeInternals.mockClear();
+
+    await render(createElement(TestNode, { isConnecting: true }));
+    await render(createElement(TestNode, { isConnecting: true, handles: ['b', 'a', 'c'] }));
+    await render(createElement(TestNode, { isConnecting: true, handles: ['c', 'b'] }));
+    expect(mocks.updateNodeInternals).not.toHaveBeenCalled();
+
+    await render(createElement(TestNode, { handles: ['c', 'b'] }));
+    expect(mocks.updateNodeInternals).toHaveBeenCalledExactlyOnceWith('node');
+    await flushFrame();
+    expect(mocks.updateNodeInternals).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['pending-frame', 'resize-observer'] as const)(
+    'restores real ReactFlow handle bounds after a %s measurement during a connection',
+    async (measurement) => {
+      const reactFlow = await vi.importActual<typeof import('reactflow')>('reactflow');
+      const {
+        ReactFlowProvider,
+        useStoreApi,
+        useUpdateNodeInternals: useRealUpdateNodeInternals
+      } = reactFlow;
+      const storeRef: { current?: ReturnType<typeof useStoreApi> } = {};
+
+      /** 只透传测量入口，保留 ReactFlow 自身的第二帧调度和端口缓存写入。 */
+      const TestFlowNode = (props: Parameters<typeof TestNode>[0]) => {
+        const store = useStoreApi();
+        const updateNodeInternals = useRealUpdateNodeInternals();
+        useLayoutEffect(() => {
+          storeRef.current = store;
+          mocks.updateNodeInternals.mockImplementation(updateNodeInternals);
+        }, [store, updateNodeInternals]);
+        return createElement(TestNode, props);
+      };
+      const createFlow = (props: Parameters<typeof TestNode>[0] = {}) =>
+        createElement(
+          ReactFlowProvider,
+          null,
+          createElement(
+            'div',
+            { className: 'react-flow__viewport' },
+            createElement(TestFlowNode, props)
+          )
+        );
+
+      vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame);
+      Object.defineProperty(dom.window, 'DOMMatrixReadOnly', {
+        value: class {
+          m22 = 1;
+        }
+      });
+      vi.spyOn(dom.window.HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100);
+      vi.spyOn(dom.window.HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(100);
+      vi.spyOn(dom.window.HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: HTMLElement) {
+          const moved =
+            this.classList.contains('react-flow__handle') &&
+            !!this.closest('.react-flow__node')?.querySelector('[data-spacer]');
+          return new dom.window.DOMRect(0, moved ? 30 : 0, 100, 100);
+        }
+      );
+
+      await act(async () => root.render(createFlow()));
+      const store = storeRef.current;
+      if (!store) throw new Error('ReactFlow store is unavailable');
+      store.setState({ domNode: container });
+      store.getState().setNodes([{ id: 'node', position: { x: 0, y: 0 }, data: {} }]);
+      await flushFrame();
+      await flushFrame();
+      const getSourceHandleIds = () =>
+        store
+          .getState()
+          .nodeInternals.get('node')
+          ?.[reactFlow.internalsSymbol]?.handleBounds?.source?.map((handle) => handle.id);
+      expect(getSourceHandleIds()).toEqual(['a', 'b']);
+
+      const showSpacer = measurement === 'pending-frame';
+      if (showSpacer) {
+        // 外层快照已更新，ReactFlow 的实际测量仍在下一帧等待执行。
+        await render(createFlow({ showSpacer }));
+        expect(frames.size).toBe(1);
+      }
+      await act(async () =>
+        root.render(createFlow({ isConnecting: true, handles: ['b'], showSpacer }))
+      );
+      if (measurement === 'resize-observer') {
+        // 节点 ResizeObserver 直接刷新缓存，也不会经过 Hook 的暂停判断。
+        store.getState().updateNodeDimensions([
+          {
+            id: 'node',
+            nodeElement: container.querySelector<HTMLDivElement>('.react-flow__node')!,
+            forceUpdate: true
+          }
+        ]);
+      }
+      await flushFrame();
+      expect(getSourceHandleIds()).toEqual(['b']);
+      mocks.updateNodeInternals.mockClear();
+
+      // 恢复后的 DOM 与连线前快照相同，也必须修复被临时测量覆盖的缓存。
+      await render(createFlow({ showSpacer }));
+      await flushFrame();
+      expect(getSourceHandleIds()).toEqual(['a', 'b']);
+      expect(mocks.updateNodeInternals).toHaveBeenCalledExactlyOnceWith('node');
+      await flushFrame();
+      expect(mocks.updateNodeInternals).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('synchronizes the final removal, disconnects its observer and supports adding handles again', async () => {
     const observe = vi.spyOn(dom.window.MutationObserver.prototype, 'observe');

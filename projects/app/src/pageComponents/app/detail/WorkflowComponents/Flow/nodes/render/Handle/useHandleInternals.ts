@@ -97,7 +97,11 @@ export const useHandleInternals = (nodeId: string, isConnecting = false) => {
           setConnecting: (isConnecting) => {
             const wasConnecting = connecting;
             connecting = isConnecting;
-            if (wasConnecting && !isConnecting) scheduleRefresh();
+            if (wasConnecting && !isConnecting) {
+              // 排队测量或节点尺寸监听可能覆盖端口缓存，结束后即使布局未变也要重新同步。
+              previousLayout = undefined;
+              scheduleRefresh();
+            }
           },
           retain: () => {
             if (subscribers === 0) {
