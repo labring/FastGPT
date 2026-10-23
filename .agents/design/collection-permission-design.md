@@ -277,9 +277,9 @@ export async function syncDatasetToCollections({
 
 实现要点：
 
-1. 收集 `datasetId` 及其继承态后代 dataset（读 `MongoDataset` 的 `_id/parentId/inheritPermission/collectionPermissionEnabled`）；
-2. 批量加载后代 dataset 物化快照（`$in`，无 N+1）；
-3. BFS 自顶向下推导每个 dataset 的旧/新有效 clbs（`merge(父级有效 clbs, 自身 clbs)`，自身 clbs 由 `calculateInheritedResourceCollaborators` 反推）；
+1. 按层 frontier（`parentId: { $in: pendingParentIds }`）收集 `datasetId` 及其继承态后代 dataset（读 `MongoDataset` 的 `_id/parentId/inheritPermission/collectionPermissionEnabled`）；`inheritPermission=false` 的独立分支在收集阶段直接剪掉，不遍历其子树、不加载其 ACL；
+2. 批量加载继承态后代 dataset 物化快照（`$in`，无 N+1）；
+3. BFS 自顶向下（父子邻接表，不按层扫描全量后代）推导每个 dataset 的旧/新有效 clbs（`merge(父级有效 clbs, 自身 clbs)`，自身 clbs 由 `calculateInheritedResourceCollaborators` 反推）；
 4. 对每个**自身开关为开启态**的 dataset，将其直接子 collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，folder 经 `syncResourceTreePermissions`（`resourceType: collection`）递归子树；关闭态 dataset 跳过自身 collection，但继续向下遍历（关闭态 folder 下可以有开启态知识库）；
 5. 批量 diff `patchResources` 写入，幂等。
 

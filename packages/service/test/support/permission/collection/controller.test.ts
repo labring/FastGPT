@@ -1696,6 +1696,60 @@ describe.sequential('syncDatasetToCollections', () => {
       collectionClbs(teamId, String(disabledFile._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[ownerTmbId, OwnerRoleVal]]));
   });
+
+  it('收集阶段剪掉独立权限子树：不查询其后代，也不加载其 ACL', async () => {
+    const users = await getFakeUsers(1);
+    const teamId = String(users.owner.teamId);
+    const ownerTmbId = String(users.owner.tmbId);
+
+    const root = await createDataset({ user: users.owner });
+    const independent = await MongoDataset.create({
+      teamId,
+      tmbId: ownerTmbId,
+      parentId: root._id,
+      type: DatasetTypeEnum.folder,
+      name: 'independent-folder',
+      inheritPermission: false
+    });
+    // 独立子树内的后代即使开启继承，也不会受 root 授权变化影响
+    const independentGrandChild = await MongoDataset.create({
+      teamId,
+      tmbId: ownerTmbId,
+      parentId: independent._id,
+      type: DatasetTypeEnum.dataset,
+      name: 'independent-child'
+    });
+
+    const findSpy = vi.spyOn(MongoDataset, 'find');
+    const aclReadSpy = vi.spyOn(resourcePermissionRepo, 'findByResourceIds');
+    try {
+      const rootClbs = [{ tmbId: ownerTmbId, permission: OwnerRoleVal }];
+      await mongoSessionRun((session) =>
+        syncDatasetToCollections({
+          teamId,
+          datasetId: String(root._id),
+          oldEffectiveClbs: rootClbs,
+          newEffectiveClbs: rootClbs,
+          session
+        })
+      );
+
+      // 独立分支在收集阶段就被剪掉：只查询 root 这一层，不再以独立节点为父级继续下探
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: { $in: [String(root._id)] } }),
+        expect.any(String)
+      );
+      const loadedResourceIds = aclReadSpy.mock.calls.flatMap(([args]) =>
+        args.resourceIds.map(String)
+      );
+      expect(loadedResourceIds).not.toContain(String(independent._id));
+      expect(loadedResourceIds).not.toContain(String(independentGrandChild._id));
+    } finally {
+      findSpy.mockRestore();
+      aclReadSpy.mockRestore();
+    }
+  });
 });
 
 describe.sequential('syncRootCollections', () => {
