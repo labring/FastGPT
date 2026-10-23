@@ -574,6 +574,7 @@ const CollectionCard = () => {
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
                       isChecked={!collection.forbid}
+                      isDisabled={!collection.permission.hasWritePer}
                       size={'sm'}
                       onChange={(e) =>
                         onUpdateCollection({
