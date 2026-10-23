@@ -165,11 +165,18 @@ export const ensurePgDatasetIndex = async ({
       rows: Number(counts[0].count),
       dimensions: table.dimensions
     });
-    if (memory.budgetMB < memory.estimatedMB) {
-      logger.warn('PG index memory budget capped; disk-based build may be needed', {
-        datasetId,
-        ...memory
-      });
+    // 始终与 PG 原预算比较；即使会话预算已调高，也要提示估算超过原配置。
+    if (memory.estimatedMB > memory.configuredMB) {
+      logger.warn(
+        'PG index memory estimate exceeds maintenance_work_mem; review memory configuration',
+        {
+          teamId,
+          datasetId,
+          indexName,
+          ...memory,
+          diskBasedBuildMayBeNeeded: memory.budgetMB < memory.estimatedMB
+        }
+      );
     }
     await onBuilding();
     if (existing) await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);

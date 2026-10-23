@@ -149,28 +149,54 @@ describe('ensurePgDatasetIndex', () => {
 
   it.each([
     {
+      source: 'estimate',
+      estimatedMB: 256,
+      configuredMB: 64,
+      budgetMB: 256,
+      warning: true,
+      diskBasedBuildMayBeNeeded: false
+    },
+    {
       source: 'postgres',
       estimatedMB: 8192,
+      configuredMB: 8192,
       budgetMB: 8192,
-      warning: undefined
+      warning: false,
+      diskBasedBuildMayBeNeeded: false
+    },
+    {
+      source: 'estimate',
+      estimatedMB: 256,
+      configuredMB: 512,
+      budgetMB: 256,
+      warning: false,
+      diskBasedBuildMayBeNeeded: false
     },
     {
       source: 'capped',
       estimatedMB: 8192,
+      configuredMB: 4096,
       budgetMB: 2048,
-      warning: 'PG index memory budget capped; disk-based build may be needed'
+      warning: true,
+      diskBasedBuildMayBeNeeded: true
     }
   ])(
-    'reports memory limits without aborting a supported disk-based build: $source',
-    async ({ warning, ...memory }) => {
+    'warns when the estimate exceeds the original PG budget: $source/$configuredMB',
+    async ({ warning, diskBasedBuildMayBeNeeded, ...memory }) => {
       mocks.memory.mockResolvedValue(memory);
       expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toMatchObject({
         created: true
       });
       if (warning) {
+        expect(mocks.warn).toHaveBeenCalledOnce();
         expect(mocks.warn).toHaveBeenCalledWith(
-          warning,
-          expect.objectContaining({ budgetMB: memory.budgetMB })
+          'PG index memory estimate exceeds maintenance_work_mem; review memory configuration',
+          {
+            ...scope,
+            indexName: getPgDatasetIndexName(scope.datasetId),
+            ...memory,
+            diskBasedBuildMayBeNeeded
+          }
         );
       } else {
         expect(mocks.warn).not.toHaveBeenCalled();
