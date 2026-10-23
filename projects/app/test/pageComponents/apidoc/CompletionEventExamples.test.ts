@@ -51,56 +51,56 @@ describe('CompletionEventExamples', () => {
   const section = (version = 'v2') =>
     wrapper.querySelector<HTMLElement>(`[data-version="${version}"]`)!;
   const code = (version = 'v2') => section(version).querySelector('pre')!.textContent!;
-  const tab = (name: string, version = 'v2') =>
-    [...section(version).querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(
-      (element) => element.textContent === name
-    )!;
+  const options = (version = 'v2') =>
+    [...section(version).querySelectorAll('option')].map((option) => option.value);
+  const select = async (name: string, version = 'v2') => {
+    const input = section(version).querySelector('select')!;
+    await act(async () => {
+      input.value = name;
+      input.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    });
+  };
 
   it('mounts under the SSE description, switches every event and respects v1/v2 differences', async () => {
     const description = section().querySelector('.property-description')!;
-    expect(description.nextElementSibling?.querySelector('[role="tablist"]')).not.toBeNull();
+    expect(description.nextElementSibling?.querySelector('select')).not.toBeNull();
     expect(section().querySelector('.response-card')!.textContent).toBe('原生响应示例');
-    expect(section().querySelectorAll('[role="tab"]')).toHaveLength(16);
+    expect(section().querySelectorAll('[role="tab"]')).toHaveLength(0);
+    expect(options()).toHaveLength(16);
+    expect(options()).toContain('flowNodeResponse');
+    expect(options()).not.toContain('flowResponses');
+    expect(options('v1')).toContain('flowResponses');
+    expect(options('v1')).not.toContain('flowNodeResponse');
+    expect(section().querySelector('h4')!.textContent).toContain('v2');
+    expect(section('v1').querySelector('h4')!.textContent).toContain('v1');
     for (const event of getChatCompletionResponseExamples('v2').events) {
-      await act(async () => tab(event.name).click());
-      expect(code()).toBe(event.value);
-      expect(tab(event.name).getAttribute('aria-selected')).toBe('true');
-      expect(section().querySelector('[role="tabpanel"]')!.getAttribute('aria-labelledby')).toBe(
-        tab(event.name).id
-      );
+      await select(event.name);
+      expect(code().match(/^(event|data):.*$/gm)).toEqual(event.value.match(/^(event|data):.*$/gm));
+      expect(code()).not.toMatch(/^: /m);
+      if (event.name === 'fastAnswer') {
+        expect(code()).toMatch(/^1\. 指定回复文本\n/);
+        expect(code()).toContain('\n2. 指定回复停止片段\n');
+      }
+      expect(section().querySelector('select')!.value).toBe(event.name);
+      expect(section().textContent).toContain(event.description);
     }
-    await act(async () => tab('flowResponses', 'v1').click());
+    await select('flowResponses', 'v1');
     expect(code('v1')).toContain('event: flowResponses\n');
-    expect(tab('flowNodeResponse', 'v1')).toBeUndefined();
     expect(code()).toContain('event: error\n');
-  });
-
-  it('supports keyboard selection with wrapping, Home and End', async () => {
-    const press = async (name: string, key: string) =>
-      act(async () => {
-        tab(name).dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true }));
-      });
-    await press('answer', 'ArrowLeft');
-    expect(document.activeElement).toBe(tab('error'));
-    await press('error', 'ArrowRight');
-    expect(document.activeElement).toBe(tab('answer'));
-    await press('answer', 'End');
-    expect(document.activeElement).toBe(tab('error'));
-    await press('error', 'Home');
-    await press('answer', 'Enter');
-    expect(document.activeElement).toBe(tab('answer'));
-    expect(section().querySelectorAll('[role="tab"][tabindex="0"]')).toHaveLength(1);
-    expect(code()).toContain('event: answer\n');
   });
 
   it('copies the selected raw SSE example and handles clipboard errors', async () => {
     const copy = () =>
       section().querySelector<HTMLButtonElement>('[aria-label="复制 event 示例"]')!;
-    await act(async () => tab('interactive').click());
+    await select('interactive');
     await act(async () => copy().click());
-    expect(writeText).toHaveBeenLastCalledWith(code());
+    const rawExample = getChatCompletionResponseExamples('v2').events.find(
+      (event) => event.name === 'interactive'
+    )!.value;
+    expect(writeText).toHaveBeenLastCalledWith(rawExample);
+    expect(rawExample).toMatch(/^: 1\. 用户选择/);
     expect(section().querySelector('[role="status"]')!.textContent).toBe('已复制');
-    await act(async () => tab('toolCall').click());
+    await select('toolCall');
     expect(section().querySelector('[role="status"]')!.textContent).toBe('');
     writeText.mockRejectedValueOnce(new Error('denied'));
     await act(async () => copy().click());
@@ -112,27 +112,27 @@ describe('CompletionEventExamples', () => {
     await act(async () => {
       description.textContent = '非流式 JSON 响应';
     });
-    expect(section().querySelector('[role="tablist"]')).toBeNull();
+    expect(section().querySelector('select')).toBeNull();
     await act(async () => {
       description.textContent = '工作流 SSE 事件流';
     });
-    expect(section().querySelectorAll('[role="tablist"]')).toHaveLength(1);
+    expect(section().querySelectorAll('select')).toHaveLength(1);
     await act(async () => {
       // Scalar 重建说明旁的节点时，应替换旧 host，而不是重复挂载。
       description.after(document.createElement('div'));
     });
-    expect(section().querySelectorAll('[role="tablist"]')).toHaveLength(1);
+    expect(section().querySelectorAll('select')).toHaveLength(1);
     await act(async () => {
       wrapper.innerHTML = operation('v2').replace('/v2/chat/completions', '/other');
     });
-    expect(wrapper.querySelector('[role="tablist"]')).toBeNull();
+    expect(wrapper.querySelector('select')).toBeNull();
     await act(async () => {
       wrapper.innerHTML = operation('v2');
     });
-    expect(section().querySelectorAll('[role="tablist"]')).toHaveLength(1);
+    expect(section().querySelectorAll('select')).toHaveLength(1);
     await act(async () => {
       section().querySelector('.parameter-item-container')!.remove();
     });
-    expect(wrapper.querySelector('[role="tablist"]')).toBeNull();
+    expect(wrapper.querySelector('select')).toBeNull();
   });
 });

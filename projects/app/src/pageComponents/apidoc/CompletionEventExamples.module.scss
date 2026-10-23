@@ -15,37 +15,30 @@
   font-weight: 600;
 }
 
-.tabs {
+.control {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 16px;
-  border-bottom: 1px solid var(--scalar-border-color);
-}
-
-.tab {
-  flex: none;
-  padding: 9px 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
+  align-items: center;
+  gap: 12px;
   color: var(--scalar-color-2);
   font-family: var(--scalar-font-code);
   font-size: 12px;
-  line-height: 1.5;
-  cursor: pointer;
 
-  &:hover {
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--scalar-border-color);
+    border-radius: 6px;
+    background: var(--scalar-background-1);
     color: var(--scalar-color-1);
-  }
+    font: inherit;
+    cursor: pointer;
 
-  &[aria-selected='true'] {
-    border-bottom-color: var(--scalar-color-accent);
-    color: var(--scalar-color-accent);
-    font-weight: 600;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--scalar-color-accent);
-    outline-offset: 2px;
+    &:focus-visible {
+      outline: 2px solid var(--scalar-color-accent);
+      outline-offset: 2px;
+    }
   }
 }
 

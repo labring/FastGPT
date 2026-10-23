@@ -2,7 +2,7 @@ import {
   getChatCompletionResponseExamples,
   type CompletionExampleVersion
 } from '@fastgpt/global/openapi/core/chat/completion/examples';
-import React, { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
+import React, { useEffect, useMemo, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './CompletionEventExamples.module.scss';
 
@@ -12,18 +12,17 @@ type EventExampleTarget = {
   version: CompletionExampleVersion;
 };
 
-/** 一个 event 对应一个 tab，保留可复制的 SSE 原文，并支持方向键、Home/End 切换。 */
-const EventExampleTabs = ({ version }: { version: CompletionExampleVersion }) => {
+/**
+ * 按接口版本列出 event。分支标题显示为序号，复制时保留 SSE 注释前缀以保证协议可解析。
+ */
+const EventExampleSelect = ({ version }: { version: CompletionExampleVersion }) => {
   const events = useMemo(() => getChatCompletionResponseExamples(version).events, [version]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedEventName, setSelectedEventName] = useState('answer');
   const [copyMessage, setCopyMessage] = useState('');
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const id = useId();
-  const selected = events[selectedIndex];
-  const panelId = `${id}-panel`;
+  const selected = events.find((event) => event.name === selectedEventName) ?? events[0];
 
-  const selectEvent = (index: number) => {
-    setSelectedIndex(index);
+  const selectEvent = (name: string) => {
+    setSelectedEventName(name);
     setCopyMessage('');
   };
   const copyExample = async () => {
@@ -37,40 +36,18 @@ const EventExampleTabs = ({ version }: { version: CompletionExampleVersion }) =>
 
   return (
     <section className={styles.panel} aria-label={`${version} event 示例`}>
-      <h4 className={styles.heading}>event 示例</h4>
-      <div className={styles.tabs} role="tablist" aria-label="event 取值">
-        {events.map((event, index) => (
-          <button
-            key={event.name}
-            ref={(element) => {
-              tabRefs.current[index] = element;
-            }}
-            className={styles.tab}
-            type="button"
-            role="tab"
-            id={`${id}-${event.name}`}
-            aria-controls={panelId}
-            aria-selected={index === selectedIndex}
-            tabIndex={index === selectedIndex ? 0 : -1}
-            onClick={() => selectEvent(index)}
-            onKeyDown={(event) => {
-              const nextIndex = (() => {
-                if (event.key === 'ArrowRight') return (index + 1) % events.length;
-                if (event.key === 'ArrowLeft') return (index + events.length - 1) % events.length;
-                if (event.key === 'Home') return 0;
-                if (event.key === 'End') return events.length - 1;
-              })();
-              if (nextIndex === undefined) return;
-              event.preventDefault();
-              selectEvent(nextIndex);
-              tabRefs.current[nextIndex]?.focus();
-            }}
-          >
-            {event.name}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={panelId} aria-labelledby={`${id}-${selected.name}`} tabIndex={0}>
+      <h4 className={styles.heading}>event 示例（{version}）</h4>
+      <label className={styles.control}>
+        <span>event</span>
+        <select value={selected.name} onChange={(event) => selectEvent(event.target.value)}>
+          {events.map((event) => (
+            <option key={event.name} value={event.name}>
+              {event.name} · {event.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div>
         <p className={styles.description}>
           <strong>{selected.label}</strong>
           {selected.description}
@@ -89,7 +66,7 @@ const EventExampleTabs = ({ version }: { version: CompletionExampleVersion }) =>
                   key={index}
                   className={line.startsWith('event:') ? styles.eventLine : undefined}
                 >
-                  {line}
+                  {line.startsWith(': ') ? line.slice(2) : line}
                   {index < lines.length - 1 ? '\n' : ''}
                 </span>
               ))}
@@ -105,7 +82,7 @@ const EventExampleTabs = ({ version }: { version: CompletionExampleVersion }) =>
 };
 
 /**
- * 在 completions 的 text/event-stream 响应说明下挂载 event tabs。
+ * 在 completions 的 text/event-stream 响应说明下挂载对应版本的 event 选择器。
  * Scalar 延迟渲染或切换为 JSON/收起响应时，按当前 SSE 说明节点挂载和回收，不改动原生响应内容。
  */
 export const CompletionEventExamples = ({ rootRef }: { rootRef: RefObject<HTMLDivElement> }) => {
@@ -163,7 +140,7 @@ export const CompletionEventExamples = ({ rootRef }: { rootRef: RefObject<HTMLDi
   return (
     <>
       {targets.map(({ host, id, version }) =>
-        createPortal(<EventExampleTabs version={version} />, host, id)
+        createPortal(<EventExampleSelect version={version} />, host, id)
       )}
     </>
   );

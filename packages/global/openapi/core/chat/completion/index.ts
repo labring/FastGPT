@@ -96,18 +96,6 @@ export const ChatCompletionPath: OpenAPIPath = {
 - \`detail=true, stream=false\`：在 JSON 中额外包含 \`responseData\`（各节点详细信息）和 \`newVariables\`。
 - \`detail=true, stream=true\`：返回多 event 的 SSE 流（\`answer\` / \`flowNodeStatus\` / \`flowResponses\` 等）。
 
-**event 取值**（\`stream=true\` 且 \`detail=true\` 场景下才会返回非 answer 的 event）
-
-- \`answer\`：返回给客户端的文本（最终会算作回答）。
-- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。
-- \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
-- \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
-- \`flowNodeStatus\`：运行到的节点状态。
-- \`flowResponses\`：节点完整响应。
-- \`updateVariables\`：更新变量。
-- \`interactive\`：交互节点配置。
-- \`error\`：报错。
-
 **交互节点**
 
 如果工作流中包含交互节点，需要设置 \`detail=true\`：
@@ -115,17 +103,12 @@ export const ChatCompletionPath: OpenAPIPath = {
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
 - \`stream=false\`：可从 \`choices[].message.content\` 中获取包含 \`interactive\` 字段的元素。
 
-返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
+非流式响应中的 \`interactive\` 只包含 \`type\` 和 \`params\`，会向下提取 children / loop / tool 包装中最深层的交互，并过滤 \`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` 等内部运行态字段。SSE 可能保留子流程包装，可沿 \`params.childrenResponse\` 读取内层交互；event 示例省略内部运行态字段，并分别展示不同载荷分支。
 
 接收到交互节点信息后，可以根据数据进行 UI 渲染并引导用户输入/选择，然后再次调用本接口继续工作流：
 
 - 用户选择：直接将选择结果作为 user message 的 content 传入。
 - 表单输入：将输入内容以对象形式序列化为字符串，作为 user message 的 content 传入；务必确保 \`chatId\` 一致。
-
-
-**响应示例**
-
-在左侧响应区选择 \`application/json\` 或 \`text/event-stream\`。JSON 模式展示两种非流式组合，text 模式通过四个 tab 对比 \`stream\` / \`detail\` 组合；单个 event 的示例位于左侧 SSE 响应说明下方。流片段省略 \`id/object/created/model\` 等占位字段。
 `,
       requestBody: {
         content: {
@@ -165,7 +148,10 @@ export const ChatCompletionPath: OpenAPIPath = {
               examples: v1ResponseExamples.json
             },
             'text/event-stream': {
-              schema: ChatWorkflowSseResponseSchema,
+              schema: ChatWorkflowSseResponseSchema.meta({
+                description:
+                  '工作流 SSE 事件流；v1 在 detail=true 时通过 flowResponses 汇总节点响应，最后以 [DONE] 结束'
+              }),
               examples: { ...v1ResponseExamples.sse, ...v1ResponseExamples.eventExamples }
             }
           }
@@ -204,21 +190,6 @@ export const ChatCompletionPath: OpenAPIPath = {
 - \`detail=true, stream=false\`：在 JSON 中额外包含 \`responseData\`（各节点详细信息）和 \`newVariables\`。
 - \`detail=true, stream=true\`：返回多 event 的 SSE 流（\`answer\` / \`flowNodeStatus\` / \`flowNodeResponse\` / \`workflowDuration\` 等）。
 
-**event 取值**（\`stream=true\` 且 \`detail=true\` 场景下才会返回非 answer 的 event）
-
-- \`answer\`：返回给客户端的文本（最终会算作回答）。
-- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。
-- \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
-- \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
-- \`flowNodeStatus\`：运行到的节点状态。
-- \`flowNodeResponse\`：v2 节点响应详情。与 v1 的 \`flowResponses\` 不同，v2 会按节点逐条推送（包括 Agent、工具、Loop、Parallel 等内部节点），客户端应按 \`id + parentId\` 追加或合并，而不是等待最后一次性数组。
-- \`workflowDuration\`：工作流本轮运行耗时，payload 为 \`{"durationSeconds": number}\`。
-- \`updateVariables\`：更新变量。
-- \`interactive\`：交互节点配置。
-- \`plan\` / \`planStatus\`：Agent 计划和计划状态（仅相关 Agent 节点可能返回）。
-- \`skillCall\` / \`sandboxStatus\`：技能调用和沙盒状态（仅相关能力启用时可能返回）。
-- \`error\`：报错。
-
 Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤公共字段；引用、运行状态和技能引用分别受 \`showCite\`、\`showRunningStatus\`、\`showSkillReferences\` 控制，知识库源文件下载仍受分享下载权限控制。
 
 **交互节点**
@@ -228,17 +199,12 @@ Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤�
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
 - \`stream=false\`：可从 \`choices[].message.content\` 中获取包含 \`interactive\` 字段的元素。
 
-返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
+非流式响应中的 \`interactive\` 只包含 \`type\` 和 \`params\`，会向下提取 children / loop / tool 包装中最深层的交互，并过滤 \`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` 等内部运行态字段。SSE 可能保留子流程包装，可沿 \`params.childrenResponse\` 读取内层交互；event 示例省略内部运行态字段，并分别展示不同载荷分支。
 
 接收到交互节点信息后，可以根据数据进行 UI 渲染并引导用户输入/选择，然后再次调用本接口继续工作流：
 
 - 用户选择：直接将选择结果作为 user message 的 content 传入。
 - 表单输入：将输入内容以对象形式序列化为字符串，作为 user message 的 content 传入；务必确保 \`chatId\` 一致。
-
-
-**响应示例**
-
-在左侧响应区选择 \`application/json\` 或 \`text/event-stream\`。JSON 模式展示两种非流式组合，text 模式通过四个 tab 对比 \`stream\` / \`detail\` 组合；单个 event 的示例位于左侧 SSE 响应说明下方。流片段省略 \`id/object/created/model\` 等占位字段。
 `,
       requestBody: {
         content: {
@@ -278,7 +244,10 @@ Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤�
               examples: v2ResponseExamples.json
             },
             'text/event-stream': {
-              schema: ChatWorkflowSseResponseSchema,
+              schema: ChatWorkflowSseResponseSchema.meta({
+                description:
+                  '工作流 SSE 事件流；v2 在 detail=true 时通过 flowNodeResponse 逐条发送节点响应，按 id + parentId 归并，最后以 [DONE] 结束'
+              }),
               examples: { ...v2ResponseExamples.sse, ...v2ResponseExamples.eventExamples }
             }
           }

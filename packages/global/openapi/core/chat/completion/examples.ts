@@ -1,3 +1,5 @@
+import type { SandboxStatusPhase } from '../../../../core/chat/type';
+
 export type CompletionExampleVersion = 'v1' | 'v2';
 
 /** SSE 帧以空行分隔，示例保持可直接解析的 wire 格式，不混入省略号占位。 */
@@ -182,7 +184,8 @@ const createInteractiveUserInputResponseExample = (includeLegacyType: boolean) =
 
 /**
  * 提供文档和专用示例面板共用的响应示例，区分 v1 汇总事件和 v2 逐节点事件。
- * 数值与内容用于演示；可选 event 随工作流能力出现，不保证每次请求都发送。
+ * 同一 event 的不同载荷分支放在同一代码块，用带序号的 SSE 注释区分；它们不代表同轮执行顺序。
+ * 完整场景只使用基础载荷，避免把互斥的示例分支混进一次实际响应。
  */
 export const getChatCompletionResponseExamples = (version: CompletionExampleVersion) => {
   const includeLegacyType = version === 'v1';
@@ -206,18 +209,63 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
     functionName: 'dataset_search',
     params: '{"query":"铃芽之旅导演"}'
   };
-  const events = [
+  const userSelectInteractive = userSelect.choices[0].message.content[0].interactive;
+  const userInputInteractive = userInput.choices[0].message.content[0].interactive;
+  const sandboxPhases = [
+    'checkExisting',
+    'connecting',
+    'fetchSkills',
+    'creatingContainer',
+    'deployingSkills',
+    'downloadingPackage',
+    'uploadingPackage',
+    'extractingPackage',
+    'lazyInit',
+    'upgrading',
+    'ready',
+    'failed'
+  ] satisfies SandboxStatusPhase[];
+  const eventDefinitions: {
+    name: string;
+    label: string;
+    description: string;
+    data: unknown;
+    variants?: { label: string; data: unknown }[];
+  }[] = [
     {
       name: 'answer',
       label: '回答增量',
-      description: '逐段追加 choices[].delta.content；reasoning_content 可承载思考增量。',
-      data: answerDelta('电影《铃芽之旅》的导演是新海诚。')
+      description:
+        '包括空文本心跳、回答文本、reasoning_content 思考增量、stop 片段和 [DONE] 结束标记；下方分别展示。',
+      data: answerDelta('电影《铃芽之旅》的导演是新海诚。'),
+      variants: [
+        { label: '空文本心跳', data: answerDelta('') },
+        { label: '回答文本', data: answerDelta('电影《铃芽之旅》的导演是新海诚。') },
+        {
+          label: '思考增量',
+          data: {
+            choices: [
+              {
+                delta: { role: 'assistant', reasoning_content: '先核对电影的导演信息。' },
+                index: 0,
+                finish_reason: null
+              }
+            ]
+          }
+        },
+        { label: '回答停止片段', data: answerDelta(null, 'stop') },
+        { label: '整轮流结束', data: '[DONE]' }
+      ]
     },
     {
       name: 'fastAnswer',
       label: '指定回复',
-      description: '结构与 answer 一致，用于指定回复等即时输出。',
-      data: answerDelta('正在查询相关资料。')
+      description: '用于指定回复等即时输出；分别展示文本增量和停止片段。',
+      data: answerDelta('正在查询相关资料。'),
+      variants: [
+        { label: '指定回复文本', data: answerDelta('正在查询相关资料。') },
+        { label: '指定回复停止片段', data: answerDelta(null, 'stop') }
+      ]
     },
     {
       name: 'flowNodeStatus',
@@ -231,8 +279,15 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
             name: 'flowNodeResponse',
             label: '节点响应',
             description:
-              'v2 按节点逐条发送，包括内部子节点；按 id + parentId 归并，无 parentId 时为顶层节点。',
-            data: { ...nodeResponse, parentId: 'response-agent-1' }
+              'v2 按节点逐条发送；分别展示顶层和内部子节点。按 id + parentId 归并，无 parentId 时为顶层节点。',
+            data: nodeResponse,
+            variants: [
+              { label: '顶层节点', data: nodeResponse },
+              {
+                label: '内部子节点',
+                data: { ...nodeResponse, id: 'response-ai-child-1', parentId: 'response-agent-1' }
+              }
+            ]
           }
         ]
       : [
@@ -246,8 +301,15 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
     {
       name: 'toolCall',
       label: '工具调用',
-      description: '初始化工具卡片，后续参数和响应按 tool.id 关联。',
-      data: { tool, responseValueId: tool.id }
+      description: '初始化工具卡片；分别展示普通调用和 hideDetails 隐藏详情的调用。',
+      data: { tool, responseValueId: tool.id },
+      variants: [
+        { label: '普通工具调用', data: { tool, responseValueId: tool.id } },
+        {
+          label: '隐藏工具参数和响应详情',
+          data: { tool: { ...tool, params: '', hideDetails: true }, responseValueId: tool.id }
+        }
+      ]
     },
     {
       name: 'toolParams',
@@ -258,14 +320,31 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
     {
       name: 'toolResponse',
       label: '工具响应',
-      description: '按 tool.id 关联工具执行结果。',
-      data: { tool: { id: tool.id, response: '导演：新海诚' }, responseValueId: tool.id }
+      description: '按 tool.id 关联工具执行结果；response 支持字符串或 null。',
+      data: { tool: { id: tool.id, response: '导演：新海诚' }, responseValueId: tool.id },
+      variants: [
+        {
+          label: '字符串响应',
+          data: { tool: { id: tool.id, response: '导演：新海诚' }, responseValueId: tool.id }
+        },
+        {
+          label: '空响应',
+          data: { tool: { id: tool.id, response: null }, responseValueId: tool.id }
+        }
+      ]
     },
     {
       name: 'updateVariables',
       label: '变量更新',
-      description: '更新本轮工作流产生的变量。',
-      data: { lastQuestion: '导演是谁' }
+      description: '更新本轮工作流变量；变量值可以是字符串、数字、布尔值、数组、对象或 null。',
+      data: {
+        lastQuestion: '导演是谁',
+        searchCount: 1,
+        found: true,
+        movieNames: ['铃芽之旅'],
+        director: { name: '新海诚' },
+        nextPage: null
+      }
     },
     {
       name: 'workflowDuration',
@@ -283,14 +362,92 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
       name: 'interactive',
       label: '交互配置',
       description:
-        '渲染用户选择或表单；保持 chatId，再次提交用户输入以继续执行。仅返回 type / params。',
-      data: { interactive: userSelect.choices[0].message.content[0].interactive }
+        '分别展示用户选择、表单、Agent 追问、欠费暂停及子流程包装。包装类型通过 params.childrenResponse 取内层交互；示例省略工作流运行态字段，各分支不会在同一轮依次出现。',
+      data: { interactive: userSelectInteractive },
+      // Workflow Builder 的 preview 是专用入口载荷，不作为 completions 的交互分支展示。
+      variants: [
+        { label: '用户选择：userSelect', data: { interactive: userSelectInteractive } },
+        { label: '表单输入：userInput', data: { interactive: userInputInteractive } },
+        {
+          label: 'Agent 追问：agentAsk',
+          data: {
+            interactive: {
+              type: 'agentAsk',
+              askId: 'ask-1',
+              params: {
+                description: '需要确认查询范围后继续。',
+                questions: [
+                  {
+                    question: '要查询哪个范围？',
+                    options: [
+                      { summary: '只查询当前电影', value: 'current_movie' },
+                      { summary: '查询导演的全部作品', value: 'all_movies' }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          label: '欠费暂停：paymentPause',
+          data: {
+            interactive: {
+              type: 'paymentPause',
+              params: { description: '积分不足，请充值后继续。' }
+            }
+          }
+        },
+        {
+          label: '子工作流包装：childrenInteractive',
+          data: {
+            interactive: {
+              type: 'childrenInteractive',
+              params: { childrenResponse: userSelectInteractive }
+            }
+          }
+        },
+        {
+          label: '工具子流程包装：toolChildrenInteractive',
+          data: {
+            interactive: {
+              type: 'toolChildrenInteractive',
+              params: {
+                childrenResponse: userInputInteractive,
+                toolParams: { toolCallId: tool.id }
+              }
+            }
+          }
+        },
+        {
+          label: '循环子流程包装：loopInteractive',
+          data: {
+            interactive: {
+              type: 'loopInteractive',
+              params: { childrenResponse: userSelectInteractive, currentIndex: 0, loopResult: [] }
+            }
+          }
+        },
+        {
+          label: '循环运行包装：loopRunInteractive',
+          data: {
+            interactive: {
+              type: 'loopRunInteractive',
+              params: { childrenResponse: userInputInteractive, iteration: 1, loopHistory: [] }
+            }
+          }
+        }
+      ]
     },
     {
       name: 'planStatus',
       label: '计划生成状态',
-      description: 'Agent 计划生成或更新中的状态，仅相关能力启用时发送。',
-      data: { planStatus: { status: 'generating' } }
+      description: '仅相关能力启用时发送；分别展示 generating 生成中和 updating 更新中。',
+      data: { planStatus: { status: 'generating' } },
+      variants: [
+        { label: '生成计划', data: { planStatus: { status: 'generating' } } },
+        { label: '更新计划', data: { planStatus: { status: 'updating' } } }
+      ]
     },
     {
       name: 'plan',
@@ -300,7 +457,13 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
         plan: {
           planId: 'plan-1',
           name: '查询导演信息',
-          steps: [{ id: 'step-1', name: '检索电影资料', status: 'in_progress' }]
+          steps: [
+            { id: 'step-1', name: '确认电影名称', status: 'done' },
+            { id: 'step-2', name: '检索电影资料', status: 'in_progress' },
+            { id: 'step-3', name: '整理导演信息', status: 'pending' },
+            { id: 'step-4', name: '核对付费资料', status: 'blocked', note: '等待用户授权' },
+            { id: 'step-5', name: '补充无关作品', status: 'skipped', note: '不在本次范围内' }
+          ]
         }
       }
     },
@@ -321,17 +484,59 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
     {
       name: 'sandboxStatus',
       label: '沙箱状态',
-      description: '沙箱创建、连接或就绪状态；ready 表示可执行工具。',
-      data: { sandboxId: 'sandbox-1', phase: 'ready', isWarmStart: true }
+      description:
+        '展示各个可见 phase；ready 表示可执行工具，failed 可携带 message，技能部署阶段可携带 skillName。这些是可选分支，并非固定执行顺序。',
+      data: { sandboxId: 'sandbox-1', phase: 'ready', isWarmStart: true },
+      variants: sandboxPhases.map((phase) => ({
+        label: `阶段：${phase}`,
+        data: {
+          sandboxId: 'sandbox-1',
+          phase,
+          ...((phase === 'connecting' || phase === 'ready') && { isWarmStart: true }),
+          ...([
+            'deployingSkills',
+            'downloadingPackage',
+            'uploadingPackage',
+            'extractingPackage'
+          ].includes(phase) && { skillName: '资料检索' }),
+          ...(phase === 'failed' && { message: '沙箱初始化失败，请稍后重试。' })
+        }
+      }))
     },
     {
       name: 'error',
       label: '流式错误',
-      description: '流已建立后发生的错误；读取 message 处理失败，不能仅凭 HTTP 200 判断成功。',
-      data: { message: '模型请求失败，请稍后重试' }
+      description:
+        '流已建立后的错误，包括仅 message 的通用错误，以及含 code / statusText / data 的业务错误；不能仅凭 HTTP 200 判断成功。',
+      data: { message: '模型请求失败，请稍后重试' },
+      variants: [
+        { label: '通用错误', data: { message: '模型请求失败，请稍后重试' } },
+        {
+          label: '业务错误',
+          data: {
+            code: 510003,
+            statusText: 'runtimeUpgradeInProgress',
+            message: '沙箱正在升级，请稍后重试',
+            data: null,
+            httpStatus: 409
+          }
+        }
+      ]
     }
-  ].map(({ data, ...event }) => ({ ...event, value: createSseFrame(event.name, data) }));
-  const eventValue = (name: string) => events.find((event) => event.name === name)!.value;
+  ];
+  const events = eventDefinitions.map(({ data, variants, ...event }) => ({
+    ...event,
+    value: variants
+      ? variants
+          .map(
+            (variant, index) =>
+              `: ${index + 1}. ${variant.label}\n${createSseFrame(event.name, variant.data)}`
+          )
+          .join('')
+      : createSseFrame(event.name, data)
+  }));
+  const eventValue = (name: string) =>
+    createSseFrame(name, eventDefinitions.find((event) => event.name === name)!.data);
   const done = createSseFrame('answer', '[DONE]');
   const ordinaryStream = [
     eventValue('flowNodeStatus'),
