@@ -125,7 +125,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 
 **响应示例**
 
-在右侧响应面板通过 \`stream\`、\`detail\` 切换返回形式，并按场景或 event 查看和复制示例。交互配置示例包含完整的展示字段；流片段省略 \`id/object/created/model\` 等占位字段。
+在左侧响应区选择 \`application/json\` 或 \`text/event-stream\`，右侧示例随格式切换；通过右侧 \`detail\` 切换精简或详细内容，并按场景或 event 查看和复制示例。交互配置示例包含完整的展示字段；流片段省略 \`id/object/created/model\` 等占位字段。
 `,
       requestBody: {
         content: {
@@ -238,7 +238,7 @@ Share 调用沿用相同的逐条事件协议，但会先按分享配置过滤�
 
 **响应示例**
 
-在右侧响应面板通过 \`stream\`、\`detail\` 切换返回形式，并按场景或 event 查看和复制示例。交互配置示例包含完整的展示字段；流片段省略 \`id/object/created/model\` 等占位字段。
+在左侧响应区选择 \`application/json\` 或 \`text/event-stream\`，右侧示例随格式切换；通过右侧 \`detail\` 切换精简或详细内容，并按场景或 event 查看和复制示例。交互配置示例包含完整的展示字段；流片段省略 \`id/object/created/model\` 等占位字段。
 `,
       requestBody: {
         content: {

@@ -10,17 +10,33 @@ type ExampleTarget = {
   host: HTMLDivElement;
   id: string;
   version: CompletionExampleVersion;
+  contentType: 'application/json' | 'text/event-stream';
 };
 type Scenario = 'default' | 'interactiveUserSelect' | 'interactiveUserInput';
 
-/** 只切换文档示例，不改动请求参数；切换返回形式时重置场景和 event，避免展示不适用的数据。 */
-const ResponseExamplePanel = ({ version }: { version: CompletionExampleVersion }) => {
+/** 返回形式跟随 Scalar 左侧的响应格式；保留 detail 和场景，格式切换时清除单个 event 和复制状态。 */
+const ResponseExamplePanel = ({
+  version,
+  contentType
+}: {
+  version: CompletionExampleVersion;
+  contentType: ExampleTarget['contentType'];
+}) => {
   const examples = useMemo(() => getChatCompletionResponseExamples(version), [version]);
-  const [stream, setStream] = useState(false);
+  const stream = contentType === 'text/event-stream';
   const [detail, setDetail] = useState(false);
   const [scenario, setScenario] = useState<Scenario>('default');
   const [eventName, setEventName] = useState('all');
   const [copyMessage, setCopyMessage] = useState('');
+  const [previousContentType, setPreviousContentType] = useState(contentType);
+
+  // 在本次渲染提交前重置，避免新格式短暂显示旧的 event 选择或复制结果。
+  if (previousContentType !== contentType) {
+    setPreviousContentType(contentType);
+    setEventName('all');
+    setCopyMessage('');
+  }
+
   const scenarios = useMemo(() => {
     const source = stream ? examples.sse : examples.json;
     const basic = stream
@@ -72,20 +88,6 @@ const ResponseExamplePanel = ({ version }: { version: CompletionExampleVersion }
     <section className={styles.panel} aria-label={`${version} 响应示例选择`}>
       <div className={styles.controls}>
         <label className={styles.control}>
-          <span>stream</span>
-          <select
-            aria-label="stream"
-            value={String(stream)}
-            onChange={(event) => {
-              setStream(event.target.value === 'true');
-              resetSelection();
-            }}
-          >
-            <option value="false">false · JSON</option>
-            <option value="true">true · SSE</option>
-          </select>
-        </label>
-        <label className={styles.control}>
           <span>detail</span>
           <select
             aria-label="detail"
@@ -99,8 +101,6 @@ const ResponseExamplePanel = ({ version }: { version: CompletionExampleVersion }
             <option value="true">true · 详细</option>
           </select>
         </label>
-      </div>
-      <div className={styles.filters}>
         <label className={styles.control}>
           <span>场景</span>
           <select
@@ -142,7 +142,7 @@ const ResponseExamplePanel = ({ version }: { version: CompletionExampleVersion }
       </div>
       <p className={styles.description}>{selectedEvent?.description ?? sample.description}</p>
       <div className={styles.codeHeader}>
-        <span>{stream ? 'text/event-stream' : 'application/json'}</span>
+        <span>{contentType}</span>
         <button type="button" onClick={copyExample} aria-label="复制响应示例">
           {copyMessage === '已复制' ? '已复制' : '复制示例'}
         </button>
@@ -167,7 +167,8 @@ const ResponseExamplePanel = ({ version }: { version: CompletionExampleVersion }
 
 /**
  * 将 React 示例面板挂到 Scalar 延迟创建的响应卡片内，保留原生 Schema 开关。
- * 只匹配 completions 的 operation；卡片移除时回收 portal，页面销毁时断开监听。
+ * 只匹配 completions 的 operation，并读取左侧 200 响应的 MIME 选择作为唯一格式来源。
+ * Scalar 修改文本节点时也同步；卡片移除时回收 portal，页面销毁时断开监听。
  */
 export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTMLDivElement> }) => {
   const [targets, setTargets] = useState<ExampleTarget[]>([]);
@@ -185,14 +186,33 @@ export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTM
         if (!card) continue;
         active.add(card);
         const existing = mounted.get(card);
-        if (existing && card.contains(existing.host)) continue;
+        // 不依赖翻译文案，也不读取请求体/其他状态码的格式；收起响应时 MIME 按钮仍然存在。
+        const contentType = (() => {
+          const response = [
+            ...operation.querySelectorAll<HTMLElement>('.operation-details .parameter-item')
+          ].find(
+            (item) => item.querySelector('.parameter-item-name')?.textContent?.trim() === '200'
+          );
+          for (const label of response?.querySelectorAll(
+            'button[aria-haspopup="listbox"] > span, .selected-content-type > span'
+          ) ?? []) {
+            const value = label.textContent?.trim();
+            if (value === 'application/json' || value === 'text/event-stream') return value;
+          }
+          return existing?.contentType ?? 'application/json';
+        })();
+        if (existing && card.contains(existing.host)) {
+          if (existing.contentType !== contentType) mounted.set(card, { ...existing, contentType });
+          continue;
+        }
         const host = document.createElement('div');
         host.className = styles.host;
         card.append(host);
         mounted.set(card, {
           host,
           id: operation.id,
-          version: operation.id.endsWith('/POST/v1/chat/completions') ? 'v1' : 'v2'
+          version: operation.id.endsWith('/POST/v1/chat/completions') ? 'v1' : 'v2',
+          contentType
         });
       }
       for (const [card, target] of mounted) {
@@ -208,7 +228,7 @@ export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTM
       );
     };
     const observer = new MutationObserver(syncTargets);
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(root, { childList: true, characterData: true, subtree: true });
     syncTargets();
     return () => {
       observer.disconnect();
@@ -218,8 +238,8 @@ export const CompletionResponseExamples = ({ rootRef }: { rootRef: RefObject<HTM
 
   return (
     <>
-      {targets.map(({ host, id, version }) =>
-        createPortal(<ResponseExamplePanel version={version} />, host, id)
+      {targets.map(({ host, id, version, contentType }) =>
+        createPortal(<ResponseExamplePanel version={version} contentType={contentType} />, host, id)
       )}
     </>
   );
