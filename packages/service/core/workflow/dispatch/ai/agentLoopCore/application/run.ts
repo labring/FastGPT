@@ -49,20 +49,19 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     metaEventNames: assistantResponses?.metaEventNames
   });
   let firstTokenTime: number | undefined;
-  const wrappedRuntime: AgentLoopRuntime<TChildrenResponse> = {
-    ...runtime,
-    emitEvent: (event) => {
-      if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
-        firstTokenTime = event.firstTokenTime;
-      }
-      assistantEventCollector.emitEvent(event);
-      runtime.emitEvent?.(event);
-    }
-  };
   const result = await runAgentLoop<TChildrenResponse>({
     provider,
     input,
-    runtime: wrappedRuntime
+    runtime: {
+      ...runtime,
+      emitEvent: (event) => {
+        if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
+          firstTokenTime = event.firstTokenTime;
+        }
+        assistantEventCollector.emitEvent(event);
+        runtime.emitEvent?.(event);
+      }
+    }
   });
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),

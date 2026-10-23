@@ -1,6 +1,6 @@
 ---
 title: Introduction
-description: The concept of AI Agent Skills, and how it is designed and implemented in FastGPT.
+description: What AI Agent Skills are and how FastGPT implements them.
 ---
 
 import { Alert } from '@/components/docs/Alert';
@@ -10,21 +10,20 @@ import { Alert } from '@/components/docs/Alert';
 Under the latest ecosystem designs of mainstream AI providers, a **"Skill"** is defined as a **persistent, reusable, and modular workflow and capability package**.
 
 <Alert icon="🤖" context="success">
-  For example, if you frequently need the AI to audit complex spreadsheets and write analysis
-  reports, you can package the 'audit code' and 'report template' into a Skill. In future chats, you
-  can simply upload your spreadsheet, and the AI will run the skill in the background to compute
-  results and format the report.
+  For example, to compare two complex financial spreadsheets and generate an analysis, package the
+  calculation code and report template into a Skill. In later chats, upload the spreadsheets and let
+  the Agent use the Skill to calculate the results and format the report.
 </Alert>
 
 ---
 
 ## Core Design Philosophy: From Tools to Skills
 
-In the general cognitive framework of AI Agents, we typically divide capabilities into three layers:
+An Agent combines three kinds of capability:
 
-- **The Brain (Brain)**: Responsible for reasoning and planning (the LLM itself).
-- **Tools (Tools)**: Simple execution interfaces (such as sending a web request or running a temporary line of code), resembling the AI's "hands and feet".
-- **Skills (Skills)**: Providing the complete **"operational knowledge and professional logic"** (Know-how).
+- **Brain**: Responsible for reasoning and planning (the LLM itself).
+- **Tools**: Simple execution interfaces (such as sending a web request or running a temporary line of code), resembling the AI's "hands and feet".
+- **Skills**: Providing the complete **"operational knowledge and professional logic"** (Know-how).
 
 A skill is typically a modular package encapsulating **instruction markdown (how to do it)** and **executable scripts (actually doing it)**.
 If a tool is a "screwdriver" in your toolbox, then a skill is a **"furniture assembly guide"**. The AI can automatically grab this guide from its skill library based on the current context, execute the code inside a background sandbox, and complete the complex assembly.
@@ -47,8 +46,8 @@ Provides an online debugging environment integrating a file tree, code editor, a
 
 ### 3. Isolation of Production & Debugging
 
-Edits in the workspace will only take effect instantly in the "Debug Chat" area. Changes will only be applied to production agents once you click publish and snap a new version, ensuring service stability.
+Edits in the workspace will only take effect instantly in the "Debug Chat" area. Publish a version to apply the changes to production Agents and Workflows.
 
 ### 4. Auto-Sleep & Seamless Invocation
 
-For long-inactive skills, the system automatically shuts down the sandbox and performs cold-archiving to storage. When edit or agent invocation resumes, the sandbox is automatically re-instantiated and restored from the archive in the background. You are only billed when the skill is active, dramatically reducing your runtime costs.
+For long-inactive skills, the system automatically shuts down the sandbox and performs cold-archiving to storage. When editing resumes or an Agent calls the Skill, the system restarts the sandbox and restores its archived state. Runtime charges pause while the Skill is asleep.

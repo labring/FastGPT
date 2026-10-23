@@ -1,10 +1,11 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 import {
-  checkStoreWorkflowBeforeRunOrPublish,
   getToolErrorMessage,
   getWorkflowCheckIssueMessage
-} from '@/web/core/workflow/workflowCheck';
+} from '@/web/core/workflow/check/message';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
 import type { Form2WorkflowFnType } from './type';
 
@@ -88,11 +89,17 @@ export const checkAppFormResourceIssues = ({
   ];
 
   for (const item of resourceItems) {
-    if (item.error === 'resource_no_permission') {
-      return getWorkflowCheckIssueMessage('resource_no_permission', t);
+    if (item.error === WorkflowCheckIssueCodeEnum.resourceNoPermission) {
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceNoPermission,
+        t
+      });
     }
     if (item.error) {
-      return getWorkflowCheckIssueMessage('resource_missing', t);
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceMissing,
+        t
+      });
     }
   }
 

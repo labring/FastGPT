@@ -1,5 +1,6 @@
 import { requiredAlternatives } from '../../../../common/zod/openapi';
 import {
+  FolderAccessModeSchema,
   GetPathPropsSchema,
   ParentIdSchema,
   ParentTreePathItemSchema
@@ -183,7 +184,11 @@ export const DatasetCollectionsListItemSchema = z
     fileId: z.string().optional().meta({ description: '文件 ID' }),
     rawLink: z.string().optional().meta({ description: '原始链接' }),
     permission: PermissionSchema,
-    dataAmount: z.number().meta({ description: '数据数量' })
+    dataAmount: z.number().meta({ description: '数据数量' }),
+    folderAccessMode: FolderAccessModeSchema.optional().meta({
+      example: 'navigate',
+      description: '文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限'
+    })
   })
   .merge(CollectionTrainingStatusSchema);
 export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;

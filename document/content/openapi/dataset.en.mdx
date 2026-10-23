@@ -4,6 +4,8 @@ sidebarTag: No longer maintained
 description: FastGPT OpenAPI Dataset API
 ---
 
+To find `datasetId`, open the Dataset and select **Configuration**; copy the Dataset ID shown at the top. To find a collection ID, open its file in the Dataset and copy the file ID displayed below the filename. Use that value for the collection ID parameter required by the endpoint.
+
 | How to Get Dataset ID (datasetId)       | How to Get Collection ID (collection_id)   |
 | --------------------------------------- | ------------------------------------------ |
 | ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
@@ -22,8 +24,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 --data-raw '{
   "parentId": null,
   "type": "dataset",
-  "name":"测试",
-  "intro":"介绍",
+  "name":"Test",
+  "intro":"Description",
   "avatar": "",
   "vectorModel": "text-embedding-ada-002",
   "agentModel": "gpt-3.5-turbo-16k",
@@ -39,9 +41,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/create' \
 - name - Dataset name (required)
 - intro - Description (optional)
 - avatar - Avatar URL (optional)
-- vectorModel - Vector model (recommended to leave empty, use system default)
-- agentModel - Text processing model (recommended to leave empty, use system default)
-- vlmModel - Image understanding model (recommended to leave empty, use system default)
+- vectorModel - Embedding model. Leave empty to use the system default.
+- agentModel - Text processing model. Leave empty to use the system default.
+- vlmModel - Image understanding model. Leave empty to use the system default.
 
 </Tab>
 
@@ -92,7 +94,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
       "_id": "65abc9bd9d1448617cba5e6c",
       "parentId": null,
       "avatar": "",
-      "name": "测试",
+      "name": "Test",
       "intro": "",
       "type": "dataset",
       "permission": "private",
@@ -211,28 +213,28 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **Request**
 
-| Parameter        | Description                                                                                                                                     | Required |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| datasetId        | Dataset ID                                                                                                                                      | ✅       |
-| parentId：       | Parent ID. Defaults to root directory if not provided                                                                                           |          |
-| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                         | ✅       |
-| indexPrefixTitle | Whether to auto-generate title index                                                                                                            |          |
-| customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                  |          |
-| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                      |          |
-| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                                |          |
-| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                        |          |
-| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                      |          |
-| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                               |          |
-| indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                   |          |
-| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |          |
-| qaPrompt         | QA split prompt                                                                                                                                 |          |
-| tags             | Collection tags (string array)                                                                                                                  |          |
-| createTime       | File creation time (Date / String)                                                                                                              |          |
+| Parameter        | Description                                                                                                                                                                                   | Required |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| datasetId        | Dataset ID                                                                                                                                                                                    | ✅       |
+| parentId         | Parent ID. Defaults to root directory if not provided                                                                                                                                         |          |
+| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                                                                       | ✅       |
+| indexPrefixTitle | Whether to auto-generate title index                                                                                                                                                          |          |
+| customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                                                                |          |
+| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                                                                    |          |
+| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                                                                              |          |
+| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                                                                      |          |
+| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                                                                    |          |
+| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                                                                             |          |
+| indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                                                                 |          |
+| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto.                                               |          |
+| qaPrompt         | QA split prompt                                                                                                                                                                               |          |
+| tags             | Collection tags (Commercial). Accepts structured tag objects (`[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 1}]`) as well as legacy string arrays |          |
+| createTime       | File creation time (Date / String)                                                                                                                                                            |          |
 
 **Response**
 
 - collectionId - New collection ID
-- insertLen：Number of inserted chunks
+- insertLen: Number of inserted chunks
 
 ### Create Empty Collection/Folder
 
@@ -246,7 +248,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --data-raw '{
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
-    "name":"测试",
+    "name":"Test",
     "type":"virtual",
     "metadata":{
       "test":111
@@ -298,7 +300,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
     "text":"xxxxxxxx",
     "datasetId":"6593e137231a2be9c5603ba7",
     "parentId": null,
-    "name":"测试训练",
+    "name":"Test processing",
 
     "trainingType": "qa",
     "chunkSettingMode": "auto",
@@ -321,7 +323,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data.collectionId` is the new collection ID; `data.results.insertLen` reports the number of inserted chunks.
 
 ```json
 {
@@ -331,10 +333,7 @@ data is the collection ID.
   "data": {
     "collectionId": "65abcfab9d1448617cba5f0d",
     "results": {
-      "insertLen": 5, // Number of chunks to split into
-      "overToken": [],
-      "repeat": [],
-      "error": []
+      "insertLen": 5
     }
   }
 }
@@ -381,7 +380,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data.collectionId` is the new collection ID; `data.results.insertLen` reports the number of inserted chunks.
 
 ```json
 {
@@ -391,10 +390,7 @@ data is the collection ID.
   "data": {
     "collectionId": "65abd0ad9d1448617cba6031",
     "results": {
-      "insertLen": 1,
-      "overToken": [],
-      "repeat": [],
-      "error": []
+      "insertLen": 1
     }
   }
 }
@@ -415,7 +411,7 @@ When uploading via code, note that Chinese filenames need to be encoded to avoid
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/localFile' \
 --header 'Authorization: Bearer {{authorization}}' \
---form 'file=@"C:\\Users\\user\\Desktop\\fastgpt测试File\\index.html"' \
+--form 'file=@"C:\\Users\\user\\Desktop\\fastgpt测试文件\\index.html"' \
 --form 'data="{\"datasetId\":\"6593e137231a2be9c5603ba7\",\"parentId\":null,\"trainingType\":\"chunk\",\"chunkSize\":512,\"chunkSplitter\":\"\",\"qaPrompt\":\"\",\"metadata\":{}}"'
 ```
 
@@ -431,7 +427,7 @@ Use POST form-data format for upload. Contains file and data fields.
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data.collectionId` is the new collection ID; `data.results.insertLen` reports the number of inserted chunks.
 
 ```json
 {
@@ -441,10 +437,7 @@ data is the collection ID.
   "data": {
     "collectionId": "65abc044e4704bac793fbd81",
     "results": {
-      "insertLen": 1,
-      "overToken": [],
-      "repeat": [],
-      "error": []
+      "insertLen": 1
     }
   }
 }
@@ -483,7 +476,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 </Tab>
 <Tab value="Parameters" >
 
-Use POST form-data format for upload. Contains file and data fields.
+Send a JSON request body with `Content-Type: application/json`, as shown in the request example.
 
 - name: Collection name, recommended to use filename, required.
 - apiFileId: File ID, required.
@@ -498,7 +491,7 @@ Use POST form-data format for upload. Contains file and data fields.
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data.collectionId` is the new collection ID; `data.results.insertLen` reports the number of inserted chunks.
 
 ```json
 {
@@ -508,10 +501,7 @@ data is the collection ID.
   "data": {
     "collectionId": "65abc044e4704bac793fbd81",
     "results": {
-      "insertLen": 1,
-      "overToken": [],
-      "repeat": [],
-      "error": []
+      "insertLen": 1
     }
   }
 }
@@ -534,7 +524,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
     "externalFileUrl":"https://image.xxxxx.com/fastgpt-dev/%E6%91%82.pdf",
     "externalFileId":"1111",
     "createTime": "2024-05-01T00:00:00.000Z",
-    "filename":"自定义File名.pdf",
+    "filename":"custom-file-name.pdf",
     "datasetId":"6642d105a5e9d2b00255b27b",
     "parentId": null,
     "tags": ["tag1","tag2"],
@@ -561,7 +551,7 @@ curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/co
 
 <Tab value="Response Example" >
 
-data is the collection ID.
+`data.collectionId` is the new collection ID; `data.results.insertLen` reports the number of inserted chunks.
 
 ```json
 {
@@ -571,10 +561,7 @@ data is the collection ID.
   "data": {
     "collectionId": "6646fcedfabd823cdc6de746",
     "results": {
-      "insertLen": 1,
-      "overToken": [],
-      "repeat": [],
-      "error": []
+      "insertLen": 1
     }
   }
 }
@@ -606,10 +593,11 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tab value="Parameters" >
 
 - offset: Offset
-- pageSize: Items per page, max 30 (optional)
+- pageSize: Items per page, max 100 (optional)
 - datasetId: Dataset ID (required)
 - parentId: Parent ID (optional)
 - searchText: Fuzzy search text (optional)
+- tagFilters: Filter collection list by tag values (optional, Commercial), formatted as `[{"tagId": "tag_id", "values": ["option_or_number"]}]`
 
 </Tab>
 
@@ -632,7 +620,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
         "dataAmount": 3,
         "trainingAmount": 0,
         "externalFileId": "1111",
-        "tags": ["11", "测试的"],
+        "tags": ["11", "Test tag"],
         "forbid": false,
         "trainingType": "chunk",
         "permission": {
@@ -648,13 +636,13 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
         "parentId": null,
         "tmbId": "65422be6aa44b7da77729ec9",
         "type": "link",
-        "name": "快速上手 | FastGPT",
+        "name": "Quick Start | FastGPT",
         "rawLink": "https://doc.fastgpt.io/guide/getting-started/quick-start",
         "updateTime": "2024-01-20T13:54:53.031Z",
         "dataAmount": 3,
         "trainingAmount": 0,
         "externalFileId": "222",
-        "tags": ["测试的"],
+        "tags": ["Test tag"],
         "forbid": false,
         "trainingType": "chunk",
         "permission": {
@@ -720,7 +708,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
       "updateTime": "2024-01-02T10:11:03.084Z"
     },
     "type": "virtual",
-    "name": "测试训练",
+    "name": "Test processing",
     "trainingType": "qa",
     "chunkSize": 8000,
     "chunkSplitter": "",
@@ -730,7 +718,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/collection
     "createTime": "2024-01-20T13:50:35.838Z",
     "updateTime": "2024-01-20T13:50:35.838Z",
     "canWrite": true,
-    "sourceName": "测试训练"
+    "sourceName": "Test processing"
   }
 }
 ```
@@ -752,14 +740,14 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 --data-raw '{
     "id":"65abcfab9d1448617cba5f0d",
     "parentId": null,
-    "name": "测2222试",
+    "name": "Test2222",
     "tags": ["tag1", "tag2"],
     "forbid": false,
     "createTime": "2024-01-01T00:00:00.000Z"
 }'
 ```
 
-**Update Collection Info by External File ID**， Just replace id with datasetId and externalFileId.
+**Update Collection Info by External File ID**: Replace `id` with `datasetId` and `externalFileId`.
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/update' \
@@ -769,7 +757,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
     "datasetId":"6593e137231a2be9c5603ba7",
     "externalFileId":"1111",
     "parentId": null,
-    "name": "测2222试",
+    "name": "Test2222",
     "tags": ["tag1", "tag2"],
     "forbid": false,
     "createTime": "2024-01-01T00:00:00.000Z"
@@ -783,7 +771,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - id: Collection ID
 - parentId: Update parent ID (optional)
 - name: Update collection name (optional)
-- tags: Update collection tags (optional)
+- tags: Update collection tags (optional, Commercial). Accepts structured tag objects `[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 2}]` as well as legacy string arrays
 - forbid: Update collection disabled status (optional)
 - createTime: Update collection creation time (optional)
 
@@ -850,7 +838,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 | teamId        | String  | Team ID        | ✅       |
 | tmbId         | String  | Member ID      | ✅       |
 | datasetId     | String  | Dataset ID     | ✅       |
-| collectionId  | String  | CollectionID   | ✅       |
+| collectionId  | String  | Collection ID  | ✅       |
 | q             | String  | Primary data   | ✅       |
 | a             | String  | Auxiliary data | ✖        |
 | fullTextToken | String  | Tokenization   | ✖        |
@@ -868,13 +856,13 @@ Maximum 5 custom indexes per data group
 | dataId | String | Associated vector ID. Pass this ID when updating data for incremental updates instead of full updates                               |          |
 | text   | String | Text content                                                                                                                        | ✅       |
 
-`type` If not provided, defaults to `custom` index. A default index will also be created based on q/a. If a default index is provided, no additional one will be created.
+Omitting `type` creates a `custom` index. FastGPT also creates a default index from `q` and `a` unless you supply a default index in the request.
 
 ### Push Data to Processing Queue
 
 Each request can push up to 200 data groups. FastGPT automatically creates the processing usage record, so you do not need to provide `billId`.
 
-<Tabs items={['Request Example','Parameters','Response Example']}>
+<Tabs items={['Request Example','Parameters','Response Example','QA Prompt Template']}>
 <Tab value="Request Example" >
 
 ```bash
@@ -888,7 +876,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
     "data": [
         {
             "q": "Who are you?",
-            "a": "I'm FastGPT Assistant"
+            "a": "I am the FastGPT assistant"
         },
         {
             "q": "What can you do?",
@@ -913,9 +901,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 - collectionId: Collection ID (required)
 - trainingType: Indexing mode (required)
 - prompt: Custom QA split prompt. Must follow template strictly. Recommended not to pass. (optional)
-- data：(Specific data)
+- data: Data groups to insert
 
-- q: Primary data（Required）
+- q: Primary data (required)
 - a: Auxiliary data (optional)
 - indexes: Custom indexes (optional). Can omit or pass empty array. By default, an index will be created from q and a.
 
@@ -928,10 +916,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
   "code": 200,
   "statusText": "",
   "data": {
-    "insertLen": 1, // Final number of successful insertions
-    "overToken": [], // Exceeding token
-    "repeat": [], // Number of duplicates
-    "error": [] // Other errors
+    "insertLen": 1
   }
 }
 ```
@@ -940,14 +925,14 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/push
 
 <Tab value="QA Prompt Template" >
 
-[theme] content can be replaced with the data theme. Default: They may contain multiple theme contents
+Replace `[theme]` with a description of the topics in your data. The default is: "It may cover multiple topics."
 
 ```
-I'll give you a text, [theme], learn it, and organize the learning results, requirements:
-1. Propose up to 25 questions.
-2. Provide answers to each question.
+Read the following text, [theme], and organize its information into questions and answers. Follow these requirements:
+1. Create up to 25 questions.
+2. Answer each question.
 3. Answers should be detailed and complete, and can include plain text, links, code, tables, formulas, media links, and other markdown elements.
-4. Return multiple questions and answers in format:
+4. Return the questions and answers in this format:
 
 Q1: Question.
 A1: Answer.
@@ -955,7 +940,7 @@ Q2:
 A2:
 ……
 
-My text:"""{{text}}"""
+Text: """{{text}}"""
 ```
 
 </Tab>
@@ -1003,7 +988,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
         "_id": "65abd4b29d1448617cba61db",
         "datasetId": "65abc9bd9d1448617cba5e6c",
         "collectionId": "65abd4ac9d1448617cba6171",
-        "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "q": "No. 202212. China Academy of Information and Communications Technology; JD Explore Academy. September 2022. Artificial Intelligence Generated Content (AIGC) White Paper (2022). Copyright notice: Copyright in this white paper belongs to the China Academy of Information and Communications Technology and JD Explore Academy and is protected by law. Reprints, excerpts, and other uses of its text or views must credit the China Academy of Information and Communications Technology and JD Explore Academy as the source. The editors reserve the right to pursue legal responsibility for violations. Foreword: Xi Jinping has stated that digital technology, through new concepts, business forms, and models, is becoming fully integrated into every field and stage of economic, political, cultural, social, and ecological development. As the digital and physical worlds converge, artificial intelligence generated content (AIGC) is driving profound change in how digital content is produced and consumed. It will greatly enrich digital life and provide essential support for a new era of digital civilization.",
         "a": "",
         "chunkIndex": 0
       },
@@ -1011,7 +996,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
         "_id": "65abd4b39d1448617cba624d",
         "datasetId": "65abc9bd9d1448617cba5e6c",
         "collectionId": "65abd4ac9d1448617cba6171",
-        "q": "本白皮书重点从 AIGC 技术、应用和治理等维度进行了阐述。在技术层面，梳理提出了 AIGC 技术体系，既涵盖了对现实世界各种内容的数字化呈现和增强，也包括了基于人工智能的自主内容创作。在应用层面，重点分析了 AIGC 在传媒、电商、影视等行业和场景的应用情况，探讨了以虚拟数字人、写作机器人等为代表的新业态和新应用。在治理层面，从政策监管、技术能力、企业应用等视角，分析了AIGC 所暴露出的版权纠纷、虚假信息传播等各种Question.最后，从政府、行业、企业、社会等层面，给出了 AIGC 发展和治理建议。由于人工智能仍处于飞速发展阶段，我们对 AIGC 的认识还有待进一步深化，白皮书中存在不足之处，敬请大家批评指正。目 录一、 人工智能生成内容的发展历程与概念.............................................................. 1（一）AIGC 历史沿革 .......................................................................................... 1（二）AIGC 的概念与内涵 .................................................................................. 4二、人工智能生成内容的技术体系及其演进方向.................................................... 7（一）AIGC 技术升级步入深化阶段 .................................................................. 7（二）AIGC 大模型架构潜力凸显 .................................................................... 10（三）AIGC 技术演化出三大前沿能力 ............................................................ 18三、人工智能生成内容的应用场景.......................................................................... 26（一）AIGC+传媒：人机协同生产，",
+        "q": "This white paper examines AIGC technology, applications, and governance. It outlines a technical framework covering both the digital representation and enhancement of real-world content and autonomous content creation using AI. It analyzes applications in media, e-commerce, film, and television, including emerging businesses and applications such as virtual digital humans and writing bots. From regulatory, technical, and enterprise perspectives, it examines challenges such as copyright disputes and the spread of misinformation. It concludes with recommendations for AIGC development and governance at the government, industry, enterprise, and societal levels. AI is evolving rapidly, and our understanding of AIGC requires further study. We welcome corrections and feedback on this white paper. Contents: I. The history and concept of AIGC ... 1; (1) History of AIGC ... 1; (2) The concept and scope of AIGC ... 4; II. The AIGC technology framework and its evolution ... 7; (1) AIGC technology advances ... 7; (2) The potential of large-model architectures for AIGC ... 10; (3) Three emerging capabilities in AIGC ... 18; III. AIGC applications ... 26; (1) AIGC + media: collaborative production by humans and machines,",
         "a": "",
         "chunkIndex": 1
       }
@@ -1051,14 +1036,14 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
   "message": "",
   "data": {
     "id": "65abd4b29d1448617cba61db",
-    "q": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+    "q": "No. 202212. China Academy of Information and Communications Technology; JD Explore Academy. September 2022. Artificial Intelligence Generated Content (AIGC) White Paper (2022). Copyright notice: Copyright in this white paper belongs to the China Academy of Information and Communications Technology and JD Explore Academy and is protected by law. Reprints, excerpts, and other uses of its text or views must credit the China Academy of Information and Communications Technology and JD Explore Academy as the source. The editors reserve the right to pursue legal responsibility for violations. Foreword: Xi Jinping has stated that digital technology, through new concepts, business forms, and models, is becoming fully integrated into every field and stage of economic, political, cultural, social, and ecological development. As the digital and physical worlds converge, artificial intelligence generated content (AIGC) is driving profound change in how digital content is produced and consumed. It will greatly enrich digital life and provide essential support for a new era of digital civilization.",
     "a": "",
     "chunkIndex": 0,
     "indexes": [
       {
         "type": "default",
         "dataId": "3720083",
-        "text": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字or观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
+        "text": "No. 202212. China Academy of Information and Communications Technology; JD Explore Academy. September 2022. Artificial Intelligence Generated Content (AIGC) White Paper (2022). Copyright notice: Copyright in this white paper belongs to the China Academy of Information and Communications Technology and JD Explore Academy and is protected by law. Reprints, excerpts, and other uses of its text or views must credit the China Academy of Information and Communications Technology and JD Explore Academy as the source. The editors reserve the right to pursue legal responsibility for violations. Foreword: Xi Jinping has stated that digital technology, through new concepts, business forms, and models, is becoming fully integrated into every field and stage of economic, political, cultural, social, and ecological development. As the digital and physical worlds converge, artificial intelligence generated content (AIGC) is driving profound change in how digital content is produced and consumed. It will greatly enrich digital life and provide essential support for a new era of digital civilization.",
         "_id": "65abd4b29d1448617cba61dc"
       }
     ],
@@ -1097,7 +1082,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
         {
             "dataId": "xxx",
             "type": "custom",
-            "text": "旧的Custom index 1"
+            "text": "Existing custom index 1"
         },
         {
             "type":"custom",
@@ -1114,7 +1099,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 - dataId: Data ID
 - q: Primary data (optional)
 - a: Auxiliary data (optional)
-- indexes: Custom indexes (optional). See `Batch Add Data to Collection` for types. If custom indexes exist when created,
+- indexes: Custom indexes (optional). Use the Index structure above. Preserve each existing index's `dataId` when updating it so FastGPT can apply incremental changes.
 
 </Tab>
 
@@ -1213,16 +1198,15 @@ Returns top k results. limit is the maximum tokens, up to 20000 tokens.
   "statusText": "",
   "data": [
     {
-        "id": "65599c54a5c814fb803363cb",
-        "q": "你是谁",
-        "a": "I'm FastGPT Assistant",
-        "datasetId": "6554684f7f9ed18a39a4d15c",
-        "collectionId": "6556cd795e4b663e770bb66d",
-        "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
-        "sourceId": "6556cd775e4b663e770bb65c",
-        "score": 0.8050316572189331
-    },
-    ......
+      "id": "65599c54a5c814fb803363cb",
+      "q": "Who are you?",
+      "a": "I am the FastGPT assistant",
+      "datasetId": "6554684f7f9ed18a39a4d15c",
+      "collectionId": "6556cd795e4b663e770bb66d",
+      "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
+      "sourceId": "6556cd775e4b663e770bb65c",
+      "score": 0.8050316572189331
+    }
   ]
 }
 ```

@@ -8,9 +8,10 @@ const mocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),
   getNanoid: vi.fn(),
   getAppDraftWorkflow: vi.fn(),
-  getAppDraftResourceBaseline: vi.fn(),
+  getAppDraftVersion: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   getWorkflowFinalResponseData: vi.fn(),
+  prepareAppWorkflowResources: vi.fn(),
   prepareWorkflowFileQuery: vi.fn()
 }));
 
@@ -32,7 +33,11 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppDraftWorkflow: mocks.getAppDraftWorkflow,
-  getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
+  getAppDraftVersion: mocks.getAppDraftVersion
+}));
+
+vi.mock('@fastgpt/service/core/app/resource/service', () => ({
+  prepareAppWorkflowResources: mocks.prepareAppWorkflowResources
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', () => ({
@@ -83,7 +88,8 @@ describe('workflow debug API chatId', () => {
       chatConfig: savedChatConfig,
       resources: []
     });
-    mocks.getAppDraftResourceBaseline.mockResolvedValue([]);
+    mocks.getAppDraftVersion.mockResolvedValue({ resources: [] });
+    mocks.prepareAppWorkflowResources.mockResolvedValue([]);
     mocks.getRunningUserInfoByTmbId.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'member-id'

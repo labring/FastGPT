@@ -1,7 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type {
+  JSONSchemaInputType,
+  JSONSchemaOutputType
+} from '@fastgpt/global/core/app/jsonschema';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { PluginTextType } from '@fastgpt/global/core/plugin/type';
 
 const childInputSchema = {
   type: 'object',
@@ -160,10 +170,11 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     overrides: Partial<{
       toolId: string;
       source: string;
-      toolList: { toolId: string; name: string; description: string }[];
-      inputs: any[];
+      toolList: { toolId: string; name: string; description?: string }[];
+      inputs: FlowNodeInputItemType[];
       nodeId: string;
       version: string;
+      metadataLocale: localeType;
     }> = {}
   ) => ({
     toolConfig: {
@@ -175,16 +186,17 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     },
     inputs: overrides.inputs ?? [],
     nodeId: overrides.nodeId ?? 'node-1',
+    metadataLocale: overrides.metadataLocale,
     version: overrides.version
   });
 
   const mockToolDetail = (
     children: Array<{
       id: string;
-      name?: string;
-      description?: string;
-      inputSchema?: any;
-      outputSchema?: any;
+      name?: PluginTextType;
+      description?: PluginTextType;
+      inputSchema?: JSONSchemaInputType;
+      outputSchema?: JSONSchemaOutputType;
     }> = [
       {
         id: 'child-1',
@@ -206,12 +218,46 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     const toolSetNode = makeToolSetNode();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toEqual([]);
     expect(mockGetSystemToolDetail).not.toHaveBeenCalled();
+  });
+
+  it('uses the localized child intro', async () => {
+    const toolSetNode = makeToolSetNode({
+      toolList: [{ toolId: 'child-1', name: '', description: undefined }],
+      metadataLocale: 'zh-CN'
+    });
+    const inputSchema = {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          'x-i18n': { title: { en: 'Query', 'zh-CN': '查询' } }
+        }
+      }
+    };
+    mockToolDetail([
+      {
+        id: 'child-1',
+        name: { en: 'Search', 'zh-CN': '搜索' },
+        description: { en: 'Search summary', 'zh-CN': '搜索简介' },
+        inputSchema,
+        outputSchema: childOutputSchema
+      }
+    ]);
+
+    const result = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode
+    });
+
+    expect(result[0]).toMatchObject({
+      name: '搜索',
+      intro: '搜索简介',
+      inputs: [expect.objectContaining({ key: 'query', label: '查询' })]
+    });
   });
 
   it('should return runtime nodes for selected children', async () => {
@@ -236,8 +282,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(mockGetSystemToolDetail).toHaveBeenCalledWith({
@@ -296,8 +341,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -318,8 +362,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -341,8 +384,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result[0].intro).toBe('  ');
@@ -351,7 +393,14 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
   it('should pass systemInputConfig value to child tool inputs', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: 'Tool1', description: 'Desc1' }],
-      inputs: [{ key: NodeInputKeyEnum.systemInputConfig, value: { apiKey: 'test-key' } }]
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: { apiKey: 'test-key' }
+        }
+      ]
     });
 
     mockToolDetail([
@@ -364,14 +413,13 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
     // The systemInputConfig input should have the parent's value
     const configInput = result[0].inputs.find(
-      (i: any) => i.key === NodeInputKeyEnum.systemInputConfig
+      (input) => input.key === NodeInputKeyEnum.systemInputConfig
     );
     expect(configInput?.value).toEqual({ apiKey: 'test-key' });
   });
@@ -392,12 +440,11 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     const configInput = result[0].inputs.find(
-      (i: any) => i.key === NodeInputKeyEnum.systemInputConfig
+      (input) => input.key === NodeInputKeyEnum.systemInputConfig
     );
     expect(configInput).toBeUndefined();
   });
@@ -436,8 +483,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result[0].inputs).toEqual([]);
@@ -459,8 +505,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(2);
@@ -481,8 +526,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -499,8 +543,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(result).toHaveLength(1);
@@ -515,8 +558,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     mockToolDetail();
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode,
-      lang: 'en'
+      toolSetNode
     });
 
     expect(mockGetSystemToolDetail).toHaveBeenCalledWith({

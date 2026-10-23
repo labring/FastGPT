@@ -1,0 +1,158 @@
+{
+  "name": "@fastgpt/workflow-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./command/apply": {
+      "types": "./dist/command/apply.d.ts",
+      "import": "./dist/command/apply.js"
+    },
+    "./command/applyChangeSet": {
+      "types": "./dist/command/applyChangeSet.d.ts",
+      "import": "./dist/command/applyChangeSet.js"
+    },
+    "./command/mergeChangeSet": {
+      "types": "./dist/command/mergeChangeSet.d.ts",
+      "import": "./dist/command/mergeChangeSet.js"
+    },
+    "./command/type": {
+      "types": "./dist/command/type.d.ts",
+      "import": "./dist/command/type.js"
+    },
+    "./code/io": {
+      "types": "./dist/code/io.d.ts",
+      "import": "./dist/code/io.js"
+    },
+    "./binding/service": {
+      "types": "./dist/binding/service.d.ts",
+      "import": "./dist/binding/service.js"
+    },
+    "./binding/type": {
+      "types": "./dist/binding/type.d.ts",
+      "import": "./dist/binding/type.js"
+    },
+    "./domain/checksum": {
+      "types": "./dist/domain/checksum.d.ts",
+      "import": "./dist/domain/checksum.js"
+    },
+    "./domain/diagnostic": {
+      "types": "./dist/domain/diagnostic.d.ts",
+      "import": "./dist/domain/diagnostic.js"
+    },
+    "./domain/document": {
+      "types": "./dist/domain/document.d.ts",
+      "import": "./dist/domain/document.js"
+    },
+    "./domain/defaults": {
+      "types": "./dist/domain/defaults.d.ts",
+      "import": "./dist/domain/defaults.js"
+    },
+    "./edge/compiler": {
+      "types": "./dist/edge/compiler.d.ts",
+      "import": "./dist/edge/compiler.js"
+    },
+    "./edge/parser": {
+      "types": "./dist/edge/parser.d.ts",
+      "import": "./dist/edge/parser.js"
+    },
+    "./edge/validation": {
+      "types": "./dist/edge/validation.d.ts",
+      "import": "./dist/edge/validation.js"
+    },
+    "./node/removal": {
+      "types": "./dist/node/removal.d.ts",
+      "import": "./dist/node/removal.js"
+    },
+    "./reference/query": {
+      "types": "./dist/reference/query.d.ts",
+      "import": "./dist/reference/query.js"
+    },
+    "./reference/type": {
+      "types": "./dist/reference/type.d.ts",
+      "import": "./dist/reference/type.js"
+    },
+    "./reference/validation": {
+      "types": "./dist/reference/validation.d.ts",
+      "import": "./dist/reference/validation.js"
+    },
+    "./nesting/query": {
+      "types": "./dist/nesting/query.d.ts",
+      "import": "./dist/nesting/query.js"
+    },
+    "./config/automationMeta": {
+      "types": "./dist/config/automationMeta.d.ts",
+      "import": "./dist/config/automationMeta.js"
+    },
+    "./config/descriptor": {
+      "types": "./dist/config/descriptor.d.ts",
+      "import": "./dist/config/descriptor.js"
+    },
+    "./config/type": {
+      "types": "./dist/config/type.d.ts",
+      "import": "./dist/config/type.js"
+    },
+    "./store/compile": {
+      "types": "./dist/store/compile.d.ts",
+      "import": "./dist/store/compile.js"
+    },
+    "./store/decompile": {
+      "types": "./dist/store/decompile.d.ts",
+      "import": "./dist/store/decompile.js"
+    },
+    "./template/descriptor": {
+      "types": "./dist/template/descriptor.d.ts",
+      "import": "./dist/template/descriptor.js"
+    },
+    "./template/defaultValue": {
+      "types": "./dist/template/defaultValue.d.ts",
+      "import": "./dist/template/defaultValue.js"
+    },
+    "./template/instantiate": {
+      "types": "./dist/template/instantiate.d.ts",
+      "import": "./dist/template/instantiate.js"
+    },
+    "./template/provider": {
+      "types": "./dist/template/provider.d.ts",
+      "import": "./dist/template/provider.js"
+    },
+    "./template/type": {
+      "types": "./dist/template/type.d.ts",
+      "import": "./dist/template/type.js"
+    },
+    "./template/valueSchema": {
+      "types": "./dist/template/valueSchema.d.ts",
+      "import": "./dist/template/valueSchema.js"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.js"
+    },
+    "./validation/model": {
+      "types": "./dist/validation/model.d.ts",
+      "import": "./dist/validation/model.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run --config ./vitest.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastgpt/global": "workspace:*",
+    "crypto-js": "4.2.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "4.2.2",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

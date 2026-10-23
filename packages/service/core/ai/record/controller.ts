@@ -8,7 +8,6 @@ export const createLLMRequestId = () => {
 };
 
 const base64OmittedPlaceholder = '[base64 omitted]';
-const base64LikeKeySet = new Set(['base64', 'data']);
 const fullBase64Regex = /^[A-Za-z0-9+/=_-]+$/;
 const dataUrlPrefix = 'data:';
 const base64UrlMarker = ';base64,';
@@ -33,47 +32,62 @@ const sanitizeDataUrlBase64 = (value: string) => {
   return `${value.slice(0, markerIndex + base64UrlMarker.length)}${base64OmittedPlaceholder}`;
 };
 
-const sanitizeString = (value: string, key?: string) => {
+const sanitizeString = (value: string) => {
   const sanitizedDataUrl = sanitizeDataUrlBase64(value);
-
-  if (base64LikeKeySet.has(key?.toLowerCase() ?? '') && isBase64LikeString(sanitizedDataUrl)) {
-    return base64OmittedPlaceholder;
-  }
-
   return isBase64LikeString(sanitizedDataUrl) ? base64OmittedPlaceholder : sanitizedDataUrl;
 };
 
 /**
- * 清洗 LLM 请求记录快照中的 base64 内容，避免大文件或图片音频原文落库。
- * 只用于记录入库前的副本，不参与真实模型请求、token 统计或响应解析。
+ * 清洗 LLM 日志与请求记录快照中的 base64，并显式保留 Error 的不可枚举诊断属性。
+ * 只处理快照副本，不参与真实模型请求、token 统计或响应解析。
+ *
+ * omitErrorStack: 请求记录会通过接口展示给团队成员，写入时不保存调用栈（含服务端代码路径），
+ * 保留 name、message、code 和 cause 等诊断属性；日志场景默认保留 stack 便于排查。
  */
-export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T => {
-  if (typeof payload === 'string') {
-    return sanitizeString(payload, key) as T;
-  }
+export const sanitizeLLMRequestRecordPayload = <T>(
+  payload: T,
+  { omitErrorStack = false }: { omitErrorStack?: boolean } = {}
+): T => {
+  /** 整个快照共享同一组日志/入库选项，避免嵌套 cause 漏清理。 */
+  const sanitize = (value: unknown): unknown => {
+    if (typeof value === 'string') {
+      return sanitizeString(value);
+    }
 
-  if (!payload || typeof payload !== 'object') {
-    return payload;
-  }
+    if (!value || typeof value !== 'object') {
+      return value;
+    }
 
-  if (payload instanceof Date) {
-    return payload;
-  }
+    if (value instanceof Error) {
+      // 先排除可能可枚举的 stack，再按使用场景补回；其余不可枚举诊断属性显式展开。
+      const { stack, ...enumerableFields } = value;
+      return sanitize({
+        ...enumerableFields,
+        name: value.name,
+        message: value.message,
+        ...(!omitErrorStack && stack !== undefined && { stack }),
+        ...(value.cause !== undefined && { cause: value.cause })
+      });
+    }
 
-  if (Buffer.isBuffer(payload)) {
-    return base64OmittedPlaceholder as T;
-  }
+    if (value instanceof Date) {
+      return value;
+    }
 
-  if (Array.isArray(payload)) {
-    return payload.map((item) => sanitizeLLMRequestRecordPayload(item)) as T;
-  }
+    if (Buffer.isBuffer(value)) {
+      return base64OmittedPlaceholder;
+    }
 
-  return Object.fromEntries(
-    Object.entries(payload).map(([entryKey, entryValue]) => [
-      entryKey,
-      sanitizeLLMRequestRecordPayload(entryValue, entryKey)
-    ])
-  ) as T;
+    if (Array.isArray(value)) {
+      return value.map(sanitize);
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([entryKey, entryValue]) => [entryKey, sanitize(entryValue)])
+    );
+  };
+
+  return sanitize(payload) as T;
 };
 
 /**
@@ -90,8 +104,10 @@ export const saveLLMRequestRecord = async (params: {
     await MongoLLMRequestRecord.create({
       teamId: params.teamId,
       requestId: params.requestId,
-      body: sanitizeLLMRequestRecordPayload(params.body),
-      response: sanitizeLLMRequestRecordPayload(params.response)
+      body: sanitizeLLMRequestRecordPayload(params.body, { omitErrorStack: true }),
+      response: sanitizeLLMRequestRecordPayload(params.response, {
+        omitErrorStack: true
+      })
     });
   } catch (error) {
     // 记录错误但不影响主流程

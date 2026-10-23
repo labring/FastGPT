@@ -9,10 +9,8 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getSelectedInputRenderType,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
@@ -114,8 +112,11 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     [item.value, handleChange]
   );
 
+  const { key: inputKey, ...inputProps } = item;
+
   return (
     <InputRender
+      key={inputKey}
       inputType={inputType}
       value={item.value}
       onChange={handleChange}
@@ -123,7 +124,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       variableLabels={editorVariables}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       menuPlacement={menuPlacement}
-      {...item}
+      {...inputProps}
     />
   );
 };

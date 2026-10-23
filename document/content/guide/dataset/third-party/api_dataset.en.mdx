@@ -5,9 +5,9 @@ description: Introduction and usage of the FastGPT API File Library
 
 import { Alert } from '@/components/docs/Alert';
 
-|                         |                         |
-| ----------------------- | ----------------------- |
-| ![](/imgs/image-18.png) | ![](/imgs/image-19.png) |
+|                                                             |                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------ |
+| ![API File Library connection settings](/imgs/image-18.png) | ![Browse files from the connected API library](/imgs/image-19.png) |
 
 ## Background
 
@@ -58,8 +58,10 @@ type FileListItem = {
   <Tab value="Request Example" >
 
 <Alert icon=" " context="success">
-  - parentId - Parent ID, optional. If not provided or null, the configured basePath will be used as
-  the root directory - searchKey - Search keyword, optional
+
+- `parentId`: Optional parent ID. When omitted or `null`, the configured `basePath` is used as the root directory.
+- `searchKey`: Optional search keyword.
+
 </Alert>
 
 ```bash
@@ -204,8 +206,14 @@ curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
 ```
 
 <Alert icon=" " context="success">
-  - id - File ID - name - File name - parentId - Parent ID, null indicates root directory - type -
-  File type, file or folder - updateTime - Update time - createTime - Creation time
+
+- `id`: File ID.
+- `name`: File name.
+- `parentId`: Parent ID; `null` indicates the root directory.
+- `type`: `file` or `folder`.
+- `updateTime`: Last update time.
+- `createTime`: Creation time.
+
 </Alert>
 
   </Tab>

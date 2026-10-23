@@ -172,7 +172,11 @@ describe('llmCompletionsBodyFormat', () => {
                   toolDescription: 'Query for model',
                   'x-tool-description': 'HTTP query',
                   isToolParam: true,
-                  isSecret: true
+                  isSecret: true,
+                  'x-i18n': {
+                    title: { en: 'Query', 'zh-CN': '查询' },
+                    description: { en: 'Search text', 'zh-CN': '检索文本' }
+                  }
                 },
                 filters: {
                   type: 'array',
@@ -186,7 +190,10 @@ describe('llmCompletionsBodyFormat', () => {
                     },
                     toolDescription: 'Filter object'
                   }
-                }
+                },
+                constructor: { type: 'string' },
+                toString: { type: 'string' },
+                hasOwnProperty: { type: 'string' }
               }
             }
           }
@@ -218,7 +225,10 @@ describe('llmCompletionsBodyFormat', () => {
                     }
                   }
                 }
-              }
+              },
+              constructor: { type: 'string' },
+              toString: { type: 'string' },
+              hasOwnProperty: { type: 'string' }
             }
           }
         }

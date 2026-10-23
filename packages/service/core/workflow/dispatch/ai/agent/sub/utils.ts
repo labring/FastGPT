@@ -24,13 +24,11 @@ import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 export const getSubapps = async ({
   tmbId,
   tools,
-  lang,
-  dynamic = false
+  lang
 }: {
   tmbId: string;
   tools: AgentToolType[];
   lang?: localeType;
-  dynamic?: boolean;
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -44,8 +42,7 @@ export const getSubapps = async ({
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
-    lang,
-    dynamic
+    lang
   });
   formatTools.forEach((tool) => {
     if (tool.promptReference) {
@@ -63,7 +60,6 @@ export const getSubapps = async ({
       name: tool.name,
       avatar: tool.avatar,
       version: tool.version,
-      dynamic: tool.dynamic,
       toolConfig: tool.toolConfig,
       inputs: tool.inputs,
       agentGeneratedInputKeys: tool.agentGeneratedInputKeys,
@@ -97,7 +93,6 @@ export type ToolDispatchContext = Pick<
   | 'retainDatasetCite'
   | 'maxRunTimes'
   | 'workflowDispatchDeep'
-  | 'dynamicDataset'
   | 'params'
   | 'query'
   | 'stream'
@@ -245,7 +240,6 @@ export const getExecuteTool = ({
               version: tool.version,
               toolConfig: tool.toolConfig
             },
-            dynamic: tool.dynamic,
             params: requestParams,
             runningUserInfo,
             runningAppInfo,
@@ -282,7 +276,6 @@ export const getExecuteTool = ({
               id: tool.id,
               version: tool.version
             },
-            dynamic: tool.dynamic,
             userChatInput: userChatInput,
             customAppVariables: params,
             checkIsStopping,
@@ -358,7 +351,6 @@ export const getExecuteTool = ({
               version: tool.version,
               ...(systemToolId ? { systemToolId } : {})
             },
-            dynamic: tool.dynamic,
             userChatInput: '',
             customAppVariables,
             checkIsStopping,

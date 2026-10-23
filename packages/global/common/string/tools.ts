@@ -32,12 +32,13 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* replace sensitive text */
+/** 隐藏错误文本中的 URL 地址和 ns- 标识，保留 JSON 字段及转义边界。 */
 export const replaceSensitiveText = (text: string) => {
-  // 1. http link
-  text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
-  // 2. nx-xxx 全部替换成xxx
-  text = text.replace(/ns-[\w-]+/g, 'xxx');
+  // 1. URL 脱敏保留 JSON 的引号和转义边界，避免吞掉同一行后续的错误字段。
+  text = text.replace(/(?<=https?:\/\/)[^\s"\\]+/g, 'xxx');
+  // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
+  // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
+  text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');
 
   return text;
 };
@@ -154,14 +155,9 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
 
-/*
-  Parse file extension from url
-  Test：
-  1. https://xxx.com/file.pdf?token=123
-    => pdf
-  2. https://xxx.com/file.pdf
-    => pdf
-*/
+/**
+ * 优先从查询参数中的文件名提取小写扩展名，无后缀或 URL 解析失败时回退到原始链接。
+ */
 export const parseFileExtensionFromUrl = (url = '') => {
   // Prefer explicit filename in query params for proxy links:
   // e.g. /api/system/file/d/<alias>, or a legacy proxy URL carrying filename in query.
@@ -170,7 +166,8 @@ export const parseFileExtensionFromUrl = (url = '') => {
     const queryFilename =
       parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
     if (queryFilename) {
-      const extFromQuery = path.extname(decodeURIComponent(queryFilename));
+      // URLSearchParams 已完成解码，保留文件名中的字面量 %xx。
+      const extFromQuery = path.extname(queryFilename);
       if (extFromQuery.startsWith('.')) {
         return extFromQuery.slice(1).toLowerCase();
       }

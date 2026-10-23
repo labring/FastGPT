@@ -21,7 +21,11 @@ import {
   UpdateCollectionCollaboratorBodySchema,
   UpdateCollectionCollaboratorResponseSchema
 } from '../../../openapi/core/dataset/collection/api';
-import { DatasetItemSchema, DatasetListItemSchema } from '../../../core/dataset/type';
+import {
+  DatasetItemSchema,
+  DatasetListItemSchema,
+  DatasetSchema
+} from '../../../core/dataset/type';
 
 const objectId = '68ad85a7463006c963799a05';
 
@@ -37,6 +41,16 @@ const expectedPaths = {
 } as const;
 
 describe('Dataset OpenAPI contracts', () => {
+  it('keeps ancestor paths in storage types only and documents folder access modes', () => {
+    expect(DatasetSchema.shape.ancestorIds).toBeDefined();
+    expect(DatasetItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(DatasetListItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(DatasetListItemSchema.shape.folderAccessMode).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/core/dataset/folder/create']?.post?.responses?.[200]?.content
+    ).toBeUndefined();
+  });
+
   it.each([undefined, null])('defaults a missing or null dataset avatar (%s)', (avatar) => {
     expect(DatasetItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');
     expect(DatasetListItemSchema.shape.avatar.parse(avatar)).toBe('/icon/logo.svg');

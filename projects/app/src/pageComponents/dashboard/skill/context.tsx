@@ -212,18 +212,37 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const { data: folderDetail, run: refetchFolderDetail } = useRequest(
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const {
+    data: requestedFolderDetail,
+    run: refetchFolderDetail,
+    loading: isLoadingFolderDetail
+  } = useRequest(
     () => {
-      if (!parentId) return Promise.resolve(undefined);
+      if (!parentId || currentFolderPath?.folderAccessMode !== 'read') {
+        return Promise.resolve(undefined);
+      }
       return getSkillDetail({ skillId: parentId }).then((res) => ({
         permission: res.permission
       }));
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: !parentId || currentFolderPath?.folderAccessMode === 'read',
+      refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
     }
   );
+  const folderDetail = (() => {
+    if (
+      !parentId ||
+      currentFolderPath?.folderAccessMode !== 'read' ||
+      isLoadingFolderDetail ||
+      requestedFolderDetail === undefined
+    ) {
+      return undefined;
+    }
+    return requestedFolderDetail;
+  })();
 
   const { t } = useTranslation();
   const [isBatchMode, setIsBatchMode] = useState(false);

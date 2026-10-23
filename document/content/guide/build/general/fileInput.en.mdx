@@ -29,9 +29,9 @@ In Workflows, find the `File Input` option in the system configuration panel and
 
 There are many ways to use files in Workflows. The simplest approach, shown below, connects document parsing via tool calling — achieving the same result as Basic Mode.
 
-|                        |                        |
-| ---------------------- | ---------------------- |
-| ![](/imgs/image-5.png) | ![](/imgs/image-6.png) |
+|                                                                     |                                                                 |
+| ------------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Connect Document Parsing through tool calling](/imgs/image-5.png) | ![Document Parsing tool input configuration](/imgs/image-6.png) |
 
 You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other nodes to build a document processing pipeline.
 
@@ -64,7 +64,7 @@ Uploaded files are stored as URLs — parsed document content is not stored.
 
 ### How are images, audio, and video handled?
 
-The document parsing node does not parse multimodal files such as images, audio, or video. These files should be handled by an LLM that supports the corresponding multimodal capability, with multimodal recognition enabled in [AI Settings](./ai_settings).
+The document parsing node does not parse multimodal files such as images, audio, or video. These files should be handled by an LLM that supports the corresponding multimodal capability, with multimodal recognition enabled in [AI Settings](/en/guide/build/general/ai_settings).
 
 In practice, file input has two different handling paths:
 

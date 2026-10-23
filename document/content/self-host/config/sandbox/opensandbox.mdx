@@ -77,6 +77,9 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
+# Kubernetes 运行态超卖倍数（CPU / 内存独立）：requests = limits / 对应值（1 = 该维度不超卖）
+AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
+AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### 运行态镜像与 CPU 架构
@@ -136,15 +139,21 @@ AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 
 ### 资源与生命周期
 
-| 变量                                  | 默认值     | 说明                                       |
-| ------------------------------------- | ---------- | ------------------------------------------ |
-| `AGENT_SANDBOX_CPU_COUNT`             | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。       |
-| `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。  |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | 沙盒存储容量，单位 Gi。                    |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | IDE Agent WebSocket 单消息大小上限。       |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | IDE Agent WebSocket 单帧大小上限。         |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。 |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。   |
+超卖配置仅在 `AGENT_SANDBOX_PROVIDER=opensandbox`、`AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes` 且 OpenSandbox Server 版本不低于 `v0.2.1` 时生效。CPU 和内存倍率必须为不小于 `1` 的有限数值；CPU requests 向下取整到毫核，最低为 `1m`，内存 requests 向下取整到 MiB，最低为 `1Mi`，limits 保持不变。
+
+修改倍率后，已启动的沙盒保持原资源配置；后续创建的沙盒会自动使用当前倍率，包括删除或归档后重新创建的沙盒。连接或恢复已有沙盒不会重新应用倍率。
+
+| 变量                                     | 默认值     | 说明                                                                                                                          |
+| ---------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | 单个 Agent Sandbox 的 CPU 核数上限。                                                                                          |
+| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | 单个 Agent Sandbox 的内存上限，单位 MiB。                                                                                     |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | 沙盒存储容量，单位 Gi。                                                                                                       |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes 运行态 CPU 超卖倍数：CPU requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes 运行态内存超卖倍数：内存 requests = limits / 该值；大于 1 时创建 Burstable QoS Pod。仅 opensandbox provider 生效。 |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | IDE Agent WebSocket 单消息大小上限。                                                                                          |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | IDE Agent WebSocket 单帧大小上限。                                                                                            |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | 运行中的沙盒持续未活跃多少分钟后自动暂停。                                                                                    |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | 已暂停的沙盒持续未活跃多少天后自动归档。                                                                                      |
 
 ## 常见问题
 

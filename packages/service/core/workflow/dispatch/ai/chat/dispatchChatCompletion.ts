@@ -4,13 +4,13 @@ import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
@@ -67,8 +67,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const modelConstantsData = modelHandle.getLLMModelData({ modelId, model });
+  const modelConstantsData = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
 
   try {
     aiChatVision = modelConstantsData.config.vision && aiChatVision;

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { ParentIdSchema } from '../../../common/parentFolder/type';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../../common/parentFolder/type';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
@@ -251,6 +251,11 @@ export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
   withAppCount: BoolSchema.optional().meta({
     example: true,
     description: '是否返回被正式应用引用的数量'
+  }),
+  withFileCount: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否计算并返回知识库文件总数，默认不计算；统计所有层级的非目录集合，不按文件权限过滤'
   })
 }).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
@@ -286,6 +291,9 @@ export const DatasetPathItemSchema = z.object({
   parentName: z.string().meta({
     example: '产品文档',
     description: '节点名称'
+  }),
+  folderAccessMode: FolderAccessModeSchema.optional().meta({
+    description: '当前目录权限模式；navigate 表示仅可通过可读后代浏览'
   })
 });
 export const GetDatasetPathsResponseSchema = z.array(DatasetPathItemSchema);

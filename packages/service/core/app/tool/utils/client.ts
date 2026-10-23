@@ -1,6 +1,10 @@
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import {
+  parseI18nString,
+  selectPluginText,
+  selectReadmeUrl
+} from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
@@ -29,11 +33,11 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType,
+  ToolReferenceNodeInputTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
-import { ToolReferenceNodeInputTypeSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   FlowNodeTemplateTypeSchema,
   type FlowNodeTemplateType,
@@ -43,9 +47,9 @@ import {
   pluginData2FlowNodeIO,
   toolSetData2FlowNodeIO,
   toolData2FlowNodeIO,
-  appData2FlowNodeIO,
-  projectExternalVariableInput
-} from '@fastgpt/global/core/workflow/utils';
+  appData2FlowNodeIO
+} from '@fastgpt/global/common/app/workflow';
+import { projectExternalVariableInput } from '@fastgpt/global/common/workflow/input';
 import { Types } from 'mongoose';
 import { getHTTPToolList } from '../../http';
 import { getMCPChildren } from '../../mcp';
@@ -144,12 +148,13 @@ export async function getClientSystemToolPreviewNode({
     source: runtimeSource
   });
   const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
-  const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+  const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema, lang });
   const schemaInputs = jsonSchema2NodeInput({
     jsonSchema: toolDetail.inputSchema,
-    schemaType: 'systemTool'
+    schemaType: 'systemTool',
+    lang
   });
-  const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
+  const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema, lang });
   const isWorkflowTool = !!toolDetail.associatedPluginId;
 
   const inputs = [
@@ -181,10 +186,11 @@ export async function getClientSystemToolPreviewNode({
         ? FlowNodeTypeEnum.toolSet
         : FlowNodeTypeEnum.tool,
     avatar: toolDetail.avatar,
-    name: toolDetail.name,
-    intro: toolDetail.intro,
+    name: selectPluginText(toolDetail.name, lang),
+    intro: selectPluginText(toolDetail.intro, lang),
+    metadataLocale: lang,
     courseUrl: toolDetail.courseUrl,
-    readmeUrl: toolDetail.readmeUrl,
+    readmeUrl: selectReadmeUrl(toolDetail, lang),
     userGuide: toolDetail.userGuide ?? undefined,
     showStatus: true,
     isTool: true,
@@ -203,7 +209,11 @@ export async function getClientSystemToolPreviewNode({
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: displayStatus,
     // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
-    inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
+    // 与普通工作流工具保持一致的 userChatInput 处理，避免该入参被固化为手动输入而误显示引用数组。
+    inputs: initToolInputsTypeByDefaultMode(inputs, {
+      forceDefaultMode: true,
+      allowUserChatInputAgentGenerated: true
+    }),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -222,8 +232,8 @@ export async function getClientSystemToolPreviewNode({
                     ...(toolConfigSource ? { source: toolConfigSource } : {}),
                     toolList:
                       toolDetail.children?.map((child) => ({
-                        description: child.description ?? '',
-                        name: child.name,
+                        description: selectPluginText(child.description, lang),
+                        name: selectPluginText(child.name, lang),
                         toolId: child.id
                       })) ?? []
                   }

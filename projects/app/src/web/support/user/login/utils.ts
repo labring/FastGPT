@@ -1,4 +1,4 @@
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type { OAuthAccountVerificationProvider } from '@fastgpt/global/support/user/account/verification/type';
 import {
   isSsoPasswordPolicyEnabled,
@@ -83,12 +83,12 @@ export const getLoginMethodItems = ({
 }: {
   mode: 'selection' | 'alternatives';
   pageType?: `${LoginPageTypeEnum}`;
-  feConfigs: FastGPTFeConfigsType;
+  feConfigs: Pick<NonNullable<GetSystemInitDataResponse['feConfigs']>, 'sso' | 'oauth'>;
   labels: LoginMethodLabels;
 }): LoginMethodItem[] => {
   const result: LoginMethodItem[] = [];
 
-  if (feConfigs.sso?.url) {
+  if (feConfigs.sso?.enabled) {
     result.push({
       id: 'oauth:sso',
       type: 'oauth',

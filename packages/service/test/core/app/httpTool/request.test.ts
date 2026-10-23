@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildOpenAPIHttpRequest } from '@fastgpt/service/core/app/httpTool/request';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
-import {
-  getHTTPToolRuntimeSchemas,
-  pathData2ToolList
-} from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { pathData2ToolList } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { axiosWithoutSSRF } from '@fastgpt/service/common/api/axios';
 
 const makeSchema = (method = 'post') =>
@@ -217,19 +213,6 @@ describe('buildOpenAPIHttpRequest', () => {
       body: undefined,
       headers: { 'X-Tags': 'a,b' }
     });
-  });
-
-  it('keeps mixed query/path/header fields valid even with a strict body schema', async () => {
-    const { pathData } = await str2OpenApiSchema(makeSchema());
-    const [tool] = await pathData2ToolList(pathData);
-    const { requestSchema } = getHTTPToolRuntimeSchemas(tool);
-    expect(() =>
-      assertToolRuntimeParams({
-        jsonSchema: requestSchema,
-        params: { id: '1', limit: 0, 'X-Trace': 'trace', profile: { name: 'test' }, tags: [] }
-      })
-    ).not.toThrow();
-    expect(tool.inputSchema?.properties?.tags.items).toEqual({ type: 'string' });
   });
 
   it('skips unused optional cookies and sends repeated query keys without Axios array brackets', async () => {

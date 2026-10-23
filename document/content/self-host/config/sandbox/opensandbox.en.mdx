@@ -18,7 +18,7 @@ The latest Docker Compose file already includes OpenSandbox Server, Volume Manag
 
 [View the latest docker-compose.yml (PgVector, global registries)](/deploy/docker/main/global/docker-compose.pg.yml)
 
-See [Deploy with Docker Compose](../../deploy/docker.en.mdx) for other vector databases and China Mainland registries.
+See [Deploy with Docker Compose](/en/self-host/deploy/docker) for other vector databases and China Mainland registries.
 
 ## Environment Variables
 
@@ -78,6 +78,9 @@ AGENT_SANDBOX_PREVIEW_PROXY_URL=https://sandbox-proxy.example.com
 AGENT_SANDBOX_CPU_COUNT=1
 AGENT_SANDBOX_MEMORY_MIB=2048
 AGENT_SANDBOX_STORAGE_SIZE_GI=1
+# Kubernetes runtime overcommit factors (cpu / memory): requests = limits / factor (1 = no overcommit)
+AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR=1
+AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR=1
 ```
 
 ### Runtime Images and CPU Architectures
@@ -138,15 +141,21 @@ FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.li
 
 ### Resource and Lifecycle Settings
 
-| Variable                              | Default    | Description                                             |
-| ------------------------------------- | ---------- | ------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`             | `1`        | Maximum CPU count for each Agent Sandbox.               |
-| `AGENT_SANDBOX_MEMORY_MIB`            | `2048`     | Maximum memory for each Agent Sandbox, in MiB.          |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`       | `1`        | Sandbox storage capacity, in Gi.                        |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`  | `67108864` | Maximum IDE Agent WebSocket message size.               |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`    | `16777216` | Maximum IDE Agent WebSocket frame size.                 |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`       | `60`       | Inactive minutes before a running sandbox is suspended. |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `7`        | Inactive days before a suspended sandbox is archived.   |
+Overcommit settings apply only when `AGENT_SANDBOX_PROVIDER=opensandbox`, `AGENT_SANDBOX_OPENSANDBOX_RUNTIME=kubernetes`, and OpenSandbox Server is `v0.2.1` or later. CPU and memory factors must be finite numbers greater than or equal to `1`. CPU requests are rounded down to millicores with a minimum of `1m`; memory requests are rounded down to MiB with a minimum of `1Mi`. Limits stay unchanged.
+
+After you change the factors, running sandboxes keep their existing resource settings. Newly created sandboxes automatically use the current factors, including sandboxes recreated after deletion or archival. Connecting to or resuming an existing sandbox does not reapply the factors.
+
+| Variable                                 | Default    | Description                                                                                                                                                                |
+| ---------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                | `1`        | Maximum CPU count for each Agent Sandbox.                                                                                                                                  |
+| `AGENT_SANDBOX_MEMORY_MIB`               | `2048`     | Maximum memory for each Agent Sandbox, in MiB.                                                                                                                             |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`          | `1`        | Sandbox storage capacity, in Gi.                                                                                                                                           |
+| `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider.       |
+| `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`     | `67108864` | Maximum IDE Agent WebSocket message size.                                                                                                                                  |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`       | `16777216` | Maximum IDE Agent WebSocket frame size.                                                                                                                                    |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`          | `60`       | Inactive minutes before a running sandbox is suspended.                                                                                                                    |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`    | `7`        | Inactive days before a suspended sandbox is archived.                                                                                                                      |
 
 ## FAQ
 

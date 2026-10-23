@@ -59,7 +59,7 @@ For an existing Milvus deployment, verify that the old vector data is still avai
 - If the old Milvus `modeldata` collection exists and contains data, call `GET /api/admin/4162/milvus` to merge the old vectors with index text from MongoDB into `modeldata_v2`. This does not regenerate embeddings.
 - No action is required when using PG, OceanBase, SeekDB, or openGauss. Full-text search continues to use MongoDB `$text`.
 
-Follow [Milvus BM25 full-text search configuration and migration](/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
+Follow [Milvus BM25 full-text search configuration and migration](/en/self-host/milvus-bm25) for backups, the Milvus image upgrade, dry runs, resumable migration, validation, old-collection cleanup, and rollback.
 
 ## 🚀 New
 

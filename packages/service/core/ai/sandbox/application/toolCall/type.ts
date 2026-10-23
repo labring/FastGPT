@@ -6,6 +6,12 @@
 import type { z } from 'zod';
 import type { SandboxClient } from '../runtime/client';
 
+/** 工具执行前的业务校验；返回拒绝原因时不访问沙箱。 */
+export type SandboxToolCallValidator = (params: {
+  toolName: string;
+  args: string;
+}) => string | undefined;
+
 type ToolExecuteContext<P> = {
   sandboxInstance: SandboxClient;
   params: P;

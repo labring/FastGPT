@@ -25,9 +25,14 @@ export function MarkdownImgRenderer(props: any) {
 }
 
 export function MarkdownCodeRenderer(props: any) {
-  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } = useContext(
-    MarkdownRendererRuntimeContext
-  );
+  const {
+    showAnimation,
+    autoPreviewHtmlCodeBlock,
+    markdownClassName,
+    onSendQuestion,
+    onEditQuestion,
+    onQuickReplyClick
+  } = useContext(MarkdownRendererRuntimeContext);
 
   return (
     <Code
@@ -35,14 +40,16 @@ export function MarkdownCodeRenderer(props: any) {
       showAnimation={showAnimation}
       autoPreviewHtmlCodeBlock={autoPreviewHtmlCodeBlock}
       markdownClassName={markdownClassName}
+      onSendQuestion={onSendQuestion}
+      onEditQuestion={onEditQuestion}
+      onQuickReplyClick={onQuickReplyClick}
     />
   );
 }
 
 export function MarkdownLinkRenderer(props: any) {
-  const { showAnimation, chatAuthData, allowedCitationIds, onOpenCiteModal } = useContext(
-    MarkdownRendererRuntimeContext
-  );
+  const { showAnimation, chatAuthData, allowedCitationIds, onOpenCiteModal, onSendQuestion } =
+    useContext(MarkdownRendererRuntimeContext);
 
   return (
     <A
@@ -51,6 +58,7 @@ export function MarkdownLinkRenderer(props: any) {
       chatAuthData={chatAuthData}
       allowedCitationIds={allowedCitationIds}
       onOpenCiteModal={onOpenCiteModal}
+      onSendQuestion={onSendQuestion}
     />
   );
 }

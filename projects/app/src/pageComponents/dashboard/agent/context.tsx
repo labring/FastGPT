@@ -253,21 +253,47 @@ const AppListContextProvider = ({
       refreshDeps: [parentId]
     }
   );
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const canReadCurrentFolder = !parentId || currentFolderPath?.folderAccessMode === 'read';
 
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
+  const {
+    data: requestedFolderDetail,
+    error: folderDetailError,
+    loading: isLoadingFolderDetail,
+    runAsync: refetchFolderDetail
+  } = useRequest(
     () => {
       if (parentId) return getAppDetailById(parentId);
       return Promise.resolve(null);
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: canReadCurrentFolder,
+      refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
     }
   );
+  // 仅真实可读目录请求详情；导航目录只展示路径和子资源，不请求无权读取的目录详情。
+  const folderDetail = (() => {
+    if (!parentId) return null;
+    if (currentFolderPath?.folderAccessMode === 'navigate') return null;
+    if (
+      currentFolderPath?.folderAccessMode !== 'read' ||
+      isLoadingFolderDetail ||
+      folderDetailError ||
+      requestedFolderDetail?._id !== parentId
+    ) {
+      return undefined;
+    }
+    return requestedFolderDetail;
+  })();
 
   const { runAsync: onUpdateApp } = useRequest((id: string, data: UpdateAppBodyType) =>
     putAppById(id, data).then(async (res) => {
-      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
+      // ready=false 的详情请求会让 ahooks runAsync 返回永不完成的 Promise，导航目录下不能刷新它。
+      const refreshFolderDetail = canReadCurrentFolder
+        ? refetchFolderDetail()
+        : Promise.resolve(null);
+      await Promise.all([refreshFolderDetail, refetchPaths(), loadMyApps()]);
       return res;
     })
   );

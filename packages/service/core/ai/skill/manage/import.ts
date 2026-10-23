@@ -42,7 +42,7 @@ export async function importSkill({
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
 
   const newSkill = new MongoAgentSkills({
-    parentId: parentId ?? null,
+    parentId: parentId || null,
     type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
     name: skill.name,

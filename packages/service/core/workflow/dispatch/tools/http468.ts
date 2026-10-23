@@ -1,4 +1,3 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   contentTypeMap,
   ContentTypes,
@@ -86,7 +85,7 @@ type HttpResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.errorText]: string; //未使用，仅作类型。
     [NodeOutputKeyEnum.error]: string; // 适配字段
-    [NodeOutputKeyEnum.httpRawError]?: ReturnType<typeof formatHttpError>;
+    [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
   }
 >;
 
@@ -318,12 +317,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
     });
 
-    const errText = getErrText(error);
-    const errObj = formatHttpError(error);
+    const { rawText, ...errObj } = formatHttpError(error);
     return getNodeErrResponse({
-      error: errText,
+      error: rawText,
       customErr: {
-        [NodeOutputKeyEnum.error]: errText,
+        [NodeOutputKeyEnum.error]: rawText,
         [NodeOutputKeyEnum.httpRawError]: errObj
       },
       responseData: {

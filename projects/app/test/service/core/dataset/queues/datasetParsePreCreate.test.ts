@@ -18,6 +18,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { TrainingLeaseLostError } from '@fastgpt/service/core/dataset/training/service';
 import { serviceEnv } from '@fastgpt/service/env';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAiPointsAndLock } from '@/service/core/dataset/queues/utils';
 import { getRootUser } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -149,6 +150,22 @@ describe('datasetParseQueue creates index-ready data', () => {
       lockTime: BLOCKED_LOCK_TIME
     });
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+  });
+
+  /** 余额不足只跳过当前任务，锁定交给下一轮领取时的起始校验，避免重复锁团队任务。 */
+  it('skips an AI points failure without locking the task', async () => {
+    const { task, collection } = await createTask();
+    vi.mocked(checkDatasetIndexLimit).mockRejectedValueOnce(TeamErrEnum.aiPointsNotEnough);
+    await datasetParseQueue();
+
+    const saved = await MongoDatasetTraining.findById(task._id).lean();
+    expect(saved).toMatchObject({ retryCount: 5 });
+    expect(saved?.errorMsg).toBeUndefined();
+    // 任务保持被本次领取租住的状态，而非 BLOCKED_LOCK_TIME。
+    expect(new Date(saved!.lockTime).getTime()).toBeGreaterThan(Date.now() - 60_000);
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+    // 只有任务开始时的团队校验，catch 分支不再重复锁定。
+    expect(checkTeamAiPointsAndLock).toHaveBeenCalledTimes(1);
   });
 
   /** CT-01：解析执行前数据列表不含本次分块。 */

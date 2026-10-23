@@ -20,14 +20,12 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '@fastgpt/service/support/permission/app/resource';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
@@ -197,54 +195,58 @@ describe('beforeUpdateAppFormat', () => {
       appId: 'systemTool-weather',
       versionId: undefined,
       source: 'teamId:team-1',
+      lang: 'en',
       teamId: 'team-1'
     });
   });
 
-  it('保存前移除知识库选择项的编辑态标记并保留展示快照字段', async () => {
-    const nodes = [
-      {
-        nodeId: 'dataset-node',
-        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-        name: 'Dataset',
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSelectList,
-            label: 'Datasets',
-            renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.selectDataset,
-            value: [
-              {
-                datasetId: 'dataset-1',
-                avatar: 'avatar.png',
-                name: 'Deleted Dataset',
-                vectorModel: {
-                  model: 'text-embedding'
-                },
-                isDeleted: true
-              }
-            ]
-          }
-        ],
-        outputs: []
-      } as StoreNodeItemType
-    ];
+  it.each([FlowNodeTypeEnum.datasetSearchNode, FlowNodeTypeEnum.agent])(
+    '保存 %s 知识库选择项时仅保留 datasetId',
+    async (flowNodeType) => {
+      const nodes = [
+        {
+          nodeId: 'dataset-node',
+          flowNodeType,
+          name: 'Dataset',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectDataset,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.selectDataset,
+              value: [
+                {
+                  datasetId: 'dataset-1',
+                  avatar: 'avatar.png',
+                  name: 'Deleted Dataset',
+                  vectorModel: {
+                    modelId: 'embedding-model-id',
+                    model: 'text-embedding'
+                  },
+                  error: 'resource_missing',
+                  isDeleted: true
+                }
+              ]
+            }
+          ],
+          outputs: []
+        } as StoreNodeItemType
+      ];
 
-    await beforeUpdateAppFormat({ nodes });
+      await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toEqual([
-      {
-        datasetId: 'dataset-1',
-        avatar: 'avatar.png',
-        name: 'Deleted Dataset',
-        vectorModel: {
-          model: 'text-embedding'
+      expect(nodes[0].inputs[0].value).toEqual([
+        {
+          datasetId: 'dataset-1'
         }
-      }
-    ]);
-  });
+      ]);
+    }
+  );
 
-  it('保存前兼容旧版单对象知识库选择项并保留展示快照字段', async () => {
+  it('保存前兼容旧版单对象知识库选择项并过滤展示字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -270,12 +272,7 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        datasetId: 'dataset-legacy',
-        avatar: 'avatar.png',
-        name: 'Legacy Dataset',
-        vectorModel: {
-          model: 'text-embedding'
-        }
+        datasetId: 'dataset-legacy'
       }
     ]);
   });
@@ -314,7 +311,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前移除 Agent datasetParams 中的编辑态标记并保留展示快照字段', async () => {
+  it('保存前过滤 Agent datasetParams 中的知识库展示字段并保留检索参数', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -343,15 +340,10 @@ describe('beforeUpdateAppFormat', () => {
 
     await beforeUpdateAppFormat({ nodes });
 
-    expect(nodes[0].inputs[0].value).toMatchObject({
+    expect(nodes[0].inputs[0].value).toEqual({
       datasets: [
         {
-          datasetId: 'dataset-1',
-          avatar: 'avatar.png',
-          name: 'Deleted Dataset',
-          vectorModel: {
-            model: 'text-embedding'
-          }
+          datasetId: 'dataset-1'
         }
       ],
       similarity: 0.5,

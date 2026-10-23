@@ -1,4 +1,8 @@
-import { GetReferencedAppsQuerySchema } from '../../../openapi/core/app/common/api';
+import {
+  AppListItemSchema,
+  GetReferencedAppsQuerySchema
+} from '../../../openapi/core/app/common/api';
+import { AppSchemaTypeSchema } from '../../../core/app/type';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -29,6 +33,15 @@ import { EvaluationStatusEnum } from '../../../core/app/evaluation/constants';
 const objectId = '68ad85a7463006c963799a05';
 
 describe('App OpenAPI contracts', () => {
+  it('keeps ancestor paths in storage types only and documents folder access modes', () => {
+    expect(AppSchemaTypeSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(AppListItemSchema.shape).not.toHaveProperty('ancestorIds');
+    expect(AppListItemSchema.shape.folderAccessMode).toBeDefined();
+    expect(
+      openAPIDocument.paths?.['/core/app/folder/create']?.post?.responses?.[200]?.content
+    ).toBeUndefined();
+  });
+
   it('registers app ownership transfer and template type APIs', () => {
     expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();

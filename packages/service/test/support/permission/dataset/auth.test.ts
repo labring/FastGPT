@@ -204,6 +204,23 @@ describe('authDatasetCollection', () => {
     expect(mockGetTmbPermission).not.toHaveBeenCalled();
   });
 
+  it('reuses provided tmbInfo without querying getTmbInfoByTmbId', async () => {
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    await expect(
+      authDatasetByTmbId({
+        tmbId: 'tmb-a',
+        datasetId,
+        per: ReadPermissionVal,
+        tmbInfo: {
+          teamId: 'team-a',
+          permission: { isOwner: false } as any
+        }
+      })
+    ).resolves.toMatchObject({ dataset: { permission: { isOwner: true } } });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
+  });
+
   it('rejects a collection whose team does not match its dataset team', async () => {
     mockGetCollectionWithDataset.mockResolvedValue({
       _id: collectionId,

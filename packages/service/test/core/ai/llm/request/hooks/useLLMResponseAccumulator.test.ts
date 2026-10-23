@@ -90,6 +90,26 @@ describe('useLLMResponseAccumulator', () => {
     ]);
   });
 
+  it('should preserve earlier valid tools when the last round has no tools', () => {
+    const accumulator = useLLMResponseAccumulator();
+    accumulator.appendResponse({
+      answerText: 'first',
+      reasoningText: '',
+      finish_reason: 'length',
+      toolCalls: [createToolCall('call_1', 'search', '{}')]
+    });
+    accumulator.appendResponse({
+      answerText: 'second',
+      reasoningText: '',
+      finish_reason: 'tool_calls',
+      toolCalls: []
+    });
+
+    const response = accumulator.getResponse();
+    expect(response.finish_reason).toBe('tool_calls');
+    expect(response.toolCalls).toEqual([createToolCall('call_1', 'search', '{}')]);
+  });
+
   it('should stop continuation when the length response has error', () => {
     const accumulator = useLLMResponseAccumulator();
     const error = new Error('stream failed');

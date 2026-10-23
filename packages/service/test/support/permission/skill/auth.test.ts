@@ -139,4 +139,19 @@ describe('authSkillByTmbId', () => {
     ).rejects.toBe(SkillErrEnum.unExist);
     expect(mockFindOne).toHaveBeenCalledWith({ _id: skillId, deleteTime: null });
   });
+
+  it('reuses provided tmbInfo without querying getTmbInfoByTmbId', async () => {
+    await expect(
+      authSkillByTmbId({
+        tmbId: 'member-tmb',
+        skillId,
+        per: ReadPermissionVal,
+        tmbInfo: {
+          teamId: 'team-a',
+          permission: { isOwner: false } as any
+        }
+      })
+    ).resolves.toMatchObject({ skill: { permission: { hasReadPer: true } } });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
+  });
 });

@@ -20,7 +20,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal

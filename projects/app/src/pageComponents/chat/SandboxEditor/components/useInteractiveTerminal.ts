@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
-import { getSandboxProxyWsUrl, getSandboxTicket } from '../api';
+import { getSandboxTicket } from '../api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { getSandboxTargetId } from '../types';
@@ -106,16 +106,9 @@ export const useInteractiveTerminal = ({
           channel: 'terminal',
           permission: 'write'
         });
-        const ticket = res.ticket;
-
-        if (!ticket) {
-          throw new Error('Ticket not found in response');
-        }
         if (isDestroyed) return;
 
-        const wsUrl = getSandboxProxyWsUrl({ channel: 'terminal', ticket });
-
-        ws = new WebSocket(wsUrl);
+        ws = new WebSocket(res.wsUrl);
         ws.binaryType = 'arraybuffer';
         wsRef.current = ws;
 

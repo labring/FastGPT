@@ -12,6 +12,11 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import {
+  getFolderAncestorIdsFromParentId,
+  rewriteFolderSubtreeAncestorIds
+} from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { serviceEnv } from '@fastgpt/service/env';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   syncChildrenPermission,
@@ -50,12 +55,13 @@ const logDatasetMove = ({
 export const moveDataset = async ({
   req,
   id,
-  parentId
+  parentId: rawParentId
 }: {
   req: ApiRequestProps;
   id: string;
   parentId: ParentIdType;
 }) => {
+  const parentId = rawParentId || null;
   const { dataset, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
@@ -101,16 +107,61 @@ export const moveDataset = async ({
   });
 
   await mongoSessionRun(async (session) => {
-    // 非继承态，仅改parentId 即可。
+    const isPathFolder = dataset.type === DatasetTypeEnum.folder;
+    const ancestorIds = isPathFolder
+      ? await getFolderAncestorIdsFromParentId({
+          parentId: parentId ? String(parentId) : null,
+          findFolder: (parentFolderId) =>
+            MongoDataset.findOne({
+              _id: parentFolderId,
+              teamId: dataset.teamId,
+              type: DatasetTypeEnum.folder
+            })
+              .select('_id parentId')
+              .session(session)
+              .lean()
+        })
+      : undefined;
+    const rewriteDescendantPaths = async () => {
+      if (!isPathFolder || !ancestorIds) return;
+      await rewriteFolderSubtreeAncestorIds({
+        rootId: id,
+        rootAncestorIds: ancestorIds,
+        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+        findChildFolders: (parentIds) =>
+          MongoDataset.find({
+            teamId: dataset.teamId,
+            parentId: { $in: parentIds },
+            type: DatasetTypeEnum.folder
+          })
+            .select('_id parentId')
+            .session(session)
+            .lean(),
+        writeAncestorIds: (updates) =>
+          MongoDataset.bulkWrite(
+            updates.map(({ id: folderId, ancestorIds: childAncestorIds }) => ({
+              updateOne: {
+                filter: { _id: folderId, teamId: dataset.teamId, type: DatasetTypeEnum.folder },
+                update: { $set: { ancestorIds: childAncestorIds } }
+              }
+            })),
+            { session }
+          ).then(() => undefined)
+      });
+    };
+
+    // 路径和 parentId 在同一事务写入；权限非继承分支也必须更新后代路径。
     if (!shouldInheritResourcePermission(dataset.inheritPermission)) {
       await MongoDataset.updateOne(
         { _id: id },
         {
           ...parseParentIdInMongo(parentId),
+          ...(ancestorIds ? { ancestorIds } : {}),
           updateTime: new Date()
         },
         { session }
       );
+      await rewriteDescendantPaths();
       return;
     }
 
@@ -168,12 +219,14 @@ export const moveDataset = async ({
       { _id: id },
       {
         ...parseParentIdInMongo(parentId),
+        ...(ancestorIds ? { ancestorIds } : {}),
         // 移入是授权行为：移入后始终按继承态处理（与上游 dataset 权限逻辑一致）
         inheritPermission: true,
         updateTime: new Date()
       },
       { session }
     );
+    await rewriteDescendantPaths();
   });
 
   logDatasetMove({ tmbId, teamId, dataset, targetName });

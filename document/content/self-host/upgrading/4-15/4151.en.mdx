@@ -11,6 +11,8 @@ upgradeTags:
 
 ### 1. fastgpt-pro Environment Variable Updates
 
+Community Edition users can skip this step.
+
 Starting from v4.15.1, the FastGPT main app no longer uses `rootkey` when calling Pro/Admin internal APIs. These internal service-to-service calls now use a dedicated `PRO_TOKEN`. `FE_DOMAIN` is also required. If you deploy the Pro edition, configure the same `PRO_TOKEN` in both the FastGPT main app and the Pro/Admin service:
 
 ```bash
@@ -46,7 +48,7 @@ If automatic redirects are not needed, leave this variable unset or set it to `f
 
 To keep older API keys compatible and make it easier to find keys previously associated with apps, v4.15.1 adds global API Key tag management and an `appName` display snapshot for historical app-level API Keys. After upgrading, run the initialization script once to backfill app names for existing API Keys whose `appId` field is still present.
 
-From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT domain.
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT base URL, including `https://` for this command.
 
 ```bash
 curl -X POST "{{host}}/api/admin/initv4151" \

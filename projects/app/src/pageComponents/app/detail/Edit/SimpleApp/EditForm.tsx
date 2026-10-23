@@ -13,16 +13,10 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useMemo, useTransition } from 'react';
-
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
-import DatasetTagFilterRows, {
-  DatasetTagFilterDeprecated,
-  DatasetTagFilterUpgradeButton,
-  TagFilterLogicToggle
-} from '@/components/core/dataset/DatasetTagFilterRows';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
@@ -30,12 +24,10 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { workflowSystemVariables } from '@/web/core/app/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -44,17 +36,8 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import { useAppDatasetTagFilter } from '../FormComponent/useAppDatasetTagFilter';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
-import {
-  createEmptyTagFilterValue,
-  isDatasetTagFilterValue,
-  normalizeLegacyDatasetTagFilterValue,
-  resolveDatasetTagFilterVersion,
-  type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/search/tagFilter';
-import { form2AppWorkflow } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -94,8 +77,12 @@ const EditForm = ({
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const { appDetail, onSaveApp } = useContextSelector(AppContext, (v) => v);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const { datasetIds, formatVariables, tagFilterReferenceList } = useAppDatasetTagFilter({
+    appForm,
+    setAppForm
+  });
   const [, startTst] = useTransition();
   const isAgentSandboxEnabled = !!appForm.aiSettings.useAgentSandbox;
   const { isWelcomeTextFolded, toggleWelcomeTextFold } = useWelcomeTextFoldState(appDetail._id);
@@ -111,63 +98,11 @@ const EditForm = ({
     onClose: onCloseDatasetParams
   } = useDisclosure();
 
-  const formatVariables = useMemo(
-    () =>
-      formatEditorVariablePickerIcon([
-        ...workflowSystemVariables.filter(
-          (variable) =>
-            !['appId', 'chatId', 'responseChatItemId', 'histories'].includes(variable.key)
-        ),
-        ...(appForm.chatConfig.variables || [])
-      ]).map((item) => ({
-        ...item,
-        label: t(item.label as any),
-        parent: {
-          id: VARIABLE_NODE_ID,
-          label: t('common:core.module.Variable'),
-          avatar: 'core/workflow/template/variable'
-        }
-      })),
-    [appForm.chatConfig.variables, t]
-  );
-
   const { model: configuredModel } = useModelDetail({
     ...appForm.aiSettings,
     modelType: ModelTypeEnum.llm
   });
   const selectedModel = configuredModel;
-  const tagFilterReferenceList = useMemo(
-    () => [
-      {
-        label: t('common:core.module.Variable'),
-        value: VARIABLE_NODE_ID,
-        children: formatVariables.map((item) => ({
-          label: item.label,
-          value: item.key,
-          valueType: item.valueType
-        }))
-      }
-    ],
-    [formatVariables, t]
-  );
-
-  const onCollectionFilterMatchChange = useCallback(
-    (value: DatasetTagFilterValue | string) => {
-      setAppForm((state) => ({
-        ...state,
-        dataset: {
-          ...state.dataset,
-          collectionFilterMatch: value
-        }
-      }));
-    },
-    [setAppForm]
-  );
-  const isLegacyCollectionFilter =
-    resolveDatasetTagFilterVersion({
-      version: appForm.dataset[NodeInputKeyEnum.collectionFilterVersion],
-      filterValue: appForm.dataset.collectionFilterMatch
-    }) === DatasetTagFilterVersionEnum.legacy;
   const tokenLimit = useMemo(() => {
     return getModelQuoteTokenLimit(configuredModel);
   }, [configuredModel]);
@@ -444,6 +379,8 @@ const EditForm = ({
                   appForm.dataset.datasetSearchExtensionModelId ||
                   appForm.dataset.datasetSearchExtensionModel
                 }
+                showTagFilter={!!feConfigs?.isPlus}
+                collectionFilterMatch={appForm.dataset.collectionFilterMatch}
               />
             </Box>
           )}
@@ -465,78 +402,6 @@ const EditForm = ({
               />
             ))}
           </Grid>
-          {appForm.dataset.datasets?.length > 0 && feConfigs?.isPlus && (
-            <Box mt={4}>
-              <Flex alignItems={'center'} mb={2}>
-                <FormLabel color={'myGray.600'}>
-                  {isLegacyCollectionFilter
-                    ? t('workflow:collection_metadata_filter')
-                    : t('workflow:tag_filter')}
-                </FormLabel>
-                <QuestionTip
-                  ml={1}
-                  label={
-                    isLegacyCollectionFilter
-                      ? t('workflow:filter_description')
-                      : t('workflow:tag_filter_description')
-                  }
-                />
-                {isLegacyCollectionFilter ? (
-                  <>
-                    <Box flex={1} />
-                    <DatasetTagFilterUpgradeButton
-                      onUpgrade={async () => {
-                        const nextForm = {
-                          ...appForm,
-                          dataset: {
-                            ...appForm.dataset,
-                            [NodeInputKeyEnum.collectionFilterVersion]:
-                              DatasetTagFilterVersionEnum.structured,
-                            collectionFilterMatch: createEmptyTagFilterValue()
-                          }
-                        };
-                        const workflow = form2AppWorkflow(nextForm, t);
-                        await onSaveApp({
-                          ...workflow,
-                          isPublish: false,
-                          chatConfig: nextForm.chatConfig
-                        });
-                        setAppForm(nextForm);
-                      }}
-                    />
-                  </>
-                ) : (
-                  <Box ml={2}>
-                    <TagFilterLogicToggle
-                      value={
-                        isDatasetTagFilterValue(appForm.dataset.collectionFilterMatch)
-                          ? appForm.dataset.collectionFilterMatch
-                          : undefined
-                      }
-                      onChange={onCollectionFilterMatchChange}
-                    />
-                  </Box>
-                )}
-              </Flex>
-              {isLegacyCollectionFilter ? (
-                <DatasetTagFilterDeprecated
-                  value={normalizeLegacyDatasetTagFilterValue(
-                    appForm.dataset.collectionFilterMatch
-                  )}
-                  onChange={onCollectionFilterMatchChange}
-                  variables={formatVariables}
-                  variableLabels={formatVariables}
-                />
-              ) : (
-                <DatasetTagFilterRows
-                  value={appForm.dataset.collectionFilterMatch}
-                  onChange={onCollectionFilterMatchChange}
-                  datasetIds={appForm.dataset.datasets.map((item) => item.datasetId)}
-                  referenceList={tagFilterReferenceList}
-                />
-              )}
-            </Box>
-          )}
         </Box>
 
         {/* File select */}
@@ -683,6 +548,9 @@ const EditForm = ({
         <DatasetParamsModal
           {...appForm.dataset}
           maxTokens={tokenLimit}
+          showTagFilter={!!feConfigs?.isPlus}
+          datasetIds={datasetIds}
+          tagFilterReferenceList={tagFilterReferenceList}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
             setAppForm((state) => ({

@@ -25,6 +25,12 @@ export const UrlSchema = z.string().url().transform(stripUrlTrailingSlash);
 export const optionalNullToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((value) => (value === null ? undefined : value), schema.optional()).optional();
 
+/** 将可选字段中的显式 null 或空字符串归一为 undefined，保持 schema 输出类型的可选语义，避免 z.coerce.number 将空值转为 0。 */
+export const optionalEmptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z
+    .preprocess((value) => (value === null || value === '' ? undefined : value), schema.optional())
+    .optional();
+
 /**
  * 归一化 HTTP GET query 中的数组参数。
  * 支持单值字符串（如 "1"）、逗号分隔字符串（如 "1,2"）以及原生数组（如 ["1", "2"]），

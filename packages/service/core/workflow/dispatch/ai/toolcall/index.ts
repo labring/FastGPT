@@ -1,6 +1,5 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -17,6 +16,7 @@ import {
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreRequestMessages,
@@ -45,6 +45,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     chatConfig,
     lastInteractive,
     runningAppInfo,
+    runningUserInfo,
     externalProvider,
     responseChatItemId,
     params: {
@@ -78,8 +79,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-    const toolModel = modelHandle.getLLMModelData({ modelId, model });
+    const toolModel = await loadWorkflowModelResource({
+      appTeamId: runningAppInfo.teamId,
+      userInfo: runningUserInfo,
+      modelId,
+      model
+    });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;
     const useVideo = aiChatVideo && toolModel.config.video;
@@ -119,46 +124,44 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
-    if (useSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse: props.workflowStreamResponse,
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: props.uid,
-        chatId: props.chatId
-      });
-    }
-
     // 初始化沙盒
     const sandboxClient = useSandbox
-      ? await withAgentSandboxInitLease({
-          sandboxId: getRunningSandboxId({
-            sourceType: props.runningAppInfo.sourceType,
-            sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid
-          }),
-          fn: async () => {
-            const runtime = await prepareSandboxToolRuntime({
-              sourceType: props.runningAppInfo.sourceType,
-              sourceId: props.runningAppInfo.sourceId,
-              userId: props.uid,
-              chatId: props.chatId,
-              readInputFile: (url) => readWorkflowFileBuffer({ url }),
-              files: currentInputFiles.map((file) => ({
-                path: file.sandboxPath!,
-                url: file.url
-              }))
-            });
-            const effectiveEntrypoint = sandboxEntrypoint?.trim();
-            if (effectiveEntrypoint) {
-              await runAgentSandboxEntrypoint({
-                sandbox: runtime.provider,
-                sandboxEntrypoint: effectiveEntrypoint,
-                workDirectory: getSandboxRuntimeProfile().workDirectory
-              });
-            }
-            return runtime;
-          }
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse: props.workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: props.uid,
+          chatId: props.chatId,
+          prepareRuntime: () =>
+            withAgentSandboxInitLease({
+              sandboxId: getRunningSandboxId({
+                sourceType: props.runningAppInfo.sourceType,
+                sourceId: props.runningAppInfo.sourceId,
+                userId: props.uid
+              }),
+              fn: async () => {
+                const runtime = await prepareSandboxToolRuntime({
+                  sourceType: props.runningAppInfo.sourceType,
+                  sourceId: props.runningAppInfo.sourceId,
+                  userId: props.uid,
+                  chatId: props.chatId,
+                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  files: currentInputFiles.map((file) => ({
+                    path: file.sandboxPath!,
+                    url: file.url
+                  }))
+                });
+                const effectiveEntrypoint = sandboxEntrypoint?.trim();
+                if (effectiveEntrypoint) {
+                  await runAgentSandboxEntrypoint({
+                    sandbox: runtime.provider,
+                    sandboxEntrypoint: effectiveEntrypoint,
+                    workDirectory: getSandboxRuntimeProfile().workDirectory
+                  });
+                }
+                return runtime;
+              }
+            })
         })
       : undefined;
 

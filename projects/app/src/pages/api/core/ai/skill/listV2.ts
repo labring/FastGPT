@@ -3,6 +3,8 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
+import { getAgentSkillFolderAccess } from '@fastgpt/service/core/ai/skill/manage';
 import {
   ListSkillsResponseSchema,
   ListSkillsV2QuerySchema,
@@ -29,25 +31,45 @@ async function handler(req: ApiRequestProps<ListSkillsV2Query>): Promise<ListSki
   } = parseApiInput({ req, bodySchema: ListSkillsV2QuerySchema }).body;
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
-  const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
-    authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
-    ...(parentId && !isSkillIdsQuery
-      ? [
-          authSkill({
-            req,
-            authToken: true,
-            authApiKey: true,
-            per: ReadPermissionVal,
-            skillId: parentId
-          })
-        ]
-      : [])
-  ]);
+  const currentFolderId = normalizeParentId(parentId);
+  const {
+    tmbId,
+    teamId,
+    permission: teamPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    authApiKey: true,
+    per: ReadPermissionVal
+  });
+
+  if (currentFolderId && !isSkillIdsQuery) {
+    const folderAccess =
+      source === 'store'
+        ? undefined
+        : await getAgentSkillFolderAccess({
+            teamId,
+            tmbId,
+            teamPer,
+            folderId: currentFolderId
+          });
+    if (!folderAccess?.canBrowse) {
+      await authSkill({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: ReadPermissionVal,
+        skillId: currentFolderId
+      });
+    }
+  }
+
   const response = await listReadableAgentSkills({
     teamId,
     tmbId,
     teamPer,
-    parentId,
+    parentId: currentFolderId,
+    browseDescendants: true,
     source,
     searchKey,
     category,

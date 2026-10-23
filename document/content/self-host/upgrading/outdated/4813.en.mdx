@@ -22,12 +22,12 @@ upgradeTags:
 
 ### 4. Update file upload workflow configuration
 
-While the old file upload workflow configuration is still supported, backward compatibility will be removed within the next two versions. Please update your workflows to use the new file upload logic as soon as possible. In particular, file passing in nested apps will no longer be automatic — you must explicitly specify which files to pass. For details, see: [File Upload Changes](../../../guide/build/general/fileInput.en.mdx#4813%E7%89%88%E6%9C%AC%E8%B5%B7%E5%85%B3%E4%BA%8E%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E7%9A%84%E6%9B%B4%E6%96%B0)
+While the old file upload workflow configuration is still supported, backward compatibility will be removed within the next two versions. Please update your workflows to use the new file upload logic as soon as possible. In particular, file passing in nested apps will no longer be automatic — you must explicitly specify which files to pass. For details, see: [File Upload Changes](/en/guide/build/general/fileInput#changes-to-file-upload-in-version-4813)
 
 ## Release Notes
 
 1. New - Array variable selection supports multi-select. You can select multiple arrays or their corresponding single data types, which are automatically merged in selection order.
-2. New - Revamped file upload approach. AI chat and tool call nodes directly accept file URLs and enforce prompt injection without relying on model-driven decisions. Plugin custom variables support file upload types, replacing global files.
+2. New - Revamped file upload approach. AI chat and tool call nodes directly accept file URLs and always include them in the prompt. Plugin custom variables support file upload types, replacing global files.
 3. New - Chat history now displays timestamps.
 4. New - Workflow validation errors now navigate to the error node.
 5. New - Loop node adds an index value.

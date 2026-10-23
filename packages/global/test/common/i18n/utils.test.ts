@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatI18nLocationToZhEn,
   i18nT,
   parseI18nString,
-  formatI18nLocationToZhEn,
-  parseLocale
+  parseLocale,
+  selectPluginText,
+  selectReadmeUrl
 } from '@fastgpt/global/common/i18n/utils';
 import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 
@@ -74,6 +76,10 @@ describe('parseI18nString', () => {
     expect(parseI18nString({ en: 'Hello' }, 'ko-KR')).toBe('Hello');
   });
 
+  it('falls back to an empty string when all translations are omitted', () => {
+    expect(parseI18nString({ 'zh-CN': '你好' }, 'en')).toBe('');
+  });
+
   it('should return empty string when locale exists but empty', () => {
     const i18n: I18nStringType = {
       en: 'Hello',
@@ -81,6 +87,41 @@ describe('parseI18nString', () => {
     };
 
     expect(parseI18nString(i18n, 'zh-CN')).toBe('');
+  });
+});
+
+describe('selectPluginText', () => {
+  it('keeps legacy strings and selects available translations with plugin fallbacks', () => {
+    expect(selectPluginText('Legacy label', 'zh-CN')).toBe('Legacy label');
+    expect(selectPluginText({ en: 'Search' }, 'zh-Hant')).toBe('Search');
+    expect(selectPluginText({ en: 'Search', 'zh-CN': '检索' }, 'zh-Hant')).toBe('检索');
+    expect(selectPluginText({ en: 'Search', 'zh-CN': '检索' }, 'fr')).toBe('Search');
+    expect(selectPluginText({ en: 'Search', 'zh-CN': '' }, 'zh-CN')).toBe('');
+    expect(selectPluginText(undefined, 'en')).toBe('');
+  });
+});
+
+describe('selectReadmeUrl', () => {
+  it('selects the current language before Chinese, English, and the legacy URL', () => {
+    expect(
+      selectReadmeUrl(
+        {
+          readmeUrls: { en: 'https://example.com/en', 'zh-CN': 'https://example.com/zh' },
+          readmeUrl: 'https://example.com/legacy'
+        },
+        'zh-Hant'
+      )
+    ).toBe('https://example.com/zh');
+    expect(
+      selectReadmeUrl(
+        { readmeUrls: { en: 'https://example.com/en' }, readmeUrl: 'https://example.com/legacy' },
+        'ko-KR'
+      )
+    ).toBe('https://example.com/en');
+    expect(selectReadmeUrl({ readmeUrl: 'https://example.com/legacy' }, 'en')).toBe(
+      'https://example.com/legacy'
+    );
+    expect(selectReadmeUrl({}, 'en')).toBeUndefined();
   });
 });
 

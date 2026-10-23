@@ -15,9 +15,10 @@ The following configuration adjustments are for `docker compose` deployments. `s
 Open the [latest yml deployment file](https://github.com/labring/FastGPT/blob/main/document/public/deploy/docker/v4.14/global/docker-compose.pg.yml) and add the following:
 
 1. Add the `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` variable configuration at the top of the file.
-2. Add 3 new services: `opensandbox-server`, `volume-manager`, and `agent-sandbox-image`.
-3. Add `configs` (you can find this content at the bottom of the file, just copy and append it directly).
-4. Modify the `fastgpt` environment variables to include the following:
+2. Add these 5 service entries: `opensandbox-server`, `opensandbox-agent-sandbox-image`, `opensandbox-execd-image`, `opensandbox-egress-image`, and `fastgpt-volume-manager`.
+3. Update `networks` using the linked deployment file.
+4. Copy the `configs` section from the bottom of that file into your local file.
+5. Add the following environment variables to `fastgpt-app` and `fastgpt-pro`:
 
 ```bash
 # ==================== Agent sandbox config ====================
@@ -26,11 +27,12 @@ AGENT_SANDBOX_PROVIDER: opensandbox
 AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY:
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt/fastgpt-agent-sandbox
-AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.0.2
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
+AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
 # Volume persistence config (optional under opensandbox provider)
 AGENT_SANDBOX_ENABLE_VOLUME: true
-AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
+AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
 ```
 
@@ -40,7 +42,7 @@ The image name under the original `sandbox` services needs to be changed from `f
 
 ### 3. Update image tags
 
-- Update FastGPT image tag to: `v4.14.10`
+- Update FastGPT image tag to: `v4.14.10.4`
 - Update FastGPT commercial image tag to: `v4.14.10`
 - Update fastgpt-plugin image tag to: `v0.5.6`
 - Update code-sandbox image tag to: `v4.14.10`

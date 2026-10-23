@@ -1,40 +1,32 @@
 ---
 title: Configuration Panel
-description: Detailed configuration guide for LLM parameters, virtual machine environment, and skill integration in Chat Agent V2.
+description: Configure prompts, the virtual machine, and Skills in Chat Agent V2.
 ---
 
-The Configuration Panel is used to configure and bind all the core capabilities and execution environments required by your Agent.
+Use the Configuration Panel to set your Agent's instructions, runtime environment, and Skills.
 
-![Configuration Panel](/imgs/agent_settings_panel.png)
+![Agent configuration panel with prompt, virtual machine, and Skill settings](/imgs/agent_settings_panel.png)
 
 ---
 
 ## AI Configuration & Virtual Machine
 
-- **AI Model**: Choose the chat model and configure its parameters. For general LLM parameters, see [AI Settings](../general/ai_settings).
-- **Prompt**: Define the core persona, objectives, and specific rules for the Agent. The editor supports rich text, and you can type `@` to quickly reference and bind tools, etc.
+**Prompt:** Define the Agent's persona, goals, and rules. The editor supports rich text. Type `@` to select and bind supported tools and other context.
 
-  |                                                             |                                                                   |
-  | :---------------------------------------------------------: | :---------------------------------------------------------------: |
-  | ![`@` Tool Quick Binding](/imgs/agent_prompt_editor_at.png) | ![Rich Text Prompt Editor](/imgs/agent_prompt_editor_mention.png) |
+|                                   Tool Binding                                    |                             Rich Text Editing                              |
+| :-------------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
+| ![Type @ in the prompt editor to select a tool](/imgs/agent_prompt_editor_at.png) | ![Edit and format the Agent prompt](/imgs/agent_prompt_editor_mention.png) |
 
-- **Virtual Machine**: Once enabled, the system assigns a dedicated Linux sandbox environment for each session, supporting code execution, file operations, and startup command configuration. For architecture and debugging details, refer to [Virtual Machine](./vm). For startup script details and execution limits, see [Virtual Machine Lifecycle](./vm#virtual-machine-lifecycle).
+For shared model settings, including the chat model, response length, and reasoning display, see [AI Settings](/en/guide/build/general/ai_settings).
+
+**Virtual Machine:** Enable the virtual machine to give each session its own Linux sandbox for running code, reading and writing files, and running startup scripts. See [Virtual Machine](/en/guide/build/agentv2/vm) for its design and debugging tools, and [Virtual Machine Lifecycle](/en/guide/build/agentv2/vm#virtual-machine-lifecycle) for startup-script deduplication and execution details.
 
 ---
 
 ## Associate SKILL & Tools
 
-- **Associated SKILLs**: Select and bind published SKILL packages from the skill library. The entrypoint script in the SKILL package will execute automatically when the VM spins up. If you associate SKILLs without enabling the VM sandbox, a warning "Virtual Machine Not Ready" will be displayed. To learn how to write and package custom SKILLs, please refer to [Development & Debugging](../skill/development).
+Select the published Skill packages the Agent should use. Each Skill's entrypoint script runs automatically when the virtual machine starts.
 
-  ![Virtual Machine Not Ready Warning](/imgs/agent_skill_vm_not_ready.png)
+Enable the virtual machine before using an associated Skill. Otherwise, the configuration panel displays a **Virtual Machine Not Ready** warning. For instructions on writing and packaging Skills, see [Development & Debugging](/en/guide/build/skill/development).
 
-- **Tools**: You can choose to bind system built-in tools (e.g., search engines, charts), custom tools created by yourself or the team (including HTTP/MCP tools), or created apps.
-
-  ![Tools](/imgs/agent_integrate_tools.png)
-
----
-
-## Dataset & File Uploads
-
-- **Dataset**: Associate specific corporate documents and adjust search settings (Hybrid search, Reranking, etc.). It also supports configuring team member permissions.
-- **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](../general/fileInput).
+![Virtual Machine Not Ready warning for an associated Skill](/imgs/agent_skill_vm_not_ready.png)

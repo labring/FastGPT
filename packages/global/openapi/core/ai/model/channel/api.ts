@@ -10,6 +10,7 @@ import {
   ChannelManualStatusSchema
 } from '../../../../../core/ai/model/channel';
 import { ChannelTypeSchema } from '../../../../../core/ai/model/scope';
+import { I18nStringSchema } from '../../../../../common/i18n/type';
 
 const OptionalIntSchema = z.preprocess(
   (value) => (value === '' || value === undefined ? undefined : value),
@@ -151,7 +152,7 @@ export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema
 export const ListChannelsQuerySchema = z.object({
   pageNum: NumSchema.optional().meta({ description: '页码，从 1 开始' }),
   pageSize: PaginationPageSizeSchema.optional().meta({
-    description: `每页条数，最大 ${PaginationPageSizeLimit}；不传返回全量`
+    description: `每页条数，最大 ${PaginationPageSizeLimit}，超出自动按 ${PaginationPageSizeLimit} 处理；不传返回全量`
   }),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
   channelType: ChannelTypeSchema.optional().meta({
@@ -184,14 +185,35 @@ export type ChannelListItem = z.infer<typeof ChannelListItemSchema>;
 export const ListChannelsResponseSchema = PaginationResponseSchema(ChannelListItemSchema);
 export type ListChannelsResponse = z.infer<typeof ListChannelsResponseSchema>;
 
-// ═══ GET /api/core/ai/model/channel/providerMetas ═══
-// aiproxy channel type metas for the channel create/edit form (default URL +
-// key format hint per provider). Non-sensitive provider defaults — served to
-// any authenticated user; previously root-only via the admin passthrough.
+/* ============================================================================
+ * API: 获取渠道类型展示与表单元数据
+ * Route: GET /api/core/ai/model/channel/providerMetas
+ * Method: GET
+ * Description: 登录用户按需获取协议名称、排序、图标、官网、默认地址及 Key 提示
+ * Tags: ['Model', 'Channel', 'Read']
+ * ============================================================================ */
 export const ProviderMetaItemSchema = z.object({
-  defaultBaseUrl: z.string().meta({ description: '协议默认请求地址' }),
-  keyHelp: z.string().meta({ description: 'API Key 格式提示' }),
-  name: z.string().meta({ description: '协议名' })
+  defaultBaseUrl: z.string().meta({
+    example: 'https://api.openai.com/v1',
+    description: '协议默认请求地址；上游不支持时为空'
+  }),
+  keyHelp: z
+    .string()
+    .meta({ example: 'sk-...', description: 'API Key 格式提示；上游不支持时为空' }),
+  name: z.string().meta({ example: 'OpenAI', description: '上游协议名，保留现有字符串契约' }),
+  displayName: I18nStringSchema.optional().meta({
+    description: '协议多语言展示名称',
+    example: { en: 'OpenAI', 'zh-CN': 'OpenAI' }
+  }),
+  avatar: z.string().optional().meta({ description: '协议图标', example: 'model/openai' }),
+  website: z.string().optional().meta({ description: '协议官网', example: 'https://openai.com' }),
+  order: IntSchema.nonnegative().optional().meta({
+    description: 'Plugin 协议目录中的原始顺序，从 0 开始；缺省时排列在有顺序的类型之后',
+    example: 0
+  }),
+  canCreate: z
+    .boolean()
+    .meta({ description: '上游支持且有展示元数据时允许作为新建渠道选项', example: true })
 });
 export type ProviderMetaItem = z.infer<typeof ProviderMetaItemSchema>;
 

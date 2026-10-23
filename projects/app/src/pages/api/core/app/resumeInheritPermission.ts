@@ -9,6 +9,8 @@ import { resumeInheritPermission } from '@fastgpt/service/support/permission/inh
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   ResumeInheritPermissionQuerySchema,
   ResumeInheritPermissionResponseSchema,
@@ -25,13 +27,15 @@ async function handler(
     req,
     querySchema: ResumeInheritPermissionQuerySchema
   }).query;
-  const { app } = await authApp({
+  const { teamId, tmbId, app } = await authApp({
     appId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
+  const parentApp = app.parentId ? await MongoApp.findById(app.parentId, 'name').lean() : undefined;
+  const parentResourceName = parentApp?.name;
   if (app.parentId) {
     await resumeInheritPermission({
       resource: app,
@@ -49,6 +53,17 @@ async function handler(
       }
     );
   }
+
+  addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ appId: String(app._id) }],
+    params: {
+      targetResource: app.name,
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
+    }
+  });
 
   return ResumeInheritPermissionResponseSchema.parse(undefined);
 }

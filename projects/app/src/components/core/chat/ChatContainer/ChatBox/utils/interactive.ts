@@ -1,6 +1,7 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
+  isAgentAskInteractive,
   extractDeepestInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -8,7 +9,6 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
@@ -19,7 +19,15 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return finalInteractive.type === 'agentAsk' && !finalInteractive.params.submitted;
+  return isAgentAskInteractive(finalInteractive);
+};
+
+/** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
+export const isPendingWorkflowBuilderPreview = (interactive?: WorkflowInteractiveResponseType) => {
+  if (!interactive) return false;
+
+  const finalInteractive = extractDeepestInteractive(interactive);
+  return finalInteractive?.type === 'workflowBuilderPreview';
 };
 
 /**
@@ -47,103 +55,6 @@ export const isUserInputInteractiveSubmitted = ({
 
     return interactive.params.inputForm.some((input) => input.key in formInputResult);
   });
-};
-
-/**
- * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
- * 这里把答案乐观写回对应的 Agent Ask，避免旧消息在失去 isLastChild 后丢失选中态。
- */
-export const persistAgentAskAnswersToHistories = ({
-  histories,
-  interactive,
-  answer
-}: {
-  histories: ChatSiteItemType[];
-  interactive: WorkflowInteractiveResponseType;
-  answer: string;
-}): ChatSiteItemType[] => {
-  const sourceInteractive = extractDeepestInteractive(interactive);
-  if (sourceInteractive.type !== 'agentAsk') {
-    return histories;
-  }
-
-  const targetAskId = sourceInteractive.askId;
-  const submittedAnswers = parseAgentAskAnswers(answer);
-  let hasUpdated = false;
-
-  const nextHistories = histories.map<ChatSiteItemType>((item) => {
-    if (item.obj !== ChatRoleEnum.AI) return item;
-
-    let itemUpdated = false;
-    const nextValues = item.value.map((val) => {
-      if (!('interactive' in val) || !val.interactive) return val;
-
-      const finalInteractive = extractDeepestInteractive(val.interactive);
-
-      // Convert the legacy ask_user interactive record to the new one.
-      if (
-        val.interactive.type === 'agentPlanAskQuery' &&
-        val.interactive.askId === targetAskId &&
-        !val.interactive.params.answer
-      ) {
-        itemUpdated = true;
-        hasUpdated = true;
-        return {
-          ...val,
-          interactive: {
-            ...val.interactive,
-            type: 'agentAsk' as const,
-            params: {
-              description: val.interactive.params.reason ?? '',
-              questions: [
-                {
-                  question: val.interactive.params.content,
-                  options: val.interactive.params.options.map((option) => ({
-                    summary: option,
-                    value: option
-                  })),
-                  answer: submittedAnswers[0] ?? ''
-                }
-              ],
-              submitted: true
-            }
-          }
-        };
-      }
-
-      if (finalInteractive.type !== 'agentAsk' || finalInteractive.askId !== targetAskId) {
-        return val;
-      }
-      if (finalInteractive.params.submitted) {
-        return val;
-      }
-
-      itemUpdated = true;
-      hasUpdated = true;
-      return {
-        ...val,
-        interactive: {
-          ...finalInteractive,
-          params: {
-            ...finalInteractive.params,
-            questions: finalInteractive.params.questions.map((question, index) => ({
-              ...question,
-              answer: submittedAnswers[index] ?? question.answer
-            })),
-            submitted: true
-          }
-        }
-      };
-    });
-
-    if (!itemUpdated) return item;
-    return {
-      ...item,
-      value: nextValues
-    };
-  });
-
-  return hasUpdated ? nextHistories : histories;
 };
 
 /**
@@ -281,11 +192,15 @@ export const getInteractiveByHistories = (
       interactive: finalInteractive,
       canSendQuery: false
     };
-  } else if (finalInteractive.type === 'agentAsk') {
-    // New
+  } else if (isAgentAskInteractive(finalInteractive)) {
     return {
       interactive: finalInteractive,
       canSendQuery: true
+    };
+  } else if (finalInteractive.type === 'workflowBuilderPreview') {
+    return {
+      interactive: finalInteractive,
+      canSendQuery: false
     };
   }
 
@@ -299,7 +214,7 @@ export const getInteractiveByHistories = (
  * 解析前端本轮请求应该携带的 responseChatItemId。
  *
  * interactive submit 会把运行结果追加回上一轮 AI 消息，前端也需要沿用上一轮 AI 的 dataId；
- * agentPlanAskQuery 属于继续提问，会产生新 AI 消息，因此继续使用本轮新生成的 id。
+ * Agent 追问和方案确认使用 query，会产生新的 Human/AI 轮次，因此保留本轮新生成的 id。
  */
 export const resolveInteractiveResponseChatItemId = ({
   histories,
@@ -339,17 +254,8 @@ export const rewriteHistoriesByInteractiveResponse = ({
     return histories.slice(0, -2);
   })();
 
-  const workingHistories =
-    status === 'query'
-      ? persistAgentAskAnswersToHistories({
-          histories: formatHistories,
-          interactive,
-          answer: interactiveVal
-        })
-      : formatHistories;
-
-  const newHistories = workingHistories.map((item, i) => {
-    if (i !== workingHistories.length - 1) return item;
+  const newHistories = formatHistories.map((item, i) => {
+    if (i !== formatHistories.length - 1) return item;
 
     if (status === 'query') {
       return {
@@ -403,24 +309,6 @@ export const rewriteHistoriesByInteractiveResponse = ({
             params: {
               ...finalInteractive.params,
               inputForm: updatedInputForm,
-              submitted: true
-            }
-          }
-        };
-      }
-
-      if (finalInteractive.type === 'agentAsk') {
-        const answers = parseAgentAskAnswers(interactiveVal);
-        return {
-          ...val,
-          interactive: {
-            ...finalInteractive,
-            params: {
-              ...finalInteractive.params,
-              questions: finalInteractive.params.questions.map((question, index) => ({
-                ...question,
-                answer: answers[index] ?? question.answer
-              })),
               submitted: true
             }
           }

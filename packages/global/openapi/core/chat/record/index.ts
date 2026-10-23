@@ -134,7 +134,8 @@ export const ChatRecordPath: OpenAPIPath = {
   '/core/chat/record/delete': {
     delete: {
       summary: '删除对话',
-      description: '软删除指定的对话消息记录（设置 deleteTime）',
+      description:
+        '软删除指定消息。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
         content: {

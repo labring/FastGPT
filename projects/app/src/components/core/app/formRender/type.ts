@@ -1,11 +1,11 @@
 import type { BoxProps, MenuProps } from '@chakra-ui/react';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  SelectedDatasetType,
+  EditorVariablePickerType
+} from '@fastgpt/global/core/workflow/type/io';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
-import type {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
-} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import type { UseFormReturn } from 'react-hook-form';
 import type { InputTypeEnum } from './constant';
 

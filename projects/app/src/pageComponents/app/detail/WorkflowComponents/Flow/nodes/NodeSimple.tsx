@@ -17,8 +17,13 @@ const NodeSimple = ({
   data,
   selected,
   minW = '524px',
-  maxW
-}: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
+  maxW,
+  minH
+}: NodeProps<FlowNodeItemType> & {
+  minW?: string | number;
+  maxW?: string | number;
+  minH?: string | number;
+}) => {
   const { t } = useTranslation();
   const { nodeId, catchError, inputs, outputs } = data;
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
@@ -32,7 +37,7 @@ const NodeSimple = ({
   );
   const Render = useMemo(() => {
     return (
-      <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
+      <NodeCard minW={minW} maxW={maxW} minH={minH} selected={selected} {...data}>
         {isTool && hasDynamicToolInput(data) && (
           <>
             <Container>
@@ -62,6 +67,7 @@ const NodeSimple = ({
   }, [
     minW,
     maxW,
+    minH,
     selected,
     data,
     isTool,

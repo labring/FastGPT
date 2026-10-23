@@ -34,6 +34,7 @@ import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 
 export type ToolParamsFormType = {
   type: SystemToolSecretInputTypeEnum;
@@ -189,7 +190,7 @@ export const SecretInputForm = ({
   onToggleExpand,
   onSubmit
 }: SecretInputFormProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
   const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
     defaultIsOpen: false
@@ -375,7 +376,7 @@ export const SecretInputForm = ({
         <Box fontSize={'sm'} pl={6} mt={2}>
           {childTools.map((tool) => (
             <Box key={tool.id} fontSize={'sm'} mb={1}>
-              {t(tool.name as any)}:{' '}
+              {t(selectPluginText(tool.name, i18n.language))}:{' '}
               {t('app:plugin_cost_per_times', { cost: tool.systemKeyCost || 0 })}
             </Box>
           ))}
@@ -487,7 +488,7 @@ export const SecretInputForm = ({
                           value,
                           isEditing: editIndex === i
                         });
-                        const fieldLabel = t(item.label as any);
+                        const fieldLabel = item.label;
 
                         return (
                           <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
@@ -566,7 +567,7 @@ export const SecretInputForm = ({
                                     alignItems={'center'}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={fieldLabel}
+                                    placeholder={item.placeholder ?? fieldLabel}
                                     {...register(inputKey, {
                                       required: item.required
                                     })}
@@ -622,7 +623,7 @@ export const SecretInputForm = ({
                                     py={0}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
-                                    placeholder={fieldLabel}
+                                    placeholder={item.placeholder ?? fieldLabel}
                                     isInvalid={!!error}
                                   />
                                 )}
@@ -654,7 +655,11 @@ export const SecretInputForm = ({
                                       onChange={(nextValue) =>
                                         onChange(formatManualInputValue(nextValue))
                                       }
-                                      placeholder={fieldLabel}
+                                      placeholder={
+                                        item.inputType === 'numberInput'
+                                          ? (item.placeholder ?? fieldLabel)
+                                          : fieldLabel
+                                      }
                                       bg={'myGray.50'}
                                       list={item.list}
                                       isInvalid={!!error}

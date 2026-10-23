@@ -57,6 +57,31 @@ describe('string tools', () => {
   it('should replace sensitive text', () => {
     expect(replaceSensitiveText('Visit https://example.com/path?x=1')).toBe('Visit https://xxx');
     expect(replaceSensitiveText('token ns-abc-123 and ns-xyz')).toBe('token xxx and xxx');
+    expect(replaceSensitiveText('svc.ns-abc123.svc.cluster.local:3000')).toBe(
+      'svc.xxx.svc.cluster.local:3000'
+    );
+    expect(replaceSensitiveText('Exceeded tokens-per-minute limit')).toBe(
+      'Exceeded tokens-per-minute limit'
+    );
+    expect(replaceSensitiveText('dns-server timeout on columns-a')).toBe(
+      'dns-server timeout on columns-a'
+    );
+  });
+
+  it('preserves JSON fields and escaped quotes after masking URLs', () => {
+    const text = JSON.stringify({
+      url: 'https://example.com/path',
+      detail: 'sku missing',
+      reason: 'see https://example.com/docs" retry'
+    });
+    const sanitized = replaceSensitiveText(text);
+
+    expect(JSON.parse(sanitized)).toEqual({
+      url: 'https://xxx',
+      detail: 'sku missing',
+      reason: 'see https://xxx" retry'
+    });
+    expect(replaceSensitiveText(sanitized)).toBe(sanitized);
   });
 
   it('should generate nanoid with lowercase prefix', () => {

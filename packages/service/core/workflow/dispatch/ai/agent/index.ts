@@ -13,7 +13,6 @@ import type {
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
@@ -24,8 +23,8 @@ import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { nodeHasDynamicInput } from '../../../../app/resources';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import {
   buildAgentLoopCoreDoneMemories,
@@ -44,7 +43,7 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -143,16 +142,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const agentModel = modelHandle.getLLMModelData({ modelId, model });
-  const dynamicDataset = nodeHasDynamicInput(props.node, [
-    NodeInputKeyEnum.datasetSelectList,
-    NodeInputKeyEnum.datasetParams
-  ]);
-  const dynamicSkills =
-    runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit ||
-    nodeHasDynamicInput(props.node, [NodeInputKeyEnum.skills]);
-  const dynamicTools = nodeHasDynamicInput(props.node, [NodeInputKeyEnum.selectedTools]);
+  const agentModel = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
   // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
   props.params.model = agentModel.model;
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.config.vision);
@@ -204,39 +199,38 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       parseHistoryFiles,
       selectedDataset: datasetParams?.datasets,
       authTmbId: datasetParams?.authTmbId,
-      dynamicDataset,
       tmbId: runningUserInfo.tmbId,
       timezone,
       maxFileAmount: getWorkflowFileMaxAmount()
     });
 
-    if (effectiveUseAgentSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse,
+    // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
+    const prepareRuntime = () =>
+      ensureAgentSandboxRuntime({
         sourceType: runningAppInfo.sourceType,
         sourceId: runningAppInfo.sourceId,
         userId: uid,
-        chatId
+        chatId,
+        teamId: runningAppInfo.teamId,
+        tmbId: runningUserInfo.tmbId,
+        needSandboxRuntime: effectiveUseAgentSandbox,
+        sandboxEntrypoint: effectiveSandboxEntrypoint,
+        skillIds: effectiveSkillIds,
+        selectedSkills: effectiveSelectedSkills,
+        editSkillId,
+        prepareActions: agentSandboxPrepareActions,
+        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
       });
-    }
-
-    // 初始化 sandbox：初始化、注入 skills、files。静态 Skill 由 Version 快照授权，动态 Skill 才检查运行人。
-    const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
-      sourceType: runningAppInfo.sourceType,
-      sourceId: runningAppInfo.sourceId,
-      userId: uid,
-      chatId,
-      teamId: runningAppInfo.teamId,
-      tmbId: runningUserInfo.tmbId,
-      needSandboxRuntime: effectiveUseAgentSandbox,
-      sandboxEntrypoint: effectiveSandboxEntrypoint,
-      skillIds: effectiveSkillIds,
-      dynamicSkills,
-      selectedSkills: effectiveSelectedSkills,
-      editSkillId,
-      prepareActions: agentSandboxPrepareActions,
-      currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
-    });
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: uid,
+          chatId,
+          prepareRuntime
+        })
+      : await prepareRuntime();
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
@@ -264,8 +258,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
-      lang,
-      dynamic: dynamicTools
+      lang
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
@@ -284,7 +277,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       context: {
         ...props,
         modelData: agentModel,
-        dynamicDataset,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
         getSubApp,
@@ -354,23 +346,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     });
     const outputAssistantResponses = outputSummary.assistantResponses;
-
-    if (
-      outputSummary.status === 'interactive' &&
-      outputSummary.interactive?.type === 'agentPlanAskQuery'
-    ) {
-      // ask 暂停不产出最终 answer，只返回 interactive + memory。
-      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
-      // saveChat 会把该 askId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
-      return {
-        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-          nodeId,
-          providerState: outputSummary.providerState
-        }),
-        [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
-      };
-    }
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
       return {

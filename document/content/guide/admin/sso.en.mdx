@@ -5,7 +5,7 @@ description: FastGPT External Member System Integration and Configuration
 
 import { Alert } from '@/components/docs/Alert';
 
-If you don't need SSO or member sync, or only need quick login via GitHub, Google, Microsoft, or WeChat Official Account, you can skip this section. This guide is for users who need to integrate their own member systems or mainstream office IMs.
+Use this guide to connect your organization's member system or office messaging platform to FastGPT for SSO and member synchronization. Built-in quick login with GitHub, Google, Microsoft, or WeChat Official Account is configured separately.
 
 ## Overview
 
@@ -22,7 +22,14 @@ FastGPT-pro includes a standard set of SSO and member sync interfaces. The syste
 
 FastGPT-SSO-Service aggregates SSO and member sync interfaces from different sources and converts them into the format recognized by fastgpt-pro.
 
-![](/imgs/sso2.png)
+The login flow is:
+
+1. The user clicks the SSO login button. FastGPT requests an authorization URL from the adapter and redirects the user to the external system.
+2. The user signs in to the external system, which redirects back to FastGPT at `/login/provider` with a `code`.
+3. FastGPT sends the code to the adapter. The adapter retrieves the external user information and converts it into FastGPT's standard response format.
+4. FastGPT uses that response to register or sign in the user.
+
+![SSO login flow through the FastGPT-SSO-Service adapter](/imgs/sso2.png)
 
 ## System Configuration Tutorial
 
@@ -108,6 +115,8 @@ env:
 
 #### 2. In the FastGPT frontend, go to `Admin` -> `System Configuration` -> `User Configuration` to configure button text, icons, etc.
 
+In the admin panel's external user system settings, enter the **SSO login button title** and choose an **SSO login button icon**. Use a label that identifies your provider, such as "Sign in with Lark". The icons below are examples for the supported providers.
+
 <table className="table-hover table-striped-columns text-center">
   <thead>
     <tr>
@@ -127,9 +136,11 @@ env:
 
 #### 3. Enable Member Sync (Optional)
 
-If you need to sync members from an external system, you can enable member sync. For team mode details, see: [Team Mode Documentation](./teamMode.en.mdx)
+To synchronize members from an external system, select **Member sync mode** in the admin panel's team mode settings. See [Team Mode Documentation](/en/guide/admin/teamMode) for each mode's account and team behavior.
 
-![](/imgs/sso1.png)
+The screenshot below shows the team mode selector and the SSO button title and icon controls. Its selector currently displays multi-team mode; choose member sync mode to enable synchronization. Use the service address from your deployment configuration above.
+
+![Team mode selector and SSO login button settings](/imgs/sso1.png)
 
 #### 4. Optional Configuration
 
@@ -192,7 +203,7 @@ The redirect URL should follow the format `https://www.fastgpt.cn/login/provider
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -243,7 +254,7 @@ Two items need to be filled in:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -333,8 +344,6 @@ docker compose up -d --force-recreate fastgpt-sso
 
 #### 3. yml Configuration Example
 
-#### 3. yml Configuration Example
-
 ```yaml
 fastgpt-sso:
   image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
@@ -403,7 +412,7 @@ We provide a standard OAuth 2.0 integration flow requiring three endpoints:
        -H "Content-Type: application/x-www-form-urlencoded"\
    "http://example.com/oauth/access_token?grant_type=authorization_code&client_id=s6BhdRkqt3&client_secret=xxx&code=4/P7qD2qAz4&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
    ```
-   Note: Content-Type must be application/x-www-form-urlencoded, not application/json
+   Set `Content-Type` to `application/x-www-form-urlencoded`.
 3. User info endpoint, requires passing the access_token, e.g., `http://example.com/oauth/user_info`
    ```bash
    curl -X GET\
@@ -426,7 +435,7 @@ We provide a standard OAuth 2.0 integration flow requiring three endpoints:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.14.16
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -620,7 +629,9 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 Below is the standard interface documentation for SSO and member sync in FastGPT-pro. If you need to integrate with a non-standard system, refer to this section for development.
 
-![](/imgs/sso18.png)
+With a custom integration, your external system implements the standard endpoints directly. FastGPT requests the authorization URL, redirects the user to sign in, and then exchanges the returned `code` for user information. It uses that information to register or sign in the user. The adapter-based flow described above performs the same exchange through FastGPT-SSO-Service.
+
+![SSO flow for an external system that implements the standard endpoints](/imgs/sso18.png)
 
 FastGPT provides the following standard interfaces:
 
@@ -795,7 +806,7 @@ type UserListResponseListType = {
 };
 ```
 
-curl example
+Example response:
 
 ```json
 {

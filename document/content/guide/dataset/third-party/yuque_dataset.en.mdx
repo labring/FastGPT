@@ -3,9 +3,9 @@ title: Yuque File Library
 description: Introduction and usage of the FastGPT Yuque File Library
 ---
 
-|                                 |                                 |
-| ------------------------------- | ------------------------------- |
-| ![alt text](/imgs/image-31.png) | ![alt text](/imgs/image-32.png) |
+|                                                          |                                                 |
+| -------------------------------------------------------- | ----------------------------------------------- |
+| ![Yuque Dataset connection settings](/imgs/image-31.png) | ![Imported Yuque documents](/imgs/image-32.png) |
 
 Starting from FastGPT v4.8.16, commercial edition users can import from Yuque file libraries by configuring a Yuque token and uid. This feature is currently in beta — some interactions may still need refinement.
 
@@ -13,29 +13,33 @@ Starting from FastGPT v4.8.16, commercial edition users can import from Yuque fi
 
 Go to the Yuque homepage > click your avatar > Settings to find the relevant parameters.
 
-![alt text](/imgs/image-36.png)
-
-Follow the images below to get the Token and User ID. Make sure to assign the appropriate permissions to the Token:
+![Open Yuque account settings](/imgs/image-36.png)
 
 **Personal Edition**:
 
-| Get Token                       | Add Permissions                 | Get User ID                     |
-| ------------------------------- | ------------------------------- | ------------------------------- |
-| ![alt text](/imgs/image-33.png) | ![alt text](/imgs/image-34.png) | ![alt text](/imgs/image-35.png) |
+1. In Settings, open **Token** under **Developer**, then create a new token.
+2. Enter a purpose for the token and select **Read your knowledge bases** and **Read your documents**. Confirm creation and copy the token.
+3. For the UID, use the account identifier shown below your display name and avatar in Settings.
+
+| Get Token                                     | Add Permissions                                             | Get User ID                                          |
+| --------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- |
+| ![Yuque token management](/imgs/image-33.png) | ![Create a token with read permissions](/imgs/image-34.png) | ![Yuque account UID in Settings](/imgs/image-35.png) |
 
 **Enterprise Edition**:
 
-| Get Token                        | Get User ID                      |
-| -------------------------------- | -------------------------------- |
-| ![alt text](/imgs/image-109.png) | ![alt text](/imgs/image-108.png) |
+Open **Team Management → Developer → Token** to manage tokens. Token availability depends on your Yuque plan. For the team UID, open the team homepage and copy the first path segment after the domain: in `https://tenant.yuque.com/<team-id>`, use `<team-id>`.
+
+| Get Token                                           | Get User ID                                                |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| ![Enterprise token management](/imgs/image-109.png) | ![Team UID in the Yuque homepage URL](/imgs/image-108.png) |
 
 ## 2. Create the Dataset
 
 Using the token and uid from the previous step, create a Dataset. Select the Yuque file library type, fill in the parameters, and click Create.
 
-![alt text](/imgs/image-37.png)
+![Select the Yuque Dataset type](/imgs/image-37.png)
 
-![alt text](/imgs/image-31.png)
+![Yuque Dataset connection settings](/imgs/image-31.png)
 
 ## 3. Import Documents
 
@@ -43,4 +47,4 @@ After creating the Dataset, click `Add File` to import from your Yuque document 
 
 The Yuque Dataset supports scheduled sync — it scans once daily at varying times. If documents have been updated, they will be synced automatically. You can also trigger a manual sync.
 
-![alt text](/imgs/image-38.png)
+![Select Yuque documents to import](/imgs/image-38.png)

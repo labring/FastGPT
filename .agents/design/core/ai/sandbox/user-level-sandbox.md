@@ -332,20 +332,24 @@ App Chat 和 Workflow 只在 Agent 或 ToolCall 节点确定本轮实际使用 S
 HTML 预览和 `sandbox_get_file_url` 不再把文件上传到 S3，而是签发短期只读 URL：
 
 ```text
-<previewProxy>/preview/<sandboxId>/<sessionId>/<workspaceRelativePath>
+<previewProxy>/preview/<sessionId>/<workspaceRelativePath>
 ```
 
 最终链路为：
 
 ```text
 FastGPT 创建 Redis preview session
-  -> agent-sandbox-proxy 校验 session 并向 FastGPT 解析 Provider endpoint
+  -> agent-sandbox-proxy 校验 token 格式，并向 FastGPT 解析 session 与 Provider endpoint
   -> fastgpt-ide-agent:1319 在 FASTGPT_WORKDIR 内流式读取文件
 ```
 
 关键约束：
 
-- `sandboxId` 必须匹配 `app|skilledit-<16 hex>`；随机 `sessionId` 为 24 位字母数字字符串。
+- `sessionId` 即 preview token，为 24 位字母数字随机字符串，首位为小写字母，不携带来源前缀。
+- 主站按 token 查询 Redis 中的 `sandboxId` 和来源上下文，proxy 不感知 `sourceType`。
+- 兼容旧 `/preview/<sandboxId>/<sessionId>/<workspaceRelativePath>` 链接：proxy 识别历史
+  `app-<16 位 hex>`、`skilledit-<16 位 hex>` 前缀，主站按原 Redis key 查询并校验 Sandbox
+  归属。旧 session 沿用原 TTL，不迁移或续期；新签发的 session 和 URL 统一使用随机 token 格式。
 - session TTL 为 2 小时，每个 Sandbox 最多 500 个活动 session。
 - URL 是对应 Sandbox 整个 Workspace 的临时只读 bearer capability，不只授权 URL 中单个文件。
 - session 只保存业务寻址上下文，不保存 Provider endpoint 或 IDE agent 密码。
@@ -355,8 +359,7 @@ FastGPT 创建 Redis preview session
 - HTML 资源必须使用 `./assets/...` 等相对路径；`/assets/...` 根路径不保留 preview URL 前缀。
 - preview 与 Workspace 冷归档是独立能力，S3 archive 流程不受影响。
 
-FastGPT、proxy 和包含 1319 preview listener 的 runtime image 必须协调发布，不支持新旧版本混合
-滚动兼容。
+预览仍要求 runtime image 包含 1319 preview listener；旧 URL 的兼容不改变 runtime 的发布与迁移约束。
 
 ## 10. Provider 与模块边界
 

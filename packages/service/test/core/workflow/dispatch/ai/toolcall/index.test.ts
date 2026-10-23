@@ -29,8 +29,18 @@ const {
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock }),
-  getTeamModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
+  getSystemModelHandle: async () => ({
+    getModelData: getLLMModelDataMock,
+    getLLMModelData: getLLMModelDataMock
+  }),
+  getTeamModelHandle: async () => ({
+    getModelData: getLLMModelDataMock,
+    getLLMModelData: getLLMModelDataMock
+  })
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall', () => ({
@@ -368,11 +378,19 @@ describe('dispatchRunTools file context', () => {
     expect(props.workflowStreamResponse.mock.calls.map(([event]: [unknown]) => event)).toEqual([
       {
         event: 'sandboxStatus',
+        data: { sandboxId, phase: 'lazyInit' }
+      },
+      {
+        event: 'sandboxStatus',
         data: { sandboxId, phase: 'upgrading' }
       },
       {
         event: 'sandboxStatus',
         data: { sandboxId, phase: 'lazyInit' }
+      },
+      {
+        event: 'sandboxStatus',
+        data: { sandboxId, phase: 'ready' }
       }
     ]);
     expect(result.error).toBeUndefined();
@@ -399,5 +417,10 @@ describe('dispatchRunTools file context', () => {
     });
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();
+    expect(
+      props.workflowStreamResponse.mock.calls.map(
+        ([event]: [{ data: { phase: string } }]) => event.data.phase
+      )
+    ).toEqual(['lazyInit']);
   });
 });

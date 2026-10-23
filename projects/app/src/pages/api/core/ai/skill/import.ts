@@ -74,7 +74,7 @@ async function handler(
     tmbId,
     packageStream: req,
     contentLength,
-    parentId: query.parentId ?? null
+    parentId: query.parentId || null
   });
 
   updateParentFoldersUpdateTime({ parentId: query.parentId });

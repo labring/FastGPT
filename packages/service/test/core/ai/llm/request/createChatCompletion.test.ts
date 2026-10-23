@@ -233,6 +233,62 @@ describe('createChatCompletion', () => {
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])(
+    'should redact media in request-error logs with user key=%s',
+    async (usedUserOpenAIKey) => {
+      const base64 = 'A'.repeat(1_000_000);
+      const body = createBody();
+      body.messages = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyze these media files.' },
+            { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } },
+            { type: 'input_audio', input_audio: { data: base64, format: 'wav' } },
+            { type: 'video_url', video_url: { url: `data:video/mp4;base64,${base64}` } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ];
+      const originalMessages = structuredClone(body.messages);
+      const error = new Error('upstream failed', { cause: { request: body } });
+      const create = vi.fn().mockRejectedValue(error);
+      mockApi({ create, usedUserOpenAIKey });
+      const request = createChatCompletion({ modelData: createModel(), body });
+      if (usedUserOpenAIKey) await expect(request).rejects.toContain('upstream failed');
+      else await expect(request).rejects.toBe(error);
+
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Analyze these media files.' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,[base64 omitted]' } },
+            { type: 'input_audio', input_audio: { data: '[base64 omitted]', format: 'wav' } },
+            { type: 'video_url', video_url: { url: 'data:video/mp4;base64,[base64 omitted]' } },
+            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
+          ]
+        }
+      ];
+      const log = usedUserOpenAIKey ? mockLogger.warn : mockLogger.error;
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        usedUserOpenAIKey ? 'User AI API error' : 'LLM response error',
+        expect.objectContaining({
+          request: { ...body, messages },
+          error: expect.objectContaining({
+            message: 'upstream failed',
+            stack: expect.any(String),
+            cause: { request: { ...body, messages } }
+          })
+        })
+      );
+      expect(JSON.stringify(log.mock.calls)).not.toContain(base64);
+      expect(body.messages).toEqual(originalMessages);
+      expect(create.mock.calls[0][0]).toBe(body);
+      expect(error.cause).toEqual({ request: body });
+    }
+  );
+
   it('should not treat an upstream error carrying the abort text as an abort', async () => {
     // SDK 的 makeMessage 会给带 status 的错误加上状态码前缀（如 '500 {...}'），
     // 所以真实上游错误的 message 不可能等于 abort 的固定文案；此处显式锁住该前提，

@@ -786,7 +786,7 @@ const RenderBody = ({
     if (typeInput === undefined) {
       onChangeNode({
         nodeId,
-        type: 'addInput',
+        type: 'ensureInput',
         value: {
           key: NodeInputKeyEnum.httpContentType,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],

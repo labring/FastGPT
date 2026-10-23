@@ -636,12 +636,20 @@ describe('getHistories', () => {
         value: [
           {
             interactive: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'ask_1',
               params: {
-                content: 'Choose one',
-                options: ['A', 'B', 'C'],
-                answer: 'A'
+                description: '',
+                questions: [
+                  {
+                    question: 'Choose one',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' },
+                      { summary: 'C', value: 'C' }
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -649,6 +657,20 @@ describe('getHistories', () => {
       }
     ];
 
+    completedRound.push(
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type: 'agentAsk',
+              questions: [{ question: 'Choose one', value: 'A' }]
+            }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Done' } }] }
+    );
     expect(getAgentLoopHistories(0, completedRound)).toEqual([]);
     expect(getAgentLoopHistories(0, MockHistories)).toEqual([]);
   });
@@ -908,6 +930,7 @@ describe('formatHttpError', () => {
     const result = formatHttpError(error);
     expect(result.message).toBe('Request failed');
     expect(result.data).toEqual({ detail: 'not found' });
+    expect(result.rawText).toBe('Request failed\n{"detail":"not found"}');
     expect(result.name).toBe('AxiosError');
     expect(result.method).toBe('GET');
     expect(result.code).toBe('ERR_BAD_REQUEST');
@@ -917,6 +940,7 @@ describe('formatHttpError', () => {
   it('should handle error with missing fields', () => {
     const result = formatHttpError({});
     expect(result.message).toBe('');
+    expect(result.rawText).toBe('');
     expect(result.data).toBeUndefined();
     expect(result.name).toBeUndefined();
     expect(result.method).toBeUndefined();
@@ -927,6 +951,55 @@ describe('formatHttpError', () => {
   it('should handle string error', () => {
     const result = formatHttpError('something went wrong');
     expect(result.message).toBe('something went wrong');
+    expect(result.rawText).toBe('something went wrong');
+  });
+
+  it.each([
+    { name: 'string', data: 'sku missing', text: 'sku missing' },
+    { name: 'array', data: ['sku missing'], text: '["sku missing"]' },
+    { name: 'number', data: 42, text: '42' },
+    { name: 'boolean', data: false, text: 'false' },
+    { name: 'undefined', data: undefined, text: '' },
+    { name: 'null', data: null, text: '' },
+    { name: 'empty string', data: '', text: '' },
+    { name: 'whitespace', data: ' \n ', text: '' },
+    { name: 'empty serialization', data: { toJSON: () => undefined }, text: '' }
+  ])('formats a $name response body', ({ data, text }) => {
+    const result = formatHttpError({ message: 'Request failed', response: { data } });
+    expect(result.rawText).toBe(text ? `Request failed\n${text}` : 'Request failed');
+    expect(result.data).toBe(data);
+  });
+
+  it('uses the response body when the error summary is empty', () => {
+    expect(formatHttpError({ response: { data: { detail: 'sku missing' } } }).rawText).toBe(
+      '{"detail":"sku missing"}'
+    );
+  });
+
+  it.each(['message', 'msg'])('does not repeat a %s-only body, including long messages', (key) => {
+    const message = 'x'.repeat(2500);
+    const result = formatHttpError({ response: { data: { [key]: message } } });
+    expect(result.rawText).toBe(message);
+  });
+
+  it.each([2000, 2001])(
+    'limits response body snippets at the boundary: %s characters',
+    (length) => {
+      const data = 'x'.repeat(length);
+      const result = formatHttpError({ message: 'Request failed', response: { data } });
+      expect(result.rawText).toBe(
+        `Request failed\n${'x'.repeat(2000)}${length > 2000 ? '...' : ''}`
+      );
+      expect(result.data).toBe(data);
+    }
+  );
+
+  it('keeps the summary when the response body cannot be serialized', () => {
+    const data: { self?: unknown } = {};
+    data.self = data;
+    const result = formatHttpError({ message: 'Request failed', response: { data } });
+    expect(result.rawText).toBe('Request failed');
+    expect(result.data).toBe(data);
   });
 });
 
@@ -992,6 +1065,71 @@ describe('rewriteRuntimeWorkFlow', () => {
       status: 'waiting',
       ...opts
     }) as any;
+
+  it.each(['mcp', 'http'] as const)(
+    'fills a standalone %s child schema outside the snapshot tool selection',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        properties: { query: { type: 'string', isToolParam: true } }
+      };
+      const node = makeNode('child', FlowNodeTypeEnum.tool, {
+        toolConfig: {
+          [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-toolset-1/memberTool` }
+        }
+      });
+      mockMongoAppFindOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          _id: 'toolset-1',
+          modules: [
+            {
+              toolConfig: {
+                [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+                  toolList: [
+                    {
+                      name: 'memberTool',
+                      description: 'Member tool',
+                      inputSchema: schema,
+                      requestSchema: schema
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      });
+
+      await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                'tool:toolset-1',
+                {
+                  type: 'tool',
+                  id: 'toolset-1',
+                  data: { toolNames: ['staticTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        () =>
+          rewriteRuntimeWorkFlow({
+            teamId: 'team1',
+            tmbId: 'tmb1',
+            nodes: [node],
+            edges: []
+          })
+      );
+
+      expect(node.jsonSchema).toEqual(schema);
+      expect(node.inputs).toContainEqual(expect.objectContaining({ key: 'query' }));
+    }
+  );
 
   it('should return early when no toolSet nodes', async () => {
     const nodes = [makeNode('n1', FlowNodeTypeEnum.chatNode)];

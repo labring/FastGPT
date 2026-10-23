@@ -61,7 +61,7 @@ export const createAgentLoopCoreEventStream = ({
     });
   };
 
-  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call) => {
+  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call, options) => {
     if (!streamAnswer) return;
 
     const toolInfo = getToolInfo(call.function.name);
@@ -76,7 +76,8 @@ export const createAgentLoopCoreEventStream = ({
           toolName: toolInfo.name,
           toolAvatar: toolInfo.avatar || '',
           functionName: call.function.name,
-          params: call.function.arguments ?? ''
+          params: options?.hideDetails ? '' : (call.function.arguments ?? ''),
+          ...(options?.hideDetails ? { hideDetails: true } : {})
         }
       }
     });

@@ -5,6 +5,7 @@
     "rag",
     "dataset_engine",
     "collection_tags",
+    "collection_tags_legacy",
     "collection_permission",
     "websync",
     "third-party",

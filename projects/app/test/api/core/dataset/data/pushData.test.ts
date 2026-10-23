@@ -77,9 +77,13 @@ describe('pushData imageId authorization', () => {
       }
     });
     mocks.getSystemModelHandle.mockResolvedValue({
-      getEmbeddingModelData: vi.fn(() => ({ modelId: 'vec-model' })),
-      getLLMModelData: vi.fn(() => ({ modelId: 'agent-model' })),
-      getVlmModelData: vi.fn()
+      getModelData: vi.fn(
+        (_ref: unknown, options?: { type?: string; vision?: boolean; optional?: boolean }) => {
+          if (options?.vision) return undefined;
+          if (options?.type === 'embedding') return { modelId: 'vec-model' };
+          return { modelId: 'agent-model' };
+        }
+      )
     });
     mocks.getDatasetImageIndexCapability.mockReturnValue({
       supportImageIndex: false

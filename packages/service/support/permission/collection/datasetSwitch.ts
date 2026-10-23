@@ -37,6 +37,31 @@ export const getDatasetCollectionPermissionEnabled = async ({
   return dataset?.collectionPermissionEnabled === true;
 };
 
+/**
+ * 创建权限前读取并锁定开关状态。递增内部版本以触发同一 dataset 上启停事务的写冲突，
+ * 确保它们重试时能读到本轮新集合；不能只读取开关或依赖无修改的 update 获取锁。
+ * 锁仅覆盖调用方事务，按 dataset 一次获取，不按 collection 查询。
+ */
+export const lockDatasetCollectionPermissionState = async ({
+  teamId,
+  datasetId,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  session: ClientSession;
+}): Promise<boolean> => {
+  const dataset = await MongoDataset.findOneAndUpdate(
+    { _id: datasetId, teamId },
+    { $inc: { collectionPermissionVersion: 1 } },
+    { session, new: true }
+  )
+    .select('collectionPermissionEnabled')
+    .lean();
+  if (!dataset) throw DatasetErrEnum.unExist;
+  return dataset.collectionPermissionEnabled === true;
+};
+
 /** 置位开关。仅允许启用/关闭接口调用，且必须在同一事务会话内完成。 */
 export const setDatasetCollectionPermissionEnabled = ({
   datasetId,

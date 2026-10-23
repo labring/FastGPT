@@ -1,8 +1,8 @@
-import { Button, Flex, FormControl, FormErrorMessage, ModalBody } from '@chakra-ui/react';
+import { Button, Flex, FormControl, FormErrorMessage, ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box } from '@chakra-ui/react';
+
 import { childAppSystemKey } from '../FormComponent/ToolSelector/ToolSelectModal';
 import {
   Controller,
@@ -36,7 +36,6 @@ import {
   canInputBeConfiguredAsToolParam,
   canInputBeManuallyConfigured,
   formatJsonEditorValue,
-  getSelectedInputRenderType,
   getToolInputManualRenderType,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
@@ -45,6 +44,7 @@ import {
   parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -268,6 +268,9 @@ const mergeConfiguredTool = ({
 
   return {
     ...mergedTool,
+    name: prevTool.name ?? mergedTool.name,
+    intro: prevTool.intro ?? mergedTool.intro,
+    metadataLocale: prevTool.metadataLocale ?? mergedTool.metadataLocale,
     configStatus: getToolConfigStatus({ tool: mergedTool }).status
   };
 };
@@ -820,7 +823,8 @@ const ToolVersionSelect = ({
       const nextTool = await getClientToolPreviewNode({
         appId: tool.pluginId,
         versionId,
-        source: tool.source
+        source: tool.source,
+        lang: tool.metadataLocale ?? 'en'
       });
       const mergedTool = mergeConfiguredTool({
         nextTool,
@@ -843,7 +847,7 @@ const ToolVersionSelect = ({
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label: item.version,
         value: item.version
       }))
     ],

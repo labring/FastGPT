@@ -1,5 +1,6 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -147,12 +148,12 @@ export const getAuthorizedModelIds = async ({
 export const authModels = async ({
   actor,
   modelIds,
-  action,
+  action = 'use',
   handle: inputHandle
 }: {
   actor: ModelActor;
   modelIds: string[];
-  action: ModelAuthAction;
+  action?: ModelAuthAction;
   handle?: ModelHandle;
 }): Promise<string[]> => {
   const ids = [...new Set(modelIds)];
@@ -182,31 +183,41 @@ export const authModels = async ({
 };
 
 /**
- * 断言全部模型具备 action 权限，失败抛 `UserError`：`config` 抛 `unExist`（不暴露模型是否存在），
- * `use` / `grant` 抛 `unAuthModel`。通过时返回同一快照的 handle 和按输入顺序去重解析的模型，
- * 调用方应复用该 handle 读取 typed 模型，不再重复调用 `getTeamModelHandle`。
+ * 断言全部模型具备 action 权限（默认 `use`），失败抛 `UserError`：`config` 抛 `unExist`（不暴露模型是否存在），
+ * `use` / `grant` 抛 `unAuthModel`。通过时返回同一快照的 handle 和按输入顺序去重解析的模型；
+ * 传入 `type` / `vision`（或 `action === 'use'`）时同步通过 `getModelData` 校验模型类型与可用性并收窄返回类型。
  */
-export const assertAuthModels = async ({
+export const assertAuthModels = async <T extends `${ModelTypeEnum}` = `${ModelTypeEnum}`>({
   actor,
   modelIds,
-  action,
+  action = 'use',
+  type,
+  vision,
   handle: inputHandle
 }: {
   actor: ModelActor;
   modelIds: string[];
-  action: ModelAuthAction;
+  action?: ModelAuthAction;
+  type?: T;
+  vision?: boolean;
   handle?: ModelHandle;
-}): Promise<{ handle: ModelHandle; models: AIModelDataType[] }> => {
+}): Promise<{
+  handle: ModelHandle;
+  models: Array<Extract<AIModelDataType, { type: T }>>;
+}> => {
   const handle = inputHandle ?? (await getTeamModelHandle({ teamId: actor.teamId }));
   const deniedIds = await authModels({ actor, modelIds, action, handle });
   if (deniedIds.length > 0) {
     throw new UserError(action === 'config' ? ModelErrEnum.unExist : ModelErrEnum.unAuthModel);
   }
 
-  // 无权限判断已排除不存在的 ID，这里只做类型收窄。
+  // 无权限判断已排除不存在的 ID；use 场景或显式指定 type/vision 时通过 getModelData 校验可用性与类型。
   const models = [...new Set(modelIds)].flatMap((modelId) => {
-    const model = handle.findModelData({ modelId });
-    return model ? [model] : [];
+    const model =
+      action === 'use' || type !== undefined || vision !== undefined
+        ? handle.getModelData({ modelId }, { type, vision })
+        : handle.findModelData({ modelId });
+    return model ? [model as Extract<AIModelDataType, { type: T }>] : [];
   });
   return { handle, models };
 };
