@@ -45,7 +45,7 @@ type ChatTargetInput = {
 
 const OutLinkChatAuthInputShape = {
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe(
-    '外链鉴权数据，包含 shareId/outLinkUid。优先使用外链身份；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
+    '外链鉴权数据，包含 shareId/outLinkUid。优先于 skillId 和 appId，忽略低优先级字段；允许同时携带 token/Cookie，受保护外链仍需校验登录态。'
   )
 };
 
@@ -254,7 +254,10 @@ export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data
 /** 包含授权上下文、且允许缺省 target 的转换函数。 */
 export const transformOptionalChatAuthTargetInput = transformOptionalChatTargetInput;
 
-/** 为同一份业务字段构造资源互斥分支，不复制业务字段定义。 */
+/**
+ * 按 skillId > appId 选择资源分支，类型和文档仍提示二选一。
+ * catch(undefined) 只忽略低优先级字段；显式传入无效的 skillId 时不得回退到 appId。
+ */
 const createChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   [
     schema
@@ -270,17 +273,21 @@ const createChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T
       }),
     schema
       .extend({
-        appId: z.never().optional(),
+        appId: z.never().optional().catch(undefined),
         skillId: ChatTargetInputShape.skillId.nonoptional(),
-        sourceType: z.never().optional()
+        sourceType: z.never().optional().catch(undefined)
       })
       .meta({
         title: 'Skill 调试会话',
-        description: '通过 skillId 定位调试会话，使用接口允许的请求头凭证鉴权。'
+        description:
+          '通过 skillId 定位调试会话，优先于 appId 并忽略其 sourceType，使用接口允许的请求头凭证鉴权。'
       })
   ] as const;
 
-/** 外链与资源 target 分别校验；token/Cookie 属于请求头，不参与 body/query 字段互斥。 */
+/**
+ * 按 outLinkAuthData > skillId > appId 兼容混合入参，文档和输出类型仍提示三选一。
+ * 低优先级分支保留 never 守卫，外链格式错误时不能吞掉错误并回退为普通资源访问。
+ */
 const createOutLinkChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) => {
   const [app, skill] = createChatTargetBranches(schema);
   return [
@@ -288,15 +295,15 @@ const createOutLinkChatTargetBranches = <T extends z.ZodRawShape>(schema: z.ZodO
     skill.extend({ outLinkAuthData: z.never().optional() }).meta(skill.meta() ?? {}),
     schema
       .extend({
-        appId: z.never().optional(),
-        skillId: z.never().optional(),
-        sourceType: z.never().optional(),
+        appId: z.never().optional().catch(undefined),
+        skillId: z.never().optional().catch(undefined),
+        sourceType: z.never().optional().catch(undefined),
         outLinkAuthData: OutLinkChatAuthInputShape.outLinkAuthData.nonoptional()
       })
       .meta({
         title: '外链会话',
         description:
-          '通过 outLinkAuthData 解析真实应用。外链身份优先于请求头身份；token/Cookie 可以同时传入，受保护外链仍会校验登录态。外链校验失败时不会回退到普通资源鉴权。'
+          '通过 outLinkAuthData 解析真实应用，优先于 skillId 和 appId 并忽略其 sourceType。外链身份优先于请求头身份；token/Cookie 可以同时传入，受保护外链仍会校验登录态。外链校验失败时不会回退到普通资源鉴权。'
       })
   ] as const;
 };
@@ -314,7 +321,7 @@ const createNoChatTargetSchema = <T extends z.ZodRawShape>(shape: T) =>
     })
     .meta({ title: '直接访问资源', description: '不使用会话上下文，按资源自身权限鉴权。' });
 
-/** 资源 target 的校验、类型和文档共用具名 union；运行时转换为 sourceType/sourceId。 */
+/** 资源 target 共用具名 union，兼容 skillId 优先；运行时转换为 sourceType/sourceId。 */
 export const createChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.union(createChatTargetBranches(z.object({ ...ChatTargetInputShape, ...shape })));
 
@@ -322,7 +329,7 @@ export const createChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =
 export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.union([createNoChatTargetSchema(shape), ...createChatTargetInputSchema(shape).options]);
 
-/** 外链和普通资源会话二选一；请求头登录态可与外链鉴权数据同时存在。 */
+/** 文档提示三选一，运行时按外链、Skill、App 的优先级选择；登录态可与外链数据共存。 */
 export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
   z.union(
     createOutLinkChatTargetBranches(
@@ -360,7 +367,8 @@ export const createChatTargetQueryDocumentSchema = <
   const branches = schema.options;
   const shape: Record<string, z.ZodType> = {};
   const isDisabled = (field: z.core.$ZodType): boolean =>
-    field instanceof z.ZodNever || (field instanceof z.ZodOptional && isDisabled(field.unwrap()));
+    field instanceof z.ZodNever ||
+    ((field instanceof z.ZodOptional || field instanceof z.ZodCatch) && isDisabled(field.unwrap()));
 
   for (const branch of branches) {
     for (const [key, field] of Object.entries(branch.shape)) {

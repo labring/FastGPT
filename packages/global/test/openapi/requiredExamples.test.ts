@@ -59,15 +59,15 @@ const build = (schema: z.ZodType) => {
 
 describe('setRequiredRequestExamples', () => {
   it.each([createChatTargetInputSchema, createOutLinkChatTargetInputSchema])(
-    'generates only appId for a required mutually exclusive chat target',
+    'generates a single target example while accepting a higher-priority skill at runtime',
     (createSchema) => {
       const schema = createSchema({ chatId: z.string().meta({ example: 'chat' }) });
       const example = build(schema);
       expect(example).toEqual({ appId: '68ad85a7463006c963799a05', chatId: 'chat' });
       expect(schema.safeParse(example).success).toBe(true);
-      expect(
-        schema.safeParse({ ...schema.parse(example), skillId: '68ad85a7463006c963799a06' }).success
-      ).toBe(false);
+      const selected = schema.parse({ ...example, skillId: '68ad85a7463006c963799a06' });
+      expect(selected.skillId).toBe('68ad85a7463006c963799a06');
+      expect(selected.appId).toBeUndefined();
     }
   );
 
@@ -87,7 +87,12 @@ describe('setRequiredRequestExamples', () => {
     ]);
     expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('skillId');
     expect(schema.anyOf?.[0].anyOf?.[0].properties).not.toHaveProperty('outLinkAuthData');
+    expect(schema.anyOf?.[1].anyOf?.[0].properties).not.toHaveProperty('appId');
+    expect(schema.anyOf?.[1].anyOf?.[0].properties).not.toHaveProperty('sourceType');
+    expect(schema.anyOf?.[1].anyOf?.[0].required).toContain('skillId');
     expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('appId');
+    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('skillId');
+    expect(schema.anyOf?.[2].anyOf?.[0].properties).not.toHaveProperty('sourceType');
     expect(schema.anyOf?.[2].anyOf?.[0].required).toContain('outLinkAuthData');
   });
 

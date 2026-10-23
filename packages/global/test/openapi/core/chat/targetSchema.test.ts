@@ -26,7 +26,13 @@ import {
 import { SandboxCheckExistBodySchema } from '../../../../openapi/core/ai/sandbox/api';
 import { CreateQuestionGuideV2BodySchema } from '../../../../openapi/core/ai/agent/api';
 import { ExportCollectionBodySchema } from '../../../../openapi/core/dataset/collection/api';
-import { buildChatTargetResponse } from '../../../../openapi/core/chat/api';
+import {
+  buildChatTargetResponse,
+  createOutLinkChatTargetInputSchema,
+  createOptionalOutLinkChatTargetInputSchema,
+  createPaginatedChatTargetInputSchema
+} from '../../../../openapi/core/chat/api';
+import z from 'zod';
 
 const appId = '68ad85a7463006c963799a05';
 const skillId = '68ad85a7463006c963799a06';
@@ -133,42 +139,93 @@ describe('openapi/core/chat target schema', () => {
     expect('skillId' in result).toBe(false);
   });
 
-  it('rejects required target when multiple explicit targets are provided', () => {
+  it('prefers skillId over appId and ignores the lower-priority sourceType', () => {
     const payload = {
       appId,
       skillId,
       chatId: 'chat-1'
     };
 
-    expect(() => MarkChatReadBodySchema.parse(payload)).toThrow();
-    expect(() =>
+    expect(MarkChatReadBodySchema.parse(payload)).toMatchObject({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId
+    });
+    expect(
       StopV2ChatSchema.parse({
         skillId,
         sourceType: ChatSourceTypeEnum.chatAgentHelper,
         chatId: 'chat-1'
       })
-    ).toThrow();
-    expect(() =>
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: skillId });
+    expect(
       StopV2ChatSchema.parse({
         skillId,
         sourceType: ChatSourceTypeEnum.workflowBuilder,
         chatId: 'chat-1'
       })
-    ).toThrow();
-    expect(() =>
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: skillId });
+    expect(
       GetPaginationRecordsBodySchema.parse({
         ...payload,
         pageSize: 10,
         offset: 0
       })
-    ).toThrow();
-    expect(() =>
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: skillId });
+    expect(
       GetRecordsV2BodySchema.parse({
         ...payload,
         pageSize: 10
       })
-    ).toThrow();
-    expect(() => ResumeStreamParamsSchema.parse(payload)).toThrow();
+    ).toMatchObject({ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: skillId });
+    expect(ResumeStreamParamsSchema.parse(payload)).toMatchObject({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId
+    });
+  });
+
+  it.each([
+    { name: 'required', createSchema: createOutLinkChatTargetInputSchema },
+    { name: 'optional', createSchema: createOptionalOutLinkChatTargetInputSchema },
+    { name: 'paginated', createSchema: createPaginatedChatTargetInputSchema }
+  ])('keeps context priority without falling back on invalid $name input', ({ createSchema }) => {
+    const schema = createSchema({ chatId: z.string() });
+    const business = { chatId: 'chat-1' };
+    const outLinkAuthData = { shareId, outLinkUid };
+    const skill = schema.parse({
+      ...business,
+      appId: 'invalid-low-priority-app',
+      skillId,
+      sourceType: 'invalid-low-priority-source'
+    });
+    expect(skill).toMatchObject({ ...business, skillId });
+    expect(skill.appId).toBeUndefined();
+    expect(skill.sourceType).toBeUndefined();
+
+    for (const external of [outLinkAuthData, JSON.stringify(outLinkAuthData)]) {
+      const share = schema.parse({
+        ...business,
+        appId: 'invalid-low-priority-app',
+        skillId: 'invalid-low-priority-skill',
+        sourceType: 'invalid-low-priority-source',
+        outLinkAuthData: external
+      });
+      expect(share).toMatchObject({ ...business, outLinkAuthData });
+      expect(share.appId).toBeUndefined();
+      expect(share.skillId).toBeUndefined();
+      expect(share.sourceType).toBeUndefined();
+    }
+
+    for (const invalid of [null, {}, { shareId }, 'invalid-json']) {
+      expect(
+        schema.safeParse({ ...business, appId, skillId, outLinkAuthData: invalid }).success
+      ).toBe(false);
+    }
+    for (const invalid of [null, '', 'invalid-id']) {
+      expect(schema.safeParse({ ...business, appId, skillId: invalid }).success).toBe(false);
+    }
+    expect(schema.safeParse({ ...business, appId, sourceType: 'invalid-source' }).success).toBe(
+      false
+    );
   });
 
   it('rejects required target when appId and skillId are both missing', () => {
@@ -419,7 +476,7 @@ describe('openapi/core/chat target schema', () => {
       }
     });
 
-    expect(() =>
+    expect(
       ExportCollectionBodySchema.parse({
         collectionId: appId,
         appId,
@@ -430,7 +487,11 @@ describe('openapi/core/chat target schema', () => {
           outLinkUid
         }
       })
-    ).toThrow();
+    ).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      outLinkAuthData: { shareId, outLinkUid }
+    });
   });
 
   it('parses string outLinkAuthData for DELETE chat query schemas', () => {
@@ -469,8 +530,8 @@ describe('openapi/core/chat target schema', () => {
     });
   });
 
-  it('rejects app target when share auth is also provided', () => {
-    expect(() =>
+  it('prefers share auth when an app target is also provided', () => {
+    expect(
       UpdateUserFeedbackBodySchema.parse({
         appId,
         outLinkAuthData: {
@@ -481,10 +542,14 @@ describe('openapi/core/chat target schema', () => {
         dataId: 'data-1',
         userGoodFeedback: 'good'
       })
-    ).toThrow();
+    ).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      outLinkAuthData: { shareId, outLinkUid }
+    });
   });
 
-  it('rejects incomplete or ambiguous auth context', () => {
+  it('rejects incomplete share auth and prefers complete share auth over a skill', () => {
     expect(() =>
       GetHistoryStatusBodySchema.parse({
         outLinkAuthData: {
@@ -494,7 +559,7 @@ describe('openapi/core/chat target schema', () => {
       })
     ).toThrow();
 
-    expect(() =>
+    expect(
       GetRecordsV2BodySchema.parse({
         skillId,
         outLinkAuthData: {
@@ -504,7 +569,11 @@ describe('openapi/core/chat target schema', () => {
         chatId: 'chat-1',
         pageSize: 10
       })
-    ).toThrow();
+    ).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      outLinkAuthData: { shareId, outLinkUid }
+    });
 
     expect(() =>
       GetRecordsV2BodySchema.parse({
@@ -519,7 +588,11 @@ describe('openapi/core/chat target schema', () => {
 
   it('requires a target for session lists and preserves pagination priority in every auth mode', () => {
     expect(() => GetHistoriesBodySchema.parse({ pageSize: 10, offset: 0 })).toThrow();
-    expect(() => GetHistoriesBodySchema.parse({ appId, skillId, offset: 0 })).toThrow();
+    expect(GetHistoriesBodySchema.parse({ appId, skillId, offset: 0 })).toMatchObject({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      offset: 0
+    });
 
     for (const target of [{ appId }, { skillId }, { outLinkAuthData: { shareId, outLinkUid } }]) {
       const offsetResult = GetHistoriesBodySchema.parse({ ...target, offset: 0, pageNum: -1 });
