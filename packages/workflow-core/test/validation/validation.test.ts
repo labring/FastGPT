@@ -124,6 +124,15 @@ describe('validateWorkflow', () => {
       )
     ).toEqual([]);
     expect(withCatch).toEqual(caught);
+
+    withCatch.executionEdges[1].source = { kind: 'next', nodeId: 'target' };
+    const successful = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(successful);
   });
 
   it('reports incomplete variable update rows', async () => {

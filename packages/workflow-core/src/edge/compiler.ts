@@ -87,11 +87,12 @@ export const compileExecutionEdge = (
   targetHandle: compileTargetHandle(edge.target, document)
 });
 
-const parseSourceHandle = ({
+/** 只解析源出口，供完整边导入和历史拓扑检查共用；不校验目标端口或当前分支配置。 */
+export const decompileStoreSourcePort = ({
   edge,
   document
 }: {
-  edge: StoreEdgeItemType;
+  edge: Pick<StoreEdgeItemType, 'source' | 'sourceHandle'>;
   document: Pick<WorkflowDocument, 'nodes'>;
 }): ExecutionSourcePortRef => {
   if (edge.sourceHandle === NodeOutputKeyEnum.selectedTools) {
@@ -168,7 +169,7 @@ export const decompileStoreEdge = (
   assertNode(document, edge.source);
   assertNode(document, edge.target);
   const result = {
-    source: parseSourceHandle({ edge, document }),
+    source: decompileStoreSourcePort({ edge, document }),
     target: parseTargetHandle(edge)
   };
   if ((result.source.kind === 'selectedTools') !== (result.target.kind === 'selectedTools')) {

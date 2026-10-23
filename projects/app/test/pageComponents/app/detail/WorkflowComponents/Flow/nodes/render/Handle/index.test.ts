@@ -281,13 +281,17 @@ describe('workflow handles with real ReactFlow measurements', () => {
     ['main-tail', 'main-mid', true, 'main-mid'],
     ['main-mid', 'main', true, 'main-mid'],
     ['main-tail', 'main-mid', false, 'main'],
-    ['main-tail', 'main', true, 'main-mid', true],
-    ['main-tail', 'main-mid', true, 'main-tail', true],
-    ['tool-tail', 'tool-mid', true, 'tool-tail', true],
-    ['main-tail', 'tool-mid', false, 'main-tail', true]
+    ['main-tail', 'main', true, 'main-mid', 'catch'],
+    ['main-tail', 'main-mid', true, 'main-tail', 'catch'],
+    ['tool-tail', 'tool-mid', true, 'tool-tail', 'catch'],
+    ['main-tail', 'tool-mid', false, 'main-tail', 'catch'],
+    ['main-tail', 'main', true, 'main-mid', 'success'],
+    ['main-tail', 'main-mid', true, 'main-tail', 'success'],
+    ['tool-tail', 'tool-mid', true, 'tool-tail', 'success'],
+    ['main-tail', 'tool-mid', false, 'main-tail', 'success']
   ])(
     'shows only eligible target handles while dragging %s -> %s',
-    async (source, target, allowed, branchId = '', isCatch = false) => {
+    async (source, target, allowed, branchId = '', errorPort = '') => {
       node = { ...node, flowNodeType: FlowNodeTypeEnum.chatNode, showTargetHandle: true };
       const nodeId = (id: string) => (id === target ? 'node' : id);
       const edges = [
@@ -320,14 +324,14 @@ describe('workflow handles with real ReactFlow measurements', () => {
       );
       if (branchId) {
         const branch = nodeId(branchId);
-        if (isCatch) nodes.get(branch)!.catchError = true;
+        if (errorPort) nodes.get(branch)!.catchError = true;
         else nodes.get(branch)!.flowNodeType = FlowNodeTypeEnum.ifElseNode;
         for (const edge of edges)
           if (edge.source === branch)
             edge.sourceHandle = getHandleId(
               branch,
-              isCatch ? 'source_catch' : 'source',
-              isCatch ? 'right' : 'ELSE'
+              errorPort === 'catch' ? 'source_catch' : 'source',
+              errorPort ? 'right' : 'ELSE'
             );
       }
       const graph = {
@@ -348,7 +352,11 @@ describe('workflow handles with real ReactFlow measurements', () => {
         nodeId: source,
         handleId:
           source === branchId
-            ? getHandleId(source, isCatch ? 'source_catch' : 'source', isCatch ? 'right' : 'ELSE')
+            ? getHandleId(
+                source,
+                errorPort === 'catch' ? 'source_catch' : 'source',
+                errorPort ? 'right' : 'ELSE'
+              )
             : getHandleId(source, 'source', 'right'),
         handleType: 'source'
       };

@@ -5,12 +5,14 @@ import {
   assertExecutionConnection,
   checkExecutionConnection,
   assertExecutionEdge,
-  getDefaultExecutionSourcePort
+  getDefaultExecutionSourcePort,
+  getExecutionBranchKeys
 } from '../../src/edge/validation';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import {
   FlowNodeTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
@@ -32,6 +34,7 @@ import type {
   WorkflowExecutionEdge
 } from '@fastgpt/global/core/workflow/type/edge';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 describe('assertExecutionConnection', () => {
   it('isolates main and different tool flows in both directions without deleting edges', async () => {
@@ -400,14 +403,13 @@ describe('checkExecutionConnection', () => {
     'rejects direct and transitive serial cycles through any %s port',
     async (kind) => {
       const source = node('source');
-      source.catchError = true;
       source.outputs.push({
         id: 'custom',
         key: 'custom',
         label: '',
         type: FlowNodeOutputTypeEnum.source
       });
-      const middle = { ...node('middle'), catchError: true };
+      const middle = node('middle');
       const nodes = [node('upstream'), middle, source];
       const candidate: WorkflowExecutionEdge = {
         source: (() => {
@@ -468,35 +470,50 @@ describe('checkExecutionConnection', () => {
     FlowNodeTypeEnum.ifElseNode,
     FlowNodeTypeEnum.classifyQuestion,
     FlowNodeTypeEnum.userSelect,
-    'catch'
+    'catch',
+    'success',
+    'custom-success'
   ] as const)(
     'allows a cycle controlled by a %s port at any position in the loop',
     async (branchType) => {
       for (const branchId of ['a', 'b', 'c']) {
         const nodes = ['a', 'b', 'c'].map((id) =>
-          node(id, id === branchId && branchType !== 'catch' ? branchType : undefined)
+          node(
+            id,
+            id === branchId && !['catch', 'success', 'custom-success'].includes(branchType)
+              ? (branchType as FlowNodeTypeEnum)
+              : undefined
+          )
         );
         const branch = nodes.find((item) => item.nodeId === branchId)!;
         const inputKey =
           branchType === FlowNodeTypeEnum.userSelect
             ? NodeInputKeyEnum.userSelectOptions
             : NodeInputKeyEnum.agents;
-        if (branchType === 'catch') branch.catchError = true;
+        if (['catch', 'success', 'custom-success'].includes(branchType)) branch.catchError = true;
         else if (branchType !== FlowNodeTypeEnum.ifElseNode)
           branch.inputs.find((input) => input.key === inputKey)!.value = [
             { key: 'continue', value: 'Continue' },
             { key: 'exit', value: 'Exit' }
           ];
-        const source = (nodeId: string): WorkflowExecutionEdge['source'] =>
-          nodeId === branchId
-            ? branchType === 'catch'
-              ? { kind: 'catch', nodeId }
-              : {
-                  kind: 'branch',
-                  nodeId,
-                  branchKey: branchType === FlowNodeTypeEnum.ifElseNode ? 'ELSE' : 'continue'
-                }
-            : { kind: 'next', nodeId };
+        if (branchType === 'custom-success')
+          branch.outputs.push({
+            id: 'custom',
+            key: 'custom',
+            type: FlowNodeOutputTypeEnum.source,
+            label: ''
+          });
+        const source = (nodeId: string): WorkflowExecutionEdge['source'] => {
+          if (nodeId !== branchId || branchType === 'success') return { kind: 'next', nodeId };
+          if (branchType === 'catch') return { kind: 'catch', nodeId };
+          if (branchType === 'custom-success')
+            return { kind: 'sourceOutput', nodeId, outputKey: 'custom' };
+          return {
+            kind: 'branch',
+            nodeId,
+            branchKey: branchType === FlowNodeTypeEnum.ifElseNode ? 'ELSE' : 'continue'
+          };
+        };
         const document = createWorkflowDocument({
           nodes,
           executionEdges: [
@@ -558,6 +575,75 @@ describe('checkExecutionConnection', () => {
           reason: { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle }
         });
     }
+  });
+
+  it.each(['if-stable', 'if-legacy', 'classification', 'manual-options', 'dynamic-options'])(
+    'accepts every declared branch handle in %s, including fallbacks and reserved-looking keys',
+    (mode) => {
+      const type = mode.startsWith('if-')
+        ? FlowNodeTypeEnum.ifElseNode
+        : mode === 'classification'
+          ? FlowNodeTypeEnum.classifyQuestion
+          : FlowNodeTypeEnum.userSelect;
+      const branch = node('branch', type);
+      const inputKey =
+        type === FlowNodeTypeEnum.ifElseNode
+          ? NodeInputKeyEnum.ifElseList
+          : type === FlowNodeTypeEnum.classifyQuestion
+            ? NodeInputKeyEnum.agents
+            : NodeInputKeyEnum.userSelectOptions;
+      const input = branch.inputs.find((item) => item.key === inputKey)!;
+      input.value =
+        mode === 'if-stable'
+          ? [{ branchId: 'first' }, { branchId: 'second' }]
+          : mode === 'if-legacy'
+            ? [{}, {}]
+            : [
+                { key: 'first', value: 'First' },
+                { key: 'right', value: 'Fallback' }
+              ];
+      if (mode === 'dynamic-options') {
+        input.selectedType = FlowNodeInputTypeEnum.reference;
+        input.value = [['target', 'options']];
+      }
+      const expectedKeys =
+        mode === 'if-stable'
+          ? ['first', 'second', 'ELSE']
+          : mode === 'if-legacy'
+            ? ['IF', 'ELSE IF 1', 'ELSE']
+            : mode === 'dynamic-options'
+              ? [USER_SELECT_REFERENCE_HANDLE_KEY]
+              : ['first', 'right'];
+      expect(getExecutionBranchKeys(branch)).toEqual(expectedKeys);
+      const nodes = [node('target'), branch, node('source')];
+      const document = createWorkflowDocument({ nodes });
+      for (const branchKey of expectedKeys) {
+        const edges: WorkflowExecutionEdge[] = [
+          {
+            source: { kind: 'next', nodeId: 'target' },
+            target: { kind: 'target', nodeId: 'branch' }
+          },
+          {
+            source: { kind: 'branch', nodeId: 'branch', branchKey },
+            target: { kind: 'target', nodeId: 'source' }
+          }
+        ];
+        for (const graph of [edges, edges.map((edge) => compileExecutionEdge(edge, document))])
+          expect(
+            evaluate({ nodes, edges: graph, connection: ordinary('source', 'target') })
+          ).toEqual({ allowed: true });
+      }
+    }
+  );
+
+  it('keeps valid conditional sources usable when an unrelated historical target handle is unknown', () => {
+    const nodes = [{ ...node('target'), catchError: true }, node('source')];
+    const edges = [{ ...ordinary('target', 'source'), targetHandle: 'legacy-target' }];
+    const before = structuredClone(edges);
+    expect(evaluate({ nodes, edges, connection: ordinary('source', 'target') })).toEqual({
+      allowed: true
+    });
+    expect(edges).toEqual(before);
   });
 
   it('checks every return path so a branch outside a serial cycle cannot bypass the rule', () => {
