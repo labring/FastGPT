@@ -200,13 +200,13 @@ const WORKER_PLACEHOLDER_DOMAIN_PATTERN = /(?:^|[^a-zA-Z0-9-])example\.com(?=$|[
 const toSafeString = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 /**
- * 校验 Worker 任务执行错误是否属于预期的外部网络/DNS 故障或用户业务异常。
+ * 校验 Worker 任务执行错误是否属于预期的网络/DNS 故障或用户业务异常。
  *
  * 只在**主线程发生失败的位置**调用（此时拿到的是未跨线程的原始错误对象，`instanceof` 与自定义字段都有效），
  * 判定结果记录到 task 上供 completeTask 使用。不要对跨线程克隆后的对象调用：
  * 结构化克隆会把 `UserError` 压平成 `name: 'Error'` 的普通 Error。
  *
- * 针对用户提供的外部链接失效（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn；
+ * 网络/DNS 故障（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn，不区分任务来源；
  * 但涉及 example.com 等未替换的配置占位符时保留 error，便于定位系统配置缺陷。
  *
  * 该函数必须对任意输入安全返回（不得抛错）：它运行在 completeTask 的日志决策路径上，
@@ -1124,11 +1124,9 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         reply('loadFileResult', result, [result.buffer]);
       })
       .catch((error) => {
-        // 只有「用户提供的外部资源」下载失败才允许降级为 warn。
-        // 内部 S3 读取失败（sourceKind === 's3'）与解析/上传阶段的失败都属于系统故障，必须保留 error，
-        // 否则会把内部存储故障一并掩盖。判定在此进行：此刻 error 尚未跨线程，instanceof 与 cause 都有效。
-        task.expectedClientError =
-          this.getTaskSourceKind(task.data) === 'externalHttp' && isExpectedWorkerTaskError(error);
+        // 预期内的失败（用户业务异常、网络/DNS 故障）降级为 warn，不区分任务来源：
+        // 来源相关的处理由上游调用方负责。判定在此进行：此刻 error 尚未跨线程，instanceof 与 cause 都有效。
+        task.expectedClientError = isExpectedWorkerTaskError(error);
 
         this.logger.warn('Worker task file source failed', {
           eventName:
@@ -1145,12 +1143,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         });
         reply('loadFileError', error);
       });
-  }
-
-  /** readFile 任务会把来源类型带在入参里；其他 worker 没有该字段，返回 undefined。 */
-  private getTaskSourceKind(data: Props): string | undefined {
-    const sourceKind = (data as { sourceKind?: unknown } | undefined)?.sourceKind;
-    return typeof sourceKind === 'string' ? sourceKind : undefined;
   }
 
   private deleteWorker(

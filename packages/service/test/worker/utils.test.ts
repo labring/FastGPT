@@ -241,10 +241,9 @@ describe('worker/utils WorkerPool', () => {
     });
     const loadFile = vi.fn().mockRejectedValue(dnsError);
 
-    // 只有用户提供的外部资源才允许降级，因此任务需带 sourceKind: 'externalHttp'
-    await expect(
-      pool.run({ loadFile: true, sourceKind: 'externalHttp' } as any, undefined, { loadFile })
-    ).rejects.toThrow('getaddrinfo ENOTFOUND www.lntour.gov.cn');
+    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
+      'getaddrinfo ENOTFOUND www.lntour.gov.cn'
+    );
 
     expect(logger.warn).toHaveBeenCalledWith(
       'Worker task failed',
@@ -253,14 +252,14 @@ describe('worker/utils WorkerPool', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('loadFile handler 遇内部 S3 网络故障时保留 error，不因错误码相同而降级', async () => {
+  it('loadFile handler 的网络错误不区分任务来源，内部 S3 同样降级为 warn', async () => {
     const logger = createLogger();
     const pool = createPool<{ payload: string }, { key: string; src: string }>({
       name: WorkerNameEnum.readFile,
       maxReservedThreads: 1,
       logger
     });
-    // 内部存储不可达：错误码与外部死链相同，但不能降级，否则会掩盖真实存储故障
+    // 来源不再参与判定：即使任务来自内部 S3，错误形态相同就同样降级，来源相关的处理交给上游
     const s3Error = Object.assign(new Error('connect ECONNREFUSED 10.0.0.5:9000'), {
       code: 'ECONNREFUSED'
     });
@@ -270,11 +269,11 @@ describe('worker/utils WorkerPool', () => {
       pool.run({ loadFile: true, sourceKind: 's3' } as any, undefined, { loadFile })
     ).rejects.toThrow('connect ECONNREFUSED 10.0.0.5:9000');
 
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       'Worker task failed',
       expect.objectContaining({ eventName: 'worker.task.failed' })
     );
-    expect(logger.warn).not.toHaveBeenCalledWith('Worker task failed', expect.anything());
+    expect(logger.error).not.toHaveBeenCalled();
   });
 
   it('loadFile handler 遇未配置的占位符域名保留 error 记录', async () => {
@@ -292,9 +291,9 @@ describe('worker/utils WorkerPool', () => {
     );
     const loadFile = vi.fn().mockRejectedValue(placeholderError);
 
-    await expect(
-      pool.run({ loadFile: true, sourceKind: 'externalHttp' } as any, undefined, { loadFile })
-    ).rejects.toThrow('getaddrinfo ENOTFOUND seedream.example.com');
+    await expect(pool.run({ loadFile: true } as any, undefined, { loadFile })).rejects.toThrow(
+      'getaddrinfo ENOTFOUND seedream.example.com'
+    );
 
     expect(logger.error).toHaveBeenCalledWith(
       'Worker task failed',
