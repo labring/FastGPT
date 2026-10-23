@@ -4,6 +4,7 @@ import { DATASET_VECTOR_INDEX_MIN_ROWS } from '@fastgpt/global/core/dataset/vect
 import { DatasetVectorTableName, PG_ADDRESS } from '../constants';
 import { PgClient } from './controller';
 import { getLogger, LogCategories } from '../../logger';
+import { configurePgIndexMemory } from './indexMemory';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 const INDEX_BUILD_LOCK = 41823001;
@@ -159,6 +160,22 @@ export const ensurePgDatasetIndex = async ({
       if (existing) await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
       return { pgIndex: 'none', created: false };
     }
+    const memory = await configurePgIndexMemory({
+      client,
+      rows: Number(counts[0].count),
+      dimensions: table.dimensions
+    });
+    if (memory.source === 'postgres') {
+      logger.warn('PG index memory detection unavailable; keeping database budget', {
+        datasetId,
+        ...memory
+      });
+    } else if (memory.budgetMB < memory.estimatedMB) {
+      logger.warn('PG index memory budget capped; disk-based build may be needed', {
+        datasetId,
+        ...memory
+      });
+    }
     await onBuilding();
     if (existing) await client.query(`DROP INDEX CONCURRENTLY ${qualifiedIndex}`);
 
@@ -176,6 +193,7 @@ export const ensurePgDatasetIndex = async ({
       indexName,
       rows: Number(counts[0].count),
       dimensions: table.dimensions,
+      memory,
       ...settings[0]
     });
 
