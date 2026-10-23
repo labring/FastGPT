@@ -19,7 +19,7 @@ import {
   useCommonFilterLabels,
   type MultiSelectFilterValue
 } from '@fastgpt/web/components/common/TagFilter';
-import { getTeamMembers } from '@/web/support/user/team/api';
+import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 import { specialProcessors } from '@/pageComponents/admin/audit/processors';
 import { defaultMetadataProcessor } from '@/pageComponents/admin/audit/commonProcessor';
 import type { AdminAuditListItemType } from '@fastgpt/global/openapi/admin/system/audit/api';
@@ -33,24 +33,6 @@ const AuditTable = () => {
     useState<MultiSelectFilterValue<AdminAuditEventEnum>>(createMultiSelectFilter());
   const [auditDetail, setAuditDetail] = useState<AdminAuditListItemType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // 获取团队成员列表
-  const { data: members } = usePagination(getTeamMembers, {
-    defaultPageSize: 20,
-    pageSizeCacheKey: 'audit-members',
-    type: 'scroll',
-    params: {}
-  });
-
-  const memberOptions = useMemo(
-    () =>
-      members.map((item) => ({
-        label: item.memberName,
-        value: item.tmbId,
-        avatar: item.avatar
-      })),
-    [members]
-  );
 
   const eventOptions = useMemo(
     () =>
@@ -108,13 +90,11 @@ const AuditTable = () => {
           审计日志
         </Box>
         <Flex ml={'auto'} alignItems={'center'} gap={2} wrap="wrap">
-          <MultiSelectFilter
+          <TeamMemberFilter
             title="操作人员"
             value={memberFilter}
             onChange={setMemberFilter}
-            options={memberOptions}
-            labels={labels}
-            showSearch
+            activeOnly={false}
           />
           <MultiSelectFilter
             title="操作类型"
