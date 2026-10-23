@@ -1,13 +1,12 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import { useMemo, useCallback, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import {
-  AuditEventEnum,
   TeamAuditEventList,
   type TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
@@ -20,8 +19,7 @@ import {
   type MultiSelectFilterValue,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
-import { specialProcessors } from './processors';
-import { defaultMetadataProcessor } from './processors/commonProcessor';
+import { processAuditMetadata } from './processors';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
@@ -39,19 +37,6 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
         label: t(auditLogMap[event].typeLabel),
         value: event
       })),
-    [t]
-  );
-
-  const processMetadataByEvent = useCallback(
-    (event: string, metadata: any) => {
-      // 恢复继承审计保留用户原始名称，仅在展示时补齐缺失的父级占位。
-      const defaultFormat =
-        event === AuditEventEnum.RESUME_INHERIT_PERMISSION
-          ? { ...metadata, parentResource: metadata.parentResource ?? '-' }
-          : defaultMetadataProcessor(metadata, t);
-      const specialFormat = specialProcessors[event as TeamAuditEvent]?.(defaultFormat, t);
-      return specialFormat || defaultFormat;
-    },
     [t]
   );
 
@@ -162,7 +147,11 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             <Tbody>
               {auditLog.map((log) => {
                 const i18nData = auditLogMap[log.event];
-                const metadata = processMetadataByEvent(log.event, { ...log.metadata });
+                const metadata = processAuditMetadata({
+                  event: log.event,
+                  metadata: log.metadata,
+                  t
+                });
 
                 return i18nData ? (
                   <Tr key={log._id} overflow={'unset'}>

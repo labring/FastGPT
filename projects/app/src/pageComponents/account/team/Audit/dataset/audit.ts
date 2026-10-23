@@ -1,12 +1,17 @@
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { defaultMetadataProcessor } from '../processors/commonProcessor';
 
-/** 将知识库协作者权限数字转换为审计列表展示用的权限标记。 */
-export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
+/** 保留知识库类型等通用翻译，并将协作者角色转换为审计列表展示用的权限标记。 */
+export const processUpdateDatasetCollaboratorSpecific = (
+  metadata: any,
+  t: (key: string) => string
+) => {
+  const formattedMetadata = defaultMetadataProcessor(metadata, t);
   const role = parseInt(metadata.permission, 10);
   const permission = new DatasetPermission({ role });
   return {
-    ...metadata,
+    ...formattedMetadata,
     readPermission: permission.hasReadPer ? '✔' : '✘',
     writePermission: permission.hasWritePer ? '✔' : '✘',
     managePermission: permission.hasManagePer ? '✔' : '✘'
