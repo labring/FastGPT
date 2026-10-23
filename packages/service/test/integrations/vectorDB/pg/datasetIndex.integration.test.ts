@@ -179,6 +179,7 @@ describeStorage('local PG FP16 dataset index with %s storage', (storage) => {
 
     const exact = await ctrl.embRecall({ ...props, datasetVectorData: [] });
     expect(result.results).toEqual(exact.results);
+    expect((await ctrl.embRecall({ ...props, limit: 100 })).results).toHaveLength(100);
     await expect(ctrl.embRecall({ ...props, filterCollectionIdList: ['hidden'] })).resolves.toEqual(
       { results: [] }
     );

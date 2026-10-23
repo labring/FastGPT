@@ -9,7 +9,11 @@ const mocks = vi.hoisted(() => ({
   on: vi.fn(),
   warn: vi.fn(),
   options: vi.fn(),
+  memory: vi.fn(),
   error: vi.fn()
+}));
+vi.mock('@fastgpt/service/common/vectorDB/pg/indexMemory', () => ({
+  configurePgIndexMemory: mocks.memory
 }));
 vi.mock('pg', async (importOriginal) => {
   const actual = await importOriginal<typeof import('pg') & { default: typeof import('pg') }>();
@@ -71,6 +75,12 @@ beforeEach(() => {
   mocks.connect.mockResolvedValue(undefined);
   mocks.end.mockResolvedValue(undefined);
   mocks.monitor.mockResolvedValue({ rows: [] });
+  mocks.memory.mockResolvedValue({
+    source: 'detected',
+    estimatedMB: 256,
+    budgetMB: 256,
+    parallelWorkers: 2
+  });
   mocks.query.mockImplementation(async (sql: string) => {
     if (sql.includes('pg_try_advisory_lock')) return { rows: [{ locked }] };
     if (sql.includes('JOIN pg_attribute')) return { rows: table ? [table] : [] };
@@ -134,6 +144,45 @@ describe('ensurePgDatasetIndex', () => {
     });
     expect(callbacks.onBuilding).not.toHaveBeenCalled();
     expect(mocks.query.mock.calls.some(([sql]) => sql.includes('count(*)'))).toBe(false);
+    expect(mocks.memory).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      source: 'postgres',
+      estimatedMB: 256,
+      budgetMB: 64,
+      detectionError: 'permission denied',
+      warning: 'PG index memory detection unavailable; keeping database budget'
+    },
+    {
+      source: 'detected',
+      estimatedMB: 8192,
+      budgetMB: 512,
+      warning: 'PG index memory budget capped; disk-based build may be needed'
+    }
+  ])(
+    'reports memory limits without aborting a supported disk-based build: $source',
+    async ({ warning, ...memory }) => {
+      mocks.memory.mockResolvedValue(memory);
+      expect(await ensurePgDatasetIndex({ ...scope, ...callbacks })).toMatchObject({
+        created: true
+      });
+      expect(mocks.warn).toHaveBeenCalledWith(
+        warning,
+        expect.objectContaining({ budgetMB: memory.budgetMB })
+      );
+    }
+  );
+
+  it('retries later under PG memory pressure without dropping an index or starting DDL', async () => {
+    mocks.memory.mockRejectedValue(new Error('Insufficient available PG memory'));
+    await expect(ensurePgDatasetIndex({ ...scope, ...callbacks })).rejects.toThrow(
+      'Insufficient available PG memory'
+    );
+    expect(callbacks.onBuilding).not.toHaveBeenCalled();
+    expect(mocks.query.mock.calls.some(([sql]) => /DROP INDEX|CREATE INDEX/.test(sql))).toBe(false);
+    expect(mocks.end).toHaveBeenCalledOnce();
   });
 
   it('builds the same FP16 partial index for halfvec storage and reuses its simplified column key', async () => {
