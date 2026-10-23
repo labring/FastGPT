@@ -82,7 +82,7 @@ const CollaboratorContextProvider = ({
   onUpdateCollaborators,
   onDelOneCollaborator,
   children,
-  refetchResource,
+  refetchResource: _refetchResource,
   refreshDeps = [],
   defaultRole,
   isInheritPermission,
@@ -204,10 +204,7 @@ const CollaboratorContextProvider = ({
       })}
       {isOpenManageModal && (
         <MemberModal
-          onClose={() => {
-            onCloseManageModal();
-            refetchResource?.();
-          }}
+          onClose={onCloseManageModal}
           SelectedTip={selectedHint ? <LightTip text={selectedHint} /> : undefined}
         />
       )}

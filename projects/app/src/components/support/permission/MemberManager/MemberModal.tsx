@@ -205,10 +205,22 @@ function MemberModal({
         isLoading={loadingGroupsAndOrgs}
         footer={
           <>
-            <Button variant={'whiteBase'} onClick={onClose}>
+            <Button
+              variant={'whiteBase'}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClose();
+              }}
+            >
               {t('common:Cancel')}
             </Button>
-            <Button isLoading={isUpdating} onClick={onConfirm}>
+            <Button
+              isLoading={isUpdating}
+              onClick={(event) => {
+                event.stopPropagation();
+                onConfirm();
+              }}
+            >
               {t('common:Confirm')}
             </Button>
           </>
