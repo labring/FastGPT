@@ -7,7 +7,7 @@ FastGPT 使用 React + TypeScript + Chakra UI。
 
 **审查要点**:
 - ✅ 使用函数式组件和 Hooks
-- ✅ 组件使用 `React.memo` 优化性能
+- ✅ 对有实际重复渲染成本的组件按需使用 `React.memo`，不要求所有组件一律 memo
 - ✅ Props 有明确的类型定义
 - ✅ 使用 TypeScript type 而不是 interface (项目约定)
 
@@ -85,6 +85,5 @@ const message = t('user:welcome', { name: userName });
 **审查要点**:
 - ✅ 列表渲染使用 key
 - ✅ 大列表使用虚拟化
-- ✅ 避免在渲染中创建新对象/函数
-- ✅ 使用 `useMemo` 缓存计算结果
-- ✅ 使用 `useCallback` 缓存函数
+- ✅ 当对象/函数引用确实影响 memo 子组件或 effect 依赖时，检查是否需要稳定引用
+- ✅ 按实际计算成本决定是否使用 `useMemo` / `useCallback`，不把缺少缓存本身当作阻塞缺陷
