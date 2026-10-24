@@ -10,6 +10,11 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
+import {
+  RedisLeaseAcquireError,
+  RedisLeaseLostError,
+  RedisLeaseWaitTimeoutError
+} from '@fastgpt/dal/redis/caches/lease';
 
 // Import controller functions after mocks are set up
 import {
@@ -111,6 +116,40 @@ describe('VectorDB Controller', () => {
   });
 
   describe('recallFromVectorStore', () => {
+    it.each([
+      new RedisLeaseWaitTimeoutError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseLostError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseAcquireError({ key: 'recall', label: 'recall', cause: new Error('Redis down') })
+    ])('does not retry lease coordination errors: $name', async (error) => {
+      mockVectorEmbRecall.mockRejectedValueOnce(error);
+
+      await expect(
+        recallFromVectorStore({
+          teamId: 'team',
+          datasetIds: ['dataset'],
+          vector: [0.1],
+          limit: 100,
+          forbidCollectionIdList: []
+        })
+      ).rejects.toBe(error);
+      expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+    });
+
+    it('continues retrying transient vector database errors', async () => {
+      mockVectorEmbRecall.mockRejectedValueOnce(new Error('temporary database failure'));
+
+      await expect(
+        recallFromVectorStore({
+          teamId: 'team',
+          datasetIds: ['dataset'],
+          vector: [0.1],
+          limit: 100,
+          forbidCollectionIdList: []
+        })
+      ).resolves.toHaveProperty('results');
+      expect(mockVectorEmbRecall).toHaveBeenCalledTimes(2);
+    });
+
     it('should call Vector.embRecall with correct props', async () => {
       const props = {
         teamId: 'team_123',

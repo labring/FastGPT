@@ -12,6 +12,7 @@ import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches/lease';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -35,8 +36,20 @@ const teamVectorCountCache = new TeamVectorCountCache({
 });
 
 export const initVectorStore = Vector.init;
-export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
-  retryFn(() => Vector.embRecall(props));
+/** 重试向量库瞬时故障；lease 等待超时、失效或 Redis 故障直接上抛，避免重复排队加重过载。 */
+export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
+  const result = await retryFn(async () => {
+    try {
+      return { success: true as const, value: await Vector.embRecall(props) };
+    } catch (error) {
+      if (isRedisLeaseError(error)) return { success: false as const, error };
+      throw error;
+    }
+  });
+
+  if (!result.success) throw result.error;
+  return result.value;
+};
 
 type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
 

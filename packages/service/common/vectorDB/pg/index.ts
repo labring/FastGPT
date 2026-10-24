@@ -4,8 +4,16 @@ import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import { isProVersion } from '../../system/constants';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
+const recallLease = new LeaseCache({ logger });
+
+// 客户端等待必须长于服务端 statement_timeout（90 秒），避免 SQL 仍执行时释放并发额度。
+const RECALL_QUERY_TIMEOUT_MS = 120_000;
+// 覆盖连接池等待（30 秒）和客户端超时，续租由 LeaseCache 管理。
+const RECALL_LEASE_TTL_MS = 180_000;
 
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -161,8 +169,10 @@ export class PgVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const results: any = await PgClient.query(
-      `BEGIN;
+    // 等待中的请求也读取最新配置；降额时，已有 token 全部计入新的并发上限。
+    const getConcurrency = () =>
+      isProVersion() ? (global.systemEnv?.pgVectorRecallConcurrency ?? 0) : 0;
+    const sql = `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
@@ -175,8 +185,19 @@ export class PgVectorCtrl implements VectorControllerType {
                 ${forbidCollectionSql}
               order by score limit ${limit}
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
-        COMMIT;`
-    );
+        COMMIT;`;
+    const results: any = await (() => {
+      // 开源版和未开启限流时，保留原有查询路径和超时行为。
+      if (getConcurrency() === 0) return PgClient.query(sql);
+
+      return recallLease.withConcurrency({
+        key: 'vector:pg:recall',
+        label: 'pg-vector-recall',
+        concurrency: getConcurrency,
+        ttlMs: RECALL_LEASE_TTL_MS,
+        fn: () => PgClient.query({ text: sql, query_timeout: RECALL_QUERY_TIMEOUT_MS })
+      });
+    })();
     const rows = results?.[results.length - 2]?.rows as {
       id: string;
       collection_id: string;
