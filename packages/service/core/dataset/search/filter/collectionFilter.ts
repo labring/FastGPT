@@ -274,7 +274,9 @@ export async function filterCollectionByKeyValueTags({
 
     const tagInfo = tagMap.get(tagName);
     if (!tagInfo) {
-      return false;
+      // 标签未在该知识库定义，等同于所有集合都未打该标签：否定/空值型条件应视为满足，
+      // 与集合级「缺少该标签」保持一致，避免多知识库检索时静默丢掉整个知识库。
+      return isAbsentAllowedOp(op);
     }
 
     const entry = tagsArr.find((t) => t.tagId === tagInfo.id);
