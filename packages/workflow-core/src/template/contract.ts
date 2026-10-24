@@ -100,7 +100,6 @@ export const ROOT_ONLY_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.workflowStart,
   FlowNodeTypeEnum.loop,
   FlowNodeTypeEnum.loopRun,
-  FlowNodeTypeEnum.parallelRun,
   FlowNodeTypeEnum.pluginInput,
   FlowNodeTypeEnum.pluginOutput,
   FlowNodeTypeEnum.globalVariable
@@ -113,6 +112,9 @@ const CONTAINER_NODE_TYPES = [
 ];
 
 const getNodePlacement = (flowNodeType: FlowNodeTypeEnum) => {
+  if (flowNodeType === FlowNodeTypeEnum.parallelRun) {
+    return { rootAllowed: true, allowedParentTypes: [FlowNodeTypeEnum.loopRun] };
+  }
   if (flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
     return { rootAllowed: false, allowedParentTypes: [FlowNodeTypeEnum.loopRun] };
   }

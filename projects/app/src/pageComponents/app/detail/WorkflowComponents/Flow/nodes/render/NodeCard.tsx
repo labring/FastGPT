@@ -59,6 +59,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
+import { getNodeAncestorIds } from '@fastgpt/global/core/workflow/node/nesting';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
@@ -263,7 +264,9 @@ const NodeCard = (props: Props) => {
   // Current node and parent node
   const { node, hidden } = useMemo(() => {
     const node = getNodeById(nodeId);
-    const hidden = node?.parentNodeId ? foldedNodesMap[node.parentNodeId] : false;
+    const hidden = getNodeAncestorIds({ nodeId, getNodeById }).some(
+      (parentId) => foldedNodesMap[parentId]
+    );
 
     return { node, hidden };
   }, [foldedNodesMap, getNodeById, nodeId]);

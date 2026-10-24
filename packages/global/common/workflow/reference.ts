@@ -83,8 +83,10 @@ export const getWorkflowReferenceSourceNodes = <
 
   collectSources(nodeId);
 
-  const parent = node.parentNodeId ? getNodeById(node.parentNodeId) : undefined;
-  if (parent) {
+  let parent = node.parentNodeId ? getNodeById(node.parentNodeId) : undefined;
+  const visitedParents = new Set([nodeId]);
+  while (parent && !visitedParents.has(parent.nodeId)) {
+    visitedParents.add(parent.nodeId);
     collectSources(parent.nodeId);
 
     // 父容器引用输入不会生成执行边，仍需继承其引用来源及上游。
@@ -106,6 +108,7 @@ export const getWorkflowReferenceSourceNodes = <
         collectSources(source.nodeId);
       }
     }
+    parent = parent.parentNodeId ? getNodeById(parent.parentNodeId) : undefined;
   }
 
   if (includeChildren && isNestedParentNodeType(node.flowNodeType)) {

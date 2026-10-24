@@ -32,10 +32,7 @@ export const ParallelRunNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_parallel_run'),
   showStatus: true,
   isTool: true,
-  isShowInContext: createHideInContext([
-    { parentType: FlowNodeTypeEnum.loopRun },
-    { parentType: FlowNodeTypeEnum.parallelRun }
-  ]),
+  isShowInContext: createHideInContext([{ parentType: FlowNodeTypeEnum.parallelRun }]),
   courseUrl: '/guide/build/workflow/nodes/parallel_run',
   inputs: [
     {

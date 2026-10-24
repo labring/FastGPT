@@ -51,6 +51,7 @@ It fits batch tasks where each item can be completed **independently**, such as:
 
 ## Notes
 
+- **Inside a loop**: a Parallel Run node can be placed inside a Loop Run node. Each loop iteration waits for its parallel tasks before starting the next iteration. Nested containers and interactive nodes remain disallowed inside Parallel Run.
 - **No nesting**: a Parallel Run node cannot contain another Parallel Run or a Batch Processing node
 - **No interactive nodes**: form input, user selection, and other interactive nodes cannot run inside the Execution Logic — the editor blocks dropping them in
 - **Variable and output races**: global variable changes from successful tasks are written back to the main flow. If a Variable Update node changes an output on a node outside the parallel container, that output is also written back after the task succeeds. When multiple tasks write the same variable or external node output, the final value depends on task completion order and is not guaranteed to be stable. For deterministic results, return values through the End node and use the Parallel Run aggregate outputs

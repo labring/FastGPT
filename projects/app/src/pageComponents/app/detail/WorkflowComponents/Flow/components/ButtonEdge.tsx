@@ -1,3 +1,4 @@
+import { getNodeAncestorIds } from '@fastgpt/global/core/workflow/node/nesting';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   BaseEdge,
@@ -70,15 +71,9 @@ const ButtonEdge = (props: EdgeProps) => {
 
   // If parentNode is folded, the edge will not be displayed
   const isFolded = useMemo(() => {
-    const sourceNode = getNodeById(source);
-    const targetNode = getNodeById(target);
-    if (sourceNode?.parentNodeId) {
-      return foldedNodesMap[sourceNode.parentNodeId];
-    }
-    if (targetNode?.parentNodeId) {
-      return foldedNodesMap[targetNode.parentNodeId];
-    }
-    return false;
+    return [source, target].some((nodeId) =>
+      getNodeAncestorIds({ nodeId, getNodeById }).some((parentId) => foldedNodesMap[parentId])
+    );
   }, [foldedNodesMap, getNodeById, source, target]);
 
   const defaultZIndex = useMemo(() => {

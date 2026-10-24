@@ -1,3 +1,4 @@
+import { getNodeAncestorIds } from '@fastgpt/global/core/workflow/node/nesting';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelDefault } from '@/web/core/ai/model/modelData';
@@ -321,7 +322,16 @@ const NodeTemplateList = ({
             y: position.y,
             width: 1,
             height: 1
-          }).find((n) => isNestedParentNodeType(n.type ?? '') && !n.data?.isFolded);
+          })
+            .sort((a, b) => Number(!!b.data.parentNodeId) - Number(!!a.data.parentNodeId))
+            .find(
+              (n) =>
+                isNestedParentNodeType(n.type ?? '') &&
+                !n.data?.isFolded &&
+                !getNodeAncestorIds({ nodeId: n.id, getNodeById }).some(
+                  (id) => getNodeById(id)?.isFolded
+                )
+            );
           if (dropContainer) {
             effectiveParentNodeId = dropContainer.id;
           }

@@ -106,7 +106,10 @@ export const getNodeContainerCheckError = ({
     return 'can_not_add_inside_container';
   }
 
-  if (isNestedParentNodeType(node.flowNodeType)) {
+  const isParallelInLoop =
+    node.flowNodeType === FlowNodeTypeEnum.parallelRun && parentType === FlowNodeTypeEnum.loopRun;
+
+  if (isNestedParentNodeType(node.flowNodeType) && !isParallelInLoop) {
     return parentType === FlowNodeTypeEnum.parallelRun ? 'can_not_parallel' : 'can_not_loop';
   }
 
@@ -114,7 +117,7 @@ export const getNodeContainerCheckError = ({
     return 'can_not_parallel';
   }
 
-  if (UNSUPPORTED_IN_NESTED_NODE_TYPES.has(node.flowNodeType)) {
+  if (UNSUPPORTED_IN_NESTED_NODE_TYPES.has(node.flowNodeType) && !isParallelInLoop) {
     return parentType === FlowNodeTypeEnum.parallelRun ? 'can_not_parallel' : 'can_not_loop';
   }
 

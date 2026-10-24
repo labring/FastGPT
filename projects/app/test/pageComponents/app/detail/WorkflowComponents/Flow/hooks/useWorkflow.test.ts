@@ -7,6 +7,7 @@ vi.mock('@/components/Markdown', () => ({ default: () => null }));
 vi.mock('katex/dist/katex.min.css', () => ({}));
 
 import {
+  getNestedNodePositionChanges,
   createBoundedMaxHeap,
   collectNearestNodes,
   computeHelperLines as computeHelperLinesWithNode,
@@ -436,5 +437,36 @@ describe('popover constants', () => {
   it('should expose expected popover dimensions', () => {
     expect(popoverWidth).toBe(400);
     expect(popoverHeight).toBe(600);
+  });
+});
+
+describe('nested container movement', () => {
+  it('moves every descendant once, including when the outer loop is dragged to zero', () => {
+    const nodes = [
+      buildNode('loop', 100, 100, 1000, 1000, { data: { nodeId: 'loop' } }),
+      buildNode('parallel', 200, 200, 400, 400, {
+        data: { nodeId: 'parallel', parentNodeId: 'loop' }
+      }),
+      buildNode('task', 300, 300, 50, 50, { data: { nodeId: 'task', parentNodeId: 'parallel' } }),
+      buildNode('unrelated', 500, 500, 50, 50, { data: { nodeId: 'unrelated' } })
+    ];
+    const changes = getNestedNodePositionChanges({
+      node: nodes[0] as any,
+      change: buildPositionChange('loop', { x: 0, y: 0 }),
+      nodes: nodes as any
+    });
+    expect(changes.map(({ id, position }) => ({ id, position }))).toEqual([
+      { id: 'parallel', position: { x: 100, y: 100 } },
+      { id: 'task', position: { x: 200, y: 200 } }
+    ]);
+    expect(nodes[2].position).toEqual({ x: 300, y: 300 });
+    const innerChanges = getNestedNodePositionChanges({
+      node: nodes[1] as any,
+      change: buildPositionChange('parallel', { x: 250, y: 200 }),
+      nodes: nodes as any
+    });
+    expect(innerChanges.map(({ id, position }) => ({ id, position }))).toEqual([
+      { id: 'task', position: { x: 350, y: 300 } }
+    ]);
   });
 });

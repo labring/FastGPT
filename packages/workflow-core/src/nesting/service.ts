@@ -77,7 +77,11 @@ export const assertParentAssignment = ({
       }
     ]);
   }
-  if (ROOT_ONLY_NODE_TYPES.has(node.flowNodeType)) {
+  if (
+    ROOT_ONLY_NODE_TYPES.has(node.flowNodeType) ||
+    (node.flowNodeType === FlowNodeTypeEnum.parallelRun &&
+      parent.flowNodeType !== FlowNodeTypeEnum.loopRun)
+  ) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer,

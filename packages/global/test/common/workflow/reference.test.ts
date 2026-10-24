@@ -23,6 +23,68 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 describe('getWorkflowReferenceSourceNodes', () => {
+  it('inherits both container scopes without exposing a sibling container body', () => {
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'source',
+        name: 'source',
+        flowNodeType: FlowNodeTypeEnum.code,
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'loop',
+        name: 'loop',
+        flowNodeType: FlowNodeTypeEnum.loopRun,
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'loop-start',
+        name: 'loop-start',
+        flowNodeType: FlowNodeTypeEnum.loopRunStart,
+        parentNodeId: 'loop',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'parallel',
+        name: 'parallel',
+        flowNodeType: FlowNodeTypeEnum.parallelRun,
+        parentNodeId: 'loop',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'task',
+        name: 'task',
+        flowNodeType: FlowNodeTypeEnum.code,
+        parentNodeId: 'parallel',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'foreign',
+        name: 'foreign',
+        flowNodeType: FlowNodeTypeEnum.code,
+        parentNodeId: 'other-parallel',
+        inputs: [],
+        outputs: []
+      }
+    ];
+    expect(
+      getWorkflowReferenceSourceNodes({
+        nodeId: 'task',
+        getNodeById: (id) => nodes.find((node) => node.nodeId === id),
+        edges: [
+          { source: 'source', target: 'loop' },
+          { source: 'loop-start', target: 'parallel' },
+          { source: 'foreign', target: 'task' }
+        ]
+      }).map((node) => node.nodeId)
+    ).toEqual(['loop-start', 'source']);
+  });
+
   it('keeps nearest sources first and ignores missing, self and cross-scope edges', () => {
     const nodes = new Map(
       ['target', 'direct', 'ancestor', 'foreign'].map((nodeId) => [

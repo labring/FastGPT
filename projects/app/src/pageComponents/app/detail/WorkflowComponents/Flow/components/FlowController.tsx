@@ -1,3 +1,4 @@
+import { getNodeAncestorIds } from '@fastgpt/global/core/workflow/node/nesting';
 import React, { useCallback, useMemo } from 'react';
 import {
   Background,
@@ -77,9 +78,11 @@ const FlowController = React.memo(function FlowController() {
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
       // If the node parentNode is folded, the child node will not be displayed
-      const node = getNodeById(id);
-      const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
-      if (parentNode?.isFolded) {
+      if (
+        getNodeAncestorIds({ nodeId: id, getNodeById }).some(
+          (parentId) => getNodeById(parentId)?.isFolded
+        )
+      ) {
         return null;
       }
 

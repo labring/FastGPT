@@ -1,3 +1,7 @@
+import {
+  getNodeAncestorIds,
+  getNodeDescendantIds
+} from '@fastgpt/global/core/workflow/node/nesting';
 import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
@@ -382,6 +386,28 @@ export const computeHelperLines = ({
   return scanner.getResult();
 };
 
+/** 画布坐标为绝对坐标，移动容器时需将相同位移应用到全部后代，包含拖到坐标零的情况。 */
+export const getNestedNodePositionChanges = ({
+  node,
+  change,
+  nodes
+}: {
+  node: Node<FlowNodeItemType>;
+  change: NodePositionChange;
+  nodes: Node<FlowNodeItemType>[];
+}): NodePositionChange[] => {
+  const descendantIds = getNodeDescendantIds({ nodeId: node.id, nodes: nodes.map((n) => n.data) });
+  const deltaX = (change.position?.x ?? node.position.x) - node.position.x;
+  const deltaY = (change.position?.y ?? node.position.y) - node.position.y;
+  return nodes
+    .filter((n) => descendantIds.has(n.id))
+    .map((childNode) => {
+      if (!change.dragging) return { ...change, id: childNode.id };
+      const position = { x: childNode.position.x + deltaX, y: childNode.position.y + deltaY };
+      return { ...change, id: childNode.id, position, positionAbsolute: position };
+    });
+};
+
 export const useRAF = () => {
   const { resetParentNodeSizeAndPosition } = useContextSelector(WorkflowLayoutContext, (v) => v);
 
@@ -484,9 +510,16 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
     const intersections = getIntersectingNodes(node);
-    const parentNode = intersections.find(
-      (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
-    );
+    const parentNode = intersections
+      .sort((a, b) => Number(!!b.data.parentNodeId) - Number(!!a.data.parentNodeId))
+      .find(
+        (item) =>
+          !item.data.isFolded &&
+          isNestedParentNodeType(item.type ?? '') &&
+          !getNodeAncestorIds({ nodeId: item.id, getNodeById }).some(
+            (id) => getNodeById(id)?.isFolded
+          )
+      );
 
     if (parentNode) {
       const containerChildNodes = nodes.filter(
@@ -604,10 +637,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
           '[Workflow Core Adapter] Failed to remove node with Core, falling back to Web behavior',
           removalResult.error
         );
-        return [
-          nodeId,
-          ...nodes.filter((node) => node.data.parentNodeId === nodeId).map((node) => node.id)
-        ];
+        return [nodeId, ...getNodeDescendantIds({ nodeId, nodes: nodes.map((node) => node.data) })];
       })();
       if (deletedNodeIdList.length === 0) return;
 
@@ -652,109 +682,34 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     const node = getRawNodeById(change.id);
     if (!node) return;
 
-    if (isNestedParentNodeType(node.data.flowNodeType)) {
-      setNodes((curr) =>
-        curr.map((n) =>
-          n.data.parentNodeId === node.id && n.selected ? { ...n, selected: false } : n
-        )
-      );
-    } else if (node.data.parentNodeId) {
-      const parent = getRawNodeById(node.data.parentNodeId);
-      if (parent?.selected) {
-        setNodes((curr) => curr.map((n) => (n.id === parent.id ? { ...n, selected: false } : n)));
-      }
+    const relatedIds = new Set(getNodeAncestorIds({ nodeId: node.id, getNodeById }));
+    for (const id of getNodeDescendantIds({ nodeId: node.id, nodes: nodes.map((n) => n.data) })) {
+      relatedIds.add(id);
     }
+    setNodes((curr) =>
+      curr.map((n) => (relatedIds.has(n.id) && n.selected ? { ...n, selected: false } : n))
+    );
   });
   const handlePositionNode = useMemoizedFn(
     (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
-      // 场景1: 子节点拖拽 - 在父节点内移动
-      if (node.data.parentNodeId) {
-        const parentId = node.data.parentNodeId;
-        if (change.dragging && change.position) {
-          const helperLines = computeHelperLines({
-            change,
-            node,
-            nodes,
-            isCandidate: (candidate) => candidate.data.parentNodeId === parentId
-          });
-          applyHelperLineResult(change, helperLines);
-        } else {
-          helperLinesRef.current?.clear();
-        }
+      const parentId = node.data.parentNodeId;
+      if (parentId) scheduleParentSizeUpdate(parentId);
 
-        // 使用 RAF 节流的更新
-        scheduleParentSizeUpdate(parentId);
-        return [];
-      }
-
-      // 场景2: Loop 父节点拖拽 - 联动子节点
-      if (isNestedParentNodeType(node.data.flowNodeType)) {
-        const parentId = node.id;
-        const helperLineScanner =
-          change.dragging && change.position
-            ? createHelperLineScanner({ change, node })
-            : undefined;
-
-        // 一次遍历同时收集子节点并扫描顶层吸附候选。
-        const childNodes: Node[] = [];
-        for (const n of nodes) {
-          if (n.data.parentNodeId === parentId) {
-            childNodes.push(n);
-          } else if (!n.data.parentNodeId) {
-            helperLineScanner?.scanNode(n);
-          }
-        }
-
-        if (helperLineScanner) {
-          applyHelperLineResult(change, helperLineScanner.getResult());
-        } else {
-          helperLinesRef.current?.clear();
-        }
-
-        // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
-        if (childNodes.length > 0) {
-          const initPosition = node.position;
-          const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
-          const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
-
-          const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
-            if (change.dragging) {
-              const position = {
-                x: childNode.position.x + deltaX,
-                y: childNode.position.y + deltaY
-              };
-              return {
-                ...change,
-                id: childNode.id,
-                position,
-                positionAbsolute: position
-              };
-            }
-            return {
-              ...change,
-              id: childNode.id
-            };
-          });
-
-          return childNodesChange;
-        }
-        return [];
-      }
-
-      // 场景3: 普通节点拖拽 - 显示对齐辅助线
       if (change.dragging && change.position) {
         const helperLines = computeHelperLines({
           change,
           node,
           nodes,
-          isCandidate: (candidate) => !candidate.data.parentNodeId
+          isCandidate: (candidate) => candidate.data.parentNodeId === parentId
         });
         applyHelperLineResult(change, helperLines);
       } else {
         helperLinesRef.current?.clear();
       }
 
-      return [];
+      if (!isNestedParentNodeType(node.data.flowNodeType)) return [];
+      // 子容器也需要移动自己的后代；外层容器一次平移全部后代，避免漏移或重复平移。
+      return getNestedNodePositionChanges({ node, change, nodes });
     }
   );
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {

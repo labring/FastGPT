@@ -262,6 +262,33 @@ describe('template context', () => {
     ).toBeUndefined();
   });
 
+  it('循环内容器校验允许并行节点，仍禁止反向或同类嵌套', () => {
+    expect(
+      getNodeContainerCheckError({
+        node: ParallelRunNode,
+        context: ctx({ parentType: FlowNodeTypeEnum.loopRun })
+      })
+    ).toBeUndefined();
+    expect(
+      getNodeContainerCheckError({
+        node: ParallelRunNode,
+        context: ctx({ parentType: FlowNodeTypeEnum.parallelRun })
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
+        node: LoopRunNode,
+        context: ctx({ parentType: FlowNodeTypeEnum.parallelRun })
+      })
+    ).toBe('can_not_parallel');
+    expect(
+      getNodeContainerCheckError({
+        node: LoopRunNode,
+        context: ctx({ parentType: FlowNodeTypeEnum.loopRun })
+      })
+    ).toBe('can_not_loop');
+  });
+
   it('工具集仅在容器已有工具调用节点时可加入', () => {
     const context = ctx({
       isSidebar: true,
@@ -339,7 +366,7 @@ describe('template context', () => {
     );
   });
 
-  it('loopRun/parallelRun 不在嵌套容器内部可见', () => {
+  it('仅允许 parallelRun 放入 loopRun，其他容器嵌套仍不可见', () => {
     expect(isTemplateVisible(LoopRunNode, null)).toBe(true);
     expect(isTemplateVisible(LoopRunNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(
       false
@@ -348,7 +375,7 @@ describe('template context', () => {
       false
     );
     expect(isTemplateVisible(ParallelRunNode, ctx({ parentType: FlowNodeTypeEnum.loopRun }))).toBe(
-      false
+      true
     );
     expect(
       isTemplateVisible(ParallelRunNode, ctx({ parentType: FlowNodeTypeEnum.parallelRun }))

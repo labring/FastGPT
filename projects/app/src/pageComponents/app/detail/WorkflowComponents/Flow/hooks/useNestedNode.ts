@@ -60,7 +60,7 @@ export const useNestedNode = ({
     let signal = '';
     for (const node of v.nodes) {
       if (node.data.parentNodeId === nodeId) {
-        signal += `${node.id}:${node.width ?? 0}x${node.height ?? 0}|`;
+        signal += `${node.id}:${node.width ?? 0}x${node.height ?? 0}@${node.position.x},${node.position.y}|`;
       }
     }
     return signal;
