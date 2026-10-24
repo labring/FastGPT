@@ -181,6 +181,32 @@ describe('authDatasetCollection', () => {
     ).resolves.toMatchObject({ dataset: { permission: { hasReadPer: true } } });
   });
 
+  it('does not inherit owner from the parent folder ACL', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'dataset-owner',
+      parentId: 'parent-id',
+      inheritPermission: true
+    });
+    // 父目录上该用户是 owner，但子知识库属于其他成员：最多只能继承 manage
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authDatasetByTmbId({ tmbId: 'folder-owner', datasetId, per: OwnerPermissionVal })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+    await expect(
+      authDatasetByTmbId({ tmbId: 'folder-owner', datasetId, per: ManagePermissionVal })
+    ).resolves.toMatchObject({
+      dataset: { permission: { isOwner: false, hasManagePer: true } }
+    });
+  });
+
   it('allows root access without requiring the dataset team to match', async () => {
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
