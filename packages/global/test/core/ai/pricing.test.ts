@@ -393,6 +393,27 @@ describe('calculateModelPrice', () => {
     });
   });
 
+  it('should treat a zero maxInputTokens tier as a closed range', () => {
+    const config = {
+      priceTiers: [
+        { maxInputTokens: 0, inputPrice: 1, outputPrice: 1 },
+        { maxInputTokens: 30, inputPrice: 2, outputPrice: 2 }
+      ]
+    };
+
+    // schema 允许 maxInputTokens: 0；0 必须作为实际上限，而不是开放末端梯度。
+    expect(calculateModelPrice({ config, inputTokens: 0 }).matchedTier).toMatchObject({
+      minInputTokens: 0,
+      maxInputTokens: 0,
+      inputPrice: 1
+    });
+    expect(calculateModelPrice({ config, inputTokens: 20000 }).matchedTier).toMatchObject({
+      minInputTokens: 0,
+      maxInputTokens: 30,
+      inputPrice: 2
+    });
+  });
+
   it('should calculate price with matched tier prices', () => {
     const { totalPoints } = calculateModelPrice({
       config: {

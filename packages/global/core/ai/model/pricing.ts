@@ -163,8 +163,8 @@ export const calculateModelPrice = ({
       const tier = resolvedTiers[i];
       const maxInputTokens = tier.maxInputTokens;
 
-      // 开放末端梯度（无 maxInputTokens）
-      if (!maxInputTokens) {
+      // 开放末端梯度（未提供 maxInputTokens）；0 是合法的实际上限，不能用真值判断。
+      if (maxInputTokens === null || maxInputTokens === undefined) {
         return tier;
       }
 
