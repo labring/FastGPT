@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { readOfdFile } from '@fastgpt/service/worker/readFile/extension/ofd';
+import { readOfdFile, detectBaseFontSize } from '@fastgpt/service/worker/readFile/extension/ofd';
 
 const OFD_NS = 'http://www.ofdservices.org/VisDoc';
 
@@ -441,4 +441,19 @@ describe('readOfdFile', () => {
     },
     LONG_TEST_TIMEOUT
   );
+});
+
+describe('detectBaseFontSize', () => {
+  it('支持超过函数参数上限的文档行数', () => {
+    // vitest worker 的调用栈更大，参数上限约 30-50 万；这里用 100 万行确保覆盖。
+    const rowCount = 1_000_000;
+    const bodyRow = { text: 'body', xStart: 0, yPos: 0, fontSize: 10.5 };
+    const titleRow = { text: 'title', xStart: 0, yPos: 0, fontSize: 16 };
+    const rows = Array.from({ length: rowCount }, (_, index) =>
+      index % 5 === 0 ? titleRow : bodyRow
+    );
+
+    // 修复前 Math.min(...rows.map(...)) 超过 V8 参数上限时会抛 RangeError。
+    expect(detectBaseFontSize([rows])).toBe(10.5);
+  });
 });

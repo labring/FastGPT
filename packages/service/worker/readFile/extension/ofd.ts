@@ -135,7 +135,14 @@ const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
     });
 };
 
-const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
+/** 文档级/页级行数可能超过函数参数上限，统一用 reduce 求最值。 */
+const minNumber = (values: number[]) =>
+  values.reduce((min, value) => Math.min(min, value), Infinity);
+const maxNumber = (values: number[]) =>
+  values.reduce((max, value) => Math.max(max, value), -Infinity);
+
+/** 统计全文档各字号的行数，识别页码字号后返回正文基准字号。 */
+export const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
   const rows = pagesRows.flat().filter((row) => row.text);
   if (!rows.length) return DEFAULT_FONT_SIZE;
 
@@ -149,15 +156,15 @@ const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
 
   // 仅当最小字号候选行确实呈现页码特征（页顶/底边距 + 纯数字）时才视为页码字体并降级基准；
   // 否则「正文是最小且最频繁字号、文档无页码」的正常文档会把标题字号误判为基准。
-  if (ranked.length >= 2 && candidate === Math.min(...rows.map((row) => row.fontSize))) {
+  if (ranked.length >= 2 && candidate === minNumber(rows.map((row) => row.fontSize))) {
     let candidateRowCount = 0;
     let pageNumberRowCount = 0;
     pagesRows.forEach((pageContentRows) => {
       const textRows = pageContentRows.filter((row) => row.text);
       if (!textRows.length) return;
       const pageYRange: [number, number] = [
-        Math.min(...textRows.map((row) => row.yPos)),
-        Math.max(...textRows.map((row) => row.yPos))
+        minNumber(textRows.map((row) => row.yPos)),
+        maxNumber(textRows.map((row) => row.yPos))
       ];
       textRows.forEach((row) => {
         if (row.fontSize !== candidate) return;
