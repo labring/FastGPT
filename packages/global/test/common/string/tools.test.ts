@@ -161,6 +161,14 @@ describe('string tools', () => {
     );
   });
 
+  it('should not duplicate the content when end is 0', () => {
+    // `slice(-0)` is `slice(0)` and returns the whole string, which used to
+    // append the full content again after the hide marker.
+    expect(sliceStrStartEnd('abcdefghijklmnopqrstuvwxyz', 5, 0)).toBe(
+      'abcde\n\n...[hide 21 chars]...\n\n'
+    );
+  });
+
   it('should format numbers with units', () => {
     expect(formatNumberWithUnit(0)).toBe('0');
     expect(formatNumberWithUnit(Number.NaN)).toBe('-');

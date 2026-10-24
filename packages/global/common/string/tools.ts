@@ -150,7 +150,9 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
   if (!overSize) return str;
 
   const startContent = str.slice(0, start);
-  const endContent = overSize ? str.slice(-end) : '';
+  // Use `str.length - end` instead of `-end`: `slice(-0)` is `slice(0)` and
+  // returns the whole string, so an `end` of 0 would duplicate the content.
+  const endContent = str.slice(str.length - end);
 
   return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
 };
