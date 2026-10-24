@@ -30,15 +30,18 @@ export class CommandFilesystemPolyfill {
    * size, then issues range reads so that no single command's stdout exceeds
    * the executor's bounded output limit.
    *
-   * Falls back to a single `cat | base64` read when `stat` fails (e.g. when
-   * the sandbox lacks GNU stat). That fallback is bounded by the caller's
-   * `maxOutputBytes`, so very large files require stat-based chunking.
+   * Falls back to a single `base64 < file` read when `stat` fails (e.g. when
+   * the sandbox lacks GNU stat or the file is missing). The redirect makes a
+   * missing or unreadable file fail the command; with `cat | base64` the
+   * pipeline exits with base64's status and the file reads as empty. That
+   * fallback is bounded by the caller's `maxOutputBytes`, so very large files
+   * require stat-based chunking.
    */
   async readFile(path: string): Promise<Uint8Array> {
     try {
       const size = await this.statSize(path);
       if (size === undefined) {
-        const result = await this.executor.execute(`cat ${this.shellQuote(path)} | base64 -w 0`);
+        const result = await this.executor.execute(`base64 -w 0 < ${this.shellQuote(path)}`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
         }
@@ -402,33 +405,26 @@ export class CommandFilesystemPolyfill {
   }
 
   /**
-   * Replace content in files via sed.
+   * Replace every literal occurrence of `oldContent` with `newContent`.
+   *
+   * The text is matched as a plain string, not as a sed regex: content from
+   * an edit usually holds `.`, `*`, `[`, `$`, backslashes and newlines, which
+   * sed would treat as pattern syntax or reject. The file is read, replaced
+   * in memory and written back in place, so its mode is kept. A file without
+   * a match is left untouched.
    */
   async replaceContent(
     entries: { path: string; oldContent: string; newContent: string }[]
   ): Promise<void> {
     for (const { path, oldContent, newContent } of entries) {
-      // Escape sed special characters
-      const escapedOld = oldContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
-      const escapedNew = newContent
-        .replace(/\\/g, '\\\\\\\\')
-        .replace(/\//g, '\\/')
-        .replace(/&/g, '\\&');
-
-      const result = await this.executor.execute(
-        `sed -i ${this.shellQuote(`s/${escapedOld}/${escapedNew}/g`)} ${this.shellQuote(path)}`
-      );
-
-      if (result.exitCode !== 0) {
-        throw new FileOperationError(
-          `Failed to replace content: ${result.stderr}`,
-          path,
-          'INVALID_PATH'
-        );
+      if (!oldContent) {
+        throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
       }
+
+      const content = new TextDecoder().decode(await this.readFile(path));
+      if (!content.includes(oldContent)) continue;
+
+      await this.writeTextFile(path, content.split(oldContent).join(newContent));
     }
   }
 

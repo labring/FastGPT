@@ -1,3 +1,7 @@
+import { execFile } from 'node:child_process';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { ICommandExecution } from '@/contracts';
 import { CommandFilesystemPolyfill } from '@/polyfills/command-filesystem';
@@ -156,6 +160,92 @@ MemAvailable:   6144000 kB`)
       memoryTotalMiB: 8000,
       memoryUsedMiB: 2000,
       timestamp: expect.any(Number)
+    });
+  });
+
+  describe.skipIf(process.platform === 'win32')('replaceContent', () => {
+    // 用真实 sh 执行命令，验证文件最终内容，而不是断言拼出的命令字符串。
+    const setupShell = async (content: string) => {
+      const dir = await mkdtemp(join(tmpdir(), 'command-fs-'));
+      const path = join(dir, 'file.txt');
+      await writeFile(path, content, { mode: 0o640 });
+
+      const executor = {
+        execute: async (command: string): Promise<ExecuteResult> =>
+          new Promise((resolve) => {
+            execFile('sh', ['-c', command], (error, stdout, stderr) => {
+              resolve(commandResult(stdout, stderr, error ? Number(error.code ?? 1) : 0));
+            });
+          }),
+        executeStream: vi.fn(async () => {}),
+        executeBackground: vi.fn(async () => ({
+          sessionId: 'test-session',
+          kill: async () => {}
+        })),
+        interrupt: vi.fn(async () => {})
+      } satisfies ICommandExecution;
+
+      return {
+        path,
+        polyfill: new CommandFilesystemPolyfill(executor),
+        read: () => readFile(path, 'utf8'),
+        cleanup: () => rm(dir, { recursive: true, force: true })
+      };
+    };
+
+    it('replaces text containing regex characters and backslashes literally', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell(
+        'const re = /a.b*/;\nconst p = "C:\\tmp\\[x]";\nconst t = `${cost}$`;\naxbb\n'
+      );
+      try {
+        await polyfill.replaceContent([
+          { path, oldContent: '/a.b*/', newContent: '/a\\.b+/' },
+          { path, oldContent: '"C:\\tmp\\[x]"', newContent: '"D:\\data & more"' },
+          { path, oldContent: '`${cost}$`', newContent: '`$1 & \\n`' }
+        ]);
+
+        await expect(read()).resolves.toBe(
+          'const re = /a\\.b+/;\nconst p = "D:\\data & more";\nconst t = `$1 & \\n`;\naxbb\n'
+        );
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('replaces multi-line and repeated text and keeps the file mode', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell(
+        'function a() {\n  return 1;\n}\nfunction a() {\n  return 1;\n}\nend\n'
+      );
+      try {
+        await polyfill.replaceContent([
+          { path, oldContent: '{\n  return 1;\n}', newContent: '{\n  return 2;\n}' }
+        ]);
+
+        await expect(read()).resolves.toBe(
+          'function a() {\n  return 2;\n}\nfunction a() {\n  return 2;\n}\nend\n'
+        );
+        expect((await stat(path)).mode & 0o777).toBe(0o640);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('rejects an empty search string and reports missing files', async () => {
+      const { path, polyfill, read, cleanup } = await setupShell('keep\n');
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: '', newContent: 'x' }])
+        ).rejects.toMatchObject({ path, fileErrorCode: 'INVALID_PATH' });
+        await expect(polyfill.readFile(`${path}.missing`)).rejects.toMatchObject({
+          fileErrorCode: 'FILE_NOT_FOUND'
+        });
+        await expect(
+          polyfill.replaceContent([{ path: `${path}.missing`, oldContent: 'a', newContent: 'b' }])
+        ).rejects.toMatchObject({ fileErrorCode: 'FILE_NOT_FOUND' });
+        await expect(read()).resolves.toBe('keep\n');
+      } finally {
+        await cleanup();
+      }
     });
   });
 });
