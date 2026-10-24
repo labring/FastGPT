@@ -471,6 +471,24 @@ describe('calculateModelPrice', () => {
     });
   });
 
+  it('should not treat a zero maxInputTokens tier as open-ended', () => {
+    // sanitizeModelPriceTiers clamps a negative maxInputTokens to 0, so a zero
+    // maxInputTokens tier is reachable. It must only match input <= 0 and must
+    // not be mistaken for the open-ended (no-upper-bound) tier.
+    const config = {
+      priceTiers: [
+        { maxInputTokens: 0, inputPrice: 1, outputPrice: 1 },
+        { maxInputTokens: 100, inputPrice: 2, outputPrice: 2 }
+      ]
+    };
+    // 50K input tokens must land in the second tier, not the zero-max first tier.
+    expect(calculateModelPrice({ config, inputTokens: 50000 }).matchedTier).toMatchObject({
+      maxInputTokens: 100,
+      inputPrice: 2,
+      outputPrice: 2
+    });
+  });
+
   it('should prioritize price tiers over legacy fields', () => {
     const { matchedTier, totalPoints } = calculateModelPrice({
       config: {
