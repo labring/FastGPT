@@ -56,7 +56,11 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
     const maxInputTokens = Math.max(0, tier.maxInputTokens!);
 
     // 跳过降序梯度（maxInputTokens 必须严格递增）
-    if (last?.maxInputTokens != null && maxInputTokens <= last.maxInputTokens) {
+    if (
+      last.maxInputTokens !== null &&
+      last.maxInputTokens !== undefined &&
+      maxInputTokens <= last.maxInputTokens
+    ) {
       continue;
     }
 
@@ -164,7 +168,7 @@ export const calculateModelPrice = ({
       const maxInputTokens = tier.maxInputTokens;
 
       // 开放末端梯度（无 maxInputTokens）
-      if (maxInputTokens == null) {
+      if (maxInputTokens === null || maxInputTokens === undefined) {
         return tier;
       }
 
