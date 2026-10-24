@@ -2933,7 +2933,7 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools[0].response).toBe('{"results": []}');
   });
 
-  it('should stringify non-string tool response content', () => {
+  it('should keep text parts when folding non-string tool response content', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -2958,9 +2958,7 @@ describe('GPTMessages2Chats', () => {
     const result = GPTMessages2Chats({ messages, reserveTool: true });
 
     expect(result).toHaveLength(1);
-    expect((result[0].value[0] as any).tools[0].response).toBe(
-      '[{"type":"text","text":"chunked result"}]'
-    );
+    expect((result[0].value[0] as any).tools[0].response).toBe('chunked result');
   });
 
   it('should keep assistant content and reasoning separate from tools after chat roundtrip', () => {
@@ -3425,6 +3423,40 @@ describe('GPTMessages2Chats', () => {
     expect(toolValue.tools).toHaveLength(1);
     expect(toolValue.tools[0].toolName).toBe('Custom Tool Display Name');
     expect(toolValue.tools[0].toolAvatar).toBe('http://example.com/avatar.png');
+  });
+
+  it('should keep only text parts when folding tool content parts back to chat items', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: '',
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: {
+              name: 'custom_tool',
+              arguments: '{}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_1',
+        content: [
+          { type: 'text', text: 'Look at these images' },
+          { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+        ]
+      }
+    ];
+
+    const result = GPTMessages2Chats({ messages, reserveTool: true });
+
+    const toolValue = result[0].value[0] as any;
+    expect(toolValue.tools).toBeDefined();
+    expect(toolValue.tools).toHaveLength(1);
+    expect(toolValue.tools[0].response).toBe('Look at these images');
   });
 });
 

@@ -12,6 +12,7 @@ import type {
 import { ChatFileTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
   ChatCompletionContentPart,
+  ChatCompletionContentPartText,
   ChatCompletionFunctionMessageParam,
   ChatCompletionMessageFunctionCall,
   ChatCompletionMessageParam,
@@ -578,6 +579,26 @@ export const chats2GPTMessages = ({
 };
 
 /**
+ * 提取工具响应的纯文本部分。
+ *
+ * tool content 允许是字符串或 parts 数组。折回 ChatItem 时只保留 text parts:
+ * 工具卡片展示与历史持久化都基于文本,image_url 等富媒体内容不进入这条链路,
+ * 避免把数组整体 JSON 化后污染展示与后续轮次读取。
+ */
+const getToolResponseText = (content: ChatCompletionMessageParam['content']): string => {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter(
+      (part): part is ChatCompletionContentPartText =>
+        typeof part === 'object' && part !== null && part.type === 'text'
+    )
+    .map((part) => part.text)
+    .filter(Boolean)
+    .join('\n');
+};
+
+/**
  * 将 GPT messages 转回 FastGPT ChatItem。
  *
  * GPTMessages2Chats 会先清洗连续 assistant message，再做 message -> chat value 的结构转换。
@@ -704,14 +725,12 @@ export const GPTMessages2Chats = ({
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
-            let toolResponse =
-              normalizedMessages.find(
-                (msg) =>
-                  msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                  msg.tool_call_id === tool.id
-              )?.content || '';
-            toolResponse =
-              typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
+            const toolContent = normalizedMessages.find(
+              (msg) =>
+                msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                msg.tool_call_id === tool.id
+            )?.content;
+            const toolResponse = getToolResponseText(toolContent);
 
             const toolInfo = getToolInfo?.(tool.function.name);
 

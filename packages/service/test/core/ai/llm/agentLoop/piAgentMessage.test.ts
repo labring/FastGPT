@@ -1,12 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const previewProxyEnv: { AGENT_SANDBOX_PREVIEW_PROXY_URL?: string | undefined } = serviceEnv;
 import {
   convertChatMessagesToPiAgentMessages,
   convertPiAgentMessagesToChatMessages,
+  convertToolResponseContentToPiContent,
   mapStopReason,
   normalizePiAgentMessages,
   replaceInteractiveToolResult,
   resolveInteractiveToolCall
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/message';
+
+vi.mock('@fastgpt/service/common/file/image/utils', () => ({
+  getImageBase64: vi.fn()
+}));
+
+import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 
 const model = {
   api: 'openai-completions',
@@ -321,6 +331,77 @@ describe('piAgent message conversion', () => {
         isError: false
       })
     ]);
+  });
+
+  it('converts tool response parts to pi content and degrades images when vision is disabled', async () => {
+    const parts = [
+      { type: 'text', text: 'ok' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ];
+
+    const withVision = await convertToolResponseContentToPiContent(parts as any);
+    expect(withVision).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+    ]);
+
+    const withoutVision = await convertToolResponseContentToPiContent(parts as any, {
+      useVision: false
+    });
+    expect(withoutVision).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'text', text: '[Image: data:image/png;base64,aW1hZ2U=]' }
+    ]);
+  });
+
+  it('masks sandbox preview urls in image placeholders when vision is disabled', async () => {
+    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    try {
+      const result = await convertToolResponseContentToPiContent(
+        [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+            }
+          }
+        ] as any,
+        { useVision: false }
+      );
+
+      expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
+    } finally {
+      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+    }
+  });
+
+  it('masks sandbox preview urls when image download fails', async () => {
+    const original = previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = 'https://sandbox-preview.example.com';
+    vi.mocked(getImageBase64).mockRejectedValue(new Error('download failed'));
+    try {
+      const result = await convertToolResponseContentToPiContent(
+        [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+            }
+          }
+        ] as any,
+        { useVision: true }
+      );
+
+      expect(result).toEqual([{ type: 'text', text: '[Image: sandbox preview file]' }]);
+    } finally {
+      previewProxyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL = original;
+    }
+  });
+
+  it('converts string tool responses to a single text part', async () => {
+    const result = await convertToolResponseContentToPiContent('plain');
+    expect(result).toEqual([{ type: 'text', text: 'plain' }]);
   });
 
   it('maps pi stop reasons to the shared agent-loop finish reasons', () => {
