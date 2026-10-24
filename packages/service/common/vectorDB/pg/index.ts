@@ -10,7 +10,9 @@ import { isProVersion } from '../../system/constants';
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 const recallLease = new LeaseCache({ logger });
 
-// 覆盖连接池等待（30 秒）和服务器 statement_timeout（90 秒），续租由 LeaseCache 管理。
+// 客户端等待必须长于服务端 statement_timeout（90 秒），避免 SQL 仍执行时释放并发额度。
+const RECALL_QUERY_TIMEOUT_MS = 120_000;
+// 覆盖连接池等待（30 秒）和客户端超时，续租由 LeaseCache 管理。
 const RECALL_LEASE_TTL_MS = 180_000;
 
 export class PgVectorCtrl implements VectorControllerType {
@@ -167,9 +169,10 @@ export class PgVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const queryRecall = () =>
-      PgClient.query(
-        `BEGIN;
+    // 等待中的请求也读取最新配置；降额时，已有 token 全部计入新的并发上限。
+    const getConcurrency = () =>
+      isProVersion() ? (global.systemEnv?.pgVectorRecallConcurrency ?? 0) : 0;
+    const sql = `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
@@ -182,19 +185,17 @@ export class PgVectorCtrl implements VectorControllerType {
                 ${forbidCollectionSql}
               order by score limit ${limit}
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
-        COMMIT;`
-      );
-    // 仅商业版读取 Admin 保存的上限；开源版及未配置时始终不限制检索并发。
-    const concurrency = isProVersion() ? (global.systemEnv?.pgVectorRecallConcurrency ?? 0) : 0;
+        COMMIT;`;
     const results: any = await (() => {
-      if (concurrency === 0) return queryRecall();
+      // 开源版和未开启限流时，保留原有查询路径和超时行为。
+      if (getConcurrency() === 0) return PgClient.query(sql);
 
       return recallLease.withConcurrency({
         key: 'vector:pg:recall',
         label: 'pg-vector-recall',
-        concurrency,
+        concurrency: getConcurrency,
         ttlMs: RECALL_LEASE_TTL_MS,
-        fn: queryRecall
+        fn: () => PgClient.query({ text: sql, query_timeout: RECALL_QUERY_TIMEOUT_MS })
       });
     })();
     const rows = results?.[results.length - 2]?.rows as {

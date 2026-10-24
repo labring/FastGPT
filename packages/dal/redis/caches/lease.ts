@@ -1,11 +1,44 @@
 import { randomUUID } from 'node:crypto';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
-import { RedisInvalidArgumentError } from '../runtime/errors';
+import { RedisInvalidArgumentError, RedisInvalidResponseError } from '../runtime/errors';
 import { parsePositiveInteger } from '../runtime/validation';
 import type { RedisCacheLogger } from '../types';
 
 const LEASE_KEY_PREFIX = 'lock:';
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+// 每个 token 独立过期；Redis 时间避免不同实例的时钟偏差改变占用计数。
+const ACQUIRE_CONCURRENCY_LEASE_SCRIPT = `
+local clock = redis.call("TIME")
+local now = clock[1] * 1000 + math.floor(clock[2] / 1000)
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
+if redis.call("ZCARD", KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+redis.call("ZADD", KEYS[1], now + tonumber(ARGV[2]), ARGV[1])
+local last = redis.call("ZREVRANGE", KEYS[1], 0, 0, "WITHSCORES")
+redis.call("PEXPIREAT", KEYS[1], last[2])
+return 1
+`;
+
+const RENEW_CONCURRENCY_LEASE_SCRIPT = `
+local clock = redis.call("TIME")
+local now = clock[1] * 1000 + math.floor(clock[2] / 1000)
+local expires = redis.call("ZSCORE", KEYS[1], ARGV[1])
+if not expires then return 0 end
+if tonumber(expires) <= now then
+  redis.call("ZREM", KEYS[1], ARGV[1])
+  return 0
+end
+redis.call("ZADD", KEYS[1], now + tonumber(ARGV[2]), ARGV[1])
+local last = redis.call("ZREVRANGE", KEYS[1], 0, 0, "WITHSCORES")
+redis.call("PEXPIREAT", KEYS[1], last[2])
+return 1
+`;
+
+const RELEASE_CONCURRENCY_LEASE_SCRIPT = `
+return redis.call("ZREM", KEYS[1], ARGV[1])
+`;
+
+type LeaseOperations = Pick<RedisCacheAdapter, 'acquireLease' | 'renewLease' | 'releaseLease'>;
 
 export class RedisLeaseUnavailableError extends Error {
   constructor({ key, label }: { key: string; label: string }) {
@@ -65,8 +98,8 @@ export type WithLeaseOptions<T> = {
 };
 
 export type WithConcurrencyOptions<T> = WithLeaseOptions<T> & {
-  /** 同一 key 的所有调用方必须使用相同上限；修改上限时应让已有任务先排空。 */
-  concurrency: number;
+  /** 0 表示不限制；热更新配置使用 getter，等待者在每次重试前读取最新上限。 */
+  concurrency: number | (() => number);
   /** 只限制等待槽位的时长，不限制取得槽位后的业务执行时间。 */
   waitTimeoutMs?: number;
   retryIntervalMs?: number;
@@ -123,9 +156,10 @@ export class LeaseCache {
   };
 
   /**
-   * 在共享的 N 个 lease 槽位中执行任务；不同实例使用同一 key 即共享并发额度。
+   * 按同一 key 的全部在途 token 限制并发；下调上限时等待旧任务退出，不中断旧任务。
    *
-   * 只重试槽位占用，不重试 Redis 故障、租约丢失或业务异常，也不保证 FIFO。
+   * 所有调用方须使用同一配置源；getter 让已排队任务也能读取热更新后的上限。
+   * 0 直接执行，不访问 Redis；只重试额度占满，不重试 Redis 故障或业务异常，不保证 FIFO。
    * 回调必须响应 signal / assertValid，或自行设置覆盖执行时长的超时；lease 不能强制
    * 停止外部操作。续租、token 校验和释放均复用 withLease。
    */
@@ -143,7 +177,12 @@ export class LeaseCache {
     this.getLeaseKey(key);
     this.parseLeaseOptions({ ttlMs, renewIntervalMs });
     const operation = 'lease.concurrency';
-    const limit = parsePositiveInteger({ value: concurrency, operation, field: 'concurrency' });
+    const getLimit = () => {
+      const value = typeof concurrency === 'function' ? concurrency() : concurrency;
+      if (value === 0) return 0;
+      return parsePositiveInteger({ value, operation, field: 'concurrency' });
+    };
+    getLimit();
     const waitMs = parsePositiveInteger({
       value: waitTimeoutMs,
       operation,
@@ -175,22 +214,63 @@ export class LeaseCache {
         signal?.addEventListener('abort', onAbort, { once: true });
       });
 
+    const evalLeaseScript = async (input: Parameters<RedisCacheAdapter['evalScript']>[0]) => {
+      const result = await this.redis.evalScript(input);
+      if (result !== 0 && result !== 1) {
+        throw new RedisInvalidResponseError({
+          operation,
+          message: 'Redis concurrency lease returned an unsupported response'
+        });
+      }
+      return result === 1;
+    };
+
     while (true) {
       assertWaiting();
-      // 随机起点和轮询抖动，避免多个进程总是争抢第一个槽位。
-      const firstSlot = Math.floor(Math.random() * limit);
-      for (let offset = 0; offset < limit; offset++) {
-        assertWaiting();
-        let entered = false;
-        try {
-          return await this.withLease({
-            key: `${key}:slot:${(firstSlot + offset) % limit}`,
+      const limit = getLimit();
+      if (limit === 0) {
+        const result = await fn({
+          signal: signal ?? new AbortController().signal,
+          assertValid: () => signal?.throwIfAborted()
+        });
+        signal?.throwIfAborted();
+        return result;
+      }
+
+      // 检查总占用与新增 token 在同一脚本内完成，降额后不能从其他编号槽位旁路进入。
+      const operations: LeaseOperations = {
+        acquireLease: ({ key, token, ttlMs }) =>
+          evalLeaseScript({
+            script: ACQUIRE_CONCURRENCY_LEASE_SCRIPT,
+            keys: [key],
+            args: [token, ttlMs, limit]
+          }),
+        renewLease: ({ key, token, ttlMs }) =>
+          evalLeaseScript({
+            script: RENEW_CONCURRENCY_LEASE_SCRIPT,
+            keys: [key],
+            args: [token, ttlMs]
+          }),
+        releaseLease: ({ key, token }) =>
+          evalLeaseScript({
+            script: RELEASE_CONCURRENCY_LEASE_SCRIPT,
+            keys: [key],
+            args: [token]
+          })
+      };
+      let entered = false;
+      try {
+        return await this.runWithLease(
+          {
+            key: `concurrency:${key}`,
             label,
             ttlMs,
             renewIntervalMs,
             fn: async (context) => {
-              // Redis 获取成功也可能已超过等待期限，此时释放槽位但不启动业务。
+              // Redis 获取成功也可能已超过等待期限，此时释放额度但不启动业务。
               assertWaiting();
+              // 配置可能在 Redis 往返期间变化，释放旧额度后按最新上限重新竞争。
+              if (getLimit() !== limit) throw new RedisLeaseUnavailableError({ key, label });
               entered = true;
               const result = await fn({
                 signal: signal ? AbortSignal.any([signal, context.signal]) : context.signal,
@@ -202,11 +282,12 @@ export class LeaseCache {
               signal?.throwIfAborted();
               return result;
             }
-          });
-        } catch (error) {
-          // 业务本身也可能抛出同名错误，进入回调后绝不能因此重复执行任务。
-          if (entered || !(error instanceof RedisLeaseUnavailableError)) throw error;
-        }
+          },
+          operations
+        );
+      } catch (error) {
+        // 业务本身也可能抛出同名错误，进入回调后绝不能因此重复执行任务。
+        if (entered || !(error instanceof RedisLeaseUnavailableError)) throw error;
       }
 
       assertWaiting();
@@ -221,7 +302,15 @@ export class LeaseCache {
   }
 
   /** 在临界区执行带自动续租的 Redis Lease。 */
-  async withLease<T>({ key, label, ttlMs, renewIntervalMs, fn }: WithLeaseOptions<T>): Promise<T> {
+  async withLease<T>(options: WithLeaseOptions<T>): Promise<T> {
+    return this.runWithLease(options, this.redis);
+  }
+
+  /** 独占锁与并发额度共用同一套续租、失效检测及 token 释放流程。 */
+  private async runWithLease<T>(
+    { key, label, ttlMs, renewIntervalMs, fn }: WithLeaseOptions<T>,
+    operations: LeaseOperations
+  ): Promise<T> {
     const leaseKey = this.getLeaseKey(key);
     const { parsedTtlMs, parsedRenewIntervalMs } = this.parseLeaseOptions({
       ttlMs,
@@ -298,7 +387,7 @@ export class LeaseCache {
       const renewStartedAt = Date.now();
 
       try {
-        const renewed = await this.redis.renewLease({
+        const renewed = await operations.renewLease({
           key: leaseKey,
           token,
           ttlMs: parsedTtlMs
@@ -356,7 +445,7 @@ export class LeaseCache {
     let acquired: boolean;
     const acquireStartedAt = Date.now();
     try {
-      acquired = await this.redis.acquireLease({
+      acquired = await operations.acquireLease({
         key: leaseKey,
         token,
         ttlMs: parsedTtlMs
@@ -388,7 +477,7 @@ export class LeaseCache {
       clearRenewTimer();
       clearExpiryTimer();
       try {
-        await this.redis.releaseLease({ key: leaseKey, token });
+        await operations.releaseLease({ key: leaseKey, token });
       } catch (error) {
         this.logger.warn('Redis lease release failed', { key: leaseKey, label, error });
       }

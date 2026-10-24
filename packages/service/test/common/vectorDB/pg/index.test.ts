@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Client, type Pool } from 'pg';
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 
@@ -13,10 +14,15 @@ vi.unmock('@fastgpt/service/common/vectorDB/pg');
 vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({ PgClient: { query: vi.fn() } }));
 
 describe('PgVectorCtrl.embRecall', () => {
+  let limits: number[] = [];
   beforeEach(() => {
     global.feConfigs = { ...global.feConfigs, isPlus: true };
     global.systemEnv = { ...global.systemEnv, pgVectorRecallConcurrency: 8 };
-    withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
+    limits = [];
+    withConcurrency.mockReset().mockImplementation(({ fn, concurrency }) => {
+      limits.push(concurrency());
+      return fn();
+    });
     vi.mocked(PgClient.query)
       .mockReset()
       .mockResolvedValue({ rows: [], rowCount: 0, command: 'SELECT', oid: 0, fields: [] });
@@ -49,11 +55,14 @@ describe('PgVectorCtrl.embRecall', () => {
     expect(withConcurrency).toHaveBeenCalledWith(
       expect.objectContaining({
         key: 'vector:pg:recall',
-        concurrency: 8,
+        concurrency: expect.any(Function),
         ttlMs: 180_000
       })
     );
-    const [sql] = vi.mocked(PgClient.query).mock.calls[0];
+    expect(limits).toEqual([8]);
+    const [query] = vi.mocked(PgClient.query).mock.calls[0];
+    expect(query).toMatchObject({ query_timeout: 120_000 });
+    const sql = typeof query === 'string' ? query : query.text;
     expect(sql).toMatch(
       /where\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
     );
@@ -114,11 +123,56 @@ describe('PgVectorCtrl.embRecall', () => {
     global.systemEnv.pgVectorRecallConcurrency = 12;
     await ctrl.embRecall(props);
 
-    expect(withConcurrency).toHaveBeenNthCalledWith(1, expect.objectContaining({ concurrency: 4 }));
-    expect(withConcurrency).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ concurrency: 12 })
-    );
+    expect(limits).toEqual([4, 12]);
+  });
+
+  it('holds the recall until the server timeout instead of releasing at the default client timeout', async () => {
+    const { PgClient: actualPgClient } = await vi.importActual<
+      typeof import('@fastgpt/service/common/vectorDB/pg/controller')
+    >('@fastgpt/service/common/vectorDB/pg/controller');
+    const previousPool = global.pgClient;
+    vi.useFakeTimers();
+    try {
+      const client = Object.assign(new Client({ query_timeout: 60_000 }), { readyForQuery: true });
+      const connection = Reflect.get(client, 'connection');
+      connection.query = () => {
+        setTimeout(() => {
+          Reflect.get(client, 'activeQuery').handleError(
+            new Error('server statement timeout'),
+            connection
+          );
+        }, 90_000);
+      };
+      global.pgClient = { query: client.query.bind(client) } as unknown as Pool;
+      vi.mocked(PgClient.query).mockImplementation(actualPgClient.query.bind(actualPgClient));
+      let released = false;
+      withConcurrency.mockImplementation(async ({ fn }) => {
+        try {
+          return await fn();
+        } finally {
+          released = true;
+        }
+      });
+      const result = expect(
+        new PgVectorCtrl().embRecall({
+          teamId: 'team',
+          datasetIds: ['dataset'],
+          vector: [0.1],
+          limit: 10,
+          forbidCollectionIdList: []
+        })
+      ).rejects.toThrow('server statement timeout');
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(released).toBe(false);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await result;
+      expect(released).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      global.pgClient = previousPool;
+      vi.useRealTimers();
+    }
   });
 
   it('does not submit SQL when the shared lease cannot be acquired', async () => {
