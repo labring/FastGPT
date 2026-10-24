@@ -164,7 +164,7 @@ export const calculateModelPrice = ({
       const maxInputTokens = tier.maxInputTokens;
 
       // 开放末端梯度（无 maxInputTokens）
-      if (!maxInputTokens) {
+      if (maxInputTokens == null) {
         return tier;
       }
 
