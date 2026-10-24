@@ -102,7 +102,6 @@ const buildItemFromFullTextSearch = (
   return buildSearchResultItem({
     data,
     collection,
-    includeIndexes: true,
     score: [
       {
         type: SearchScoreTypeEnum.fullText,

@@ -1,4 +1,6 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { SearchDataResponseItemSchema } from '@fastgpt/global/core/dataset/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -85,7 +87,14 @@ describe.sequential('embeddingRecall collection permission re-check', () => {
       collectionId: readableCollection._id,
       q: 'readable question',
       a: 'readable answer',
-      indexes: [{ dataId: 'vec-readable', text: 'readable question' }]
+      indexes: [
+        {
+          dataId: 'vec-readable',
+          text: 'readable question',
+          type: DatasetDataIndexTypeEnum.default
+        },
+        { dataId: 'vec-alias', text: 'readable alias', type: DatasetDataIndexTypeEnum.custom }
+      ]
     });
     await MongoDatasetData.create({
       teamId,
@@ -121,11 +130,22 @@ describe.sequential('embeddingRecall collection permission re-check', () => {
     expect(result.textEmbeddingRecallResults.map((item) => item.collectionId)).toEqual([
       String(readableCollection._id)
     ]);
+    // 真实 Mongo 回查应保留整组索引（不仅是命中的那一个），并通过 API 响应校验。
+    const parsed = SearchDataResponseItemSchema.parse(result.textEmbeddingRecallResults[0]);
+    expect(parsed.indexes).toEqual([
+      {
+        dataId: 'vec-readable',
+        text: 'readable question',
+        type: DatasetDataIndexTypeEnum.default
+      },
+      { dataId: 'vec-alias', text: 'readable alias', type: DatasetDataIndexTypeEnum.custom }
+    ]);
     // 不可读 collection 的 data 与 collection 本身都不得出现在结果里。
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain(String(hiddenCollection._id));
     expect(serialized).not.toContain('hidden question');
     expect(serialized).not.toContain('hidden answer');
+    expect(serialized).not.toContain('vec-hidden');
     expect(serialized).toContain(String(readableData._id));
   });
 });
