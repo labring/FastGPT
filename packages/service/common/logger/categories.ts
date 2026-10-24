@@ -39,6 +39,11 @@ export const LogCategories = {
     ERROR: ['http', 'error']
   },
 
+  // 请求级分段耗时（chat / MCP 等入口共用）
+  REQUEST: {
+    PROFILE: ['request', 'profile']
+  },
+
   // 业务模块层（参考 pages/api）
   MODULE: {
     WORKFLOW: Object.assign(['workflow'], {
