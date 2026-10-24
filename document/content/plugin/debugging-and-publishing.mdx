@@ -5,7 +5,7 @@ description: 在本地验证工具插件，接入 FastGPT 联调，并构建可�
 
 本文适用于通过 `@fastgpt-plugin/cli` 与 `@fastgpt-plugin/sdk-factory` 开发的工具插件。开始前请先完成[单工具或工具集实现](/zh-CN/plugin/system-tool-development)。模型预设按各自的[验证流程](/zh-CN/plugin/model-presets#校验)提交变更。
 
-远程联调需要当前 FastGPT 环境已开放插件调试能力。自部署环境由管理员按[远程调试功能套件配置](/zh-CN/self-host/config/remote-debug-suite)准备服务。CLI 版本应与目标插件服务兼容。
+远程联调需要 FastGPT 商业版授权，并且服务已部署 Connection Gateway 组件。开源部署环境可使用本地模拟调试。管理员按[远程调试功能套件配置](/zh-CN/self-host/config/remote-debug-suite)部署所需网关与通道服务。CLI 版本应与目标插件服务兼容。
 
 ## 1. 本地模拟调试
 
@@ -122,6 +122,15 @@ CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
 
 调试工具的 `source` 会绑定到当前登录成员，其他成员默认看不到该调试插件。
 
+### 常见联调异常排查
+
+| 异常现象 | 定位点 | 处理措施 |
+| --- | --- | --- |
+| WSS 连接建立失败或超时 | Connection Key 或网络路由 | 在 FastGPT 界面点击“刷新链接”，检查开发机到 Gateway 端口连通性与防火墙配置 |
+| FastGPT 页面看不到调试工具 | 调试账号与通道绑定 | 调试工具仅对生成调试链接的当前成员可见，核对登录账号与 CLI 连接所用 Key 是否同属一人 |
+| 输入参数验证报错 `Input validation error` | Zod Schema 约束 | 对照 `inputSchema` 检查字段必填项、类型、最小值及字符串约束，调整测试参数 |
+| 密钥读取结果为空 | `ctx.secrets` 传递状态 | 确认已在 FastGPT 调试弹窗中填写对应密钥，或使用 `--secrets` / `--secrets-file` 传入 |
+
 ### 2.4 结束联调会话
 
 本地终端按 `Ctrl+C` 会关闭当前 CLI 调试会话；再次按 `Ctrl+C` 会强制退出。
@@ -146,7 +155,7 @@ pnpm run pack
 ```bash
 pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
 pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
-pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
+pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist packages/tools/my-tool/dist --output packages/tools/my-tool/out
 ```
 
 打包后生成用于安装与分发的 `.pkg` 文件，按[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)检查产物。

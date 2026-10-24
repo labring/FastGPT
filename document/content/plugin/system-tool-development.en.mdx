@@ -304,35 +304,141 @@ Notes:
 - Child tools without their own icons reuse the main plugin icon by default.
 - After build, check the `icon` field in `dist/manifest.json`.
 
-## 6. Local Debugging
+## 6. Key Development Recipes
 
-Follow [local debugging](/en/plugin/debugging-and-publishing#local-debugging) to inspect tool metadata, provide inputs and secrets, and call a child tool.
+### 6.1 Authenticated External API Requests
 
-## 7. Remote Debugging
+When calling external third-party services requiring an API key, declare the secret field in `secretSchema` and extract it via `ctx.secrets` in the handler. Handle network and HTTP errors with actionable messages while keeping credentials omitted from logs and error text:
 
-Follow [remote debugging](/en/plugin/debugging-and-publishing#remote-debugging) to connect a local plugin to FastGPT:
+```ts
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType,
+  type SecretSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
 
-- <span id="71-generate-a-debug-link" />[Generate a debug link](/en/plugin/debugging-and-publishing#21-generate-a-debug-link).
-- <span id="72-start-a-local-remote-debug-session" />[Start the CLI session](/en/plugin/debugging-and-publishing#22-start-a-local-remote-debug-session).
-- <span id="73-specify-plugin-directories-and-watch-changes" />[Select and watch plugin directories](/en/plugin/debugging-and-publishing#watch-plugin-directories).
-- <span id="74-verify-in-fastgpt" />[Verify the tool in FastGPT](/en/plugin/debugging-and-publishing#23-verify-in-fastgpt).
-- <span id="75-end-debugging" />[End the debug session](/en/plugin/debugging-and-publishing#24-end-the-debug-session).
+const secretSchema = z.object({
+  apiKey: z.string().min(1).meta({
+    title: 'API Key',
+    isSecret: true
+  } satisfies SecretSchemaMetaType)
+});
 
-## 8. Build, Check, And Pack
+const handler = createToolHandler({
+  inputSchema: z.object({
+    endpoint: z.string().url().meta({
+      title: 'Target URL',
+      description: 'External service request URL'
+    } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    status: z.string().meta({
+      title: 'Status'
+    } satisfies OutputSchemaMetaType),
+    data: z.any().meta({
+      title: 'Response Data'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input, ctx) => {
+    try {
+      const res = await fetch(input.endpoint, {
+        headers: {
+          Authorization: `Bearer ${ctx.secrets.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Upstream service returned status ${res.status}`);
+      }
+      const data = await res.json();
+      return { status: 'success', data };
+    } catch (err: any) {
+      throw new Error(`External API request failed: ${err.message || 'unknown error'}`);
+    }
+  }
+});
+```
 
-Use the commands in [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack), then inspect the [package artifacts](/en/plugin/package-reference#build-artifacts).
+### 6.2 Host File Uploads And Artifact Return
 
-## 9. Verification Checklist
+When a tool produces generated files (such as reports, exported images, or media) and returns them to FastGPT callers, invoke the host upload capability `ctx.invoke.uploadFile()`. The host stores the artifact and returns an accessible URL:
 
-Complete the [publishing verification checklist](/en/plugin/debugging-and-publishing#verification-checklist), including invalid inputs, upstream errors, and a real installation in a test environment.
+```ts
+handler: async (input, ctx) => {
+  const content = Buffer.from(`Report for ${input.query}\nGenerated at ${new Date().toISOString()}`);
+  const uploadResult = await ctx.invoke.uploadFile({
+    buffer: content,
+    filename: 'report.txt',
+    contentType: 'text/plain'
+  });
 
-## 10. Publishing Workflow
+  if (uploadResult.err) {
+    throw new Error(`Failed to upload generated file: ${uploadResult.err}`);
+  }
 
-Choose a [publishing workflow](/en/plugin/debugging-and-publishing#publishing-workflow):
+  return {
+    fileUrl: uploadResult.url,
+    filename: 'report.txt'
+  };
+}
+```
 
-- <span id="community-plugins" />[Community plugins](/en/plugin/debugging-and-publishing#community-plugins).
-- <span id="official-plugins" />[Official plugins](/en/plugin/debugging-and-publishing#official-plugins).
-- <span id="business-plugins" />[Business plugins](/en/plugin/debugging-and-publishing#business-plugins).
+### 6.3 Streaming Progress Notifications
+
+For long-running tasks, use `ctx.streamResponse()` to send incremental progress notifications to the caller:
+
+```ts
+handler: async (input, ctx) => {
+  await ctx.streamResponse({
+    event: 'progress',
+    data: { percent: 25, message: 'Fetching remote resources...' }
+  });
+
+  // Execute processing logic
+  await ctx.streamResponse({
+    event: 'progress',
+    data: { percent: 100, message: 'Processing complete' }
+  });
+
+  return { result: 'Operation completed successfully' };
+}
+```
+
+### 6.4 Side Effects And Repeated Invocation Handling
+
+FastGPT Workflows and Agents may call a tool multiple times during loop executions or retries. For operations with side effects (such as database writes, external charges, or messaging):
+
+- **Business idempotency**: Include a unique identifier (such as `requestId` or `orderId`) in the input schema, and enforce idempotency on the external service.
+- **State awareness**: Return existing outcomes for already completed external actions.
+- **Explicit timeouts**: Set bounded timeouts on requests, detect cancellation signals, and stop pending downstream work promptly.
+
+## 7. Debugging, Packaging, And Publishing Workflow
+
+<span id="6-local-debugging" />
+<span id="7-remote-debugging" />
+<span id="71-generate-a-debug-link" />
+<span id="72-start-a-local-remote-debug-session" />
+<span id="73-specify-plugin-directories-and-watch-changes" />
+<span id="74-verify-in-fastgpt" />
+<span id="75-end-debugging" />
+<span id="8-build-check-and-pack" />
+<span id="9-verification-checklist" />
+<span id="10-publishing-workflow" />
+<span id="community-plugins" />
+<span id="official-plugins" />
+<span id="business-plugins" />
+
+After implementing your tool, follow the unified delivery path in [debugging, packing, and publishing](/en/plugin/debugging-and-publishing):
+
+1. **Local debugging**: Use `pnpx @fastgpt-plugin/cli debug . --run` to verify schemas, defaults, and boundary inputs. See [local debugging](/en/plugin/debugging-and-publishing#local-debugging).
+2. **Remote debugging**: Connect to your FastGPT test environment using `pnpx @fastgpt-plugin/cli dev`. See [remote debugging](/en/plugin/debugging-and-publishing#remote-debugging).
+3. **Build and pack**: Run `pnpm run build`, `cli check`, and `pnpm run pack` to generate `.pkg` artifacts. See [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack).
+4. **Pre-submission verification**: Check items against the [verification checklist](/en/plugin/debugging-and-publishing#verification-checklist).
+5. **Publishing channels**: Choose community distribution, official distribution, or private commercial delivery. See [publishing workflow](/en/plugin/debugging-and-publishing#publishing-workflow).
 
 ## FAQ
 

@@ -1,0 +1,141 @@
+---
+title: Skill 包格式与运行时规范
+description: 详细说明 Skill 资源包目录规范、SKILL.md 元数据定义、多技能组织、打包忽略规则与运行时约定
+---
+
+本文面向 FastGPT 智能体技能 (Skill) 开发者，规范定义技能包的文件组织、元数据格式、忽略规则、初始化流程与运行时约定。
+
+## 1. 技能包目录规范
+
+一个标准的 FastGPT Skill 项目在工作区中采用统一的文件布局：
+
+```text
+/
+├── skills/                      # 技能集合目录（必须）
+│   ├── extract-emails/          # 第一个技能目录
+│   │   ├── SKILL.md             # 技能元数据与调度指引（必须）
+│   │   └── extract.py           # 业务执行脚本
+│   └── format-report/           # 第二个技能目录（可选）
+│       ├── SKILL.md             # 对应技能的元数据与指引
+│       └── render.py            # 业务执行脚本
+├── entrypoint.sh                # 运行时初始化脚本（可选）
+├── requirements.txt             # Python 依赖清单（可选）
+├── package.json                 # Node.js 依赖清单（可选）
+└── .gitignore                   # 打包排除规则（推荐）
+```
+
+核心结构约定：
+
+- `skills/` 必须位于根目录，其一级子目录为各个具体的技能单元。
+- 每个技能单元目录下必须存在 `SKILL.md` 文件作为入口声明。
+- 根目录可选放置全局共享脚本、依赖描述文件以及环境初始化配置。
+
+## 2. SKILL.md 元数据格式
+
+每个技能目录下的 `SKILL.md` 采用 YAML Frontmatter 声明关键元信息，正文部分编写提供给大语言模型的任务指引：
+
+```markdown
+---
+name: extract-emails
+description: 从输入文本中提取所有电子邮箱地址，去重并保持首次出现顺序。
+---
+
+# 邮箱提取技能
+
+从输入文本中识别所有电子邮箱地址，去重并按首次出现顺序输出。
+
+## 执行方式
+
+通过命令行调用 Python 脚本：
+
+```bash
+python3 skills/extract-emails/extract.py "<input_text>"
+```
+```
+
+元数据字段约定：
+
+| 字段 | 类型 | 要求 | 说明 |
+| --- | --- | --- | --- |
+| `name` | 字符串 | 必填 | 技能唯一标识，采用小写英文字母、数字和短横线（`-`），同一技能资源包内保持唯一。 |
+| `description` | 字符串 | 必填 | 技能功能摘要。Agent 在规划和工具调用时依据该描述决定是否调度本技能。 |
+
+正文要求：
+
+- **明确任务目标**：清晰说明技能接收的输入参数格式、业务处理逻辑以及预期返回产物。
+- **具体执行命令**：提供明确的终端命令调用示例（如 `python3 ...` 或 `node ...`），指引 Agent 在虚拟机沙盒中执行对应脚本。
+
+## 3. 多技能组织结构
+
+单个 Skill 资源支持组织多个相关技能。在 `skills/` 下建立多个同级子目录，各子目录独立维护对应的 `SKILL.md` 与执行代码。
+
+Agent 关联该 Skill 资源后，将读取资源内包含的所有技能描述，并根据用户具体指令在运行时调度相匹配的技能单元。
+
+## 4. 打包发布与忽略规则
+
+发布版本时，系统将工作区文件压缩打包为标准 ZIP 发布快照。打包过程遵循以下排除与安全规则：
+
+### 系统默认忽略规则
+
+系统始终自动应用内置的 `DEFAULT_GITIGNORE_CONTENT` 规则，默认排除以下目录与临时产物：
+
+- 依赖目录：`node_modules/`、`.venv/`、`env/`
+- 构建产物：`dist/`、`build/`、`*.egg-info/`
+- 缓存文件：`__pycache__/`、`*.pyc`、`.cache/`
+- 版本控制目录：`.git/`
+
+### 根目录 .gitignore 叠加
+
+发布打包时，系统将工作区根目录的 `.gitignore` 规则与系统默认忽略规则合并生效。
+
+### 凭证文件安全防护
+
+系统默认排除清单涵盖运行缓存与依赖目录，未自动包含 `.env` 与 `.env.*` 文件。开发者必须在根目录 `.gitignore` 中显式声明排除项：
+
+```text
+.env
+.env.*
+*.key
+*.pem
+```
+
+显式添加后，本地调试所用的私密凭证将保持在打包产物之外，保障分发安全。
+
+## 5. 依赖准备与初始化脚本
+
+技能依赖的第三方运行库通过根目录的 `entrypoint.sh` 进行自动化准备。
+
+### 执行时机与沙箱环境
+
+应用部署并关联已发布 Skill 后，系统在沙箱启动阶段执行根目录下的 `entrypoint.sh`：
+
+```bash
+#!/bin/bash
+set -e
+
+if [ -f "requirements.txt" ]; then
+  pip install --no-cache-dir -r requirements.txt
+fi
+```
+
+### versionId 成功去重
+
+虚拟机内通过 `~/.fastgpt/runtime/state.json` 记录已成功初始化的 `versionId`。后续对话复用同一虚拟机实例时，已成功的版本自动跳过脚本执行，实现秒级热启动。
+
+初始化详细约束与容错策略见[初始化脚本指南](/zh-CN/guide/build/skill/initialization)。
+
+## 6. 运行时约定
+
+Skill 发布并在应用中运行后遵循以下环境约定：
+
+- **部署工作路径**：技能包在虚拟机中解压至 `./projects/<versionId>/` 目录。
+- **运行环境支持**：沙箱默认提供标准 Python 3 与 Node.js 运行时及标准类库。
+- **调用结果回传**：脚本的标准输出（stdout）将作为 Agent 步骤的观察结果返回给模型。
+- **版本隔离**：线上运行始终采用已发布的不可变快照版本，编辑工作区的未发布修改对生产环境保持隔离。
+
+## 7. 相关阅读
+
+- [技能开发教程](/zh-CN/guide/build/skill/development)
+- [初始化脚本](/zh-CN/guide/build/skill/initialization)
+- [版本与发布](/zh-CN/guide/build/skill/version)
+- [在 Agent 中使用 Skill](/zh-CN/guide/build/skill/integration)

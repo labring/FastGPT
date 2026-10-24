@@ -24,11 +24,7 @@ Edits in the editor only take effect in the "Debug Chat" panel. To formally appl
 3. Confirm, and the system saves a snapshot of the current code and publishes that version.
 
 <Alert icon="💡" context="warning">
-  **Note:** During publishing, the system automatically applies the ignore rules specified in the
-  `.gitignore` file at the project root (if not present, a default file ignoring `node_modules`,
-  `.venv`, `dist`, etc., will be created). Only files that are not ignored will be packaged, and you
-  must ensure the total size of these files does not exceed the limit, otherwise publishing may
-  fail.
+  **Note:** During publishing, the system combines default system ignore rules with exclusions in the project root `.gitignore` (default exclusions include `node_modules`, `.venv`, `dist`, `__pycache__`, etc.). Workspace credential files such as `.env` and `.env.*` remain outside system defaults; authors must explicitly add `.env` entries to root `.gitignore` to keep sensitive credentials out of packaged releases. Only files outside ignore rules are packaged; export the ZIP archive to inspect contents and file size before publishing.
 </Alert>
 
 ---
@@ -40,11 +36,15 @@ Edits in the editor only take effect in the "Debug Chat" panel. To formally appl
 To restore a previous version:
 
 1. Click the **"Version History"** (clock) icon in the top right corner of the editor to view all published snapshots.
-2. Hover over the version you want to restore, and click the **"Switch"** (return arrow) icon to instantly revert both your workspace files and the live production version back to that snapshot.
+2. Hover over the version you want to restore, and click the **"Switch"** (return arrow) icon.
+3. The system updates the Skill active version pointer first, then reinitializes the editing sandbox and restores files to that snapshot.
 
 <Alert icon="💡" context="warning">
-  **Note:** Restored versions will not carry files that were ignored by `.gitignore` (for example,
-  local files like `node_modules` or `.venv` that were ignored cannot be recovered via rollback).
+  **Note:**
+  - Version switching replaces unexported workspace edits; export configurations beforehand to preserve current progress.
+  - When sandbox reinitialization encounters unexpected states after version pointer update, refresh the page and reload the workspace.
+  - Applications referencing this Skill adopt the switched active version in subsequent executions.
+  - Ignored files (such as `node_modules` or `.venv`) remain excluded following a version rollback.
 </Alert>
 
 ![Version History & Rollback](/imgs/optimized/current/skill-history.png.webp)

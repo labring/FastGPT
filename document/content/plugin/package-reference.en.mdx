@@ -32,7 +32,7 @@ Authors maintain the following fields in SDK definitions. The CLI and SDK versio
 | `manifest.tags` | Plugin category tags |
 | `createToolHandler({ inputSchema })` | Input types, constraints, defaults, and UI field descriptions |
 | `createToolHandler({ outputSchema })` | Handler return types and field descriptions |
-| `defineTool({ secretSchema })`, `defineToolSet({ secretSchema })` | Secret configuration and sensitive field declarations |
+| `createToolHandler({ secretSchema })`, `defineToolSet({ secretSchema })` | Secret configuration and sensitive field declarations (declared in handler for single tools, shared at top level for Toolkits) |
 | `defineToolSet({ children })` | Toolkit child IDs, names, descriptions, and handlers |
 
 Keep child tool IDs stable so configured Workflows can continue to reference them. Declare secrets through `secretSchema` and read them from `ctx.secrets` in handlers. See [icon requirements](/en/plugin/system-tool-development#5-icon-conventions) for icon names.

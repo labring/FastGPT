@@ -15,7 +15,53 @@ Before writing code, you need to create a development project in the skills list
 
 Open **Workspace → Skills → New**, then enter the name, icon, and description. This example uses Extract Emails. Confirm and wait for the sandbox and files to load. The initial workspace contains a `skills/` directory and `.gitignore`.
 
-Enter your requirements in the chat panel on the left: extract email addresses, remove duplicates while preserving first appearance, use the Python standard library, and generate `SKILL.md` plus a script under `skills/extract-emails/`. AI-assisted generation uses the selected model and consumes points. Answer planning questions according to this goal, then inspect the generated files.
+Once in the workspace, describe your requirements in the left chat panel, or create code files directly in the file tree. The standard file structure contains:
+
+- `skills/extract-emails/SKILL.md`: Declares skill metadata and model dispatch instructions.
+- `skills/extract-emails/extract.py`: Python script handling extraction and deduplication.
+
+You can create this reference implementation directly in your workspace:
+
+`skills/extract-emails/SKILL.md`:
+
+```markdown
+---
+name: extract-emails
+description: Extract all email addresses from text, deduplicate, and preserve original order.
+---
+
+# Email Extraction Skill
+
+Identifies email addresses from text input, deduplicating them in first-seen order.
+
+## Execution
+
+Invoke via Python script:
+
+```bash
+python3 skills/extract-emails/extract.py "<input_text>"
+```
+```
+
+`skills/extract-emails/extract.py`:
+
+```python
+import re
+import sys
+
+def extract_emails(text: str) -> list[str]:
+    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    matches = re.findall(pattern, text)
+    return list(dict.fromkeys(matches))
+
+if __name__ == '__main__':
+    content = sys.argv[1] if len(sys.argv) > 1 else ''
+    emails = extract_emails(content)
+    for email in emails:
+        print(email)
+```
+
+AI generation uses the selected model and consumes points; guide generated files toward the intended structure.
 
 ### 1.2 Import an Existing Skill ZIP Archive
 
@@ -74,3 +120,13 @@ You can directly chat with the agent to have it help you edit the file contents 
 ### 3.3 Real-time File Export
 
 You can click "Export Config" in the top-right menu to package all code and configuration files in the current workspace into a ZIP archive and download it locally for backup or sharing.
+
+
+---
+
+## 4. Related Guides
+
+- Directory structure & metadata reference: [Skill Package Format & Runtime Conventions](/en/guide/build/skill/package-reference)
+- Dependency installation & preparation: [Initialization Script](/en/guide/build/skill/initialization)
+- Version snapshot & rollback: [Versions & Publishing](/en/guide/build/skill/version)
+- Agent binding & invocation: [Using Skills in Agents](/en/guide/build/skill/integration)

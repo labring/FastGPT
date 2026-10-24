@@ -9,8 +9,10 @@ description: 创建问候工具，验证输入与输出，并构建可安装的�
 
 开始前请确认本地环境已具备：
 
-- **Node.js**：版本满足生成的插件项目要求。
-- **pnpm**：推荐使用 pnpm 管理依赖。
+- **Node.js**：版本 20.x 及以上（推荐 Node.js 20 或 22 LTS）。
+- **pnpm**：推荐使用 pnpm 9.x 及以上管理依赖。
+- **FastGPT**：v4.15.0 及以上版本运行实例。
+- **FastGPT Plugin**：v1.0.0 及以上版本插件服务。
 - **Git**：用于版本控制与代码提交。
 
 ## 步骤 1：创建插件骨架
@@ -144,7 +146,24 @@ pnpx @fastgpt-plugin/cli check --entry . --output ./dist
 pnpm run pack
 ```
 
-命令执行后会生成 `.pkg` 安装文件，输出位置以生成项目的 `pack` 脚本为准。产物内容见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
+命令执行后会生成 `.pkg` 安装文件，输出位置以生成项目的 `pack` 脚本为准（通常输出至 `dist/hello-tool.pkg`）。产物内容见[插件包与 SDK 参考](/zh-CN/plugin/package-reference#构建产物)。
+
+## 步骤 6：在 FastGPT 中安装与调用验证
+
+生成 `.pkg` 插件包后，即可在 FastGPT 中完成端到端安装与调用验收：
+
+1. **安装插件**：进入 FastGPT 工作台的“插件”或“工具”管理界面，点击“安装插件”，选择刚构建的 `dist/hello-tool.pkg` 上传安装。
+2. **应用配置**：进入任意工作流或对话 Agent 应用的编辑画布，在工具列表中选择并添加刚安装的“问候工具”（`hello-tool`）。
+3. **参数测试**：在应用测试运行界面输入参数 `{"name": "FastGPT"}`（或保持默认参数留空）。
+4. **验证执行结果**：发起调用并观察节点输出。成功输出包含：
+
+```json
+{
+  "greeting": "Hello, FastGPT!"
+}
+```
+
+至此已完成从代码编写、本地校验、构建打包到应用调用的完整扩展交付闭环。
 
 ## 下一步
 

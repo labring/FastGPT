@@ -1,0 +1,141 @@
+---
+title: Skill Package Format & Runtime Conventions
+description: Specification of Skill package directory structure, SKILL.md metadata, multi-skill organization, packaging rules, and runtime conventions
+---
+
+This reference defines the file structure, metadata schema, exclusion rules, initialization lifecycle, and runtime conventions for FastGPT Agent Skills.
+
+## 1. Package Directory Layout
+
+A standard FastGPT Skill project follows a unified workspace directory layout:
+
+```text
+/
+├── skills/                      # Skill collection directory (required)
+│   ├── extract-emails/          # First skill directory
+│   │   ├── SKILL.md             # Skill metadata and execution instructions (required)
+│   │   └── extract.py           # Execution script
+│   └── format-report/           # Second skill directory (optional)
+│       ├── SKILL.md             # Corresponding metadata and instructions
+│       └── render.py            # Execution script
+├── entrypoint.sh                # Runtime initialization script (optional)
+├── requirements.txt             # Python dependency manifest (optional)
+├── package.json                 # Node.js dependency manifest (optional)
+└── .gitignore                   # Packaging exclusion rules (recommended)
+```
+
+Core layout conventions:
+
+- `skills/` must reside at the project root; first-level subdirectories represent individual skill units.
+- Every skill unit directory must contain a `SKILL.md` entry file.
+- The project root may contain shared scripts, dependency manifests, and environment initialization files.
+
+## 2. SKILL.md Metadata Format
+
+The `SKILL.md` file in each skill directory declares metadata via YAML Frontmatter and provides runtime task guidelines in Markdown:
+
+```markdown
+---
+name: extract-emails
+description: Extract all email addresses from text, deduplicate, and preserve original order.
+---
+
+# Email Extraction Skill
+
+Identifies email addresses from text input, deduplicating them in first-seen order.
+
+## Execution
+
+Invoke via Python script:
+
+```bash
+python3 skills/extract-emails/extract.py "<input_text>"
+```
+```
+
+Metadata schema definitions:
+
+| Field | Type | Requirement | Description |
+| --- | --- | --- | --- |
+| `name` | string | Required | Unique skill identifier using lowercase alphanumeric characters and hyphens (`-`). Must be unique within the skill package. |
+| `description` | string | Required | Concise functional summary. The Agent references this description during planning to decide whether to dispatch this skill. |
+
+Body guidelines:
+
+- **Specific task objectives**: Detail expected input formats, processing logic, and output values.
+- **Concrete execution commands**: Include clear terminal commands (such as `python3 ...` or `node ...`) guiding the Agent to execute scripts in the sandbox.
+
+## 3. Multiple Skills In One Resource
+
+A single Skill resource supports organizing multiple related skills. Create multiple first-level subdirectories under `skills/`, each maintaining its own `SKILL.md` and supporting scripts.
+
+When an Agent associates this Skill resource, it reads all declared skill descriptions and dynamically dispatches the appropriate skill unit matching user requests.
+
+## 4. Packaging And Exclusion Rules
+
+Publishing a version packages workspace files into a standard ZIP snapshot. The packaging process enforces the following exclusion and security rules:
+
+### System Default Exclusions
+
+The system automatically applies the built-in `DEFAULT_GITIGNORE_CONTENT` list, excluding the following categories:
+
+- Dependency directories: `node_modules/`, `.venv/`, `env/`
+- Build artifacts: `dist/`, `build/`, `*.egg-info/`
+- Cache directories: `__pycache__/`, `*.pyc`, `.cache/`
+- Version control metadata: `.git/`
+
+### Root .gitignore Merging
+
+During packaging, exclusions declared in the project root `.gitignore` merge with the system default rules.
+
+### Credential Protection
+
+System default exclusions cover build caches and dependencies, while `.env` and `.env.*` files remain outside default exclusion lists. Authors must explicitly declare credential exclusions in the project root `.gitignore`:
+
+```text
+.env
+.env.*
+*.key
+*.pem
+```
+
+Explicit exclusion keeps local credentials out of distributed packages.
+
+## 5. Dependency Preparation And Initialization
+
+Third-party dependencies are prepared automatically via `entrypoint.sh` in the project root.
+
+### Execution Lifecycle
+
+When an application deploys an associated Skill, the sandbox executes `entrypoint.sh` during workspace initialization:
+
+```bash
+#!/bin/bash
+set -e
+
+if [ -f "requirements.txt" ]; then
+  pip install --no-cache-dir -r requirements.txt
+fi
+```
+
+### versionId Deduplication
+
+The sandbox tracks successfully initialized `versionId` records in `~/.fastgpt/runtime/state.json`. Subsequent conversations reusing the sandbox instance skip script execution for previously completed versions, enabling rapid startup.
+
+See the [Initialization Script Guide](/en/guide/build/skill/initialization) for execution limits and fault-tolerance policies.
+
+## 6. Runtime Conventions
+
+Published Skills running in applications adhere to the following environment conventions:
+
+- **Deployment path**: The skill package unpacks into `./projects/<versionId>/` inside the sandbox virtual machine.
+- **Runtime support**: The sandbox provides Python 3 and Node.js runtimes with standard libraries.
+- **Output transmission**: Standard output (stdout) from scripts returns to the Agent as tool execution observations.
+- **Version isolation**: Live applications execute immutable published snapshots, keeping unreleased edits in the workspace isolated from production.
+
+## 7. Related Guides
+
+- [Skill Development Tutorial](/en/guide/build/skill/development)
+- [Initialization Script](/en/guide/build/skill/initialization)
+- [Versions & Publishing](/en/guide/build/skill/version)
+- [Using Skills in Agents](/en/guide/build/skill/integration)

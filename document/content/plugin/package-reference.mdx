@@ -32,12 +32,22 @@ description: 工具插件的构建产物、作者侧元信息与 Schema 声明�
 | `manifest.tags` | 插件分类标签 |
 | `createToolHandler({ inputSchema })` | 输入类型、约束、默认值与界面字段说明 |
 | `createToolHandler({ outputSchema })` | handler 返回值的类型与字段说明 |
-| `defineTool({ secretSchema })`、`defineToolSet({ secretSchema })` | 密钥配置与敏感字段声明 |
+| `createToolHandler({ secretSchema })`、`defineToolSet({ secretSchema })` | 密钥配置与敏感字段声明（单工具在 handler 声明，工具集支持顶层共享） |
 | `defineToolSet({ children })` | 工具集的子工具 ID、名称、说明与 handler |
 
 工具集的子工具 ID 应保持稳定，保证已配置的工作流可以继续引用。密钥通过 `secretSchema` 声明，handler 从 `ctx.secrets` 读取；图标命名见[工具开发指南](/zh-CN/plugin/system-tool-development#5-图标规范)。
 
 CLI 的 `tool` 与 `tool-suite` 用于选择项目骨架。安装后的工具类型、子工具关系和展示信息由构建产物与插件服务共同提供。
+
+## 运行时上下文能力
+
+执行 handler 时，SDK 提供 `ctx` 运行时上下文参数，支持以下能力：
+
+| 属性 / 方法 | 作用 | 使用场景 |
+| --- | --- | --- |
+| `ctx.secrets` | 包含已配置并解密的敏感配置对象 | 读取 API Key、Token、私有服务端点 |
+| `ctx.invoke.uploadFile()` | 向 FastGPT 宿主上传文件并获取可访问链接 | 工具输出报表文件、图片或媒体资源 |
+| `ctx.streamResponse()` | 向客户端推送流式中间状态事件 | 长耗时任务进度推送与多步骤状态同步 |
 
 ## SDK 与 CLI 入口
 

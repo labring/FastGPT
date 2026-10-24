@@ -9,9 +9,11 @@ This guide walks you through the complete local workflow of building your first 
 
 Ensure your local development environment has:
 
-- **Node.js**: a version supported by the generated plugin project.
-- **pnpm**: recommended package manager.
-- **Git**: for version control.
+- **Node.js**: Version 20.x or later (Node.js 20 or 22 LTS recommended).
+- **pnpm**: Version 9.x or later.
+- **FastGPT**: v4.15.0 or later running instance.
+- **FastGPT Plugin**: v1.0.0 or later plugin service.
+- **Git**: For version control and code commits.
 
 ## Step 1: Create the Plugin Skeleton
 
@@ -144,7 +146,24 @@ pnpx @fastgpt-plugin/cli check --entry . --output ./dist
 pnpm run pack
 ```
 
-The commands produce a `.pkg` installation file. Find it in the output directory configured by the generated project’s `pack` script. See the [package and SDK reference](/en/plugin/package-reference#build-artifacts) for artifact details.
+The commands produce a `.pkg` installation file, located according to the project's `pack` script (typically at `dist/hello-tool.pkg`). See the [package and SDK reference](/en/plugin/package-reference#build-artifacts) for artifact details.
+
+## Step 6: Install and Verify in FastGPT
+
+After generating the `.pkg` package, complete end-to-end acceptance in FastGPT:
+
+1. **Install plugin**: In the FastGPT console, navigate to the Plugins or Tools management page, click "Install Plugin", and upload the generated `dist/hello-tool.pkg` file.
+2. **Configure application**: Open any Workflow or Chat Agent canvas, and add the newly installed "Hello Tool" (`hello-tool`) from the tool list.
+3. **Test input parameters**: In the test run interface, pass `{"name": "FastGPT"}` (or leave it blank to use the default value).
+4. **Verify execution result**: Trigger the run and observe node outputs. A successful response contains:
+
+```json
+{
+  "greeting": "Hello, FastGPT!"
+}
+```
+
+This completes the full delivery lifecycle from scaffolding, schema validation, and packaging to live application invocation.
 
 ## Next Steps
 

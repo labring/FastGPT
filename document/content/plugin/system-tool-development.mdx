@@ -304,35 +304,141 @@ CLI 构建时会扫描插件根目录中的图标并写入构建后的 `manifest
 - 子工具没有独立图标时，默认复用主插件图标。
 - 构建后检查 `dist/manifest.json` 中的 `icon` 字段。
 
-## 6. 本地调试
+## 6. 关键开发配方
 
-按[本地调试指南](/zh-CN/plugin/debugging-and-publishing#本地调试)查看工具信息、传入参数与密钥，并执行工具集中的子工具。
+### 6.1 鉴权外部 API 请求与安全调用
 
-## 7. 远程调试
+调用需要 API Key 的外部第三方服务时，通过 `secretSchema` 声明密钥字段，并在 handler 中通过 `ctx.secrets` 提取。捕获网络和 HTTP 错误并输出易于定位的问题描述，在错误信息中隐藏密钥：
 
-按[远程联调指南](/zh-CN/plugin/debugging-and-publishing#远程调试)将本地插件接入 FastGPT：
+```ts
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType,
+  type SecretSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
 
-- <span id="71-生成调试链接" />[生成调试链接](/zh-CN/plugin/debugging-and-publishing#21-生成调试链接)。
-- <span id="72-启动本地远程调试会话" />[启动 CLI 会话](/zh-CN/plugin/debugging-and-publishing#22-启动本地联调会话)。
-- <span id="73-指定插件目录和监听变化" />[指定并监听插件目录](/zh-CN/plugin/debugging-and-publishing#指定插件目录和监听变化)。
-- <span id="74-在-fastgpt-中验证" />[在 FastGPT 中验证](/zh-CN/plugin/debugging-and-publishing#23-在-fastgpt-中验证与使用)。
-- <span id="75-结束调试" />[结束联调会话](/zh-CN/plugin/debugging-and-publishing#24-结束联调会话)。
+const secretSchema = z.object({
+  apiKey: z.string().min(1).meta({
+    title: 'API Key',
+    isSecret: true
+  } satisfies SecretSchemaMetaType)
+});
 
-## 8. 构建、检查和打包
+const handler = createToolHandler({
+  inputSchema: z.object({
+    endpoint: z.string().url().meta({
+      title: '目标地址',
+      description: '外部服务的请求 URL'
+    } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    status: z.string().meta({
+      title: '请求状态'
+    } satisfies OutputSchemaMetaType),
+    data: z.any().meta({
+      title: '返回数据'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input, ctx) => {
+    try {
+      const res = await fetch(input.endpoint, {
+        headers: {
+          Authorization: `Bearer ${ctx.secrets.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Upstream service returned status ${res.status}`);
+      }
+      const data = await res.json();
+      return { status: 'success', data };
+    } catch (err: any) {
+      throw new Error(`External API request failed: ${err.message || 'unknown error'}`);
+    }
+  }
+});
+```
 
-执行[构建、检查与打包](/zh-CN/plugin/debugging-and-publishing#构建检查和打包)中的命令，完成后检查[插件包产物](/zh-CN/plugin/package-reference#构建产物)。
+### 6.2 宿主文件上传与产物返回
 
-## 9. 验证清单
+当工具需要生成文件（如报表、导出的图片或音视频）并返回给 FastGPT 用户时，调用宿主提供的文件上传能力 `ctx.invoke.uploadFile()`。宿主负责安全存储并生成外部访问链接：
 
-提交前完成[发布验证清单](/zh-CN/plugin/debugging-and-publishing#验证清单)，覆盖无效输入、上游错误和测试环境中的真实安装。
+```ts
+handler: async (input, ctx) => {
+  const content = Buffer.from(`Report for ${input.query}\nGenerated at ${new Date().toISOString()}`);
+  const uploadResult = await ctx.invoke.uploadFile({
+    buffer: content,
+    filename: 'report.txt',
+    contentType: 'text/plain'
+  });
 
-## 10. 发布流程
+  if (uploadResult.err) {
+    throw new Error(`Failed to upload generated file: ${uploadResult.err}`);
+  }
 
-根据交付范围选择[发布流程](/zh-CN/plugin/debugging-and-publishing#发布流程)：
+  return {
+    fileUrl: uploadResult.url,
+    filename: 'report.txt'
+  };
+}
+```
 
-- <span id="社区插件" />[社区插件](/zh-CN/plugin/debugging-and-publishing#社区插件)。
-- <span id="官方插件" />[官方插件](/zh-CN/plugin/debugging-and-publishing#官方插件)。
-- <span id="商业插件" />[商业插件](/zh-CN/plugin/debugging-and-publishing#商业插件)。
+### 6.3 任务执行进度流式推送
+
+执行长耗时任务时，使用 `ctx.streamResponse()` 向调用端持续发送进度状态事件：
+
+```ts
+handler: async (input, ctx) => {
+  await ctx.streamResponse({
+    event: 'progress',
+    data: { percent: 25, message: 'Fetching remote resources...' }
+  });
+
+  // 执行核心业务处理
+  await ctx.streamResponse({
+    event: 'progress',
+    data: { percent: 100, message: 'Processing complete' }
+  });
+
+  return { result: 'Operation completed successfully' };
+}
+```
+
+### 6.4 外部副作用与重复调用控制
+
+FastGPT 工作流和智能体在循环节点或网络波动时可能对同一工具发起多次重复调用。针对具备写操作、外部扣费或发送消息等副作用的接口：
+
+- **业务幂等性**：建议在输入 Schema 中增加业务唯一标识（如 `requestId` 或 `orderId`），并在外部服务侧确保幂等执行。
+- **状态感知**：对于已完成的外部任务，优先返回已有结果。
+- **明确超时**：设置明确的 `fetch` 超时时限，及时捕获中断信号并停止后续处理。
+
+## 7. 调试、打包与发布流程
+
+<span id="6-本地调试" />
+<span id="7-远程调试" />
+<span id="71-生成调试链接" />
+<span id="72-启动本地远程调试会话" />
+<span id="73-指定插件目录和监听变化" />
+<span id="74-在-fastgpt-中验证" />
+<span id="75-结束调试" />
+<span id="8-构建检查和打包" />
+<span id="9-验证清单" />
+<span id="10-发布流程" />
+<span id="社区插件" />
+<span id="官方插件" />
+<span id="商业插件" />
+
+工具开发完成后，统一在[调试、打包与发布](/zh-CN/plugin/debugging-and-publishing)中完成生命周期交付：
+
+1. **本地调试**：使用 `pnpx @fastgpt-plugin/cli debug . --run` 校验 Schema、默认值与边界输入，详见[本地调试](/zh-CN/plugin/debugging-and-publishing#本地调试)。
+2. **远程联调**：获取 FastGPT 测试环境的调试链接，使用 `pnpx @fastgpt-plugin/cli dev` 接入调试通道，详见[远程调试](/zh-CN/plugin/debugging-and-publishing#远程调试)。
+3. **构建打包**：运行 `pnpm run build`、`cli check` 和 `pnpm run pack` 生成 `.pkg` 产物，详见[构建检查和打包](/zh-CN/plugin/debugging-and-publishing#构建检查和打包)。
+4. **提交前验证**：对照涵盖输入输出、错误处理和真实调用的[验证清单](/zh-CN/plugin/debugging-and-publishing#验证清单)逐项检查。
+5. **发布渠道**：选择社区插件（PR 提交至 community 仓库）、官方插件或私有商业交付，详见[发布流程](/zh-CN/plugin/debugging-and-publishing#发布流程)。
 
 ## 常见问题
 

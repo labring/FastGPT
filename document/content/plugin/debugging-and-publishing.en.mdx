@@ -150,7 +150,7 @@ You can also pass directories explicitly:
 ```bash
 pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
 pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
-pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
+pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist packages/tools/my-tool/dist --output packages/tools/my-tool/out
 ```
 
 Packaging produces a `.pkg` file for installation and publishing. Inspect its artifacts using the [package and SDK reference](/en/plugin/package-reference#build-artifacts).

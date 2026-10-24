@@ -15,7 +15,53 @@ import { Alert } from '@/components/docs/Alert';
 
 在“工作台 → 技能”中点击“新建”，填写名称、图标和介绍。本例命名为“提取邮箱”。确认后等待沙盒启动和文件加载，初始工作区包含 `skills/` 目录和 `.gitignore`。
 
-进入工作区后，在左侧对话输入功能需求。例如：从文本提取邮箱地址，去重并保持首次出现顺序，使用 Python 标准库，在 `skills/extract-emails/` 下生成 `SKILL.md` 和脚本。AI 辅助生成使用当前选中的模型并消耗积分；遇到方案问题时按教程目标回答，再检查生成的文件。
+进入工作区后，在左侧对话输入功能需求，或在右侧文件树直接创建代码文件。标准文件结构包含：
+
+- `skills/extract-emails/SKILL.md`：声明技能元信息与模型调度指引。
+- `skills/extract-emails/extract.py`：负责提取与去重逻辑的执行脚本。
+
+可直接在工作区中创建以下参考实现：
+
+`skills/extract-emails/SKILL.md`:
+
+```markdown
+---
+name: extract-emails
+description: 从输入文本中提取所有电子邮箱地址，去重并保持首次出现顺序。
+---
+
+# 邮箱提取技能
+
+从用户提供的长文本中识别电子邮箱地址，去重并按首次出现顺序输出。
+
+## 执行方式
+
+通过命令行调用 Python 脚本：
+
+```bash
+python3 skills/extract-emails/extract.py "<input_text>"
+```
+```
+
+`skills/extract-emails/extract.py`:
+
+```python
+import re
+import sys
+
+def extract_emails(text: str) -> list[str]:
+    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    matches = re.findall(pattern, text)
+    return list(dict.fromkeys(matches))
+
+if __name__ == '__main__':
+    content = sys.argv[1] if len(sys.argv) > 1 else ''
+    emails = extract_emails(content)
+    for email in emails:
+        print(email)
+```
+
+AI 辅助生成使用当前选中的模型并消耗积分；遇到方案问题时按教程目标回答，再检查生成的文件。
 
 ### 1.2 导入已有技能 ZIP 压缩包
 
@@ -74,3 +120,13 @@ bob@example.org
 ### 3.3 实时文件导出
 
 你可以点击页面右上角菜单中的“导出配置”，将当前工作区中实时的所有代码与配置文件打包成 ZIP 压缩包下载到本地，方便进行本地备份或分享。
+
+
+---
+
+## 4. 相关阅读
+
+- 目录规范与元数据定义：[Skill 包格式与运行时规范](/zh-CN/guide/build/skill/package-reference)
+- 依赖安装与前置环境准备：[初始化脚本](/zh-CN/guide/build/skill/initialization)
+- 版本快照保存与回滚切换：[版本与发布](/zh-CN/guide/build/skill/version)
+- 在 Agent 中绑定与调用：[在 Agent 中使用 Skill](/zh-CN/guide/build/skill/integration)

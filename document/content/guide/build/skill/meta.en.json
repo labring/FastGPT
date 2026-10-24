@@ -6,6 +6,7 @@
     "initialization",
     "version",
     "integration",
-    "!development"
+    "!development",
+    "package-reference"
   ]
 }
