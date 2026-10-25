@@ -131,7 +131,7 @@ export async function generateQA(): Promise<any> {
 
           const {
             answerText: answer,
-            usage: { inputTokens, outputTokens }
+            usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens }
           } = await createLLMResponse({
             teamId: data.teamId,
             saveLLMResponseRecord: false,
@@ -177,6 +177,8 @@ export async function generateQA(): Promise<any> {
             teamId: data.teamId,
             inputTokens,
             outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
             usageId: data.billId,
             model: modelData,
             type: UsageItemTypeEnum.training_qa
@@ -185,7 +187,7 @@ export async function generateQA(): Promise<any> {
           logger.info('QA queue task finished', {
             durationMs: Date.now() - startTime,
             qaCount: qaArr.length,
-            usage: { inputTokens, outputTokens },
+            usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens },
             trainingId: data._id,
             datasetId: data.datasetId,
             collectionId: data.collectionId

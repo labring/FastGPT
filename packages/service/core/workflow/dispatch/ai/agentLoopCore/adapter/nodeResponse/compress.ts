@@ -48,6 +48,8 @@ export const createAgentLoopCoreCompressNodeResponse = ({
     llmRequestIds: validRequestIds.length ? validRequestIds : undefined,
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
+    cacheReadTokens: usage?.cacheReadTokens,
+    cacheCreationTokens: usage?.cacheCreationTokens,
     totalPoints: usage?.totalPoints,
     textOutput,
     ...(includeCompressTextAgent
@@ -55,6 +57,8 @@ export const createAgentLoopCoreCompressNodeResponse = ({
           compressTextAgent: {
             inputTokens: usage?.inputTokens || 0,
             outputTokens: usage?.outputTokens || 0,
+            cacheReadTokens: usage?.cacheReadTokens,
+            cacheCreationTokens: usage?.cacheCreationTokens,
             totalPoints: usage?.totalPoints || 0
           }
         }

@@ -189,7 +189,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         error: responseEmptyTip,
         responseData: {
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }
       });
     }
@@ -202,7 +204,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const { totalPoints } = formatModelChars2Points({
       model: modelConstantsData,
       inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheCreationTokens: usage.cacheCreationTokens
     });
     const points = usage.usedUserOpenAIKey ? 0 : totalPoints;
     props.usagePush([
@@ -211,7 +215,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         totalPoints: points,
         modelId: modelConstantsData.modelId,
         inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens
       }
     ]);
 
@@ -225,6 +231,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           model: modelConstantsData.name,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens,
           query: `${userChatInput}`,
           maxToken: max_tokens,
           reasoningText,
@@ -251,6 +259,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         model: modelConstantsData.name,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         query: `${userChatInput}`,
         maxToken: max_tokens,
         reasoningText,

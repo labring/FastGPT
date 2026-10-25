@@ -57,5 +57,7 @@
   "model_unavailable": "模型已下架",
   "user_type": "类型",
   "wecom": "企业微信",
-  "wechat": "微信个人号"
+  "wechat": "微信个人号",
+  "cache_read_token_length": "缓存读取 Token 长度",
+  "cache_creation_token_length": "缓存创建 Token 长度"
 }

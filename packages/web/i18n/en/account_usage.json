@@ -57,5 +57,7 @@
   "model_unavailable": "Model unavailable",
   "user_type": "Type",
   "wecom": "WeCom",
-  "wechat": "WeChat Personal"
+  "wechat": "WeChat Personal",
+  "cache_read_token_length": "Cache read tokens",
+  "cache_creation_token_length": "Cache creation tokens"
 }

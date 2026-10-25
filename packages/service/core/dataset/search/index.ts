@@ -53,6 +53,8 @@ export const defaultSearchDatasetData = async ({
           seconds: aiExtensionResult.seconds,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
+          cacheReadTokens: aiExtensionResult.cacheReadTokens,
+          cacheCreationTokens: aiExtensionResult.cacheCreationTokens,
           usedUserOpenAIKey: aiExtensionResult.usedUserOpenAIKey,
           embeddingModel: aiExtensionResult.embeddingModel,
           embeddingTokens: aiExtensionResult.embeddingTokens,

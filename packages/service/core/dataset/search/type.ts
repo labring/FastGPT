@@ -76,6 +76,8 @@ export type SearchDatasetDataResponse = {
     seconds: number;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     usedUserOpenAIKey: boolean;
     embeddingTokens: number;
     query: string;
@@ -84,6 +86,8 @@ export type SearchDatasetDataResponse = {
     model: string;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     requestIds: string[];
     seconds: number;
     usedUserOpenAIKey: boolean;

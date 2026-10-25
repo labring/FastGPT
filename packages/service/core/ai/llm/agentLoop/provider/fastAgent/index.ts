@@ -30,11 +30,15 @@ const readFastAgentProviderState = (providerState: unknown): FastAgentProviderSt
 const buildFastAgentResultUsages = ({
   inputTokens,
   outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   llmTotalPoints,
   modelId
 }: {
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   llmTotalPoints?: number;
   modelId?: string;
 }): AgentLoopUsage[] => {
@@ -48,6 +52,8 @@ const buildFastAgentResultUsages = ({
       modelId,
       inputTokens: inputTokens ?? 0,
       outputTokens: outputTokens ?? 0,
+      cacheReadTokens: cacheReadTokens ?? 0,
+      cacheCreationTokens: cacheCreationTokens ?? 0,
       totalPoints: llmTotalPoints ?? 0
     }
   ];
@@ -169,6 +175,8 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     usages: buildFastAgentResultUsages({
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       modelId: fastAgentRuntime.model.modelId
     })

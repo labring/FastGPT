@@ -77,6 +77,8 @@ export const DispatchNodeResponseSchema = z
     tokens: z.number().optional().meta({ description: '总 token' }),
     inputTokens: z.number().optional().meta({ description: '输入 token' }),
     outputTokens: z.number().optional().meta({ description: '输出 token' }),
+    cacheReadTokens: z.number().optional().meta({ description: '输入中缓存读取 token' }),
+    cacheCreationTokens: z.number().optional().meta({ description: '输入中缓存创建 token' }),
     modelId: z.string().optional().meta({ description: '模型 ID' }),
     model: z.string().optional().meta({ description: '旧模型标识', deprecated: true }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
@@ -179,6 +181,8 @@ export const DispatchNodeResponseSchema = z
     compressTextAgent: z
       .object({
         inputTokens: z.number().meta({ description: '输入 token' }),
+        cacheReadTokens: z.number().optional().meta({ description: '输入中缓存读取 token' }),
+        cacheCreationTokens: z.number().optional().meta({ description: '输入中缓存创建 token' }),
         outputTokens: z.number().meta({ description: '输出 token' }),
         totalPoints: z.number().meta({ description: '总积分' })
       })

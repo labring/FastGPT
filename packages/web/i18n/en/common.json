@@ -1392,5 +1392,8 @@
   "core.workflow.check.source_output_missing": "Output {{outputKey}} of node {{nodeId}} is missing or cannot be connected",
   "core.workflow.check.node_missing": "Node {{nodeId}} no longer exists; remove its stale connection",
   "core.workflow.check.option_keys_invalid": "Option or classification keys are missing or duplicated",
-  "core.workflow.check.form_configuration_invalid": "Form field keys or matching outputs are incomplete: {{fieldKeys}}"
+  "core.workflow.check.form_configuration_invalid": "Form field keys or matching outputs are incomplete: {{fieldKeys}}",
+  "model.cache_read_price": "Cache read",
+  "model.cache_creation_price": "Cache creation",
+  "model.cache_price_default": "Input price"
 }

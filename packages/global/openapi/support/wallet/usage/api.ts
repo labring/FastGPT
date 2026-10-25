@@ -53,8 +53,19 @@ const UsageItemSchema = z
       description: '模型展示名称；旧记录为历史模型标识',
       deprecated: true
     }),
-    inputTokens: IntSchema.optional().meta({ example: 1200, description: '输入 token 数' }),
+    inputTokens: IntSchema.optional().meta({
+      example: 1200,
+      description: '输入 token 总数，包含缓存读取和缓存创建'
+    }),
     outputTokens: IntSchema.optional().meta({ example: 800, description: '输出 token 数' }),
+    cacheReadTokens: IntSchema.optional().meta({
+      example: 600,
+      description: '输入中缓存读取 token 数'
+    }),
+    cacheCreationTokens: IntSchema.optional().meta({
+      example: 200,
+      description: '输入中缓存创建 token 数'
+    }),
     charsLength: IntSchema.optional().meta({ example: 2400, description: '文本字符数' }),
     duration: NumSchema.optional().meta({ example: 1.2, description: '处理耗时' }),
     pages: IntSchema.optional().meta({ example: 3, description: '处理页数' }),

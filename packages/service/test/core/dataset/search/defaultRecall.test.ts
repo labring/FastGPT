@@ -222,6 +222,8 @@ describe('default recall dataset search', () => {
       model: 'mock-vlm-model',
       inputTokens: 3,
       outputTokens: 2,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
       requestIds: ['req_image_caption_2'],
       seconds: expect.any(Number),
       usedUserOpenAIKey: true,

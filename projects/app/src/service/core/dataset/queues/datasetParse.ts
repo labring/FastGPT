@@ -66,7 +66,9 @@ const requestLLMPargraph = async ({
     return {
       resultText: rawText,
       totalInputTokens: 0,
-      totalOutputTokens: 0
+      totalOutputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0
     };
   }
 
@@ -81,7 +83,9 @@ const requestLLMPargraph = async ({
       return {
         resultText: rawText,
         totalInputTokens: 0,
-        totalOutputTokens: 0
+        totalOutputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0
       };
     }
   }
@@ -95,7 +99,9 @@ const requestLLMPargraph = async ({
     return {
       resultText: rawText,
       totalInputTokens: 0,
-      totalOutputTokens: 0
+      totalOutputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0
     };
   }
 };
@@ -275,7 +281,13 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
 
           // 3. LLM Pargraph
-          const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
+          const {
+            resultText,
+            totalInputTokens,
+            totalOutputTokens,
+            cacheReadTokens,
+            cacheCreationTokens
+          } = await requestLLMPargraph({
             rawText,
             modelId: agentModelData?.modelId ?? dataset.agentModelId,
             teamId: String(data.teamId),
@@ -291,6 +303,8 @@ export const datasetParseQueue = async (): Promise<any> => {
               model: agentModelData,
               inputTokens: totalInputTokens,
               outputTokens: totalOutputTokens,
+              cacheReadTokens,
+              cacheCreationTokens,
               usageId: data.billId,
               type: UsageItemTypeEnum.training_paragraph
             });

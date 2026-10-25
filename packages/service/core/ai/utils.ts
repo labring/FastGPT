@@ -1,7 +1,7 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LLMModelDataType, AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
+import type { CompletionFinishReason, LLMCompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
@@ -82,7 +82,7 @@ export const parseLLMStreamResponse = () => {
 
   // Buffer
   let buffer_finishReason: CompletionFinishReason = null;
-  let buffer_usage: CompletionUsage = getLLMDefaultUsage();
+  let buffer_usage: LLMCompletionUsage = getLLMDefaultUsage();
   let buffer_reasoningContent = '';
   let buffer_content = '';
   let error: any = undefined;
@@ -128,7 +128,7 @@ export const parseLLMStreamResponse = () => {
         };
         finish_reason?: CompletionFinishReason;
       }[];
-      usage?: CompletionUsage | null;
+      usage?: LLMCompletionUsage | null;
     };
     parseThinkTag?: boolean;
     retainDatasetCite?: boolean;

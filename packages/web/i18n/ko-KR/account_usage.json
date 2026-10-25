@@ -57,5 +57,7 @@
   "model_unavailable": "사용할 수 없는 모델",
   "user_type": "유형",
   "wecom": "WeCom",
-  "wechat": "WeChat 개인"
+  "wechat": "WeChat 개인",
+  "cache_read_token_length": "캐시 읽기 토큰 수",
+  "cache_creation_token_length": "캐시 생성 토큰 수"
 }

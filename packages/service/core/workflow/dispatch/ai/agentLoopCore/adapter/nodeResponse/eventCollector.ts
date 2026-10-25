@@ -183,6 +183,8 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       llmRequestIds: [event.requestId],
       inputTokens: usage?.inputTokens,
       outputTokens: usage?.outputTokens,
+      cacheReadTokens: usage?.cacheReadTokens,
+      cacheCreationTokens: usage?.cacheCreationTokens,
       totalPoints: usage?.totalPoints,
       finishReason: event.finishReason,
       textOutput: event.answerText,

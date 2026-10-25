@@ -3,9 +3,9 @@ import type {
   ChatCompletionMessageToolCall,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { CompleteResponse, LLMAccumulatedUsage } from '../types';
+import { normalizeLLMCacheUsage } from '../response/normalize';
 
 const createEmptyUsage = (): LLMAccumulatedUsage => ({
   prompt_tokens: 0,
@@ -70,11 +70,10 @@ export const useLLMResponseAccumulator = () => {
         usage.prompt_tokens += response.usage.prompt_tokens || 0;
         usage.completion_tokens += response.usage.completion_tokens || 0;
         usage.total_tokens += response.usage.total_tokens || 0;
-        if (isDevEnv) {
-          const cachedTokens = response.usage.prompt_tokens_details?.cached_tokens || 0;
-          usage.cached_tokens += cachedTokens;
-          usage.cache_read_tokens += cachedTokens;
-        }
+        const { cacheReadTokens, cacheCreationTokens } = normalizeLLMCacheUsage(response.usage);
+        usage.cached_tokens += cacheReadTokens;
+        usage.cache_read_tokens += cacheReadTokens;
+        usage.cache_write_tokens += cacheCreationTokens;
       }
     },
 
