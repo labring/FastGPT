@@ -72,12 +72,13 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 
-const modelRowHeight = 80;
+// 四类价格各占一行，保留上下留白并与虚拟列表的行高保持一致。
+const modelRowHeight = 128;
 const sortModelRowHeight = 48;
 const modelTableColumnWidth = {
   selection: '48px',
   channels: '160px',
-  billing: '240px',
+  billing: '320px',
   scope: '160px',
   active: '128px',
   actions: '160px'
