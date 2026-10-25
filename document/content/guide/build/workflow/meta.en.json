@@ -1,5 +1,10 @@
 {
   "title": "Workflow",
   "description": "FastGPT workflow introduction and node guides.",
-  "pages": ["intro", "assisted-generation", "nodes"]
+  "pages": [
+    "intro",
+    "rules",
+    "assisted-generation",
+    "nodes"
+  ]
 }

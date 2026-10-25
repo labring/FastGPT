@@ -229,7 +229,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                   |          |
 | chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |          |
 | qaPrompt         | QA split prompt                                                                                                                                 |          |
-| tags             | Collection tags (string array)                                                                                                                  |          |
+| tags             | Collection tags (Commercial). Accepts structured tag objects (`[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 1}]`) as well as legacy string arrays |          |
 | createTime       | File creation time (Date / String)                                                                                                              |          |
 
 **Response**
@@ -609,10 +609,11 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tab value="Parameters" >
 
 - offset: Offset
-- pageSize: Items per page, max 30 (optional)
+- pageSize: Items per page, max 100 (optional)
 - datasetId: Dataset ID (required)
 - parentId: Parent ID (optional)
 - searchText: Fuzzy search text (optional)
+- tagFilters: Filter collection list by tag values (optional, Commercial), formatted as `[{"tagId": "tag_id", "values": ["option_or_number"]}]`
 
 </Tab>
 
@@ -786,7 +787,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - id: Collection ID
 - parentId: Update parent ID (optional)
 - name: Update collection name (optional)
-- tags: Update collection tags (optional)
+- tags: Update collection tags (optional, Commercial). Accepts structured tag objects `[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 2}]` as well as legacy string arrays
 - forbid: Update collection disabled status (optional)
 - createTime: Update collection creation time (optional)
 

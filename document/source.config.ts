@@ -24,6 +24,7 @@ export const docs = defineDocs({
     schema: frontmatterSchema.extend({
       title: z.string().optional().default('Untitled'),
       releaseTime: z.iso.date().optional(),
+      deprecated: z.boolean().optional(),
       sidebarTag: z.string().optional(),
       upgradeTags: z.array(z.string()).optional()
     })

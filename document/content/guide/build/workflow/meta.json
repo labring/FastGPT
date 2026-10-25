@@ -1,5 +1,10 @@
 {
   "title": "工作流",
   "description": "FastGPT 工作流介绍和节点说明。",
-  "pages": ["intro", "assisted-generation", "nodes"]
+  "pages": [
+    "intro",
+    "rules",
+    "assisted-generation",
+    "nodes"
+  ]
 }

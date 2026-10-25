@@ -13,6 +13,7 @@
     "connect-application",
     "update-data",
     "collection_tags",
+    "collection_tags_legacy",
     "collection_permission",
     "faq"
   ]

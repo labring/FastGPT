@@ -55,6 +55,14 @@ A way for users or external systems to access an application, such as a shared l
 **Team management (团队管理)**:
 Administration of a team's members, roles, resources, and collaboration permissions.
 
+**Write permission (写权限)**:
+A resource collaborator role that can change knowledge content, including synchronization and training parameters.
+_Avoid_: Using write permission to rename, disable, or otherwise change the knowledge base or collection itself.
+
+**Manage permission (管理员)**:
+A resource collaborator role that can change a knowledge base or collection's own information and assign collaborator permissions.
+_Avoid_: Using manage permission as a synonym for team management or platform administration.
+
 **Platform administration (平台运营管理)**:
 Administration of the FastGPT service and its system-wide resources, configuration, and teams.
 _Avoid_: Using team management and platform administration interchangeably.

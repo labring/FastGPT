@@ -42,11 +42,11 @@ Choose members, groups, or organizations and assign roles:
 | Role | Scope |
 |---|---|
 | Read | View collection content |
-| Write | Update content, synchronize, and adjust processing parameters |
-| Administrator | Manage collection settings and collaborators |
+| Write | Modify collection content (sync / adjust training params) |
+| Manage | Manage the collection's info and permissions |
 | Creator | Own the collection; deletion and ownership transfer require this role |
 
-Collaborator updates replace the submitted list in full. Preserve the existing creator entry. Modifying inherited grants may require confirming a switch to independent permissions. Restoring inheritance retains grants unique to that collection and synchronizes its subtree.
+Renaming, disabling, or otherwise changing the knowledge base or collection itself requires Manage permission; Write permission allows changing knowledge content, including synchronization and training parameters. Collaborator updates replace the submitted list in full. Preserve the existing creator entry. Modifying inherited grants may require confirming a switch to independent permissions. Restoring inheritance retains grants unique to that collection and synchronizes its subtree.
 
 ![Configure file and folder collaborators](/imgs/optimized/current/collection-collaborators.png.webp)
 

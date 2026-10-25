@@ -15,6 +15,7 @@ export const source = loader({
     attachFile(node, file) {
       return {
         ...node,
+        deprecated: file?.data.deprecated,
         sidebarTag: file?.data.sidebarTag,
         upgradeTags: file?.data.upgradeTags
       };

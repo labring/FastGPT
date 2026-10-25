@@ -168,6 +168,10 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 2. To get the user's name, set the `key` to `data.user.name`.
 3. To get the second element in the list, set the `key` to `data.list[1]`. If you select string as the output type, it will automatically return the JSON string `[ { "test": 22 } ]`.
 
+### Error responses and troubleshooting
+
+When the HTTP node receives a non-2xx response whose body lacks `message` or `msg`, the node error text includes a capped snippet of that response body (up to 2000 characters) to help troubleshoot the failure.
+
 ### Auto-format Output
 
 Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.

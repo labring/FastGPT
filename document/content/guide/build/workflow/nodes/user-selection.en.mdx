@@ -31,6 +31,8 @@ The basic pattern is to present a question that requires a user decision, then r
 
 Enter the user-facing description, add option text, and connect each option's execution handle to its branch. Each option has its own key. The chosen option text becomes the string **Selection result**; resumed execution follows the selected branch.
 
+In addition to manually configuring fixed options, the node supports dynamically generating option lists via variable references (such as an array output from an upstream Code or HTTP node). Dynamic options share a single dynamic option exit. If the resolved dynamic option list is empty, the node returns a clear error to avoid invalid waiting without selectable options.
+
 ## Example: confirm or cancel
 
 1. Connect Start to User Selection and enter `Continue this task?` as the description.

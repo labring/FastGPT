@@ -31,7 +31,7 @@ Precisely collect specific user information, then perform follow-up operations b
 
 ## Configuration and outputs
 
-Enter the form description and add input fields. For each field, set its display name, unique variable key, type, and required status. Configure defaults, length, numeric range, or options where supported by the type. The name appears in the form; the key identifies the output.
+Enter the form description and add input fields. For each field, set its display name, unique variable key, type, and required status. Configure defaults, length, numeric range, or options where supported by the type. The name appears in the form; the key identifies the output. Single-choice (select) and multiple-choice (multipleSelect) fields support supplying options dynamically through variable references in addition to manual configuration. As with the User Selection node, if the resolved dynamic option list is empty, the node returns a clear error to avoid displaying an unfillable form field.
 
 After submission, **Form input result** is an object mapping field keys to values. Each field also has its own output. Downstream nodes use the variable selector to reference individual fields or the complete object. File fields provide file-link lists for subsequent nodes, subject to the deployment's file-type and count limits.
 

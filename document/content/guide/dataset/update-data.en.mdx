@@ -46,7 +46,7 @@ Knowledge bases support discrete operational toggles on every data chunk:
 Use the rebuild operation supported by the current knowledge base when refreshing vector or supplementary indexes. Follow the deployed version's migration instructions when changing embedding models or dimensions:
 
 1. Navigate to knowledge base settings and open the "Advanced Settings" tab.
-2. Select "Rebuild Vector Index" or "Rebuild Synonym Index".
+2. Select "Rebuild Vector Index" (or "Rebuild Synonym Index" when synonym capability is enabled via `DATASET_SYNONYM_ENABLED`).
 3. Confirm the operation. The platform generates batch task records in the background for all ready data chunks.
 4. Workers recompute and commit indexes per chunk, checking that source content still matches the task snapshot. Old vectors are cleaned up after each successful commit. Monitor partial completion and retry failed tasks.
 
