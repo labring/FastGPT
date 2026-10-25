@@ -540,15 +540,18 @@ export class MCPClient {
    * Call tool
    * @param toolName Tool name
    * @param params Parameters
+   * @param requestMeta Per-call metadata, separate from tool arguments and never cached on the client
    * @returns Tool execution result
    */
   public async toolCall({
     toolName,
     params,
+    requestMeta,
     closeConnection = true
   }: {
     toolName: string;
     params: Record<string, any>;
+    requestMeta?: McpToolConfigType['requestMeta'];
     closeConnection?: boolean;
   }): Promise<any> {
     try {
@@ -558,7 +561,8 @@ export class MCPClient {
       return await client.callTool(
         {
           name: toolName,
-          arguments: params
+          arguments: params,
+          ...(requestMeta !== undefined ? { _meta: requestMeta } : {})
         },
         undefined,
         {

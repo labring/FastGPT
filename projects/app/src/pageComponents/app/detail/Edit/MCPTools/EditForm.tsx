@@ -1,5 +1,15 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Input,
+  ModalBody,
+  ModalFooter,
+  FormControl,
+  FormErrorMessage,
+  Textarea
+} from '@chakra-ui/react';
+import React, { useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
@@ -7,7 +17,10 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import {
+  McpToolConfigSchema,
+  type McpToolConfigType
+} from '@fastgpt/global/core/app/tool/mcpTool/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -39,13 +52,24 @@ const EditForm = ({
   const { t } = useTranslation();
 
   const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
+  const metadataSourceUrl = useRef(url);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest(
     async (data: GetMcpToolsBodyType) => await getMCPTools(data),
     {
-      onSuccess: (res) => {
-        setToolList(res);
-        setCurrentTool(res[0]);
+      onSuccess: (res, [data]) => {
+        if (data.url !== url) return;
+        // 只在重新解析同一服务时按名称保留配置，避免把元数据带到另一个服务。
+        const preserveMetadata = metadataSourceUrl.current === data.url;
+        metadataSourceUrl.current = data.url;
+        const tools = res.map((tool) => {
+          const requestMeta = preserveMetadata
+            ? toolList.find((item) => item.name === tool.name)?.requestMeta
+            : undefined;
+          return requestMeta !== undefined ? { ...tool, requestMeta } : tool;
+        });
+        setToolList(tools);
+        setCurrentTool(tools.find((tool) => tool.name === currentTool?.name) ?? tools[0]);
       },
       errorToast: t('app:MCP_tools_parse_failed')
     }
@@ -188,16 +212,52 @@ const EditForm = ({
         </Box>
       </Box>
 
-      {toolDetail && <ToolDetailModal tool={toolDetail} onClose={() => setToolDetail(null)} />}
+      {toolDetail && (
+        <ToolDetailModal
+          tool={toolDetail}
+          onClose={() => setToolDetail(null)}
+          onUpdate={(updatedTool) => {
+            setToolList(
+              toolList.map((tool) => (tool.name === updatedTool.name ? updatedTool : tool))
+            );
+            if (currentTool?.name === updatedTool.name) setCurrentTool(updatedTool);
+          }}
+        />
+      )}
     </>
   );
 };
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
+const ToolDetailModal = ({
+  tool,
+  onClose,
+  onUpdate
+}: {
+  tool: McpToolConfigType;
+  onClose: () => void;
+  onUpdate: (tool: McpToolConfigType) => void;
+}) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const [metadataText, setMetadataText] = useState(
+    tool.requestMeta !== undefined ? JSON.stringify(tool.requestMeta, null, 2) : ''
+  );
+  const [invalidMetadata, setInvalidMetadata] = useState(false);
+
+  /** 空输入清除配置；只有合法 JSON 对象才能写回工具列表并参与保存和调试。 */
+  const confirm = () => {
+    try {
+      const requestMeta = McpToolConfigSchema.shape.requestMeta.parse(
+        metadataText.trim() ? JSON.parse(metadataText) : undefined
+      );
+      onUpdate({ ...tool, requestMeta });
+      onClose();
+    } catch {
+      setInvalidMetadata(true);
+    }
+  };
 
   return (
     <MyModal
@@ -269,9 +329,28 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
             )
           )}
         </Box>
+        <FormControl mt={6} isInvalid={invalidMetadata}>
+          <FormLabel id="mcp-request-meta-label">{t('app:MCP_tools_request_meta')}</FormLabel>
+          <Box mt={2} mb={3} fontSize="12px" color="myGray.500">
+            {t('app:MCP_tools_request_meta_description')}
+          </Box>
+          <Textarea
+            id="mcp-request-meta"
+            aria-labelledby="mcp-request-meta-label"
+            value={metadataText}
+            onChange={(event) => {
+              setMetadataText(event.target.value);
+              setInvalidMetadata(false);
+            }}
+            placeholder={'{ "example/context": { "locale": "zh-CN" } }'}
+            fontFamily="mono"
+            rows={5}
+          />
+          <FormErrorMessage>{t('app:MCP_tools_request_meta_invalid')}</FormErrorMessage>
+        </FormControl>
       </ModalBody>
       <ModalFooter>
-        <Button size={'md'} onClick={onClose}>
+        <Button size={'md'} onClick={confirm}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>

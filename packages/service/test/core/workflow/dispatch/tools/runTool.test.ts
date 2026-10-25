@@ -426,6 +426,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
   });
 
   it('should pass MCP params through without validating against the tool schema', async () => {
+    const requestMeta = { 'example/context': { locale: 'zh-CN' } };
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -455,6 +456,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       {
         name: 'search',
         description: 'Search',
+        requestMeta,
         inputSchema: {
           type: 'object',
           properties: { query: { type: 'string' } },
@@ -471,19 +473,28 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
+      requestMeta,
       closeConnection: false
     });
   });
 
-  it.each(['toolData', 'system_toolData'] as const)(
-    'should keep the baseline fallback for legacy single MCP tool params (%s)',
-    async (legacyKey) => {
+  it.each(
+    ['toolData', 'system_toolData'].flatMap((legacyKey) =>
+      [undefined, { 'example/context': { locale: 'zh-CN' } }].map((requestMeta) => ({
+        legacyKey,
+        requestMeta
+      }))
+    )
+  )(
+    'keeps legacy $legacyKey params separate from request metadata: $requestMeta',
+    async ({ legacyKey, requestMeta }) => {
       const props = createRunToolProps({});
       props.params = {
         query: 'fastgpt',
         [legacyKey]: {
           name: 'search',
           url: 'https://mcp.example.com',
+          requestMeta,
           headerSecret: { Authorization: { value: 'legacy-token' }, 'X-Key': { value: 'api-key' } },
           inputSchema: {
             type: 'object',
@@ -503,7 +514,8 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
       expect(mcpToolCallMock).toHaveBeenCalledWith({
         toolName: 'search',
-        params: { query: 'fastgpt' }
+        params: { query: 'fastgpt' },
+        ...(requestMeta !== undefined ? { requestMeta } : {})
       });
     }
   );

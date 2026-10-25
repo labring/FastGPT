@@ -62,7 +62,8 @@ const ChatTest = ({
         params: data,
         url,
         headerSecret,
-        toolName: currentTool.name
+        toolName: currentTool.name,
+        requestMeta: currentTool.requestMeta
       });
     },
     {

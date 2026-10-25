@@ -302,7 +302,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
-      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
+      const result = await mcpClient.toolCall({
+        toolName,
+        params,
+        ...(mcpTool.requestMeta !== undefined ? { requestMeta: mcpTool.requestMeta } : {}),
+        closeConnection: false
+      });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -381,7 +386,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     } else {
       // mcp tool (old version compatible)
       const { toolData, system_toolData, ...restParams } = params;
-      const { name: toolName, url, headerSecret } = toolData || system_toolData;
+      const { name: toolName, url, headerSecret, requestMeta } = toolData || system_toolData;
 
       await assertMCPUrlNotInternal(url);
 
@@ -392,7 +397,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      const result = await mcpClient.toolCall({ toolName, params: restParams });
+      const result = await mcpClient.toolCall({
+        toolName,
+        params: restParams,
+        ...(requestMeta !== undefined ? { requestMeta } : {})
+      });
 
       return {
         data: {

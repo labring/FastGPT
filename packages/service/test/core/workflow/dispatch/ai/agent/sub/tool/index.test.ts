@@ -306,9 +306,7 @@ describe('dispatchTool runtime toolset auth', () => {
     for (const params of [{}, { query: 123 }, { query: 'blocked' }]) {
       const result = await dispatchTool(createDispatchToolProps(toolConfig, params));
       expect(result.errorMessage).toBeUndefined();
-      expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ params })
-      );
+      expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
       runHTTPToolMock.mockClear();
     }
     expect(getAppVersionByIdMock).toHaveBeenCalled();
@@ -318,6 +316,7 @@ describe('dispatchTool runtime toolset auth', () => {
   it.each(['mcp', 'http'] as const)(
     'uses freshly loaded %s definitions and passes model params through',
     async (source) => {
+      const requestMeta = { 'example/context': { locale: 'zh-CN' } };
       const latestSchema = {
         type: 'object',
         properties: { query: { type: 'string', pattern: '^latest$' } },
@@ -330,7 +329,8 @@ describe('dispatchTool runtime toolset auth', () => {
         method: 'POST',
         inputSchema: latestSchema,
         requestSchema: latestSchema,
-        staticHeaders: [{ key: 'X-Version', value: 'latest' }]
+        staticHeaders: [{ key: 'X-Version', value: 'latest' }],
+        requestMeta
       };
       const key = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
       authAppByTmbIdMock.mockResolvedValue({
@@ -390,7 +390,8 @@ describe('dispatchTool runtime toolset auth', () => {
       } else {
         expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
           toolName: 'search',
-          params
+          params,
+          requestMeta
         });
       }
       expect(getAppVersionByIdMock).toHaveBeenCalled();
