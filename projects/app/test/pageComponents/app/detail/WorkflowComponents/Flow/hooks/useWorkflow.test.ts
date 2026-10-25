@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Node, NodePositionChange, XYPosition } from 'reactflow';
+import { applyNodeChanges, type Node, type NodePositionChange, type XYPosition } from 'reactflow';
 
 // Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.
 // useWorkflow.tsx transitively imports AppContext -> Markdown.
@@ -441,6 +441,81 @@ describe('popover constants', () => {
 });
 
 describe('nested container movement', () => {
+  it.each([
+    ['loop', false],
+    ['parallel', false],
+    ['loop', undefined],
+    ['parallel', undefined]
+  ] as const)(
+    'preserves descendant offsets for a non-drag position update on %s (dragging=%s)',
+    (nodeId, dragging) => {
+      const nodes = [
+        buildNode('loop', 100, 100, 1000, 1000, { data: { nodeId: 'loop' } }),
+        buildNode('parallel', 200, 200, 400, 400, {
+          data: { nodeId: 'parallel', parentNodeId: 'loop' }
+        }),
+        buildNode('task', 300, 300, 50, 50, { data: { nodeId: 'task', parentNodeId: 'parallel' } })
+      ];
+      const node = nodes.find((item) => item.id === nodeId)!;
+      const position = { x: node.position.x + 5, y: node.position.y };
+      const change: NodePositionChange = {
+        id: nodeId,
+        type: 'position',
+        position,
+        positionAbsolute: position,
+        dragging
+      };
+      const descendantChanges = getNestedNodePositionChanges({
+        node: node as any,
+        change,
+        nodes: nodes as any
+      });
+      const updated = applyNodeChanges([change, ...descendantChanges], nodes);
+      expect(updated.find((item) => item.id === 'task')?.position).toEqual({ x: 305, y: 300 });
+      expect(updated.find((item) => item.id === 'parallel')?.position).toEqual({ x: 205, y: 200 });
+      expect(updated.find((item) => item.id === 'loop')?.position).toEqual({
+        x: nodeId === 'loop' ? 105 : 100,
+        y: 100
+      });
+    }
+  );
+
+  it('translates descendants for an absolute-position-only update', () => {
+    const nodes = [
+      buildNode('parallel', 200, 200, 400, 400, { data: { nodeId: 'parallel' } }),
+      buildNode('task', 300, 300, 50, 50, { data: { nodeId: 'task', parentNodeId: 'parallel' } })
+    ];
+    const change: NodePositionChange = {
+      id: 'parallel',
+      type: 'position',
+      positionAbsolute: { x: 205, y: 200 },
+      dragging: false
+    };
+    const descendantChanges = getNestedNodePositionChanges({
+      node: nodes[0] as any,
+      change,
+      nodes: nodes as any
+    });
+    const updated = applyNodeChanges(descendantChanges, nodes);
+    expect(updated[1].position).toEqual({ x: 305, y: 300 });
+  });
+
+  it('preserves coordinates when a drag-end event only clears dragging state', () => {
+    const nodes = [
+      buildNode('parallel', 200, 200, 400, 400, { data: { nodeId: 'parallel' } }),
+      buildNode('task', 300, 300, 50, 50, { data: { nodeId: 'task', parentNodeId: 'parallel' } })
+    ];
+    const change: NodePositionChange = { id: 'parallel', type: 'position', dragging: false };
+    const descendantChanges = getNestedNodePositionChanges({
+      node: nodes[0] as any,
+      change,
+      nodes: nodes as any
+    });
+    const updated = applyNodeChanges([change, ...descendantChanges], nodes);
+    expect(updated[1].position).toEqual({ x: 300, y: 300 });
+    expect(updated[1].dragging).toBe(false);
+  });
+
   it('moves every descendant once, including when the outer loop is dragged to zero', () => {
     const nodes = [
       buildNode('loop', 100, 100, 1000, 1000, { data: { nodeId: 'loop' } }),

@@ -397,12 +397,14 @@ export const getNestedNodePositionChanges = ({
   nodes: Node<FlowNodeItemType>[];
 }): NodePositionChange[] => {
   const descendantIds = getNodeDescendantIds({ nodeId: node.id, nodes: nodes.map((n) => n.data) });
-  const deltaX = (change.position?.x ?? node.position.x) - node.position.x;
-  const deltaY = (change.position?.y ?? node.position.y) - node.position.y;
+  // 键盘和程序化移动也会带坐标；dragging 仅表示交互状态，不能用于判断是否移动。
+  const nextPosition = change.position ?? change.positionAbsolute;
+  const deltaX = (nextPosition?.x ?? node.position.x) - node.position.x;
+  const deltaY = (nextPosition?.y ?? node.position.y) - node.position.y;
   return nodes
     .filter((n) => descendantIds.has(n.id))
     .map((childNode) => {
-      if (!change.dragging) return { ...change, id: childNode.id };
+      if (!nextPosition) return { ...change, id: childNode.id };
       const position = { x: childNode.position.x + deltaX, y: childNode.position.y + deltaY };
       return { ...change, id: childNode.id, position, positionAbsolute: position };
     });
