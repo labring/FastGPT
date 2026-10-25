@@ -62,11 +62,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 
-const modelRowHeight = 80;
+// 四类价格各占一行，保留上下留白并与虚拟列表的行高保持一致。
+const modelRowHeight = 128;
 const modelTableColumnWidth = {
   selection: '48px',
   channels: '160px',
-  billing: '240px',
+  billing: '320px',
   scope: '160px',
   active: '128px',
   actions: '160px'
