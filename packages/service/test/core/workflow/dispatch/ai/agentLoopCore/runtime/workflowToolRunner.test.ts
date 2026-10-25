@@ -642,4 +642,18 @@ describe('extractAgentLoopCoreToolContent', () => {
       })
     ).toBeUndefined();
   });
+
+  it('rejects image parts whose detail is not accepted by the shared schema', () => {
+    // detail 只允许 auto/low/high；手写校验放过它会让下一轮请求被供应商拒绝。
+    expect(
+      extractAgentLoopCoreToolContent({
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: 'https://files.example.com/plot.png', detail: 'ultra' }
+          }
+        ]
+      })
+    ).toBeUndefined();
+  });
 });
