@@ -151,3 +151,5 @@ packageExtensions:
   '@alicloud/credentials@*':
     dependencies:
       debug: ^4.4.3
+patchedDependencies:
+  '@mariozechner/pi-ai@0.67.3': patches/@mariozechner__pi-ai@0.67.3.patch
