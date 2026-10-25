@@ -41,6 +41,7 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
+import { extractAgentLoopCoreToolContent } from '../../../agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -258,8 +259,13 @@ export const dispatchTool = async ({
         msg: result[NodeOutputKeyEnum.systemError]
       });
 
+      // 插件输出若显式声明了结构化 content，透传给 agent-loop 作为下一轮模型输入；
+      // response 仍是完整业务输出，两者互不替代。
+      const content = extractAgentLoopCoreToolContent(result);
+
       return {
         response: JSON.stringify(result),
+        ...(content ? { content } : {}),
         nodeResponse: getNodeResponse({
           result
         }),
@@ -312,8 +318,10 @@ export const dispatchTool = async ({
         params
       });
       const errorMessage = getMCPToolErrorText(result);
+      const content = extractAgentLoopCoreToolContent(result);
       return {
         response: JSON.stringify(result),
+        ...(content ? { content } : {}),
         ...(errorMessage !== undefined ? { errorMessage } : {}),
         nodeResponse: {
           ...getNodeResponse({ result }),
@@ -376,11 +384,13 @@ export const dispatchTool = async ({
         };
       }
 
+      const content = extractAgentLoopCoreToolContent(data);
       return {
         nodeResponse: getNodeResponse({
           result: data
         }),
-        response: typeof data === 'object' ? JSON.stringify(data) : data
+        response: typeof data === 'object' ? JSON.stringify(data) : data,
+        ...(content ? { content } : {})
       };
     } else {
       return getErrResponse("Can't find the tool");

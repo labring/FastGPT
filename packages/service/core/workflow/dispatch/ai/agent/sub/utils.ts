@@ -3,6 +3,7 @@ import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getAgentRuntimeTools } from './tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchAgentModuleProps } from '..';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -194,7 +195,8 @@ export const getExecuteTool = ({
       stop = false,
       nodeResponse,
       nodeSummary,
-      errorMessage
+      errorMessage,
+      content
     } = await (async (): Promise<{
       response: string;
       assistantMessages?: DispatchSubAppResponse['assistantMessages'];
@@ -204,6 +206,7 @@ export const getExecuteTool = ({
       errorMessage?: string;
       nodeResponse?: DispatchSubAppResponse['nodeResponse'];
       nodeSummary?: DispatchSubAppResponse['nodeSummary'];
+      content?: ChatCompletionToolMessageContentPart[];
     }> => {
       try {
         // User Sub App
@@ -233,30 +236,32 @@ export const getExecuteTool = ({
         });
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse, nodeSummary, errorMessage } = await dispatchTool({
-            tool: {
-              name: tool.name,
-              avatar: tool.avatar,
-              version: tool.version,
-              toolConfig: tool.toolConfig
-            },
-            params: requestParams,
-            runningUserInfo,
-            runningAppInfo,
-            chatId,
-            uid,
-            variableState,
-            runtimeNodesMap,
-            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
-            workflowStreamResponse: undefined
-          });
+          const { response, usages, nodeResponse, nodeSummary, errorMessage, content } =
+            await dispatchTool({
+              tool: {
+                name: tool.name,
+                avatar: tool.avatar,
+                version: tool.version,
+                toolConfig: tool.toolConfig
+              },
+              params: requestParams,
+              runningUserInfo,
+              runningAppInfo,
+              chatId,
+              uid,
+              variableState,
+              runtimeNodesMap,
+              // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+              workflowStreamResponse: undefined
+            });
 
           return {
             response,
             usages,
             nodeResponse,
             nodeSummary,
-            errorMessage
+            errorMessage,
+            content
           };
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
@@ -430,6 +435,7 @@ export const getExecuteTool = ({
       stop,
       nodeSummary,
       ...(errorMessage ? { errorMessage } : {}),
+      ...(content?.length ? { content } : {}),
       nodeResponse: formatNodeResponse
     };
   };

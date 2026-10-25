@@ -1453,6 +1453,58 @@ describe('loadRequestMessages function tests', () => {
       ]);
     });
 
+    it('should append tool images after every tool result of the same assistant turn', async () => {
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: '',
+          tool_calls: [
+            {
+              id: 'call_a',
+              type: 'function',
+              function: { name: 'get_file_url', arguments: '{}' }
+            },
+            {
+              id: 'call_b',
+              type: 'function',
+              function: { name: 'get_file_url', arguments: '{}' }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_a',
+          content: [
+            { type: 'text', text: 'files' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_b',
+          content: 'plain result'
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      // 同一轮的全部 tool 结果必须连续回填，图片消息统一追加在其后。
+      expect(result.map((item) => item.role)).toEqual([
+        ChatCompletionRequestMessageRoleEnum.User,
+        ChatCompletionRequestMessageRoleEnum.Assistant,
+        ChatCompletionRequestMessageRoleEnum.Tool,
+        ChatCompletionRequestMessageRoleEnum.Tool,
+        ChatCompletionRequestMessageRoleEnum.User
+      ]);
+      expect((result[2] as any).tool_call_id).toBe('call_a');
+      expect((result[3] as any).tool_call_id).toBe('call_b');
+      expect(result[4].content).toEqual([
+        { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+      ]);
+    });
+
     it('should convert tool image urls to base64 when configured', async () => {
       multimediaEnv.MULTIPLE_DATA_TO_BASE64 = true;
       mockGetImageBase64.mockResolvedValue({

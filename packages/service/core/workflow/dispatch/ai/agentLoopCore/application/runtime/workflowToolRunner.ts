@@ -3,8 +3,7 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type {
   ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
-  ChatCompletionToolMessageContentPart
+  ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -16,6 +15,7 @@ import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
+import { extractAgentLoopCoreToolContent } from '../../domain/toolContent';
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
@@ -103,38 +103,8 @@ export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {
   return toolResponses ? String(toolResponses) : 'none';
 };
 
-/**
- * 从工具节点输出中提取结构化 tool content。
- *
- * 仅接受形如 { content: [{ type: 'text' | 'image_url', ... }, ...] } 的对象输出，
- * 且 content 非空、每项都是合法的 text/image_url part 时才返回，否则 undefined。
- * 工具可以通过该形状主动返回图片，作为下一轮模型的视觉输入；不在普通文本里猜测图片。
- */
-export const extractAgentLoopCoreToolContent = (
-  toolResponses: any
-): ChatCompletionToolMessageContentPart[] | undefined => {
-  if (!toolResponses || typeof toolResponses !== 'object' || Array.isArray(toolResponses)) {
-    return;
-  }
-
-  const content = toolResponses.content;
-  if (!Array.isArray(content) || content.length === 0) return;
-
-  const isValidPart = (part: any): part is ChatCompletionToolMessageContentPart => {
-    if (!part || typeof part !== 'object') return false;
-    if (part.type === 'text') return typeof part.text === 'string' && part.text.length > 0;
-    if (part.type === 'image_url') {
-      return (
-        !!part.image_url && typeof part.image_url.url === 'string' && part.image_url.url.length > 0
-      );
-    }
-    return false;
-  };
-
-  return content.every(isValidPart)
-    ? (content as ChatCompletionToolMessageContentPart[])
-    : undefined;
-};
+// 结构化 content 的提取规则由 workflow 工具与 Agent V2 业务工具共用，实现在 domain 层。
+export { extractAgentLoopCoreToolContent };
 
 /**
  * 初始化阶段直接在传入的 runtime edge/node 上标记入口状态。

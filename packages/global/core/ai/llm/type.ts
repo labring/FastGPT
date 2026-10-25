@@ -129,8 +129,12 @@ export type ChatCompletionUserMessageParam = z.infer<typeof ChatCompletionUserMe
 /* ========= User end ===== */
 
 /**
- * Tool message content part: 对齐 openai completions 接口，工具消息允许
- * 返回 text 或 image_url part，图片可作为下一轮模型的视觉输入。
+ * Tool message content part: FastGPT 内部扩展契约。
+ *
+ * 模型供应商的 tool message content 只接受字符串或文本 parts，openai SDK 的类型同样是
+ * `string | ChatCompletionContentPartText[]`，不接受 image_url。这里允许 image_url
+ * 是为了让工具能在内部链路里声明“取到的图片”，出站前由 loadRequestMessages 把图片
+ * 拆成这一轮 tool 结果之后的 user 视觉消息，不会把图片直接发给供应商。
  */
 export const ChatCompletionToolMessageContentPartSchema = z.union([
   ChatCompletionContentPartTextSchema,
@@ -141,8 +145,8 @@ export type ChatCompletionToolMessageContentPart = z.infer<
 >;
 
 /**
- * Tool message: 对齐 openai SDK 的 ChatCompletionToolMessageParam，新增可选 `name`
- * SDK content 允许字符串或 text/image_url part 数组
+ * Tool message: 对齐 openai SDK 的 ChatCompletionToolMessageParam，新增可选 `name`。
+ * content 在内部允许带 image_url part（见上），出站时会转换；供应商只认字符串或文本 parts。
  */
 export const ChatCompletionToolMessageParamSchema = z.object({
   role: z.literal('tool'),
