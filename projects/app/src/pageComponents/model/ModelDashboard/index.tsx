@@ -344,7 +344,9 @@ const ModelDashboard = ({
           const { totalPoints } = calculateModelPrice({
             config: modelPricing,
             inputTokens,
-            outputTokens
+            outputTokens,
+            cacheReadTokens: model.cached_tokens,
+            cacheCreationTokens: model.cache_creation_tokens
           });
 
           return acc + totalPoints;
