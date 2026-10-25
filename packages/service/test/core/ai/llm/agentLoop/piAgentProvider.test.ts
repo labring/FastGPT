@@ -19,6 +19,7 @@ const {
   agentRunTransformContext,
   agentTransformContextRepeatCount,
   agentResponseText,
+  agentCacheUsage,
   agentToolToExecute,
   runSandboxToolsMock,
   compressRequestMessagesMock
@@ -33,6 +34,7 @@ const {
   agentFailAfterPayload: { value: undefined as string | undefined },
   agentRunTransformContext: { value: false },
   agentTransformContextRepeatCount: { value: 1 },
+  agentCacheUsage: { cacheRead: 0, cacheWrite: 0 },
   agentResponseText: {
     value: 'pi answer'
   },
@@ -220,7 +222,8 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               content: [{ type: 'text', text: agentResponseText.value }],
               usage: {
                 input: 3,
-                output: 2
+                output: 2,
+                ...agentCacheUsage
               },
               stopReason: 'stop'
             }
@@ -243,6 +246,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { runPiAgentLoop as runPiAgentLoopWithoutModelData } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
 
 const modelData = {
@@ -300,6 +304,8 @@ describe('runPiAgentLoop', () => {
     agentRunTransformContext.value = false;
     agentTransformContextRepeatCount.value = 1;
     agentResponseText.value = 'pi answer';
+    agentCacheUsage.cacheRead = 0;
+    agentCacheUsage.cacheWrite = 0;
     agentToolToExecute.value = undefined;
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
@@ -2441,5 +2447,41 @@ describe('runPiAgentLoop', () => {
     expect(JSON.stringify({ result, emittedEvents })).not.toContain(
       'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
     );
+  });
+
+  it('converts pi cache categories to total input and forwards them to billing and usage', async () => {
+    agentCacheUsage.cacheRead = 6000;
+    agentCacheUsage.cacheWrite = 1000;
+    const usagePush = vi.fn();
+    const result = await runPiAgentLoop({
+      input: { messages: [{ role: 'user', content: 'hello' }] },
+      runtime: {
+        teamId: 'team_1',
+        llmParams: { model: modelData },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        usagePush
+      }
+    });
+    expect(formatModelChars2Points).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputTokens: 7003,
+        outputTokens: 2,
+        cacheReadTokens: 6000,
+        cacheCreationTokens: 1000
+      })
+    );
+    expect(usagePush).toHaveBeenCalledWith([
+      expect.objectContaining({
+        inputTokens: 7003,
+        cacheReadTokens: 6000,
+        cacheCreationTokens: 1000
+      })
+    ]);
+    expect(result.usages?.[0]).toMatchObject({
+      inputTokens: 7003,
+      cacheReadTokens: 6000,
+      cacheCreationTokens: 1000
+    });
   });
 });

@@ -34,6 +34,8 @@ const UsageItemSchema = new Schema({
   inputTokens: Number,
   outputTokens: Number,
   totalTokens: Number,
+  cacheReadTokens: Number,
+  cacheCreationTokens: Number,
   charsLength: Number,
   duration: Number,
   pages: Number,

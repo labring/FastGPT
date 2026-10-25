@@ -259,7 +259,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             modelId: runtime.model.modelId,
             totalPoints: usage.totalPoints,
             inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens
+            outputTokens: usage.outputTokens,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheCreationTokens: usage.cacheCreationTokens
           }
         : undefined;
       pushAgentLoopUsages(runtime, [agentCallUsage]);
@@ -510,6 +512,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -526,6 +530,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -542,6 +548,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
+      cacheReadTokens: result.cacheReadTokens,
+      cacheCreationTokens: result.cacheCreationTokens,
       llmTotalPoints: result.llmTotalPoints,
       finishReason: result.finish_reason,
       requestIds: result.requestIds,
@@ -556,6 +564,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     assistantMessages: result.assistantMessages,
     inputTokens: result.inputTokens,
     outputTokens: result.outputTokens,
+    cacheReadTokens: result.cacheReadTokens,
+    cacheCreationTokens: result.cacheCreationTokens,
     llmTotalPoints: result.llmTotalPoints,
     finishReason: result.finish_reason,
     requestIds: result.requestIds,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isStreamCompletionResponse,
   normalizeCompletionFinishReason,
+  normalizeLLMCacheUsage,
   normalizeNativeToolCalls
 } from '@fastgpt/service/core/ai/llm/request/response/normalize';
 
@@ -114,5 +115,39 @@ describe('isStreamCompletionResponse', () => {
   it('should reject non-object and normal completion responses', () => {
     expect(isStreamCompletionResponse(null as any)).toBe(false);
     expect(isStreamCompletionResponse({ choices: [] } as any)).toBe(false);
+  });
+});
+
+describe('normalizeLLMCacheUsage', () => {
+  it.each([
+    [{}, [0, 0]],
+    [{ prompt_tokens_details: { cached_tokens: 600 } }, [600, 0]],
+    [{ cache_creation_tokens: 200, prompt_tokens_details: { cached_tokens: 600 } }, [600, 200]],
+    [{ prompt_tokens_details: { cached_tokens: 600, cache_write_tokens: 200 } }, [400, 200]],
+    [
+      {
+        prompt_tokens_details: {
+          cache_read_tokens: 500,
+          cached_tokens: 600,
+          cache_creation_tokens: 200
+        }
+      },
+      [500, 200]
+    ],
+    [{ prompt_cache_hit_tokens: 600 }, [600, 0]],
+    [{ cache_creation_tokens: 0, prompt_tokens_details: { cache_creation_tokens: 200 } }, [0, 0]],
+    [{ cache_creation_tokens: 2000, prompt_tokens_details: { cached_tokens: 2000 } }, [0, 1000]],
+    [{ cache_creation_tokens: NaN, prompt_tokens_details: { cached_tokens: Infinity } }, [0, 0]],
+    [{ cache_creation_tokens: -10, prompt_tokens_details: { cached_tokens: -5 } }, [0, 0]],
+    [{ prompt_tokens: NaN, prompt_cache_hit_tokens: 100 }, [0, 0]]
+  ])('normalizes provider cache fields: %j', (fields, expected) => {
+    expect(
+      normalizeLLMCacheUsage({
+        prompt_tokens: 1000,
+        completion_tokens: 20,
+        total_tokens: 1020,
+        ...fields
+      })
+    ).toEqual({ cacheReadTokens: expected[0], cacheCreationTokens: expected[1] });
   });
 });

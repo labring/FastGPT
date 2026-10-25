@@ -112,17 +112,20 @@ async function handler(
       })
     });
 
-  const { result, inputTokens, outputTokens } = await createQuestionGuide({
-    messages,
-    model: qgModelData,
-    customPrompt: questionGuide?.customPrompt,
-    teamId
-  });
+  const { result, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens } =
+    await createQuestionGuide({
+      messages,
+      model: qgModelData,
+      customPrompt: questionGuide?.customPrompt,
+      teamId
+    });
 
   pushQuestionGuideUsage({
     model: qgModelData,
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     teamId,
     tmbId
   });
