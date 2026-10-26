@@ -87,7 +87,9 @@ export type AgentLoopEvent =
   | {
       type: 'tool_run_end';
       call: ChatCompletionMessageToolCall;
+      /** 工具执行的原始结果，尚未进行模型上下文精简或压缩。 */
       rawResponse: string;
+      /** 实际给模型的完整结果；聊天持久化和 SSE 均使用此值，不再额外裁剪。 */
       response: string;
       /** 工具内部产生、需要随本轮 assistant 一起持久化的标准消息。 */
       assistantMessages?: ChatCompletionMessageParam[];

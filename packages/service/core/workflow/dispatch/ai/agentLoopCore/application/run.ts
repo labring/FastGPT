@@ -5,7 +5,7 @@ import type {
   AgentLoopRuntime
 } from '../../../../../ai/llm/agentLoop/interface';
 import { runAgentLoop } from '../../../../../ai/llm/agentLoop/interface';
-import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses';
+import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses/eventCollector';
 import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from './output/result';
 import { compactAgentLoopCorePlanSnapshots } from './output/assistantResponses';
 import type { AgentLoopCoreResult } from '../domain/result';

@@ -524,6 +524,59 @@ describe('runToolCall compression node responses', () => {
     ]);
   });
 
+  it.each(['unprocessed', 'locally simplified', 'LLM compressed'])(
+    'uses the complete %s tool result for chat persistence and SSE',
+    async (processing) => {
+      const response = `${processing}:${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const rawResponse = processing === 'unprocessed' ? response : `original metadata:${response}`;
+      const call = {
+        id: 'call_search',
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{}' }
+      };
+      runAgentLoopMock.mockImplementationOnce(async (options) => {
+        options.runtime.emitEvent({ type: 'tool_call', call });
+        options.runtime.emitEvent({
+          type: 'tool_run_end',
+          call,
+          rawResponse,
+          response,
+          seconds: 0.1,
+          ...(processing === 'LLM compressed'
+            ? {
+                toolResponseCompress: {
+                  response,
+                  modelName: 'GPT-4',
+                  usage: { moduleName: 'account_usage:tool_response_compress', totalPoints: 0.1 },
+                  requestIds: ['req_tool_compress'],
+                  seconds: 0.1
+                }
+              }
+            : {})
+        });
+        return createLoopResult({ usages: [] });
+      });
+      const props = createProps({
+        toolNodes: [
+          { nodeId: 'search', name: 'Search', flowNodeType: FlowNodeTypeEnum.tool, inputs: [] }
+        ]
+      });
+
+      const result = await runToolCall(props);
+
+      expect(result.assistantResponses.flatMap((item) => item.tools ?? [])).toEqual([
+        expect.objectContaining({ id: call.id, response })
+      ]);
+      expect(props.workflowStreamResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'toolResponse',
+          id: call.id,
+          data: { tool: { id: call.id, toolName: '', toolAvatar: '', params: '', response } }
+        })
+      );
+    }
+  );
+
   it('records context and tool-response compression as separate ToolCall detail rows', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',

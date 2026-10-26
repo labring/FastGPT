@@ -140,7 +140,7 @@ describe('createAgentLoopCoreEventStream', () => {
     });
   });
 
-  it('respects disabled stream channels and slices tool response preview when requested', () => {
+  it('respects disabled stream channels', () => {
     const workflowStreamResponse = vi.fn();
     const disabled = createAgentLoopCoreEventStream({
       workflowStreamResponse,
@@ -164,19 +164,22 @@ describe('createAgentLoopCoreEventStream', () => {
     });
 
     expect(workflowStreamResponse).not.toHaveBeenCalled();
+  });
 
-    const preview = createAgentLoopCoreEventStream({
+  it('streams complete tool responses beyond 10000 characters', () => {
+    const workflowStreamResponse = vi.fn();
+    const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+    const stream = createAgentLoopCoreEventStream({
       workflowStreamResponse,
-      sliceToolResponse: true,
       getToolInfo: () => undefined
     });
-    preview.streamToolCall(createCall());
-    preview.streamToolResponse({
+    stream.streamToolCall(createCall());
+    stream.streamToolResponse({
       toolCallId: 'call_search',
-      response: 'a'.repeat(12000)
+      response
     });
 
     expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
-    expect(workflowStreamResponse.mock.calls[0][0].data.tool.response.length).toBeLessThan(12000);
+    expect(workflowStreamResponse.mock.calls[0][0].data.tool.response).toBe(response);
   });
 });

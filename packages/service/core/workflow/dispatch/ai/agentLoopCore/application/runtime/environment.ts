@@ -20,7 +20,6 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   workflowStreamResponse?: WorkflowResponseType;
   streamAnswer?: boolean;
   streamReasoning?: boolean;
-  sliceToolResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   shouldStreamTool?: (name: string) => boolean;
   /** Agent/PiAgent 当前层 response 的平铺收集目标。 */
@@ -48,7 +47,6 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
   workflowStreamResponse,
   streamAnswer = true,
   streamReasoning = true,
-  sliceToolResponse = false,
   getToolInfo,
   shouldStreamTool = () => true,
   nodeResponses,
@@ -60,7 +58,6 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
     workflowStreamResponse,
     streamAnswer,
     streamReasoning,
-    sliceToolResponse,
     getToolInfo
   });
   const toolRunCollector = collectToolRunResponses

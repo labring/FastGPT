@@ -126,7 +126,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       workflowStreamResponse,
       streamAnswer: true,
       streamReasoning: true,
-      sliceToolResponse: true,
       getToolInfo: () => ({
         name: 'Search',
         avatar: 'tool-avatar'
