@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import {
@@ -8,6 +8,14 @@ import {
 } from '@/migration/tasks/4170/20260903_migrate_legacy_system_models/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import {
+  getCachedSystemModelHandle,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import {
+  getSystemModelHandle,
+  loadInstalledModels
+} from '@fastgpt/service/core/ai/model/catalog/service';
 
 // 本文件验证首次模型体系初始化的事务原子性，不能使用全局的无事务测试替身。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
@@ -17,7 +25,7 @@ const pluginLlm: AIModelDocumentDataType = {
   provider: 'OpenAI',
   model: 'plugin-llm',
   name: 'Plugin LLM',
-  scope: 'system',
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     maxContext: 128000,
@@ -43,6 +51,7 @@ describe('bootstrapAIModelsFromLegacy', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    publishSystemModelHandle(undefined);
     await Promise.all([
       MongoAIModel.deleteMany({}),
       MongoAIModelCatalog.deleteMany({}),
@@ -63,6 +72,46 @@ describe('bootstrapAIModelsFromLegacy', () => {
       defaultModelIds: {}
     });
   });
+
+  it.each([0, 7])(
+    'refreshes a follower startup snapshot after migration commits from revision %i',
+    async (revision) => {
+      if (revision > 0) {
+        await MongoAIModelCatalog.create({ scope: 'system', catalogRevision: revision });
+      }
+      const legacy = await legacyCollection.insertOne({
+        ...createLegacyLlm('legacy-follower-model'),
+        isActive: true,
+        isDefault: true
+      });
+
+      // 多节点启动时已加载空的新目录；0 同时覆盖尚无目录记录的首次升级。
+      await loadInstalledModels();
+      const followerStartupSnapshot = await getSystemModelHandle();
+      expect(followerStartupSnapshot.revision).toBe(revision);
+      expect(followerStartupSnapshot.getSystemModels()).toEqual([]);
+
+      await bootstrapAIModelsFromLegacy({ pluginDocuments: [] });
+      await loadInstalledModels();
+      expect(await MongoAIModel.countDocuments()).toBe(1);
+      expect(getCachedSystemModelHandle()?.getSystemModels()).toHaveLength(1);
+
+      // 恢复另一节点的旧快照，只走正常读取入口，不能借用执行节点的主动重载。
+      publishSystemModelHandle(followerStartupSnapshot);
+      const followerHandle = await getSystemModelHandle();
+      expect(followerHandle.getSystemModels()).toMatchObject([
+        { modelId: String(legacy.insertedId), model: 'legacy-follower-model' }
+      ]);
+      expect(followerHandle.revision).toBe(revision + 1);
+      expect(followerHandle.configuredDefaultModelIds).toEqual({
+        llm: String(legacy.insertedId)
+      });
+      expect(followerHandle.getDefaultModelData(ModelTypeEnum.llm).modelId).toBe(
+        String(legacy.insertedId)
+      );
+      expect(followerStartupSnapshot.getSystemModels()).toEqual([]);
+    }
+  );
 
   it('preserves an existing valid default while merging a legacy model', async () => {
     const existingModel = await MongoAIModel.create(pluginLlm);
@@ -209,6 +258,21 @@ describe('bootstrapAIModelsFromLegacy', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
     await expect(MongoAIModel.exists({ model: pluginLlm.model })).resolves.not.toBeNull();
     await expect(MongoAIModelCatalog.exists({ scope: 'system' })).resolves.toBeNull();
+  });
+
+  it('rolls back the revision and migrated models when the default write fails', async () => {
+    await MongoAIModelCatalog.create({ scope: 'system', catalogRevision: 7 });
+    await legacyCollection.insertOne(createLegacyLlm('legacy-default-write-failure'));
+    const writeError = new Error('simulated default write failure');
+    vi.spyOn(MongoAIModelCatalog, 'findOneAndUpdate').mockRejectedValueOnce(writeError);
+
+    await expect(bootstrapAIModelsFromLegacy({ pluginDocuments: [] })).rejects.toBe(writeError);
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
+    await expect(MongoAIModelCatalog.findOne({ scope: 'system' }).lean()).resolves.toMatchObject({
+      catalogRevision: 7,
+      defaultModelIds: {}
+    });
+    await expect(legacyCollection.countDocuments()).resolves.toBe(1);
   });
 
   it('repairs a damaged legacy model from its plugin template and preserves the old id', async () => {

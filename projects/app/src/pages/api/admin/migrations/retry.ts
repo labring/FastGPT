@@ -4,13 +4,13 @@ import {
   RetrySystemMigrationBodySchema,
   type RetrySystemMigrationBody
 } from '@fastgpt/global/migration/schema';
-import { retryNonBlockingSystemMigration } from '@/migration/service';
+import { retrySystemMigration } from '@/migration/service';
 import { wakeSystemMigrationRunner } from '@/migration/runner';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
 
-/** Root 管理员修复数据后，将非阻塞 failed 任务重新放回串行队列。 */
+/** Root 管理员修复数据后，将 failed 任务重新交给 Runner 按注册模式执行。 */
 async function handler(
   req: ApiRequestProps<RetrySystemMigrationBody>,
   res: ApiResponseType
@@ -22,7 +22,7 @@ async function handler(
   }).body;
 
   try {
-    await retryNonBlockingSystemMigration(migrationId);
+    await retrySystemMigration(migrationId);
   } catch (error) {
     respondSystemMigrationDependencyError(res, error);
     return;

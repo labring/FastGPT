@@ -12,7 +12,8 @@ import type { SystemMigrationContext } from '@/migration/registry';
 import { convertLegacyModelPricing } from './utils';
 
 /**
- * 非阻塞迁移：一次读取全部系统模型，一次批量新增 pricing，原根级字段保持原值。
+ * 独立后台迁移：启动链已完成系统模型迁移后，一次读取全部系统模型并批量新增 pricing。
+ * 原根级字段保持原值，计价转换不阻塞业务或其他后台队列。
  * 合法 pricing 已存在即跳过；写入再次检查字段缺失，保护重试和管理员并发修改。
  */
 export const migrateTokenPricesPerMillion = async (context: SystemMigrationContext) => {

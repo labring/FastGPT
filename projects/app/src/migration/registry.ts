@@ -4,7 +4,6 @@ import type {
   SystemMigrationProgressInput,
   SystemMigrationResultData
 } from '@fastgpt/global/migration/schema';
-import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { migrateLegacySystemModels } from './tasks/4170/20260903_migrate_legacy_system_models';
@@ -54,9 +53,9 @@ export type SystemMigrationContext = {
   signal: AbortSignal;
   /** 使用调用方提供的 Zod schema 校验持久化 checkpoint。 */
   getCheckpoint: <T>(schema: ZodType<T>) => Promise<T | undefined>;
-  /** 非阻塞任务读取上次失败留下的坏数据；阻塞任务调用会被拒绝。 */
+  /** 读取上次失败留下的坏数据，重试时优先处理。 */
   getFailedRecords: () => Promise<SystemMigrationFailedRecord[]>;
-  /** 非阻塞任务按批替换完整错误快照；必须在推进对应 checkpoint 前调用。 */
+  /** 按批替换完整错误快照；必须在推进对应 checkpoint 前调用。 */
   reportFailedRecords: (failedRecords: SystemMigrationFailedRecord[]) => Promise<void>;
   /** 仅在一个幂等批次完整提交后保存恢复位置。 */
   saveCheckpoint: (checkpoint: Record<string, unknown>) => Promise<void>;
@@ -81,16 +80,16 @@ export type SystemMigration = {
   resultKey: string;
   /** 按执行顺序声明全部阶段；展示文案不写入 Mongo。 */
   progressSteps: readonly SystemMigrationProgressStep[];
-  /** 为 true 时，所有阻塞任务成功前当前节点不能进入业务 ready。 */
-  blockStartup: boolean;
-  /** 当前任务失败后，Runner 是暂停队列还是继续检查后续任务。 */
-  onFailure: SystemMigrationFailurePolicyEnum;
+  /** 业务启动前必须成功；其完整依赖链一并提升到启动阶段。 */
+  blockStartup?: boolean;
+  /** 启动链完成后竞争集群共享的 3 个名额；与 blockStartup、manual、delay、非空依赖互斥。 */
+  independent?: boolean;
   /**
    * 是否在获得租约后延迟执行。
    * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
    */
   delay?: boolean;
-  /** 管理员确认执行条件后才入队；等待期间不阻塞启动或后续自动任务。 */
+  /** 管理员确认执行条件后才入队；等待期间跳过该任务继续后续自动任务。 */
   manual?: boolean;
   /** 必须先成功的前置任务 ID；只能引用注册表中更早的任务，避免乱序执行和循环依赖。 */
   dependsOn?: readonly string[];
@@ -100,11 +99,12 @@ export type SystemMigration = {
 
 /**
  * 未来生产升级任务的唯一有序注册表。
- * 已发布任务只能从尾部追加，禁止修改 ID、顺序、blockStartup、onFailure 或既有函数语义。
+ * 已发布任务只能从尾部追加，禁止修改 ID、顺序、调度模式、依赖或既有函数语义。
  */
 export const systemMigrations = [
   {
     id: '20260907_cleanup_team_member_roles',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
     descriptionKey: i18nT(
@@ -121,12 +121,11 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
       }
     ],
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: cleanupTeamMemberRoles
   },
   {
     id: '20260903_migrate_legacy_system_models',
+    blockStartup: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.name'),
     descriptionKey: i18nT(
@@ -153,12 +152,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: migrateLegacySystemModels
   },
   {
     id: '20260903_backfill_model_permissions',
+    // 权限回填必须等模型目录迁移成功，避免将有效的旧名称权限误判为悬空权限。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_model_permissions.name'),
     descriptionKey: i18nT(
@@ -173,12 +172,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillModelPermissionReferences
   },
   {
     id: '20260903_backfill_dataset_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_dataset_model_references.name'),
     descriptionKey: i18nT(
@@ -195,12 +194,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillDatasetModelReferences
   },
   {
     id: '20260903_backfill_evaluation_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT(
       'system_migration:migrations.20260903_backfill_evaluation_model_references.name'
@@ -219,12 +218,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillEvaluationModelReferences
   },
   {
     id: '20260903_backfill_app_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.name'),
     descriptionKey: i18nT(
@@ -249,12 +248,11 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillAppModelReferences
   },
   {
     id: '20260903_backfill_resource_create_time',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.name'),
     descriptionKey: i18nT(
@@ -273,12 +271,11 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceCreateTime
   },
   {
     id: '20260905_backfill_bill_metadata',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.name'),
     descriptionKey: i18nT(
@@ -291,8 +288,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.bills')
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillBillMetadata
   },
   {
@@ -325,8 +320,6 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceOwnerAcl
   },
   {
@@ -351,12 +344,11 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: cleanupLegacyInvitedMembers
   },
   {
     id: '20260907_migrate_dataset_tags_v2',
+    independent: true,
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.name'),
     descriptionKey: i18nT(
@@ -377,8 +369,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.validation')
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: migrateDatasetTagsV2
   },
   {
@@ -415,8 +405,6 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: backfillAppResourceSnapshots
   },
@@ -438,13 +426,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
   },
   {
     id: '20260928_backfill_member_name_set',
+    independent: true,
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
     descriptionKey: i18nT(
@@ -461,8 +448,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillMemberNameSet
   },
   {
@@ -483,8 +468,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.validation')
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateChunkTraining
   },
@@ -515,13 +498,12 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateDatasetRebuildStatus
   },
   {
     id: '20261009_backfill_agent_sandbox_team_id',
+    independent: true,
     version: '4.17.3',
     nameKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.name'),
     descriptionKey: i18nT(
@@ -543,13 +525,12 @@ export const systemMigrations = [
       }
     ],
     // 缺 teamId 只影响团队配额归属：app 会话与技能编辑共用系统总上限，且运行期会惰性补齐，
-    // 无需阻塞启动；孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    // 孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
     run: backfillAgentSandboxTeamId
   },
   {
     id: '20261022_backfill_folder_ancestor_ids',
+    independent: true,
     version: '4.17.3',
     nameKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.name'),
     descriptionKey: i18nT(
@@ -574,8 +555,6 @@ export const systemMigrations = [
         )
       }
     ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillFolderAncestorIds
   },
   {
@@ -592,9 +571,8 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.models')
       }
     ],
-    // 允许迁移期间的计费偏差，后台转换不阻塞启动或后续独立任务。
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    // 系统模型迁移由全局启动链保证先成功；计价转换随后独立运行，不阻塞业务或普通队列。
+    independent: true,
     run: migrateTokenPricesPerMillion
   }
 ] as const satisfies readonly SystemMigration[];
@@ -621,19 +599,21 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
     }
     ids.add(migration.id);
 
+    if (migration.manual && migration.delay) {
+      throw new Error(`Manual system migration ${migration.id} cannot be delayed`);
+    }
+
+    if (migration.blockStartup && migration.independent) {
+      throw new Error(`Blocking system migration ${migration.id} cannot run independently`);
+    }
+
     if (
-      migration.blockStartup &&
-      migration.onFailure === SystemMigrationFailurePolicyEnum.continue
+      migration.independent &&
+      (migration.manual || migration.delay || migration.dependsOn?.length)
     ) {
-      throw new Error(`Blocking system migration ${migration.id} must stop following migrations`);
-    }
-
-    if (migration.blockStartup && migration.delay) {
-      throw new Error(`Blocking system migration ${migration.id} cannot be delayed`);
-    }
-
-    if (migration.manual && (migration.blockStartup || migration.delay)) {
-      throw new Error(`Manual system migration ${migration.id} cannot block startup or be delayed`);
+      throw new Error(
+        `Independent system migration ${migration.id} cannot be manual, delayed or have dependencies`
+      );
     }
 
     const progressStepKeys = new Set<string>();
