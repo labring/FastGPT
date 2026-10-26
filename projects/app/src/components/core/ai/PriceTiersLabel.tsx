@@ -17,7 +17,7 @@ const formatPriceSummary = ({
   priceKey: 'inputPrice' | 'outputPrice';
   unitLabel: string;
 }) => {
-  const prices = tiers.map((tier) => roundModelPrice(tier[priceKey] ?? 0));
+  const prices = tiers.map((tier) => roundModelPrice(tier[priceKey]));
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();

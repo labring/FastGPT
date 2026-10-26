@@ -110,7 +110,7 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
             {(item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) &&
               `${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {roundModelPrice(item.charsPointsPrice ?? 0)}
+              {roundModelPrice(item.charsPointsPrice)}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / ${unit}`}
           </Flex>

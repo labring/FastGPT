@@ -23,6 +23,7 @@ const modelData = {
 
 describe('roundModelPrice', () => {
   it.each([
+    [undefined, 0],
     [0, 0],
     [2, 2],
     [0.125, 0.13],

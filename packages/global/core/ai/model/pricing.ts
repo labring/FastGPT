@@ -4,9 +4,8 @@ import { round } from 'lodash-es';
 
 export const MAX_MODEL_PRICE_TIERS = 5;
 
-/** 模型单价统一最多两位小数；不用于舍入每次调用的最终费用。 */
-export const roundModelPrice = (price: number) =>
-  Number.isInteger(price) ? price : round(price, 2);
+/** 模型单价统一最多两位小数，undefined 按 0 处理；不用于舍入每次调用的最终费用。 */
+export const roundModelPrice = (price = 0) => (Number.isInteger(price) ? price : round(price, 2));
 
 /** 表单、导入及迁移统一约束所有单价精度，不舍入区间边界。 */
 export const roundModelPricing = <T extends PriceType>(pricing: T): T => ({
