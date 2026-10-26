@@ -3,34 +3,30 @@ import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
-export const ModelPriceTierSchema = z
-  .object({
-    maxInputTokens: z
-      .number()
-      .min(0)
-      .optional()
-      .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
-    inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
-    outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
-  })
-  .strict();
+export const ModelPriceTierSchema = z.object({
+  maxInputTokens: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
+  inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
+  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
+});
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
 /** 单价只存金额，计价分母由模型类型固定；空对象表示已配置但尚未填写价格。 */
-export const ModelPricingSchema = z
-  .object({
-    tiers: z
-      .array(ModelPriceTierSchema)
-      .max(5)
-      .optional()
-      .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
-    unitPrice: z
-      .number()
-      .min(0)
-      .optional()
-      .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
-  })
-  .strict();
+export const ModelPricingSchema = z.object({
+  tiers: z
+    .array(ModelPriceTierSchema)
+    .max(5)
+    .optional()
+    .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
+  unitPrice: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
+});
 export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
 export const LLMModelPricingSchema = ModelPricingSchema.omit({ unitPrice: true });
 export const UnitModelPricingSchema = ModelPricingSchema.omit({ tiers: true });

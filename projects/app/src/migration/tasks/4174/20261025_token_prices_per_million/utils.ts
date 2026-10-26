@@ -9,20 +9,40 @@ import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 
 /** 根级字段仅在迁移内读取；保留旧下限用于校验，但不写入新结构。 */
 export const LegacyModelPricesSchema = z.object({
+  /** @deprecated 仅供迁移读取，新配置使用 pricing.tiers。 */
   priceTiers: z
     .array(
       z.object({
-        minInputTokens: z.number().min(0).optional(),
+        minInputTokens: z.number().min(0).optional().meta({
+          deprecated: true,
+          description: '旧阶梯下限；新结构从上一档上限推导，仅供迁移读取'
+        }),
         maxInputTokens: z.number().min(0).nullish(),
         inputPrice: z.number().min(0),
         outputPrice: z.number().min(0)
       })
     )
     .max(5)
-    .optional(),
-  inputPrice: z.number().min(0).optional(),
-  outputPrice: z.number().min(0).optional(),
-  charsPointsPrice: z.number().min(0).optional()
+    .optional()
+    .meta({ deprecated: true, description: '旧根级阶梯价格；迁移至 pricing.tiers' }),
+  /** @deprecated 仅供迁移读取，新配置使用 pricing.tiers。 */
+  inputPrice: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ deprecated: true, description: '旧根级输入单价；迁移至 pricing.tiers' }),
+  /** @deprecated 仅供迁移读取，新配置使用 pricing.tiers。 */
+  outputPrice: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ deprecated: true, description: '旧根级输出单价；迁移至 pricing.tiers' }),
+  /** @deprecated 仅供迁移读取，新配置使用 pricing。 */
+  charsPointsPrice: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ deprecated: true, description: '旧根级综合单价；迁移至 pricing' })
 });
 
 /** 迁移专用：Token/TTS 单价乘千、边界除千，STT 原价复制；不修改源字段。 */

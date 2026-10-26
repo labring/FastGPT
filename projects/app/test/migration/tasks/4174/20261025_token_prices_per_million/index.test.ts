@@ -135,7 +135,10 @@ describe('migrateTokenPricesPerMillion', () => {
         model: 'converted',
         name: 'Converted',
         charsPointsPrice: 123,
-        pricing: { tiers: [{ inputPrice: 12, outputPrice: 24 }] }
+        pricing: {
+          extra: 'ignored',
+          tiers: [{ minInputTokens: 0, inputPrice: 12, outputPrice: 24 }]
+        }
       }
     ]);
     const unchanged = await MongoAIModel.collection
@@ -209,8 +212,8 @@ describe('migrateTokenPricesPerMillion', () => {
     { inputPrice: NaN },
     { inputPrice: Number.MAX_VALUE },
     { pricing: null },
-    { pricing: { unitPrice: -1 } },
-    { pricing: { tiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }] } }
+    { type: ModelTypeEnum.stt, pricing: { unitPrice: -1 } },
+    { pricing: { tiers: [{ inputPrice: 1 }] } }
   ])('rejects invalid or overflowing source prices before any write: %s', async (invalid) => {
     await MongoAIModel.collection.insertMany([
       { ...base, model: 'valid', name: 'Valid', inputPrice: 1 },

@@ -185,7 +185,7 @@ describe('new model pricing', () => {
     { unitPrice: -1 },
     { unitPrice: NaN },
     { unitPrice: Infinity },
-    { tiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }] }
+    { tiers: [{ inputPrice: 1 }] }
   ])('rejects malformed new pricing: %j', (pricing) =>
     expect(ModelPricingSchema.safeParse(pricing).success).toBe(false)
   );

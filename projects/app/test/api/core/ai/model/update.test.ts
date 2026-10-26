@@ -121,7 +121,15 @@ describe('admin settings model create/update api', () => {
   });
 
   it.each([
-    { pricing: { pricing: { tiers: [{ inputPrice: 1000, outputPrice: 2000 }] } }, expected: 1000 },
+    {
+      pricing: {
+        pricing: {
+          extra: 'ignored',
+          tiers: [{ minInputTokens: 0, inputPrice: 1000, outputPrice: 2000, extra: 'ignored' }]
+        }
+      },
+      expected: 1000
+    },
     { pricing: { inputPrice: 1000, outputPrice: 2000, charsPointsPrice: 500 }, expected: 0 },
     { pricing: { pricing: { tiers: [] } }, expected: 0 },
     { pricing: { pricing: { tiers: [{ inputPrice: 0, outputPrice: 0 }] } }, expected: 0 }
@@ -136,6 +144,9 @@ describe('admin settings model create/update api', () => {
       const stored = await MongoAIModel.findById(result.data.modelId).lean();
       expect(stored).not.toHaveProperty('inputPrice');
       expect(stored).not.toHaveProperty('pricing.unitPrice');
+      expect(stored).not.toHaveProperty('pricing.extra');
+      expect(stored).not.toHaveProperty('pricing.tiers.0.minInputTokens');
+      expect(stored).not.toHaveProperty('pricing.tiers.0.extra');
       const model = formatDbModelToRuntimeModel(stored!, { fallbackProvider: true });
       expect(calculateModelPrice({ config: model, inputTokens: 1000000 }).totalPoints).toBe(
         expected

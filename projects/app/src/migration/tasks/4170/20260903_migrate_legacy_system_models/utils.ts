@@ -14,7 +14,11 @@ import z from 'zod';
 
 /** 冻结已发布迁移的旧价格格式，避免当前业务 Schema 剥离待换算的根级价格。 */
 const LegacyPriceTierSchema = z.object({
-  minInputTokens: z.number().min(0).optional(),
+  minInputTokens: z
+    .number()
+    .min(0)
+    .optional()
+    .meta({ deprecated: true, description: '旧阶梯下限，仅供历史迁移读取' }),
   maxInputTokens: z.number().min(0).nullish(),
   inputPrice: z.number(),
   outputPrice: z.number()
@@ -22,10 +26,26 @@ const LegacyPriceTierSchema = z.object({
 export const LegacyAIModelDocumentSchema = z.intersection(
   AIModelDocumentDataSchema,
   z.object({
-    priceTiers: z.array(LegacyPriceTierSchema).optional(),
-    inputPrice: z.number().optional(),
-    outputPrice: z.number().optional(),
-    charsPointsPrice: z.number().optional()
+    /** @deprecated 仅供历史迁移读取。 */
+    priceTiers: z
+      .array(LegacyPriceTierSchema)
+      .optional()
+      .meta({ deprecated: true, description: '旧根级阶梯价格；后续迁移写入 pricing.tiers' }),
+    /** @deprecated 仅供历史迁移读取。 */
+    inputPrice: z
+      .number()
+      .optional()
+      .meta({ deprecated: true, description: '旧根级输入单价；后续迁移写入 pricing.tiers' }),
+    /** @deprecated 仅供历史迁移读取。 */
+    outputPrice: z
+      .number()
+      .optional()
+      .meta({ deprecated: true, description: '旧根级输出单价；后续迁移写入 pricing.tiers' }),
+    /** @deprecated 仅供历史迁移读取。 */
+    charsPointsPrice: z
+      .number()
+      .optional()
+      .meta({ deprecated: true, description: '旧根级综合单价；后续迁移写入 pricing' })
   })
 );
 export type LegacyAIModelDocumentType = z.infer<typeof LegacyAIModelDocumentSchema>;
