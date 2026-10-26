@@ -235,6 +235,36 @@ describe('AIModelSelector lazy directory', () => {
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
   });
 
+  it('hides TTS models without an available voice when requested', () => {
+    mocks.open = true;
+    mocks.lists.mockImplementation(() => ({
+      modelList: [
+        { modelId: 'empty', type: 'tts', provider: 'p', config: { voices: [] } },
+        {
+          modelId: 'blank',
+          type: 'tts',
+          provider: 'p',
+          config: { voices: [{ label: 'Blank', value: '  ' }] }
+        },
+        {
+          modelId: 'ready',
+          type: 'tts',
+          provider: 'p',
+          config: { voices: [{ label: 'Voice', value: 'voice' }] }
+        }
+      ],
+      loading: false,
+      error: false
+    }));
+
+    const selector = AIModelSelector({
+      modelType: ModelTypeEnum.tts,
+      value: '',
+      requireTtsVoice: true
+    });
+    expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual(['ready']);
+  });
+
   it('keeps the existing detail when a successfully loaded catalog is missing the current model', () => {
     mocks.open = true;
     AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'missing' });

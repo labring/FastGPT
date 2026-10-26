@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Box, Button, Table, Tbody, Td, Text, Th, Thead, Tr } from '@chakra-ui/react';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postReplaceInvalidModelReferences } from '@/web/core/ai/model/api';
-import { useModelList } from '@/web/core/ai/model/useModelList';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ReplaceInvalidModelReferencesBody,
@@ -26,7 +25,6 @@ const resourceTypes: ResourceType[] = ['dataset', 'app', 'version'];
 /** 一次请求完成替换；执行前确认团队资源和历史版本会被修改。 */
 const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
-  const { modelList } = useModelList({ enabled: true });
   const [replacement, setReplacement] = useState<Replacement>({
     llmModelId: '',
     ttsModelId: '',
@@ -45,11 +43,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const close = () => {
     if (!loading) onClose();
   };
-  const selectedTts = modelList.find((model) => model.modelId === replacement.ttsModelId);
-  const canConfirm =
-    modelFields.every(({ key }) => Boolean(replacement[key])) &&
-    selectedTts?.type === ModelTypeEnum.tts &&
-    selectedTts.config.voices.some(({ value }) => value.trim().length > 0);
+  const canConfirm = modelFields.every(({ key }) => Boolean(replacement[key]));
   const hasFailures = Boolean(result?.failedSamples.length);
   const confirmReplacement = () => {
     openConfirm({
@@ -99,6 +93,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
               </Text>
               <AIModelSelector
                 modelType={type}
+                requireTtsVoice={type === ModelTypeEnum.tts}
                 value={replacement[key]}
                 onChange={(modelId) =>
                   setReplacement((current) => ({ ...current, [key]: modelId }))
