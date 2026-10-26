@@ -54,13 +54,13 @@ const AccountActivationModal = ({ onFinish }: { onFinish: () => void }) => {
   return (
     <MyModal
       isOpen
+      onClose={onFinish}
       isCentered
       w="400px"
       maxW={['calc(100vw - 32px)', '400px']}
       borderRadius="semilg"
       boxShadow="3.5"
       overflow="hidden"
-      closeOnOverlayClick={false}
     >
       <Box p={8}>
         <Text fontSize="lg" fontWeight="medium" lineHeight="26px">

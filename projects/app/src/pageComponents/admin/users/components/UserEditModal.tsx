@@ -43,6 +43,8 @@ export default function UserEditModal(props: { data: any; getData: any }) {
   // 用 useWatch 而非 watch()，避开 react-hooks/incompatible-library 的缓存告警。
   const watchedUsername = useWatch({ control, name: 'username' });
   const passwordAvailable = useAdminPasswordAvailability([data.username, watchedUsername]);
+  // 受限 SSO 账号无法通过平台密码完成激活，不允许新进入 inactive；已有状态可原样保留。
+  const canMarkInactive = passwordAvailable || data.status === 'inactive';
 
   const { runAsync: onSubmit, loading } = useRequest(
     async (formData: TFormData) => {
@@ -175,7 +177,12 @@ export default function UserEditModal(props: { data: any; getData: any }) {
               <Radio {...register('status')} value="forbidden" size="lg">
                 forbidden
               </Radio>
-              <Radio {...register('status')} value="inactive" size="lg">
+              <Radio
+                {...register('status')}
+                value="inactive"
+                size="lg"
+                isDisabled={!canMarkInactive}
+              >
                 inactive
               </Radio>
             </HStack>

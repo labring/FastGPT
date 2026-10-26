@@ -13,7 +13,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getInviteLinkIdFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
-import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 import {
   finishPostLoginAction,
@@ -21,6 +20,7 @@ import {
   isMandatoryPostLoginActionRoute,
   isPostLoginActionAdmitted,
   isPostLoginActionRoute,
+  shouldPromptAccountActivation,
   startPostLoginAction,
   type OneTimePostLoginAction,
   type PostLoginAction,
@@ -207,11 +207,15 @@ const PostLoginActionOrchestrator = ({
     contact: userInfo?.contact
   });
 
-  const needsAccountActivation = userInfo?.status === UserStatusEnum.inactive;
+  const needsAccountActivation = shouldPromptAccountActivation({
+    status: userInfo?.status,
+    passwordAvailable: userInfo?.passwordAvailable
+  });
   const baseReady = !!userId && !!teamId;
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。
-  const canStartMandatory = (isPlus || needsAccountActivation) && baseReady && canRunMandatoryActions;
+  const canStartMandatory =
+    (isPlus || needsAccountActivation) && baseReady && canRunMandatoryActions;
   const canStartOptional = isPlus && baseReady && canRunOptionalActions && unreadQueryFetched;
 
   const finishOneTimeAction = useCallback(
@@ -293,7 +297,7 @@ const PostLoginActionOrchestrator = ({
         refetchImportantInforms,
         onFinishContact: finishContact,
         onFinishImportantInform: finishImportantInform,
-        onFinishOneTimeAction: finishOneTimeAction,
+        onFinishOneTimeAction: finishOneTimeAction
       })}
     </>
   );

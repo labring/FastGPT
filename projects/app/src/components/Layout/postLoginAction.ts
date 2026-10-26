@@ -1,3 +1,16 @@
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+
+/**
+ * 仅平台密码可用的 inactive 账号能通过设置密码完成激活；旧版用户信息未下发能力标志时沿用原行为。
+ */
+export const shouldPromptAccountActivation = ({
+  status,
+  passwordAvailable
+}: {
+  status?: `${UserStatusEnum}`;
+  passwordAvailable?: boolean;
+}) => status === UserStatusEnum.inactive && passwordAvailable !== false;
+
 export type PostLoginAction =
   | 'invitation'
   | 'memberName'

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
   isMandatoryPostLoginAction,
   isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
+  shouldPromptAccountActivation,
   startPostLoginAction,
   type OneTimePostLoginAction,
   type PostLoginAction,
@@ -175,8 +177,42 @@ describe('post login action order', () => {
     expect(getAction(['accountActivation'], true, undefined, true)).toBe('invitation');
   });
 
+  it('does not prompt password activation for accounts without platform-password support', () => {
+    expect(
+      shouldPromptAccountActivation({
+        status: UserStatusEnum.inactive,
+        passwordAvailable: false
+      })
+    ).toBe(false);
+    expect(
+      shouldPromptAccountActivation({
+        status: UserStatusEnum.inactive,
+        passwordAvailable: true
+      })
+    ).toBe(true);
+    // 兼容未提供能力标志的旧登录信息。
+    expect(shouldPromptAccountActivation({ status: UserStatusEnum.inactive })).toBe(true);
+  });
+
   it('treats the account activation as a mandatory action', () => {
     expect(isMandatoryPostLoginAction('accountActivation')).toBe(true);
+  });
+
+  it('marks account activation complete when the user dismisses the prompt', () => {
+    const key = 'user-1:team-1';
+    const state = startPostLoginAction({
+      state: { key, completed: new Set() },
+      key,
+      action: 'accountActivation'
+    });
+    const dismissed = finishPostLoginAction({
+      state,
+      key,
+      action: 'accountActivation'
+    });
+
+    expect(dismissed.currentAction).toBeUndefined();
+    expect(dismissed.completed.has('accountActivation')).toBe(true);
   });
 
   it('keeps the account activation behind the mandatory gate', () => {
