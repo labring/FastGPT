@@ -827,7 +827,9 @@ describe('createMcpSseFetch', () => {
           method: 'ping'
         })
       ).rejects.toMatchObject({
-        code: status
+        code: status,
+        responseBody: 'expired',
+        message: expect.stringContaining('expired')
       });
     }
   );

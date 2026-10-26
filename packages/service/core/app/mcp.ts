@@ -369,9 +369,14 @@ const getErrorMessage = (error: unknown) => {
 export class McpHttpStatusError extends Error {
   constructor(
     readonly code: number,
-    statusText?: string
+    statusText?: string,
+    readonly responseBody?: string
   ) {
-    super(`MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}`);
+    super(
+      `MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}${
+        responseBody ? `: ${responseBody}` : ''
+      }`
+    );
     this.name = 'McpHttpStatusError';
   }
 }
@@ -385,8 +390,11 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
   return async (url, init) => {
     const response = await fetchImpl(url, init);
     if (init?.method?.toUpperCase() === 'POST' && !response.ok) {
-      await response.body?.cancel().catch(() => undefined);
-      throw new McpHttpStatusError(response.status, response.statusText);
+      const responseBody = await response
+        .text()
+        .then((text) => text.slice(0, 4096))
+        .catch(() => undefined);
+      throw new McpHttpStatusError(response.status, response.statusText, responseBody);
     }
 
     return response;
