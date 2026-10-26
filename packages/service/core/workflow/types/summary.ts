@@ -11,6 +11,8 @@ export type WorkflowRuntimeSummaryFields = {
   finishedNodeIds: string[];
   /** 当前 workflow 是否出现节点错误。 */
   hasError: boolean;
+  /** 当前 workflow 是否出现用户配置错误。 */
+  hasUserConfigError: boolean;
   /** 最近一次错误文本。 */
   errorText?: string;
   /** 当前 workflow 的错误响应数量。 */

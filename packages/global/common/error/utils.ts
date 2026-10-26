@@ -97,9 +97,10 @@ export const getErrResponse = (err: any): any => {
 export class UserError extends Error {
   constructor(
     message: string,
-    readonly displayMessage?: string
+    readonly displayMessage?: string,
+    options?: ErrorOptions
   ) {
-    super(message);
+    super(message, options);
     this.name = 'UserError';
   }
 }
@@ -111,8 +112,8 @@ export class UserError extends Error {
  * 避免第三方 key、MCP 地址等用户配置问题污染系统可用性观测。
  */
 export class UserConfigError extends UserError {
-  constructor(message: string, displayMessage?: string) {
-    super(message, displayMessage);
+  constructor(message: string, displayMessage?: string, options?: ErrorOptions) {
+    super(message, displayMessage, options);
     this.name = 'UserConfigError';
   }
 }

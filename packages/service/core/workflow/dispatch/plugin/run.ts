@@ -380,7 +380,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       ...(pluginOutputError
         ? {
             error: {
-              [NodeOutputKeyEnum.errorText]: pluginOutputError
+              [NodeOutputKeyEnum.errorText]: pluginOutputError,
+              ...(runtimeSummary.hasUserConfigError ? { name: 'UserConfigError' as const } : {})
             }
           }
         : {}),

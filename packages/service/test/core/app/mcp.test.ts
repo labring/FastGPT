@@ -208,11 +208,21 @@ describe('MCPClient', () => {
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
       const errorLog = vi.spyOn(logger, 'error');
-      client.listTools.mockRejectedValue(new UserConfigError('Invalid MCP URL'));
+      const warnLog = vi.spyOn(logger, 'warn');
+      client.listTools.mockRejectedValue(new StreamableHTTPError(401, 'Invalid MCP credentials'));
 
       await expect(mcpClient.getTools()).rejects.toBeInstanceOf(UserConfigError);
 
       expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledWith(
+        'MCP client user config error',
+        expect.objectContaining({
+          operation: 'getTools',
+          urlHost: 'example.com',
+          errorCode: 401,
+          fastgpt: true
+        })
+      );
     });
 
     it('should fallback to original schema when dereference fails', async () => {
@@ -555,6 +565,7 @@ describe('MCPClient', () => {
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
       const errorLog = vi.spyOn(logger, 'error');
+      const warnLog = vi.spyOn(logger, 'warn');
       client.callTool.mockRejectedValue(new StreamableHTTPError(410, 'Url is expired'));
 
       await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
@@ -562,6 +573,33 @@ describe('MCPClient', () => {
       );
 
       expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledWith(
+        'MCP client user config error',
+        expect.objectContaining({
+          operation: 'toolCall',
+          errorCode: 410,
+          fastgpt: true
+        })
+      );
+    });
+
+    it('should keep logging 404 after the connection is established', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      client.callTool.mockRejectedValue(new StreamableHTTPError(404, 'Session not found'));
+
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toThrow(
+        'Session not found'
+      );
+
+      expect(errorLog).toHaveBeenCalledWith(
+        'MCP client tool call failed',
+        expect.objectContaining({
+          error: expect.any(StreamableHTTPError)
+        })
+      );
     });
   });
 
@@ -631,12 +669,24 @@ describe('MCPClient', () => {
       const infoLog = vi.spyOn(logger, 'info');
       const request = (mcpClient as any).getConnection();
 
-      await expect(request).rejects.toBeInstanceOf(UserConfigError);
+      await expect(request).rejects.not.toBeInstanceOf(UserConfigError);
       await expect(request).rejects.toThrow(
         /Streamable HTTP:.*Not Found.*SSE:.*SSE handshake failed/s
       );
       expect(client.connect).toHaveBeenCalledTimes(2);
-      expect(infoLog).not.toHaveBeenCalled();
+      expect(infoLog).toHaveBeenCalledWith('SSE error', expect.any(Error));
+    });
+
+    it('should classify the final SSE failure as a user config error', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'))
+        .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'));
+
+      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
     it('should return client on StreamableHTTP success', async () => {

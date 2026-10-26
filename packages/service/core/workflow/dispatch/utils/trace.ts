@@ -3,6 +3,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 
 export type WorkflowObservedStepResult = {
   node: RuntimeNodeItemType;
@@ -46,10 +47,17 @@ export const shouldTraceWorkflowStep = (nodeType: FlowNodeTypeEnum) =>
  * 从节点执行结果提取指标/trace 状态。
  *
  * `nodeResponse.error` 和 dispatcher 顶层 `error` 都代表当前节点异常，二者口径需要一致，
- * 否则 metrics 和 OTel span 会出现一个成功一个失败的分裂状态。
+ * 否则 metrics 和 OTel span 会出现一个成功一个失败的分裂状态。用户配置错误使用独立状态，
+ * 避免进入 error 指标，同时保留其发生次数。
  */
-export const getWorkflowStepStatus = (result: WorkflowObservedStepResult): 'ok' | 'error' => {
+export const getWorkflowStepStatus = (
+  result: WorkflowObservedStepResult
+): 'ok' | 'error' | 'user_error' => {
   const nodeResponse = result.result[DispatchNodeResponseKeyEnum.nodeResponse];
+
+  if (isUserConfigError(result.result.error)) {
+    return 'user_error';
+  }
 
   return nodeResponse?.error || result.result.error ? 'error' : 'ok';
 };
@@ -70,7 +78,7 @@ export const addWorkflowStepEvent = ({
   eventName: 'workflow.step.start' | 'workflow.step.end';
   nodeType: FlowNodeTypeEnum;
   mode: string;
-  status?: 'ok' | 'error';
+  status?: 'ok' | 'error' | 'user_error';
   durationMs?: number;
 }) => {
   const activeSpan = trace.getActiveSpan();

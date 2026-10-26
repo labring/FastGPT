@@ -2275,6 +2275,7 @@ describe('stripNodeSummaryErrorFields', () => {
         totalPoints: 2,
         citeCollectionIds: ['collection-1'],
         hasError: true,
+        hasUserConfigError: true,
         errorCount: 1,
         errorText: 'tool failed'
       })
@@ -2327,6 +2328,7 @@ describe('mergeWorkflowRuntimeSummary', () => {
       responseIds: ['child'],
       finishedNodeIds: ['end'],
       hasError: true,
+      hasUserConfigError: true,
       errorText: 'failed',
       hasLoopRunBreak: true,
       hasToolStop: true,
@@ -2371,10 +2373,18 @@ describe('mergeWorkflowRuntimeSummary', () => {
 describe('createNodeSummary', () => {
   it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();
-    summary.mergeNodeSummary({ llmInputTokens: 5, llmOutputTokens: 2 });
+    summary.mergeNodeSummary({
+      llmInputTokens: 5,
+      llmOutputTokens: 2,
+      hasUserConfigError: true
+    });
     summary.mergeNodeSummary({ llmInputTokens: 3 });
     summary.mergeNodeSummary({});
-    expect(summary).toMatchObject({ llmInputTokens: 8, llmOutputTokens: 2 });
+    expect(summary).toMatchObject({
+      llmInputTokens: 8,
+      llmOutputTokens: 2,
+      hasUserConfigError: true
+    });
     expect(createNodeSummary()).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
   });
 });
@@ -2389,12 +2399,14 @@ describe('runtimeSummaryToNodeSummary', () => {
         llmInputTokens: 13,
         llmOutputTokens: 7,
         hasError: true,
+        hasUserConfigError: true,
         errorText: 'failed'
       })
     ).toEqual({
       llmInputTokens: 13,
       llmOutputTokens: 7,
       hasError: true,
+      hasUserConfigError: true,
       errorText: 'failed'
     });
   });

@@ -663,6 +663,32 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('111');
   });
 
+  it('preserves the user config error marker from a failed child workflow', async () => {
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
+        workflowRuntimeSummary: {
+          ...createWorkflowRuntimeSummary(),
+          hasError: true,
+          hasUserConfigError: true,
+          errorText: 'Invalid MCP URL'
+        }
+      })
+    );
+
+    const result: any = await dispatchLoopRun(
+      makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first']
+      })
+    );
+
+    expect(result.error).toMatchObject({
+      [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL',
+      name: 'UserConfigError'
+    });
+  });
+
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);

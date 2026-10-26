@@ -20,6 +20,7 @@ export const createWorkflowRuntimeSummary = (): WorkflowRuntimeSummaryType => {
     responseIds: [],
     finishedNodeIds: [],
     hasError: false,
+    hasUserConfigError: false,
     errorCount: 0,
     hasLoopRunBreak: false,
     hasToolStop: false,
@@ -49,6 +50,7 @@ export const createNodeSummary = (): NodeSummaryCollector => {
     responseIds: [],
     finishedNodeIds: [],
     hasError: false,
+    hasUserConfigError: false,
     errorCount: 0,
     citeCollectionIds: [],
     hasLoopRunBreak: false,
@@ -61,6 +63,7 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
       summary.hasError ||= !!source.hasError;
+      summary.hasUserConfigError ||= !!source.hasUserConfigError;
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -91,6 +94,7 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.responseIds?.length ? { responseIds: [...summary.responseIds] } : {}),
   ...(summary.finishedNodeIds?.length ? { finishedNodeIds: [...summary.finishedNodeIds] } : {}),
   ...(summary.hasError ? { hasError: true } : {}),
+  ...(summary.hasUserConfigError ? { hasUserConfigError: true } : {}),
   ...(summary.errorText ? { errorText: summary.errorText } : {}),
   ...(summary.errorCount ? { errorCount: summary.errorCount } : {}),
   ...(summary.citeCollectionIds?.length
@@ -127,6 +131,7 @@ export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary 
 
   const controlSummary = { ...summary };
   delete controlSummary.hasError;
+  delete controlSummary.hasUserConfigError;
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
 
@@ -342,6 +347,7 @@ export const mergeWorkflowRuntimeSummary = ({
       merged.responseIds.push(...(summary.responseIds ?? []));
       merged.finishedNodeIds.push(...(summary.finishedNodeIds ?? []));
       merged.hasError ||= summary.hasError;
+      merged.hasUserConfigError ||= summary.hasUserConfigError;
       if (summary.errorText) {
         merged.errorText = summary.errorText;
       }
@@ -371,6 +377,7 @@ export const mergeWorkflowRuntimeSummary = ({
     merged.responseIds.push(...(nodeSummary.responseIds ?? []));
     merged.finishedNodeIds.push(...(nodeSummary.finishedNodeIds ?? []));
     merged.hasError ||= !!nodeSummary.hasError;
+    merged.hasUserConfigError ||= !!nodeSummary.hasUserConfigError;
     if (nodeSummary.errorText) {
       merged.errorText = nodeSummary.errorText;
     }

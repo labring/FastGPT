@@ -2,7 +2,7 @@ import { getMeter } from '../../common/metrics';
 
 type MetricAttributeValue = string | number | boolean;
 type MetricAttributes = Record<string, MetricAttributeValue>;
-type ObservationStatus = 'ok' | 'error';
+type ObservationStatus = 'ok' | 'error' | 'user_error';
 
 type ObservationState = {
   startedAt: bigint;

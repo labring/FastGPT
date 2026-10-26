@@ -100,6 +100,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
+  let hasUserConfigError = false;
   const getWrapperSummary = ({
     isResumeIteration,
     response
@@ -273,6 +274,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     if (iterationSummary.hasError) {
+      hasUserConfigError ||= iterationSummary.hasUserConfigError;
       const errText = getErrText(iterationSummary.errorText);
       await pushIterationDetail({ error: errText });
       loopHistory.push({
@@ -353,7 +355,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
     ...(errorText
       ? {
-          error: { [NodeOutputKeyEnum.errorText]: errorText }
+          error: {
+            [NodeOutputKeyEnum.errorText]: errorText,
+            ...(hasUserConfigError ? { name: 'UserConfigError' as const } : {})
+          }
         }
       : {})
   };

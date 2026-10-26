@@ -1,4 +1,4 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -160,9 +160,11 @@ ${chunkSummaries}
 
     return { ids, usage, requestId: response.requestId, seconds };
   } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] AI selection failed', {
-      error
-    });
+    if (!isUserConfigError(error)) {
+      getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] AI selection failed', {
+        error
+      });
+    }
     return;
   }
 };
@@ -480,7 +482,9 @@ export const dispatchAgentDatasetSearch = async ({
       nodeResponse
     };
   } catch (error) {
-    logger.error('[Agent Dataset Search] Failed', { error });
+    if (!isUserConfigError(error)) {
+      logger.error('[Agent Dataset Search] Failed', { error });
+    }
     const response = `Failed to search dataset: ${getErrText(error)}`;
     return {
       response,

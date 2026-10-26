@@ -9,6 +9,7 @@ import type { CreateChatCompletionProps, CreateChatCompletionResult } from './ty
 import { sanitizeLLMRequestRecordPayload } from '../../record/controller';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
+const USER_AI_CONFIG_ERROR_STATUS = new Set([401, 403, 404]);
 
 /**
  * 判断错误是否为请求被中断（用户取消、探活请求提前结束等）。
@@ -88,15 +89,50 @@ export const createChatCompletion = async ({
     }
 
     if (requestMeta.usedUserOpenAIKey) {
+      const status = (() => {
+        if (error instanceof OpenAI.APIError) {
+          return error.status;
+        }
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'status' in error &&
+          typeof error.status === 'number'
+        ) {
+          return error.status;
+        }
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'response' in error &&
+          typeof error.response === 'object' &&
+          error.response !== null &&
+          'status' in error.response &&
+          typeof error.response.status === 'number'
+        ) {
+          return error.response.status;
+        }
+      })();
       const errorSnapshot = sanitizeLLMRequestRecordPayload({
         baseUrl: requestMeta.baseUrl,
         request: body,
         error
       });
+      const statusSnapshot = typeof status === 'number' ? { status } : {};
       // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
-      // 仅保留本地诊断日志，不导出到 OTel，避免用户配置问题污染系统错误指标。
-      logger.warn('User AI API error', { ...errorSnapshot, fastgpt: true });
-      return Promise.reject(new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`));
+      if (typeof status === 'number' && USER_AI_CONFIG_ERROR_STATUS.has(status)) {
+        // 鉴权或地址配置错误仅保留本地诊断日志，不导出到 OTel。
+        logger.warn('User AI API error', { ...errorSnapshot, ...statusSnapshot, fastgpt: true });
+        return Promise.reject(
+          new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`, undefined, {
+            cause: error
+          })
+        );
+      }
+
+      // 429、5xx、网络或协议错误仍属于需要定位的上游故障，保留 error 日志。
+      logger.error('User AI API error', { ...errorSnapshot, ...statusSnapshot });
+      return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
     }
 
     const errorSnapshot = sanitizeLLMRequestRecordPayload({
