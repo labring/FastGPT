@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigration } from '@/migration/registry';
 import { systemMigrations, validateSystemMigrationRegistry } from '@/migration/registry';
 
@@ -10,16 +9,14 @@ const createMigration = (id: string): SystemMigration => ({
   descriptionKey: `system_migration:migrations.${id}.description`,
   resultKey: `system_migration:migrations.${id}.result`,
   progressSteps: [],
-  onFailure: SystemMigrationFailurePolicyEnum.stop,
   run: async () => undefined
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('preserves the existing task order and failure policies', () => {
+  it('preserves the existing task order', () => {
     expect(systemMigrations[0]).toMatchObject({
       id: '20260907_cleanup_team_member_roles',
       version: '4.17.0',
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
     expect(systemMigrations.slice(2, -8).map((migration) => migration.id)).toEqual([
@@ -32,26 +29,18 @@ describe('validateSystemMigrationRegistry', () => {
       '20260905_backfill_resource_owner_acl',
       '20260908_cleanup_legacy_invited_members'
     ]);
-    expect(
-      systemMigrations
-        .slice(2, -8)
-        .every((migration) => migration.onFailure === SystemMigrationFailurePolicyEnum.continue)
-    ).toBe(true);
     expect(systemMigrations[1]).toMatchObject({
       id: '20260903_migrate_legacy_system_models',
-      version: '4.17.0',
-      onFailure: SystemMigrationFailurePolicyEnum.stop
+      version: '4.17.0'
     });
     expect(systemMigrations.at(-8)).toMatchObject({
       id: '20260907_migrate_dataset_tags_v2',
       version: '4.17.1',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
     });
     expect(systemMigrations.at(-7)).toMatchObject({
       id: '20260916_backfill_app_resource_snapshots',
       version: '4.17.1',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       delay: true,
       progressSteps: [
         { key: 'clean_v1_apps' },
@@ -63,23 +52,50 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.at(-6)).toMatchObject({
       id: '20260923_enable_channel_reasoning_mapping',
       version: '4.17.1',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       delay: true,
       progressSteps: [{ key: 'channels' }]
     });
     expect(systemMigrations.at(-5)).toMatchObject({
       id: '20260928_backfill_member_name_set',
       version: '4.17.1',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
+  });
+
+  it('runs only the seven selected production tasks independently', () => {
+    const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
+    expect(independentTasks.map((task) => task.id)).toEqual([
+      '20260907_cleanup_team_member_roles',
+      '20260903_backfill_resource_create_time',
+      '20260905_backfill_bill_metadata',
+      '20260907_migrate_dataset_tags_v2',
+      '20260928_backfill_member_name_set',
+      '20261009_backfill_agent_sandbox_team_id',
+      '20261022_backfill_folder_ancestor_ids'
+    ]);
+    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
+  });
+
+  it('makes the model catalog prerequisite explicit for every model reference task', () => {
+    const referenceTasks = systemMigrations.slice(2, 6);
+    expect(referenceTasks).toHaveLength(4);
+    for (const task of referenceTasks) {
+      expect(task).toMatchObject({ dependsOn: ['20260903_migrate_legacy_system_models'] });
+    }
+    expect(systemMigrations[1]).not.toHaveProperty('dependsOn');
+    expect(
+      systemMigrations.find((task) => task.id === '20260903_backfill_resource_create_time')
+    ).not.toHaveProperty('dependsOn');
+    expect(
+      systemMigrations.find((task) => task.id === '20260916_backfill_app_resource_snapshots')
+    ).toMatchObject({ dependsOn: ['20260903_backfill_app_model_references'] });
+    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
   it('registers the manual chunk migration', () => {
     expect(systemMigrations.at(-4)).toMatchObject({
       id: '20261008_migrate_chunk_training',
       manual: true,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'trainings' }, { key: 'validation' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
@@ -91,7 +107,6 @@ describe('validateSystemMigrationRegistry', () => {
       dependsOn: ['20261008_migrate_chunk_training'],
       version: '4.17.1',
       manual: true,
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'datas' }, { key: 'trainings' }, { key: 'validation' }]
     });
   });
@@ -100,7 +115,6 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.at(-2)).toMatchObject({
       id: '20261009_backfill_agent_sandbox_team_id',
       version: '4.17.3',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'instances' }, { key: 'validation' }]
     });
   });
@@ -109,7 +123,6 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261022_backfill_folder_ancestor_ids',
       version: '4.17.3',
-      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'apps' }, { key: 'datasets' }, { key: 'validation' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();

@@ -12,6 +12,9 @@ export const systemMigrationBatchSize = serviceEnv.SYSTEM_MIGRATION_BATCH_SIZE;
  */
 export const systemMigrationDelayMs = serviceEnv.SYSTEM_MIGRATION_DELAY_SECONDS * 1000;
 
+/** 独立迁移共享 Redis 并发租约的集群级上限；普通串行队列不占用这些名额。 */
+export const systemMigrationIndependentConcurrency = 3;
+
 /**
  * Runner 的默认探活参数。
  * heartbeat 必须显著短于 lease，给瞬时网络抖动留出重试窗口。

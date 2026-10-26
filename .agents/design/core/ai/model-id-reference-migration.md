@@ -632,7 +632,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 4162 只负责团队、协作者以及 App、Dataset、AgentSkill 等通用权限引用清理，不读取 `ai_models`，也不判断模型权限的 `resourceId`。模型权限运行时只读取 `resourceId`，因此 4163 在同一阶段先按 `resourceName` 补 ID，再删除仍无法映射到 `ai_models` 的模型权限；删除使用读取快照约束，避免覆盖并发写入。
 
-升级任务的 Mongo 状态只能通过 Runner 注入的 Context 写入。每批遵循“业务 CAS 写入 → 完整失败快照 → checkpoint”的顺序；管理员重试或 running lease 接管时先重试失败快照，再从 checkpoint 继续。四项任务均为 `blockStartup: false, onFailure: continue`，因此局部坏数据不会阻塞节点 ready 或后续升级任务。
+升级任务的 Mongo 状态只能通过 Runner 注入的 Context 写入。每批遵循“业务 CAS 写入 → 完整失败快照 → checkpoint”的顺序；管理员重试或 running lease 接管时先重试失败快照，再从 checkpoint 继续。四项任务均在后台执行，并通过 `dependsOn` 等待旧系统模型迁移成功；局部坏数据只影响当前任务及显式依赖它的后续任务，不阻塞节点 ready 或无关升级任务。
 
 ### 11.2 执行顺序
 

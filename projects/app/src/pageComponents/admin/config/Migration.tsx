@@ -11,10 +11,7 @@ import {
   Spinner
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationListItem,
   SystemMigrationProgressListItem
@@ -199,8 +196,6 @@ const MigrationCard = ({
     : undefined;
   const unscopedError = migration.lastError?.stageKey ? undefined : migration.lastError;
   const errorText = unscopedError?.message;
-  const allowsFollowing =
-    migration.independent || migration.onFailure === SystemMigrationFailurePolicyEnum.continue;
 
   return (
     <Box
@@ -267,16 +262,12 @@ const MigrationCard = ({
           mx={[4, 5]}
           mb={4}
           p={3}
-          bg={allowsFollowing ? 'yellow.50' : 'red.50'}
+          bg={'yellow.50'}
           borderRadius={'lg'}
           fontSize={'sm'}
-          color={allowsFollowing ? 'yellow.700' : 'red.700'}
+          color={'yellow.700'}
         >
-          {t(
-            allowsFollowing
-              ? i18nT('system_migration:failure_allows_following')
-              : i18nT('system_migration:failure_blocks_following')
-          )}
+          {t('system_migration:failure_allows_following')}
         </Box>
       )}
 

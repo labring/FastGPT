@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigration } from '@/migration/registry';
 import {
   getSystemMigrationFailedRecords,
@@ -23,7 +20,6 @@ const migrations: readonly SystemMigration[] = [
     descriptionKey: 'system_migration:migrations.first.description',
     resultKey: 'system_migration:migrations.first.result',
     progressSteps: [{ key: 'migrating', labelKey: 'system_migration:migrations.first.migrating' }],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: async () => undefined
   },
   {
@@ -36,7 +32,6 @@ const migrations: readonly SystemMigration[] = [
       { key: 'finalizing', labelKey: 'system_migration:migrations.independent.finalizing' }
     ],
     independent: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: async () => undefined
   }
 ];
@@ -64,6 +59,7 @@ describe('system migration service', () => {
 
     expect(result).not.toHaveProperty('businessReady');
     expect(result.migrations[0].independent).toBe(false);
+    expect(result.migrations[0]).not.toHaveProperty('onFailure');
     expect(result.migrations).toEqual([
       expect.objectContaining({
         id: migrations[0].id,
@@ -73,7 +69,6 @@ describe('system migration service', () => {
         progress: [
           expect.objectContaining({ key: 'migrating', status: SystemMigrationStatusEnum.pending })
         ],
-        onFailure: SystemMigrationFailurePolicyEnum.continue,
         result: {
           key: 'system_migration:migrations.first.result',
           params: { migratedCount: 3 }
@@ -86,8 +81,7 @@ describe('system migration service', () => {
         progress: [
           expect.objectContaining({ key: 'finalizing', status: SystemMigrationStatusEnum.pending })
         ],
-        independent: true,
-        onFailure: SystemMigrationFailurePolicyEnum.stop
+        independent: true
       })
     ]);
   });

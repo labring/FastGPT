@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import { systemMigrationDefaultTiming, systemMigrationIndependentConcurrency } from './constants';
 import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
-import { systemMigrationDefaultTiming } from './constants';
+  LeaseCache,
+  RedisLeaseWaitTimeoutError,
+  type RedisLeaseContext
+} from '@fastgpt/dal/redis/caches/lease';
 import {
   SystemMigrationFailedRecordsSchema,
   SystemMigrationFailureInputSchema,
@@ -70,6 +72,9 @@ const defaultStore: SystemMigrationRunnerStore = {
   fail: failMigration
 };
 
+// 各 App 节点使用相同 key 竞争名额；任务自身的所有权仍由 Mongo lease + runId 保护。
+const independentMigrationLease = new LeaseCache();
+
 export class SystemMigrationLeaseLostError extends Error {
   constructor(message = 'System migration lease is no longer active', options?: ErrorOptions) {
     super(message, options);
@@ -132,7 +137,7 @@ const createMigrationLogger = ({
 
 /**
  * 创建一个可注入存储和时序的迁移执行器。
- * 执行器在单进程内防重入，并依赖 Mongo lease + runId fencing 实现跨节点互斥。
+ * 执行器在单进程内防重入，Mongo lease + runId fencing 保证任务互斥，Redis lease 限制独立任务集群并发。
  */
 export const createSystemMigrationRunner = ({
   migrations = systemMigrations,
@@ -155,6 +160,7 @@ export const createSystemMigrationRunner = ({
   };
   let started = false;
   let stopped = false;
+  let runnerAbortController = new AbortController();
   const activeAbortControllers = new Set<AbortController>();
   const loggedFailures = new Set<string>();
 
@@ -174,26 +180,23 @@ export const createSystemMigrationRunner = ({
       runnerId,
       lastError: state.lastError
     });
-    logger.warn(
-      migration.independent
-        ? 'Independent system migration failed; other migrations are unaffected'
-        : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-          ? 'System migration failed; following queued migrations may continue'
-          : 'System migration failed; following queued migrations are paused',
-      {
-        migrationId: migration.id,
-        runnerId,
-        onFailure: migration.onFailure,
-        requiredAction: 'Fix the failed records and retry the migration from the admin page'
-      }
-    );
+    logger.warn('System migration failed; only dependent migrations will wait', {
+      migrationId: migration.id,
+      runnerId,
+      requiredAction: 'Fix the failed records and retry the migration from the admin page'
+    });
   };
 
   /** 构造所有有状态写入均带 fencing 的任务上下文。 */
-  const executeMigration = async (
-    migration: SystemMigration,
-    claimedState: SystemMigrationStateSchemaType
-  ): Promise<SystemMigrationExecutionOutcome> => {
+  const executeMigration = async ({
+    migration,
+    claimedState,
+    concurrencyLease
+  }: {
+    migration: SystemMigration;
+    claimedState: SystemMigrationStateSchemaType;
+    concurrencyLease?: RedisLeaseContext;
+  }): Promise<SystemMigrationExecutionOutcome> => {
     const runId = claimedState.runId;
     if (!runId) {
       logger.error('Claimed system migration has no runId', {
@@ -241,6 +244,7 @@ export const createSystemMigrationRunner = ({
       // 停止后 lease 可能尚未到期，但本地执行者不能再开始新的批次或状态写入。
       if (abortController.signal.aborted) throw new SystemMigrationLeaseLostError();
       try {
+        concurrencyLease?.assertValid();
         assertMutationSucceeded(await mutation());
       } catch (error) {
         if (error instanceof SystemMigrationLeaseLostError) throw error;
@@ -377,9 +381,16 @@ export const createSystemMigrationRunner = ({
     // 多个独立任务可能并发运行，停止或失权时每个任务都必须停止自己的 heartbeat。
     abortController.signal.addEventListener('abort', () => void stopHeartbeat(), { once: true });
 
+    // 共享名额失效后立即停止 Mongo 续租，并通知脚本结束，不能继续占用业务执行权。
+    const onConcurrencyLeaseLost = () =>
+      loseLease('System migration concurrency lease was lost', concurrencyLease?.signal.reason);
+    concurrencyLease?.signal.addEventListener('abort', onConcurrencyLeaseLost, { once: true });
+    if (concurrencyLease?.signal.aborted) onConcurrencyLeaseLost();
+
     let executionStartedAt = Date.now();
 
     try {
+      if (abortController.signal.aborted) return 'interrupted';
       if (migration.delay && resolvedTiming.delayMs > 0) {
         migrationLogger.info('System migration execution delayed by configuration', {
           delayMs: resolvedTiming.delayMs
@@ -404,6 +415,7 @@ export const createSystemMigrationRunner = ({
 
       if (leaseLost || abortController.signal.aborted) return 'interrupted';
 
+      concurrencyLease?.assertValid();
       const completed = await store.complete({ migrationId: migration.id, runId, result });
       if (!completed) {
         loseLease('System migration completed after its lease was lost');
@@ -422,74 +434,49 @@ export const createSystemMigrationRunner = ({
         abortController.signal.aborted ||
         error instanceof SystemMigrationLeaseLostError
       ) {
-        await stopHeartbeat();
         return 'interrupted';
       }
       if (error instanceof SystemMigrationFailureReportedError) {
-        loggedFailures.add(`${migration.id}:${runId}`);
         migrationLogger.error('System migration reported a failure', {
           durationMs: Date.now() - executionStartedAt
         });
-        // 明确失败保持 failed 并停止续租，只能由管理员重置。
-        migrationLogger.warn(
-          migration.independent
-            ? 'Independent system migration failed; other migrations are unaffected'
-            : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'System migration failed; following queued migrations may continue'
-              : 'System migration failed; following queued migrations are paused',
-          {
-            onFailure: migration.onFailure,
-            requiredAction: 'Fix the failed records and retry the migration from the admin page'
+      } else {
+        try {
+          const failed = await store.fail({
+            migrationId: migration.id,
+            runId,
+            stageKey: currentProgressKey,
+            error: normalizeMigrationFailure(error)
+          });
+          if (!failed) {
+            loseLease('System migration failed after its lease was lost');
+            return 'interrupted';
           }
-        );
-        await stopHeartbeat();
-        return 'failed';
-      }
-
-      const failure = normalizeMigrationFailure(error);
-      try {
-        const failed = await store.fail({
-          migrationId: migration.id,
-          runId,
-          stageKey: currentProgressKey,
-          error: failure
-        });
-        if (!failed) {
-          loseLease('System migration failed after its lease was lost');
+        } catch (writeError) {
+          loseLease('Unable to persist system migration failure', writeError);
           return 'interrupted';
         }
-        loggedFailures.add(`${migration.id}:${runId}`);
         migrationLogger.error('System migration execution failed', {
           error,
           durationMs: Date.now() - executionStartedAt
         });
-        migrationLogger.warn(
-          migration.independent
-            ? 'Independent system migration failed; other migrations are unaffected'
-            : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'System migration failed; following queued migrations may continue'
-              : 'System migration failed; following queued migrations are paused',
-          {
-            onFailure: migration.onFailure,
-            requiredAction: 'Fix the failed records and retry the migration from the admin page'
-          }
-        );
-      } catch (writeError) {
-        loseLease('Unable to persist system migration failure', writeError);
-        await stopHeartbeat();
-        return 'interrupted';
       }
-      // 未通过 context.fail 抛出的普通异常也遵循相同失败策略。
-      await stopHeartbeat();
+
+      // 两种明确失败共用人工恢复提示；heartbeat 和中止监听统一在 finally 清理。
+      loggedFailures.add(`${migration.id}:${runId}`);
+      migrationLogger.warn('System migration failed; only dependent migrations will wait', {
+        requiredAction: 'Fix the failed records and retry the migration from the admin page'
+      });
       return 'failed';
     } finally {
       await stopHeartbeat();
+      concurrencyLease?.signal.removeEventListener('abort', onConcurrencyLeaseLost);
       activeAbortControllers.delete(abortController);
     }
   };
 
   /**
-   * 每个队列单独防重入和探活，长任务、delay 或 stop 失败只占用自己的队列。
+   * 每个队列单独防重入和探活，长任务或 delay 只占用自己的队列。
    * 依赖状态仍从主库读取，普通任务可以等待已注册的独立前置任务成功。
    */
   const createQueue = (queueMigrations: readonly SystemMigration[]) => {
@@ -504,7 +491,7 @@ export const createSystemMigrationRunner = ({
 
     /**
      * 同一队列始终串行执行；独立任务使用各自的单任务队列，互不等待。
-     * continue 只跳过已经失败的任务，不会自动重试它；管理员重置后仍按注册顺序重新处理。
+     * 失败任务不会自动重试，也不会暂停整个队列；后续任务只检查显式依赖。
      */
     const runQueue = async (): Promise<boolean> => {
       while (!stopped) {
@@ -520,7 +507,7 @@ export const createSystemMigrationRunner = ({
           if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
             continue;
 
-          // 执行前再次校验依赖，覆盖旧节点已入队和绕过启动入口的任务；失败前置不会被 continue 绕过。
+          // 执行前再次校验显式依赖，覆盖旧节点已入队或绕过入口的情况；前置未成功不能执行。
           const incompleteDependencies = item.dependsOn?.filter(
             (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
           );
@@ -538,11 +525,8 @@ export const createSystemMigrationRunner = ({
 
           if (state?.status === SystemMigrationStatusEnum.failed) {
             logObservedFailure(item, state);
-            if (item.onFailure === SystemMigrationFailurePolicyEnum.continue) {
-              continue;
-            }
-            // stop 只暂停所在队列，不影响其他独立任务。
-            return false;
+            // 失败只阻止显式依赖它的任务，其他可执行任务继续。
+            continue;
           }
 
           migration = item;
@@ -551,24 +535,45 @@ export const createSystemMigrationRunner = ({
         // 仍有其他队列中的前置任务执行时保留探活；仅等待人工操作时停止扫描。
         if (!migration) return hasActiveDependencies;
 
-        // claim 内部使用 Mongo 原子条件；这里读取到的 state 仅用于选任务，不作为执行权依据。
-        const claimedState = await store.claimLease({
-          migrationId: migration.id,
-          runId: createRunId(),
-          leaseDurationMs: resolvedTiming.leaseDurationMs
-        });
-        // stop 可能发生在 Mongo claim 期间；留下 running 状态供租约过期后接管。
-        if (stopped) return false;
-        if (!claimedState) {
-          // pending/running 仍需探活，等待其他节点完成或租约过期后接管。
-          return true;
-        }
+        /** 先取得共享名额再领取任务，避免排队期间持有未执行任务的 Mongo lease。 */
+        const claimAndExecute = async (
+          concurrencyLease?: RedisLeaseContext
+        ): Promise<SystemMigrationExecutionOutcome | 'unclaimed'> => {
+          if (stopped) return 'interrupted';
+          concurrencyLease?.assertValid();
+          const claimedState = await store.claimLease({
+            migrationId: migration.id,
+            runId: createRunId(),
+            leaseDurationMs: resolvedTiming.leaseDurationMs
+          });
+          // stop 或共享名额丢失可能发生在 claim 期间，不能再开始业务执行。
+          if (stopped) return 'interrupted';
+          concurrencyLease?.assertValid();
+          if (!claimedState) return 'unclaimed';
+          return executeMigration({ migration, claimedState, concurrencyLease });
+        };
 
-        const outcome = await executeMigration(migration, claimedState);
-        if (outcome === 'interrupted') return !stopped;
-        if (outcome === 'failed' && migration.onFailure === SystemMigrationFailurePolicyEnum.stop) {
-          return false;
-        }
+        const outcome = await (async () => {
+          if (!migration.independent) return claimAndExecute();
+          try {
+            return await independentMigrationLease.withConcurrency({
+              key: 'system-migration:independent',
+              label: `system-migration:${migration.id}`,
+              concurrency: systemMigrationIndependentConcurrency,
+              ttlMs: resolvedTiming.leaseDurationMs,
+              renewIntervalMs: resolvedTiming.heartbeatIntervalMs,
+              waitTimeoutMs: resolvedTiming.scanIntervalMs,
+              retryIntervalMs: 1_000,
+              signal: runnerAbortController.signal,
+              fn: claimAndExecute
+            });
+          } catch (error) {
+            // 额度占满属于等待，不把任务置为失败；下轮扫描继续竞争，Redis 故障则上报。
+            if (error instanceof RedisLeaseWaitTimeoutError) return 'unclaimed';
+            throw error;
+          }
+        })();
+        if (outcome === 'interrupted' || outcome === 'unclaimed') return !stopped;
       }
 
       return false;
@@ -589,8 +594,9 @@ export const createSystemMigrationRunner = ({
 
     /** 合并重叠 tick；队列无需自动推进时停止扫描，扫描异常则保留下一轮探活。 */
     const tick = () => {
-      if (stopped) return Promise.resolve();
+      // stop 后仍允许调用方等待已有执行和共享名额释放，但不再启动新扫描。
       if (tickPromise) return tickPromise;
+      if (stopped) return Promise.resolve();
 
       const generation = scanGeneration;
       tickPromise = runQueue()
@@ -599,6 +605,7 @@ export const createSystemMigrationRunner = ({
           if (!shouldKeepScanning && generation === scanGeneration) pauseScanning();
         })
         .catch((error) => {
+          if (stopped) return;
           logger.error('System migration scan failed', { runnerId, error });
         })
         .finally(() => {
@@ -645,12 +652,14 @@ export const createSystemMigrationRunner = ({
       if (started) return;
       started = true;
       stopped = false;
+      runnerAbortController = new AbortController();
       await store.ensureStates(migrations);
       void wake();
     },
     /** 停止本节点扫描和 heartbeat；当前任务通过 AbortSignal 配合退出。 */
     stop: () => {
       stopped = true;
+      runnerAbortController.abort();
       queues.forEach((queue) => queue.stop());
       activeAbortControllers.forEach((controller) => controller.abort());
     }

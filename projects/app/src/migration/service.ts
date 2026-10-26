@@ -95,7 +95,6 @@ export const getSystemMigrationList = async (
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
         independent: migration.independent ?? false,
-        onFailure: migration.onFailure,
         status:
           state?.status ??
           (migration.manual

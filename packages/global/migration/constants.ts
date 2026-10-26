@@ -7,12 +7,6 @@ export enum SystemMigrationStatusEnum {
   succeeded = 'succeeded'
 }
 
-/** 任务失败后的队列调度策略；独立任务的失败只影响自身。 */
-export enum SystemMigrationFailurePolicyEnum {
-  stop = 'stop',
-  continue = 'continue'
-}
-
 /**
  * 系统升级脚本公共数据的输入上限。
  * 限制同时约束任务上下文、Mongo 持久化和 API 契约，避免各层采用不同边界。

@@ -1,10 +1,7 @@
 import startHandler from '@/pages/api/admin/migrations/start';
 import { SystemMigrationDependencyError } from '@/migration/error';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
@@ -52,7 +49,6 @@ describe('system migration admin APIs', () => {
           nameKey: 'system_migration:migrations.api.name',
           descriptionKey: 'system_migration:migrations.api.description',
           independent: true,
-          onFailure: SystemMigrationFailurePolicyEnum.stop,
           status: SystemMigrationStatusEnum.running,
           progress: [],
           failedRecordCount: 0

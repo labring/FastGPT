@@ -4,7 +4,6 @@ import type {
   SystemMigrationProgressInput,
   SystemMigrationResultData
 } from '@fastgpt/global/migration/schema';
-import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
 import { migrateLegacySystemModels } from './tasks/4170/20260903_migrate_legacy_system_models';
@@ -80,10 +79,8 @@ export type SystemMigration = {
   resultKey: string;
   /** 按执行顺序声明全部阶段；展示文案不写入 Mongo。 */
   progressSteps: readonly SystemMigrationProgressStep[];
-  /** 独立任务自动执行，不等待普通队列或其他独立任务；不能配置 manual、delay 或依赖。 */
+  /** 独立任务自动竞争集群共享的 3 个并发名额，不受普通队列顺序约束；不能配置 manual、delay 或依赖。 */
   independent?: boolean;
-  /** 当前任务失败后是否暂停所在队列；独立任务的失败只影响自身。 */
-  onFailure: SystemMigrationFailurePolicyEnum;
   /**
    * 是否在获得租约后延迟执行。
    * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
@@ -99,11 +96,12 @@ export type SystemMigration = {
 
 /**
  * 未来生产升级任务的唯一有序注册表。
- * 已发布任务只能从尾部追加，禁止修改 ID、顺序、调度模式、onFailure 或既有函数语义。
+ * 已发布任务只能从尾部追加，禁止修改 ID、顺序、调度模式、依赖或既有函数语义。
  */
 export const systemMigrations = [
   {
     id: '20260907_cleanup_team_member_roles',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.name'),
     descriptionKey: i18nT(
@@ -120,7 +118,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_cleanup_team_member_roles.validation')
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: cleanupTeamMemberRoles
   },
   {
@@ -151,11 +148,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: migrateLegacySystemModels
   },
   {
     id: '20260903_backfill_model_permissions',
+    // 权限回填必须等模型目录迁移成功，避免将有效的旧名称权限误判为悬空权限。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_model_permissions.name'),
     descriptionKey: i18nT(
@@ -170,11 +168,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillModelPermissionReferences
   },
   {
     id: '20260903_backfill_dataset_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_dataset_model_references.name'),
     descriptionKey: i18nT(
@@ -191,11 +190,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillDatasetModelReferences
   },
   {
     id: '20260903_backfill_evaluation_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT(
       'system_migration:migrations.20260903_backfill_evaluation_model_references.name'
@@ -214,11 +214,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillEvaluationModelReferences
   },
   {
     id: '20260903_backfill_app_model_references',
+    // 引用回填必须使用迁移完成后的模型目录，避免根据不完整目录写入错误 ID。
+    dependsOn: ['20260903_migrate_legacy_system_models'],
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_app_model_references.name'),
     descriptionKey: i18nT(
@@ -243,11 +244,11 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillAppModelReferences
   },
   {
     id: '20260903_backfill_resource_create_time',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_backfill_resource_create_time.name'),
     descriptionKey: i18nT(
@@ -266,11 +267,11 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceCreateTime
   },
   {
     id: '20260905_backfill_bill_metadata',
+    independent: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.name'),
     descriptionKey: i18nT(
@@ -283,7 +284,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260905_backfill_bill_metadata.bills')
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillBillMetadata
   },
   {
@@ -316,7 +316,6 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceOwnerAcl
   },
   {
@@ -341,11 +340,11 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: cleanupLegacyInvitedMembers
   },
   {
     id: '20260907_migrate_dataset_tags_v2',
+    independent: true,
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.name'),
     descriptionKey: i18nT(
@@ -366,7 +365,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.validation')
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: migrateDatasetTagsV2
   },
   {
@@ -403,7 +401,6 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: backfillAppResourceSnapshots
   },
@@ -425,12 +422,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
   },
   {
     id: '20260928_backfill_member_name_set',
+    independent: true,
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
     descriptionKey: i18nT(
@@ -447,7 +444,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillMemberNameSet
   },
   {
@@ -468,7 +464,6 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.validation')
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateChunkTraining
   },
@@ -499,12 +494,12 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateDatasetRebuildStatus
   },
   {
     id: '20261009_backfill_agent_sandbox_team_id',
+    independent: true,
     version: '4.17.3',
     nameKey: i18nT('system_migration:migrations.20261009_backfill_agent_sandbox_team_id.name'),
     descriptionKey: i18nT(
@@ -527,11 +522,11 @@ export const systemMigrations = [
     ],
     // 缺 teamId 只影响团队配额归属：app 会话与技能编辑共用系统总上限，且运行期会惰性补齐，
     // 孤儿记录只跳过，来源异常或校验发现的遗漏由管理员修复后重试。
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillAgentSandboxTeamId
   },
   {
     id: '20261022_backfill_folder_ancestor_ids',
+    independent: true,
     version: '4.17.3',
     nameKey: i18nT('system_migration:migrations.20261022_backfill_folder_ancestor_ids.name'),
     descriptionKey: i18nT(
@@ -556,7 +551,6 @@ export const systemMigrations = [
         )
       }
     ],
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillFolderAncestorIds
   }
 ] as const satisfies readonly SystemMigration[];

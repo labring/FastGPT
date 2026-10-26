@@ -1,10 +1,6 @@
 import { z } from 'zod';
 import { i18nT } from '../common/i18n/utils';
-import {
-  systemMigrationLimits,
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from './constants';
+import { systemMigrationLimits, SystemMigrationStatusEnum } from './constants';
 
 /** 依赖未完成时的 API 错误；名称来自静态注册表，由客户端按当前语言翻译。 */
 export const SystemMigrationDependencyErrorResponseSchema = z.object({
@@ -36,7 +32,6 @@ export const SystemMigrationDataSchema = z
 export const SystemMigrationStageKeySchema = z.string().min(1);
 
 export const SystemMigrationStatusSchema = z.nativeEnum(SystemMigrationStatusEnum);
-export const SystemMigrationFailurePolicySchema = z.nativeEnum(SystemMigrationFailurePolicyEnum);
 
 export const SystemMigrationFailureDetailSchema = z.object({
   message: z.string().min(1).max(systemMigrationLimits.maxErrorMessageLength)
@@ -144,10 +139,7 @@ export const SystemMigrationListItemSchema = z.object({
   descriptionKey: z.string().meta({ description: '脚本描述的 i18n key' }),
   independent: z
     .boolean()
-    .meta({ description: '是否无需等待其他任务即可独立执行', example: false }),
-  onFailure: SystemMigrationFailurePolicySchema.meta({
-    description: '任务失败后是否暂停所在队列；独立任务的失败只影响自身'
-  }),
+    .meta({ description: '是否独立调度，不受普通队列顺序约束', example: false }),
   status: SystemMigrationStatusSchema.meta({ description: '当前运行状态' }),
   heartbeatAt: z.date().optional().meta({ description: '最近一次 lease 心跳时间' }),
   leaseExpireAt: z.date().optional().meta({ description: '当前 lease 到期时间' }),

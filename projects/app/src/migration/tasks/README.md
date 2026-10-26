@@ -4,7 +4,7 @@
 
 任务发布后必须遵守以下约束：
 
-- 只能在注册表末尾追加，不得修改已有任务的 ID、顺序、调度模式、`onFailure` 或执行语义；
+- 只能在注册表末尾追加，不得修改已有任务的 ID、顺序、调度模式、依赖或执行语义；
 - 业务写入必须幂等，优先使用唯一键、`$setOnInsert`、确定性目标值或 compare-and-set；
 - 每个任务必须明确选择一种恢复策略：数据量较大或无法原子完成时使用“分批断点续跑”；数据量确定较小且整次写入可以保持原子、确定、幂等时允许使用“全量重跑”；
 - 分批任务统一从 `@/migration/constants` 导入 `systemMigrationBatchSize`，由环境变量 `SYSTEM_MIGRATION_BATCH_SIZE` 控制；允许范围为 50～1000，默认 100，任务内不得另行硬编码读取批大小；
@@ -17,7 +17,7 @@
 - 任务成功时可以返回有限标量的业务参数对象；Runner 校验后与 `succeeded` 原子写入。列表接口再使用注册表 `resultKey` 组装客户端展示结果。不要从任务返回 i18n key，也不要把最终结果伪装成最后一条 progress；
 - 任务可跳过的坏数据应按批维护“完整未解决错误快照”，每批业务提交后立即通过 `context.reportFailedRecords()` 覆盖持久化，再推进 checkpoint；扫描结束仍有错误时通过 `context.fail({ failedRecords })` 写入相同最终快照并结束。每条记录必须包含所属的 `stageKey`，且只保存定位字段及对应原因，不保存正文、凭证或完整错误栈；
 - 已上报错误快照后又发生普通异常时，Runner 保留该快照；只有脚本通过 `context.fail` 显式携带 `failedRecords`（包括空数组）时才替换或清空。
-- `onFailure` 只控制所在队列：`stop` 暂停普通队列后续任务，`continue` 跳过失败项继续后续可执行任务。独立任务的失败只影响自身；依赖失败任务的普通任务仍须等待前置成功。
+- 失败不再暂停整个队列，Runner 跳过失败任务并继续查找可执行项；只有通过 `dependsOn` 直接或间接依赖它的任务等待前置成功。不再提供 onFailure 或 stop/continue 配置。
 - 明确失败统一停止续租并保持 `failed`，由管理员在页面修复后重试；即使节点重启或 lease 过期也不会自动重试。进程异常退出时状态保持 `running`，lease 过期后自动接管。
 
 ## 执行模式
@@ -27,11 +27,37 @@
 | 普通自动 | 不声明额外模式 | 进入普通队列，按注册顺序串行执行 |
 | 延迟自动 | `delay: true` | 在普通队列获得 lease 后等待 `SYSTEM_MIGRATION_DELAY_SECONDS` 秒；默认 0，等待期间占用普通队列 |
 | 手动触发 | `manual: true` | 初始 `waiting`，管理员触发后进入普通队列 |
-| 独立执行 | `independent: true` | 自动竞争自己的 lease，不等待普通队列或其他独立任务，可与它们并发执行 |
+| 独立执行 | `independent: true` | 不受普通队列顺序约束；先竞争集群共享的 3 个并发名额，再领取任务 lease |
 
-独立任务不能同时声明 `manual`、`delay` 或非空 `dependsOn`。任务必须在数据与业务语义上独立，不能读写仍依赖其他迁移完成的结构。独立任务的 `onFailure` 仅作用于自己的单任务队列，不会暂停其他任务。普通任务可以通过 `dependsOn` 等待更早注册的独立任务成功。
+独立任务不能同时声明 `manual`、`delay` 或非空 `dependsOn`。任务必须在数据与业务语义上独立，不能读写仍依赖其他迁移完成的结构。独立任务失败不会暂停其他任务。普通任务可以通过 `dependsOn` 等待更早注册的独立任务成功。
 
-启动阻塞模式已移除，注册项不再声明 `blockStartup`。原成员角色清理、旧系统模型迁移保留原 ID、顺序和 `stop` 策略，按普通自动任务执行；历史成功状态不重跑，历史失败状态通过管理员重试恢复。
+启动阻塞模式已移除，注册项不再声明 `blockStartup`。历史任务保留原 ID 和顺序；成员角色清理采用独立模式，旧系统模型迁移保持普通自动模式。历史成功状态不重跑，历史失败状态通过管理员重试恢复。
+
+## 独立任务并发上限
+
+所有 App 节点通过同一个 Redis 并发租约 key `system-migration:independent` 共享 3 个名额。普通串行队列不占这些名额。共享租约复用 LeaseCache.withConcurrency 的原子获取、续租和释放机制，默认 90 秒过期、15 秒续租；计时与任务 lease 使用相同的 Runner timing。
+
+- 先取得共享名额，再竞争该任务的 Mongo lease；等待期间不领取新的任务 lease；首次执行保持 pending，待接管的 running 保留原状态和断点。
+- 成功、明确失败或领取不到任务 lease 时释放名额，其他等待任务继续竞争。
+- 等待超过一轮扫描周期不标记失败，下轮扫描继续；Redis 故障时不绕过上限、不开始任务。
+- 共享租约失效时中止任务信号并停止 Mongo heartbeat；任务保留 running 和 checkpoint，待任务 lease 过期后接管。
+- Runner 停止时取消等待并中止活跃执行；节点异常退出后，共享名额由 TTL 回收。脚本仍须响应 signal，并在每批业务写入前调用 assertActive。
+
+## 当前独立任务
+
+以下七个任务声明 `independent: true`，在集群共享的 3 个名额内分别竞争自己的 lease，可与普通队列并发执行；成功后不因切换模式重新执行，失败仍通过统一页面重试：
+
+| 脚本 ID | 任务 |
+| --- | --- |
+| 20260907_cleanup_team_member_roles | 清理历史团队成员角色 |
+| 20260903_backfill_resource_create_time | 回填资源创建时间 |
+| 20260905_backfill_bill_metadata | 回填历史订单缺失字段 |
+| 20260907_migrate_dataset_tags_v2 | 升级知识库标签数据 |
+| 20260928_backfill_member_name_set | 回填团队成员名设置标记 |
+| 20261009_backfill_agent_sandbox_team_id | 回填沙箱实例团队归属 |
+| 20261022_backfill_folder_ancestor_ids | 回填目录祖先路径 |
+
+其余任务保留现有模式和前置依赖。系统模型迁移、权限补齐、历史邀请成员清理仍在普通队列；带前置依赖、延迟或手动确认要求的任务不会因此提前执行。
 
 ## 手动触发任务
 
@@ -43,3 +69,15 @@
 - `manual` 不得与 `independent` 或 `delay` 同时启用。后续自动任务不得依赖尚未手动执行的任务。
 - 手动触发不会自动检测集群升级完成；例如 chunk 迁移必须确认所有旧 App/Pro 生产者和 worker 已停止、旧租约过期后再执行。
 - 重建状态迁移依赖 chunk 迁移成功，避免前置任务随后写出尚未转换的旧 `rebuild` 模式。
+
+## 前置依赖
+
+`dependsOn` 是成功前提，不是额外的执行模式。任务可以声明多个更早注册的任务 ID，只有它们全部 succeeded 才能执行。前置为 waiting、pending、running、failed 或状态缺失时都不能越过；前置修复并重试成功后，等待的自动任务会继续执行。失败任务本身仍需要管理员重试。
+
+当前依赖关系：
+
+- 模型权限、知识库模型引用、评测模型引用、应用模型引用回填，都依赖 `20260903_migrate_legacy_system_models` 成功。四个任务都会从 ai_models 和系统默认配置加载模型目录；在目录迁移完成前执行可能误判模型引用，权限回填还可能删除仍有效的旧名称权限。
+- `20260916_backfill_app_resource_snapshots` 依赖 `20260903_backfill_app_model_references` 成功。
+- `20261009_migrate_dataset_rebuild_status` 依赖 `20261008_migrate_chunk_training` 成功。
+
+不要用数组中的相邻位置代替业务成功依赖，也不要把所有任务链式关联来模拟旧的全队列暂停。普通队列仍按注册顺序串行选择可执行任务，独立模式仍与非空 dependsOn 互斥。
