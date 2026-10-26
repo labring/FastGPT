@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getCachedSystemModelHandle,
@@ -125,7 +126,7 @@ describe('loadSystemModels', () => {
     await loadInstalledModels();
 
     expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(1);
-    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
+    expect(getCachedSystemModelHandle()?.getAllModels()[0].pricing).toBeUndefined();
   });
 
   it('keeps explicit free tiers authoritative when displaying inactive models', async () => {
@@ -136,17 +137,17 @@ describe('loadSystemModels', () => {
       name: 'Inactive legacy priced LLM',
       scope: 'system',
       isActive: false,
-      priceTiers: [],
-      inputPrice: 0,
-      outputPrice: 0,
-      charsPointsPrice: 2,
+      pricing: { tiers: [] },
+
       config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
     });
 
     await loadInstalledModels();
 
     expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(1);
-    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
+    expect(
+      ModelPricingSchema.parse(getCachedSystemModelHandle()?.getAllModels()[0].pricing).tiers
+    ).toEqual([]);
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 

@@ -6,7 +6,8 @@ import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
-const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);
+const getTierLowerBoundLabel = (tiers: ModelPriceTierType[], index: number) =>
+  String(tiers[index - 1]?.maxInputTokens ?? 0);
 
 const formatPriceSummary = ({
   tiers,
@@ -168,7 +169,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
               </colgroup>
               <Tbody>
                 {tiers.map((tier, index) => (
-                  <Tr key={`${tier.minInputTokens ?? 1}-${tier.maxInputTokens ?? 'open'}-${index}`}>
+                  <Tr key={`${tier.maxInputTokens ?? 'open'}-${index}`}>
                     <Td
                       px={3}
                       py={2}
@@ -185,7 +186,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                         color={'myGray.700'}
                         whiteSpace={'nowrap'}
                       >
-                        <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
+                        <Box>{`${getTierLowerBoundLabel(tiers, index)} < `}</Box>
                         <Box>{t('common:Input')}</Box>
                         {typeof tier.maxInputTokens === 'number' ? (
                           <Box>{` <= ${tier.maxInputTokens}`}</Box>
@@ -259,7 +260,7 @@ export const PriceLine = React.memo(
     fontSize?: string;
     color?: string;
   }) => {
-    const tiers = config.priceTiers || [];
+    const tiers = config.pricing?.tiers || [];
     if (tiers.length === 0) return <Box>-</Box>;
     return (
       <TierTooltip tiers={tiers} color={color}>
@@ -270,7 +271,7 @@ export const PriceLine = React.memo(
 );
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
-  const tiers = config.priceTiers || [];
+  const tiers = config.pricing?.tiers || [];
   if (tiers.length === 0) return <Box>-</Box>;
   return (
     <TierTooltip tiers={tiers} color={'myGray.700'}>

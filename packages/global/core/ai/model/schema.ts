@@ -5,33 +5,36 @@ import z from 'zod';
 
 export const ModelPriceTierSchema = z
   .object({
-    minInputTokens: z.number().min(0).optional().meta({
-      description: '最小输入量，单位为 M Tokens'
-    }),
-    maxInputTokens: z.number().min(0).nullish().meta({
-      description: '最大输入量，单位为 M Tokens；未提供时为无限大梯度。'
-    }),
-    inputPrice: z.number(),
-    outputPrice: z.number()
+    maxInputTokens: z
+      .number()
+      .min(0)
+      .optional()
+      .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
+    inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
+    outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
   })
-  .meta({
-    description: '模型价格梯度, 为左开右闭规则。'
-  });
+  .strict();
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
-export const PriceTypeSchema = z.object({
-  charsPointsPrice: z.number().optional(), // Token/TTS 固定每百万数量；STT 为每 60 秒。
-  // 新版的梯度价格计算字段
-  priceTiers: z.array(ModelPriceTierSchema).optional().meta({
-    description:
-      'The price tiers for this model. If not provided, the model will use the default price tiers.'
-  }),
-
-  /** @deprecated */
-  inputPrice: z.number().optional(), // 单位为 M Tokens
-  /** @deprecated */
-  outputPrice: z.number().optional() // 单位为 M Tokens
-});
+/** 单价只存金额，计价分母由模型类型固定；空对象表示已配置但尚未填写价格。 */
+export const ModelPricingSchema = z
+  .object({
+    tiers: z
+      .array(ModelPriceTierSchema)
+      .max(5)
+      .optional()
+      .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' }),
+    unitPrice: z
+      .number()
+      .min(0)
+      .optional()
+      .meta({ description: '综合单价；Token/TTS 每百万数量，STT 每 60 秒', example: 2 })
+  })
+  .strict();
+export type ModelPricingType = z.infer<typeof ModelPricingSchema>;
+export const LLMModelPricingSchema = ModelPricingSchema.omit({ unitPrice: true });
+export const UnitModelPricingSchema = ModelPricingSchema.omit({ tiers: true });
+export const PriceTypeSchema = z.object({ pricing: ModelPricingSchema.optional() });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 /**
@@ -103,26 +106,46 @@ const AIModelDocumentBaseSchema = PriceTypeSchema.extend({
 });
 
 export const LLMModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: LLMModelPricingSchema.optional().meta({
+    description: 'LLM 每百万 Tokens 阶梯价格；缺省免费',
+    example: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
+  }),
   type: z.literal(ModelTypeEnum.llm),
   config: LLMModelConfigSchema
 });
 
 export const EmbeddingModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.embedding),
   config: EmbeddingModelConfigSchema
 });
 
 export const RerankModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.rerank),
   config: RerankModelConfigSchema
 });
 
 export const TTSModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.tts),
   config: TTSModelConfigSchema
 });
 
 export const STTModelDocumentSchema = AIModelDocumentBaseSchema.extend({
+  pricing: UnitModelPricingSchema.optional().meta({
+    description: '每固定计价单位的积分单价；缺省免费',
+    example: { unitPrice: 2 }
+  }),
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
 });

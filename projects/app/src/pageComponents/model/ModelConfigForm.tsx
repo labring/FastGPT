@@ -2,7 +2,10 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type {
+  AIModelDocumentDataType,
+  ModelPriceTierType
+} from '@fastgpt/global/core/ai/model/schema';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
@@ -393,32 +396,29 @@ const ModelConfigForm = ({
     handleSubmit,
     formState: { isDirty }
   } = useForm<AIModelDocumentDataType>({
-    defaultValues: {
-      // 空白草稿的引用上限不向输入框写入 NaN，保持视觉上未填写。
-      ...(initialModelData.type === ModelTypeEnum.llm &&
-      Number.isNaN(initialModelData.config.quoteMaxToken)
-        ? {
-            ...initialModelData,
-            config: { ...initialModelData.config, quoteMaxToken: undefined }
-          }
-        : initialModelData),
-      priceTiers: (() => {
-        if (modelData.type !== ModelTypeEnum.llm) return undefined;
-        const tiers = (initialModelData.priceTiers ?? []).slice(0, MAX_MODEL_PRICE_TIERS);
-        if (tiers.length === 0) return [emptyPriceTier];
-
-        const last = tiers[tiers.length - 1];
-        if (tiers.length >= MAX_MODEL_PRICE_TIERS || !last.maxInputTokens) return tiers;
-
-        return [
-          ...tiers,
-          {
-            ...emptyPriceTier,
-            minInputTokens: last.maxInputTokens
-          }
-        ];
-      })()
-    }
+    defaultValues: (() => {
+      if (initialModelData.type !== ModelTypeEnum.llm) return initialModelData;
+      const tiers: Partial<ModelPriceTierType>[] = (initialModelData.pricing?.tiers ?? []).slice(
+        0,
+        MAX_MODEL_PRICE_TIERS
+      );
+      const last = tiers.at(-1);
+      if (
+        tiers.length === 0 ||
+        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokens !== undefined)
+      )
+        tiers.push(emptyPriceTier);
+      return {
+        ...initialModelData,
+        config: {
+          ...initialModelData.config,
+          quoteMaxToken: Number.isNaN(initialModelData.config.quoteMaxToken)
+            ? undefined
+            : initialModelData.config.quoteMaxToken
+        },
+        pricing: { tiers }
+      };
+    })()
   });
 
   useEffect(() => {
@@ -484,7 +484,7 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
-        const priceTiers = getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers });
+        const priceTiers = getRuntimeResolvedPriceTiers(data);
 
         let currentLowerExclusiveBound = 0;
 
@@ -513,7 +513,7 @@ const ModelConfigForm = ({
           }
         }
 
-        data.priceTiers = priceTiers;
+        data.pricing = { tiers: priceTiers };
       }
 
       const modelData = data as Record<string, unknown>;
@@ -811,14 +811,14 @@ const ModelConfigForm = ({
           ) : (
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <Field
-                label={`${t('config_model:model.charsPointsPrice')}`}
-                tip={t('config_model:model.charsPointsPrice_tip')}
+                label={`${t('config_model:model.unitPrice')}`}
+                tip={t('config_model:model.unitPrice_tip')}
               >
                 <Flex alignItems={'center'} gap={2}>
                   <Input
                     type="number"
                     step={0.01}
-                    {...register('charsPointsPrice', {
+                    {...register('pricing.unitPrice', {
                       setValueAs: (value) =>
                         value === '' ? undefined : roundModelPrice(Number(value)),
                       onBlur: (event) => {
@@ -827,7 +827,7 @@ const ModelConfigForm = ({
                         if (price !== undefined && !Number.isFinite(price)) return;
                         // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
                         setValue(
-                          'charsPointsPrice',
+                          'pricing.unitPrice',
                           price === undefined ? undefined : roundModelPrice(price),
                           {
                             shouldDirty: true

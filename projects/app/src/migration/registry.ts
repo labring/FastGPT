@@ -590,10 +590,6 @@ export const systemMigrations = [
       {
         key: 'models',
         labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.models')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.validation')
       }
     ],
     // 允许迁移期间的计费偏差，后台转换不阻塞启动或后续独立任务。

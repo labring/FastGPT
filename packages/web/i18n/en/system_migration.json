@@ -130,9 +130,8 @@
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "Backfill App and tool folder paths",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "Backfill Dataset folder paths",
   "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths",
-  "migrations.20261025_token_prices_per_million.name": "Migrate model prices to million units",
-  "migrations.20261025_token_prices_per_million.description": "Scan all models in the background after startup and convert Token and TTS character prices from thousands to millions without delaying business readiness. Unit prices are rounded to two decimals, which may change actual fees, and original prices are backed up. STT duration pricing stays unchanged. Invalid records stop this task; view failure details, fix the data, and retry from the administration page.",
-  "migrations.20261025_token_prices_per_million.models": "Convert token and TTS character prices",
-  "migrations.20261025_token_prices_per_million.validation": "Validate pricing units",
-  "migrations.20261025_token_prices_per_million.result": "Verified prices for {{verifiedCount}} models; STT keeps its original unit."
+  "migrations.20261025_token_prices_per_million.name": "Migrate system model prices to million units",
+  "migrations.20261025_token_prices_per_million.description": "Reads system models once and saves pricing in one batch. Token/TTS rates are multiplied by 1000; STT rates are copied unchanged. Preserves root-level prices and skips valid existing pricing. Team models are free. Runs in the background; fix invalid data and retry after a failure.",
+  "migrations.20261025_token_prices_per_million.models": "Update system model prices",
+  "migrations.20261025_token_prices_per_million.result": "Migrated {{migratedCount}} system models to pricing. Original prices and team models remain unchanged."
 }

@@ -19,7 +19,7 @@ describe('pushAudioSpeechUsage character pricing', () => {
         provider: 'openai',
         scope: ModelScopeEnum.system,
         config: { voices: [{ label: 'Default', value: 'default' }] },
-        charsPointsPrice: mode === 'free' ? 0 : 125
+        pricing: { unitPrice: mode === 'free' ? 0 : 125 }
       };
       const saved = await MongoAIModel.create(normalizeModelPricingForSave(source));
       const model = formatDbModelToRuntimeModel(saved.toObject(), { fallbackProvider: true });

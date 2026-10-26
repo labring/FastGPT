@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import React, { act } from 'react';
 import { JSDOM } from 'jsdom';
 import { createRoot, type Root } from 'react-dom/client';
@@ -66,7 +67,7 @@ const save = vi.fn();
 
 const Fixture = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
   const fixtureForm = useForm<AIModelDocumentDataType>({
-    defaultValues: { priceTiers: tiers }
+    defaultValues: { pricing: { tiers: tiers } }
   });
   React.useEffect(() => {
     form = fixtureForm;
@@ -127,7 +128,7 @@ const render = async (tiers: ModelPriceTierType[] = [{ inputPrice: 2, outputPric
   await act(async () => root.render(React.createElement(Fixture, { tiers })));
 };
 const input = (key: string, row = 0) =>
-  container.querySelectorAll<HTMLInputElement>(`input[name="priceTiers.${row}.${key}"]`)[0];
+  container.querySelectorAll<HTMLInputElement>(`input[name="pricing.tiers.${row}.${key}"]`)[0];
 
 /** 使用原生输入事件验证 react-hook-form 的数字转换，避免仅测试 setValue。 */
 const fill = async (key: string, value: string) => {
@@ -147,7 +148,7 @@ describe('ModelPriceTiersTable', () => {
     expect(input('inputPrice').value).toBe('0.13');
     expect(input('outputPrice').value).toBe('1.01');
     await act(async () => container.querySelector('form')!.requestSubmit());
-    expect(save.mock.calls[0][0].priceTiers[0]).toMatchObject({
+    expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).tiers![0]).toMatchObject({
       maxInputTokens: 0.000125,
       inputPrice: 0.13,
       outputPrice: 1.01
@@ -158,7 +159,7 @@ describe('ModelPriceTiersTable', () => {
     await render();
     await fill('inputPrice', '');
     await fill('outputPrice', '0');
-    expect(form.getValues('priceTiers.0.inputPrice')).toBeUndefined();
-    expect(form.getValues('priceTiers.0.outputPrice')).toBe(0);
+    expect(form.getValues('pricing.tiers.0.inputPrice')).toBeUndefined();
+    expect(form.getValues('pricing.tiers.0.outputPrice')).toBe(0);
   });
 });

@@ -58,7 +58,6 @@ const InvalidPriceInputStyles = {
 };
 
 export const emptyPriceTier = {
-  minInputTokens: 0,
   maxInputTokens: undefined,
   inputPrice: undefined,
   outputPrice: undefined
@@ -96,15 +95,15 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
     fields: priceTierFields,
     append: appendPriceTier,
     remove: removePriceTier
-  } = useFieldArray({ control, name: 'priceTiers' as never });
-  const watchedPriceTiers = useWatch({ control, name: 'priceTiers' });
+  } = useFieldArray({ control, name: 'pricing.tiers' as never });
+  const watchedPriceTiers = useWatch({ control, name: 'pricing.tiers' });
 
   const ensureNextEmptyPriceTier = useCallback(
     (index: number, value?: number, inputEl?: HTMLInputElement | null, lowerBound?: number) => {
       if (typeof value !== 'number' || Number.isNaN(value)) return;
       if (typeof lowerBound === 'number' && value <= lowerBound) return;
 
-      const tiers = getValues('priceTiers') ?? [];
+      const tiers = getValues('pricing.tiers') ?? [];
       if (index !== tiers.length - 1 || tiers.length >= MAX_MODEL_PRICE_TIERS) return;
 
       appendPriceTier(emptyPriceTier as never);
@@ -125,13 +124,13 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
   const clearPriceTier = useCallback(
     (index: number) => {
       if (priceTierFields.length === 1) {
-        setValue(`priceTiers.${index}.maxInputTokens` as never, undefined as never, {
+        setValue(`pricing.tiers.${index}.maxInputTokens` as never, undefined as never, {
           shouldDirty: true
         });
-        setValue(`priceTiers.${index}.inputPrice` as never, undefined as never, {
+        setValue(`pricing.tiers.${index}.inputPrice` as never, undefined as never, {
           shouldDirty: true
         });
-        setValue(`priceTiers.${index}.outputPrice` as never, undefined as never, {
+        setValue(`pricing.tiers.${index}.outputPrice` as never, undefined as never, {
           shouldDirty: true
         });
         return;
@@ -268,11 +267,11 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   !currentTier?.maxInputTokens &&
                   !currentTier?.inputPrice &&
                   !currentTier?.outputPrice;
-                const maxInputTokensRegister = register(`priceTiers.${index}.maxInputTokens`, {
+                const maxInputTokensRegister = register(`pricing.tiers.${index}.maxInputTokens`, {
                   min: lowerBound,
                   setValueAs: getOptionalNumber
                 });
-                const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
+                const inputPriceRegister = register(`pricing.tiers.${index}.inputPrice`, {
                   setValueAs: (value) => {
                     const price = getOptionalNumber(value);
                     return price === undefined ? price : roundModelPrice(price);
@@ -280,12 +279,12 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   onBlur: (event) => {
                     const price = getOptionalNumber(event.target.value);
                     if (price === undefined) return;
-                    setValue(`priceTiers.${index}.inputPrice`, roundModelPrice(price), {
+                    setValue(`pricing.tiers.${index}.inputPrice`, roundModelPrice(price), {
                       shouldDirty: true
                     });
                   }
                 });
-                const outputPriceRegister = register(`priceTiers.${index}.outputPrice`, {
+                const outputPriceRegister = register(`pricing.tiers.${index}.outputPrice`, {
                   setValueAs: (value) => {
                     const price = getOptionalNumber(value);
                     return price === undefined ? price : roundModelPrice(price);
@@ -293,7 +292,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   onBlur: (event) => {
                     const price = getOptionalNumber(event.target.value);
                     if (price === undefined) return;
-                    setValue(`priceTiers.${index}.outputPrice`, roundModelPrice(price), {
+                    setValue(`pricing.tiers.${index}.outputPrice`, roundModelPrice(price), {
                       shouldDirty: true
                     });
                   }

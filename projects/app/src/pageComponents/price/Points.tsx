@@ -109,7 +109,7 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {roundModelPrice(item.charsPointsPrice) +
+                {roundModelPrice(item.pricing?.unitPrice) +
                   t('common:support.wallet.subscription.point') +
                   ' / M Tokens'}
               </Box>
@@ -135,7 +135,7 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {roundModelPrice(item.charsPointsPrice) +
+                {roundModelPrice(item.pricing?.unitPrice) +
                   t('common:support.wallet.subscription.point') +
                   ' / 1M ' +
                   t('common:unit.character')}
@@ -162,7 +162,7 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {roundModelPrice(item.charsPointsPrice) +
+                {roundModelPrice(item.pricing?.unitPrice) +
                   t('common:support.wallet.subscription.point') +
                   ' / 60' +
                   t('common:unit.seconds')}

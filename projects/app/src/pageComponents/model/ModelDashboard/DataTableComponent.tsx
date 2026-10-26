@@ -8,9 +8,9 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { ChannelDashboardSummary } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelPricingType } from '@fastgpt/global/core/ai/model/schema';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type DashboardDataEntry = {
   timestamp: number;
@@ -30,11 +30,9 @@ type DataTableComponentProps = {
   modelPriceMap: Map<
     string,
     {
-      inputPrice?: number;
-      outputPrice?: number;
-      charsPointsPrice?: number;
+      pricing?: ModelPricingType;
+      scope?: ModelScopeEnum;
       type?: ModelTypeEnum;
-      priceTiers?: ModelPriceTierType[];
     }
   >;
   onViewDetail: (model: string) => void;

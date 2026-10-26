@@ -52,7 +52,7 @@ const render = (config: PriceType) => {
 describe('PriceTiersLabel', () => {
   it('shows million-unit input and output rates with at most two decimals', () => {
     const { visibleText, tooltips } = render({
-      priceTiers: [{ inputPrice: 1.005, outputPrice: 2.675 }]
+      pricing: { tiers: [{ inputPrice: 1.005, outputPrice: 2.675 }] }
     });
     expect(visibleText).toContain('Input: 1.01 points/M Tokens');
     expect(visibleText).toContain('Output: 2.68 points/M Tokens');
@@ -61,10 +61,12 @@ describe('PriceTiersLabel', () => {
 
   it('rounds tier summaries and details without truncating input boundaries', () => {
     const { visibleText, values } = render({
-      priceTiers: [
-        { minInputTokens: 0, maxInputTokens: 0.0041, inputPrice: 1.234, outputPrice: 2 },
-        { minInputTokens: 0.0041, inputPrice: 2.345, outputPrice: 4.125 }
-      ]
+      pricing: {
+        tiers: [
+          { maxInputTokens: 0.0041, inputPrice: 1.234, outputPrice: 2 },
+          { inputPrice: 2.345, outputPrice: 4.125 }
+        ]
+      }
     });
     expect(visibleText).toContain('Input: 1.23~2.35 points/M Tokens');
     expect(values[0]).toEqual([
@@ -85,7 +87,7 @@ describe('PriceTiersLabel', () => {
         ChakraProvider,
         null,
         React.createElement(PriceLine, {
-          config: { priceTiers: [{ inputPrice: 1, outputPrice: 1.005 }] },
+          config: { pricing: { tiers: [{ inputPrice: 1, outputPrice: 1.005 }] } },
           priceKey: 'output',
           unitLabel: 'points / M Tokens'
         })

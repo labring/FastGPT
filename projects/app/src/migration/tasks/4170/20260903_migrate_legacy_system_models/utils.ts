@@ -6,10 +6,29 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import {
-  ModelPriceTierSchema,
   AIModelDocumentDataSchema,
   type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
+
+import z from 'zod';
+
+/** 冻结已发布迁移的旧价格格式，避免当前业务 Schema 剥离待换算的根级价格。 */
+const LegacyPriceTierSchema = z.object({
+  minInputTokens: z.number().min(0).optional(),
+  maxInputTokens: z.number().min(0).nullish(),
+  inputPrice: z.number(),
+  outputPrice: z.number()
+});
+export const LegacyAIModelDocumentSchema = z.intersection(
+  AIModelDocumentDataSchema,
+  z.object({
+    priceTiers: z.array(LegacyPriceTierSchema).optional(),
+    inputPrice: z.number().optional(),
+    outputPrice: z.number().optional(),
+    charsPointsPrice: z.number().optional()
+  })
+);
+export type LegacyAIModelDocumentType = z.infer<typeof LegacyAIModelDocumentSchema>;
 
 const modelTypes = new Set(Object.values(ModelTypeEnum));
 const baseBooleanKeys = ['isActive', 'testMode'] as const;
@@ -102,7 +121,7 @@ const parsePriceTiers = (value: unknown) => {
   const tiers = parsed.flatMap((tier) => {
     const item = toRecord(tier);
     if (!item) return [];
-    const normalized = ModelPriceTierSchema.safeParse({
+    const normalized = LegacyPriceTierSchema.safeParse({
       minInputTokens: toFiniteNumber(item.minInputTokens),
       maxInputTokens: toFiniteNumber(item.maxInputTokens),
       inputPrice: toFiniteNumber(item.inputPrice),
@@ -114,7 +133,7 @@ const parsePriceTiers = (value: unknown) => {
 };
 
 const getIssues = (record: unknown) => {
-  const parsed = AIModelDocumentDataSchema.safeParse(record);
+  const parsed = LegacyAIModelDocumentSchema.safeParse(record);
   return parsed.success
     ? []
     : parsed.error.issues.map((issue) => ({
@@ -128,7 +147,7 @@ const getIssues = (record: unknown) => {
 export type RepairSystemModelResult =
   | {
       status: 'unchanged' | 'repaired';
-      document: AIModelDocumentDataType;
+      document: LegacyAIModelDocumentType;
       issues: Array<{ path: Array<string | number>; message: string }>;
     }
   | {
@@ -148,7 +167,7 @@ export const repairSystemModelDocument = ({
   pluginDocument?: AIModelDocumentDataType;
 }): RepairSystemModelResult => {
   const raw = toRecord(record);
-  const canonical = AIModelDocumentDataSchema.safeParse(record);
+  const canonical = LegacyAIModelDocumentSchema.safeParse(record);
   // scope 在领域 Schema 中有默认值，便于新建系统模型；但迁移判定必须检查真实持久化字段。
   // 否则仅有旧 isSystem 的 canonical 文档会被默认成 system，并错误地跳过 scope 写回。
   if (canonical.success && raw?.scope === ModelScopeEnum.system) {
@@ -282,7 +301,7 @@ export const repairSystemModelDocument = ({
     parsePriceTiers(pluginSource.priceTiers);
   if (priceTiers) document.priceTiers = priceTiers;
 
-  const repaired = AIModelDocumentDataSchema.safeParse(document);
+  const repaired = LegacyAIModelDocumentSchema.safeParse(document);
   if (!repaired.success) return { status: 'invalid', issues: getIssues(document) };
 
   return {

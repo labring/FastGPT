@@ -1,385 +1,301 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { Types } from '@fastgpt/service/common/mongo';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { PriceTypeSchema } from '@fastgpt/global/core/ai/model/schema';
 import type {
-  SystemMigrationFailedRecord,
   SystemMigrationFailureInput,
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
-import { createSystemMigrationRunner } from '@/migration/runner';
-import {
-  MongoSystemMigrationFailedRecord,
-  MongoSystemMigrationState
-} from '@/migration/mongoSchema';
-import { retryNonBlockingSystemMigration } from '@/migration/service';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import type { SystemMigrationContext } from '@/migration/registry';
 import { migrateTokenPricesPerMillion } from '@/migration/tasks/4174/20261025_token_prices_per_million';
 
-const createContext = (
-  initial?: Record<string, unknown>,
-  initialFailedRecords: SystemMigrationFailedRecord[] = []
-) => {
-  let checkpoint = initial;
-  let failedRecords = initialFailedRecords;
-  const context = {
+const createContext = () =>
+  ({
     migrationId: '20261025_token_prices_per_million',
     runId: 'test',
     signal: new AbortController().signal,
-    getCheckpoint: async (schema) => (checkpoint ? schema.parse(checkpoint) : undefined),
-    getFailedRecords: vi.fn(async () => structuredClone(failedRecords)),
-    reportFailedRecords: vi.fn(async (records: SystemMigrationFailedRecord[]) => {
-      failedRecords = structuredClone(records);
-    }),
-    saveCheckpoint: vi.fn(async (value) => {
-      checkpoint = structuredClone(value);
-    }),
-    reportProgress: vi.fn(async (_step: SystemMigrationProgressInput): Promise<void> => {}),
+    getCheckpoint: vi.fn(async () => undefined),
+    saveCheckpoint: vi.fn(async () => undefined),
+    getFailedRecords: vi.fn(async () => []),
+    reportFailedRecords: vi.fn(async () => undefined),
+    reportProgress: vi.fn(async (_step: SystemMigrationProgressInput) => undefined),
     assertActive: vi.fn(async () => undefined),
     fail: vi.fn(async (input: SystemMigrationFailureInput): Promise<never> => {
-      if (input.failedRecords !== undefined) failedRecords = structuredClone(input.failedRecords);
       throw new Error(input.message);
     }),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-  } satisfies SystemMigrationContext;
-  return { context, checkpoint: () => checkpoint, failedRecords: () => failedRecords };
-};
+  }) satisfies SystemMigrationContext;
 const base = {
   type: ModelTypeEnum.llm,
   scope: ModelScopeEnum.system,
   provider: 'openai',
   config: {}
 };
+afterEach(() => vi.restoreAllMocks());
 
-describe('migrateTokenPricesPerMillion with MongoDB', () => {
-  it.each([false, true])(
-    'keeps startup ready while the background task completes or awaits an admin retry, invalid=%s',
-    async (invalid) => {
-      const migration = systemMigrations.at(-1)!;
-      await MongoSystemMigrationState.deleteMany({ _id: migration.id });
-      await MongoAIModel.collection.insertOne({
-        ...base,
-        model: 'startup',
-        name: 'Startup',
-        charsPointsPrice: invalid ? -1 : 0.125
-      });
-      const runner = createSystemMigrationRunner({
-        migrations: [migration],
-        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-        timing: { blockingPollIntervalMs: 5 }
-      });
-      await runner.start();
-      try {
-        await expect(runner.waitForBlockingMigrations()).resolves.toBeUndefined();
-        await runner.tick();
-        if (invalid) {
-          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-            'failed'
-          );
-          expect(
-            await MongoSystemMigrationFailedRecord.findOne({ migrationId: migration.id }).lean()
-          ).toMatchObject({
-            stageKey: 'models',
-            reason: { message: 'Negative model price' }
-          });
-          expect(await MongoAIModel.collection.findOne({ model: 'startup' })).not.toHaveProperty(
-            'legacyTokenPricing'
-          );
-          await MongoAIModel.collection.updateOne(
-            { model: 'startup' },
-            { $set: { charsPointsPrice: 0.125 } }
-          );
-          await retryNonBlockingSystemMigration(migration.id, [migration]);
-          await runner.wake();
+describe('migrateTokenPricesPerMillion', () => {
+  it('reads system models once and saves all converted prices in one bulk write', async () => {
+    const cases = [
+      {
+        model: 'tiers',
+        type: ModelTypeEnum.llm,
+        legacy: {
+          priceTiers: [
+            { minInputTokens: 0, maxInputTokens: 4.1, inputPrice: 1, outputPrice: 0 },
+            { minInputTokens: 4.1, inputPrice: 3, outputPrice: 0 }
+          ]
+        },
+        expected: {
+          tiers: [
+            { maxInputTokens: 0.0041, inputPrice: 1000, outputPrice: 0 },
+            { inputPrice: 3000, outputPrice: 0 }
+          ]
         }
-        expect(await MongoAIModel.collection.findOne({ model: 'startup' })).toMatchObject({
-          priceTiers: [{ inputPrice: 125, outputPrice: 125 }]
-        });
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          'succeeded'
-        );
-        expect(
-          await MongoSystemMigrationFailedRecord.countDocuments({ migrationId: migration.id })
-        ).toBe(0);
-      } finally {
-        runner.stop();
-        await runner.tick();
-      }
-    }
-  );
-
-  it('converts and rounds token prices, preserves backups, and leaves duration prices alone', async () => {
-    await MongoAIModel.collection.insertMany([
-      {
-        ...base,
-        model: 'chat',
-        name: 'Chat',
-        priceTiers: [
-          {
-            maxInputTokens: 10,
-            inputPrice: 2,
-            outputPrice: 4
-          },
-          { inputPrice: 3, outputPrice: 5 }
-        ]
       },
       {
-        ...base,
+        model: 'io',
+        type: ModelTypeEnum.llm,
+        legacy: { inputPrice: 0.000035, outputPrice: 0.000065 },
+        expected: { tiers: [{ inputPrice: 0.04, outputPrice: 0.07 }] }
+      },
+      {
+        model: 'comprehensive',
+        type: ModelTypeEnum.llm,
+        legacy: { charsPointsPrice: 0.125 },
+        expected: { tiers: [{ inputPrice: 125, outputPrice: 125 }] }
+      },
+      {
         model: 'embedding',
-        name: 'Embedding',
         type: ModelTypeEnum.embedding,
-        charsPointsPrice: 0.5
+        legacy: { charsPointsPrice: 0.5 },
+        expected: { unitPrice: 500 }
       },
-      { ...base, model: 'tts', name: 'TTS', type: ModelTypeEnum.tts, charsPointsPrice: 0.125 },
       {
-        ...base,
         model: 'rerank',
-        name: 'Rerank',
         type: ModelTypeEnum.rerank,
-        charsPointsPrice: 0.000125
+        legacy: { charsPointsPrice: 0.000035 },
+        expected: { unitPrice: 0.04 }
       },
-      { ...base, model: 'stt', name: 'STT', type: ModelTypeEnum.stt, charsPointsPrice: 0.125 },
+      {
+        model: 'tts',
+        type: ModelTypeEnum.tts,
+        legacy: { charsPointsPrice: 0.000065 },
+        expected: { unitPrice: 0.07 }
+      },
+      {
+        model: 'stt',
+        type: ModelTypeEnum.stt,
+        legacy: { charsPointsPrice: 0.125 },
+        expected: { unitPrice: 0.125 }
+      },
+      {
+        model: 'free',
+        type: ModelTypeEnum.llm,
+        legacy: {
+          priceTiers: [],
+          inputPrice: 0.0000005,
+          outputPrice: 0.0000005,
+          charsPointsPrice: 9
+        },
+        expected: { tiers: [{ inputPrice: 0, outputPrice: 0 }] }
+      }
+    ];
+    await MongoAIModel.collection.insertMany([
+      ...cases.map(({ model, type, legacy }) => ({
+        ...base,
+        model,
+        name: model,
+        type,
+        isActive: false,
+        ...legacy
+      })),
       {
         ...base,
-        model: 'tts-m',
-        name: 'TTS M',
-        type: ModelTypeEnum.tts,
-        legacyTokenPricing: { charsPointsPrice: 0.000125 },
-        charsPointsPrice: 0.13
+        model: 'team',
+        name: 'Team',
+        scope: ModelScopeEnum.team,
+        teamId: new Types.ObjectId(),
+        charsPointsPrice: 0.25
+      },
+      { ...base, model: 'configured-empty', name: 'Empty', charsPointsPrice: 10, pricing: {} },
+      {
+        ...base,
+        model: 'configured-zero',
+        name: 'Zero',
+        type: ModelTypeEnum.stt,
+        charsPointsPrice: 10,
+        pricing: { unitPrice: 0 }
+      },
+      {
+        ...base,
+        model: 'converted',
+        name: 'Converted',
+        charsPointsPrice: 123,
+        pricing: { tiers: [{ inputPrice: 12, outputPrice: 24 }] }
       }
     ]);
-    const original = await MongoAIModel.collection.findOne({ model: 'chat' });
-    const originalSTT = await MongoAIModel.collection.findOne({ model: 'stt' });
-    const currentTTS = await MongoAIModel.collection.findOne({ model: 'tts-m' });
-    const first = createContext();
-    expect(await migrateTokenPricesPerMillion(first.context)).toEqual({ verifiedCount: 6 });
-    const migrated = await MongoAIModel.collection.findOne({ model: 'chat' });
-    expect(migrated).toMatchObject({
-      priceTiers: [
-        {
-          maxInputTokens: 0.01,
-          inputPrice: 2000,
-          outputPrice: 4000
-        },
-        { inputPrice: 3000, outputPrice: 5000 }
-      ],
-      legacyTokenPricing: { priceTiers: original!.priceTiers }
+    const unchanged = await MongoAIModel.collection
+      .find({ model: { $in: ['team', 'converted', 'configured-empty', 'configured-zero'] } })
+      .toArray();
+    const read = vi.spyOn(MongoAIModel.collection, 'find');
+    const write = vi.spyOn(MongoAIModel.collection, 'bulkWrite');
+    const context = createContext();
+    await expect(migrateTokenPricesPerMillion(context)).resolves.toEqual({
+      migratedCount: cases.length
     });
-    for (const inputTokens of [10000, 10001]) {
-      const usage = {
-        inputTokens,
-        outputTokens: 2000
-      };
-      expect(
-        calculateModelPrice({
-          config: { ...PriceTypeSchema.parse(migrated), type: ModelTypeEnum.llm },
-          ...usage
-        }).totalPoints
-      ).toBeCloseTo(inputTokens === 10000 ? 28 : 40.003, 12);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][0]).toHaveLength(cases.length);
+    for (const { model, legacy, expected } of cases) {
+      expect(await MongoAIModel.collection.findOne({ model })).toMatchObject({
+        ...legacy,
+        pricing: expected
+      });
     }
-    expect(await MongoAIModel.collection.findOne({ model: 'embedding' })).toMatchObject({
-      charsPointsPrice: 500
-    });
-    const migratedTTS = await MongoAIModel.collection.findOne({ model: 'tts' });
-    expect(migratedTTS).toMatchObject({
-      charsPointsPrice: 125,
-      legacyTokenPricing: { charsPointsPrice: 0.125 }
-    });
+    const tierModel = await MongoAIModel.collection.findOne({ model: 'tiers' });
+    expect(
+      [4099, 4100, 4101].map(
+        (inputTokens) =>
+          calculateModelPrice({
+            config: {
+              ...PriceTypeSchema.parse(tierModel),
+              type: ModelTypeEnum.llm,
+              scope: ModelScopeEnum.system
+            },
+            inputTokens
+          }).totalPoints
+      )
+    ).toEqual([4.099, 4.1, 12.303]);
     expect(
       calculateModelPrice({
-        config: { ...PriceTypeSchema.parse(migratedTTS), type: ModelTypeEnum.tts },
+        config: {
+          ...PriceTypeSchema.parse(await MongoAIModel.collection.findOne({ model: 'free' })),
+          type: ModelTypeEnum.llm,
+          scope: ModelScopeEnum.system
+        },
         inputTokens: 1000000
       }).totalPoints
-    ).toBe(125);
-    expect(await MongoAIModel.collection.findOne({ model: 'rerank' })).toMatchObject({
-      charsPointsPrice: 0.13,
-      legacyTokenPricing: { charsPointsPrice: 0.000125 }
-    });
-    expect(await MongoAIModel.collection.findOne({ model: 'stt' })).toEqual(originalSTT);
-    expect(await MongoAIModel.collection.findOne({ model: 'tts-m' })).toEqual(currentTTS);
-    expect(first.context.getFailedRecords).toHaveBeenCalledTimes(1);
-    expect(first.context.reportFailedRecords).not.toHaveBeenCalled();
-    const again = createContext(first.checkpoint());
-    await migrateTokenPricesPerMillion(again.context);
-    expect(await MongoAIModel.collection.findOne({ model: 'chat' })).toEqual(migrated);
-    expect(await MongoAIModel.collection.findOne({ model: 'tts' })).toEqual(migratedTTS);
-    // 管理员已调整的新单价不能被重放再放大或由旧备份覆盖。
-    await MongoAIModel.collection.updateOne({ model: 'tts' }, { $set: { charsPointsPrice: 150 } });
-    await migrateTokenPricesPerMillion(createContext().context);
-    expect(await MongoAIModel.collection.findOne({ model: 'tts' })).toMatchObject({
-      charsPointsPrice: 150,
-      legacyTokenPricing: { charsPointsPrice: 0.125 }
-    });
-    expect(
-      first.context.reportProgress.mock.calls.map(([step]) => `${step.key}:${step.status}`)
-    ).toEqual([
-      'models:running',
-      'models:running',
-      'models:succeeded',
-      'validation:running',
-      'validation:running',
-      'validation:succeeded'
-    ]);
-  });
-
-  it.each(['repair', 'delete'])(
-    'reports malformed prices without advancing the batch, then resumes after %s',
-    async (action) => {
-      const { insertedId } = await MongoAIModel.collection.insertOne({
-        ...base,
-        model: 'bad',
-        name: 'Bad',
-        inputPrice: -1,
-        outputPrice: 2
-      });
-      const first = createContext();
-      await expect(migrateTokenPricesPerMillion(first.context)).rejects.toThrow(
-        'Negative model price'
-      );
-      expect(await MongoAIModel.collection.findOne({ _id: insertedId })).not.toHaveProperty(
-        'legacyTokenPricing'
-      );
-      expect(first.checkpoint()).toMatchObject({ lastId: null, scannedCount: 0 });
-      expect(first.context.logger.error).toHaveBeenCalledWith(
-        'Model pricing migration requires source repair',
-        { errorCount: 1, modelId: String(insertedId), reason: 'Negative model price' }
-      );
-      expect(first.failedRecords()).toEqual([
-        {
-          stageKey: 'models',
-          data: { modelId: String(insertedId) },
-          reason: { message: 'Negative model price' }
-        }
-      ]);
-      expect(first.context.reportFailedRecords).not.toHaveBeenCalled();
-      if (action === 'repair')
-        await MongoAIModel.collection.updateOne({ _id: insertedId }, { $set: { inputPrice: 1 } });
-      else await MongoAIModel.collection.deleteOne({ _id: insertedId });
-      const resumed = createContext(first.checkpoint(), first.failedRecords());
-      await expect(migrateTokenPricesPerMillion(resumed.context)).resolves.toEqual({
-        verifiedCount: action === 'repair' ? 1 : 0
-      });
-      expect(resumed.context.reportFailedRecords).toHaveBeenCalledWith([]);
-      if (action === 'repair') {
-        expect(resumed.context.reportFailedRecords.mock.invocationCallOrder[0]).toBeLessThan(
-          resumed.context.saveCheckpoint.mock.invocationCallOrder[0]
-        );
-        expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toMatchObject({
-          inputPrice: 1000,
-          outputPrice: 2000
-        });
-      } else expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toBeNull();
-    }
-  );
-
-  it('resets its checkpoint when final validation finds a missed source row, then repairs it on retry', async () => {
-    await MongoAIModel.collection.insertOne({
-      ...base,
-      model: 'first',
-      name: 'First',
-      inputPrice: 1
-    });
-    const first = createContext();
-    first.context.reportProgress.mockImplementation(async (step) => {
-      if (step.key === 'models' && step.status === 'succeeded') {
-        await MongoAIModel.collection.insertOne({
-          ...base,
-          model: 'late',
-          name: 'Late',
-          inputPrice: 2
-        });
-      }
-    });
-    await expect(migrateTokenPricesPerMillion(first.context)).rejects.toThrow(
-      'has not been converted'
-    );
-    expect(first.checkpoint()).toMatchObject({ lastId: null, scannedCount: 0 });
-    await expect(
-      migrateTokenPricesPerMillion(createContext(first.checkpoint(), first.failedRecords()).context)
-    ).resolves.toEqual({ verifiedCount: 2 });
-    expect(await MongoAIModel.collection.findOne({ model: 'first' })).toMatchObject({
-      inputPrice: 1000
-    });
-    expect(await MongoAIModel.collection.findOne({ model: 'late' })).toMatchObject({
-      inputPrice: 2000
-    });
-  });
-
-  it('safely replays a batch after its transaction committed but its checkpoint failed', async () => {
-    await MongoAIModel.collection.insertOne({
-      ...base,
-      model: 'replay',
-      name: 'Replay',
-      charsPointsPrice: 0.25
-    });
-    const first = createContext();
-    first.context.saveCheckpoint
-      .mockImplementationOnce(async () => undefined)
-      .mockRejectedValueOnce(new Error('checkpoint unavailable'));
-    await expect(migrateTokenPricesPerMillion(first.context)).rejects.toThrow(
-      'checkpoint unavailable'
-    );
-    const committed = await MongoAIModel.collection.findOne({ model: 'replay' });
-    expect(committed).toMatchObject({
-      legacyTokenPricing: { charsPointsPrice: 0.25 },
-      charsPointsPrice: 250
-    });
-    await migrateTokenPricesPerMillion(createContext().context);
-    expect(await MongoAIModel.collection.findOne({ model: 'replay' })).toEqual(committed);
-  });
-
-  it('does not revive a stale comprehensive price when tiny legacy IO prices round to free', async () => {
-    await MongoAIModel.collection.insertOne({
-      ...base,
-      model: 'tiny',
-      name: 'Tiny',
-      priceTiers: [],
-      inputPrice: 0.0000005,
-      outputPrice: 0.0000005,
-      charsPointsPrice: 9
-    });
-    await migrateTokenPricesPerMillion(createContext().context);
-    const saved = await MongoAIModel.collection.findOne({ model: 'tiny' });
-    expect(saved).toMatchObject({
-      priceTiers: [{ inputPrice: 0, outputPrice: 0 }]
-    });
-    expect(
-      calculateModelPrice({
-        config: { ...PriceTypeSchema.parse(saved), type: ModelTypeEnum.llm },
-        inputTokens: 1000
-      }).totalPoints
     ).toBe(0);
+    for (const record of unchanged)
+      expect(await MongoAIModel.collection.findOne({ _id: record._id })).toEqual(record);
+    expect(
+      await MongoAIModelCatalog.findOne({ scope: ModelScopeEnum.system }).lean()
+    ).toMatchObject({ catalogRevision: 1 });
+    expect(await MongoAIModelCatalog.findOne({ scope: ModelScopeEnum.team }).lean()).toBeNull();
+
+    await MongoAIModel.collection.updateOne(
+      { model: 'embedding' },
+      { $set: { 'pricing.unitPrice': 1700 } }
+    );
+    write.mockClear();
+    await expect(migrateTokenPricesPerMillion(createContext())).resolves.toEqual({
+      migratedCount: 0
+    });
+    expect(write).not.toHaveBeenCalled();
+    expect(await MongoAIModel.collection.findOne({ model: 'embedding' })).toMatchObject({
+      pricing: { unitPrice: 1700 }
+    });
+    expect(context.getCheckpoint).not.toHaveBeenCalled();
+    expect(context.saveCheckpoint).not.toHaveBeenCalled();
+    expect(context.getFailedRecords).not.toHaveBeenCalled();
   });
 
   it.each([
-    { endId: null, lastId: '507f1f77bcf86cd799439012' },
-    { endId: '507f1f77bcf86cd799439011', lastId: '507f1f77bcf86cd799439012' }
-  ])('rejects an invalid resume cursor before business writes: %j', async (cursor) => {
-    const context = createContext({ version: 1, scannedCount: 0, total: 0, ...cursor });
-    await expect(migrateTokenPricesPerMillion(context.context)).rejects.toThrow();
-    expect(context.context.saveCheckpoint).not.toHaveBeenCalled();
+    { inputPrice: -1 },
+    { inputPrice: NaN },
+    { inputPrice: Number.MAX_VALUE },
+    { pricing: null },
+    { pricing: { unitPrice: -1 } },
+    { pricing: { tiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }] } }
+  ])('rejects invalid or overflowing source prices before any write: %s', async (invalid) => {
+    await MongoAIModel.collection.insertMany([
+      { ...base, model: 'valid', name: 'Valid', inputPrice: 1 },
+      { ...base, model: 'invalid', name: 'Invalid', ...invalid }
+    ]);
+    const write = vi.spyOn(MongoAIModel.collection, 'bulkWrite');
+    await expect(migrateTokenPricesPerMillion(createContext())).rejects.toThrow();
+    expect(write).not.toHaveBeenCalled();
+    expect(
+      await MongoAIModel.collection.countDocuments({ model: 'valid', pricing: { $exists: true } })
+    ).toBe(0);
   });
 
-  it('completes empty databases and stops before writes when its lease is lost', async () => {
-    const empty = createContext();
-    await expect(migrateTokenPricesPerMillion(empty.context)).resolves.toEqual({
-      verifiedCount: 0
+  it('rolls back the single bulk write if updating the catalog revision fails, then safely retries', async () => {
+    await MongoAIModel.collection.insertOne({
+      ...base,
+      model: 'rollback',
+      name: 'Rollback',
+      inputPrice: 1
     });
+    const revision = vi
+      .spyOn(MongoAIModelCatalog, 'updateOne')
+      .mockRejectedValueOnce(new Error('revision unavailable'));
+    await expect(migrateTokenPricesPerMillion(createContext())).rejects.toThrow(
+      'revision unavailable'
+    );
+    expect(await MongoAIModel.collection.findOne({ model: 'rollback' })).toMatchObject({
+      inputPrice: 1
+    });
+    expect(await MongoAIModel.collection.findOne({ model: 'rollback' })).not.toHaveProperty(
+      'pricing'
+    );
+    revision.mockRestore();
+    await expect(migrateTokenPricesPerMillion(createContext())).resolves.toEqual({
+      migratedCount: 1
+    });
+  });
+
+  it('does not overwrite an admin price saved between reading and bulk writing', async () => {
+    await MongoAIModel.collection.insertOne({
+      ...base,
+      model: 'concurrent',
+      name: 'Concurrent',
+      inputPrice: 1
+    });
+    const bulkWrite = MongoAIModel.collection.bulkWrite.bind(MongoAIModel.collection);
+    const write = vi
+      .spyOn(MongoAIModel.collection, 'bulkWrite')
+      .mockImplementationOnce(async (operations, options) => {
+        await MongoAIModel.collection.updateOne(
+          { model: 'concurrent' },
+          { $set: { pricing: { tiers: [] } } }
+        );
+        return bulkWrite(operations, options);
+      });
+    await expect(migrateTokenPricesPerMillion(createContext())).resolves.toEqual({
+      migratedCount: 0
+    });
+    expect(write).toHaveBeenCalledOnce();
+    expect(await MongoAIModel.collection.findOne({ model: 'concurrent' })).toMatchObject({
+      inputPrice: 1,
+      pricing: { tiers: [] }
+    });
+  });
+
+  it('completes an empty system catalog without writing', async () => {
+    const write = vi.spyOn(MongoAIModel.collection, 'bulkWrite');
+    await expect(migrateTokenPricesPerMillion(createContext())).resolves.toEqual({
+      migratedCount: 0
+    });
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it('does not write after losing its lease', async () => {
     await MongoAIModel.collection.insertOne({
       ...base,
       model: 'lease',
       name: 'Lease',
       inputPrice: 1
     });
-    const lost = createContext();
-    lost.context.assertActive
+    const context = createContext();
+    context.assertActive
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('lease lost'));
-    await expect(migrateTokenPricesPerMillion(lost.context)).rejects.toThrow('lease lost');
-    expect(await MongoAIModel.collection.findOne({ model: 'lease' })).not.toHaveProperty(
-      'legacyTokenPricing'
-    );
+    await expect(migrateTokenPricesPerMillion(context)).rejects.toThrow('lease lost');
+    expect(await MongoAIModel.collection.findOne({ model: 'lease' })).not.toHaveProperty('pricing');
   });
 });

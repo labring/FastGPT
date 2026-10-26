@@ -422,7 +422,7 @@ describe('VectorDB Controller', () => {
     const mockModel = {
       model: 'text-embedding-ada-002',
       name: 'text-embedding-ada-002',
-      charsPointsPrice: 0,
+      pricing: { unitPrice: 0 },
       maxToken: 8192,
       weight: 100,
       defaultToken: 512,

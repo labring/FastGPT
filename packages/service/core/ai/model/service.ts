@@ -1,7 +1,7 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { normalizeModelPricingForRead } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import type {
   CreateModelBody,
   CreateModelsFromTemplatesBody,
@@ -86,7 +86,7 @@ export const updateModel = async ({
       }).session(session))
     )
       throw new UserError(ModelErrEnum.alreadyExists);
-    const normalizedModelData = normalizeModelPricingForRead({ ...modelData, model: newModel });
+    const normalizedModelData = normalizeModelPricingForSave({ ...modelData, model: newModel });
     await MongoAIModel.updateOne(
       { _id: modelId, ...filter },
       getModelConfigUpdate(
@@ -151,7 +151,7 @@ export const createModel = async ({
     teamId: _teamId,
     scope: _scope,
     ...data
-  } = normalizeModelPricingForRead(modelData);
+  } = normalizeModelPricingForSave(modelData);
   const [model] = await runModelTransaction(context, async (session) => {
     if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
       throw new UserError(ModelErrEnum.alreadyExists);
@@ -189,7 +189,7 @@ export const createModelsFromTemplates = async ({
         const key = `${reference.type}:${reference.model}`;
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-        return [template.model, normalizeModelPricingForRead(template)] as const;
+        return [template.model, normalizeModelPricingForSave(template)] as const;
       })
     ).values()
   );

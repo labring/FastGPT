@@ -40,9 +40,22 @@ const AIModelSchema = new Schema(
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,
-    // 原价备份与迁移后的价格原子保存，运行期不使用备份计费。
-    legacyTokenPricing: Schema.Types.Mixed,
+    pricing: {
+      type: new Schema(
+        {
+          tiers: {
+            type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
+            default: undefined
+          },
+          unitPrice: Number
+        },
+        { _id: false, minimize: false }
+      ),
+      default: undefined
+    },
+    /** @deprecated 根级综合价仅保留给旧节点与迁移读取。 */
     charsPointsPrice: Number,
+    /** @deprecated 根级阶梯价仅保留给旧节点与迁移读取。 */
     priceTiers: [
       {
         _id: false,
@@ -52,7 +65,9 @@ const AIModelSchema = new Schema(
         outputPrice: Number
       }
     ],
+    /** @deprecated 根级输入价仅保留给旧节点与迁移读取。 */
     inputPrice: Number,
+    /** @deprecated 根级输出价仅保留给旧节点与迁移读取。 */
     outputPrice: Number,
     config: {
       type: Schema.Types.Mixed,

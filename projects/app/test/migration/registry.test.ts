@@ -23,7 +23,7 @@ describe('validateSystemMigrationRegistry', () => {
       version: '4.17.4',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
-      progressSteps: [{ key: 'models' }, { key: 'validation' }]
+      progressSteps: [{ key: 'models' }]
     });
     expect(task).not.toHaveProperty('manual');
   });

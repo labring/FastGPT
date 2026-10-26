@@ -4,7 +4,7 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { JSDOM } from 'jsdom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { theme } from '@fastgpt/web/styles/theme';
 import {
   GetChannelDashboardResponseSchema,
@@ -14,7 +14,12 @@ import {
 const mocks = vi.hoisted(() => ({
   requestIndex: 0,
   data: [] as GetChannelDashboardResponse,
-  models: [] as (PriceType & { model: string; provider: string; type: ModelTypeEnum })[]
+  models: [] as (PriceType & {
+    model: string;
+    provider: string;
+    type: ModelTypeEnum;
+    scope: ModelScopeEnum;
+  })[]
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
@@ -75,7 +80,7 @@ describe('model dashboard million-unit pricing', () => {
     {
       name: 'M tiers selected by total input',
       pricing: {
-        priceTiers: [{ maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 }, tier]
+        pricing: { tiers: [{ maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 }, tier] }
       } satisfies PriceType,
       expected: 28,
       displayedTotal: 56
@@ -83,14 +88,14 @@ describe('model dashboard million-unit pricing', () => {
     {
       name: 'fractional costs are accumulated before display rounding',
       pricing: {
-        priceTiers: [{ inputPrice: 2, outputPrice: 4 }]
+        pricing: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
       } satisfies PriceType,
       expected: 0.028,
       displayedTotal: 0.06
     },
     {
       name: 'explicit free LLM tiers',
-      pricing: { priceTiers: [], charsPointsPrice: 9000 } satisfies PriceType,
+      pricing: { pricing: { tiers: [] } } satisfies PriceType,
       expected: 0,
       displayedTotal: 0
     }
@@ -98,7 +103,13 @@ describe('model dashboard million-unit pricing', () => {
     'keeps chart, model and channel totals consistent for $name',
     ({ pricing, expected, displayedTotal }) => {
       mocks.models = [
-        { ...pricing, model: 'unit-model', provider: 'openai', type: ModelTypeEnum.llm }
+        {
+          ...pricing,
+          model: 'unit-model',
+          provider: 'openai',
+          type: ModelTypeEnum.llm,
+          scope: ModelScopeEnum.system
+        }
       ];
       mocks.data = GetChannelDashboardResponseSchema.parse(
         [1000, 4600].map((timestamp) => ({

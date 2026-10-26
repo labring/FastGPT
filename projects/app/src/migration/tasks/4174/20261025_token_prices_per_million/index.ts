@@ -1,148 +1,85 @@
-import { z } from 'zod';
-import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import type { SystemMigrationContext } from '@/migration/registry';
-import { systemMigrationBatchSize } from '@/migration/constants';
+import z from 'zod';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
-  getTokenPriceMigrationSnapshot,
-  readTokenPriceMigrationBatch,
-  readFailedTokenPriceMigrationRecords,
-  migrateTokenPricesBatch,
-  validateTokenPricesBatch,
-  type TokenPriceMigrationError
-} from './service';
-
-const CursorSchema = z
-  .string()
-  .regex(/^[a-f0-9]{24}$/)
-  .nullable();
-const CheckpointSchema = z
-  .object({
-    version: z.literal(1),
-    endId: CursorSchema,
-    lastId: CursorSchema,
-    scannedCount: z.number().int().nonnegative(),
-    total: z.number().int().nonnegative()
-  })
-  .refine(({ endId, lastId }) => lastId === null || (endId !== null && lastId <= endId));
+  LLMModelPricingSchema,
+  UnitModelPricingSchema
+} from '@fastgpt/global/core/ai/model/schema';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { incrementModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import type { SystemMigrationContext } from '@/migration/registry';
+import { convertLegacyModelPricing } from './utils';
 
 /**
- * 非阻塞后台任务：按稳定游标分批转换全部 Token/TTS 旧价格，STT 保持原样。
- * 只在整批成功后推进断点；坏数据停止本次执行并记录明细，管理员修复后重试续跑。
- * 原价备份保护事务提交后、checkpoint 前的重放；返回前重新全量只读校验。
+ * 非阻塞迁移：一次读取全部系统模型，一次批量新增 pricing，原根级字段保持原值。
+ * 合法 pricing 已存在即跳过；写入再次检查字段缺失，保护重试和管理员并发修改。
  */
 export const migrateTokenPricesPerMillion = async (context: SystemMigrationContext) => {
   await context.reportProgress({ key: 'models', status: SystemMigrationStatusEnum.running });
   await context.assertActive();
-  let checkpoint = await context.getCheckpoint(CheckpointSchema);
-  if (!checkpoint) {
-    const snapshot = await getTokenPriceMigrationSnapshot();
-    checkpoint = { version: 1, ...snapshot, lastId: null, scannedCount: 0 };
-    await context.saveCheckpoint(checkpoint);
-  }
+  const models = await MongoAIModel.collection
+    .find(
+      { scope: ModelScopeEnum.system },
+      {
+        projection: {
+          type: 1,
+          pricing: 1,
+          priceTiers: 1,
+          inputPrice: 1,
+          outputPrice: 1,
+          charsPointsPrice: 1
+        }
+      }
+    )
+    .toArray();
 
-  const failedRecords = new Map(
-    (await context.getFailedRecords()).map((record) => [String(record.data.modelId), record])
-  );
-
-  /** 保留尚未重试的旧错误并替换本批错误，保证管理页始终能定位全部已知失败项。 */
-  const assertNoErrors = async (
-    errors: TokenPriceMigrationError[],
-    stageKey: 'models' | 'validation'
-  ) => {
-    const first = errors[0];
-    if (!first) return;
-    context.logger.error('Model pricing migration requires source repair', {
-      errorCount: errors.length,
-      modelId: first.id,
-      reason: first.reason
-    });
-    for (const { id, reason } of errors) {
-      failedRecords.set(id, { stageKey, data: { modelId: id }, reason: { message: reason } });
+  // 所有转换先校验再写入，坏数据不会造成部分模型已迁移。
+  const updates = models.flatMap((model) => {
+    try {
+      const type = z.nativeEnum(ModelTypeEnum).parse(model.type);
+      if (Object.hasOwn(model, 'pricing')) {
+        (type === ModelTypeEnum.llm ? LLMModelPricingSchema : UnitModelPricingSchema).parse(
+          model.pricing
+        );
+        return [];
+      }
+      const pricing = convertLegacyModelPricing(model, type);
+      return [
+        {
+          updateOne: {
+            filter: { _id: model._id, scope: ModelScopeEnum.system, pricing: { $exists: false } },
+            update: { $set: { pricing } }
+          }
+        }
+      ];
+    } catch (error) {
+      throw new Error(
+        `Invalid system model pricing: ${String(model._id)} (${model.model ?? model.type})`,
+        { cause: error }
+      );
     }
-    await context.fail({
-      message: `Model ${first.id}: ${first.reason} (${errors.length} invalid model prices)`,
-      failedRecords: [...failedRecords.values()]
-    });
-  };
+  });
 
-  // 先处理旧失败明细，再继续游标；错误快照先于后续 checkpoint 更新。
-  const retryIds = [...failedRecords.keys()];
-  for (let offset = 0; offset < retryIds.length; offset += systemMigrationBatchSize) {
-    context.signal.throwIfAborted();
-    await context.assertActive();
-    const ids = retryIds.slice(offset, offset + systemMigrationBatchSize);
-    const records = await readFailedTokenPriceMigrationRecords(ids);
-    const { errors } = await migrateTokenPricesBatch(records);
-    ids.forEach((id) => failedRecords.delete(id));
-    await assertNoErrors(errors, 'models');
-    await context.reportFailedRecords([...failedRecords.values()]);
-  }
-
-  while (checkpoint.endId && checkpoint.lastId !== checkpoint.endId) {
-    context.signal.throwIfAborted();
-    await context.assertActive();
-    const records = await readTokenPriceMigrationBatch({
-      ...checkpoint,
-      limit: systemMigrationBatchSize
-    });
-    if (records.length === 0) break;
-    const { errors } = await migrateTokenPricesBatch(records);
-    await assertNoErrors(errors, 'models');
-    await context.assertActive();
-    checkpoint = {
-      ...checkpoint,
-      lastId: String(records.at(-1)!._id),
-      scannedCount: checkpoint.scannedCount + records.length
-    };
-    await context.saveCheckpoint(checkpoint);
-    await context.reportProgress({
-      key: 'models',
-      status: SystemMigrationStatusEnum.running,
-      current: checkpoint.scannedCount,
-      total: checkpoint.total
-    });
-  }
+  await context.assertActive();
+  const migratedCount =
+    updates.length === 0
+      ? 0
+      : await mongoSessionRun(async (session) => {
+          const result = await MongoAIModel.collection.bulkWrite(updates, {
+            session,
+            ordered: true
+          });
+          if (result.modifiedCount > 0)
+            await incrementModelCatalogRevision({ scope: ModelScopeEnum.system }, session);
+          return result.modifiedCount;
+        });
+  await context.assertActive();
   await context.reportProgress({
     key: 'models',
     status: SystemMigrationStatusEnum.succeeded,
-    current: checkpoint.scannedCount,
-    total: checkpoint.total
+    current: migratedCount,
+    total: models.length
   });
-
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
-  await context.assertActive();
-  const snapshot = await getTokenPriceMigrationSnapshot();
-  let lastId: string | null = null;
-  let verifiedCount = 0;
-  while (snapshot.endId && lastId !== snapshot.endId) {
-    context.signal.throwIfAborted();
-    await context.assertActive();
-    const records = await readTokenPriceMigrationBatch({
-      lastId,
-      endId: snapshot.endId,
-      limit: systemMigrationBatchSize
-    });
-    if (records.length === 0) break;
-    const errors = validateTokenPricesBatch(records);
-    if (errors.length > 0) {
-      // 校验发现已扫描区间内仍有旧数据时，重试需重新扫描，不能永久跳过坏记录。
-      await context.saveCheckpoint({ version: 1, ...snapshot, lastId: null, scannedCount: 0 });
-      await assertNoErrors(errors, 'validation');
-    }
-    lastId = String(records.at(-1)!._id);
-    verifiedCount += records.length;
-    await context.reportProgress({
-      key: 'validation',
-      status: SystemMigrationStatusEnum.running,
-      current: verifiedCount,
-      total: snapshot.total
-    });
-  }
-  await context.reportProgress({
-    key: 'validation',
-    status: SystemMigrationStatusEnum.succeeded,
-    current: verifiedCount,
-    total: snapshot.total
-  });
-  return { verifiedCount };
+  return { migratedCount };
 };

@@ -130,9 +130,8 @@
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 与工具文件夹路径",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知识库文件夹路径",
   "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径",
-  "migrations.20261025_token_prices_per_million.name": "迁移模型价格至百万单位",
-  "migrations.20261025_token_prices_per_million.description": "启动后在后台遍历全部模型，将 Token 模型和 TTS 字符单价从每千换算为每百万，不阻塞业务启动。单价四舍五入至 2 位小数，实际费用可能随之变化，保留旧价备份；STT 时长价格不变。遇到坏数据会停止本次任务，可在管理页查看失败明细、修复后重试。",
-  "migrations.20261025_token_prices_per_million.models": "迁移 Token 和 TTS 字符单价",
-  "migrations.20261025_token_prices_per_million.validation": "校验计价单位",
-  "migrations.20261025_token_prices_per_million.result": "已校验 {{verifiedCount}} 个模型价格，STT 保持原单位。"
+  "migrations.20261025_token_prices_per_million.name": "迁移系统模型价格至百万单位",
+  "migrations.20261025_token_prices_per_million.description": "后台一次读取系统模型并批量写入 pricing，Token/TTS 单价乘以 1000，STT 原价复制；保留根级原值，已有合法 pricing 跳过。团队模型不计费，不阻塞启动；失败后修复数据并重试。",
+  "migrations.20261025_token_prices_per_million.models": "更新系统模型单价",
+  "migrations.20261025_token_prices_per_million.result": "已迁移 {{migratedCount}} 个系统模型至 pricing，旧价格原值和团队模型保持不变。"
 }

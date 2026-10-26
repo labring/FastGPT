@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import React, { act } from 'react';
 import { JSDOM } from 'jsdom';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -79,7 +80,7 @@ afterAll(() => {
 });
 
 /** 通过完整配置表单验证真实综合价控件，不单独复制控件参数或舍入逻辑。 */
-const render = async (type: ModelTypeEnum) => {
+const render = async (type: ModelTypeEnum, unitPrice = 0) => {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -104,7 +105,7 @@ const render = async (type: ModelTypeEnum) => {
             name: 'Price model',
             scope: ModelScopeEnum.system,
             config,
-            charsPointsPrice: 0
+            pricing: { unitPrice }
           } as AIModelDocumentDataType,
           providers: [],
           formId: 'price-form',
@@ -113,7 +114,7 @@ const render = async (type: ModelTypeEnum) => {
       )
     )
   );
-  return container.querySelector<HTMLInputElement>('input[name="charsPointsPrice"]')!;
+  return container.querySelector<HTMLInputElement>('input[name="pricing.unitPrice"]')!;
 };
 
 const fillAndBlur = async (field: HTMLInputElement, value: string) => {
@@ -141,21 +142,23 @@ describe('ModelConfigForm comprehensive price', () => {
       expect(container.textContent).toContain(unit);
       await act(async () => container.querySelector('form')!.requestSubmit());
       await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-      expect(save.mock.calls[0][0].charsPointsPrice).toBe(expected);
+      expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).unitPrice).toBe(expected);
     }
   );
 
   it('preserves explicit free prices and omitted prices after clearing the input', async () => {
-    const field = await render(ModelTypeEnum.stt);
+    const field = await render(ModelTypeEnum.stt, 0.125);
+    expect(field.value).toBe('0.13');
+    expect(field.checkValidity()).toBe(true);
     await fillAndBlur(field, '0');
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-    expect(save.mock.calls[0][0].charsPointsPrice).toBe(0);
+    expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).unitPrice).toBe(0);
     save.mockClear();
     await fillAndBlur(field, '');
     expect(field.value).toBe('');
     await act(async () => container.querySelector('form')!.requestSubmit());
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
-    expect(save.mock.calls[0][0]).not.toHaveProperty('charsPointsPrice');
+    expect(save.mock.calls[0][0]).not.toHaveProperty('pricing.unitPrice');
   });
 });

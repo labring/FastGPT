@@ -15,7 +15,7 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
       type,
       name: type,
       provider: 'openai',
-      charsPointsPrice: type !== ModelTypeEnum.stt ? 125 : 0.125
+      pricing: { unitPrice: type !== ModelTypeEnum.stt ? 125 : 0.125 }
     }))
   })
 }));

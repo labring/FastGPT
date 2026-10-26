@@ -151,12 +151,17 @@ describe('registerNodeInstrumentation', () => {
       );
       const saved = await MongoAIModel.collection.findOne({ _id: insertedId });
       expect(saved).toMatchObject({
-        legacyTokenPricing: { inputPrice: 2, outputPrice: 4 },
-        priceTiers: [{ inputPrice: 2000, outputPrice: 4000 }]
+        inputPrice: 2,
+        outputPrice: 4,
+        pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] }
       });
       expect(
         calculateModelPrice({
-          config: { type: ModelTypeEnum.llm, priceTiers: saved!.priceTiers },
+          config: {
+            type: ModelTypeEnum.llm,
+            scope: ModelScopeEnum.system,
+            pricing: saved!.pricing
+          },
           inputTokens: 1000
         }).totalPoints
       ).toBe(2);

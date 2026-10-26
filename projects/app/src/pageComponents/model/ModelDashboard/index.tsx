@@ -17,8 +17,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
+import { type ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelPricingType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
@@ -148,20 +148,16 @@ const ModelDashboard = ({
     const map = new Map<
       string,
       {
-        inputPrice?: number;
-        outputPrice?: number;
-        charsPointsPrice?: number;
+        pricing?: ModelPricingType;
+        scope?: ModelScopeEnum;
         type?: ModelTypeEnum;
-        priceTiers?: ModelPriceTierType[];
       }
     >();
     availableModels.forEach((model) => {
       map.set(model.model, {
-        inputPrice: model.inputPrice,
-        outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice,
-        type: model.type,
-        priceTiers: model.priceTiers
+        pricing: model.pricing,
+        scope: model.scope,
+        type: model.type
       });
     });
     return map;

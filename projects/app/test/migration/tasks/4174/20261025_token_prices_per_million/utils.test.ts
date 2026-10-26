@@ -1,61 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { convertModelPricingToMillion } from '@/migration/tasks/4174/20261025_token_prices_per_million/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { convertLegacyModelPricing } from '@/migration/tasks/4174/20261025_token_prices_per_million/utils';
 
-describe('convertModelPricingToMillion', () => {
+describe('legacy pricing conversion', () => {
   it.each([
     [4.1001, 0.0041001],
     [1e-7, 1e-10],
     [1.234567890123456e21, 1.234567890123456e18]
-  ])('preserves decimal and exponential boundary precision: %s -> %s', (source, target) => {
-    const result = convertModelPricingToMillion({
+  ])('preserves boundary %s -> %s', (source, target) => {
+    const legacy = {
       priceTiers: [
-        { maxInputTokens: source, inputPrice: 1, outputPrice: 0 },
-        { minInputTokens: source, inputPrice: 3, outputPrice: 0 }
-      ]
-    });
-    expect(result.priceTiers[0].maxInputTokens).toBe(target);
-    expect(result.priceTiers[1].minInputTokens).toBe(target);
-  });
-
-  it('converts source prices and boundaries without mutation or filling omitted prices', () => {
-    const source = {
-      inputPrice: 0.000035,
-      outputPrice: 0,
-      charsPointsPrice: 0.5,
-      priceTiers: [
-        { minInputTokens: 0, maxInputTokens: 32, inputPrice: 2, outputPrice: 6 },
-        {
-          minInputTokens: 32,
-          maxInputTokens: null,
-          inputPrice: 4,
-          outputPrice: 0.000065
-        }
+        { minInputTokens: 0, maxInputTokens: source, inputPrice: 0.000035, outputPrice: 0.000065 },
+        { minInputTokens: source, inputPrice: 1, outputPrice: 2 }
       ]
     };
-    const result = convertModelPricingToMillion(source);
-    expect(result).toMatchObject({
-      inputPrice: 0.035,
-      outputPrice: 0,
-      charsPointsPrice: 500,
-      priceTiers: [
-        {
-          minInputTokens: 0,
-          maxInputTokens: 0.032,
-          inputPrice: 2000,
-          outputPrice: 6000
-        },
-        {
-          minInputTokens: 0.032,
-          maxInputTokens: null,
-          inputPrice: 4000,
-          outputPrice: 0.065
-        }
+    expect(convertLegacyModelPricing(legacy, ModelTypeEnum.llm)).toEqual({
+      tiers: [
+        { maxInputTokens: target, inputPrice: 0.04, outputPrice: 0.07 },
+        { inputPrice: 1000, outputPrice: 2000 }
       ]
     });
-    expect(source.priceTiers[0].maxInputTokens).toBe(32);
-    expect(convertModelPricingToMillion({})).toEqual({});
+    expect(legacy.priceTiers[0].maxInputTokens).toBe(source);
+  });
+  it('marks price-less models as migrated without inventing a unit rate', () => {
+    expect(convertLegacyModelPricing({}, ModelTypeEnum.llm)).toEqual({ tiers: [] });
+    expect(convertLegacyModelPricing({}, ModelTypeEnum.tts)).toEqual({});
+    expect(convertLegacyModelPricing({ outputPrice: 2 }, ModelTypeEnum.llm)).toEqual({
+      tiers: [{ inputPrice: 0, outputPrice: 2000 }]
+    });
     expect(
-      convertModelPricingToMillion({ priceTiers: [{ inputPrice: 1, outputPrice: 2 }] }).priceTiers
-    ).toEqual([{ inputPrice: 1000, outputPrice: 2000 }]);
+      convertLegacyModelPricing({ inputPrice: 0, charsPointsPrice: 4 }, ModelTypeEnum.llm)
+    ).toEqual({ tiers: [{ inputPrice: 0, outputPrice: 0 }] });
   });
 });

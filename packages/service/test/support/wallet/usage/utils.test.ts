@@ -1,11 +1,11 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { describe, expect, it, vi } from 'vitest';
 
 const createModel = (
   data: Pick<AIModelDataType, 'modelId' | 'name' | 'model'> &
-    Partial<Pick<AIModelDataType, 'charsPointsPrice' | 'inputPrice' | 'outputPrice' | 'priceTiers'>>
+    Partial<Pick<LLMModelDataType, 'pricing'>>
 ): AIModelDataType => ({
   ...data,
   type: ModelTypeEnum.llm,
@@ -20,24 +20,24 @@ const mockModels: Record<string, AIModelDataType> = {
     modelId: '507f1f77bcf86cd799439021',
     name: 'GPT-4',
     model: 'gpt-4',
-    charsPointsPrice: 0,
-    inputPrice: 3,
-    outputPrice: 6
+    pricing: { tiers: [{ inputPrice: 3, outputPrice: 6 }] }
   }),
   'gpt-3.5': createModel({
     modelId: '507f1f77bcf86cd799439022',
     name: 'GPT-3.5',
     model: 'gpt-3.5',
-    charsPointsPrice: 2
+    pricing: { tiers: [{ inputPrice: 2, outputPrice: 2 }] }
   }),
   'tiered-model': createModel({
     modelId: '507f1f77bcf86cd799439023',
     name: 'Tiered',
     model: 'tiered-model',
-    priceTiers: [
-      { maxInputTokens: 1, inputPrice: 1, outputPrice: 2 },
-      { inputPrice: 5, outputPrice: 10 }
-    ]
+    pricing: {
+      tiers: [
+        { maxInputTokens: 1, inputPrice: 1, outputPrice: 2 },
+        { inputPrice: 5, outputPrice: 10 }
+      ]
+    }
   })
 };
 
@@ -61,7 +61,7 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
 }));
 
 describe('formatModelChars2Points', () => {
-  it('should calculate points with legacy input/output pricing', () => {
+  it('should calculate points with configured LLM pricing', () => {
     const result = formatModelChars2Points({
       model: mockModels['gpt-4'],
       inputTokens: 1000000,
@@ -79,7 +79,7 @@ describe('formatModelChars2Points', () => {
       outputTokens: 1000000
     });
     expect(result.modelId).toBe('507f1f77bcf86cd799439022');
-    // charsPointsPrice:2 → inputPrice=outputPrice=2
+    // 单档输入、输出单价均为 2。
     // 2M 输入和 1M 输出，共 6 积分。
     expect(result.totalPoints).toBe(6);
   });
@@ -88,18 +88,6 @@ describe('formatModelChars2Points', () => {
     const result = formatModelChars2Points({ model: mockModels['gpt-4'] });
     expect(result.modelId).toBe('507f1f77bcf86cd799439021');
     expect(result.totalPoints).toBe(0);
-  });
-
-  it('should support custom multiple parameter', () => {
-    const result = formatModelChars2Points({
-      model: mockModels['gpt-4'],
-      inputTokens: 500,
-      outputTokens: 500,
-      multiple: 500
-    });
-    expect(result.modelId).toBe('507f1f77bcf86cd799439021');
-    // inputPrice:3 * (500/500) + outputPrice:6 * (500/500) = 3 + 6 = 9
-    expect(result.totalPoints).toBe(9);
   });
 
   it('should calculate points with price tiers', () => {

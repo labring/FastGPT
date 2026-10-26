@@ -1,6 +1,6 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { normalizeModelPricingForRead } from '@fastgpt/global/core/ai/model/pricing';
+import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
@@ -67,7 +67,7 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
 
     const resolvedModels = importedModels.map(
       ({ data: { modelId: importedModelId, ...importedData }, existingModel }) => {
-        const modelData = normalizeModelPricingForRead(importedData);
+        const modelData = normalizeModelPricingForSave(importedData);
         if (!existingModel) {
           return {
             modelId: importedModelId,

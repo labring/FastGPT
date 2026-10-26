@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import type { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
 import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
@@ -24,7 +24,6 @@ export type BaseFormatModelItem = Partial<PriceType> & {
   model?: string;
   type: ModelTypeEnum;
   provider: string;
-  charsPointsPrice?: number;
   config?: ModelConfigCapabilityFields | Record<string, unknown>;
   isActive?: boolean;
   testMode?: boolean;
@@ -100,17 +99,19 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
             ? `1M ${t('common:unit.character')}`
             : 'M Tokens';
       const priceLabel =
-        item.type === ModelTypeEnum.llm ? (
+        item.scope === ModelScopeEnum.team ? (
+          '-'
+        ) : item.type === ModelTypeEnum.llm ? (
           <PriceTiersLabel
             config={item}
             unitLabel={`${t('common:support.wallet.subscription.point')} / ${unit}`}
           />
-        ) : typeof item.charsPointsPrice === 'number' ? (
+        ) : typeof item.pricing?.unitPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             {(item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) &&
               `${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {roundModelPrice(item.charsPointsPrice)}
+              {roundModelPrice(item.pricing?.unitPrice)}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / ${unit}`}
           </Flex>

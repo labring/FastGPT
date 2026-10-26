@@ -41,35 +41,40 @@ describe('model table projection', () => {
   it.each([
     {
       type: ModelTypeEnum.embedding,
-      charsPointsPrice: 1.234,
+      pricing: { unitPrice: 1.234 },
       price: 1.23,
       unit: 'M Tokens'
     },
     {
       type: ModelTypeEnum.rerank,
-      charsPointsPrice: 1.239,
+      pricing: { unitPrice: 1.239 },
       price: 1.24,
       unit: 'M Tokens'
     },
     {
       type: ModelTypeEnum.embedding,
-      charsPointsPrice: 0,
+      pricing: { unitPrice: 0 },
       price: 0,
       unit: 'M Tokens'
     },
     {
       type: ModelTypeEnum.tts,
-      charsPointsPrice: 125,
+      pricing: { unitPrice: 125 },
       price: 125,
       unit: '1M common:unit.character'
     },
     {
       type: ModelTypeEnum.tts,
-      charsPointsPrice: 0.125,
+      pricing: { unitPrice: 0.125 },
       price: 0.13,
       unit: '1M common:unit.character'
     },
-    { type: ModelTypeEnum.stt, charsPointsPrice: 0.125, price: 0.13, unit: '60common:unit.seconds' }
+    {
+      type: ModelTypeEnum.stt,
+      pricing: { unitPrice: 0.125 },
+      price: 0.13,
+      unit: '60common:unit.seconds'
+    }
   ])(
     'formats $type prices with at most two decimals and the correct unit',
     ({ price, unit, ...pricing }) => {

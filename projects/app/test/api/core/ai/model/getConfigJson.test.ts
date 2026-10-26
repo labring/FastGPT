@@ -28,6 +28,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
       requestAuth: 'secret-token',
       inputPrice: 1,
       outputPrice: 2,
+      pricing: { tiers: [{ inputPrice: 1000, outputPrice: 2000 }] },
       config: {
         maxContext: 16000,
         maxResponse: 8000,
@@ -56,7 +57,11 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     expect(exported[0]).not.toHaveProperty('_id');
     expect(exported[0]).not.toHaveProperty('metadata');
     expect(exported[0]).not.toHaveProperty('unknownTopLevel');
-    expect(exported[0]).toMatchObject({ inputPrice: 1, outputPrice: 2, priceTiers: [] });
+    expect(exported[0]).toMatchObject({
+      pricing: { tiers: [{ inputPrice: 1000, outputPrice: 2000 }] }
+    });
+    expect(exported[0]).not.toHaveProperty('inputPrice');
+    expect(exported[0]).not.toHaveProperty('outputPrice');
     // 导出保留数据库中的旧价格，不触发格式转换或回写。
     expect(await MongoAIModel.findById(model._id).lean()).toMatchObject({
       inputPrice: 1,

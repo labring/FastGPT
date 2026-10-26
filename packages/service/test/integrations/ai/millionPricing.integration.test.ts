@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -94,7 +95,7 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
     'persists million-unit prices, parses usage and bills once, stream=%s',
     async (stream) => {
       const pricing = {
-        priceTiers: [{ inputPrice: 2000, outputPrice: 4000 }]
+        pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] }
       };
       const [saved] = await MongoAIModel.create([
         {
@@ -124,7 +125,10 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
       await Promise.all(writes.mock.results.map(({ value }) => value));
       const record = await MongoLLMRequestRecord.findOne({ requestId: result.requestId }).lean();
       expect(record?.response.usage).toMatchObject({ inputTokens: 10000, outputTokens: 2000 });
-      expect(stored?.priceTiers?.[0]).toMatchObject({ inputPrice: 2000, outputPrice: 4000 });
+      expect(ModelPricingSchema.parse(stored?.pricing).tiers?.[0]).toMatchObject({
+        inputPrice: 2000,
+        outputPrice: 4000
+      });
     }
   );
 
@@ -137,8 +141,7 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
       provider: 'openai',
       type: ModelTypeEnum.llm as const,
       scope: ModelScopeEnum.system,
-      inputPrice: 2000,
-      outputPrice: 4000,
+      pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
       config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
     };
     const result = await createLLMResponse({
@@ -174,7 +177,7 @@ it.each([false, true])(
       provider: 'openai',
       type: ModelTypeEnum.llm as const,
       scope: ModelScopeEnum.system,
-      priceTiers: [{ inputPrice: 2000, outputPrice: 4000 }],
+      pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
       config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
     };
     const onLLMRequestEnd = vi.fn();
