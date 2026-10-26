@@ -280,7 +280,6 @@
   "replace_invalid_tts_note": "When replacing an invalid speech playback model, the first available voice of the target model is used. The target model must have a voice.",
   "replace_invalid_vision_note": "If a dataset image analysis model is unavailable, the selected language model must support vision. Dataset index models are excluded.",
   "replace_invalid_review": "Review mapping",
-  "replace_invalid_back": "Edit mapping",
   "replace_invalid_execute": "Confirm replacement",
   "replace_invalid_confirm_warning": "This updates unavailable model references in this team's datasets, apps, and all app versions. Historical versions are changed in place. Review the mapping below.",
   "replace_invalid_done": "Scan and replacement completed",

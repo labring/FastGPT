@@ -281,7 +281,40 @@ export const replaceInvalidModelReferences = async ({
   const teamObjectId = new Types.ObjectId(teamId);
   const result: ReplaceInvalidModelReferencesResult = { completed: true, counts, failedSamples };
   const targetLLM = handle.getAllModels().find((item) => item.modelId === replacement.llmModelId);
+  const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
   let stopError: unknown;
+
+  const logBatch = ({
+    stage,
+    resourceType,
+    rows,
+    appId
+  }: {
+    stage: 'scanned' | 'replacing' | 'replaced';
+    resourceType: ResourceKind;
+    rows: ReadonlyArray<{ _id: unknown }>;
+    appId?: string;
+  }) => {
+    logger.info(`Invalid model replacement batch ${stage}`, {
+      teamId,
+      resourceType,
+      ...(appId ? { appId } : {}),
+      batchRecords: rows.length,
+      lastId: String(rows[rows.length - 1]._id),
+      ...(stage === 'replaced'
+        ? {
+            replacedReferences: modelKinds.reduce(
+              (total, kind) => total + counts[resourceType][kind].replacedReferences,
+              0
+            ),
+            failedRecords: modelKinds.reduce(
+              (total, kind) => total + counts[resourceType][kind].failedRecords,
+              0
+            )
+          }
+        : {})
+    });
+  };
 
   const assertWritable = async () => {
     try {
@@ -360,6 +393,8 @@ export const replaceInvalidModelReferences = async ({
         .select('_id agentModelId agentModel vlmModelId vlmModel')
         .lean();
       if (rows.length === 0) break;
+      logBatch({ stage: 'scanned', resourceType: 'dataset', rows });
+      logBatch({ stage: 'replacing', resourceType: 'dataset', rows });
       for (const row of rows) {
         counts.dataset.llm.scannedRecords++;
         try {
@@ -445,6 +480,7 @@ export const replaceInvalidModelReferences = async ({
           );
         }
       }
+      logBatch({ stage: 'replaced', resourceType: 'dataset', rows });
       datasetAfter = String(rows[rows.length - 1]._id);
     }
 
@@ -460,6 +496,8 @@ export const replaceInvalidModelReferences = async ({
         .select('_id modules chatConfig')
         .lean<LegacyAppRow[]>();
       if (apps.length === 0) break;
+      logBatch({ stage: 'scanned', resourceType: 'app', rows: apps });
+      logBatch({ stage: 'replacing', resourceType: 'app', rows: apps });
       for (const app of apps) {
         counts.app.llm.scannedRecords++;
         counts.app.tts.scannedRecords++;
@@ -533,6 +571,18 @@ export const replaceInvalidModelReferences = async ({
             .select('_id appId nodes chatConfig resources')
             .lean();
           if (versions.length === 0) break;
+          logBatch({
+            stage: 'scanned',
+            resourceType: 'version',
+            rows: versions,
+            appId: String(app._id)
+          });
+          logBatch({
+            stage: 'replacing',
+            resourceType: 'version',
+            rows: versions,
+            appId: String(app._id)
+          });
           for (const version of versions) {
             counts.version.llm.scannedRecords++;
             counts.version.tts.scannedRecords++;
@@ -632,13 +682,20 @@ export const replaceInvalidModelReferences = async ({
               );
             }
           }
+          logBatch({
+            stage: 'replaced',
+            resourceType: 'version',
+            rows: versions,
+            appId: String(app._id)
+          });
           versionAfter = String(versions[versions.length - 1]._id);
         }
       }
+      logBatch({ stage: 'replaced', resourceType: 'app', rows: apps });
       appAfter = String(apps[apps.length - 1]._id);
     }
   } catch (error) {
-    getLogger(LogCategories.MODULE.AI.CONFIG).error('Invalid model replacement interrupted', {
+    logger.error('Invalid model replacement interrupted', {
       error,
       teamId
     });
@@ -646,5 +703,17 @@ export const replaceInvalidModelReferences = async ({
     result.stoppedReason = stopError ? 'conditions_changed' : 'scan_interrupted';
   }
 
+  const totalCounts = Object.values(counts).flatMap((byModel) => Object.values(byModel));
+  logger.info('Invalid model replacement finished', {
+    teamId,
+    completed: result.completed,
+    stoppedReason: result.stoppedReason,
+    scannedDatasets: counts.dataset.llm.scannedRecords,
+    scannedApps: counts.app.llm.scannedRecords,
+    scannedVersions: counts.version.llm.scannedRecords,
+    replacedReferences: totalCounts.reduce((total, count) => total + count.replacedReferences, 0),
+    failedRecords: totalCounts.reduce((total, count) => total + count.failedRecords, 0),
+    failedSampleCount: failedSamples.length
+  });
   return result;
 };

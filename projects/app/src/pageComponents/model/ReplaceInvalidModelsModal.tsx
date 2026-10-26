@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Flex, Table, Tbody, Td, Text, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Table, Tbody, Td, Text, Th, Thead, Tr } from '@chakra-ui/react';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postReplaceInvalidModelReferences } from '@/web/core/ai/model/api';
 import { useModelList } from '@/web/core/ai/model/useModelList';
@@ -9,6 +9,7 @@ import type {
   ReplaceInvalidModelReferencesResponse
 } from '@fastgpt/global/openapi/core/ai/model/invalidReferences';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
@@ -22,7 +23,7 @@ const modelFields = [
 ] as const;
 const resourceTypes: ResourceType[] = ['dataset', 'app', 'version'];
 
-/** 一次请求完成替换；确认步骤只展示映射和历史版本变更说明，不触发预扫描。 */
+/** 一次请求完成替换；执行前用确认弹窗展示映射和历史版本变更说明。 */
 const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
   const { modelList } = useModelList({ enabled: true });
@@ -31,8 +32,9 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
     ttsModelId: '',
     rerankModelId: ''
   });
-  const [step, setStep] = useState<'select' | 'confirm' | 'result'>('select');
+  const [step, setStep] = useState<'select' | 'result'>('select');
   const [result, setResult] = useState<ReplaceInvalidModelReferencesResponse>();
+  const { openConfirm, ConfirmModal } = useConfirm();
   const { runAsync, loading } = useRequest(postReplaceInvalidModelReferences, {
     onSuccess: (response) => {
       setResult(response);
@@ -43,9 +45,8 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const close = () => {
     if (!loading) onClose();
   };
-  const selectedModels = modelFields.map(({ key, type, label }) => ({
+  const selectedModels = modelFields.map(({ key, label }) => ({
     key,
-    type,
     label,
     model: modelList.find((item) => item.modelId === replacement[key])
   }));
@@ -55,6 +56,16 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
     selectedTts?.type === ModelTypeEnum.tts &&
     selectedTts.config.voices.some(({ value }) => value.trim().length > 0);
   const hasFailures = Boolean(result?.failedSamples.length);
+  const confirmReplacement = () => {
+    openConfirm({
+      title: t('config_model:replace_invalid_review'),
+      customContent: `${t('config_model:replace_invalid_confirm_warning')}\n\n${selectedModels
+        .map(({ key, label, model }) => `${t(label)}：${model?.name ?? replacement[key]}`)
+        .join('\n')}`,
+      confirmText: t('config_model:replace_invalid_execute'),
+      onConfirm: () => runAsync({ replacement })
+    })();
+  };
 
   return (
     <MyModal
@@ -70,26 +81,14 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
             <Button variant="whiteBase" onClick={close}>
               {t('common:Cancel')}
             </Button>
-            <Button isDisabled={!canConfirm} onClick={() => setStep('confirm')}>
+            <Button isDisabled={!canConfirm || loading} onClick={confirmReplacement}>
               {t('config_model:replace_invalid_review')}
-            </Button>
-          </>
-        ) : step === 'confirm' ? (
-          <>
-            <Button variant="whiteBase" isDisabled={loading} onClick={() => setStep('select')}>
-              {t('config_model:replace_invalid_back')}
-            </Button>
-            <Button
-              isLoading={loading}
-              onClick={() => void runAsync({ replacement }).catch(() => {})}
-            >
-              {t('config_model:replace_invalid_execute')}
             </Button>
           </>
         ) : (
           <>
             {(result?.completed === false || hasFailures) && (
-              <Button variant="whiteBase" onClick={() => setStep('confirm')}>
+              <Button variant="whiteBase" onClick={confirmReplacement}>
                 {t('config_model:replace_invalid_retry')}
               </Button>
             )}
@@ -123,18 +122,6 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
           <Text color="myGray.600" fontSize="sm">
             {t('config_model:replace_invalid_vision_note')}
           </Text>
-        </Box>
-      )}
-
-      {step === 'confirm' && (
-        <Box>
-          <Text mb={4}>{t('config_model:replace_invalid_confirm_warning')}</Text>
-          {selectedModels.map(({ key, label, model }) => (
-            <Flex key={key} justifyContent="space-between" gap={4} py={2}>
-              <Text color="myGray.600">{t(label)}</Text>
-              <Text textAlign="right">{model?.name ?? replacement[key]}</Text>
-            </Flex>
-          ))}
         </Box>
       )}
 
@@ -202,6 +189,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
           )}
         </Box>
       )}
+      <ConfirmModal isLoading={loading} />
     </MyModal>
   );
 };

@@ -280,7 +280,6 @@
   "replace_invalid_tts_note": "替換失效的語音播放模型時，將使用目標模型的第一種可用音色。目標模型需配置音色。",
   "replace_invalid_vision_note": "若知識庫圖片理解模型失效，目標語言模型需要支援視覺能力。知識庫索引模型不在範圍內。",
   "replace_invalid_review": "核對對應",
-  "replace_invalid_back": "返回修改",
   "replace_invalid_execute": "確認替換",
   "replace_invalid_confirm_warning": "將同步修改目前團隊的知識庫、應用程式及全部歷史版本中的失效模型引用。歷史版本會原地更新，請核對以下對應。",
   "replace_invalid_done": "掃描與替換已完成",
