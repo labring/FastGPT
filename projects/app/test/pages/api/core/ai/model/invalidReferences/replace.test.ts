@@ -9,7 +9,6 @@ import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { replaceInvalidModelReferences } from '@/service/core/ai/model/invalidReferences/service';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { handler } from '@/pages/api/core/ai/model/invalidReferences/replace';
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({ authUserPer: vi.fn() }));
@@ -21,7 +20,6 @@ vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
 vi.mock('@/service/core/ai/model/invalidReferences/service', () => ({
   replaceInvalidModelReferences: vi.fn()
 }));
-vi.mock('@fastgpt/service/support/user/audit/util', () => ({ addAuditLog: vi.fn() }));
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (route: unknown) => route }));
 
 const replacement = {
@@ -103,13 +101,6 @@ describe('replace invalid model references API', () => {
       { type: ModelTypeEnum.rerank, authorizedIds: expect.any(Set) }
     );
     expect(getTmbInfoByTmbId).toHaveBeenCalledTimes(2);
-    expect(addAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: owner.teamId,
-        tmbId: owner.tmbId,
-        params: expect.objectContaining({ replacement })
-      })
-    );
   });
 
   it('blocks further writes when owner role is revoked', async () => {
@@ -130,7 +121,6 @@ describe('replace invalid model references API', () => {
 
     await expect(handler(request())).rejects.toThrow('Unavailable model');
     expect(replaceInvalidModelReferences).not.toHaveBeenCalled();
-    expect(addAuditLog).not.toHaveBeenCalled();
   });
 
   it('rejects a TTS target with no available voice before scanning', async () => {

@@ -1,9 +1,5 @@
 import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type {
-  ReplaceInvalidModelReferencesBody,
-  ReplaceInvalidModelReferencesResponse
-} from '@fastgpt/global/openapi/core/ai/model/invalidReferences';
 
 export const adminAuditLogMap = {
   [AdminAuditEventEnum.ADMIN_LOGIN]: {
@@ -216,16 +212,6 @@ export const auditLogMap = {
       teamName: string;
       oldOwnerName: string;
       newOwnerName: string;
-    }
-  },
-  [AuditEventEnum.REPLACE_INVALID_MODELS]: {
-    content: i18nT('account_team:log_replace_invalid_models'),
-    typeLabel: i18nT('account_team:replace_invalid_models'),
-    params: {} as {
-      name?: string;
-      replacement: ReplaceInvalidModelReferencesBody['replacement'];
-      counts: ReplaceInvalidModelReferencesResponse['counts'];
-      completed: boolean;
     }
   },
   // Resource permission

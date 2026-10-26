@@ -18,8 +18,6 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { replaceInvalidModelReferences } from '@/service/core/ai/model/invalidReferences/service';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /** 只允许当前团队的实际 owner 发起同步替换；每批写入前复查权限和目标目录。 */
 export async function handler(
@@ -83,18 +81,7 @@ export async function handler(
     handle,
     assertCanContinue
   });
-  const response = ReplaceInvalidModelReferencesResponseSchema.parse(result);
-  await addAuditLog({
-    teamId,
-    tmbId,
-    event: AuditEventEnum.REPLACE_INVALID_MODELS,
-    params: {
-      replacement,
-      counts: response.counts,
-      completed: response.completed
-    }
-  });
-  return response;
+  return ReplaceInvalidModelReferencesResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);
