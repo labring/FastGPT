@@ -374,6 +374,98 @@ describe('replaceInvalidModelReferences', () => {
     ).rejects.toThrow('available voice');
   });
 
+  it('replaces legacy dataset text and image model names without changing the index model', async () => {
+    await MongoDataset.collection.insertOne({
+      _id: ids.dataset,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'legacy dataset',
+      type: 'dataset',
+      agentModel: 'deleted-text-model',
+      vlmModel: 'deleted-image-model',
+      vectorModel: 'old-index-model'
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
+
+    expect(result.failedSamples).toEqual([]);
+    expect(result.counts.dataset.llm.replacedReferences).toBe(2);
+    expect(dataset).toMatchObject({
+      agentModelId: 'new-llm',
+      agentModel: 'new-llm-name',
+      vlmModelId: 'new-llm',
+      vlmModel: 'new-llm-name',
+      vectorModel: 'old-index-model'
+    });
+  });
+
+  it('replaces BSON model IDs in old datasets and leaves the index model untouched', async () => {
+    const oldAgentId = new Types.ObjectId();
+    const oldVlmId = new Types.ObjectId();
+    await MongoDataset.collection.insertOne({
+      _id: ids.dataset,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'dataset with BSON model IDs',
+      type: 'dataset',
+      agentModelId: oldAgentId,
+      agentModel: 'old-agent',
+      vlmModelId: oldVlmId,
+      vlmModel: 'old-vlm',
+      vectorModelId: new Types.ObjectId()
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
+
+    expect(result.counts.dataset.llm.replacedReferences).toBe(2);
+    expect(dataset?.agentModelId).toBe('new-llm');
+    expect(dataset?.vlmModelId).toBe('new-llm');
+    expect(dataset?.vectorModelId).toBeInstanceOf(Types.ObjectId);
+  });
+
+  it('replaces BSON legacy dataset model fields without adding an ID to the index model', async () => {
+    await MongoDataset.collection.insertOne({
+      _id: ids.dataset,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'dataset with BSON legacy fields',
+      type: 'dataset',
+      agentModel: new Types.ObjectId(),
+      vlmModel: new Types.ObjectId(),
+      vectorModel: 'old-index-model'
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
+
+    expect(result.counts.dataset.llm.replacedReferences).toBe(2);
+    expect(dataset).toMatchObject({
+      agentModelId: 'new-llm',
+      agentModel: 'new-llm-name',
+      vlmModelId: 'new-llm',
+      vlmModel: 'new-llm-name',
+      vectorModel: 'old-index-model'
+    });
+    expect(dataset).not.toHaveProperty('vectorModelId');
+  });
+
   it('rejects a non-vision target before writing any invalid image model reference', async () => {
     await MongoDataset.collection.insertOne({
       _id: ids.dataset,
@@ -402,6 +494,37 @@ describe('replaceInvalidModelReferences', () => {
     const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
     expect(dataset?.agentModelId).toBe('old-llm');
     expect(dataset?.vlmModelId).toBe('old-llm');
+  });
+
+  it('rejects a non-vision target for a BSON image model ID before writing', async () => {
+    const oldVlmId = new Types.ObjectId();
+    await MongoDataset.collection.insertOne({
+      _id: ids.dataset,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'dataset',
+      type: 'dataset',
+      agentModelId: 'old-llm',
+      vlmModelId: oldVlmId
+    });
+    const textOnlyHandle = {
+      getAllModels: () =>
+        models.map((model) =>
+          model.modelId === 'new-llm' ? { ...model, config: { vision: false } } : model
+        )
+    } as unknown as ModelHandle;
+
+    await expect(
+      replaceInvalidModelReferences({
+        teamId: String(ids.team),
+        replacement,
+        handle: textOnlyHandle,
+        assertCanContinue: async () => {}
+      })
+    ).rejects.toThrow('vision');
+    const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
+    expect(dataset?.agentModelId).toBe('old-llm');
+    expect(dataset?.vlmModelId).toEqual(oldVlmId);
   });
 
   it('does not create absent legacy app or version fields during replacement', async () => {
@@ -451,7 +574,9 @@ describe('replaceInvalidModelReferences', () => {
       type: 'dataset',
       agentModelId: 'old-llm'
     });
-    vi.spyOn(MongoDataset, 'updateOne').mockResolvedValueOnce({ modifiedCount: 0 } as any);
+    vi.spyOn(MongoDataset.collection, 'updateOne').mockResolvedValueOnce({
+      modifiedCount: 0
+    } as any);
 
     const result = await replaceInvalidModelReferences({
       teamId: String(ids.team),
@@ -463,7 +588,7 @@ describe('replaceInvalidModelReferences', () => {
     expect(result.completed).toBe(true);
     expect(result.counts.dataset.llm.replacedReferences).toBe(1);
     expect(result.counts.dataset.llm.conflicts).toBe(0);
-    expect(MongoDataset.updateOne).toHaveBeenCalledTimes(2);
+    expect(MongoDataset.collection.updateOne).toHaveBeenCalledTimes(2);
   });
 
   it('stops further writes when owner or target validation fails mid-request', async () => {

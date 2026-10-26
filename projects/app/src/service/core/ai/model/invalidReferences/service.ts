@@ -105,8 +105,14 @@ export const createInvalidReferenceReplacer = ({
   const getKind = (type: ModelTypeEnum): ModelKind =>
     type === ModelTypeEnum.rerank ? 'rerank' : type === ModelTypeEnum.tts ? 'tts' : 'llm';
 
-  const resolveReference = (reference: Reference, type: ModelTypeEnum) => {
+  // 旧知识库可能把模型 ID 存为 BSON ObjectId；仅在判断引用时转成字符串。
+  const getReferenceValue = (reference: Reference) => {
     const value = getModelReferenceValue(reference);
+    return value instanceof Types.ObjectId ? String(value) : value;
+  };
+
+  const resolveReference = (reference: Reference, type: ModelTypeEnum) => {
+    const value = getReferenceValue(reference);
     if (typeof value !== 'string') return;
     return isEmptyModelValue(reference.modelId)
       ? systemModelsByTypeAndName.get(`${type}:${value}`)
@@ -114,7 +120,7 @@ export const createInvalidReferenceReplacer = ({
   };
 
   const isInvalid = (reference: Reference, type: ModelTypeEnum) => {
-    const value = getModelReferenceValue(reference);
+    const value = getReferenceValue(reference);
     if (isEmptyModelValue(value) || Array.isArray(value) || isWorkflowModelExpression(value)) {
       return undefined;
     }
@@ -350,14 +356,17 @@ export const replaceInvalidModelReferences = async ({
   if (targetLLM?.type === ModelTypeEnum.llm && !targetLLM.config.vision) {
     let after: string | undefined;
     while (true) {
-      const rows = await MongoDataset.find({
-        teamId: teamObjectId,
-        ...(after ? { _id: { $gt: after } } : {})
-      })
+      const rows = await MongoDataset.collection
+        .find(
+          {
+            teamId: teamObjectId,
+            ...(after ? { _id: { $gt: new Types.ObjectId(after) } } : {})
+          },
+          { projection: { _id: 1, vlmModelId: 1, vlmModel: 1 } }
+        )
         .sort({ _id: 1 })
         .limit(batchSize)
-        .select('_id vlmModelId vlmModel')
-        .lean();
+        .toArray();
       if (rows.length === 0) break;
       for (const row of rows) {
         if (
@@ -371,10 +380,10 @@ export const replaceInvalidModelReferences = async ({
   }
 
   try {
-    const datasetMax = await MongoDataset.findOne({ teamId: teamObjectId })
-      .sort({ _id: -1 })
-      .select('_id')
-      .lean();
+    const datasetMax = await MongoDataset.collection.findOne(
+      { teamId: teamObjectId },
+      { sort: { _id: -1 }, projection: { _id: 1 } }
+    );
     const appMax = await MongoApp.findOne({ teamId: teamObjectId })
       .sort({ _id: -1 })
       .select('_id')
@@ -384,14 +393,20 @@ export const replaceInvalidModelReferences = async ({
     let datasetAfter: string | undefined;
     while (datasetMax) {
       await assertWritable();
-      const rows = await MongoDataset.find({
-        teamId: teamObjectId,
-        _id: { ...(datasetAfter ? { $gt: datasetAfter } : {}), $lte: datasetMax._id }
-      })
+      const rows = await MongoDataset.collection
+        .find(
+          {
+            teamId: teamObjectId,
+            _id: {
+              ...(datasetAfter ? { $gt: new Types.ObjectId(datasetAfter) } : {}),
+              $lte: datasetMax._id
+            }
+          },
+          { projection: { _id: 1, agentModelId: 1, agentModel: 1, vlmModelId: 1, vlmModel: 1 } }
+        )
         .sort({ _id: 1 })
         .limit(batchSize)
-        .select('_id agentModelId agentModel vlmModelId vlmModel')
-        .lean();
+        .toArray();
       if (rows.length === 0) break;
       logBatch({ stage: 'scanned', resourceType: 'dataset', rows });
       logBatch({ stage: 'replacing', resourceType: 'dataset', rows });
@@ -423,6 +438,8 @@ export const replaceInvalidModelReferences = async ({
               changes,
               replacedIds
             });
+            const agentReplaced = changes.llm.replacedReferences > 0;
+            const beforeVlm = changes.llm.replacedReferences;
             replacer.replaceConfigReference({
               config: next,
               modelIdKey: 'vlmModelId',
@@ -431,14 +448,15 @@ export const replaceInvalidModelReferences = async ({
               changes,
               replacedIds
             });
+            const vlmReplaced = changes.llm.replacedReferences > beforeVlm;
             if (changes.llm.replacedReferences === 0) {
               addChanges('dataset', changes, false);
               break;
             }
             await assertWritable();
-            const written = await MongoDataset.updateOne(
+            const written = await MongoDataset.collection.updateOne(
               {
-                _id: current._id,
+                _id: new Types.ObjectId(String(current._id)),
                 teamId: teamObjectId,
                 ...fieldMatch('agentModelId', current.agentModelId),
                 ...fieldMatch('agentModel', current.agentModel),
@@ -447,10 +465,10 @@ export const replaceInvalidModelReferences = async ({
               },
               {
                 $set: {
-                  agentModelId: next.agentModelId,
-                  agentModel: next.agentModel,
-                  vlmModelId: next.vlmModelId,
-                  vlmModel: next.vlmModel
+                  ...(agentReplaced
+                    ? { agentModelId: next.agentModelId, agentModel: next.agentModel }
+                    : {}),
+                  ...(vlmReplaced ? { vlmModelId: next.vlmModelId, vlmModel: next.vlmModel } : {})
                 }
               }
             );
@@ -464,9 +482,12 @@ export const replaceInvalidModelReferences = async ({
               addFailure('dataset', String(row._id), 'Concurrent update');
               break;
             }
-            const refreshed = await MongoDataset.findById(row._id)
-              .select('_id agentModelId agentModel vlmModelId vlmModel')
-              .lean();
+            const refreshed = await MongoDataset.collection.findOne(
+              { _id: row._id },
+              {
+                projection: { _id: 1, agentModelId: 1, agentModel: 1, vlmModelId: 1, vlmModel: 1 }
+              }
+            );
             if (!refreshed) break;
             current = refreshed;
           }
