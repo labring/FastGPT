@@ -3,6 +3,7 @@ import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
+  Button,
   Flex,
   HStack,
   ModalBody,
@@ -48,11 +49,13 @@ const modelRowHeight = 80;
 const ModelTable = ({
   permissionConfig = false,
   contentPx,
-  Tab
+  Tab,
+  onReplaceInvalidModels
 }: {
   permissionConfig?: boolean;
   contentPx?: FlexProps['px'];
   Tab?: React.ReactNode;
+  onReplaceInvalidModels?: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
@@ -135,6 +138,18 @@ const ModelTable = ({
         onModelTypeChange={setModelType}
         search={search}
         onSearchChange={setSearch}
+        actions={
+          onReplaceInvalidModels && (
+            <Button
+              variant="whiteBase"
+              h="40px"
+              whiteSpace="nowrap"
+              onClick={onReplaceInvalidModels}
+            >
+              {t('config_model:replace_invalid_title')}
+            </Button>
+          )
+        }
       />
       <FixedTableLayout
         scrollMode="virtual"

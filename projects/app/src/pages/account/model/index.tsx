@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -88,13 +88,6 @@ const ModelProvider = () => {
           py={6}
           pt={[4, 6]}
         >
-          {isTeamOwner && (
-            <Flex justifyContent="flex-end" px={6}>
-              <Button variant="whiteBase" onClick={() => setReplaceModalOpen(true)}>
-                {t('config_model:replace_invalid_title')}
-              </Button>
-            </Flex>
-          )}
           {feConfigs.enable_team_model ? (
             <ModelManagementContainer
               channelType="team"
@@ -104,12 +97,23 @@ const ModelProvider = () => {
               onBeforeTabChange={handleBeforeTabChange}
               renderCustomTab={(tab, TabNode) =>
                 tab === 'active_model' ? (
-                  <ModelTable permissionConfig contentPx={6} Tab={TabNode} />
+                  <ModelTable
+                    permissionConfig
+                    contentPx={6}
+                    Tab={TabNode}
+                    onReplaceInvalidModels={
+                      isTeamOwner ? () => setReplaceModalOpen(true) : undefined
+                    }
+                  />
                 ) : null
               }
             />
           ) : (
-            <ModelTable permissionConfig contentPx={6} />
+            <ModelTable
+              permissionConfig
+              contentPx={6}
+              onReplaceInvalidModels={isTeamOwner ? () => setReplaceModalOpen(true) : undefined}
+            />
           )}
         </Flex>
       </Flex>
