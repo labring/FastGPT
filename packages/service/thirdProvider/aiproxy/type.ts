@@ -1,3 +1,5 @@
+import z from 'zod';
+
 export const AIPROXY_LIST_PAGE_SIZE = 100;
 
 export type ChannelStatus = 1 | 2; // 1 = 启用, 2 = 禁用
@@ -22,6 +24,22 @@ export type AiproxyChannel = {
   created_at?: number;
   accessed_at?: number;
 };
+
+/** GET /api/channel/{id}/models 中 FastGPT 使用的字段；其他元数据不参与模型配置生成。 */
+export const AiproxyChannelModelSchema = z.looseObject({
+  id: z.string().min(1),
+  name: z.string().optional(),
+  context_length: z.number().optional(),
+  architecture: z.looseObject({ output_modalities: z.array(z.string()).optional() }).optional(),
+  top_provider: z
+    .looseObject({
+      context_length: z.number().optional(),
+      max_completion_tokens: z.number().optional()
+    })
+    .optional()
+});
+export const AiproxyChannelModelsSchema = z.array(AiproxyChannelModelSchema);
+export type AiproxyChannelModel = z.infer<typeof AiproxyChannelModelSchema>;
 
 /** Raw member channel (aiproxy GroupChannelResponse) — system channel fields + group_id */
 export type AiproxyGroupChannel = AiproxyChannel & {
