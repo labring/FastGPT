@@ -3,6 +3,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { LeaseCache, RedisLeaseLostError } from '@fastgpt/dal/redis/caches/lease';
 
+const { logger } = vi.hoisted(() => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
+vi.mock('@fastgpt-sdk/otel/logger', () => ({ getLogger: () => logger }));
+
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
 
@@ -13,7 +16,6 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
   const queueKey = (key: string) => `fastgpt:lock:concurrency-waiters:${key}`;
   let client: Redis;
   let adapter: RedisCacheAdapter;
-  const logger = { warn: () => undefined };
 
   beforeAll(async () => {
     client = new Redis(redisUrl!, { lazyConnect: true, maxRetriesPerRequest: 1 });
@@ -30,10 +32,7 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
   it('atomically limits concurrent instances and prunes expired tokens', async () => {
     const key = keys[0];
     await client.zadd(physicalKey(key), 1, 'expired-token');
-    const caches = [
-      new LeaseCache({ redis: adapter, logger }),
-      new LeaseCache({ redis: adapter, logger })
-    ];
+    const caches = [new LeaseCache({ redis: adapter }), new LeaseCache({ redis: adapter })];
     let active = 0;
     let peak = 0;
     await Promise.all(
@@ -59,11 +58,8 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
 
   it('logs shared queue counts once per waiter and removes cancelled or expired entries', async () => {
     const key = keys[3];
-    const queueLogger = { warn: () => undefined, info: vi.fn() };
-    const caches = [
-      new LeaseCache({ redis: adapter, logger: queueLogger }),
-      new LeaseCache({ redis: adapter, logger: queueLogger })
-    ];
+    logger.info.mockClear();
+    const caches = [new LeaseCache({ redis: adapter }), new LeaseCache({ redis: adapter })];
     let finish!: () => void;
     let started!: () => void;
     const ready = new Promise<void>((resolve) => {
@@ -94,11 +90,11 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
     try {
       await vi.waitFor(async () => {
         expect(await client.zcard(queueKey(key))).toBe(2);
-        expect(queueLogger.info).toHaveBeenCalledTimes(2);
+        expect(logger.info).toHaveBeenCalledTimes(2);
       });
-      expect(
-        queueLogger.info.mock.calls.map(([, metadata]) => metadata.queuedCount).sort()
-      ).toEqual([1, 2]);
+      expect(logger.info.mock.calls.map(([, metadata]) => metadata.queuedCount).sort()).toEqual([
+        1, 2
+      ]);
       expect(await client.zcard(physicalKey(key))).toBe(1);
       expect(work).not.toHaveBeenCalled();
     } finally {
@@ -112,7 +108,7 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
 
   it('keeps a long holder alive when a shorter holder acquires and renews', async () => {
     const key = keys[1];
-    const cache = new LeaseCache({ redis: adapter, logger });
+    const cache = new LeaseCache({ redis: adapter });
     let finish!: () => void;
     let started!: () => void;
     const ready = new Promise<void>((resolve) => {
@@ -152,7 +148,7 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
 
   it('never releases a replacement holder when an old lease loses its token', async () => {
     const key = keys[2];
-    const cache = new LeaseCache({ redis: adapter, logger });
+    const cache = new LeaseCache({ redis: adapter });
     let started!: () => void;
     const ready = new Promise<void>((resolve) => {
       started = resolve;

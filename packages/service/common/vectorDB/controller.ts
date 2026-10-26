@@ -32,7 +32,7 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
-const recallLease = new LeaseCache({ logger: getLogger(LogCategories.INFRA.VECTOR) });
+const recallLease = new LeaseCache();
 // 执行期间每 10 秒续租；释放失败时，额度在最后一次续租后 30 秒过期。
 const RECALL_LEASE_TTL_MS = 30_000;
 const teamVectorCountCache = new TeamVectorCountCache({

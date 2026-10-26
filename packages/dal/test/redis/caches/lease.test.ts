@@ -9,10 +9,12 @@ import {
 } from '@fastgpt/dal/redis/caches';
 import { RedisLeaseWaitTimeoutError } from '@fastgpt/dal/redis/caches/lease';
 
+const { logger } = vi.hoisted(() => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
+vi.mock('@fastgpt-sdk/otel/logger', () => ({ getLogger: () => logger }));
+
 const key = asRedisLogicalKey('lock:agent-sandbox:init:sandbox-1');
 
 describe('LeaseCache', () => {
-  const logger = { warn: vi.fn() };
   const redis = {
     acquireLease: vi.fn(),
     releaseLease: vi.fn(),
@@ -33,7 +35,7 @@ describe('LeaseCache', () => {
     const work = new Promise<string>((resolve) => {
       resolveWork = () => resolve('ok');
     });
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     const resultPromise = cache.withLease({
       key: 'agent-sandbox:init:sandbox-1',
@@ -64,7 +66,7 @@ describe('LeaseCache', () => {
   it('does not run when another holder owns the lease', async () => {
     redis.acquireLease.mockResolvedValue(false);
     const work = vi.fn();
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(
       cache.withLease({
@@ -85,7 +87,7 @@ describe('LeaseCache', () => {
     const work = new Promise<void>((resolve) => {
       resolveWork = resolve;
     });
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const resultPromise = cache.withLease({
       key: 'agent-sandbox:init:sandbox-1',
       label: 'agent-sandbox-init',
@@ -115,7 +117,7 @@ describe('LeaseCache', () => {
       const work = new Promise<void>((resolve) => {
         resolveWork = resolve;
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -155,7 +157,7 @@ describe('LeaseCache', () => {
       const work = new Promise<string>((resolve) => {
         resolveWork = () => resolve('ok');
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -191,7 +193,7 @@ describe('LeaseCache', () => {
       const work = new Promise<string>((resolve) => {
         resolveWork = () => resolve('ok');
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -228,7 +230,7 @@ describe('LeaseCache', () => {
       const work = new Promise<void>((resolve) => {
         resolveWork = resolve;
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -265,7 +267,7 @@ describe('LeaseCache', () => {
         })
       );
       const work = vi.fn(async () => undefined);
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -293,7 +295,7 @@ describe('LeaseCache', () => {
       const work = new Promise<void>((resolve) => {
         resolveWork = resolve;
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -322,7 +324,7 @@ describe('LeaseCache', () => {
       const work = new Promise<string>((resolve) => {
         resolveWork = () => resolve('ok');
       });
-      const cache = new LeaseCache({ redis, logger });
+      const cache = new LeaseCache({ redis });
       const resultPromise = cache.withLease({
         key: 'agent-sandbox:init:sandbox-1',
         label: 'agent-sandbox-init',
@@ -350,7 +352,7 @@ describe('LeaseCache', () => {
   it('wraps acquire errors and keeps release best-effort', async () => {
     const acquireError = new Error('redis unavailable');
     redis.acquireLease.mockRejectedValue(acquireError);
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(
       cache.withLease({
@@ -386,7 +388,7 @@ describe('LeaseCache', () => {
     [{ key: 'lease', ttlMs: 0 }, 'ttlMs must be a positive safe integer'],
     [{ key: 'lease', ttlMs: 60, renewIntervalMs: 60 }, 'renewIntervalMs must be smaller than ttlMs']
   ])('rejects invalid lease options %#', async (input, message) => {
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(
       cache.withLease({
@@ -411,7 +413,6 @@ describe('LeaseCache', () => {
 describe('LeaseCache.withConcurrency', () => {
   const held = new Map<string, { key: string; expiresAt: number }>();
   const waiting = new Map<string, { key: string; expiresAt: number }>();
-  const logger = { warn: vi.fn(), info: vi.fn() };
   const redis = {
     acquireLease: vi.fn(),
     releaseLease: vi.fn(),
@@ -483,7 +484,7 @@ describe('LeaseCache.withConcurrency', () => {
   });
 
   it('shares slots across instances, waits for release and renews running tasks', async () => {
-    const caches = [new LeaseCache({ redis, logger }), new LeaseCache({ redis, logger })];
+    const caches = [new LeaseCache({ redis }), new LeaseCache({ redis })];
     let active = 0;
     let peak = 0;
     const work = vi.fn(async (index: number) => {
@@ -514,7 +515,7 @@ describe('LeaseCache.withConcurrency', () => {
   });
 
   it('keeps different resource keys independent and provides default wait settings', async () => {
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const result = Promise.all(
       ['resource-a', 'resource-b'].map((key) =>
         cache.withConcurrency({
@@ -537,7 +538,7 @@ describe('LeaseCache.withConcurrency', () => {
   it('times out waiting for busy slots without running the callback', async () => {
     redis.acquireLease.mockResolvedValue(false);
     const fn = vi.fn();
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const result = expect(
       cache.withConcurrency({
         ...options,
@@ -571,7 +572,7 @@ describe('LeaseCache.withConcurrency', () => {
       })
     );
     const fn = vi.fn();
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const result = expect(
       cache.withConcurrency({
         ...options,
@@ -591,7 +592,7 @@ describe('LeaseCache.withConcurrency', () => {
   it('does not retry business errors even if they look like a busy lease', async () => {
     const error = new RedisLeaseUnavailableError(options);
     const fn = vi.fn().mockRejectedValue(error);
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(cache.withConcurrency({ ...options, fn })).rejects.toBe(error);
 
@@ -606,7 +607,7 @@ describe('LeaseCache.withConcurrency', () => {
   it('fails closed on Redis errors rather than bypassing the concurrency limit', async () => {
     redis.acquireLease.mockRejectedValue(new Error('Redis unavailable'));
     const fn = vi.fn();
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(cache.withConcurrency({ ...options, fn })).rejects.toBeInstanceOf(
       RedisLeaseAcquireError
@@ -621,7 +622,7 @@ describe('LeaseCache.withConcurrency', () => {
     const controller = new AbortController();
     const error = new Error('request cancelled');
     const fn = vi.fn();
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const result = expect(
       cache.withConcurrency({
         ...options,
@@ -643,7 +644,7 @@ describe('LeaseCache.withConcurrency', () => {
     const controller = new AbortController();
     const error = new Error('already cancelled');
     controller.abort(error);
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(
       cache.withConcurrency({
@@ -659,7 +660,7 @@ describe('LeaseCache.withConcurrency', () => {
   it('forwards caller cancellation to running work and releases its slot', async () => {
     const controller = new AbortController();
     const error = new Error('cancelled while running');
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(
       cache.withConcurrency({
@@ -680,7 +681,7 @@ describe('LeaseCache.withConcurrency', () => {
 
   it('forwards lease loss without retrying the task in another slot', async () => {
     redis.renewLease.mockResolvedValue(false);
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const fn = vi.fn(
       ({ signal }: { signal: AbortSignal }) =>
         new Promise<never>((_, reject) => {
@@ -700,7 +701,7 @@ describe('LeaseCache.withConcurrency', () => {
 
   it('counts all old tokens after lowering the limit and refreshes queued callers', async () => {
     let concurrency = 2;
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const finish: (() => void)[] = [];
     const work = vi.fn(() => new Promise<void>((resolve) => finish.push(resolve)));
     const running = [0, 1].map(() => cache.withConcurrency({ ...options, fn: work }));
@@ -727,7 +728,7 @@ describe('LeaseCache.withConcurrency', () => {
 
   it('lets queued callers observe an increased limit', async () => {
     let concurrency = 1;
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     let finish!: () => void;
     const running = cache.withConcurrency({
       ...options,
@@ -757,7 +758,7 @@ describe('LeaseCache.withConcurrency', () => {
       concurrency = 1;
       return result;
     });
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const fn = vi.fn(async () => 'current-limit');
     const result = cache.withConcurrency({ ...options, concurrency: () => concurrency, fn });
     await vi.advanceTimersByTimeAsync(0);
@@ -771,7 +772,7 @@ describe('LeaseCache.withConcurrency', () => {
   });
 
   it('bypasses Redis for zero and lets queued callers observe a disabled limit', async () => {
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     await expect(
       cache.withConcurrency({
         ...options,
@@ -799,7 +800,7 @@ describe('LeaseCache.withConcurrency', () => {
 
   it('rechecks a re-enabled limit after removing a queued waiter', async () => {
     let concurrency = 1;
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     let finish!: () => void;
     const running = cache.withConcurrency({
       ...options,
@@ -841,7 +842,7 @@ describe('LeaseCache.withConcurrency', () => {
       return evaluate(input);
     });
     redis.acquireLease.mockResolvedValueOnce(false);
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const fn = vi.fn(async () => 'done');
     const result = cache.withConcurrency({ ...options, fn });
 
@@ -857,7 +858,7 @@ describe('LeaseCache.withConcurrency', () => {
 
   it('rejects malformed Lua results without entering the callback', async () => {
     redis.evalScript.mockResolvedValue('unexpected');
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
     const fn = vi.fn();
     await expect(cache.withConcurrency({ ...options, fn })).rejects.toMatchObject({
       name: 'RedisLeaseAcquireError',
@@ -875,7 +876,7 @@ describe('LeaseCache.withConcurrency', () => {
     [{ ttlMs: 0 }, 'ttlMs'],
     [{ renewIntervalMs: 100 }, 'renewIntervalMs']
   ])('validates concurrency options before touching Redis %#', async (invalid, field) => {
-    const cache = new LeaseCache({ redis, logger });
+    const cache = new LeaseCache({ redis });
 
     await expect(cache.withConcurrency({ ...options, ...invalid, fn: vi.fn() })).rejects.toThrow(
       field

@@ -23,6 +23,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
+    "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "bullmq": "5.52.2",
     "ioredis": "^5.11.1",
