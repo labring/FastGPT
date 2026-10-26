@@ -4,7 +4,39 @@ import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
 
 vi.unmock('@fastgpt/service/common/vectorDB/pg');
-vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({ PgClient: { query: vi.fn() } }));
+const storage = vi.hoisted(() => ({ vectorVQ: 32 }));
+vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  get VectorVQ() {
+    return storage.vectorVQ;
+  }
+}));
+const poolClient = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
+vi.mock('@fastgpt/service/common/vectorDB/pg/controller', () => ({
+  PgClient: { query: vi.fn() },
+  connectPg: vi.fn(async () => ({ connect: async () => poolClient }))
+}));
+
+describe('PgVectorCtrl.init', () => {
+  it.each([32, 16, 8, 4, 2])(
+    'uses configured storage for VectorVQ=%i without a global HNSW',
+    async (vectorVQ) => {
+      storage.vectorVQ = vectorVQ;
+      vi.mocked(PgClient.query)
+        .mockReset()
+        .mockResolvedValue({ rows: [], rowCount: 0, command: 'CREATE', oid: 0, fields: [] });
+
+      await new PgVectorCtrl().init();
+
+      const statements = vi.mocked(PgClient.query).mock.calls.map(([sql]) => String(sql));
+      expect(statements[0]).toContain(
+        `vector ${vectorVQ === 16 ? 'HALFVEC' : 'VECTOR'}(1536) NOT NULL`
+      );
+      expect(statements.some((sql) => /USING hnsw/i.test(sql))).toBe(false);
+      expect(statements).toHaveLength(3);
+    }
+  );
+});
 
 describe('PgVectorCtrl.embRecall', () => {
   beforeEach(() => {
@@ -24,7 +56,7 @@ describe('PgVectorCtrl.embRecall', () => {
       name: 'with collection allow and deny lists',
       forbidCollectionIdList: ['forbidden'],
       filterCollectionIdList: ['allowed'],
-      collectionClauses: ["collection_id IN ('allowed')", "collection_id NOT IN ('forbidden')"]
+      collectionClauses: ['collection_id = ANY($3::varchar[])']
     }
   ])('scopes the query to the team and datasets $name', async (filters) => {
     await new PgVectorCtrl().embRecall({
@@ -41,7 +73,7 @@ describe('PgVectorCtrl.embRecall', () => {
     expect(query).toMatchObject({ query_timeout: 120_000 });
     const sql = typeof query === 'string' ? query : query.text;
     expect(sql).toMatch(
-      /where\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
+      /WHERE\s+team_id = 'team-a'[\s\S]*AND dataset_id = ANY\(\$\d+::varchar\[\]\)/
     );
     for (const clause of filters.collectionClauses) {
       expect(sql).toContain(clause);
@@ -65,6 +97,12 @@ describe('PgVectorCtrl.embRecall', () => {
           );
         }, 90_000);
       };
+      // 分组查询使用绑定参数，模拟扩展协议完成发送后再等待服务端超时。
+      connection.parse = () => {};
+      connection.bind = () => {};
+      connection.describe = () => {};
+      connection.execute = () => {};
+      connection.sync = connection.query;
       global.pgClient = { query: client.query.bind(client) } as unknown as Pool;
       vi.mocked(PgClient.query).mockImplementation(actualPgClient.query.bind(actualPgClient));
       let settled = false;
@@ -91,6 +129,63 @@ describe('PgVectorCtrl.embRecall', () => {
       global.pgClient = previousPool;
       vi.useRealTimers();
     }
+  });
+});
+
+describe('PgVectorCtrl.embRecall indexed transactions', () => {
+  const props = {
+    teamId: 'team',
+    datasetIds: ['large'],
+    vector: [0.1, 0.2],
+    limit: 100,
+    forbidCollectionIdList: [],
+    datasetVectorData: [{ datasetId: 'large', rows: 30001, pgIndex: 'ready' as const }]
+  };
+  beforeEach(() => {
+    poolClient.query.mockReset().mockResolvedValue({ rows: [] });
+    poolClient.release.mockReset();
+  });
+
+  it('keeps settings and query in one transaction and returns FP32 scores', async () => {
+    poolClient.query.mockImplementation(async (sql: string | { text: string }) => ({
+      rows: (typeof sql === 'string' ? sql : sql.text).includes('grouped_results')
+        ? [{ id: '7', collection_id: 'file', score: -0.9 }]
+        : []
+    }));
+    expect(await new PgVectorCtrl().embRecall(props)).toEqual({
+      results: [{ id: '7', collectionId: 'file', score: 0.9 }]
+    });
+    expect(poolClient.query.mock.calls.map(([sql]) => sql)[0]).toBe('BEGIN');
+    expect(poolClient.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
+    expect(poolClient.query.mock.calls[1][1]).toEqual(['100', '100000']);
+    expect(poolClient.query.mock.calls[2][0]).toMatchObject({ query_timeout: 120_000 });
+    expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it.each([false, true])(
+    'rolls back failed queries; destroys connection if rollback fails=%s',
+    async (rollbackFails) => {
+      poolClient.query.mockImplementation(async (sql: string | { text: string }) => {
+        const text = typeof sql === 'string' ? sql : sql.text;
+        if (text.includes('grouped_results')) throw new Error('query failed');
+        if (text === 'ROLLBACK' && rollbackFails) throw new Error('connection lost');
+        return { rows: [] };
+      });
+      await expect(new PgVectorCtrl().embRecall(props)).rejects.toThrow('query failed');
+      expect(poolClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(rollbackFails);
+    }
+  );
+
+  it('skips queries for empty input or an empty allowed collection set', async () => {
+    vi.mocked(PgClient.query).mockClear();
+    const ctrl = new PgVectorCtrl();
+    await expect(ctrl.embRecall({ ...props, datasetIds: [] })).resolves.toEqual({ results: [] });
+    await expect(ctrl.embRecall({ ...props, filterCollectionIdList: [] })).resolves.toEqual({
+      results: []
+    });
+    expect(poolClient.query).not.toHaveBeenCalled();
+    expect(PgClient.query).not.toHaveBeenCalled();
   });
 });
 

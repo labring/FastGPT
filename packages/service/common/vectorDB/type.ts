@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
+import { DatasetVectorSearchDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
 
 // Embedding recall item schema
 export const EmbeddingRecallItemSchema = z.object({
@@ -26,11 +27,13 @@ export const InsertVectorResponseSchema = z.object({
 });
 export type InsertVectorResponseType = z.infer<typeof InsertVectorResponseSchema>;
 
-// Delete vector props schema (union type for different delete scenarios)
+/** 业务删除入参：按 id 或 idList 删除时，必须提供知识库上下文以失效计数缓存。 */
 export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     id: z.string(),
+    // 仅用于删除后的知识库缓存失效，不参与删除范围。
+    datasetId: z.string(),
     retry: z.number().optional()
   }),
   z.object({
@@ -42,10 +45,19 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
   z.object({
     teamId: z.string(),
     idList: z.array(z.string()),
+    datasetId: z.string(),
     retry: z.number().optional()
   })
 ]);
 export type DelDatasetVectorCtrlPropsType = z.infer<typeof DelDatasetVectorCtrlPropsSchema>;
+
+/** 向量适配器只接收物理删除参数，缓存失效用的单库上下文由控制层剥离。 */
+export const DeleteVectorControllerPropsSchema = z.union([
+  DelDatasetVectorCtrlPropsSchema.options[0].omit({ datasetId: true }),
+  DelDatasetVectorCtrlPropsSchema.options[1],
+  DelDatasetVectorCtrlPropsSchema.options[2].omit({ datasetId: true })
+]);
+export type DeleteVectorControllerPropsType = z.infer<typeof DeleteVectorControllerPropsSchema>;
 
 /** 刷新待替换向量的清理扫描时间；已不存在的向量无需补建。 */
 export const RefreshVectorCreateTimePropsSchema = z.object({
@@ -58,6 +70,7 @@ export type RefreshVectorCreateTimeProps = z.infer<typeof RefreshVectorCreateTim
 export const EmbeddingRecallCtrlPropsSchema = z.object({
   teamId: z.string(),
   datasetIds: z.array(z.string()),
+  datasetVectorData: z.array(DatasetVectorSearchDataSchema).optional(),
   vector: z.array(z.number()),
   limit: z.number(),
   forbidCollectionIdList: z.array(z.string()),
@@ -90,6 +103,11 @@ export const GetVectorCountPropsSchema = z.object({
 });
 export type GetVectorCountPropsType = z.infer<typeof GetVectorCountPropsSchema>;
 
+/** 业务层注入统计完成通知，向量适配层不依赖队列或知识库 Mongo 模型。 */
+export type VectorStoreHooks = {
+  onDatasetCounted?: (data: { teamId: string; datasetId: string; rows: number }) => Promise<void>;
+};
+
 // ==================== Vector Controller Interface ====================
 export interface VectorControllerType {
   /**
@@ -105,7 +123,7 @@ export interface VectorControllerType {
   /**
    * Delete vectors from the database
    */
-  delete(props: DelDatasetVectorCtrlPropsType): Promise<void>;
+  delete(props: DeleteVectorControllerPropsType): Promise<void>;
 
   /** 保留原向量内容，只刷新 createTime，使替换后的孤儿向量能重新进入 cron 扫描窗口。 */
   refreshCreateTime(props: RefreshVectorCreateTimeProps): Promise<void>;

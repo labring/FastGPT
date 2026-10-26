@@ -1,6 +1,6 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../logger';
-import * as pg from 'pg';
+import pg from 'pg';
 import type { Pool, QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
 import { serviceEnv } from '../../../env';
@@ -38,12 +38,13 @@ export const connectPg = async (): Promise<Pool> => {
   global.pgClient.on('connect', async () => {
     logger.info('Postgres pool connected');
   });
-  global.pgClient.on('remove', async (client) => {
+  global.pgClient.on('remove', async () => {
     logger.warn('Postgres connection removed from pool');
   });
 
   try {
-    await global.pgClient.connect();
+    const client = await global.pgClient.connect();
+    client.release();
     return global.pgClient;
   } catch (error) {
     logger.error('Postgres connection failed', { error });

@@ -4,6 +4,7 @@ import { PgClient, connectPg } from './controller';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { buildPgVectorRecallQuery } from './utils';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -29,9 +30,6 @@ export class PgVectorCtrl implements VectorControllerType {
         );
       `);
 
-      await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector ${isHalfVec ? 'halfvec_ip_ops' : 'vector_ip_ops'}) WITH (m = 32, ef_construction = 128);`
-      );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
       );
@@ -130,75 +128,53 @@ export class PgVectorCtrl implements VectorControllerType {
       where: [where]
     });
   };
-  /** 按团队、知识库和集合范围召回向量；团队条件与联合索引的首列保持一致。 */
+  /** 按知识库分组召回并统一 FP32 排序；索引参数只作用于本次事务，失败时归还干净连接。 */
   embRecall: VectorControllerType['embRecall'] = async (props) => {
-    const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
-      props;
+    const query = buildPgVectorRecallQuery(props);
+    if (!query) return { results: [] };
+    // 精确分组与 HNSW 分组都等待服务端先终止超时 SQL，再归还外层并发额度。
+    const recallQuery = { text: query.text, query_timeout: RECALL_QUERY_TIMEOUT_MS };
 
-    // Get forbid collection
-    const formatForbidCollectionIdList = (() => {
-      if (!filterCollectionIdList) return forbidCollectionIdList;
-      const list = forbidCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !filterCollectionIdList.includes(id));
-      return list;
+    const result = await (async () => {
+      if (!query.usesHnsw) return PgClient.query(recallQuery, query.values);
+
+      const client = await (await connectPg()).connect();
+      let destroyClient = false;
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `SELECT set_config('hnsw.ef_search', $1, true),
+                  set_config('hnsw.max_scan_tuples', $2, true),
+                  set_config('hnsw.iterative_scan', 'relaxed_order', true)`,
+          [
+            String(Math.min(1000, Math.max(props.limit, global.systemEnv?.hnswEfSearch || 100))),
+            String(global.systemEnv?.hnswMaxScanTuples || 100000)
+          ]
+        );
+        const result = await client.query<{ id: string; collection_id: string; score: number }>(
+          recallQuery,
+          query.values
+        );
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        // 事务失败后必须回滚；回滚也失败的连接直接销毁，不能放回池中污染后续请求。
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          destroyClient = true;
+        }
+        throw error;
+      } finally {
+        client.release(destroyClient);
+      }
     })();
-    const forbidCollectionSql =
-      formatForbidCollectionIdList.length > 0
-        ? `AND collection_id NOT IN (${formatForbidCollectionIdList.map((id) => `'${id}'`).join(',')})`
-        : '';
-
-    // Filter by collectionId
-    const formatFilterCollectionId = (() => {
-      if (!filterCollectionIdList) return;
-
-      return filterCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !forbidCollectionIdList.includes(id));
-    })();
-    const filterCollectionIdSql = formatFilterCollectionId
-      ? `AND collection_id IN (${formatFilterCollectionId.map((id) => `'${id}'`).join(',')})`
-      : '';
-    // Empty data
-    if (formatFilterCollectionId && formatFilterCollectionId.length === 0) {
-      return { results: [] };
-    }
-
-    const sql = `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
-          SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
-          SET LOCAL hnsw.iterative_scan = relaxed_order;
-          WITH relaxed_results AS MATERIALIZED (
-            select id, collection_id, vector <#> '[${vector}]' AS score
-              from ${DatasetVectorTableName}
-              where team_id = '${String(teamId)}'
-                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-                ${filterCollectionIdSql}
-                ${forbidCollectionSql}
-              order by score limit ${limit}
-          ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
-        COMMIT;`;
-    const results: any = await PgClient.query({
-      text: sql,
-      query_timeout: RECALL_QUERY_TIMEOUT_MS
-    });
-    const rows = results?.[results.length - 2]?.rows as {
-      id: string;
-      collection_id: string;
-      score: number;
-    }[];
-
-    if (!Array.isArray(rows)) {
-      return {
-        results: []
-      };
-    }
 
     return {
-      results: rows.map((item) => ({
+      results: result.rows.map((item) => ({
         id: String(item.id),
         collectionId: item.collection_id,
-        score: item.score * -1
+        score: Number(item.score) * -1
       }))
     };
   };
