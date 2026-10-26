@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -11,6 +11,8 @@ import ModelTable from '@/components/core/ai/ModelTable';
 import ModelManagementContainer, {
   type ModelTabType
 } from '@/pageComponents/model/ModelManagementContainer';
+import ReplaceInvalidModelsModal from '@/pageComponents/model/ReplaceInvalidModelsModal';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const ModelProvider = () => {
   const { t } = useSafeTranslation();
@@ -21,6 +23,8 @@ const ModelProvider = () => {
 
   const isRoot = userInfo?.username === 'root';
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
+  const isTeamOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const [replaceModalOpen, setReplaceModalOpen] = useState(false);
 
   const modelTabList = useMemo<{ label: string; value: ModelTabType }[]>(
     () => [
@@ -84,6 +88,13 @@ const ModelProvider = () => {
           py={6}
           pt={[4, 6]}
         >
+          {isTeamOwner && (
+            <Flex justifyContent="flex-end" px={6}>
+              <Button variant="whiteBase" onClick={() => setReplaceModalOpen(true)}>
+                {t('config_model:replace_invalid_title')}
+              </Button>
+            </Flex>
+          )}
           {feConfigs.enable_team_model ? (
             <ModelManagementContainer
               channelType="team"
@@ -102,6 +113,9 @@ const ModelProvider = () => {
           )}
         </Flex>
       </Flex>
+      {isTeamOwner && replaceModalOpen && (
+        <ReplaceInvalidModelsModal onClose={() => setReplaceModalOpen(false)} />
+      )}
     </AccountContainer>
   );
 };
