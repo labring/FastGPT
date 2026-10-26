@@ -16,13 +16,13 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('requires the million-unit price migration to finish before startup', () => {
+  it('runs the million-unit price migration in the background without blocking startup', () => {
     const task = systemMigrations.at(-1);
     expect(task).toMatchObject({
       id: '20261025_token_prices_per_million',
       version: '4.17.4',
-      blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      blockStartup: false,
+      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'models' }, { key: 'validation' }]
     });
     expect(task).not.toHaveProperty('manual');

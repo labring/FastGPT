@@ -5,6 +5,7 @@ import { systemMigrationBatchSize } from '@/migration/constants';
 import {
   getTokenPriceMigrationSnapshot,
   readTokenPriceMigrationBatch,
+  readFailedTokenPriceMigrationRecords,
   migrateTokenPricesBatch,
   validateTokenPricesBatch,
   type TokenPriceMigrationError
@@ -25,8 +26,8 @@ const CheckpointSchema = z
   .refine(({ endId, lastId }) => lastId === null || (endId !== null && lastId <= endId));
 
 /**
- * 启动阻塞任务：按稳定游标分批转换全部 Token/TTS 旧价格，STT 保持原样。
- * 只在整批成功后推进断点，坏数据立即停止并输出有限定位日志，修复后重启续跑。
+ * 非阻塞后台任务：按稳定游标分批转换全部 Token/TTS 旧价格，STT 保持原样。
+ * 只在整批成功后推进断点；坏数据停止本次执行并记录明细，管理员修复后重试续跑。
  * 原价备份保护事务提交后、checkpoint 前的重放；返回前重新全量只读校验。
  */
 export const migrateTokenPricesPerMillion = async (context: SystemMigrationContext) => {
@@ -39,8 +40,15 @@ export const migrateTokenPricesPerMillion = async (context: SystemMigrationConte
     await context.saveCheckpoint(checkpoint);
   }
 
-  /** 阻塞期间管理页不可用，只记录首条定位信息并终止，不读写失败明细。 */
-  const assertNoErrors = (errors: TokenPriceMigrationError[]) => {
+  const failedRecords = new Map(
+    (await context.getFailedRecords()).map((record) => [String(record.data.modelId), record])
+  );
+
+  /** 保留尚未重试的旧错误并替换本批错误，保证管理页始终能定位全部已知失败项。 */
+  const assertNoErrors = async (
+    errors: TokenPriceMigrationError[],
+    stageKey: 'models' | 'validation'
+  ) => {
     const first = errors[0];
     if (!first) return;
     context.logger.error('Model pricing migration requires source repair', {
@@ -48,8 +56,27 @@ export const migrateTokenPricesPerMillion = async (context: SystemMigrationConte
       modelId: first.id,
       reason: first.reason
     });
-    throw new Error(`Model ${first.id}: ${first.reason} (${errors.length} invalid model prices)`);
+    for (const { id, reason } of errors) {
+      failedRecords.set(id, { stageKey, data: { modelId: id }, reason: { message: reason } });
+    }
+    await context.fail({
+      message: `Model ${first.id}: ${first.reason} (${errors.length} invalid model prices)`,
+      failedRecords: [...failedRecords.values()]
+    });
   };
+
+  // 先处理旧失败明细，再继续游标；错误快照先于后续 checkpoint 更新。
+  const retryIds = [...failedRecords.keys()];
+  for (let offset = 0; offset < retryIds.length; offset += systemMigrationBatchSize) {
+    context.signal.throwIfAborted();
+    await context.assertActive();
+    const ids = retryIds.slice(offset, offset + systemMigrationBatchSize);
+    const records = await readFailedTokenPriceMigrationRecords(ids);
+    const { errors } = await migrateTokenPricesBatch(records);
+    ids.forEach((id) => failedRecords.delete(id));
+    await assertNoErrors(errors, 'models');
+    await context.reportFailedRecords([...failedRecords.values()]);
+  }
 
   while (checkpoint.endId && checkpoint.lastId !== checkpoint.endId) {
     context.signal.throwIfAborted();
@@ -60,7 +87,7 @@ export const migrateTokenPricesPerMillion = async (context: SystemMigrationConte
     });
     if (records.length === 0) break;
     const { errors } = await migrateTokenPricesBatch(records);
-    assertNoErrors(errors);
+    await assertNoErrors(errors, 'models');
     await context.assertActive();
     checkpoint = {
       ...checkpoint,
@@ -98,9 +125,9 @@ export const migrateTokenPricesPerMillion = async (context: SystemMigrationConte
     if (records.length === 0) break;
     const errors = validateTokenPricesBatch(records);
     if (errors.length > 0) {
-      // 校验发现已扫描区间内仍有旧数据时，重启需重新扫描，不能永久跳过坏记录。
+      // 校验发现已扫描区间内仍有旧数据时，重试需重新扫描，不能永久跳过坏记录。
       await context.saveCheckpoint({ version: 1, ...snapshot, lastId: null, scannedCount: 0 });
-      assertNoErrors(errors);
+      await assertNoErrors(errors, 'validation');
     }
     lastId = String(records.at(-1)!._id);
     verifiedCount += records.length;

@@ -98,7 +98,7 @@ afterEach(async () => {
 });
 
 describe('registerNodeInstrumentation', () => {
-  it('starts business consumers only after the real blocking price migration completes', async () => {
+  it('starts business consumers while the real price migration is still running in the background', async () => {
     vi.clearAllMocks();
     mocks.postHealth.mockResolvedValue({ auth: true, data: 'success' });
     global.feConfigs = { ...global.feConfigs, isPlus: true };
@@ -122,8 +122,30 @@ describe('registerNodeInstrumentation', () => {
       outputPrice: 4
     });
 
-    // 在真实消费者入口读取数据库，防止只验证最终结果而漏掉提前启动的回归。
-    mocks.watch.mockImplementation(async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const bulkWrite = MongoAIModel.collection.bulkWrite.bind(MongoAIModel.collection);
+    // 暂停真实事务写入，确定性验证迁移尚未完成时业务消费者已可启动。
+    vi.spyOn(MongoAIModel.collection, 'bulkWrite').mockImplementation(
+      async (operations, options) => {
+        await gate;
+        return bulkWrite(operations, options);
+      }
+    );
+    const registration = registerNodeInstrumentation();
+    try {
+      await vi.waitFor(() => expect(mocks.watch).toHaveBeenCalledTimes(1));
+      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).not.toBe(
+        SystemMigrationStatusEnum.succeeded
+      );
+      expect(await MongoAIModel.collection.findOne({ _id: insertedId })).not.toHaveProperty(
+        'legacyTokenPricing'
+      );
+      release();
+      await registration;
+      await global.systemMigrationRunner!.tick();
       expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
         SystemMigrationStatusEnum.succeeded
       );
@@ -138,12 +160,13 @@ describe('registerNodeInstrumentation', () => {
           inputTokens: 1000
         }).totalPoints
       ).toBe(2);
-    });
-
-    await expect(registerNodeInstrumentation()).resolves.toBeUndefined();
-    expect(mocks.postHealth).toHaveBeenCalledTimes(1);
-    for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
-      expect(consumer).toHaveBeenCalledTimes(1);
-    expect(mocks.exit).not.toHaveBeenCalled();
+      expect(mocks.postHealth).toHaveBeenCalledTimes(1);
+      for (const consumer of [mocks.watch, mocks.workers, mocks.cron, mocks.training, mocks.tracks])
+        expect(consumer).toHaveBeenCalledTimes(1);
+      expect(mocks.exit).not.toHaveBeenCalled();
+    } finally {
+      release();
+      await registration;
+    }
   });
 });

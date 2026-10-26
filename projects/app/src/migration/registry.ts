@@ -596,10 +596,9 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.validation')
       }
     ],
-    // 按本次需求接受升级窗口的新旧版本计费偏差，不要求停机或检测旧节点。
-    // blockStartup 只保证新 App 在迁移成功后就绪，不提供跨版本计费兼容。
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    // 允许迁移期间的计费偏差，后台转换不阻塞启动或后续独立任务。
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: migrateTokenPricesPerMillion
   }
 ] as const satisfies readonly SystemMigration[];

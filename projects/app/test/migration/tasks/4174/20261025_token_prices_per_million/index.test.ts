@@ -2,38 +2,49 @@ import { describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { PriceTypeSchema } from '@fastgpt/global/core/ai/model/schema';
-import type { SystemMigrationProgressInput } from '@fastgpt/global/migration/schema';
+import type {
+  SystemMigrationFailedRecord,
+  SystemMigrationFailureInput,
+  SystemMigrationProgressInput
+} from '@fastgpt/global/migration/schema';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
-import { MongoSystemMigrationState } from '@/migration/mongoSchema';
+import {
+  MongoSystemMigrationFailedRecord,
+  MongoSystemMigrationState
+} from '@/migration/mongoSchema';
+import { retryNonBlockingSystemMigration } from '@/migration/service';
 import { migrateTokenPricesPerMillion } from '@/migration/tasks/4174/20261025_token_prices_per_million';
 
-const createContext = (initial?: Record<string, unknown>) => {
+const createContext = (
+  initial?: Record<string, unknown>,
+  initialFailedRecords: SystemMigrationFailedRecord[] = []
+) => {
   let checkpoint = initial;
+  let failedRecords = initialFailedRecords;
   const context = {
     migrationId: '20261025_token_prices_per_million',
     runId: 'test',
     signal: new AbortController().signal,
     getCheckpoint: async (schema) => (checkpoint ? schema.parse(checkpoint) : undefined),
-    getFailedRecords: vi.fn(async () => {
-      throw new Error('blocking task cannot read failures');
-    }),
-    reportFailedRecords: vi.fn(async () => {
-      throw new Error('blocking task cannot write failures');
+    getFailedRecords: vi.fn(async () => structuredClone(failedRecords)),
+    reportFailedRecords: vi.fn(async (records: SystemMigrationFailedRecord[]) => {
+      failedRecords = structuredClone(records);
     }),
     saveCheckpoint: vi.fn(async (value) => {
       checkpoint = structuredClone(value);
     }),
     reportProgress: vi.fn(async (_step: SystemMigrationProgressInput): Promise<void> => {}),
     assertActive: vi.fn(async () => undefined),
-    fail: vi.fn(async () => {
-      throw new Error('migration failed');
+    fail: vi.fn(async (input: SystemMigrationFailureInput): Promise<never> => {
+      if (input.failedRecords !== undefined) failedRecords = structuredClone(input.failedRecords);
+      throw new Error(input.message);
     }),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
   } satisfies SystemMigrationContext;
-  return { context, checkpoint: () => checkpoint };
+  return { context, checkpoint: () => checkpoint, failedRecords: () => failedRecords };
 };
 const base = {
   type: ModelTypeEnum.llm,
@@ -44,7 +55,7 @@ const base = {
 
 describe('migrateTokenPricesPerMillion with MongoDB', () => {
   it.each([false, true])(
-    'only releases startup after valid prices are migrated, invalid=%s',
+    'keeps startup ready while the background task completes or awaits an admin retry, invalid=%s',
     async (invalid) => {
       const migration = systemMigrations.at(-1)!;
       await MongoSystemMigrationState.deleteMany({ _id: migration.id });
@@ -59,39 +70,42 @@ describe('migrateTokenPricesPerMillion with MongoDB', () => {
         logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
         timing: { blockingPollIntervalMs: 5 }
       });
-      let ready = false;
       await runner.start();
-      const readiness = runner.waitForBlockingMigrations().then(
-        () => {
-          ready = true;
-          return true;
-        },
-        () => false
-      );
       try {
+        await expect(runner.waitForBlockingMigrations()).resolves.toBeUndefined();
+        await runner.tick();
         if (invalid) {
-          await vi.waitFor(async () => {
-            expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-              'failed'
-            );
+          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+            'failed'
+          );
+          expect(
+            await MongoSystemMigrationFailedRecord.findOne({ migrationId: migration.id }).lean()
+          ).toMatchObject({
+            stageKey: 'models',
+            reason: { message: 'Negative model price' }
           });
-          expect(ready).toBe(false);
           expect(await MongoAIModel.collection.findOne({ model: 'startup' })).not.toHaveProperty(
             'legacyTokenPricing'
           );
-        } else {
-          expect(await readiness).toBe(true);
-          expect(await MongoAIModel.collection.findOne({ model: 'startup' })).toMatchObject({
-            priceTiers: [{ inputPrice: 125, outputPrice: 125 }]
-          });
-          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-            'succeeded'
+          await MongoAIModel.collection.updateOne(
+            { model: 'startup' },
+            { $set: { charsPointsPrice: 0.125 } }
           );
+          await retryNonBlockingSystemMigration(migration.id, [migration]);
+          await runner.wake();
         }
+        expect(await MongoAIModel.collection.findOne({ model: 'startup' })).toMatchObject({
+          priceTiers: [{ inputPrice: 125, outputPrice: 125 }]
+        });
+        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+          'succeeded'
+        );
+        expect(
+          await MongoSystemMigrationFailedRecord.countDocuments({ migrationId: migration.id })
+        ).toBe(0);
       } finally {
         runner.stop();
         await runner.tick();
-        await readiness;
       }
     }
   );
@@ -185,7 +199,7 @@ describe('migrateTokenPricesPerMillion with MongoDB', () => {
     });
     expect(await MongoAIModel.collection.findOne({ model: 'stt' })).toEqual(originalSTT);
     expect(await MongoAIModel.collection.findOne({ model: 'tts-m' })).toEqual(currentTTS);
-    expect(first.context.getFailedRecords).not.toHaveBeenCalled();
+    expect(first.context.getFailedRecords).toHaveBeenCalledTimes(1);
     expect(first.context.reportFailedRecords).not.toHaveBeenCalled();
     const again = createContext(first.checkpoint());
     await migrateTokenPricesPerMillion(again.context);
@@ -211,7 +225,7 @@ describe('migrateTokenPricesPerMillion with MongoDB', () => {
   });
 
   it.each(['repair', 'delete'])(
-    'blocks on malformed prices without advancing the batch, then resumes after %s',
+    'reports malformed prices without advancing the batch, then resumes after %s',
     async (action) => {
       const { insertedId } = await MongoAIModel.collection.insertOne({
         ...base,
@@ -232,25 +246,35 @@ describe('migrateTokenPricesPerMillion with MongoDB', () => {
         'Model pricing migration requires source repair',
         { errorCount: 1, modelId: String(insertedId), reason: 'Negative model price' }
       );
-      expect(first.context.getFailedRecords).not.toHaveBeenCalled();
+      expect(first.failedRecords()).toEqual([
+        {
+          stageKey: 'models',
+          data: { modelId: String(insertedId) },
+          reason: { message: 'Negative model price' }
+        }
+      ]);
       expect(first.context.reportFailedRecords).not.toHaveBeenCalled();
       if (action === 'repair')
         await MongoAIModel.collection.updateOne({ _id: insertedId }, { $set: { inputPrice: 1 } });
       else await MongoAIModel.collection.deleteOne({ _id: insertedId });
-      const resumed = createContext(first.checkpoint());
+      const resumed = createContext(first.checkpoint(), first.failedRecords());
       await expect(migrateTokenPricesPerMillion(resumed.context)).resolves.toEqual({
         verifiedCount: action === 'repair' ? 1 : 0
       });
-      if (action === 'repair')
+      expect(resumed.context.reportFailedRecords).toHaveBeenCalledWith([]);
+      if (action === 'repair') {
+        expect(resumed.context.reportFailedRecords.mock.invocationCallOrder[0]).toBeLessThan(
+          resumed.context.saveCheckpoint.mock.invocationCallOrder[0]
+        );
         expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toMatchObject({
           inputPrice: 1000,
           outputPrice: 2000
         });
-      else expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toBeNull();
+      } else expect(await MongoAIModel.collection.findOne({ _id: insertedId })).toBeNull();
     }
   );
 
-  it('resets its checkpoint when final validation finds a missed source row, then repairs it on restart', async () => {
+  it('resets its checkpoint when final validation finds a missed source row, then repairs it on retry', async () => {
     await MongoAIModel.collection.insertOne({
       ...base,
       model: 'first',
@@ -273,7 +297,7 @@ describe('migrateTokenPricesPerMillion with MongoDB', () => {
     );
     expect(first.checkpoint()).toMatchObject({ lastId: null, scannedCount: 0 });
     await expect(
-      migrateTokenPricesPerMillion(createContext(first.checkpoint()).context)
+      migrateTokenPricesPerMillion(createContext(first.checkpoint(), first.failedRecords()).context)
     ).resolves.toEqual({ verifiedCount: 2 });
     expect(await MongoAIModel.collection.findOne({ model: 'first' })).toMatchObject({
       inputPrice: 1000

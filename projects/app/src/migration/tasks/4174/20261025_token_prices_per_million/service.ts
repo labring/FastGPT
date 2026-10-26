@@ -72,6 +72,12 @@ export const readTokenPriceMigrationBatch = async ({
     .limit(limit)
     .toArray() as unknown as Promise<TokenPriceMigrationRecord[]>;
 
+/** 管理员重试时优先重读上一轮失败模型；已删除的记录自然视为已解决。 */
+export const readFailedTokenPriceMigrationRecords = async (ids: string[]) =>
+  MongoAIModel.collection
+    .find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } }, { projection })
+    .toArray() as unknown as Promise<TokenPriceMigrationRecord[]>;
+
 /** 校验全部源价格后换算并四舍五入至两位；保留精确区间边界。 */
 const planTokenPriceMigration = (record: TokenPriceMigrationRecord) => {
   if (!quantityModelTypes.includes(record.type)) throw new Error('Unsupported model type');
