@@ -765,6 +765,8 @@ describe('system migration runner', () => {
             status: SystemMigrationStatusEnum.succeeded
           });
         }),
+        // Runner 构造时即按模式分组，首次失败与后续重试必须使用相同的执行模式。
+        independent,
         progressSteps: [
           {
             key: 'migrating',
@@ -778,7 +780,6 @@ describe('system migration runner', () => {
         logger
       });
 
-      migration.independent = independent;
       let retryRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
       try {
         await runner.start();
