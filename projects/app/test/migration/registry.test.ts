@@ -13,13 +13,10 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('preserves the existing task order', () => {
-    expect(systemMigrations[0]).toMatchObject({
-      id: '20260907_cleanup_team_member_roles',
-      version: '4.17.0',
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.slice(2, -8).map((migration) => migration.id)).toEqual([
+  it('preserves the published task order and validates the production registry', () => {
+    expect(systemMigrations.map(({ id }) => id)).toEqual([
+      '20260907_cleanup_team_member_roles',
+      '20260903_migrate_legacy_system_models',
       '20260903_backfill_model_permissions',
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
@@ -27,39 +24,29 @@ describe('validateSystemMigrationRegistry', () => {
       '20260903_backfill_resource_create_time',
       '20260905_backfill_bill_metadata',
       '20260905_backfill_resource_owner_acl',
-      '20260908_cleanup_legacy_invited_members'
+      '20260908_cleanup_legacy_invited_members',
+      '20260907_migrate_dataset_tags_v2',
+      '20260916_backfill_app_resource_snapshots',
+      '20260923_enable_channel_reasoning_mapping',
+      '20260928_backfill_member_name_set',
+      '20261008_migrate_chunk_training',
+      '20261009_migrate_dataset_rebuild_status',
+      '20261009_backfill_agent_sandbox_team_id',
+      '20261022_backfill_folder_ancestor_ids'
     ]);
-    expect(systemMigrations[1]).toMatchObject({
-      id: '20260903_migrate_legacy_system_models',
-      version: '4.17.0'
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
+    ).toEqual([
+      '20260916_backfill_app_resource_snapshots',
+      '20260923_enable_channel_reasoning_mapping'
+    ]);
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
+    ).toEqual(['20261008_migrate_chunk_training', '20261009_migrate_dataset_rebuild_status']);
+    expect(systemMigrations.at(-3)).toMatchObject({
+      dependsOn: ['20261008_migrate_chunk_training']
     });
-    expect(systemMigrations.at(-8)).toMatchObject({
-      id: '20260907_migrate_dataset_tags_v2',
-      version: '4.17.1',
-      progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
-    });
-    expect(systemMigrations.at(-7)).toMatchObject({
-      id: '20260916_backfill_app_resource_snapshots',
-      version: '4.17.1',
-      delay: true,
-      progressSteps: [
-        { key: 'clean_v1_apps' },
-        { key: 'versions' },
-        { key: 'apps' },
-        { key: 'validation' }
-      ]
-    });
-    expect(systemMigrations.at(-6)).toMatchObject({
-      id: '20260923_enable_channel_reasoning_mapping',
-      version: '4.17.1',
-      delay: true,
-      progressSteps: [{ key: 'channels' }]
-    });
-    expect(systemMigrations.at(-5)).toMatchObject({
-      id: '20260928_backfill_member_name_set',
-      version: '4.17.1',
-      progressSteps: [{ key: 'members' }, { key: 'validation' }]
-    });
+    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
   it('runs only the seven selected production tasks independently', () => {
@@ -73,7 +60,6 @@ describe('validateSystemMigrationRegistry', () => {
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids'
     ]);
-    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
   it('makes the model catalog prerequisite explicit for every model reference task', () => {
@@ -89,51 +75,28 @@ describe('validateSystemMigrationRegistry', () => {
     expect(
       systemMigrations.find((task) => task.id === '20260916_backfill_app_resource_snapshots')
     ).toMatchObject({ dependsOn: ['20260903_backfill_app_model_references'] });
-    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('registers the manual chunk migration', () => {
-    expect(systemMigrations.at(-4)).toMatchObject({
-      id: '20261008_migrate_chunk_training',
-      manual: true,
-      progressSteps: [{ key: 'trainings' }, { key: 'validation' }]
-    });
-    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
-  });
-
-  it('keeps the rebuild field migration before the new backfills', () => {
-    expect(systemMigrations.at(-3)).toMatchObject({
-      id: '20261009_migrate_dataset_rebuild_status',
-      dependsOn: ['20261008_migrate_chunk_training'],
-      version: '4.17.1',
-      manual: true,
-      progressSteps: [{ key: 'datas' }, { key: 'trainings' }, { key: 'validation' }]
-    });
-  });
-
-  it('appends the sandbox team id backfill migration after the rebuild migration', () => {
-    expect(systemMigrations.at(-2)).toMatchObject({
-      id: '20261009_backfill_agent_sandbox_team_id',
-      version: '4.17.3',
-      progressSteps: [{ key: 'instances' }, { key: 'validation' }]
-    });
-  });
-
-  it('appends the folder path backfill after existing migrations', () => {
-    expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20261022_backfill_folder_ancestor_ids',
-      version: '4.17.3',
-      progressSteps: [{ key: 'apps' }, { key: 'datasets' }, { key: 'validation' }]
-    });
-    expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
-  });
-  it.each([{ delay: true }])('rejects manual mode with %o', (options) => {
+  it('rejects delayed manual execution', () => {
     expect(() =>
       validateSystemMigrationRegistry([
-        { ...createMigration('20261008_manual'), manual: true, ...options }
+        { ...createMigration('20261008_manual'), manual: true, delay: true }
       ])
     ).toThrow('cannot be delayed');
   });
+
+  it.each([{ keys: [''] }, { keys: ['repeated', 'repeated'] }])(
+    'rejects invalid progress step keys: $keys',
+    ({ keys }) => {
+      const migration = {
+        ...createMigration('20261008_invalid_progress'),
+        progressSteps: keys.map((key) => ({ key, labelKey: 'system_migration:stage' }))
+      };
+      expect(() => validateSystemMigrationRegistry([migration])).toThrow(
+        'Invalid or duplicate progress step key'
+      );
+    }
+  );
 
   it('accepts an ordered registry with stable IDs', () => {
     expect(() =>

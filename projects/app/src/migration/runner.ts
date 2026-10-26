@@ -91,9 +91,9 @@ class SystemMigrationFailureReportedError extends Error {
 }
 
 /** 支持 AbortSignal 的轮询等待，runner 停止或 lease 丢失时无需等满间隔。 */
-const delay = (milliseconds: number, signal?: AbortSignal) =>
+const delay = (milliseconds: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
-    if (signal?.aborted) {
+    if (signal.aborted) {
       reject(new SystemMigrationLeaseLostError());
       return;
     }
@@ -103,10 +103,10 @@ const delay = (milliseconds: number, signal?: AbortSignal) =>
       reject(new SystemMigrationLeaseLostError());
     };
     const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
+      signal.removeEventListener('abort', onAbort);
       resolve();
     }, milliseconds);
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 
 const createMigrationLogger = ({
@@ -233,19 +233,15 @@ export const createSystemMigrationRunner = ({
       migrationLogger.warn(message, error ? { error } : undefined);
     };
 
-    const assertMutationSucceeded = (succeeded: boolean) => {
-      if (!succeeded) {
-        loseLease('System migration lease was lost');
-        throw new SystemMigrationLeaseLostError();
-      }
-    };
-
     const runFencedMutation = async (mutation: () => Promise<boolean>) => {
       // 停止后 lease 可能尚未到期，但本地执行者不能再开始新的批次或状态写入。
       if (abortController.signal.aborted) throw new SystemMigrationLeaseLostError();
       try {
         concurrencyLease?.assertValid();
-        assertMutationSucceeded(await mutation());
+        if (!(await mutation())) {
+          loseLease('System migration lease was lost');
+          throw new SystemMigrationLeaseLostError();
+        }
       } catch (error) {
         if (error instanceof SystemMigrationLeaseLostError) throw error;
         loseLease('Unable to verify system migration lease', error);
@@ -413,7 +409,7 @@ export const createSystemMigrationRunner = ({
       }
       await stopHeartbeat();
 
-      if (leaseLost || abortController.signal.aborted) return 'interrupted';
+      if (abortController.signal.aborted) return 'interrupted';
 
       concurrencyLease?.assertValid();
       const completed = await store.complete({ migrationId: migration.id, runId, result });
@@ -429,11 +425,7 @@ export const createSystemMigrationRunner = ({
       });
       return 'succeeded';
     } catch (error) {
-      if (
-        leaseLost ||
-        abortController.signal.aborted ||
-        error instanceof SystemMigrationLeaseLostError
-      ) {
+      if (abortController.signal.aborted || error instanceof SystemMigrationLeaseLostError) {
         return 'interrupted';
       }
       if (error instanceof SystemMigrationFailureReportedError) {

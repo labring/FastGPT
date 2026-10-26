@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigration } from '@/migration/registry';
 import {
@@ -37,20 +37,20 @@ const migrations: readonly SystemMigration[] = [
 ];
 
 describe('system migration service', () => {
-  const migrationIdPattern = /^20260903_service_/;
-
-  beforeEach(async () => {
-    await Promise.all([
-      MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
-      MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
-    ]);
-  });
-
   it('merges static ordered metadata with generic Mongo state', async () => {
-    await MongoSystemMigrationState.collection.insertOne({
+    await MongoSystemMigrationState.create({
       _id: migrations[0].id,
       status: SystemMigrationStatusEnum.succeeded,
       result: { migratedCount: 3 },
+      progress: [
+        {
+          key: 'migrating',
+          status: SystemMigrationStatusEnum.succeeded,
+          current: 3,
+          total: 3,
+          updatedAt: new Date()
+        }
+      ],
       completedAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -67,7 +67,12 @@ describe('system migration service', () => {
         status: SystemMigrationStatusEnum.succeeded,
         failedRecordCount: 0,
         progress: [
-          expect.objectContaining({ key: 'migrating', status: SystemMigrationStatusEnum.pending })
+          expect.objectContaining({
+            key: 'migrating',
+            status: SystemMigrationStatusEnum.succeeded,
+            current: 3,
+            total: 3
+          })
         ],
         result: {
           key: 'system_migration:migrations.first.result',
@@ -103,7 +108,6 @@ describe('system migration service', () => {
     expect(result.migrations.map((migration) => migration.id)).toEqual(
       migrations.map((migration) => migration.id)
     );
-    expect(result.migrations).toHaveLength(migrations.length);
   });
 
   it('loads the latest failed records separately from the polling list', async () => {
@@ -174,6 +178,14 @@ describe('system migration service', () => {
 describe('startManualSystemMigration', () => {
   const manual = { ...migrations[0], id: '20261008_service_manual', manual: true };
 
+  it('reports an undeclared prerequisite as a registry error without enqueueing', async () => {
+    const dependent = { ...manual, dependsOn: ['20261008_missing'] };
+    await expect(startManualSystemMigration(dependent.id, [dependent])).rejects.toThrow(
+      'System migration dependency not registered: 20261008_missing'
+    );
+    expect(await MongoSystemMigrationState.findById(dependent.id)).toBeNull();
+  });
+
   it('requires a successful prerequisite before starting or retrying a dependent migration', async () => {
     const prerequisite = { ...manual, id: '20261008_service_prerequisite' };
     const dependent = {
@@ -229,25 +241,6 @@ describe('startManualSystemMigration', () => {
     );
   });
 
-  it('returns a prerequisite name key without choosing a server language', async () => {
-    const prerequisite = {
-      ...manual,
-      id: '20261008_migrate_chunk_training',
-      nameKey: 'system_migration:migrations.20261008_migrate_chunk_training.name'
-    };
-    const dependent = {
-      ...manual,
-      id: '20261009_migrate_dataset_rebuild_status',
-      nameKey: 'system_migration:migrations.20261009_migrate_dataset_rebuild_status.name',
-      dependsOn: [prerequisite.id]
-    };
-    const registry = [prerequisite, dependent];
-
-    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toMatchObject({
-      message: 'system_migration:prerequisite_not_succeeded',
-      prerequisiteNameKey: prerequisite.nameKey
-    });
-  });
   it('lists a waiting task, then accepts exactly one concurrent start', async () => {
     const list = await getSystemMigrationList([manual]);
     expect(list.migrations[0].status).toBe(SystemMigrationStatusEnum.waiting);

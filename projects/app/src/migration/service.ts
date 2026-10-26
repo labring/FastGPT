@@ -42,24 +42,6 @@ const assertMigrationDependenciesComplete = async (
   }
 };
 
-/** 静态阶段保证未执行项也可见，Mongo 只补充已经上报过的可变状态。 */
-const getProgressList = (
-  migration: SystemMigration,
-  state: SystemMigrationStateSchemaType | undefined,
-  failedRecordCounts: Map<string, number>
-) => {
-  const storedProgress = state?.progress ?? [];
-  const progressMap = new Map(storedProgress.map((progress) => [progress.key, progress]));
-
-  return migration.progressSteps.map(({ key, labelKey }) => ({
-    key,
-    labelKey,
-    status: SystemMigrationStatusEnum.pending,
-    ...progressMap.get(key),
-    failedRecordCount: failedRecordCounts.get(key) ?? 0
-  }));
-};
-
 /** 合并不可变静态元数据和 Mongo 最新运行状态，供管理员页面读取。 */
 export const getSystemMigrationList = async (
   migrations: readonly SystemMigration[] = systemMigrations
@@ -88,6 +70,7 @@ export const getSystemMigrationList = async (
       const state = stateMap.get(migration.id);
       const stageFailedRecordCounts =
         failedRecordCountMap.get(migration.id) ?? new Map<string, number>();
+      const progressMap = new Map(state?.progress?.map((progress) => [progress.key, progress]));
       return {
         id: migration.id,
         version: migration.version,
@@ -102,7 +85,14 @@ export const getSystemMigrationList = async (
             : SystemMigrationStatusEnum.pending),
         heartbeatAt: state?.heartbeatAt,
         leaseExpireAt: state?.leaseExpireAt,
-        progress: getProgressList(migration, state, stageFailedRecordCounts),
+        // 静态阶段保证未执行项也可见，Mongo 只补充已经上报的状态。
+        progress: migration.progressSteps.map(({ key, labelKey }) => ({
+          key,
+          labelKey,
+          status: SystemMigrationStatusEnum.pending,
+          ...progressMap.get(key),
+          failedRecordCount: stageFailedRecordCounts.get(key) ?? 0
+        })),
         // 最终结果只属于 succeeded 终态，异常历史数据不能被客户端误认为本轮成功结果。
         result:
           state?.status === SystemMigrationStatusEnum.succeeded && state.result !== undefined

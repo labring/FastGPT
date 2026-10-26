@@ -1,18 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import {
+  SystemMigrationStatusEnum,
+  systemMigrationLimits
+} from '@fastgpt/global/migration/constants';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import {
   getMigrationFailedRecordCounts,
   getMigrationFailedRecords,
   resetFailedMigration,
   enqueueManualMigration,
-  claimMigrationLease
+  claimMigrationLease,
+  completeMigration,
+  ensureMigrationStates,
+  failMigration,
+  getMigrationStates,
+  isMigrationLeaseActive,
+  renewMigrationLease,
+  saveMigrationCheckpoint,
+  saveMigrationFailedRecords,
+  saveMigrationProgress
 } from '@/migration/entity';
 import { createSystemMigrationRunner, type SystemMigrationRunnerStore } from '@/migration/runner';
-import type { SystemMigration, SystemMigrationLogger } from '@/migration/registry';
+import type {
+  SystemMigration,
+  SystemMigrationContext,
+  SystemMigrationLogger
+} from '@/migration/registry';
 import {
-  MongoSystemMigrationFailedRecord,
   MongoSystemMigrationState,
   type SystemMigrationStateSchemaType
 } from '@/migration/mongoSchema';
@@ -33,43 +48,151 @@ const createMigration = (id: string, run: SystemMigration['run']): SystemMigrati
   run
 });
 
+/** 默认仍使用真实 Mongo，仅替换各用例需要模拟的存储故障或调度时序。 */
+const createStore = (
+  overrides: Partial<SystemMigrationRunnerStore>
+): SystemMigrationRunnerStore => ({
+  ensureStates: ensureMigrationStates,
+  getStates: getMigrationStates,
+  getFailedRecords: getMigrationFailedRecords,
+  claimLease: claimMigrationLease,
+  renewLease: renewMigrationLease,
+  isLeaseActive: isMigrationLeaseActive,
+  saveCheckpoint: saveMigrationCheckpoint,
+  saveFailedRecords: saveMigrationFailedRecords,
+  saveProgress: saveMigrationProgress,
+  complete: completeMigration,
+  fail: failMigration,
+  ...overrides
+});
+
 describe('system migration runner', () => {
-  const migrationIdPattern = /^20260903_runner_/;
   const concurrencyTokens = new Map<string, { key: string; expiresAt: number }>();
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     concurrencyTokens.clear();
     // 使用真实 LeaseCache 生命周期，只替换 Redis 原子脚本边界；所有 Runner 共享同一存储。
-    vi.spyOn(redisCacheAdapter, 'evalScript').mockImplementation(async ({ script, keys, args }) => {
-      const key = String(keys[0]);
-      const token = String(args[0]);
-      const ttlMs = Number(args[1]);
-      if (key.includes('concurrency-waiters:')) return 1;
-      for (const [heldToken, lease] of concurrencyTokens) {
-        if (lease.expiresAt <= Date.now()) concurrencyTokens.delete(heldToken);
+    vi.spyOn(redisCacheAdapter, 'evalScript').mockImplementation(
+      async ({ script, keys = [], args = [] }) => {
+        const key = String(keys[0]);
+        const token = String(args[0]);
+        const ttlMs = Number(args[1]);
+        if (key.includes('concurrency-waiters:')) return 1;
+        for (const [heldToken, lease] of concurrencyTokens) {
+          if (lease.expiresAt <= Date.now()) concurrencyTokens.delete(heldToken);
+        }
+        if (script.includes('ZCARD')) {
+          const occupied = [...concurrencyTokens.values()].filter(
+            (lease) => lease.key === key
+          ).length;
+          if (occupied >= Number(args[2])) return 0;
+          concurrencyTokens.set(token, { key, expiresAt: Date.now() + ttlMs });
+          return 1;
+        }
+        const lease = concurrencyTokens.get(token);
+        if (!lease || lease.key !== key) return 0;
+        if (script.includes('ZSCORE')) {
+          lease.expiresAt = Date.now() + ttlMs;
+          return 1;
+        }
+        return Number(concurrencyTokens.delete(token));
       }
-      if (script.includes('ZCARD')) {
-        const occupied = [...concurrencyTokens.values()].filter(
-          (lease) => lease.key === key
-        ).length;
-        if (occupied >= Number(args[2])) return 0;
-        concurrencyTokens.set(token, { key, expiresAt: Date.now() + ttlMs });
-        return 1;
+    );
+  });
+
+  it.each([
+    { method: 'saveCheckpoint', throws: false },
+    { method: 'saveCheckpoint', throws: true },
+    { method: 'isLeaseActive', throws: false },
+    { method: 'complete', throws: false },
+    { method: 'fail', throws: false },
+    { method: 'fail', throws: true },
+    { method: 'renewLease', throws: false },
+    { method: 'renewLease', throws: true }
+  ] as const)(
+    'preserves running state when $method cannot confirm ownership (throws: $throws)',
+    async ({ method, throws }) => {
+      const mutation = vi.fn(async () => {
+        if (throws) throw new Error('storage unavailable');
+        return false;
+      });
+      const migration = createMigration('20260903_runner_fenced_write', async (context) => {
+        if (method === 'saveCheckpoint') await context.saveCheckpoint({ cursor: 1 });
+        if (method === 'isLeaseActive') await context.assertActive();
+        if (method === 'fail') throw new Error('business error');
+        if (method === 'renewLease') {
+          await new Promise<void>((resolve) =>
+            context.signal.addEventListener('abort', () => resolve(), { once: true })
+          );
+        }
+      });
+      const runner = createSystemMigrationRunner({
+        migrations: [migration],
+        store: createStore({ [method]: mutation }),
+        timing: { scanIntervalMs: 10_000, heartbeatIntervalMs: 10 },
+        logger
+      });
+      try {
+        await runner.start();
+        await runner.tick();
+        expect(mutation).toHaveBeenCalled();
+        const state = await MongoSystemMigrationState.findById(migration.id).lean();
+        expect(state).toMatchObject({ status: SystemMigrationStatusEnum.running });
+        expect(state?.lastError).toBeUndefined();
+        expect(state?.checkpoint).toBeUndefined();
+      } finally {
+        runner.stop();
+        await runner.tick();
       }
-      const lease = concurrencyTokens.get(token);
-      if (!lease || lease.key !== key) return 0;
-      if (script.includes('ZSCORE')) {
-        lease.expiresAt = Date.now() + ttlMs;
-        return 1;
-      }
-      return Number(concurrencyTokens.delete(token));
-    });
-    await Promise.all([
-      MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
-      MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
-    ]);
+    }
+  );
+
+  it.each([
+    {
+      name: 'undeclared progress',
+      run: (context: SystemMigrationContext) =>
+        context.reportProgress({ key: 'unknown', status: SystemMigrationStatusEnum.running }),
+      error: 'undeclared progress step'
+    },
+    {
+      name: 'undeclared failed records',
+      run: (context: SystemMigrationContext) =>
+        context.reportFailedRecords([
+          { stageKey: 'unknown', data: { recordId: '1' }, reason: { message: 'bad data' } }
+        ]),
+      error: 'undeclared progress step'
+    },
+    {
+      name: 'incomplete progress',
+      run: async () => undefined,
+      error: 'before completing progress step'
+    },
+    {
+      name: 'invalid result',
+      run: async () => ({ oversized: 'x'.repeat(systemMigrationLimits.maxDataStringLength + 1) }),
+      error: 'Too big'
+    }
+  ])('fails a task that reports $name', async ({ name, run, error }) => {
+    const migration = {
+      ...createMigration('20260903_runner_invalid_output', run),
+      progressSteps:
+        name === 'invalid result' ? [] : [{ key: 'known', labelKey: 'system_migration:stage' }]
+    };
+    const runner = createSystemMigrationRunner({ migrations: [migration], logger });
+    try {
+      await runner.start();
+      await runner.tick();
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      expect(state).toMatchObject({ status: SystemMigrationStatusEnum.failed });
+      expect(state?.lastError?.message).toContain(error);
+      expect(state?.result).toBeUndefined();
+      expect(await getMigrationFailedRecords(migration.id)).toEqual([]);
+    } finally {
+      runner.stop();
+      await runner.tick();
+    }
   });
 
   it.each(['success', 'failure'] as const)(
@@ -598,6 +721,7 @@ describe('system migration runner', () => {
       {
         ...createMigration('20260903_runner_serial_first', async (context) => {
           order.push('first:start');
+          await context.assertActive();
           expect(await context.getCheckpoint(z.object({ cursor: z.number() }))).toBeUndefined();
           await context.reportProgress({
             key: 'test_progress',
@@ -684,10 +808,7 @@ describe('system migration runner', () => {
       });
       const laterTask = vi.fn();
       const migrations = [
-        {
-          ...createMigration('20260903_runner_continue_after_failure', failedTask),
-          progressSteps: []
-        },
+        createMigration('20260903_runner_continue_after_failure', failedTask),
         createMigration('20260903_runner_run_after_failure', laterTask)
       ];
       const runner = createSystemMigrationRunner({
@@ -724,6 +845,13 @@ describe('system migration runner', () => {
   it.each([false, true])(
     'resumes checkpoint and failed records after admin retry (independent: %s)',
     async (independent) => {
+      const failedRecords = [
+        {
+          stageKey: 'migrating',
+          data: { recordId: 'example-1' },
+          reason: { message: 'missing modelId' }
+        }
+      ];
       let executions = 0;
       const migration = {
         ...createMigration('20260903_runner_context_failure', async (context) => {
@@ -734,32 +862,15 @@ describe('system migration runner', () => {
           });
           if (executions === 1) {
             expect(await context.getFailedRecords()).toEqual([]);
-            const failedRecords = [
-              {
-                stageKey: 'migrating',
-                data: { recordId: 'example-1' },
-                reason: { message: 'missing modelId' }
-              }
-            ];
-            // 错误快照先于 checkpoint 持久化，进程在两次调用之间退出也只会重放该批。
+            // 业务提交后先保存完整错误快照，再推进恢复位置。
             await context.reportFailedRecords(failedRecords);
             await context.saveCheckpoint({ lastId: 'example-2' });
-            await context.fail({
-              message: 'example validation failed',
-              failedRecords
-            });
+            await context.fail({ message: 'example validation failed', failedRecords });
           }
-
           expect(await context.getCheckpoint(z.object({ lastId: z.string() }))).toEqual({
             lastId: 'example-2'
           });
-          expect(await context.getFailedRecords()).toEqual([
-            {
-              stageKey: 'migrating',
-              data: { recordId: 'example-1' },
-              reason: { message: 'missing modelId' }
-            }
-          ]);
+          expect(await context.getFailedRecords()).toEqual(failedRecords);
           await context.reportProgress({
             key: 'migrating',
             status: SystemMigrationStatusEnum.succeeded
@@ -800,15 +911,7 @@ describe('system migration runner', () => {
         });
         expect(state?.lastError).not.toHaveProperty('key');
         expect(state?.lastError).not.toHaveProperty('params');
-        await expect(getMigrationFailedRecords(migration.id)).resolves.toMatchObject([
-          {
-            stageKey: 'migrating',
-            data: { recordId: 'example-1' },
-            reason: { message: 'missing modelId' }
-          }
-        ]);
-        const [storedFailedRecord] = await getMigrationFailedRecords(migration.id);
-        expect(storedFailedRecord?.reason).toEqual({ message: 'missing modelId' });
+        await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual(failedRecords);
 
         await runner.tick();
         expect(executions).toBe(1);
@@ -928,19 +1031,11 @@ describe('system migration runner', () => {
         updatedAt: now
       }
     ]);
-    const store: SystemMigrationRunnerStore = {
+    const store = createStore({
       ensureStates: vi.fn(),
       getStates,
-      getFailedRecords: vi.fn(),
-      claimLease: vi.fn(async () => null),
-      renewLease: vi.fn(),
-      isLeaseActive: vi.fn(),
-      saveCheckpoint: vi.fn(),
-      saveFailedRecords: vi.fn(),
-      saveProgress: vi.fn(),
-      complete: vi.fn(),
-      fail: vi.fn()
-    };
+      claimLease: vi.fn(async () => null)
+    });
     const runner = createSystemMigrationRunner({
       migrations: [migration],
       timing: { scanIntervalMs: 10 },
@@ -993,19 +1088,11 @@ describe('system migration runner', () => {
       .fn<SystemMigrationRunnerStore['getStates']>()
       .mockReturnValueOnce(firstScan)
       .mockResolvedValue([runningState]);
-    const store: SystemMigrationRunnerStore = {
+    const store = createStore({
       ensureStates: vi.fn(),
       getStates,
-      getFailedRecords: vi.fn(),
-      claimLease: vi.fn(async () => null),
-      renewLease: vi.fn(),
-      isLeaseActive: vi.fn(),
-      saveCheckpoint: vi.fn(),
-      saveFailedRecords: vi.fn(),
-      saveProgress: vi.fn(),
-      complete: vi.fn(),
-      fail: vi.fn()
-    };
+      claimLease: vi.fn(async () => null)
+    });
     const runner = createSystemMigrationRunner({
       migrations: [migration],
       timing: { scanIntervalMs: 10 },
@@ -1035,75 +1122,47 @@ describe('system migration runner', () => {
     }
   });
 
-  it('delays execution when migration has delay: true and delayMs is configured', async () => {
+  it.each([
+    { delay: true, delayMs: 60 },
+    { delay: false, delayMs: 100 },
+    { delay: true, delayMs: 0 }
+  ])('applies the configured delay only when enabled: %o', async ({ delay, delayMs }) => {
     let runStartedAt = 0;
     const migration = {
-      ...createMigration('20260903_runner_delayed_task', async () => {
+      ...createMigration('20260903_runner_delay', async () => {
         runStartedAt = Date.now();
       }),
-      delay: true
+      delay
     };
-
-    const delayMs = 60;
     const runner = createSystemMigrationRunner({
       migrations: [migration],
-      timing: {
-        scanIntervalMs: 10_000,
-        delayMs
-      },
+      timing: { scanIntervalMs: 10_000, delayMs },
       logger
     });
 
     try {
-      const runnerStartedAt = Date.now();
+      const startedAt = Date.now();
       await runner.start();
       await runner.tick();
-
-      expect(runStartedAt).toBeGreaterThanOrEqual(runnerStartedAt + delayMs - 15);
-      const state = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
-      expect(logger.info).toHaveBeenCalledWith(
-        'System migration execution delayed by configuration',
-        expect.objectContaining({
-          migrationId: migration.id,
-          delayMs
-        })
-      );
+      expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
+        status: SystemMigrationStatusEnum.succeeded
+      });
+      if (delay && delayMs > 0) {
+        expect(runStartedAt).toBeGreaterThanOrEqual(startedAt + delayMs - 15);
+        expect(logger.info).toHaveBeenCalledWith(
+          'System migration execution delayed by configuration',
+          expect.objectContaining({ migrationId: migration.id, delayMs })
+        );
+      } else {
+        expect(runStartedAt).toBeGreaterThanOrEqual(startedAt);
+        expect(logger.info).not.toHaveBeenCalledWith(
+          'System migration execution delayed by configuration',
+          expect.anything()
+        );
+      }
     } finally {
       runner.stop();
-    }
-  });
-
-  it('does not delay execution when migration does not specify delay', async () => {
-    let runStartedAt = 0;
-    const migration = createMigration('20260903_runner_nodelay_task', async () => {
-      runStartedAt = Date.now();
-    });
-
-    const delayMs = 100;
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      timing: {
-        scanIntervalMs: 10_000,
-        delayMs
-      },
-      logger
-    });
-
-    try {
-      const runnerStartedAt = Date.now();
-      await runner.start();
       await runner.tick();
-
-      expect(runStartedAt).toBeLessThan(runnerStartedAt + delayMs);
-      const state = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
-      expect(logger.info).not.toHaveBeenCalledWith(
-        'System migration execution delayed by configuration',
-        expect.anything()
-      );
-    } finally {
-      runner.stop();
     }
   });
 });
