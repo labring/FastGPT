@@ -17,11 +17,11 @@ export const ReplaceInvalidModelReferencesBodySchema = z.object({
         .trim()
         .min(1)
         .meta({ example: 'llm-model-id', description: '替换用的语言模型 ID' }),
-      sttModelId: z
+      ttsModelId: z
         .string()
         .trim()
         .min(1)
-        .meta({ example: 'stt-model-id', description: '预留的语音识别模型 ID；当前无独立引用' }),
+        .meta({ example: 'tts-model-id', description: '替换用的语音播放模型 ID' }),
       rerankModelId: z
         .string()
         .trim()
@@ -54,7 +54,7 @@ export type InvalidModelReferenceCount = z.infer<typeof InvalidModelReferenceCou
 
 const ResourceModelCountsSchema = z.object({
   [ModelTypeEnum.llm]: InvalidModelReferenceCountSchema,
-  [ModelTypeEnum.stt]: InvalidModelReferenceCountSchema,
+  [ModelTypeEnum.tts]: InvalidModelReferenceCountSchema,
   [ModelTypeEnum.rerank]: InvalidModelReferenceCountSchema
 });
 

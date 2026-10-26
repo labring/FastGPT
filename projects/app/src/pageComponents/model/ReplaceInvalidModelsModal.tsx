@@ -17,7 +17,7 @@ type ResourceType = keyof ReplaceInvalidModelReferencesResponse['counts'];
 
 const modelFields = [
   { key: 'llmModelId', type: ModelTypeEnum.llm, label: 'common:model.type.chat' },
-  { key: 'sttModelId', type: ModelTypeEnum.stt, label: 'common:model.type.stt' },
+  { key: 'ttsModelId', type: ModelTypeEnum.tts, label: 'common:model.type.tts' },
   { key: 'rerankModelId', type: ModelTypeEnum.rerank, label: 'common:model.type.reRank' }
 ] as const;
 const resourceTypes: ResourceType[] = ['dataset', 'app', 'version'];
@@ -28,7 +28,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const { modelList } = useModelList({ enabled: true });
   const [replacement, setReplacement] = useState<Replacement>({
     llmModelId: '',
-    sttModelId: '',
+    ttsModelId: '',
     rerankModelId: ''
   });
   const [step, setStep] = useState<'select' | 'confirm' | 'result'>('select');
@@ -49,7 +49,11 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
     label,
     model: modelList.find((item) => item.modelId === replacement[key])
   }));
-  const canConfirm = modelFields.every(({ key }) => Boolean(replacement[key]));
+  const selectedTts = modelList.find((model) => model.modelId === replacement.ttsModelId);
+  const canConfirm =
+    modelFields.every(({ key }) => Boolean(replacement[key])) &&
+    selectedTts?.type === ModelTypeEnum.tts &&
+    selectedTts.config.voices.some(({ value }) => value.trim().length > 0);
   const hasFailures = Boolean(result?.failedSamples.length);
 
   return (
@@ -109,9 +113,9 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
                   setReplacement((current) => ({ ...current, [key]: modelId }))
                 }
               />
-              {type === ModelTypeEnum.stt && (
+              {type === ModelTypeEnum.tts && (
                 <Text mt={1} color="myGray.600" fontSize="sm">
-                  {t('config_model:replace_invalid_stt_note')}
+                  {t('config_model:replace_invalid_tts_note')}
                 </Text>
               )}
             </Box>

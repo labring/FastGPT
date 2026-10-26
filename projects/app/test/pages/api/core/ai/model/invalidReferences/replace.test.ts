@@ -26,7 +26,7 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (route: unknown) => rout
 
 const replacement = {
   llmModelId: 'llm-id',
-  sttModelId: 'stt-id',
+  ttsModelId: 'tts-id',
   rerankModelId: 'rerank-id'
 };
 const count = {
@@ -37,7 +37,7 @@ const count = {
   conflicts: 0,
   failedRecords: 0
 };
-const countsByModel = { llm: count, stt: count, rerank: count };
+const countsByModel = { llm: count, tts: count, rerank: count };
 const result = {
   completed: true,
   counts: { dataset: countsByModel, app: countsByModel, version: countsByModel },
@@ -57,6 +57,9 @@ describe('replace invalid model references API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     modelHandle.getModelData.mockReset();
+    modelHandle.getModelData.mockReturnValue({
+      config: { voices: [{ label: 'Default', value: 'default-voice' }] }
+    });
     vi.mocked(authUserPer).mockResolvedValue({ ...owner, tmb: owner, isRoot: false } as any);
     vi.mocked(getTmbInfoByTmbId).mockResolvedValue(owner as any);
     vi.mocked(getTeamModelHandle).mockResolvedValue(modelHandle as any);
@@ -92,8 +95,8 @@ describe('replace invalid model references API', () => {
       { type: ModelTypeEnum.llm, authorizedIds: expect.any(Set) }
     );
     expect(modelHandle.getModelData).toHaveBeenCalledWith(
-      { modelId: replacement.sttModelId },
-      { type: ModelTypeEnum.stt, authorizedIds: expect.any(Set) }
+      { modelId: replacement.ttsModelId },
+      { type: ModelTypeEnum.tts, authorizedIds: expect.any(Set) }
     );
     expect(modelHandle.getModelData).toHaveBeenCalledWith(
       { modelId: replacement.rerankModelId },
@@ -122,10 +125,23 @@ describe('replace invalid model references API', () => {
   it('rejects an unavailable target before scanning', async () => {
     modelHandle.getModelData.mockImplementation((reference: { modelId: string }) => {
       if (reference.modelId === replacement.rerankModelId) throw new Error('Unavailable model');
+      return { config: { voices: [{ label: 'Default', value: 'default-voice' }] } };
     });
 
     await expect(handler(request())).rejects.toThrow('Unavailable model');
     expect(replaceInvalidModelReferences).not.toHaveBeenCalled();
     expect(addAuditLog).not.toHaveBeenCalled();
+  });
+
+  it('rejects a TTS target with no available voice before scanning', async () => {
+    modelHandle.getModelData.mockImplementation((reference: { modelId: string }) => ({
+      config: {
+        voices:
+          reference.modelId === replacement.ttsModelId ? [] : [{ label: 'Default', value: 'voice' }]
+      }
+    }));
+
+    await expect(handler(request())).rejects.toThrow('available voice');
+    expect(replaceInvalidModelReferences).not.toHaveBeenCalled();
   });
 });

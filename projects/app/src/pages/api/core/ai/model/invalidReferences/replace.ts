@@ -63,10 +63,13 @@ export async function handler(
       { modelId: replacement.llmModelId },
       { type: ModelTypeEnum.llm, authorizedIds }
     );
-    currentHandle.getModelData(
-      { modelId: replacement.sttModelId },
-      { type: ModelTypeEnum.stt, authorizedIds }
+    const ttsModel = currentHandle.getModelData(
+      { modelId: replacement.ttsModelId },
+      { type: ModelTypeEnum.tts, authorizedIds }
     );
+    if (!ttsModel.config.voices.some(({ value }) => value.trim().length > 0)) {
+      throw new Error('Replacement TTS must have an available voice');
+    }
     currentHandle.getModelData(
       { modelId: replacement.rerankModelId },
       { type: ModelTypeEnum.rerank, authorizedIds }

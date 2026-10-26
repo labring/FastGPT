@@ -14,7 +14,7 @@ import {
 
 const replacement = {
   llmModelId: 'new-llm',
-  sttModelId: 'new-stt',
+  ttsModelId: 'new-tts',
   rerankModelId: 'new-rerank'
 };
 const models = [
@@ -35,12 +35,17 @@ const models = [
     config: { vision: true }
   },
   {
-    modelId: 'new-stt',
-    model: 'new-stt-name',
-    type: ModelTypeEnum.stt,
+    modelId: 'new-tts',
+    model: 'new-tts-name',
+    type: ModelTypeEnum.tts,
     isActive: true,
     scope: ModelScopeEnum.system,
-    config: {}
+    config: {
+      voices: [
+        { label: 'Unavailable', value: '' },
+        { label: 'First', value: 'first-voice' }
+      ]
+    }
   },
   {
     modelId: 'new-rerank',
@@ -56,7 +61,7 @@ const models = [
     type: ModelTypeEnum.tts,
     isActive: false,
     scope: ModelScopeEnum.system,
-    config: {}
+    config: { voices: [{ label: 'Old', value: 'old-voice' }] }
   }
 ];
 const handle = { getAllModels: () => models } as unknown as ModelHandle;
@@ -100,16 +105,17 @@ describe('replaceInvalidModelReferences', () => {
       ],
       chatConfig: {
         questionGuide: { open: false, model: 'old-llm-name' },
-        ttsConfig: { type: 'model', modelId: 'old-tts' }
+        ttsConfig: { type: 'model', modelId: 'old-tts', voice: 'old-voice' }
       }
     });
 
     expect(content.changes.llm.replacedReferences).toBe(1);
+    expect(content.changes.tts.replacedReferences).toBe(1);
     expect(content.changes.rerank.replacedReferences).toBe(1);
     expect(content.replacedIds.has('old-llm')).toBe(true);
     expect(content.chatConfig).toMatchObject({
       questionGuide: { modelId: 'new-llm' },
-      ttsConfig: { modelId: 'old-tts' }
+      ttsConfig: { modelId: 'new-tts', model: 'new-tts-name', voice: 'first-voice' }
     });
     const nodes = content.nodes as Array<{ inputs: Array<{ value: string }> }>;
     expect(nodes[0].inputs[0].value).toBe('{{modelId}}');
@@ -117,7 +123,7 @@ describe('replaceInvalidModelReferences', () => {
     expect(nodes[2].inputs[0].value).toBe('new-rerank');
   });
 
-  it('replaces only invalid LLM and rerank references across one team and preserves embedding and TTS', async () => {
+  it('replaces invalid LLM, TTS and rerank references across one team and preserves embedding', async () => {
     await MongoDataset.collection.insertMany([
       {
         _id: ids.dataset,
@@ -215,7 +221,9 @@ describe('replaceInvalidModelReferences', () => {
     expect(result.counts.app.llm.replacedReferences).toBe(2);
     expect(result.counts.version.llm.replacedReferences).toBe(2);
     expect(result.counts.version.rerank.replacedReferences).toBe(1);
-    expect(result.counts.version.stt.replacedReferences).toBe(0);
+    expect(result.counts.dataset.tts.replacedReferences).toBe(0);
+    expect(result.counts.app.tts.replacedReferences).toBe(1);
+    expect(result.counts.version.tts.replacedReferences).toBe(1);
 
     const [dataset, otherDataset, app, version, autoSaveVersion] = await Promise.all([
       MongoDataset.collection.findOne({ _id: ids.dataset }),
@@ -234,7 +242,7 @@ describe('replaceInvalidModelReferences', () => {
     expect(String(app?.publishedVersionId)).toBe(String(ids.version));
     expect(app?.chatConfig).toMatchObject({
       questionGuide: { modelId: 'new-llm' },
-      ttsConfig: { modelId: 'old-tts' }
+      ttsConfig: { modelId: 'new-tts', model: 'new-tts-name', voice: 'first-voice' }
     });
     expect(
       version?.nodes[0].inputs.some(
@@ -246,12 +254,18 @@ describe('replaceInvalidModelReferences', () => {
       expect.arrayContaining([
         { type: 'model', id: 'new-llm' },
         { type: 'model', id: 'new-rerank' },
-        { type: 'model', id: 'old-tts' },
+        { type: 'model', id: 'new-tts' },
         { type: 'dataset', id: String(ids.dataset) }
       ])
     );
     expect(version?.resources).not.toContainEqual({ type: 'model', id: 'deleted-rerank' });
     expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-llm' });
+    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-tts' });
+    expect(version?.chatConfig.ttsConfig).toMatchObject({
+      modelId: 'new-tts',
+      model: 'new-tts-name',
+      voice: 'first-voice'
+    });
     expect(autoSaveVersion).toMatchObject({
       isAutoSave: true,
       isPublish: false,
@@ -269,6 +283,95 @@ describe('replaceInvalidModelReferences', () => {
     expect(second.counts.app.llm.replacedReferences).toBe(0);
     expect(second.counts.version.llm.replacedReferences).toBe(0);
     expect(second.counts.version.rerank.replacedReferences).toBe(0);
+    expect(second.counts.app.tts.replacedReferences).toBe(0);
+    expect(second.counts.version.tts.replacedReferences).toBe(0);
+  });
+
+  it('only changes model-based playback and keeps valid TTS settings', () => {
+    const replacer = createInvalidReferenceReplacer({ handle, replacement });
+    const disabled = replacer.replaceAppContent({
+      chatConfig: { ttsConfig: { type: 'none', modelId: 'old-tts', voice: 'old-voice' } }
+    });
+    const browser = replacer.replaceAppContent({
+      chatConfig: { ttsConfig: { type: 'web', modelId: 'old-tts', voice: 'old-voice' } }
+    });
+    const valid = replacer.replaceAppContent({
+      chatConfig: { ttsConfig: { type: 'model', modelId: 'new-tts', voice: 'chosen-voice' } }
+    });
+    const legacy = replacer.replaceAppContent({
+      chatConfig: { ttsConfig: { type: 'model', model: 'old-tts-name', voice: 'old-voice' } }
+    });
+
+    expect(disabled.chatConfig).toMatchObject({ ttsConfig: { modelId: 'old-tts' } });
+    expect(browser.chatConfig).toMatchObject({ ttsConfig: { modelId: 'old-tts' } });
+    expect(valid.chatConfig).toMatchObject({
+      ttsConfig: { modelId: 'new-tts', voice: 'chosen-voice' }
+    });
+    expect(legacy.chatConfig).toMatchObject({
+      ttsConfig: { modelId: 'new-tts', voice: 'first-voice' }
+    });
+    expect(disabled.changes.tts.replacedReferences).toBe(0);
+    expect(browser.changes.tts.replacedReferences).toBe(0);
+    expect(valid.changes.tts.replacedReferences).toBe(0);
+    expect(legacy.changes.tts.replacedReferences).toBe(1);
+  });
+
+  it('writes a TTS-only change and updates the version model resource', async () => {
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'speech app',
+      type: 'workflow',
+      chatConfig: { ttsConfig: { type: 'model', modelId: 'old-tts', voice: 'old-voice' } }
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: String(ids.member),
+      nodes: [],
+      chatConfig: { ttsConfig: { type: 'model', modelId: 'old-tts', voice: 'old-voice' } },
+      resources: [{ type: 'model', id: 'old-tts' }]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const [app, version] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+
+    expect(result.counts.app.tts.replacedReferences).toBe(1);
+    expect(result.counts.version.tts.replacedReferences).toBe(1);
+    expect(app?.chatConfig.ttsConfig).toMatchObject({ modelId: 'new-tts', voice: 'first-voice' });
+    expect(version?.chatConfig.ttsConfig).toMatchObject({
+      modelId: 'new-tts',
+      voice: 'first-voice'
+    });
+    expect(version?.resources).toEqual([{ type: 'model', id: 'new-tts' }]);
+  });
+
+  it('rejects a TTS target without a usable voice before writing', async () => {
+    const noVoiceHandle = {
+      getAllModels: () =>
+        models.map((model) =>
+          model.modelId === 'new-tts'
+            ? { ...model, config: { voices: [{ label: 'Empty', value: '' }] } }
+            : model
+        )
+    } as unknown as ModelHandle;
+    await expect(
+      replaceInvalidModelReferences({
+        teamId: String(ids.team),
+        replacement,
+        handle: noVoiceHandle,
+        assertCanContinue: async () => {}
+      })
+    ).rejects.toThrow('available voice');
   });
 
   it('rejects a non-vision target before writing any invalid image model reference', async () => {

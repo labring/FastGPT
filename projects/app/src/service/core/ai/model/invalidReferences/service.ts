@@ -23,7 +23,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { cloneDeep } from 'lodash-es';
 import { Types } from 'mongoose';
 
-type ModelKind = 'llm' | 'stt' | 'rerank';
+type ModelKind = 'llm' | 'tts' | 'rerank';
 type ResourceKind = 'dataset' | 'app' | 'version';
 type Count = {
   scannedRecords: number;
@@ -36,7 +36,7 @@ type Count = {
 type Change = { replacedReferences: number; skippedReferences: number };
 type Reference = { modelId?: unknown; model?: unknown };
 type PlainObject = Record<string, unknown>;
-type Replacement = { llmModelId: string; sttModelId: string; rerankModelId: string };
+type Replacement = { llmModelId: string; ttsModelId: string; rerankModelId: string };
 type Model = ReturnType<ModelHandle['getAllModels']>[number];
 type LegacyAppRow = { _id: string; modules?: StoreNodeItemType[]; chatConfig?: AppChatConfigType };
 
@@ -49,14 +49,14 @@ export type ReplaceInvalidModelReferencesResult = {
 
 const batchSize = 50;
 const maxFailedSamples = 20;
-const modelKinds: ModelKind[] = ['llm', 'stt', 'rerank'];
+const modelKinds: ModelKind[] = ['llm', 'tts', 'rerank'];
 
 const isObject = (value: unknown): value is PlainObject =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const newChanges = (): Record<ModelKind, Change> => ({
   llm: { replacedReferences: 0, skippedReferences: 0 },
-  stt: { replacedReferences: 0, skippedReferences: 0 },
+  tts: { replacedReferences: 0, skippedReferences: 0 },
   rerank: { replacedReferences: 0, skippedReferences: 0 }
 });
 
@@ -69,7 +69,7 @@ const newCounts = (): ReplaceInvalidModelReferencesResult['counts'] => {
     conflicts: 0,
     failedRecords: 0
   });
-  const byModel = () => ({ llm: count(), stt: count(), rerank: count() });
+  const byModel = () => ({ llm: count(), tts: count(), rerank: count() });
   return { dataset: byModel(), app: byModel(), version: byModel() };
 };
 
@@ -89,14 +89,21 @@ export const createInvalidReferenceReplacer = ({
     const key = `${model.type}:${model.model}`;
     if (!systemModelsByTypeAndName.has(key)) systemModelsByTypeAndName.set(key, model);
   }
-  const targets: Record<'llm' | 'rerank', Model> = {
+  const targets: Record<ModelKind, Model> = {
     llm: modelsById.get(replacement.llmModelId)!,
+    tts: modelsById.get(replacement.ttsModelId)!,
     rerank: modelsById.get(replacement.rerankModelId)!
   };
-  if (!targets.llm || !targets.rerank) throw new Error('Replacement model not found');
+  const ttsTarget = targets.tts;
+  if (!targets.llm || !ttsTarget || !targets.rerank) {
+    throw new Error('Replacement model not found');
+  }
+  if (ttsTarget.type !== ModelTypeEnum.tts) throw new Error('Replacement TTS type mismatch');
+  const firstTtsVoice = ttsTarget.config.voices.find(({ value }) => value.trim().length > 0)?.value;
+  if (!firstTtsVoice) throw new Error('Replacement TTS must have an available voice');
 
-  const getKind = (type: ModelTypeEnum): 'llm' | 'rerank' =>
-    type === ModelTypeEnum.rerank ? 'rerank' : 'llm';
+  const getKind = (type: ModelTypeEnum): ModelKind =>
+    type === ModelTypeEnum.rerank ? 'rerank' : type === ModelTypeEnum.tts ? 'tts' : 'llm';
 
   const resolveReference = (reference: Reference, type: ModelTypeEnum) => {
     const value = getModelReferenceValue(reference);
@@ -233,6 +240,22 @@ export const createInvalidReferenceReplacer = ({
         changes,
         replacedIds
       });
+    }
+    if (
+      isObject(nextChatConfig) &&
+      isObject(nextChatConfig.ttsConfig) &&
+      nextChatConfig.ttsConfig.type === 'model'
+    ) {
+      const before = changes.tts.replacedReferences;
+      replaceConfigReference({
+        config: nextChatConfig.ttsConfig,
+        modelIdKey: 'modelId',
+        legacyKey: 'model',
+        type: ModelTypeEnum.tts,
+        changes,
+        replacedIds
+      });
+      if (changes.tts.replacedReferences > before) nextChatConfig.ttsConfig.voice = firstTtsVoice;
     }
     return { nodes: nextNodes, chatConfig: nextChatConfig, changes, replacedIds };
   };
@@ -439,6 +462,7 @@ export const replaceInvalidModelReferences = async ({
       if (apps.length === 0) break;
       for (const app of apps) {
         counts.app.llm.scannedRecords++;
+        counts.app.tts.scannedRecords++;
         counts.app.rerank.scannedRecords++;
         let lastChanges: Record<ModelKind, Change> | undefined;
         try {
@@ -449,10 +473,7 @@ export const replaceInvalidModelReferences = async ({
               chatConfig: current.chatConfig
             });
             lastChanges = next.changes;
-            if (
-              next.changes.llm.replacedReferences + next.changes.rerank.replacedReferences ===
-              0
-            ) {
+            if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
               addChanges('app', next.changes, false);
               break;
             }
@@ -492,7 +513,7 @@ export const replaceInvalidModelReferences = async ({
           }
         } catch (error) {
           if (stopError) throw error;
-          for (const kind of ['llm', 'rerank'] as const) {
+          for (const kind of modelKinds) {
             if (!lastChanges || lastChanges[kind].replacedReferences > 0) {
               counts.app[kind].failedRecords++;
             }
@@ -514,6 +535,7 @@ export const replaceInvalidModelReferences = async ({
           if (versions.length === 0) break;
           for (const version of versions) {
             counts.version.llm.scannedRecords++;
+            counts.version.tts.scannedRecords++;
             counts.version.rerank.scannedRecords++;
             let lastChanges: Record<ModelKind, Change> | undefined;
             try {
@@ -524,10 +546,7 @@ export const replaceInvalidModelReferences = async ({
                   chatConfig: current.chatConfig
                 });
                 lastChanges = next.changes;
-                if (
-                  next.changes.llm.replacedReferences + next.changes.rerank.replacedReferences ===
-                  0
-                ) {
+                if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
                   addChanges('version', next.changes, false);
                   break;
                 }
@@ -557,6 +576,7 @@ export const replaceInvalidModelReferences = async ({
                     (resource) =>
                       resource.type === 'model' &&
                       (resource.id === replacement.llmModelId ||
+                        resource.id === replacement.ttsModelId ||
                         resource.id === replacement.rerankModelId) &&
                       !existingIds.has(resource.id)
                   );
@@ -600,7 +620,7 @@ export const replaceInvalidModelReferences = async ({
               }
             } catch (error) {
               if (stopError) throw error;
-              for (const kind of ['llm', 'rerank'] as const) {
+              for (const kind of modelKinds) {
                 if (!lastChanges || lastChanges[kind].replacedReferences > 0) {
                   counts.version[kind].failedRecords++;
                 }
