@@ -7,7 +7,7 @@ export enum SystemMigrationStatusEnum {
   succeeded = 'succeeded'
 }
 
-/** 任务失败后的队列调度策略；与是否阻塞节点启动相互独立。 */
+/** 任务失败后的队列调度策略；独立任务的失败只影响自身。 */
 export enum SystemMigrationFailurePolicyEnum {
   stop = 'stop',
   continue = 'continue'

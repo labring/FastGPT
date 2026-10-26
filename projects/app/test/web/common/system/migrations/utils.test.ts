@@ -60,7 +60,7 @@ const createMigration = (
   order: 1,
   nameKey: 'system_migration:migrations.example.name',
   descriptionKey: 'system_migration:migrations.example.description',
-  blockStartup: true,
+  independent: true,
   onFailure: SystemMigrationFailurePolicyEnum.stop,
   status: SystemMigrationStatusEnum.pending,
   progress: [],

@@ -23,7 +23,7 @@ export async function registerNodeInstrumentation() {
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
-      { loadInstalledModels, loadSystemModels },
+      { loadSystemModels },
       { trackTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
@@ -230,7 +230,7 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    const migrationRunner = await runInitializationStep({
+    await runInitializationStep({
       step: 'start-system-migration-runner',
       action: () => startSystemMigrationRunner(),
       logger,
@@ -238,8 +238,8 @@ export async function registerNodeInstrumentation() {
     });
 
     /**
-     * 阻塞迁移完成后才启动业务消费者并结束 instrumentation 注册。
-     * 这样不仅 HTTP readiness 被阻塞，队列、cron、watch 也不会在旧数据结构上提前消费。
+     * 迁移已交给后台 Runner，业务消费者和 HTTP readiness 不再等待任务完成。
+     * 迁移脚本必须兼容业务流量和滚动升级期间的并发读写。
      */
     const startBusinessServices = async () => {
       await Promise.all([
@@ -278,20 +278,6 @@ export async function registerNodeInstrumentation() {
       logger.info('System business services are ready');
     };
 
-    if (migrationRunner.hasBlockingMigrations) {
-      // 所有节点都会等待并查询状态，只有 lease owner 执行；失败时此 await 按设计不返回。
-      logger.info('App node will remain not ready until all blocking migrations succeed');
-      await migrationRunner.waitForBlockingMigrations();
-
-      // 每个节点只需重新读取迁移后的数据库模型；插件模板和自动预装已在初始加载阶段完成。
-      await runInitializationStep({
-        step: 'reload-system-models-after-blocking-migrations',
-        stage: InitialErrorEnum.PLUGIN_ERROR,
-        action: () => loadInstalledModels(),
-        logger,
-        getErrText
-      });
-    }
     await startBusinessServices();
 
     logger.info('System initialized successfully');

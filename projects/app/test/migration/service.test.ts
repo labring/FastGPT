@@ -5,10 +5,9 @@ import {
 } from '@fastgpt/global/migration/constants';
 import type { SystemMigration } from '@/migration/registry';
 import {
-  areBlockingMigrationsComplete,
   getSystemMigrationFailedRecords,
   getSystemMigrationList,
-  retryNonBlockingSystemMigration,
+  retrySystemMigration,
   startManualSystemMigration
 } from '@/migration/service';
 import {
@@ -24,20 +23,19 @@ const migrations: readonly SystemMigration[] = [
     descriptionKey: 'system_migration:migrations.first.description',
     resultKey: 'system_migration:migrations.first.result',
     progressSteps: [{ key: 'migrating', labelKey: 'system_migration:migrations.first.migrating' }],
-    blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: async () => undefined
   },
   {
-    id: '20260903_service_blocking',
+    id: '20260903_service_independent',
     version: '4.17.0',
-    nameKey: 'system_migration:migrations.blocking.name',
-    descriptionKey: 'system_migration:migrations.blocking.description',
-    resultKey: 'system_migration:migrations.blocking.result',
+    nameKey: 'system_migration:migrations.independent.name',
+    descriptionKey: 'system_migration:migrations.independent.description',
+    resultKey: 'system_migration:migrations.independent.result',
     progressSteps: [
-      { key: 'finalizing', labelKey: 'system_migration:migrations.blocking.finalizing' }
+      { key: 'finalizing', labelKey: 'system_migration:migrations.independent.finalizing' }
     ],
-    blockStartup: true,
+    independent: true,
     onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: async () => undefined
   }
@@ -64,7 +62,8 @@ describe('system migration service', () => {
     });
     const result = await getSystemMigrationList(migrations);
 
-    expect(result.businessReady).toBe(false);
+    expect(result).not.toHaveProperty('businessReady');
+    expect(result.migrations[0].independent).toBe(false);
     expect(result.migrations).toEqual([
       expect.objectContaining({
         id: migrations[0].id,
@@ -87,7 +86,7 @@ describe('system migration service', () => {
         progress: [
           expect.objectContaining({ key: 'finalizing', status: SystemMigrationStatusEnum.pending })
         ],
-        blockStartup: true,
+        independent: true,
         onFailure: SystemMigrationFailurePolicyEnum.stop
       })
     ]);
@@ -158,42 +157,23 @@ describe('system migration service', () => {
     ).rejects.toThrow('System migration stage not found');
   });
 
-  it('treats missing and failed blocking states as not complete', async () => {
-    expect(await areBlockingMigrationsComplete(migrations)).toBe(false);
+  it.each(migrations)('retries a failed task in either scheduling mode: $id', async (migration) => {
     await MongoSystemMigrationState.create({
-      _id: migrations[1].id,
-      status: SystemMigrationStatusEnum.failed
-    });
-    expect(await areBlockingMigrationsComplete(migrations)).toBe(false);
-
-    await MongoSystemMigrationState.updateOne(
-      { _id: migrations[1].id },
-      { $set: { status: SystemMigrationStatusEnum.succeeded } }
-    );
-    expect(await areBlockingMigrationsComplete(migrations)).toBe(true);
-  });
-
-  it('retries only failed non-blocking migrations', async () => {
-    await MongoSystemMigrationState.create({
-      _id: migrations[0].id,
+      _id: migration.id,
       status: SystemMigrationStatusEnum.failed,
-      runId: 'failed-run'
+      runId: 'failed-run',
+      checkpoint: { cursor: 12 }
     });
 
-    await expect(retryNonBlockingSystemMigration(migrations[0].id, migrations)).resolves.toBe(
-      undefined
-    );
-    await expect(
-      MongoSystemMigrationState.findById(migrations[0].id).lean()
-    ).resolves.toMatchObject({
-      status: SystemMigrationStatusEnum.pending
+    await expect(retrySystemMigration(migration.id, migrations)).resolves.toBeUndefined();
+    expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
+      status: SystemMigrationStatusEnum.pending,
+      checkpoint: { cursor: 12 }
     });
-    await expect(retryNonBlockingSystemMigration(migrations[0].id, migrations)).rejects.toThrow(
+    await expect(retrySystemMigration(migration.id, migrations)).rejects.toThrow(
       'Only a failed system migration can be retried'
     );
-    await expect(retryNonBlockingSystemMigration(migrations[1].id, migrations)).rejects.toThrow(
-      'Blocking system migration must be recovered by restarting the App node'
-    );
+    await expect(retrySystemMigration('unknown', migrations)).rejects.toThrow('not found');
   });
 });
 
@@ -232,7 +212,7 @@ describe('startManualSystemMigration', () => {
       { _id: dependent.id },
       { $set: { status: SystemMigrationStatusEnum.failed } }
     );
-    await expect(retryNonBlockingSystemMigration(dependent.id, registry)).rejects.toMatchObject({
+    await expect(retrySystemMigration(dependent.id, registry)).rejects.toMatchObject({
       name: 'UserError',
       message: 'system_migration:prerequisite_not_succeeded',
       prerequisiteNameKey: prerequisite.nameKey
@@ -241,7 +221,7 @@ describe('startManualSystemMigration', () => {
       { _id: prerequisite.id },
       { $set: { status: SystemMigrationStatusEnum.succeeded } }
     );
-    await retryNonBlockingSystemMigration(dependent.id, registry);
+    await retrySystemMigration(dependent.id, registry);
     expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
       SystemMigrationStatusEnum.pending
     );
@@ -274,9 +254,8 @@ describe('startManualSystemMigration', () => {
       prerequisiteNameKey: prerequisite.nameKey
     });
   });
-  it('lists a waiting task without blocking readiness, then accepts exactly one concurrent start', async () => {
+  it('lists a waiting task, then accepts exactly one concurrent start', async () => {
     const list = await getSystemMigrationList([manual]);
-    expect(list.businessReady).toBe(true);
     expect(list.migrations[0].status).toBe(SystemMigrationStatusEnum.waiting);
     const outcomes = await Promise.allSettled([
       startManualSystemMigration(manual.id, [manual]),
@@ -293,16 +272,13 @@ describe('startManualSystemMigration', () => {
     await expect(startManualSystemMigration(migrations[0].id, migrations)).rejects.toThrow(
       'Only a manual'
     );
-    await expect(
-      startManualSystemMigration(manual.id, [{ ...manual, blockStartup: true }])
-    ).rejects.toThrow('Only a manual');
     await startManualSystemMigration(manual.id, [manual]);
     await MongoSystemMigrationState.updateOne(
       { _id: manual.id },
       { $set: { status: SystemMigrationStatusEnum.failed, checkpoint: { cursor: 12 } } }
     );
     await expect(startManualSystemMigration(manual.id, [manual])).rejects.toThrow('Only a waiting');
-    await retryNonBlockingSystemMigration(manual.id, [manual]);
+    await retrySystemMigration(manual.id, [manual]);
     expect(await MongoSystemMigrationState.findById(manual.id).lean()).toMatchObject({
       status: 'pending',
       checkpoint: { cursor: 12 }

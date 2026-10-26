@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   getSystemMigrationFailedRecords: vi.fn(),
   getSystemMigrationList: vi.fn(),
-  retryNonBlockingSystemMigration: vi.fn(),
+  retrySystemMigration: vi.fn(),
   startManualSystemMigration: vi.fn(),
   wakeSystemMigrationRunner: vi.fn()
 }));
@@ -24,7 +24,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
 vi.mock('@/migration/service', () => ({
   getSystemMigrationFailedRecords: mocks.getSystemMigrationFailedRecords,
   getSystemMigrationList: mocks.getSystemMigrationList,
-  retryNonBlockingSystemMigration: mocks.retryNonBlockingSystemMigration,
+  retrySystemMigration: mocks.retrySystemMigration,
   startManualSystemMigration: mocks.startManualSystemMigration
 }));
 vi.mock('@/migration/runner', () => ({
@@ -44,7 +44,6 @@ describe('system migration admin APIs', () => {
   it('authenticates root and returns the validated ordered list', async () => {
     const response = {
       serverTime: new Date(),
-      businessReady: false,
       migrations: [
         {
           id: '20260903_api_task',
@@ -52,7 +51,7 @@ describe('system migration admin APIs', () => {
           order: 1,
           nameKey: 'system_migration:migrations.api.name',
           descriptionKey: 'system_migration:migrations.api.description',
-          blockStartup: true,
+          independent: true,
           onFailure: SystemMigrationFailurePolicyEnum.stop,
           status: SystemMigrationStatusEnum.running,
           progress: [],
@@ -74,7 +73,7 @@ describe('system migration admin APIs', () => {
     expect(mocks.getSystemMigrationList).not.toHaveBeenCalled();
   });
 
-  it('validates and retries a failed non-blocking migration as system admin', async () => {
+  it('validates and retries a failed migration as system admin', async () => {
     const req = {
       headers: {},
       body: { migrationId: '20260903_non_blocking' }
@@ -82,7 +81,7 @@ describe('system migration admin APIs', () => {
 
     await expect(retryHandler(req)).resolves.toBeUndefined();
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
-    expect(mocks.retryNonBlockingSystemMigration).toHaveBeenCalledWith('20260903_non_blocking');
+    expect(mocks.retrySystemMigration).toHaveBeenCalledWith('20260903_non_blocking');
     expect(mocks.wakeSystemMigrationRunner).toHaveBeenCalledTimes(1);
   });
 
@@ -132,7 +131,7 @@ describe('system migration admin APIs', () => {
 
   it('rejects an invalid retry body before calling the service', async () => {
     await expect(retryHandler({ headers: {}, body: {} } as any)).rejects.toThrow();
-    expect(mocks.retryNonBlockingSystemMigration).not.toHaveBeenCalled();
+    expect(mocks.retrySystemMigration).not.toHaveBeenCalled();
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
   });
 
@@ -142,9 +141,7 @@ describe('system migration admin APIs', () => {
       const prerequisiteNameKey =
         'system_migration:migrations.20261008_migrate_chunk_training.name';
       const service =
-        action === 'start'
-          ? mocks.startManualSystemMigration
-          : mocks.retryNonBlockingSystemMigration;
+        action === 'start' ? mocks.startManualSystemMigration : mocks.retrySystemMigration;
       const handler = action === 'start' ? startHandler : retryHandler;
       service.mockRejectedValueOnce(new SystemMigrationDependencyError(prerequisiteNameKey));
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };

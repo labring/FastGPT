@@ -84,12 +84,6 @@ export const getSystemMigrationList = async (
 
   return SystemMigrationListResponseSchema.parse({
     serverTime: await getMigrationServerTime(),
-    // register() 会同步等待阻塞任务；这里展示的是数据库事实，不再维护第二套进程内状态。
-    businessReady: migrations
-      .filter((migration) => migration.blockStartup)
-      .every(
-        (migration) => stateMap.get(migration.id)?.status === SystemMigrationStatusEnum.succeeded
-      ),
     migrations: migrations.map((migration, index) => {
       const state = stateMap.get(migration.id);
       const stageFailedRecordCounts =
@@ -100,7 +94,7 @@ export const getSystemMigrationList = async (
         order: index + 1,
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
-        blockStartup: migration.blockStartup,
+        independent: migration.independent ?? false,
         onFailure: migration.onFailure,
         status:
           state?.status ??
@@ -155,38 +149,18 @@ export const getSystemMigrationFailedRecords = async (
   });
 };
 
-/** 仅允许管理员把非阻塞 failed 任务恢复为 pending，并保留断点和错误数据等待 runner 接管。 */
-export const retryNonBlockingSystemMigration = async (
+/** 仅允许管理员把 failed 任务恢复为 pending，并保留断点和错误数据等待 runner 接管。 */
+export const retrySystemMigration = async (
   migrationId: string,
   migrations: readonly SystemMigration[] = systemMigrations
 ): Promise<void> => {
   const migration = migrations.find((item) => item.id === migrationId);
   if (!migration) throw new UserError('System migration not found');
-  if (migration.blockStartup) {
-    throw new UserError('Blocking system migration must be recovered by restarting the App node');
-  }
   await assertMigrationDependenciesComplete(migration, migrations);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。
     throw new UserError('Only a failed system migration can be retried');
   }
-};
-
-/** 读取阻塞任务状态；缺失、pending、running 和 failed 都必须继续阻塞启动。 */
-export const areBlockingMigrationsComplete = async (
-  migrations: readonly SystemMigration[] = systemMigrations
-): Promise<boolean> => {
-  const blockingIds = migrations
-    .filter((migration) => migration.blockStartup)
-    .map((migration) => migration.id);
-
-  if (blockingIds.length === 0) return true;
-
-  const states = await getMigrationStates(blockingIds);
-  const stateMap = getStateMap(states);
-  return blockingIds.every(
-    (migrationId) => stateMap.get(migrationId)?.status === SystemMigrationStatusEnum.succeeded
-  );
 };
 
 /** 管理员确认环境已满足迁移前提后，将等待中的手动任务交给 runner；请求内不执行脚本。 */
@@ -196,8 +170,8 @@ export const startManualSystemMigration = async (
 ): Promise<void> => {
   const migration = migrations.find((item) => item.id === migrationId);
   if (!migration) throw new UserError('System migration not found');
-  if (!migration.manual || migration.blockStartup) {
-    throw new UserError('Only a manual non-blocking system migration can be started');
+  if (!migration.manual) {
+    throw new UserError('Only a manual system migration can be started');
   }
   await assertMigrationDependenciesComplete(migration, migrations);
   await ensureMigrationStates([migration]);

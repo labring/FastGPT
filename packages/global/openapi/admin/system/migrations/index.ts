@@ -48,8 +48,8 @@ export const AdminSystemMigrationsPath: OpenAPIPath = {
   },
   '/admin/migrations/retry': {
     post: {
-      summary: '重试非阻塞升级脚本',
-      description: '将失败的非阻塞升级脚本恢复为待执行状态，由 Runner 重新竞争 lease',
+      summary: '重试升级脚本',
+      description: '将失败的升级脚本恢复为待执行状态，由 Runner 重新竞争 lease',
       tags: [DevApiTagsMap.adminSystemMigration],
       requestBody: {
         required: true,

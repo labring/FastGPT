@@ -153,16 +153,9 @@ export const createSystemMigrationRunner = ({
     ...systemMigrationDefaultTiming,
     ...timing
   };
-  const migrationIds = migrations.map((migration) => migration.id);
-  const blockingIds = migrations
-    .filter((migration) => migration.blockStartup)
-    .map((migration) => migration.id);
   let started = false;
   let stopped = false;
-  let scanTimer: ReturnType<typeof setInterval> | undefined;
-  let scanGeneration = 0;
-  let tickPromise: Promise<void> | undefined;
-  let activeAbortController: AbortController | undefined;
+  const activeAbortControllers = new Set<AbortController>();
   const loggedFailures = new Set<string>();
 
   validateSystemMigrationRegistry(migrations);
@@ -182,18 +175,16 @@ export const createSystemMigrationRunner = ({
       lastError: state.lastError
     });
     logger.warn(
-      migration.blockStartup
-        ? 'System migration is paused; blocking nodes will remain not ready'
+      migration.independent
+        ? 'Independent system migration failed; other migrations are unaffected'
         : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-          ? 'Non-blocking system migration failed; following migrations may continue'
-          : 'Non-blocking system migration failed; following migrations are paused',
+          ? 'System migration failed; following queued migrations may continue'
+          : 'System migration failed; following queued migrations are paused',
       {
         migrationId: migration.id,
         runnerId,
         onFailure: migration.onFailure,
-        requiredAction: migration.blockStartup
-          ? 'Fix the migration error and restart the lease-owning App node'
-          : 'Fix the failed records and retry the migration from the admin page'
+        requiredAction: 'Fix the failed records and retry the migration from the admin page'
       }
     );
   };
@@ -219,7 +210,7 @@ export const createSystemMigrationRunner = ({
       runnerId
     });
     const abortController = new AbortController();
-    activeAbortController = abortController;
+    activeAbortControllers.add(abortController);
     let currentCheckpoint = claimedState.checkpoint;
     const progressStepKeys = new Set(migration.progressSteps.map((step) => step.key));
     const progressState = new Map(
@@ -247,6 +238,8 @@ export const createSystemMigrationRunner = ({
     };
 
     const runFencedMutation = async (mutation: () => Promise<boolean>) => {
+      // 停止后 lease 可能尚未到期，但本地执行者不能再开始新的批次或状态写入。
+      if (abortController.signal.aborted) throw new SystemMigrationLeaseLostError();
       try {
         assertMutationSucceeded(await mutation());
       } catch (error) {
@@ -258,22 +251,8 @@ export const createSystemMigrationRunner = ({
       }
     };
 
-    /** 阻塞任务只通过终端日志排障，不能读写供管理页使用的错误明细。 */
-    const assertFailedRecordAccessAllowed = () => {
-      if (migration.blockStartup) {
-        throw new Error(
-          `Blocking system migration ${migration.id} cannot access failed record details`
-        );
-      }
-    };
-
-    /**
-     * 每条错误记录必须归属静态声明的阶段。统一在 Context 边界校验，
-     * 避免脚本绕过 blockStartup 约束或写入页面无法展示的数据。
-     */
+    /** 每条错误记录必须归属静态声明的阶段，避免写入页面无法展示的数据。 */
     const parseFailedRecordSnapshot = (input: unknown) => {
-      assertFailedRecordAccessAllowed();
-
       const failedRecords = SystemMigrationFailedRecordsSchema.parse(input);
       const undeclaredFailedRecord = failedRecords.find(
         (record) => !progressStepKeys.has(record.stageKey)
@@ -292,10 +271,7 @@ export const createSystemMigrationRunner = ({
       signal: abortController.signal,
       getCheckpoint: async (schema) =>
         currentCheckpoint === undefined ? undefined : schema.parse(currentCheckpoint),
-      getFailedRecords: () => {
-        assertFailedRecordAccessAllowed();
-        return store.getFailedRecords(migration.id);
-      },
+      getFailedRecords: () => store.getFailedRecords(migration.id),
       reportFailedRecords: async (input) => {
         const failedRecords = parseFailedRecordSnapshot(input);
         await runFencedMutation(() =>
@@ -398,21 +374,8 @@ export const createSystemMigrationRunner = ({
       await heartbeatPromise;
     };
 
-    /**
-     * 明确失败后继续持有并续租 lease，避免其他存活节点自动重试。
-     * 只有当前进程停止或失去 lease 才结束等待，随后由过期接管路径恢复。
-     */
-    const holdFailedLease = async (): Promise<SystemMigrationExecutionOutcome> => {
-      await new Promise<void>((resolve) => {
-        if (abortController.signal.aborted) {
-          resolve();
-          return;
-        }
-        abortController.signal.addEventListener('abort', () => resolve(), { once: true });
-      });
-      await stopHeartbeat();
-      return 'interrupted';
-    };
+    // 多个独立任务可能并发运行，停止或失权时每个任务都必须停止自己的 heartbeat。
+    abortController.signal.addEventListener('abort', () => void stopHeartbeat(), { once: true });
 
     let executionStartedAt = Date.now();
 
@@ -467,17 +430,13 @@ export const createSystemMigrationRunner = ({
         migrationLogger.error('System migration reported a failure', {
           durationMs: Date.now() - executionStartedAt
         });
-        if (migration.blockStartup) {
-          migrationLogger.warn('System migration is paused; blocking nodes will remain not ready', {
-            requiredAction: 'Fix the migration error and restart this App node'
-          });
-          return await holdFailedLease();
-        }
-        // 非阻塞失败保留 failed 状态但释放本地续租；定时扫描只观察，等待管理员重置。
+        // 明确失败保持 failed 并停止续租，只能由管理员重置。
         migrationLogger.warn(
-          migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-            ? 'Non-blocking system migration failed; following migrations may continue'
-            : 'Non-blocking system migration failed; following migrations are paused',
+          migration.independent
+            ? 'Independent system migration failed; other migrations are unaffected'
+            : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
+              ? 'System migration failed; following queued migrations may continue'
+              : 'System migration failed; following queued migrations are paused',
           {
             onFailure: migration.onFailure,
             requiredAction: 'Fix the failed records and retry the migration from the admin page'
@@ -505,16 +464,14 @@ export const createSystemMigrationRunner = ({
           durationMs: Date.now() - executionStartedAt
         });
         migrationLogger.warn(
-          migration.blockStartup
-            ? 'System migration is paused; blocking nodes will remain not ready'
+          migration.independent
+            ? 'Independent system migration failed; other migrations are unaffected'
             : migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'Non-blocking system migration failed; following migrations may continue'
-              : 'Non-blocking system migration failed; following migrations are paused',
+              ? 'System migration failed; following queued migrations may continue'
+              : 'System migration failed; following queued migrations are paused',
           {
             onFailure: migration.onFailure,
-            requiredAction: migration.blockStartup
-              ? 'Fix the migration error and restart this App node'
-              : 'Fix the failed records and retry the migration from the admin page'
+            requiredAction: 'Fix the failed records and retry the migration from the admin page'
           }
         );
       } catch (writeError) {
@@ -522,129 +479,166 @@ export const createSystemMigrationRunner = ({
         await stopHeartbeat();
         return 'interrupted';
       }
-      if (migration.blockStartup) return await holdFailedLease();
-      // 未通过 context.fail 抛出的普通异常也遵循同一非阻塞失败策略。
+      // 未通过 context.fail 抛出的普通异常也遵循相同失败策略。
       await stopHeartbeat();
       return 'failed';
     } finally {
-      if (activeAbortController === abortController) {
-        activeAbortController = undefined;
-      }
+      await stopHeartbeat();
+      activeAbortControllers.delete(abortController);
     }
   };
 
   /**
-   * 注册表始终单线程串行执行；失败项是否暂停后续队列由静态 onFailure 决定。
-   * continue 只跳过已经失败的任务，不会自动重试它；管理员重置后仍按注册顺序重新处理。
+   * 每个队列单独防重入和探活，长任务、delay 或 stop 失败只占用自己的队列。
+   * 依赖状态仍从主库读取，普通任务可以等待已注册的独立前置任务成功。
    */
-  const runQueue = async (): Promise<boolean> => {
-    while (!stopped) {
-      const states = await store.getStates(migrationIds);
-      const stateMap = new Map(states.map((state) => [state._id, state]));
-      let migration: SystemMigration | undefined;
-      let migrationState: SystemMigrationStateSchemaType | undefined;
+  const createQueue = (queueMigrations: readonly SystemMigration[]) => {
+    const migrationIds = [
+      ...new Set(
+        queueMigrations.flatMap((migration) => [migration.id, ...(migration.dependsOn ?? [])])
+      )
+    ];
+    let scanTimer: ReturnType<typeof setInterval> | undefined;
+    let scanGeneration = 0;
+    let tickPromise: Promise<void> | undefined;
 
-      for (const item of migrations) {
-        const state = stateMap.get(item.id);
-        if (state?.status === SystemMigrationStatusEnum.succeeded) continue;
-        // waiting 只接受管理员显式入队；已触发的手动任务仍使用正常 lease 接管机制。
-        if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
-          continue;
+    /**
+     * 同一队列始终串行执行；独立任务使用各自的单任务队列，互不等待。
+     * continue 只跳过已经失败的任务，不会自动重试它；管理员重置后仍按注册顺序重新处理。
+     */
+    const runQueue = async (): Promise<boolean> => {
+      while (!stopped) {
+        const states = await store.getStates(migrationIds);
+        const stateMap = new Map(states.map((state) => [state._id, state]));
+        let migration: SystemMigration | undefined;
+        let hasActiveDependencies = false;
 
-        // 执行前再次校验依赖，覆盖旧节点已入队和绕过启动入口的任务；失败前置不会被 continue 绕过。
-        if (
-          item.dependsOn?.some(
+        for (const item of queueMigrations) {
+          const state = stateMap.get(item.id);
+          if (state?.status === SystemMigrationStatusEnum.succeeded) continue;
+          // waiting 只接受管理员显式入队；已触发的手动任务仍使用正常 lease 接管机制。
+          if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
+            continue;
+
+          // 执行前再次校验依赖，覆盖旧节点已入队和绕过启动入口的任务；失败前置不会被 continue 绕过。
+          const incompleteDependencies = item.dependsOn?.filter(
             (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
-          )
-        )
-          continue;
-
-        if (state?.status === SystemMigrationStatusEnum.failed) {
-          logObservedFailure(item, state);
-          if (!item.blockStartup && item.onFailure === SystemMigrationFailurePolicyEnum.continue) {
+          );
+          if (incompleteDependencies?.length) {
+            // 独立前置任务可能仍在另一个队列执行，保留探活才能在其成功后自动推进。
+            hasActiveDependencies ||= incompleteDependencies.some((id) => {
+              const status = stateMap.get(id)?.status;
+              return (
+                status === SystemMigrationStatusEnum.pending ||
+                status === SystemMigrationStatusEnum.running
+              );
+            });
             continue;
           }
-          // 非阻塞失败只能由管理员显式重置；stop 策略在此暂停整个后续队列。
-          if (!item.blockStartup) return false;
+
+          if (state?.status === SystemMigrationStatusEnum.failed) {
+            logObservedFailure(item, state);
+            if (item.onFailure === SystemMigrationFailurePolicyEnum.continue) {
+              continue;
+            }
+            // stop 只暂停所在队列，不影响其他独立任务。
+            return false;
+          }
+
+          migration = item;
+          break;
+        }
+        // 仍有其他队列中的前置任务执行时保留探活；仅等待人工操作时停止扫描。
+        if (!migration) return hasActiveDependencies;
+
+        // claim 内部使用 Mongo 原子条件；这里读取到的 state 仅用于选任务，不作为执行权依据。
+        const claimedState = await store.claimLease({
+          migrationId: migration.id,
+          runId: createRunId(),
+          leaseDurationMs: resolvedTiming.leaseDurationMs
+        });
+        // stop 可能发生在 Mongo claim 期间；留下 running 状态供租约过期后接管。
+        if (stopped) return false;
+        if (!claimedState) {
+          // pending/running 仍需探活，等待其他节点完成或租约过期后接管。
+          return true;
         }
 
-        migration = item;
-        migrationState = state;
-        break;
-      }
-      // 注册表只剩 succeeded 或允许跳过的 failed，等待管理员重试时无需继续轮询。
-      if (!migration) return false;
-
-      // claim 内部使用 Mongo 原子条件；这里读取到的 state 仅用于选任务，不作为执行权依据。
-      const claimedState = await store.claimLease({
-        migrationId: migration.id,
-        runId: createRunId(),
-        leaseDurationMs: resolvedTiming.leaseDurationMs
-      });
-      if (!claimedState) {
-        // pending/running 仍需探活；failed 是终态，只能由管理员操作或节点重启再次触发扫描。
-        return migrationState?.status !== SystemMigrationStatusEnum.failed;
+        const outcome = await executeMigration(migration, claimedState);
+        if (outcome === 'interrupted') return !stopped;
+        if (outcome === 'failed' && migration.onFailure === SystemMigrationFailurePolicyEnum.stop) {
+          return false;
+        }
       }
 
-      const outcome = await executeMigration(migration, claimedState);
-      if (outcome === 'interrupted') return !stopped;
-      if (outcome === 'failed' && migration.onFailure === SystemMigrationFailurePolicyEnum.stop) {
-        return false;
-      }
-    }
+      return false;
+    };
 
-    return false;
+    /** 清除空闲扫描器；显式 stop 还会额外终止当前任务。 */
+    const pauseScanning = () => {
+      if (!scanTimer) return;
+      clearInterval(scanTimer);
+      scanTimer = undefined;
+    };
+
+    /** 仅在存在 pending/running 时保留分钟级扫描器。 */
+    const ensureScanTimer = () => {
+      if (scanTimer || stopped) return;
+      scanTimer = setInterval(() => void tick(), resolvedTiming.scanIntervalMs);
+    };
+
+    /** 合并重叠 tick；队列无需自动推进时停止扫描，扫描异常则保留下一轮探活。 */
+    const tick = () => {
+      if (stopped) return Promise.resolve();
+      if (tickPromise) return tickPromise;
+
+      const generation = scanGeneration;
+      tickPromise = runQueue()
+        .then((shouldKeepScanning) => {
+          // retry 可能在本轮扫描期间重新唤醒 runner；旧快照不能关闭新一轮定时器。
+          if (!shouldKeepScanning && generation === scanGeneration) pauseScanning();
+        })
+        .catch((error) => {
+          logger.error('System migration scan failed', { runnerId, error });
+        })
+        .finally(() => {
+          tickPromise = undefined;
+        });
+      return tickPromise;
+    };
+
+    /**
+     * 重新启动空闲扫描器并立即扫描。若唤醒发生在旧 tick 内，旧 tick 完成后再读一次最新状态。
+     */
+    const wake = () => {
+      if (stopped) return Promise.resolve();
+      scanGeneration += 1;
+      ensureScanTimer();
+      const hadActiveTick = tickPromise !== undefined;
+      const activeTick = tick();
+      return hadActiveTick ? activeTick.then(() => tick()) : activeTick;
+    };
+
+    return { tick, wake, stop: pauseScanning };
   };
 
-  /** 清除空闲扫描器；显式 stop 还会额外终止当前任务。 */
-  const pauseScanning = () => {
-    if (!scanTimer) return;
-    clearInterval(scanTimer);
-    scanTimer = undefined;
-  };
-
-  /** 仅在存在 pending/running 时保留分钟级扫描器。 */
-  const ensureScanTimer = () => {
-    if (scanTimer || stopped) return;
-    scanTimer = setInterval(() => void tick(), resolvedTiming.scanIntervalMs);
-  };
-
-  /** 合并重叠 tick；队列无需自动推进时停止扫描，扫描异常则保留下一轮探活。 */
-  const tick = () => {
-    if (stopped) return Promise.resolve();
-    if (tickPromise) return tickPromise;
-
-    const generation = scanGeneration;
-    tickPromise = runQueue()
-      .then((shouldKeepScanning) => {
-        // retry 可能在本轮扫描期间重新唤醒 runner；旧快照不能关闭新一轮定时器。
-        if (!shouldKeepScanning && generation === scanGeneration) pauseScanning();
-      })
-      .catch((error) => {
-        logger.error('System migration scan failed', { runnerId, error });
-      })
-      .finally(() => {
-        tickPromise = undefined;
-      });
-    return tickPromise;
-  };
-
-  /**
-   * 重新启动空闲扫描器并立即扫描。若唤醒发生在旧 tick 内，旧 tick 完成后再读一次最新状态。
-   */
-  const wake = () => {
-    if (stopped) return Promise.resolve();
-    scanGeneration += 1;
-    ensureScanTimer();
-    const hadActiveTick = tickPromise !== undefined;
-    const activeTick = tick();
-    return hadActiveTick ? activeTick.then(() => tick()) : activeTick;
+  const queuedMigrations = migrations.filter((migration) => !migration.independent);
+  const queues = [
+    ...(queuedMigrations.length > 0 ? [createQueue(queuedMigrations)] : []),
+    ...migrations
+      .filter((migration) => migration.independent)
+      .map((migration) => createQueue([migration]))
+  ];
+  /** 所有队列同时唤醒，普通队列的运行状态不能延迟独立任务的首次执行或重试。 */
+  const wake = async () => {
+    await Promise.all(queues.map((queue) => queue.wake()));
   };
 
   return {
     runnerId,
-    hasBlockingMigrations: blockingIds.length > 0,
-    tick,
+    tick: async () => {
+      await Promise.all(queues.map((queue) => queue.tick()));
+    },
     wake,
     /** 初始化状态并立即扫描；只有仍需自动推进或接管时才保留分钟级探活。 */
     start: async () => {
@@ -654,49 +648,11 @@ export const createSystemMigrationRunner = ({
       await store.ensureStates(migrations);
       void wake();
     },
-    /**
-     * 等待全部阻塞任务成功。当前进程遇到 failed 后永久等待，仅后续启动的节点可重试。
-     */
-    waitForBlockingMigrations: async (signal?: AbortSignal) => {
-      if (blockingIds.length === 0) return;
-      logger.info('Waiting for blocking system migrations', { runnerId, blockingIds });
-
-      while (!stopped) {
-        try {
-          const states = await store.getStates(blockingIds);
-          states.forEach((state) => {
-            if (state.status === SystemMigrationStatusEnum.failed) {
-              const migration = migrations.find((item) => item.id === state._id);
-              if (migration) logObservedFailure(migration, state);
-            }
-          });
-          const stateMap = new Map(states.map((state) => [state._id, state.status]));
-          if (
-            blockingIds.every(
-              (migrationId) => stateMap.get(migrationId) === SystemMigrationStatusEnum.succeeded
-            )
-          ) {
-            // readiness 只由静态注册表中的全部阻塞项成功决定，不能把状态缺失视为成功。
-            logger.info('Blocking system migrations completed', { runnerId, blockingIds });
-            return;
-          }
-        } catch (error) {
-          if (signal?.aborted) throw error;
-          logger.warn('Unable to read blocking system migration states; polling will continue', {
-            runnerId,
-            error
-          });
-        }
-        await delay(resolvedTiming.blockingPollIntervalMs, signal);
-      }
-
-      throw new Error('System migration runner stopped before blocking migrations completed');
-    },
     /** 停止本节点扫描和 heartbeat；当前任务通过 AbortSignal 配合退出。 */
     stop: () => {
       stopped = true;
-      pauseScanning();
-      activeAbortController?.abort();
+      queues.forEach((queue) => queue.stop());
+      activeAbortControllers.forEach((controller) => controller.abort());
     }
   };
 };

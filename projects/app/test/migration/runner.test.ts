@@ -25,21 +25,14 @@ const logger: SystemMigrationLogger = {
   error: vi.fn()
 };
 
-const createMigration = (
-  id: string,
-  run: SystemMigration['run'],
-  blockStartup = false,
-  progressSteps: SystemMigration['progressSteps'] = [],
-  onFailure = SystemMigrationFailurePolicyEnum.stop
-): SystemMigration => ({
+const createMigration = (id: string, run: SystemMigration['run']): SystemMigration => ({
   id,
   version: '4.17.0',
   nameKey: `system_migration:migrations.${id}.name`,
   descriptionKey: `system_migration:migrations.${id}.description`,
   resultKey: `system_migration:migrations.${id}.result`,
-  progressSteps,
-  blockStartup,
-  onFailure,
+  progressSteps: [],
+  onFailure: SystemMigrationFailurePolicyEnum.stop,
   run
 });
 
@@ -52,6 +45,143 @@ describe('system migration runner', () => {
       MongoSystemMigrationState.deleteMany({ _id: migrationIdPattern }),
       MongoSystemMigrationFailedRecord.deleteMany({ migrationId: migrationIdPattern })
     ]);
+  });
+
+  it.each(['running', 'delayed', 'failed'] as const)(
+    'executes an independent task once across nodes while the ordinary queue is %s',
+    async (queueState) => {
+      const ordinaryRun = vi.fn(async (context: Parameters<SystemMigration['run']>[0]) => {
+        if (queueState === 'failed') throw new Error('ordinary queue paused');
+        await new Promise<void>((resolve) =>
+          context.signal.addEventListener('abort', () => resolve(), { once: true })
+        );
+      });
+      const laterRun = vi.fn(async () => undefined);
+      const independentRun = vi.fn(async () => undefined);
+      const ordinary = {
+        ...createMigration('20260903_runner_ordinary_held', ordinaryRun),
+        delay: queueState === 'delayed'
+      };
+      const independent = {
+        ...createMigration('20260903_runner_independent_immediate', independentRun),
+        independent: true
+      };
+      const migrations = [
+        ordinary,
+        createMigration('20260903_runner_ordinary_later', laterRun),
+        independent
+      ];
+      const runners = ['first', 'second'].map((runnerId) =>
+        createSystemMigrationRunner({
+          migrations,
+          runnerId,
+          timing: { scanIntervalMs: 10_000, delayMs: 60_000 },
+          logger
+        })
+      );
+
+      try {
+        await Promise.all(runners.map((runner) => runner.start()));
+        await vi.waitFor(
+          async () => {
+            expect(await MongoSystemMigrationState.findById(independent.id).lean()).toMatchObject({
+              status: SystemMigrationStatusEnum.succeeded
+            });
+            expect(await MongoSystemMigrationState.findById(ordinary.id).lean()).toMatchObject({
+              status:
+                queueState === 'failed'
+                  ? SystemMigrationStatusEnum.failed
+                  : SystemMigrationStatusEnum.running
+            });
+            if (queueState === 'running') expect(ordinaryRun).toHaveBeenCalledTimes(1);
+            if (queueState === 'delayed') {
+              expect(logger.info).toHaveBeenCalledWith(
+                'System migration execution delayed by configuration',
+                expect.objectContaining({ migrationId: ordinary.id })
+              );
+            }
+          },
+          { timeout: 5_000 }
+        );
+        expect(independentRun).toHaveBeenCalledTimes(1);
+        expect(laterRun).not.toHaveBeenCalled();
+        if (queueState === 'delayed') expect(ordinaryRun).not.toHaveBeenCalled();
+      } finally {
+        runners.forEach((runner) => runner.stop());
+        await Promise.all(runners.map((runner) => runner.tick()));
+      }
+    }
+  );
+
+  it('isolates independent tasks, retries during another execution and stops every active task', async () => {
+    const signals: AbortSignal[] = [];
+    const holdUntilStopped = async (context: Parameters<SystemMigration['run']>[0]) => {
+      signals.push(context.signal);
+      await new Promise<void>((resolve) =>
+        context.signal.addEventListener('abort', () => resolve(), { once: true })
+      );
+      await expect(context.assertActive()).rejects.toThrow(
+        'System migration lease is no longer active'
+      );
+    };
+    const failedRun = vi.fn(async () => undefined).mockRejectedValueOnce(new Error('bad source'));
+    const failed = {
+      ...createMigration('20260903_runner_independent_retry', failedRun),
+      independent: true
+    };
+    const migrations = [
+      createMigration('20260903_runner_normal_long', holdUntilStopped),
+      {
+        ...createMigration('20260903_runner_independent_long', holdUntilStopped),
+        independent: true
+      },
+      failed
+    ];
+    const runner = createSystemMigrationRunner({ migrations, logger });
+    let wakePromise: Promise<void> | undefined;
+
+    try {
+      await runner.start();
+      await vi.waitFor(async () => {
+        expect(signals).toHaveLength(2);
+        expect(await MongoSystemMigrationState.findById(failed.id).lean()).toMatchObject({
+          status: SystemMigrationStatusEnum.failed
+        });
+      });
+      // 即使 lease 过期也不能自动重试明确失败的独立任务。
+      await MongoSystemMigrationState.updateOne(
+        { _id: failed.id },
+        { $set: { leaseExpireAt: new Date(0) } }
+      );
+      const observer = createSystemMigrationRunner({ migrations, logger });
+      try {
+        await observer.start();
+        await observer.tick();
+        expect(failedRun).toHaveBeenCalledTimes(1);
+      } finally {
+        observer.stop();
+      }
+      expect(await resetFailedMigration(failed.id)).toBe(true);
+      wakePromise = runner.wake();
+      await vi.waitFor(async () => {
+        expect(await MongoSystemMigrationState.findById(failed.id).lean()).toMatchObject({
+          status: SystemMigrationStatusEnum.succeeded
+        });
+      });
+      expect(failedRun).toHaveBeenCalledTimes(2);
+      expect(signals.every((signal) => !signal.aborted)).toBe(true);
+    } finally {
+      runner.stop();
+      await wakePromise;
+      await runner.tick();
+    }
+    expect(signals.every((signal) => signal.aborted)).toBe(true);
+    expect(await MongoSystemMigrationState.findById(migrations[0].id).lean()).toMatchObject({
+      status: SystemMigrationStatusEnum.running
+    });
+    expect(await MongoSystemMigrationState.findById(migrations[1].id).lean()).toMatchObject({
+      status: SystemMigrationStatusEnum.running
+    });
   });
 
   it('holds an already queued dependent task until its waiting or failed prerequisite succeeds', async () => {
@@ -95,6 +225,46 @@ describe('system migration runner', () => {
     }
   });
 
+  it('keeps scanning a queued task until its independent prerequisite succeeds', async () => {
+    let finishPrerequisite: (() => void) | undefined;
+    const prerequisiteDone = new Promise<void>((resolve) => {
+      finishPrerequisite = resolve;
+    });
+    const prerequisiteRun = vi.fn(async () => prerequisiteDone);
+    const dependentRun = vi.fn(async () => undefined);
+    const prerequisite = {
+      ...createMigration('20260903_runner_independent_prerequisite', prerequisiteRun),
+      independent: true
+    };
+    const dependent = {
+      ...createMigration('20260903_runner_queued_dependent', dependentRun),
+      dependsOn: [prerequisite.id]
+    };
+    const runner = createSystemMigrationRunner({
+      migrations: [prerequisite, dependent],
+      timing: { scanIntervalMs: 10 },
+      logger
+    });
+
+    try {
+      await runner.start();
+      await vi.waitFor(() => expect(prerequisiteRun).toHaveBeenCalledTimes(1));
+      expect(dependentRun).not.toHaveBeenCalled();
+      finishPrerequisite?.();
+      // 不手动 tick/wake：普通队列必须保留探活，自动观察另一个队列的完成状态。
+      await vi.waitFor(async () => {
+        expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
+          status: SystemMigrationStatusEnum.succeeded
+        });
+      });
+      expect(dependentRun).toHaveBeenCalledTimes(1);
+    } finally {
+      finishPrerequisite?.();
+      runner.stop();
+      await runner.tick();
+    }
+  });
+
   it('holds an automatic dependent task after prerequisite failure and resumes after retry', async () => {
     const prerequisiteRun = vi
       .fn(async () => undefined)
@@ -130,7 +300,6 @@ describe('system migration runner', () => {
       expect(await MongoSystemMigrationState.findById(dependent.id).lean()).toMatchObject({
         status: SystemMigrationStatusEnum.pending
       });
-      expect(runner.hasBlockingMigrations).toBe(false);
 
       // 管理员重试前置任务后，自动任务应恢复执行，无需再手动触发快照任务。
       expect(await resetFailedMigration(prerequisite.id)).toBe(true);
@@ -150,7 +319,7 @@ describe('system migration runner', () => {
     const manualRun = vi.fn(async () => undefined);
     const autoRun = vi.fn(async () => undefined);
     const manual = { ...createMigration('20260903_runner_manual', manualRun), manual: true };
-    const migrations = [manual, createMigration('20260903_runner_after_manual', autoRun, true)];
+    const migrations = [manual, createMigration('20260903_runner_after_manual', autoRun)];
     const runner = createSystemMigrationRunner({ migrations, logger });
     try {
       await runner.start();
@@ -164,7 +333,6 @@ describe('system migration runner', () => {
           leaseDurationMs: 90_000
         })
       ).toBeNull();
-      await runner.waitForBlockingMigrations();
       expect(await enqueueManualMigration(manual.id)).toBe(true);
       expect(await enqueueManualMigration(manual.id)).toBe(false);
       // 模拟入队后原节点领取并退出，新的 runner 无需再次手动触发。
@@ -190,9 +358,8 @@ describe('system migration runner', () => {
   it('runs the registry serially while multiple nodes compete for every lease', async () => {
     const order: string[] = [];
     const migrations = [
-      createMigration(
-        '20260903_runner_serial_first',
-        async (context) => {
+      {
+        ...createMigration('20260903_runner_serial_first', async (context) => {
           order.push('first:start');
           expect(await context.getCheckpoint(z.object({ cursor: z.number() }))).toBeUndefined();
           await context.reportProgress({
@@ -210,22 +377,17 @@ describe('system migration runner', () => {
           await context.saveCheckpoint({ cursor: 10 });
           order.push('first:end');
           return { migratedCount: 1 };
-        },
-        false,
-        [
+        }),
+        progressSteps: [
           {
             key: 'test_progress',
             labelKey: 'system_migration:migrations.example.progress'
           }
         ]
-      ),
-      createMigration(
-        '20260903_runner_serial_second',
-        async () => {
-          order.push('second');
-        },
-        true
-      ),
+      },
+      createMigration('20260903_runner_serial_second', async () => {
+        order.push('second');
+      }),
       createMigration('20260903_runner_serial_third', async () => {
         order.push('third');
       })
@@ -276,19 +438,17 @@ describe('system migration runner', () => {
     }
   });
 
-  it('continues with later migrations after a non-blocking failure configured to continue', async () => {
+  it('continues with later migrations after a failure configured to continue', async () => {
     const failedTask = vi.fn(async () => {
       throw new Error('bad source record');
     });
     const laterTask = vi.fn();
     const migrations = [
-      createMigration(
-        '20260903_runner_continue_after_failure',
-        failedTask,
-        false,
-        [],
-        SystemMigrationFailurePolicyEnum.continue
-      ),
+      {
+        ...createMigration('20260903_runner_continue_after_failure', failedTask),
+        progressSteps: [],
+        onFailure: SystemMigrationFailurePolicyEnum.continue
+      },
       createMigration('20260903_runner_run_after_failure', laterTask)
     ];
     const runner = createSystemMigrationRunner({
@@ -321,324 +481,126 @@ describe('system migration runner', () => {
     }
   });
 
-  it('holds a failed lease until the owner stops, then allows exactly one takeover', async () => {
-    let executions = 0;
-    let failFirstExecution: (() => void) | undefined;
-    const firstExecutionCanFail = new Promise<void>((resolve) => {
-      failFirstExecution = resolve;
-    });
-    const laterTask = vi.fn();
-    const migrations = [
-      createMigration(
-        '20260903_runner_retry_failed',
-        async () => {
+  it.each([false, true])(
+    'resumes checkpoint and failed records after admin retry (independent: %s)',
+    async (independent) => {
+      let executions = 0;
+      const migration = {
+        ...createMigration('20260903_runner_context_failure', async (context) => {
           executions += 1;
+          await context.reportProgress({
+            key: 'migrating',
+            status: SystemMigrationStatusEnum.running
+          });
           if (executions === 1) {
-            await firstExecutionCanFail;
-            throw new Error('temporary migration failure');
+            expect(await context.getFailedRecords()).toEqual([]);
+            const failedRecords = [
+              {
+                stageKey: 'migrating',
+                data: { recordId: 'example-1' },
+                reason: { message: 'missing modelId' }
+              }
+            ];
+            // 错误快照先于 checkpoint 持久化，进程在两次调用之间退出也只会重放该批。
+            await context.reportFailedRecords(failedRecords);
+            await context.saveCheckpoint({ lastId: 'example-2' });
+            await context.fail({
+              message: 'example validation failed',
+              failedRecords
+            });
           }
-        },
-        true
-      ),
-      createMigration('20260903_runner_retry_later', laterTask)
-    ];
-    // 与生产默认比例一致地拉开 lease 余量（heartbeat 10ms / lease 2s），
-    // 避免 CI 调度或 Mongo 延迟超过 80ms 时被误判失权而提前接管。
-    const timing = {
-      scanIntervalMs: 10,
-      heartbeatIntervalMs: 10,
-      leaseDurationMs: 2_000,
-      blockingPollIntervalMs: 10
-    };
-    const runner = createSystemMigrationRunner({
-      migrations,
-      runnerId: 'runner-retry',
-      timing,
-      logger
-    });
-    const observerRunner = createSystemMigrationRunner({
-      migrations,
-      runnerId: 'runner-observer',
-      timing,
-      logger
-    });
-    let restartedRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
 
-    try {
-      await runner.start();
-      await vi.waitFor(() => expect(executions).toBe(1));
-      await observerRunner.start();
-      failFirstExecution?.();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migrations[0].id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-      });
-
-      const failedState = await MongoSystemMigrationState.findById(migrations[0].id).lean();
-      expect(failedState).toMatchObject({
-        status: SystemMigrationStatusEnum.failed,
-        lastError: {
-          message: 'temporary migration failure'
-        }
-      });
-      expect(executions).toBe(1);
-      expect(laterTask).not.toHaveBeenCalled();
-
-      await observerRunner.tick();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(executions).toBe(1);
-      expect(laterTask).not.toHaveBeenCalled();
-      const failedRunnerLogs = vi
-        .mocked(logger.error)
-        .mock.calls.filter(([message]) => message.includes('System migration'))
-        .map(([, metadata]) => metadata?.runnerId);
-      expect(new Set(failedRunnerLogs)).toEqual(new Set(['runner-retry', 'runner-observer']));
-      const pausedRunnerLogs = vi
-        .mocked(logger.warn)
-        .mock.calls.filter(([message]) => message.includes('blocking nodes will remain not ready'))
-        .map(([, metadata]) => metadata?.runnerId);
-      expect(new Set(pausedRunnerLogs)).toEqual(new Set(['runner-retry', 'runner-observer']));
-
-      runner.stop();
-      observerRunner.stop();
-      restartedRunner = createSystemMigrationRunner({
-        migrations,
-        runnerId: 'runner-after-restart',
-        timing,
-        logger
-      });
-      await restartedRunner.start();
-      // 旧 lease 过期前 claim 会被拒且队列自动暂停；每轮轮询手动 tick 重试 claim，
-      // lease 一过期（Mongo 服务端时间）即被本节点接管并重试成功，不再依赖固定等待时长。
-      await vi.waitFor(
-        async () => {
-          await restartedRunner.tick();
-          expect((await MongoSystemMigrationState.findById(migrations[0].id).lean())?.status).toBe(
-            SystemMigrationStatusEnum.succeeded
-          );
-        },
-        { timeout: 5_000 }
-      );
-
-      const retriedState = await MongoSystemMigrationState.findById(migrations[0].id).lean();
-      expect(retriedState).toMatchObject({
-        status: SystemMigrationStatusEnum.succeeded
-      });
-      expect(retriedState).not.toHaveProperty('lastError');
-      expect(executions).toBe(2);
-      await vi.waitFor(() => expect(laterTask).toHaveBeenCalledTimes(1));
-    } finally {
-      runner.stop();
-      observerRunner.stop();
-      restartedRunner?.stop();
-    }
-  });
-
-  it('resumes from the checkpoint and exposes prior failed records after an admin retry', async () => {
-    let executions = 0;
-    const migration = createMigration(
-      '20260903_runner_context_failure',
-      async (context) => {
-        executions += 1;
-        await context.reportProgress({
-          key: 'migrating',
-          status: SystemMigrationStatusEnum.running
-        });
-        if (executions === 1) {
-          expect(await context.getFailedRecords()).toEqual([]);
-          const failedRecords = [
+          expect(await context.getCheckpoint(z.object({ lastId: z.string() }))).toEqual({
+            lastId: 'example-2'
+          });
+          expect(await context.getFailedRecords()).toEqual([
             {
               stageKey: 'migrating',
               data: { recordId: 'example-1' },
               reason: { message: 'missing modelId' }
             }
-          ];
-          // 错误快照先于 checkpoint 持久化，进程在两次调用之间退出也只会重放该批。
-          await context.reportFailedRecords(failedRecords);
-          await context.saveCheckpoint({ lastId: 'example-2' });
-          await context.fail({
-            message: 'example validation failed',
-            failedRecords
+          ]);
+          await context.reportProgress({
+            key: 'migrating',
+            status: SystemMigrationStatusEnum.succeeded
           });
-        }
+        }),
+        progressSteps: [
+          {
+            key: 'migrating',
+            labelKey: 'system_migration:migrations.example.migrating'
+          }
+        ]
+      };
+      const runner = createSystemMigrationRunner({
+        migrations: [migration],
+        timing: { scanIntervalMs: 10_000 },
+        logger
+      });
 
-        expect(await context.getCheckpoint(z.object({ lastId: z.string() }))).toEqual({
-          lastId: 'example-2'
+      migration.independent = independent;
+      let retryRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
+      try {
+        await runner.start();
+        // 失败会结束本轮 tick。测试未启用事务，failed + 旧明细数量并不代表
+        // context.fail 的“删除旧快照 -> 插入新快照”已完成，必须等待实际执行结束。
+        await runner.tick();
+        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+          SystemMigrationStatusEnum.failed
+        );
+        await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
+          { migrationId: migration.id, stageKey: 'migrating', count: 1 }
+        ]);
+
+        const state = await MongoSystemMigrationState.findById(migration.id).lean();
+        expect(state?.lastError).toMatchObject({
+          stageKey: 'migrating',
+          message: 'example validation failed'
         });
-        expect(await context.getFailedRecords()).toEqual([
+        expect(state?.lastError).not.toHaveProperty('key');
+        expect(state?.lastError).not.toHaveProperty('params');
+        await expect(getMigrationFailedRecords(migration.id)).resolves.toMatchObject([
           {
             stageKey: 'migrating',
             data: { recordId: 'example-1' },
             reason: { message: 'missing modelId' }
           }
         ]);
-        await context.reportProgress({
-          key: 'migrating',
-          status: SystemMigrationStatusEnum.succeeded
+        const [storedFailedRecord] = await getMigrationFailedRecords(migration.id);
+        expect(storedFailedRecord?.reason).toEqual({ message: 'missing modelId' });
+
+        await runner.tick();
+        expect(executions).toBe(1);
+        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+          SystemMigrationStatusEnum.failed
+        );
+
+        await expect(resetFailedMigration(migration.id)).resolves.toBe(true);
+        retryRunner = createSystemMigrationRunner({
+          migrations: [migration],
+          timing: { scanIntervalMs: 10_000 },
+          logger
         });
-      },
-      false,
-      [
-        {
-          key: 'migrating',
-          labelKey: 'system_migration:migrations.example.migrating'
-        }
-      ]
-    );
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      timing: { scanIntervalMs: 10_000 },
-      logger
-    });
-
-    let retryRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
-    try {
-      await runner.start();
-      // 非阻塞失败会结束本轮 tick。测试未启用事务，failed + 旧明细数量并不代表
-      // context.fail 的“删除旧快照 -> 插入新快照”已完成，必须等待实际执行结束。
-      await runner.tick();
-      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-        SystemMigrationStatusEnum.failed
-      );
-      await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
-        { migrationId: migration.id, stageKey: 'migrating', count: 1 }
-      ]);
-
-      const state = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(state?.lastError).toMatchObject({
-        stageKey: 'migrating',
-        message: 'example validation failed'
-      });
-      expect(state?.lastError).not.toHaveProperty('key');
-      expect(state?.lastError).not.toHaveProperty('params');
-      await expect(getMigrationFailedRecords(migration.id)).resolves.toMatchObject([
-        {
-          stageKey: 'migrating',
-          data: { recordId: 'example-1' },
-          reason: { message: 'missing modelId' }
-        }
-      ]);
-      const [storedFailedRecord] = await getMigrationFailedRecords(migration.id);
-      expect(storedFailedRecord?.reason).toEqual({ message: 'missing modelId' });
-
-      await runner.tick();
-      expect(executions).toBe(1);
-      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-        SystemMigrationStatusEnum.failed
-      );
-
-      await expect(resetFailedMigration(migration.id)).resolves.toBe(true);
-      retryRunner = createSystemMigrationRunner({
-        migrations: [migration],
-        timing: { scanIntervalMs: 10_000 },
-        logger
-      });
-      await retryRunner.start();
-      // 同样等待成功状态与失败明细清理全部结束，再验证恢复结果。
-      await retryRunner.tick();
-      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-        SystemMigrationStatusEnum.succeeded
-      );
-      expect(executions).toBe(2);
-      await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual([]);
-    } finally {
-      runner.stop();
-      retryRunner?.stop();
+        await retryRunner.start();
+        // 同样等待成功状态与失败明细清理全部结束，再验证恢复结果。
+        await retryRunner.tick();
+        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+          SystemMigrationStatusEnum.succeeded
+        );
+        expect(executions).toBe(2);
+        await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual([]);
+      } finally {
+        runner.stop();
+        retryRunner?.stop();
+      }
     }
-  });
+  );
 
-  it('prevents a blocking migration from accessing failed record details', async () => {
-    const migration = createMigration(
-      '20260903_runner_blocking_failed_records',
-      async (context) => {
-        await context.reportProgress({
-          key: 'migrating',
-          status: SystemMigrationStatusEnum.running
-        });
-        await context.fail({
-          message: 'blocking migration failure',
-          failedRecords: [
-            {
-              stageKey: 'migrating',
-              data: { recordId: 'record-1' },
-              reason: { message: 'invalid source data' }
-            }
-          ]
-        });
-      },
-      true,
-      [
-        {
-          key: 'migrating',
-          labelKey: 'system_migration:migrations.example.migrating'
-        }
-      ]
-    );
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      timing: { scanIntervalMs: 10_000 },
-      logger
-    });
-
-    try {
-      await runner.start();
-      // CI 并发执行时真实 Mongo I/O 可能超过默认 1 秒，仍等待实际失败状态而非固定延时。
-      await vi.waitFor(
-        async () => {
-          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-            SystemMigrationStatusEnum.failed
-          );
-        },
-        { timeout: 5_000 }
-      );
-
-      const state = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(state?.lastError?.message).toContain('cannot access failed record details');
-      await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([]);
-      await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual([]);
-    } finally {
-      runner.stop();
-    }
-  });
-
-  it('prevents a blocking migration from reading failed record details', async () => {
-    const migration = createMigration(
-      '20260903_runner_blocking_read_failed_records',
-      async (context) => {
-        await context.getFailedRecords();
-      },
-      true
-    );
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      timing: { scanIntervalMs: 10_000 },
-      logger
-    });
-
-    try {
-      await runner.start();
-      await vi.waitFor(
-        async () => {
-          expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-            SystemMigrationStatusEnum.failed
-          );
-        },
-        { timeout: 5_000 }
-      );
-      expect(
-        (await MongoSystemMigrationState.findById(migration.id).lean())?.lastError?.message
-      ).toContain('cannot access failed record details');
-    } finally {
-      runner.stop();
-    }
-  });
-
-  it('leaves a stopped owner running until another node takes over the expired lease', async () => {
-    let executions = 0;
-    const migration = createMigration(
-      '20260903_runner_crash_takeover',
-      async (context) => {
+  it.each([false, true])(
+    'recovers a stopped owner after lease expiry (independent: %s)',
+    async (independent) => {
+      let executions = 0;
+      const migration = createMigration('20260903_runner_crash_takeover', async (context) => {
         executions += 1;
         if (executions === 1) {
           await context.saveCheckpoint({ firstBatchCompleted: true });
@@ -651,114 +613,66 @@ describe('system migration runner', () => {
           await context.getCheckpoint(z.object({ firstBatchCompleted: z.literal(true) }))
         ).toEqual({ firstBatchCompleted: true });
         await context.saveCheckpoint({ recovered: true });
-      },
-      true
-    );
-    const timing = {
-      scanIntervalMs: 10,
-      heartbeatIntervalMs: 15,
-      leaseDurationMs: 2_000,
-      blockingPollIntervalMs: 10
-    };
-    const firstRunner = createSystemMigrationRunner({
-      migrations: [migration],
-      runnerId: 'runner-crashed',
-      timing,
-      logger
-    });
-    const takeoverRunner = createSystemMigrationRunner({
-      migrations: [migration],
-      runnerId: 'runner-takeover',
-      timing,
-      logger
-    });
+      });
+      migration.independent = independent;
+      const timing = {
+        scanIntervalMs: 10,
+        heartbeatIntervalMs: 15,
+        leaseDurationMs: 2_000
+      };
+      const firstRunner = createSystemMigrationRunner({
+        migrations: [migration],
+        runnerId: 'runner-crashed',
+        timing,
+        logger
+      });
+      const takeoverRunner = createSystemMigrationRunner({
+        migrations: [migration],
+        runnerId: 'runner-takeover',
+        timing,
+        logger
+      });
 
-    try {
-      await firstRunner.start();
-      await vi.waitFor(async () => {
-        const state = await MongoSystemMigrationState.findById(migration.id).lean();
-        expect(state).toMatchObject({
+      try {
+        await firstRunner.start();
+        await vi.waitFor(async () => {
+          const state = await MongoSystemMigrationState.findById(migration.id).lean();
+          expect(state).toMatchObject({
+            status: SystemMigrationStatusEnum.running,
+            checkpoint: { firstBatchCompleted: true }
+          });
+        });
+
+        firstRunner.stop();
+
+        const stoppedState = await MongoSystemMigrationState.findById(migration.id).lean();
+        expect(stoppedState).toMatchObject({
           status: SystemMigrationStatusEnum.running,
           checkpoint: { firstBatchCompleted: true }
         });
-      });
+        // Lease 的时间计算与过期拒绝续租由 entity 测试覆盖；这里直接推进到过期状态，
+        // 避免高负载 CI 中依赖真实计时等待，专注验证 runner 的 checkpoint 接管流程。
+        const expireResult = await MongoSystemMigrationState.updateOne(
+          { _id: migration.id, runId: stoppedState?.runId },
+          { $set: { leaseExpireAt: new Date(0) } }
+        );
+        expect(expireResult.modifiedCount).toBe(1);
 
-      firstRunner.stop();
+        await takeoverRunner.start();
+        await takeoverRunner.tick();
 
-      const stoppedState = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(stoppedState).toMatchObject({
-        status: SystemMigrationStatusEnum.running,
-        checkpoint: { firstBatchCompleted: true }
-      });
-      // Lease 的时间计算与过期拒绝续租由 entity 测试覆盖；这里直接推进到过期状态，
-      // 避免高负载 CI 中依赖真实计时等待，专注验证 runner 的 checkpoint 接管流程。
-      const expireResult = await MongoSystemMigrationState.updateOne(
-        { _id: migration.id, runId: stoppedState?.runId },
-        { $set: { leaseExpireAt: new Date(0) } }
-      );
-      expect(expireResult.modifiedCount).toBe(1);
-
-      await takeoverRunner.start();
-      await takeoverRunner.waitForBlockingMigrations();
-
-      const state = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(state).toMatchObject({
-        status: SystemMigrationStatusEnum.succeeded,
-        checkpoint: { recovered: true }
-      });
-      expect(executions).toBe(2);
-    } finally {
-      firstRunner.stop();
-      takeoverRunner.stop();
-    }
-  });
-
-  it('keeps polling blocking states after a transient Mongo read failure', async () => {
-    const migration = createMigration('20260903_runner_poll_recovery', async () => undefined, true);
-    const now = new Date();
-    const getStates = vi
-      .fn<SystemMigrationRunnerStore['getStates']>()
-      .mockRejectedValueOnce(new Error('temporary read failure'))
-      .mockResolvedValueOnce([
-        {
-          _id: migration.id,
+        const state = await MongoSystemMigrationState.findById(migration.id).lean();
+        expect(state).toMatchObject({
           status: SystemMigrationStatusEnum.succeeded,
-          createdAt: now,
-          updatedAt: now
-        }
-      ]);
-    const store: SystemMigrationRunnerStore = {
-      ensureStates: vi.fn(),
-      getStates,
-      getFailedRecords: vi.fn(),
-      claimLease: vi.fn(),
-      renewLease: vi.fn(),
-      isLeaseActive: vi.fn(),
-      saveCheckpoint: vi.fn(),
-      saveFailedRecords: vi.fn(),
-      saveProgress: vi.fn(),
-      complete: vi.fn(),
-      fail: vi.fn()
-    };
-    const runner = createSystemMigrationRunner({
-      migrations: [migration],
-      timing: { blockingPollIntervalMs: 1 },
-      store,
-      logger
-    });
-
-    try {
-      expect(runner.hasBlockingMigrations).toBe(true);
-      await expect(runner.waitForBlockingMigrations()).resolves.toBeUndefined();
-      expect(getStates).toHaveBeenCalledTimes(2);
-      expect(logger.warn).toHaveBeenCalledWith(
-        'Unable to read blocking system migration states; polling will continue',
-        expect.objectContaining({ error: expect.any(Error) })
-      );
-    } finally {
-      runner.stop();
+          checkpoint: { recovered: true }
+        });
+        expect(executions).toBe(2);
+      } finally {
+        firstRunner.stop();
+        takeoverRunner.stop();
+      }
     }
-  });
+  );
 
   it('pauses terminal-state scans and resumes them when explicitly woken', async () => {
     vi.useFakeTimers();

@@ -199,6 +199,8 @@ const MigrationCard = ({
     : undefined;
   const unscopedError = migration.lastError?.stageKey ? undefined : migration.lastError;
   const errorText = unscopedError?.message;
+  const allowsFollowing =
+    migration.independent || migration.onFailure === SystemMigrationFailurePolicyEnum.continue;
 
   return (
     <Box
@@ -228,6 +230,9 @@ const MigrationCard = ({
             >
               {t(visual.labelKey as any)}
             </Badge>
+            {migration.independent && (
+              <Badge colorScheme={'purple'}>{t('system_migration:mode_independent')}</Badge>
+            )}
           </Flex>
           <Box mt={2} fontSize={'sm'} color={'myGray.500'} lineHeight={1.7}>
             {t(migration.descriptionKey as any)}
@@ -244,7 +249,7 @@ const MigrationCard = ({
             {t('system_migration:start_migration')}
           </Button>
         )}
-        {!migration.blockStartup && migration.status === SystemMigrationStatusEnum.failed && (
+        {migration.status === SystemMigrationStatusEnum.failed && (
           <Button
             flexShrink={0}
             size={'sm'}
@@ -262,21 +267,13 @@ const MigrationCard = ({
           mx={[4, 5]}
           mb={4}
           p={3}
-          bg={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.50'
-              : 'red.50'
-          }
+          bg={allowsFollowing ? 'yellow.50' : 'red.50'}
           borderRadius={'lg'}
           fontSize={'sm'}
-          color={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.700'
-              : 'red.700'
-          }
+          color={allowsFollowing ? 'yellow.700' : 'red.700'}
         >
           {t(
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
+            allowsFollowing
               ? i18nT('system_migration:failure_allows_following')
               : i18nT('system_migration:failure_blocks_following')
           )}
@@ -494,7 +491,7 @@ const SystemMigrationsPage = () => {
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
   }, [data?.migrations]);
-  // 仅倒序展示副本；注册表顺序和 Runner 的串行执行顺序仍保持不变。
+  // 仅倒序展示副本；普通队列按注册表顺序执行，独立任务不受展示顺序影响。
   const displayMigrations = useMemo(
     () => [...(data?.migrations ?? [])].reverse(),
     [data?.migrations]

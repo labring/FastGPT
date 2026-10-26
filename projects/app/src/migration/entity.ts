@@ -28,18 +28,6 @@ const getActiveRunFilter = ({ migrationId, runId }: ActiveRunProps) => ({
   }
 });
 
-/** failed 仅供阻塞任务继续 heartbeat；非阻塞失败会由 runner 主动停止续租。 */
-const getOwnedLeaseFilter = ({ migrationId, runId }: ActiveRunProps) => ({
-  _id: migrationId,
-  status: {
-    $in: [SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed]
-  },
-  runId,
-  $expr: {
-    $gt: ['$leaseExpireAt', '$$NOW']
-  }
-});
-
 /** 复用调用方事务；普通 runner 调用则创建事务，保证状态和错误明细同步提交。 */
 const runWithMigrationSession = <T>(
   session: ClientSession | undefined,
@@ -104,7 +92,7 @@ export const ensureMigrationStates = async (
   );
 };
 
-/** 从主库读取注册表状态；执行顺序和 readiness 不能使用可能延迟的 secondary。 */
+/** 从主库读取注册表状态；执行顺序和依赖判断不能使用可能延迟的 secondary。 */
 export const getMigrationStates = async (
   migrationIds: string[]
 ): Promise<SystemMigrationStateSchemaType[]> => {
@@ -167,7 +155,7 @@ export const getMigrationServerTime = async (): Promise<Date> => {
 };
 
 /**
- * 原子获取 pending 或 lease 已过期的 running/failed 任务。
+ * 原子获取 pending 或 lease 已过期的 running 任务；failed 必须先由管理员重置。
  * 所有 lease 时间由 MongoDB 的 $$NOW 生成，避免多节点宿主机时钟偏差。
  */
 export const claimMigrationLease = async (
@@ -189,9 +177,7 @@ export const claimMigrationLease = async (
       $or: [
         { status: SystemMigrationStatusEnum.pending },
         {
-          status: {
-            $in: [SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed]
-          },
+          status: SystemMigrationStatusEnum.running,
           $expr: {
             $lte: [{ $ifNull: ['$leaseExpireAt', new Date(0)] }, '$$NOW']
           }
@@ -232,7 +218,7 @@ export const renewMigrationLease = async (
   session?: ClientSession
 ): Promise<boolean> => {
   const result = await MongoSystemMigrationState.updateOne(
-    getOwnedLeaseFilter({ migrationId, runId }),
+    getActiveRunFilter({ migrationId, runId }),
     [
       {
         $set: {
@@ -412,7 +398,7 @@ export const completeMigration = async (
 
 /**
  * 当前 lease 持有者写入最近错误；只有显式携带 failedRecords 才替换错误快照。
- * 阻塞类型是否继续续租由 runner 决定。
+ * failed 不允许续租或自动接管，只能由管理员修复后重置。
  */
 export const failMigration = async (
   {
@@ -520,7 +506,7 @@ export const failMigration = async (
 
 /**
  * 管理员确认修复后解除失败任务的旧 lease，使其重新进入竞争。
- * checkpoint、progress 和错误信息全部保留，恢复语义与阻塞任务重启后的 lease 接管一致。
+ * checkpoint、progress 和错误信息全部保留，恢复语义与 running 任务的过期 lease 接管一致。
  */
 export const resetFailedMigration = async (
   migrationId: string,
