@@ -14,20 +14,22 @@ upgradeTags:
 
 ### Upgrade scripts
 
-This upgrade does not include new system migration scripts. Simply update the image tags and restart the services.
+This release includes the following automatic system migrations. They run after you update the images and restart the services, without blocking service startup:
 
-The existing `20260916_backfill_app_resource_snapshots` task to backfill App resource snapshots now depends on the `20260903_backfill_app_model_references` task to migrate App model references. If these tasks are still pending, complete the model reference migration before backfilling resource snapshots so the snapshots include all model IDs.
+- `20261009_backfill_agent_sandbox_team_id`: Added with sandbox quotas. Backfills team ownership for existing Agent sandbox instances from their source App or Skill. Orphaned instances whose source has been deleted are skipped and counted.
+- `20261022_backfill_folder_ancestor_ids`: Rebuilds ancestor paths for App, Tool, and Dataset folders from parent relationships and removes stale path fields from resources that are not folders.
 
 ### Configuration and API compatibility
 
 - `AGENT_SANDBOX_MAX` sets the total number of active Agent sandbox instances and defaults to 100. App sessions and Skill editing share this quota. Use `AGENT_SANDBOX_MAX_PER_TEAM` to set a per-team limit; it is unlimited by default. In the Commercial edition, both limits can be configured in the admin system settings, which take precedence over environment variables.
-- Shared pagination automatically caps `pageSize` values above 500 at 500 instead of returning a validation error. Some endpoints still enforce smaller limits.
+- Shared pagination automatically caps `pageSize` values above 500 at 500 instead of returning a validation error. Some endpoints still enforce smaller limits. Use `offset` or `pageNum` to select a position. When both are provided, `offset` takes precedence, including `offset=0`. Invalid offsets do not fall back to page-based queries.
 - OpenSandbox adds `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`. Both default to 1 and must be at least 1. They apply only to the Kubernetes runtime with OpenSandbox Server v0.2.1 or later, reducing resource requests while keeping limits unchanged. Changes apply only to newly created or recreated sandboxes, not when connecting to or resuming existing sandboxes.
 - The `/api/core/dataset/exportAll` endpoint now exports a single Dataset and no longer supports exporting an entire folder. When file-level permissions are enabled, exports include only files the current member can read. Update folder export integrations to request each Dataset separately.
+- The Commercial edition admin console adds a maximum vector retrieval concurrency setting (`systemEnv.vectorRecallConcurrency`). It accepts integers from 0 to 1000 and defaults to 0, meaning unlimited. A positive value sets a shared recall limit across all service instances and vector databases. This limit does not apply to the Open-source edition and has no corresponding environment variable.
 
 ## 🚀 New features
 
-1. Added [Workflow assisted generation](/en/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
+1. Added [Workflow assisted generation](/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
 2. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 3. App chats now cache input drafts separately for each member, App, and session. Text and references to successfully uploaded attachments can be restored after switching sessions or refreshing the page. Drafts stay in the current browser tab, with up to 10 drafts retained for one hour after the last edit. A draft is cleared once its message is accepted for sending.
 4. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
@@ -39,6 +41,8 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 10. The OpenSandbox Kubernetes runtime now supports separate CPU and memory overcommit factors, reducing scheduling reservations while keeping resource limits unchanged.
 11. Team audit logs now record bulk retries of failed Dataset or Collection processing tasks, single-task retries, processing record deletions, and index rebuilds when switching Embedding models. These events can be filtered by type. Index rebuild logs retain both model names and stable IDs for traceability.
 12. The admin user list in the Commercial edition now supports All, Active, Disabled, and Cancelled status filters, defaults to Active, and can combine status filtering with username searches. Cancelled accounts are identified by current and legacy anonymized username formats for filtering and display; the account's stored status is unchanged.
+13. Improved folder navigation for Apps, Tools, Skills, and Datasets. Members can follow folder paths to authorized child resources. When a member only has access to a child resource, parent folders appear as navigation entries without granting additional folder management permissions.
+14. Team audit logs now record restored permission inheritance for Apps, Skills, Datasets, and Collections, preserving resource paths and supporting event-type filters.
 
 ## ⚙️ Optimizations
 
@@ -66,7 +70,8 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 22. Simplified chat loading animations and sandbox status messages. Improved collapsing, scrolling, and sticky headers for reasoning, Tool, and Skill details. Truncated model names now show their full text on hover.
 23. When applying a candidate from Workflow assisted generation, Tools with no configured credentials default to an available system secret. Tools without a system secret remain pending activation.
 24. Improved API file library service address validation. Legacy bare domains now default to `https://` when a scheme is missing, and the form displays validation guidance for complete HTTP(S) URLs.
-25. HTTP request Nodes now include the `error.data` payload in error messages for non-2xx responses, making failures easier to troubleshoot.
+25. HTTP request Nodes and HTTP Tools now include response bodies in error messages for non-2xx responses, making failures easier to troubleshoot.
+26. App, Skill, and Dataset lists now support targeted refreshes by resource ID. Changes to collaborators, ownership, or permission inheritance update the corresponding cards while preserving loaded pages and scroll position, reducing repeated loading.
 
 ## 🐛 Fixes
 
@@ -107,6 +112,15 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 35. Fixed Skill cards not supporting drag-and-drop moves into folders. Confirm the move after dropping a card. Dragging is disabled during batch selection to prevent conflicting actions.
 36. Fixed copied Markdown tables including CSV escaping quotes. Table copying and export now handle CRLF, standalone CR, and LF line breaks consistently to prevent misplaced rows.
 37. Fixed Dataset exports bypassing file-level permissions. Exported headers and data now use the same set of readable files.
+38. Fixed repeated requests to enable Dataset file-level permissions clearing permissions for independent resources and their inheriting descendants. Existing permissions are now preserved when the feature is already enabled.
+39. Fixed parent folder ownership being inherited as ownership of child resources. Parent owners now inherit only Manage permission on child resources.
+40. Fixed multi-Dataset searches excluding an entire Dataset when it did not define a specified tag. Negative and empty-value conditions now follow the same rules as missing tags.
+41. Fixed Tool call results being truncated again in chat history and streamed responses. Both now retain the complete Tool results used by the model.
+42. Fixed large CSV files failing during empty-column filtering and large OFD files failing during body font size detection because too many arguments were passed to a function.
+43. External document parsing services can now return `pdfEncrypted` and `pdfCorrupted` errors to display instructions for removing a PDF password or uploading the file again.
+44. Fixed MCP message requests hanging after an SSE session expires. Unknown sessions now return HTTP 404. Message handling errors are caught to prevent them from affecting other sessions.
+45. Fixed Commercial edition team member department paths displaying ancestors out of order or duplicating path segments. Paths now follow the actual ancestor order.
+46. Fixed unnecessary errors when clients cancel S3 multipart uploads. Storage requests are aborted promptly, and errors are no longer written to closed responses.
 
 ## 🛠️ Code improvements
 
@@ -124,3 +138,4 @@ The existing `20260916_backfill_app_resource_snapshots` task to backfill App res
 12. Fixed repeated errors when a Dataset parsing task runs out of points during processing. The task now skips the current attempt, and the team balance check pauses processing when tasks are next claimed.
 13. Fixed website Dataset synchronization continuing to crawl after model configuration errors and deleting existing pages after an incomplete crawl. Outdated page cleanup is now skipped when quota or model configuration errors stop a crawl early, the page limit truncates the crawl, a page fails to load, or completion cannot be confirmed. Final task logs now include completion status, pending page counts, and failed page counts to help troubleshoot synchronization issues.
 14. File loading tasks now log expected DNS, network connection, and user errors as warnings while still returning failures to callers. Errors involving placeholder domains and unknown failures remain at the error level to reduce unnecessary alerts.
+15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, and Undici to 7.30.1.
