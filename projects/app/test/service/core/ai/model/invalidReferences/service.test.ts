@@ -2,12 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
 import {
   createInvalidReferenceReplacer,
   replaceInvalidModelReferences
@@ -136,11 +140,12 @@ describe('replaceInvalidModelReferences', () => {
     expect(content.changes.llm.replacedReferences).toBe(1);
     expect(content.changes.tts.replacedReferences).toBe(1);
     expect(content.changes.rerank.replacedReferences).toBe(1);
-    expect(content.replacedIds.has('old-llm')).toBe(true);
     expect(content.chatConfig).toMatchObject({
-      questionGuide: { modelId: 'new-llm' },
-      ttsConfig: { modelId: 'new-tts', model: 'new-tts-name', voice: 'first-voice' }
+      questionGuide: { model: 'new-llm-name' },
+      ttsConfig: { modelId: 'new-tts', voice: 'first-voice' }
     });
+    expect(content.chatConfig?.questionGuide).not.toHaveProperty('modelId');
+    expect(content.chatConfig?.ttsConfig).not.toHaveProperty('model');
     const nodes = content.nodes as Array<{ inputs: Array<{ value: string }> }>;
     expect(nodes[0].inputs[0].value).toBe('{{modelId}}');
     expect(nodes[1].inputs[0].value).toBe('missing');
@@ -179,8 +184,18 @@ describe('replaceInvalidModelReferences', () => {
       publishedVersionId: ids.version,
       modules: [
         {
+          nodeId: 'app-chat',
           flowNodeType: FlowNodeTypeEnum.chatNode,
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: 'old-llm' }]
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'old-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
         }
       ],
       chatConfig: {
@@ -194,15 +209,24 @@ describe('replaceInvalidModelReferences', () => {
       tmbId: String(ids.member),
       nodes: [
         {
+          nodeId: 'version-search',
           flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          name: 'Dataset search',
           inputs: [
             {
               key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
               value: [{ datasetId: String(ids.dataset) }]
             },
-            { key: NodeInputKeyEnum.datasetSearchUsingReRank, value: true },
-            { key: NodeInputKeyEnum.datasetSearchRerankModelId, value: 'deleted-rerank' }
-          ]
+            { key: NodeInputKeyEnum.datasetSearchUsingReRank, label: 'Rerank', value: true },
+            {
+              key: NodeInputKeyEnum.datasetSearchRerankModelId,
+              label: 'Rerank model',
+              value: 'deleted-rerank',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
         }
       ],
       chatConfig: {
@@ -225,8 +249,18 @@ describe('replaceInvalidModelReferences', () => {
       versionName: 'draft',
       nodes: [
         {
+          nodeId: 'autosave-chat',
           flowNodeType: FlowNodeTypeEnum.chatNode,
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: 'old-llm' }]
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'old-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
         }
       ],
       resources: [{ type: 'model', id: 'old-llm' }]
@@ -266,8 +300,9 @@ describe('replaceInvalidModelReferences', () => {
     expect(String(app?.publishedVersionId)).toBe(String(ids.version));
     expect(app?.chatConfig).toMatchObject({
       questionGuide: { modelId: 'new-llm' },
-      ttsConfig: { modelId: 'new-tts', model: 'new-tts-name', voice: 'first-voice' }
+      ttsConfig: { modelId: 'new-tts', voice: 'first-voice' }
     });
+    expect(app?.chatConfig.ttsConfig).not.toHaveProperty('model');
     expect(
       version?.nodes[0].inputs.some(
         (input: { key: string; value: string }) =>
@@ -282,14 +317,18 @@ describe('replaceInvalidModelReferences', () => {
         { type: 'dataset', id: String(ids.dataset) }
       ])
     );
-    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'deleted-rerank' });
-    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-llm' });
-    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-tts' });
+    expect(version?.resources).toEqual(
+      expect.arrayContaining([
+        { type: 'model', id: 'deleted-rerank' },
+        { type: 'model', id: 'old-llm' },
+        { type: 'model', id: 'old-tts' }
+      ])
+    );
     expect(version?.chatConfig.ttsConfig).toMatchObject({
       modelId: 'new-tts',
-      model: 'new-tts-name',
       voice: 'first-voice'
     });
+    expect(version?.chatConfig.ttsConfig).not.toHaveProperty('model');
     expect(autoSaveVersion).toMatchObject({
       isAutoSave: true,
       isPublish: false,
@@ -309,6 +348,157 @@ describe('replaceInvalidModelReferences', () => {
     expect(second.counts.version.rerank.replacedReferences).toBe(0);
     expect(second.counts.app.tts.replacedReferences).toBe(0);
     expect(second.counts.version.tts.replacedReferences).toBe(0);
+  });
+
+  it('uses migrated input modes for detection and writes only original model fields', async () => {
+    const node = {
+      nodeId: 'chat-node',
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      name: 'Chat',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          label: 'Model',
+          value: 'old-llm',
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.selectLLMModel],
+          selectedTypeIndex: 1,
+          sourceMetadata: 'preserve'
+        }
+      ],
+      outputs: []
+    };
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'legacy app',
+      type: 'workflow',
+      modules: [node]
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      nodes: [node],
+      edges: []
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const [app, version] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    for (const input of [app?.modules[0].inputs[0], version?.nodes[0].inputs[0]]) {
+      expect(input).toMatchObject({
+        key: NodeInputKeyEnum.aiModelId,
+        value: 'new-llm',
+        selectedTypeIndex: 1,
+        sourceMetadata: 'preserve'
+      });
+      expect(input).not.toHaveProperty('selectedType');
+    }
+    expect(app?.modules[0].inputs).toHaveLength(1);
+    expect(version?.nodes[0].inputs).toHaveLength(1);
+  });
+
+  it('leaves a missing version snapshot for normal read-time resource resolution', async () => {
+    const privateModel = {
+      modelId: 'private-llm',
+      model: 'private-llm-name',
+      type: ModelTypeEnum.llm,
+      isActive: true,
+      scope: ModelScopeEnum.team,
+      teamId: String(ids.otherTeam),
+      config: { vision: false }
+    };
+    const ownerLimitedHandle = createHandle([...models, privateModel]);
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'legacy app',
+      type: 'workflow',
+      modules: []
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      nodes: [
+        {
+          nodeId: 'dataset-search',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          name: 'Dataset search',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSelectList,
+              label: 'Datasets',
+              value: [{ datasetId: String(ids.dataset) }],
+              renderTypeList: [
+                FlowNodeInputTypeEnum.reference,
+                FlowNodeInputTypeEnum.selectDataset
+              ],
+              selectedTypeIndex: 1
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'old-model',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'Old model',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'old-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'private-model',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          name: 'Private model',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'private-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: []
+    });
+    const filterSpy = vi
+      .spyOn(appResourcePermission, 'filterAuthorizedAppResources')
+      .mockImplementation(async ({ resources }) =>
+        resources.filter((resource) => !['old-llm', 'private-llm'].includes(resource.id))
+      );
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle: ownerLimitedHandle,
+      assertCanContinue: async () => {}
+    });
+    const version = await MongoAppVersion.collection.findOne({ _id: ids.version });
+
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(filterSpy).not.toHaveBeenCalled();
+    expect(version).not.toHaveProperty('resources');
+    expect(version?.nodes[1].inputs[0].value).toBe('new-llm');
+    expect(version?.nodes[2].inputs[0].value).toBe('private-llm');
   });
 
   it('only changes model-based playback and keeps valid TTS settings', () => {
@@ -332,15 +522,16 @@ describe('replaceInvalidModelReferences', () => {
       ttsConfig: { modelId: 'new-tts', voice: 'chosen-voice' }
     });
     expect(legacy.chatConfig).toMatchObject({
-      ttsConfig: { modelId: 'new-tts', voice: 'first-voice' }
+      ttsConfig: { model: 'new-tts-name', voice: 'first-voice' }
     });
+    expect(legacy.chatConfig?.ttsConfig).not.toHaveProperty('modelId');
     expect(disabled.changes.tts.replacedReferences).toBe(0);
     expect(browser.changes.tts.replacedReferences).toBe(0);
     expect(valid.changes.tts.replacedReferences).toBe(0);
     expect(legacy.changes.tts.replacedReferences).toBe(1);
   });
 
-  it('preserves legacy model and skill grants when creating a missing version snapshot', async () => {
+  it('leaves missing legacy version resources for normal read-time resolution', async () => {
     await MongoApp.collection.insertOne({
       _id: ids.app,
       teamId: ids.team,
@@ -357,9 +548,11 @@ describe('replaceInvalidModelReferences', () => {
         {
           nodeId: 'legacy-system-config',
           flowNodeType: legacySystemConfigNodeType,
+          name: 'Legacy config',
           inputs: [
             {
               key: NodeInputKeyEnum.tts,
+              label: 'TTS',
               value: {
                 type: 'model',
                 modelId: 'valid-tts',
@@ -367,17 +560,26 @@ describe('replaceInvalidModelReferences', () => {
                 voice: 'valid-voice'
               }
             }
-          ]
+          ],
+          outputs: []
         },
         {
           nodeId: 'chat-node',
           flowNodeType: FlowNodeTypeEnum.chatNode,
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: 'old-llm' }]
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'old-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
         }
       ],
       resourceRefs: { skillIds: ['legacy-skill'] }
     });
-
     const result = await replaceInvalidModelReferences({
       teamId: String(ids.team),
       replacement,
@@ -387,13 +589,8 @@ describe('replaceInvalidModelReferences', () => {
     const version = await MongoAppVersion.collection.findOne({ _id: ids.version });
 
     expect(result.counts.version.llm.replacedReferences).toBe(1);
-    expect(version?.resources).toEqual(
-      expect.arrayContaining([
-        { type: 'model', id: 'new-llm' },
-        { type: 'model', id: 'valid-tts' },
-        { type: 'skill', id: 'legacy-skill' }
-      ])
-    );
+    expect(version).not.toHaveProperty('resources');
+    expect(version?.resourceRefs).toEqual({ skillIds: ['legacy-skill'] });
     expect(version?.nodes[0].flowNodeType).toBe(legacySystemConfigNodeType);
     expect(version?.nodes[0].inputs[0].value).toMatchObject({
       modelId: 'valid-tts',
@@ -411,16 +608,20 @@ describe('replaceInvalidModelReferences', () => {
     const legacyNode = {
       nodeId: 'legacy-system-config',
       flowNodeType: legacySystemConfigNodeType,
+      name: 'Legacy config',
       inputs: [
         {
           key: NodeInputKeyEnum.questionGuide,
+          label: 'Question guide',
           value: { open: true, modelId: 'old-llm', model: 'old-llm-name' }
         },
         {
           key: NodeInputKeyEnum.tts,
+          label: 'TTS',
           value: { type: 'model', modelId: 'old-tts', model: 'old-tts-name', voice: 'old-voice' }
         }
-      ]
+      ],
+      outputs: []
     };
     await MongoApp.collection.insertOne({
       _id: ids.app,
@@ -487,8 +688,8 @@ describe('replaceInvalidModelReferences', () => {
         { type: 'model', id: 'new-tts' }
       ])
     );
-    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-llm' });
-    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-tts' });
+    expect(version?.resources).toContainEqual({ type: 'model', id: 'old-llm' });
+    expect(version?.resources).toContainEqual({ type: 'model', id: 'old-tts' });
     expect(version?.resources).toContainEqual(preservedResource);
   });
 
@@ -528,7 +729,10 @@ describe('replaceInvalidModelReferences', () => {
       modelId: 'new-tts',
       voice: 'first-voice'
     });
-    expect(version?.resources).toEqual([{ type: 'model', id: 'new-tts' }]);
+    expect(version?.resources).toEqual([
+      { type: 'model', id: 'old-tts' },
+      { type: 'model', id: 'new-tts' }
+    ]);
   });
 
   it('rejects a TTS target without a usable voice before writing', async () => {
@@ -738,8 +942,18 @@ describe('replaceInvalidModelReferences', () => {
       tmbId: String(ids.member),
       nodes: [
         {
+          nodeId: 'chat-node',
           flowNodeType: FlowNodeTypeEnum.chatNode,
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: 'old-llm' }]
+          name: 'Chat',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              label: 'Model',
+              value: 'old-llm',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+            }
+          ],
+          outputs: []
         }
       ]
     });
@@ -758,6 +972,9 @@ describe('replaceInvalidModelReferences', () => {
     expect(app?.chatConfig.questionGuide.modelId).toBe('new-llm');
     expect(app).not.toHaveProperty('modules');
     expect(version?.nodes[0].inputs[0].value).toBe('new-llm');
+    expect(version?.nodes[0].inputs[0]).not.toHaveProperty('selectedType');
+    expect(version?.nodes[0].inputs[0]).not.toHaveProperty('model');
+    expect(version?.nodes[0].inputs).toHaveLength(1);
     expect(version).not.toHaveProperty('chatConfig');
   });
 

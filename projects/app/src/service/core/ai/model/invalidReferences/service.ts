@@ -1,7 +1,6 @@
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
-import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import {
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression
@@ -14,18 +13,22 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import {
-  legacySystemConfigNodeType,
-  migrateSystemConfigToChatConfig
-} from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
+import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type AppChatConfigType, type AppResourcesType } from '@fastgpt/global/core/app/type';
+import {
+  AppResourcesSchema,
+  type AppChatConfigType,
+  type AppResource,
+  type AppResourcesType
+} from '@fastgpt/global/core/app/type';
 import type { ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { resolveStoredAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { getAppResourceKey } from '@fastgpt/service/core/app/resource/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
 import { cloneDeep } from 'lodash-es';
 import { Types } from 'mongoose';
 
@@ -44,7 +47,11 @@ type Reference = { modelId?: unknown; model?: unknown };
 type PlainObject = Record<string, unknown>;
 type Replacement = { llmModelId: string; ttsModelId: string; rerankModelId: string };
 type Model = ReturnType<ModelHandle['getAllModels']>[number];
-type LegacyAppRow = { _id: string; modules?: StoreNodeItemType[]; chatConfig?: AppChatConfigType };
+type LegacyAppRow = {
+  _id: string;
+  modules?: StoreNodeItemType[];
+  chatConfig?: AppChatConfigType;
+};
 type LegacyAppVersionRow = AppVersionSchemaType & { resourceRefs?: unknown };
 
 export type ReplaceInvalidModelReferencesResult = {
@@ -60,6 +67,21 @@ const modelKinds: ModelKind[] = ['llm', 'tts', 'rerank'];
 
 const isObject = (value: unknown): value is PlainObject =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const migrateStoredWorkflow = ({
+  nodes,
+  edges,
+  chatConfig
+}: {
+  nodes?: unknown;
+  edges?: unknown;
+  chatConfig?: unknown;
+}) =>
+  migrateWorkflowToCurrent({
+    nodes: decodeToolSetNodesFromStorage(Array.isArray(nodes) ? nodes : []),
+    edges,
+    chatConfig
+  });
 
 const newChanges = (): Record<ModelKind, Change> => ({
   llm: { replacedReferences: 0, skippedReferences: 0 },
@@ -90,12 +112,6 @@ export const createInvalidReferenceReplacer = ({
 }) => {
   const models = handle.getAllModels();
   const modelsById = new Map(models.map((model) => [model.modelId, model]));
-  const systemModelsByTypeAndName = new Map<string, Model>();
-  for (const model of models) {
-    if (!isSystemModel(model)) continue;
-    const key = `${model.type}:${model.model}`;
-    if (!systemModelsByTypeAndName.has(key)) systemModelsByTypeAndName.set(key, model);
-  }
   const targets: Record<ModelKind, Model> = {
     llm: modelsById.get(replacement.llmModelId)!,
     tts: modelsById.get(replacement.ttsModelId)!,
@@ -116,14 +132,6 @@ export const createInvalidReferenceReplacer = ({
   const getReferenceValue = (reference: Reference) => {
     const value = getModelReferenceValue(reference);
     return value instanceof Types.ObjectId ? String(value) : value;
-  };
-
-  const resolveReference = (reference: Reference, type: ModelTypeEnum) => {
-    const value = getReferenceValue(reference);
-    if (typeof value !== 'string') return;
-    return isEmptyModelValue(reference.modelId)
-      ? systemModelsByTypeAndName.get(`${type}:${value}`)
-      : modelsById.get(value);
   };
 
   const isInvalid = ({
@@ -153,11 +161,6 @@ export const createInvalidReferenceReplacer = ({
     }
   };
 
-  const addReplacedId = (reference: Reference, type: ModelTypeEnum, replacedIds: Set<string>) => {
-    const oldId = resolveReference(reference, type)?.modelId ?? reference.modelId;
-    if (typeof oldId === 'string' && oldId.length > 0) replacedIds.add(oldId);
-  };
-
   const replaceConfigReference = ({
     config,
     modelIdKey,
@@ -165,7 +168,7 @@ export const createInvalidReferenceReplacer = ({
     type,
     vision,
     changes,
-    replacedIds
+    preserveShape = true
   }: {
     config: PlainObject;
     modelIdKey: string;
@@ -173,7 +176,7 @@ export const createInvalidReferenceReplacer = ({
     type: ModelTypeEnum;
     vision?: boolean;
     changes: Record<ModelKind, Change>;
-    replacedIds: Set<string>;
+    preserveShape?: boolean;
   }) => {
     const kind = getKind(type);
     const reference = { modelId: config[modelIdKey], model: config[legacyKey] };
@@ -183,34 +186,46 @@ export const createInvalidReferenceReplacer = ({
       return;
     }
     if (!invalid) return;
-    addReplacedId(reference, type, replacedIds);
-    config[modelIdKey] = targets[kind].modelId;
-    config[legacyKey] = targets[kind].model;
+    if (preserveShape) {
+      if (!isEmptyModelValue(config[modelIdKey])) config[modelIdKey] = targets[kind].modelId;
+      if (!isEmptyModelValue(config[legacyKey])) config[legacyKey] = targets[kind].model;
+    } else {
+      config[modelIdKey] = targets[kind].modelId;
+      config[legacyKey] = targets[kind].model;
+    }
     if (type === ModelTypeEnum.tts) config.voice = firstTtsVoice;
     changes[kind].replacedReferences++;
   };
 
   const replaceNodes = ({
     nodes,
-    changes,
-    replacedIds
+    referenceNodes,
+    changes
   }: {
     nodes: unknown;
+    referenceNodes?: StoreNodeItemType[];
     changes: Record<ModelKind, Change>;
-    replacedIds: Set<string>;
   }) => {
     if (!Array.isArray(nodes)) return;
-    nodes.forEach((rawNode) => {
+    const referenceNodeById = new Map(referenceNodes?.map((node) => [node.nodeId, node]));
+    nodes.forEach((rawNode, nodeIndex) => {
       if (!isObject(rawNode) || !Array.isArray(rawNode.inputs)) return;
       const node = rawNode as StoreNodeItemType;
       if (!node.inputs.every(isObject)) return;
+      const referenceNode = node.nodeId
+        ? referenceNodeById.get(node.nodeId)
+        : referenceNodes?.[nodeIndex];
+      const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
+        nodeInputIsReference(
+          referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input
+        );
 
       for (const slot of workflowSystemModelSlots) {
         const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
         const effectiveInputs = modelIdInputs.length > 0 ? modelIdInputs : legacyInputs;
         const kind = getKind(slot.type);
         for (const input of effectiveInputs) {
-          if (nodeInputIsReference(input)) {
+          if (isReferenceInput(input)) {
             changes[kind].skippedReferences++;
             continue;
           }
@@ -224,19 +239,14 @@ export const createInvalidReferenceReplacer = ({
             continue;
           }
           if (!invalid) continue;
-          addReplacedId(reference, slot.type, replacedIds);
           const target = targets[kind];
           if (input.key === slot.modelIdKey) {
             input.value = target.modelId;
             legacyInputs.forEach((legacy) => {
-              if (!nodeInputIsReference(legacy)) legacy.value = target.model;
+              if (!isReferenceInput(legacy)) legacy.value = target.model;
             });
-            if (legacyInputs.length === 0) {
-              node.inputs.push({ ...input, key: slot.legacyKey, value: target.model });
-            }
           } else {
             input.value = target.model;
-            node.inputs.push({ ...input, key: slot.modelIdKey, value: target.modelId });
           }
           changes[kind].replacedReferences++;
         }
@@ -249,7 +259,7 @@ export const createInvalidReferenceReplacer = ({
           [NodeInputKeyEnum.tts, ModelTypeEnum.tts]
         ] as const) {
           const input = node.inputs.find(({ key }) => key === inputKey);
-          if (!input || nodeInputIsReference(input) || !isObject(input.value)) continue;
+          if (!input || isReferenceInput(input) || !isObject(input.value)) continue;
 
           const config = input.value;
           if (type === ModelTypeEnum.tts && config.type !== 'model') continue;
@@ -258,42 +268,46 @@ export const createInvalidReferenceReplacer = ({
             modelIdKey: 'modelId',
             legacyKey: 'model',
             type,
-            changes,
-            replacedIds
+            changes
           });
         }
       }
 
       if (node.flowNodeType !== FlowNodeTypeEnum.agent) return;
       const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-      if (!paramsInput || nodeInputIsReference(paramsInput) || !isObject(paramsInput.value)) return;
+      if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) return;
       for (const slot of workflowDatasetParamModelSlots) {
         replaceConfigReference({
           config: paramsInput.value,
           modelIdKey: slot.modelIdKey,
           legacyKey: slot.legacyKey,
           type: slot.type,
-          changes,
-          replacedIds
+          changes
         });
       }
     });
   };
 
-  const replaceAppContent = ({ nodes, chatConfig }: { nodes?: unknown; chatConfig?: unknown }) => {
+  const replaceAppContent = ({
+    nodes,
+    chatConfig,
+    referenceNodes
+  }: {
+    nodes?: unknown;
+    chatConfig?: unknown;
+    referenceNodes?: StoreNodeItemType[];
+  }) => {
     const nextNodes = cloneDeep(nodes);
     const nextChatConfig = cloneDeep(chatConfig);
     const changes = newChanges();
-    const replacedIds = new Set<string>();
-    replaceNodes({ nodes: nextNodes, changes, replacedIds });
+    replaceNodes({ nodes: nextNodes, referenceNodes, changes });
     if (isObject(nextChatConfig) && isObject(nextChatConfig.questionGuide)) {
       replaceConfigReference({
         config: nextChatConfig.questionGuide,
         modelIdKey: 'modelId',
         legacyKey: 'model',
         type: ModelTypeEnum.llm,
-        changes,
-        replacedIds
+        changes
       });
     }
     if (
@@ -306,11 +320,10 @@ export const createInvalidReferenceReplacer = ({
         modelIdKey: 'modelId',
         legacyKey: 'model',
         type: ModelTypeEnum.tts,
-        changes,
-        replacedIds
+        changes
       });
     }
-    return { nodes: nextNodes, chatConfig: nextChatConfig, changes, replacedIds };
+    return { nodes: nextNodes, chatConfig: nextChatConfig, changes };
   };
 
   return { isInvalid, replaceConfigReference, replaceAppContent, newChanges };
@@ -333,6 +346,11 @@ export const replaceInvalidModelReferences = async ({
   const failedSamples: ReplaceInvalidModelReferencesResult['failedSamples'] = [];
   const teamObjectId = new Types.ObjectId(teamId);
   const result: ReplaceInvalidModelReferencesResult = { completed: true, counts, failedSamples };
+  const replacementResources: Record<ModelKind, AppResource> = {
+    llm: { type: 'model', id: replacement.llmModelId },
+    tts: { type: 'model', id: replacement.ttsModelId },
+    rerank: { type: 'model', id: replacement.rerankModelId }
+  };
   const targetSupportsVision =
     replacer.isInvalid({
       reference: { modelId: replacement.llmModelId },
@@ -485,14 +503,13 @@ export const replaceInvalidModelReferences = async ({
             }
             const next = cloneDeep(current);
             const changes = newChanges();
-            const replacedIds = new Set<string>();
             replacer.replaceConfigReference({
               config: next,
               modelIdKey: 'agentModelId',
               legacyKey: 'agentModel',
               type: ModelTypeEnum.llm,
               changes,
-              replacedIds
+              preserveShape: false
             });
             const agentReplaced = changes.llm.replacedReferences > 0;
             const beforeVlm = changes.llm.replacedReferences;
@@ -503,7 +520,7 @@ export const replaceInvalidModelReferences = async ({
               type: ModelTypeEnum.llm,
               vision: true,
               changes,
-              replacedIds
+              preserveShape: false
             });
             const vlmReplaced = changes.llm.replacedReferences > beforeVlm;
             if (changes.llm.replacedReferences === 0) {
@@ -584,9 +601,14 @@ export const replaceInvalidModelReferences = async ({
         try {
           let current = app;
           for (let attempt = 0; attempt < 3; attempt++) {
-            const next = replacer.replaceAppContent({
+            const normalizedWorkflow = migrateStoredWorkflow({
               nodes: current.modules,
               chatConfig: current.chatConfig
+            });
+            const next = replacer.replaceAppContent({
+              nodes: current.modules,
+              chatConfig: current.chatConfig,
+              referenceNodes: normalizedWorkflow.nodes
             });
             lastChanges = next.changes;
             if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
@@ -646,7 +668,7 @@ export const replaceInvalidModelReferences = async ({
           })
             .sort({ _id: 1 })
             .limit(batchSize)
-            .select('_id appId nodes chatConfig resources resourceRefs')
+            .select('_id appId nodes edges chatConfig resources resourceRefs')
             .lean<LegacyAppVersionRow[]>();
           if (versions.length === 0) break;
           logBatch({
@@ -669,60 +691,46 @@ export const replaceInvalidModelReferences = async ({
             try {
               let current = version;
               for (let attempt = 0; attempt < 3; attempt++) {
+                const normalizedWorkflow = migrateStoredWorkflow({
+                  nodes: current.nodes,
+                  edges: current.edges,
+                  chatConfig: current.chatConfig
+                });
                 const next = replacer.replaceAppContent({
                   nodes: current.nodes,
-                  chatConfig: current.chatConfig
+                  chatConfig: current.chatConfig,
+                  referenceNodes: normalizedWorkflow.nodes
                 });
                 lastChanges = next.changes;
                 if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
                   addChanges('version', next.changes, false);
                   break;
                 }
-                const effectiveWorkflow = migrateSystemConfigToChatConfig({
-                  nodes: Array.isArray(next.nodes) ? next.nodes : [],
-                  edges: [],
-                  chatConfig: next.chatConfig
-                });
-                const postResources = resolveStoredAppResources({
-                  resources: undefined,
-                  nodes: effectiveWorkflow.nodes as StoreNodeItemType[],
-                  chatConfig: effectiveWorkflow.chatConfig,
-                  resourceRefs: current.resourceRefs
-                });
-                const postModelIds = new Set(
-                  postResources
-                    .filter((resource) => resource.type === 'model')
-                    .map((resource) => resource.id)
-                );
-                const resources: AppResourcesType = (() => {
-                  if (!Array.isArray(current.resources)) return postResources;
-                  const retained = current.resources.filter(
-                    (resource) =>
-                      resource.type !== 'model' ||
-                      !next.replacedIds.has(resource.id) ||
-                      postModelIds.has(resource.id)
-                  );
-                  const existingIds = new Set(
-                    retained
-                      .filter((resource) => resource.type === 'model')
-                      .map((resource) => resource.id)
-                  );
-                  const added = postResources.filter(
-                    (resource) =>
-                      resource.type === 'model' &&
-                      (resource.id === replacement.llmModelId ||
-                        resource.id === replacement.ttsModelId ||
-                        resource.id === replacement.rerankModelId) &&
-                      !existingIds.has(resource.id)
-                  );
-                  return [...retained, ...added];
-                })();
+                const storedResources = AppResourcesSchema.safeParse(current.resources);
+                const resourcesToAppend: AppResourcesType = [];
+                let resourcesToSet: AppResourcesType | undefined;
+                if (storedResources.success) {
+                  // 保留旧快照，只追加本次确实替换的模型，避免重算覆盖历史资源。
+                  const existingResourceKeys = new Set(storedResources.data.map(getAppResourceKey));
+                  for (const kind of modelKinds) {
+                    if (next.changes[kind].replacedReferences === 0) continue;
+                    const resource = replacementResources[kind];
+                    const key = getAppResourceKey(resource);
+                    if (existingResourceKeys.has(key)) continue;
+                    existingResourceKeys.add(key);
+                    resourcesToAppend.push(resource);
+                  }
+                  if (resourcesToAppend.length > 0) {
+                    resourcesToSet = [...(current.resources ?? []), ...resourcesToAppend];
+                  }
+                }
                 await assertWritable();
                 const written = await MongoAppVersion.collection.updateOne(
                   {
                     _id: new Types.ObjectId(String(current._id)),
                     appId: new Types.ObjectId(String(app._id)),
                     ...fieldMatch('nodes', current.nodes),
+                    ...fieldMatch('edges', current.edges),
                     ...fieldMatch('chatConfig', current.chatConfig),
                     ...fieldMatch('resources', current.resources),
                     ...fieldMatch('resourceRefs', current.resourceRefs)
@@ -731,7 +739,7 @@ export const replaceInvalidModelReferences = async ({
                     $set: {
                       ...(next.nodes !== undefined ? { nodes: next.nodes } : {}),
                       ...(next.chatConfig !== undefined ? { chatConfig: next.chatConfig } : {}),
-                      resources
+                      ...(resourcesToSet ? { resources: resourcesToSet } : {})
                     }
                   }
                 );
@@ -749,7 +757,7 @@ export const replaceInvalidModelReferences = async ({
                   break;
                 }
                 const refreshed = await MongoAppVersion.findById(version._id)
-                  .select('_id appId nodes chatConfig resources resourceRefs')
+                  .select('_id appId nodes edges chatConfig resources resourceRefs')
                   .lean<LegacyAppVersionRow>();
                 if (!refreshed || String(refreshed.appId) !== String(app._id)) break;
                 current = refreshed;
