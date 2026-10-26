@@ -352,7 +352,8 @@ const shouldFallbackToSSE = (error: unknown): boolean => {
     error instanceof StreamableHTTPError &&
     typeof error.code === 'number' &&
     error.code >= 400 &&
-    error.code < 500
+    error.code < 500 &&
+    error.code !== 429
   );
 };
 
@@ -362,6 +363,33 @@ const getErrorMessage = (error: unknown) => {
   }
 
   return String(error);
+};
+
+/** 保留 SSE transport 内部丢弃的 HTTP 状态码，供 MCP 错误分类统一读取。 */
+export class McpHttpStatusError extends Error {
+  constructor(
+    readonly code: number,
+    statusText?: string
+  ) {
+    super(`MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}`);
+    this.name = 'McpHttpStatusError';
+  }
+}
+
+/**
+ * SSE transport 在 send() 中会丢掉非 2xx 响应的状态码。
+ * 在 fetch 边界提前转成带 code 的错误，确保会话建立后的鉴权/失效错误仍可分类。
+ */
+export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
+  return async (url, init) => {
+    const response = await fetchImpl(url, init);
+    if (response.ok) {
+      return response;
+    }
+
+    await response.body?.cancel().catch(() => undefined);
+    throw new McpHttpStatusError(response.status, response.statusText);
+  };
 };
 
 /**
@@ -525,9 +553,10 @@ export class MCPClient {
         }
 
         try {
+          const sseFetch = createMcpSseFetch(safeFetch);
           await this.client.connect(
             new SSEClientTransport(new URL(this.url), {
-              fetch: safeFetch,
+              fetch: sseFetch,
               requestInit: {
                 headers: this.headers
               }

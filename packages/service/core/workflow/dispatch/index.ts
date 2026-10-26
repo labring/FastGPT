@@ -15,6 +15,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
+import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
@@ -1027,7 +1028,11 @@ export class WorkflowQueue {
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
       const isUserConfigFailure = isUserConfigError(dispatchRes.error);
-      if (currentNodeError !== undefined && !formatCurrentNodeResponse?.errorCaptured) {
+      if (
+        currentNodeError !== undefined &&
+        !formatCurrentNodeResponse?.errorCaptured &&
+        !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse))
+      ) {
         nodeSummary.mergeNodeSummary({
           hasError: true,
           hasUserConfigError: isUserConfigFailure,

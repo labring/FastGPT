@@ -1458,3 +1458,52 @@ describe('Workflow runtime LLM token summary', () => {
     }
   );
 });
+
+describe('Workflow runtime error summary', () => {
+  it('工具执行错误只保留在节点详情中，不计入工作流失败', async () => {
+    const original = callbackMap[FlowNodeTypeEnum.tool];
+    const node = createNode('tool-node', FlowNodeTypeEnum.tool);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => ({
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        error: 'invalid API key',
+        errorType: 'UserConfigError'
+      }
+    }));
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'tool error summary',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => false
+      } as any);
+
+      expect(result.workflowRuntimeSummary).toMatchObject({
+        hasError: false,
+        errorCount: 0
+      });
+      expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
+    } finally {
+      callbackMap[FlowNodeTypeEnum.tool] = original;
+    }
+  });
+});

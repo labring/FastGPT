@@ -1,5 +1,5 @@
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -237,6 +237,31 @@ describe('dispatchRunTools', () => {
       });
     }
   );
+
+  it('preserves user config classification from runToolCall', async () => {
+    runToolCallMock.mockResolvedValueOnce({
+      toolWorkflowInteractiveResponse: undefined,
+      toolDispatchFlowResponses: [],
+      toolCallInputTokens: 0,
+      toolCallOutputTokens: 0,
+      toolCallTotalPoints: 0,
+      completeMessages: [],
+      assistantResponses: [],
+      finish_reason: 'error',
+      error: new UserConfigError('Invalid API key'),
+      requestIds: []
+    });
+
+    const result = await dispatchRunTools(createProps());
+
+    expect(result.error).toMatchObject({
+      system_error_text: 'Invalid API key',
+      name: 'UserConfigError'
+    });
+    expect(result.responseData).toMatchObject({
+      errorType: 'UserConfigError'
+    });
+  });
 
   it('does not restore history files when the node has no selected file link input', async () => {
     await dispatchRunTools(createProps());

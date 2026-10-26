@@ -15,9 +15,11 @@ vi.mock('@apidevtools/json-schema-ref-parser', () => ({
 }));
 
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import {
   MCPClient,
   assertMCPUrlNotInternal,
+  createMcpSseFetch,
   createMcpSafeFetch,
   getMCPChildren
 } from '../../../core/app/mcp';
@@ -657,6 +659,18 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(1);
     });
 
+    it('should not hide Streamable HTTP 429 behind an SSE probe', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(429, 'Too Many Requests'))
+        .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'));
+
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({ code: 429 });
+      expect(client.connect).toHaveBeenCalledTimes(1);
+    });
+
     it('should surface both errors when the SSE fallback also fails', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
@@ -732,6 +746,36 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
   });
+});
+
+describe('createMcpSseFetch', () => {
+  const url = new URL('https://example.com/mcp');
+
+  it.each([401, 403, 410])(
+    'preserves SSE POST status %s for MCP error classification',
+    async (status) => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        new Response('expired', {
+          status,
+          statusText: 'MCP request rejected'
+        })
+      );
+      const transport = new SSEClientTransport(url, {
+        fetch: createMcpSseFetch(fetchImpl)
+      });
+      (transport as any)._endpoint = url;
+
+      await expect(
+        (transport as any).send({
+          jsonrpc: '2.0',
+          id: 'status-test',
+          method: 'ping'
+        })
+      ).rejects.toMatchObject({
+        code: status
+      });
+    }
+  );
 });
 
 describe('createMcpSafeFetch', () => {

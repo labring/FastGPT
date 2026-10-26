@@ -689,6 +689,40 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     });
   });
 
+  it('publishes the user config type on the failed iteration wrapper', async () => {
+    const nodeResponseSink = createNodeResponseSinkMock();
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
+        workflowRuntimeSummary: {
+          ...createWorkflowRuntimeSummary(),
+          hasError: true,
+          hasUserConfigError: true,
+          errorText: 'Invalid MCP URL'
+        }
+      })
+    );
+    const props: any = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['first']
+    });
+    props.nodeResponseSink = nodeResponseSink;
+
+    await dispatchLoopRun(props);
+
+    const publishedResponses = nodeResponseSink.publish.mock.calls.flatMap(
+      ([items]: [{ response: any }[]]) => items.map((item) => item.response)
+    );
+    expect(publishedResponses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          error: 'Invalid MCP URL',
+          errorType: 'UserConfigError'
+        })
+      ])
+    );
+  });
+
   it('does not reuse a user config marker for a later system failure', async () => {
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({

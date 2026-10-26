@@ -1,4 +1,5 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { createAgentLoopCoreNodeResponseEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/eventCollector';
 import { describe, expect, it } from 'vitest';
 
@@ -73,6 +74,28 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         textOutput: 'answer',
         reasoningText: 'reason',
         runningTime: 0.2
+      })
+    ]);
+  });
+
+  it('preserves user config classification on failed LLM responses', () => {
+    const { collector, nodeResponses } = createCollector();
+
+    collector.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_config_error',
+      finishReason: 'error',
+      error: new UserConfigError('Invalid API key'),
+      usages: [],
+      seconds: 0.2
+    } as any);
+
+    expect(nodeResponses).toEqual([
+      expect.objectContaining({
+        errorText: 'Invalid API key',
+        errorType: 'UserConfigError'
       })
     ]);
   });

@@ -229,7 +229,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     // Wrap this iteration as a virtual task node so the whole-response tree
     // shows a per-iteration layer through sink. Parent loopRun only keeps
     // summary stats and business history.
-    const pushIterationDetail = async (opts: { error?: string }) => {
+    const pushIterationDetail = async (opts: { error?: string; errorType?: 'UserConfigError' }) => {
       const wrapper = {
         id: iterationResponseId,
         nodeId: iterationResponseId,
@@ -240,6 +240,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
+        errorType: opts.errorType,
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
@@ -276,7 +277,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (iterationSummary.hasError) {
       hasUserConfigError ||= iterationSummary.hasUserConfigError;
       const errText = getErrText(iterationSummary.errorText);
-      await pushIterationDetail({ error: errText });
+      await pushIterationDetail({
+        error: errText,
+        ...(iterationSummary.hasUserConfigError && { errorType: 'UserConfigError' as const })
+      });
       loopHistory.push({
         iteration,
         customOutputs,
