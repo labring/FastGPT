@@ -4,10 +4,7 @@ import zhMigration from '@fastgpt/web/i18n/zh-CN/system_migration.json';
 import enMigration from '@fastgpt/web/i18n/en/system_migration.json';
 import zhHantMigration from '@fastgpt/web/i18n/zh-Hant/system_migration.json';
 import koMigration from '@fastgpt/web/i18n/ko-KR/system_migration.json';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationListItem } from '@fastgpt/global/migration/schema';
 import {
   getSystemMigrationDisplayStatus,
@@ -60,8 +57,8 @@ const createMigration = (
   order: 1,
   nameKey: 'system_migration:migrations.example.name',
   descriptionKey: 'system_migration:migrations.example.description',
-  blockStartup: true,
-  onFailure: SystemMigrationFailurePolicyEnum.stop,
+  blockStartup: false,
+  independent: true,
   status: SystemMigrationStatusEnum.pending,
   progress: [],
   failedRecordCount: 0,
