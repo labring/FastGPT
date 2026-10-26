@@ -148,13 +148,13 @@
 
 ## 6. 价格与 JSON 配置
 
-- LLM 读取历史价格时兼容 `priceTiers`、`inputPrice/outputPrice`、`charsPointsPrice`。
-- 打开编辑器先转换为 `priceTiers`；提交只认当前阶梯价格，清空或双零表示免费，不重新回退历史价格。
-- LLM 保存时清除历史价格字段；非 LLM 继续使用 `charsPointsPrice`。不新增独立价格迁移任务。
+- 计价统一使用 `pricing`：LLM 为 `pricing.tiers`，其他类型为 `pricing.unitPrice`。仅系统模型计费，团队模型免费。
+- 编辑器、JSON 和运行期均不回退旧根级价格；旧 BSON 字段仅由自动迁移读取，当前 Mongoose Schema 不再声明。
+- 百万单位后台迁移和固定计价分母以[模型计价设计](./model-token-price-unit.md)为准；清空价格保存空对象，显式零价保持免费。
 - 输入、输出独立计费；输入价为零不跳过输出计费。
-- JSON 导出保留原有价格字段及稳定 `modelId`，不转换、不回写数据库，剥离内部和未知字段。
+- JSON 导出仅保留新 `pricing` 及稳定 `modelId`，不回写数据库，剥离旧价格、内部和未知字段。
 - JSON 配置导入会事务删除文件中缺失的系统模型及其权限，保留 AIProxy 渠道和模型关联；空数组删除全部系统模型，全部缺少 modelId 的旧配置仍忽略。
-- JSON 导入与编辑器共享 `normalizeModelPricingForRead`、`normalizeModelPricingForSave`；混合旧字段按历史读取规则解释，纯新格式空阶梯表示免费。
+- JSON 导入与编辑器共用新价格保存规范化；缺省或空价格按免费处理，保存后不能被迁移中的旧价覆盖。
 - JSON 按本地 `modelId` 命中时保留数据库中的 `model`、`type`；外部 ID 按非空 `model` 安装或匹配。
 - 完整配置更新清除被省略的可清理字段，不能让旧请求配置或旧价格重新生效。
 - JSON 覆盖需要二次确认，确认按钮保持 Loading 至接口完成；一次失败只显示一次错误提示。

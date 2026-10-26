@@ -17,7 +17,7 @@ pricing: {
 
 业务 Schema、API、配置读写、运行期、表单、公开目录和监控仅使用 `pricing`。`0` 表示免费；单价缺失表示未配置；整个 `pricing` 缺失表示尚未迁移，按免费处理。新版保存清空价格时写入 `pricing: {}`，表示管理员已编辑，后台迁移不能恢复旧价格。LLM 可显式保存空阶梯。
 
-根级 `priceTiers`、`inputPrice`、`outputPrice`、`charsPointsPrice` 仅在 Mongo Schema 中标记弃用并保留原值，由迁移读取；不向新 API 暴露，后续版本另行清理。不新增 `legacyTokenPricing`，不处理缓存单价或用量、供应商 SDK、依赖、部署配置及 Pro gitlink。
+旧根级计价字段已从业务与 Mongoose Schema 删除；数据库原值保持不变，仅由迁移专属 Schema 经原生集合读取，后续版本再清理旧 BSON 数据。新版 API 不再暴露，也不再新增原价备份标记。缓存单价、用量、供应商 SDK、依赖和部署配置不在本需求范围；Pro 测试与跑分中的残留另行提交，主 PR 不更新 Pro gitlink。
 
 ## 自动迁移
 

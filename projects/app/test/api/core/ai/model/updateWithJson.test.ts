@@ -91,20 +91,21 @@ describe('admin settings model updateWithJson api', () => {
   });
 
   it('keeps million-unit prices across an export/import round trip', async () => {
-    const existingModel = await MongoAIModel.create({
+    const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       ...buildStoredLlm('legacy-priced'),
+      inputPrice: 0.001,
+      outputPrice: 0.003,
       pricing: { tiers: [{ inputPrice: 1, outputPrice: 3 }] }
     });
     const root = await getRootUser();
     const exported = await Call<string>(getConfigJsonApi, { auth: root });
     const result = await callUpdateWithJson(exported.data);
     expect(result.code).toBe(200);
-    const saved = await MongoAIModel.findById(existingModel._id).lean();
+    const saved = await MongoAIModel.findById(modelId).lean();
     expect(ModelPricingSchema.parse(saved?.pricing).tiers).toMatchObject([
       { inputPrice: 1, outputPrice: 3 }
     ]);
-    expect(saved).not.toHaveProperty('inputPrice');
-    expect(saved).not.toHaveProperty('outputPrice');
+    expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });
 
   it('imports new prices without rescaling and permits an explicitly free edit', async () => {

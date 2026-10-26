@@ -145,7 +145,7 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
 
 Token model prices and tier boundaries use M Tokens. Text-to-speech is priced per 1M characters; speech-to-text remains per 60 seconds. Unit prices support up to two decimal places.
 
-Only system models use these prices; team models are free. Pricing is stored under pricing: LLMs use tiers with inputPrice, outputPrice, and an optional maxInputTokens upper limit in M Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use unitPrice: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Root-level priceTiers, inputPrice, outputPrice, and charsPointsPrice are deprecated and ignored by the new runtime. Missing pricing is free until migration completes.
+Only system models use these prices; team models are free. Pricing is stored under pricing: LLMs use tiers with inputPrice, outputPrice, and an optional maxInputTokens upper limit in M Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use unitPrice: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Legacy root-level prices are read only by the migration and ignored by the new runtime. Missing pricing is free until migration completes.
 
 <Accordions>
 <Accordion title="Language Model Fields">

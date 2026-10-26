@@ -484,12 +484,12 @@ const ModelConfigForm = ({
           data.config.maxTemperature = null;
         }
 
-        const priceTiers = getRuntimeResolvedPriceTiers(data);
+        const tiers = getRuntimeResolvedPriceTiers(data);
 
         let currentLowerExclusiveBound = 0;
 
-        for (let index = 0; index < priceTiers.length; index++) {
-          const tier = priceTiers[index];
+        for (let index = 0; index < tiers.length; index++) {
+          const tier = tiers[index];
           const hasPrice =
             typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
 
@@ -497,7 +497,7 @@ const ModelConfigForm = ({
             return Promise.reject(t('config_model:model.price_tier_price_required'));
           }
 
-          if (index < priceTiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
+          if (index < tiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
             return Promise.reject(t('config_model:model.price_tier_max_required'));
           }
 
@@ -513,7 +513,7 @@ const ModelConfigForm = ({
           }
         }
 
-        data.pricing = { tiers: priceTiers };
+        data.pricing = { tiers };
       }
 
       const modelData = data as Record<string, unknown>;

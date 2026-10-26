@@ -53,22 +53,6 @@ const AIModelSchema = new Schema(
       ),
       default: undefined
     },
-    /** @deprecated 根级综合价仅保留给旧节点与迁移读取。 */
-    charsPointsPrice: Number,
-    /** @deprecated 根级阶梯价仅保留给旧节点与迁移读取。 */
-    priceTiers: [
-      {
-        _id: false,
-        minInputTokens: Number,
-        maxInputTokens: Number,
-        inputPrice: Number,
-        outputPrice: Number
-      }
-    ],
-    /** @deprecated 根级输入价仅保留给旧节点与迁移读取。 */
-    inputPrice: Number,
-    /** @deprecated 根级输出价仅保留给旧节点与迁移读取。 */
-    outputPrice: Number,
     config: {
       type: Schema.Types.Mixed,
       required: true,

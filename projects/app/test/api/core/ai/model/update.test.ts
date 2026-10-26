@@ -305,13 +305,19 @@ describe('admin settings model create/update api', () => {
   });
 
   it('retains deprecated DB prices for old nodes while saving only new pricing', async () => {
-    const model = await insertSystemModel({
-      ...buildLlmDocument(),
-      inputPrice: 1,
-      outputPrice: 3,
-      charsPointsPrice: 2,
-      priceTiers: [{ inputPrice: 4, outputPrice: 5 }]
-    });
+    const model = await insertSystemModel(buildLlmDocument());
+    // 旧文档通过原生集合写入，新版 Mongoose 不再声明或写入这些字段。
+    await MongoAIModel.collection.updateOne(
+      { model: model.model, scope: ModelScopeEnum.system },
+      {
+        $set: {
+          inputPrice: 1,
+          outputPrice: 3,
+          charsPointsPrice: 2,
+          priceTiers: [{ inputPrice: 4, outputPrice: 5 }]
+        }
+      }
+    );
     const response = await callApi({
       handler: updateModelApi,
       body: {

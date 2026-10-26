@@ -141,7 +141,7 @@ describe('registerNodeInstrumentation', () => {
         SystemMigrationStatusEnum.succeeded
       );
       expect(await MongoAIModel.collection.findOne({ _id: insertedId })).not.toHaveProperty(
-        'legacyTokenPricing'
+        'pricing'
       );
       release();
       await registration;

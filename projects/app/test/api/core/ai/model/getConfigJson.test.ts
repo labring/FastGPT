@@ -17,7 +17,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
 
   it('exports canonical model data with its stable modelId', async () => {
     const root = await getRootUser();
-    const model = await MongoAIModel.create({
+    const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       model: 'exported-model',
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
@@ -45,7 +45,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     const exported = JSON.parse(response.data);
     expect(exported).toEqual([
       expect.objectContaining({
-        modelId: String(model._id),
+        modelId: String(modelId),
         model: 'exported-model',
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
@@ -63,7 +63,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     expect(exported[0]).not.toHaveProperty('inputPrice');
     expect(exported[0]).not.toHaveProperty('outputPrice');
     // 导出保留数据库中的旧价格，不触发格式转换或回写。
-    expect(await MongoAIModel.findById(model._id).lean()).toMatchObject({
+    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
       inputPrice: 1,
       outputPrice: 2
     });
