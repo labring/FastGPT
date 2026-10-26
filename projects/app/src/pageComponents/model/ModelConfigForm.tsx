@@ -8,6 +8,7 @@ import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
+  roundModelPrice,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
 } from '@fastgpt/global/core/ai/model/pricing';
@@ -814,12 +815,27 @@ const ModelConfigForm = ({
                 tip={t('config_model:model.charsPointsPrice_tip')}
               >
                 <Flex alignItems={'center'} gap={2}>
-                  <MyNumberInput
-                    register={register}
-                    name="charsPointsPrice"
+                  <Input
+                    type="number"
                     step={0.01}
-                    precision={2}
-                    {...NumberInputStyles}
+                    {...register('charsPointsPrice', {
+                      setValueAs: (value) =>
+                        value === '' ? undefined : roundModelPrice(Number(value)),
+                      onBlur: (event) => {
+                        const price =
+                          event.target.value === '' ? undefined : Number(event.target.value);
+                        if (price !== undefined && !Number.isFinite(price)) return;
+                        // 与阶梯单价共用十进制舍入，避免 Chakra precision 提前压低中点。
+                        setValue(
+                          'charsPointsPrice',
+                          price === undefined ? undefined : roundModelPrice(price),
+                          {
+                            shouldDirty: true
+                          }
+                        );
+                      }
+                    })}
+                    {...InputStyles}
                   />
                   <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
                     {priceUnit}
