@@ -270,11 +270,9 @@ const MigrationCard = ({
           fontSize={'sm'}
           color={'yellow.700'}
         >
-          {t(
-            migration.blockStartup
-              ? 'system_migration:failure_blocks_startup'
-              : 'system_migration:failure_allows_following'
-          )}
+          {migration.blockStartup
+            ? t('system_migration:failure_blocks_startup')
+            : t('system_migration:failure_allows_following')}
         </Box>
       )}
 
