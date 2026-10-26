@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import EditForm from '@/pageComponents/app/detail/Edit/MCPTools/EditForm';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 
 const mocks = vi.hoisted(() => ({
   onParsed: undefined as undefined | ((tools: unknown[], params: [{ url: string }]) => void),
@@ -63,15 +64,15 @@ describe('MCP per-tool request metadata configuration', () => {
   const setCurrentTool = vi.fn();
   const requestMeta = { 'example/context': { locale: 'zh-CN' } };
   const tool = { name: 'search', description: 'Search', requestMeta };
-  const render = async (url = 'https://example.com/mcp') => {
+  const render = async (url = 'https://example.com/mcp', tools: McpToolConfigType[] = [tool]) => {
     await act(async () => {
       root.render(
         React.createElement(EditForm, {
           url,
           setUrl: vi.fn(),
-          toolList: [tool],
+          toolList: tools,
           setToolList,
-          currentTool: tool,
+          currentTool: tools[0],
           setCurrentTool,
           headerSecret: {},
           setHeaderSecret: vi.fn()
@@ -145,5 +146,66 @@ describe('MCP per-tool request metadata configuration', () => {
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://other.example.com/mcp' }]));
     expect(setToolList).toHaveBeenCalledWith([freshTool]);
     expect(setCurrentTool).toHaveBeenCalledWith(freshTool);
+  });
+
+  it('invalidates an open details dialog when refreshed definitions arrive', async () => {
+    await click('details');
+    const freshTool = {
+      name: 'search',
+      description: 'Fresh definition',
+      inputSchema: {
+        type: 'object' as const,
+        properties: { newParam: { type: 'string' as const } }
+      }
+    };
+    await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://example.com/mcp' }]));
+    const parsedTools = setToolList.mock.calls.at(-1)![0];
+    await render('https://example.com/mcp', parsedTools);
+    expect(container.textContent).not.toContain('common:Confirm');
+    expect(parsedTools[0]).toEqual({ ...freshTool, requestMeta });
+    await click('details');
+    await act(async () => mocks.onChange!({ target: { value: '{}' } }));
+    await click('common:Confirm');
+    expect(setToolList).toHaveBeenLastCalledWith([{ ...freshTool, requestMeta: {} }]);
+  });
+
+  it('merges only metadata into the current definition if the parent updates the tool list', async () => {
+    await click('details');
+    const freshTool = {
+      name: 'search',
+      description: 'Latest parent definition',
+      inputSchema: {
+        type: 'object' as const,
+        properties: { newParam: { type: 'string' as const } }
+      }
+    };
+    await render('https://example.com/mcp', [freshTool]);
+    await act(async () => mocks.onChange!({ target: { value: '{}' } }));
+    await click('common:Confirm');
+    expect(setToolList).toHaveBeenLastCalledWith([{ ...freshTool, requestMeta: {} }]);
+    expect(setCurrentTool).toHaveBeenLastCalledWith({ ...freshTool, requestMeta: {} });
+  });
+
+  it('does not let a dialog opened on the old list restore metadata after a server switch', async () => {
+    await render('https://other.example.com/mcp');
+    await click('details');
+    expect(container.textContent).not.toContain('common:Confirm');
+    const freshTool = { name: 'search', description: 'Other server definition' };
+    await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://other.example.com/mcp' }]));
+    const parsedTools = setToolList.mock.calls.at(-1)![0];
+    await render('https://other.example.com/mcp', parsedTools);
+    expect(container.textContent).not.toContain('common:Confirm');
+    expect(parsedTools).toEqual([freshTool]);
+    await click('details');
+    await click('common:Confirm');
+    expect(setToolList).toHaveBeenLastCalledWith([{ ...freshTool, requestMeta: undefined }]);
+  });
+
+  it('hides an existing dialog immediately when the service URL changes', async () => {
+    await click('details');
+    expect(container.textContent).toContain('common:Confirm');
+    await render('https://other.example.com/mcp');
+    expect(container.textContent).not.toContain('common:Confirm');
+    expect(setToolList).not.toHaveBeenCalled();
   });
 });

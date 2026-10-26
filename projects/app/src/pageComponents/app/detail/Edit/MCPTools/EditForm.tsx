@@ -51,14 +51,22 @@ const EditForm = ({
 }) => {
   const { t } = useTranslation();
 
-  const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
+  const [toolDetail, setToolDetail] = useState<{
+    tool: McpToolConfigType;
+    sourceUrl: string;
+    revision: number;
+  } | null>(null);
   const metadataSourceUrl = useRef(url);
+  const parseRevision = useRef(0);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest(
     async (data: GetMcpToolsBodyType) => await getMCPTools(data),
     {
       onSuccess: (res, [data]) => {
         if (data.url !== url) return;
+        // 解析结果到达后，旧弹窗的定义和编辑来源均已过期。
+        parseRevision.current += 1;
+        setToolDetail(null);
         // 只在重新解析同一服务时按名称保留配置，避免把元数据带到另一个服务。
         const preserveMetadata = metadataSourceUrl.current === data.url;
         metadataSourceUrl.current = data.url;
@@ -97,7 +105,10 @@ const EditForm = ({
             h={8}
             placeholder={t('app:MCP_tools_url_placeholder')}
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              setToolDetail(null);
+              setUrl(e.target.value);
+            }}
           />
           <Button
             size={'sm'}
@@ -202,7 +213,8 @@ const EditForm = ({
                     tip={t('app:MCP_tools_detail')}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setToolDetail(tool);
+                      if (metadataSourceUrl.current !== url) return;
+                      setToolDetail({ tool, sourceUrl: url, revision: parseRevision.current });
                     }}
                   />
                 </Flex>
@@ -212,11 +224,17 @@ const EditForm = ({
         </Box>
       </Box>
 
-      {toolDetail && (
+      {toolDetail && toolDetail.sourceUrl === url && (
         <ToolDetailModal
-          tool={toolDetail}
+          tool={toolDetail.tool}
           onClose={() => setToolDetail(null)}
-          onUpdate={(updatedTool) => {
+          onUpdate={(requestMeta) => {
+            if (toolDetail.sourceUrl !== url || toolDetail.revision !== parseRevision.current)
+              return;
+            const latestTool = toolList.find((tool) => tool.name === toolDetail.tool.name);
+            if (!latestTool) return;
+            // 只更新用户编辑的元数据，定义始终取当前列表，不能回写弹窗的旧快照。
+            const updatedTool = { ...latestTool, requestMeta };
             setToolList(
               toolList.map((tool) => (tool.name === updatedTool.name ? updatedTool : tool))
             );
@@ -237,7 +255,7 @@ const ToolDetailModal = ({
 }: {
   tool: McpToolConfigType;
   onClose: () => void;
-  onUpdate: (tool: McpToolConfigType) => void;
+  onUpdate: (requestMeta: McpToolConfigType['requestMeta']) => void;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -252,7 +270,7 @@ const ToolDetailModal = ({
       const requestMeta = McpToolConfigSchema.shape.requestMeta.parse(
         metadataText.trim() ? JSON.parse(metadataText) : undefined
       );
-      onUpdate({ ...tool, requestMeta });
+      onUpdate(requestMeta);
       onClose();
     } catch {
       setInvalidMetadata(true);
