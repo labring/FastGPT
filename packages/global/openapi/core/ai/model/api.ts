@@ -350,6 +350,300 @@ export const GetModelTemplatesResponseSchema = z.object({
 });
 export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponseSchema>;
 
+/* ============================================================================
+ * API: 从系统渠道预览模型导入
+ * Route: GET /api/core/ai/model/previewImportFromChannel
+ * Method: GET
+ * Description: 读取渠道上游模型目录并与现有模型及模板匹配
+ * Tags: ['模型管理', 'Read']
+ * ============================================================================ */
+
+export const PreviewImportFromChannelQuerySchema = z.object({
+  channelId: IntSchema.positive().meta({ example: 1, description: '目标系统渠道 ID' }),
+  channelType: z.literal('system').meta({ example: 'system', description: '固定为系统渠道' })
+});
+export type PreviewImportFromChannelQuery = z.infer<typeof PreviewImportFromChannelQuerySchema>;
+
+const ImportProviderModelSlugSchema = z.string().min(1).meta({
+  example: 'openai/gpt-5.4',
+  description: 'AIProxy 返回的原始上游模型 ID'
+});
+const ImportPreviewModelIdSchema = ModelIdSchema.meta({
+  example: '68ad85a7463006c963799a05',
+  description: '本地模型稳定 ID'
+});
+export const ImportPreviewBlankModelDataSchema = z.union([
+  LLMModelDocumentSchema.partial().extend({ config: LLMModelConfigSchema.partial().optional() }),
+  EmbeddingModelDocumentSchema.partial().extend({
+    config: EmbeddingModelConfigSchema.partial().optional()
+  }),
+  TTSModelDocumentSchema.partial().extend({ config: TTSModelConfigSchema.partial().optional() }),
+  STTModelDocumentSchema.partial().extend({ config: STTModelConfigSchema.partial().optional() }),
+  RerankModelDocumentSchema.partial().extend({
+    config: RerankModelConfigSchema.partial().optional()
+  })
+]);
+export type ImportPreviewBlankModelData = z.infer<typeof ImportPreviewBlankModelDataSchema>;
+const ImportPreviewContextLengthSchema = IntSchema.nonnegative().meta({
+  example: 32000,
+  description: '上游模型声明的上下文长度；类型待选择时由前端填入对应配置'
+});
+
+export const ImportPreviewItemSchema = z.discriminatedUnion('category', [
+  z.object({
+    category: z.literal('associated').meta({
+      example: 'associated',
+      description: '目标渠道已关联的本地模型'
+    }),
+    modelId: ImportPreviewModelIdSchema
+  }),
+  z.object({
+    category: z.literal('existing').meta({
+      example: 'existing',
+      description: '尚未关联目标渠道的现有模型'
+    }),
+    modelId: ImportPreviewModelIdSchema
+  }),
+  z.object({
+    category: z.literal('template').meta({ example: 'template', description: '命中本地模型模板' }),
+    template: ModelTemplateReferenceSchema,
+    contextLength: ImportPreviewContextLengthSchema.optional(),
+    modelData: AIModelDocumentDataSchema.meta({
+      example: {
+        type: ModelTypeEnum.llm,
+        provider: 'openai',
+        model: 'gpt-5.4',
+        name: 'GPT-5.4',
+        scope: 'system',
+        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+      },
+      description: '模板模型配置与可识别上游信息合并后的创建草稿'
+    }),
+    blankModelData: ImportPreviewBlankModelDataSchema.optional().meta({
+      example: {
+        type: ModelTypeEnum.llm,
+        provider: 'openai',
+        model: 'openai/gpt-5.4',
+        name: 'GPT-5.4',
+        config: { maxContext: 128000 }
+      },
+      description: '选择不使用模板时应用的纯上游推断空白模型草稿'
+    })
+  }),
+  z.object({
+    category: z.literal('blank').meta({ example: 'blank', description: '未匹配本地模型或模板' }),
+    modelType: z.nativeEnum(ModelTypeEnum).optional().meta({
+      example: ModelTypeEnum.llm,
+      description: '仅在上游模态可唯一推断时返回'
+    }),
+    contextLength: ImportPreviewContextLengthSchema.optional(),
+    modelData: ImportPreviewBlankModelDataSchema.optional().meta({
+      example: {
+        type: ModelTypeEnum.llm,
+        provider: 'openai',
+        model: 'openai/gpt-5.4',
+        name: 'GPT-5.4',
+        config: { maxContext: 128000 }
+      },
+      description: '由上游信息生成的部分模型配置；无法推断的字段省略'
+    })
+  })
+]);
+export type ImportPreviewItem = z.infer<typeof ImportPreviewItemSchema>;
+
+export const PreviewImportFromChannelResponseSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        providerModelSlug: ImportProviderModelSlugSchema,
+        contextLength: ImportPreviewContextLengthSchema.optional().meta({
+          description: '提交时应用于所选模板的上游上下文长度'
+        }),
+        maxCompletionTokens: IntSchema.nonnegative().optional().meta({
+          example: 16000,
+          description: '提交时应用于所选 LLM 模板的上游响应上限'
+        }),
+        candidates: z
+          .array(ImportPreviewItemSchema)
+          .min(1)
+          .meta({
+            example: [
+              { category: 'existing', modelId: '68ad85a7463006c963799a05' },
+              {
+                category: 'template',
+                template: { type: ModelTypeEnum.llm, model: 'gpt-5.4' },
+                contextLength: 128000,
+                modelData: {
+                  type: ModelTypeEnum.llm,
+                  provider: 'openai',
+                  model: 'gpt-5.4',
+                  name: 'GPT-5.4',
+                  scope: 'system',
+                  config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+                },
+                blankModelData: {
+                  type: ModelTypeEnum.llm,
+                  provider: 'openai',
+                  model: 'openai/gpt-5.4',
+                  name: 'GPT-5.4',
+                  config: { maxContext: 128000 }
+                }
+              }
+            ],
+            description: '按匹配优先级排序的模型和模板候选；未命中时包含一个空白模型草稿'
+          })
+      })
+    )
+    .meta({
+      example: [
+        {
+          providerModelSlug: 'openai/gpt-5.4',
+          candidates: [
+            { category: 'existing', modelId: '68ad85a7463006c963799a05' },
+            {
+              category: 'template',
+              template: { type: ModelTypeEnum.llm, model: 'gpt-5.4' },
+              contextLength: 128000,
+              modelData: {
+                type: ModelTypeEnum.llm,
+                provider: 'openai',
+                model: 'gpt-5.4',
+                name: 'GPT-5.4',
+                scope: 'system',
+                config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+              },
+              blankModelData: {
+                type: ModelTypeEnum.llm,
+                provider: 'openai',
+                model: 'openai/gpt-5.4',
+                name: 'GPT-5.4',
+                config: { maxContext: 128000 }
+              }
+            }
+          ]
+        }
+      ],
+      description: '按 AIProxy 原始模型目录顺序排列；每项提供按匹配优先级排序的候选'
+    })
+});
+export type PreviewImportFromChannelResponse = z.infer<
+  typeof PreviewImportFromChannelResponseSchema
+>;
+
+/* ============================================================================
+ * API: 应用从系统渠道预览的模型变更
+ * Route: POST /api/core/ai/model/applyChanges
+ * Method: POST
+ * Description: 逐条关联或创建系统模型，并保留每条操作结果
+ * Tags: ['模型管理', 'Write']
+ * ============================================================================ */
+
+const ApplyChangeSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('associate').meta({
+      example: 'associate',
+      description: '将本地模型关联到目标渠道'
+    }),
+    providerModelSlug: ImportProviderModelSlugSchema,
+    modelId: ImportPreviewModelIdSchema,
+    isActive: z.boolean().default(true).meta({
+      example: true,
+      description: '关联后是否启用模型，默认为启用'
+    })
+  }),
+  z.object({
+    action: z
+      .literal('create')
+      .meta({ example: 'create', description: '创建模型并关联到目标渠道' }),
+    providerModelSlug: ImportProviderModelSlugSchema,
+    modelData: AIModelDocumentDataSchema.meta({
+      example: {
+        type: ModelTypeEnum.llm,
+        provider: 'openai',
+        model: 'openai/gpt-5.4',
+        name: 'GPT-5.4',
+        scope: 'system',
+        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+      },
+      description: '需要创建并关联的完整系统模型配置'
+    }),
+    isActive: z.boolean().default(true).meta({
+      example: true,
+      description: '创建后是否启用模型，默认为启用'
+    })
+  })
+]);
+
+export const ApplyChangesBodySchema = z.object({
+  channelId: IntSchema.positive().meta({ example: 1, description: '目标系统渠道 ID' }),
+  channelType: z.literal('system').meta({ example: 'system', description: '固定为系统渠道' }),
+  operations: z.array(ApplyChangeSchema).meta({
+    example: [
+      {
+        action: 'create',
+        providerModelSlug: 'openai/gpt-5.4',
+        modelData: {
+          type: ModelTypeEnum.llm,
+          provider: 'openai',
+          model: 'openai/gpt-5.4',
+          name: 'GPT-5.4',
+          scope: 'system',
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+        },
+        isActive: true
+      }
+    ],
+    description: '按顺序逐条应用的关联或创建操作'
+  })
+});
+export type ApplyChangesBody = z.infer<typeof ApplyChangesBodySchema>;
+
+const ApplyChangeResultSchema = z.discriminatedUnion('status', [
+  z.object({
+    action: z
+      .enum(['associate', 'create'])
+      .meta({ example: 'create', description: '请求操作类型' }),
+    status: z.literal('success').meta({ example: 'success', description: '操作成功' }),
+    modelId: ImportPreviewModelIdSchema,
+    providerModelSlug: ImportProviderModelSlugSchema
+  }),
+  z.object({
+    action: z.literal('associate').meta({ example: 'associate', description: '请求操作类型' }),
+    status: z
+      .literal('skipped')
+      .meta({ example: 'skipped', description: '目标渠道已关联，未重复处理' }),
+    modelId: ImportPreviewModelIdSchema,
+    providerModelSlug: ImportProviderModelSlugSchema
+  }),
+  z.object({
+    action: z
+      .enum(['associate', 'create'])
+      .meta({ example: 'create', description: '请求操作类型' }),
+    status: z.literal('failed').meta({ example: 'failed', description: '该条操作失败' }),
+    providerModelSlug: ImportProviderModelSlugSchema,
+    modelId: ImportPreviewModelIdSchema.optional().meta({
+      example: '68ad85a7463006c963799a05',
+      description: '已创建模型的稳定 ID；创建后关联失败时返回'
+    }),
+    error: z.string().meta({ example: '模型已存在', description: '该条操作失败原因' })
+  })
+]);
+
+export const ApplyChangesResponseSchema = z.object({
+  results: z.array(ApplyChangeResultSchema).meta({
+    example: [
+      {
+        action: 'create',
+        status: 'success',
+        modelId: '68ad85a7463006c963799a05',
+        providerModelSlug: 'openai/gpt-5.4'
+      }
+    ],
+    description: '与请求 operations 顺序一致的逐条处理结果'
+  })
+});
+export type ApplyChangesResponse = z.infer<typeof ApplyChangesResponseSchema>;
+
 /* POST /api/core/ai/model/updateChannels */
 export const UpdateModelChannelsBodySchema = z.object({
   modelId: ModelIdSchema,
