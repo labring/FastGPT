@@ -22,7 +22,7 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import {
   filterWorkflowEdges,
   valueTypeFormat,
@@ -1021,6 +1021,7 @@ export class WorkflowQueue {
       })();
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
+      const isUserConfigFailure = isUserConfigError(dispatchRes.error);
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
       // 均交给当前 workflow 的 sink scope 统一提取 summary。
@@ -1068,14 +1069,16 @@ export class WorkflowQueue {
 
       // Error
       if (currentNodeError !== undefined) {
-        if (stepSpan) {
+        if (stepSpan && !isUserConfigFailure) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
             message: String(currentNodeError)
           });
         }
-        logger.warn('Workflow node returned error', { error: currentNodeError });
+        if (!isUserConfigFailure) {
+          logger.warn('Workflow node returned error', { error: currentNodeError });
+        }
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
       }

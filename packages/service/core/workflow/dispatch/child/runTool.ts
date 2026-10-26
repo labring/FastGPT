@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
@@ -444,7 +444,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
     }
 
-    logger.error('Tool Run Error', { error });
+    if (!isUserConfigError(error)) {
+      logger.error('Tool Run Error', { error });
+    }
 
     return getNodeErrResponse({
       error,

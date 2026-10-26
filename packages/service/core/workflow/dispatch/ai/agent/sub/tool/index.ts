@@ -18,7 +18,7 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
@@ -391,7 +391,9 @@ export const dispatchTool = async ({
         msg: getErrText(error)
       });
     }
-    logger.error('Call tool error', { error });
+    if (!isUserConfigError(error)) {
+      logger.error('Call tool error', { error });
+    }
     return getErrResponse(error);
   }
 };

@@ -10,6 +10,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
@@ -22,7 +23,8 @@ const {
   runToolStreamMock,
   getSystemToolRuntimeMock,
   getSystemToolDetailMock,
-  workflowContextMock
+  workflowContextMock,
+  mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
@@ -33,7 +35,8 @@ const {
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
   getSystemToolDetailMock: vi.fn(),
-  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> }
+  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> },
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -71,6 +74,14 @@ vi.mock('@fastgpt/service/common/logger', () => {
     getLogger: vi.fn(() => ({
       error: vi.fn()
     }))
+  };
+});
+
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategories = new Proxy({}, { get: () => logCategories });
+  return {
+    LogCategories: logCategories,
+    getLogger: vi.fn(() => mockLogger)
   };
 });
 
@@ -493,6 +504,45 @@ describe('dispatchRunTool runtime toolset auth', () => {
       params: { extra: true },
       closeConnection: false
     });
+  });
+
+  it('should return MCP user config errors without logging them as system errors', async () => {
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getMCPChildrenMock.mockResolvedValueOnce([
+      {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: {} }
+      }
+    ]);
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {

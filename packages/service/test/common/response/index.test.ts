@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -95,6 +95,21 @@ describe('processError zod logging', () => {
       })
     );
     expect(logger.info).not.toHaveBeenCalled();
+  });
+
+  it('does not log expected user config errors', () => {
+    const processed = processError({
+      error: new UserConfigError('Invalid MCP URL'),
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed).toMatchObject({
+      message: 'Invalid MCP URL',
+      httpStatus: 400
+    });
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });
 

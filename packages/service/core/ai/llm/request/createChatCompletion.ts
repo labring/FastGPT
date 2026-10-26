@@ -1,4 +1,4 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 import OpenAI from '@fastgpt/global/core/ai';
 import { getAIApi, getModelOpenAIOptions } from '../../config';
@@ -87,17 +87,22 @@ export const createChatCompletion = async ({
       return Promise.reject(error);
     }
 
+    if (requestMeta.usedUserOpenAIKey) {
+      const errorSnapshot = sanitizeLLMRequestRecordPayload({
+        baseUrl: requestMeta.baseUrl,
+        request: body,
+        error
+      });
+      // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
+      // 仅保留本地诊断日志，不导出到 OTel，避免用户配置问题污染系统错误指标。
+      logger.warn('User AI API error', { ...errorSnapshot, fastgpt: true });
+      return Promise.reject(new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`));
+    }
+
     const errorSnapshot = sanitizeLLMRequestRecordPayload({
-      ...(requestMeta.usedUserOpenAIKey && { baseUrl: requestMeta.baseUrl }),
       request: body,
       error
     });
-    if (requestMeta.usedUserOpenAIKey) {
-      // 用户 key 错误需要转成面向用户的提示，避免直接暴露底层 SDK 错误结构。
-      logger.warn('User AI API error', errorSnapshot);
-      return Promise.reject(`您的 OpenAI key 出错了: ${getErrText(error)}`);
-    }
-
     logger.error('LLM response error', errorSnapshot);
     return Promise.reject(normalizeRelayNoChannelError(error));
   }

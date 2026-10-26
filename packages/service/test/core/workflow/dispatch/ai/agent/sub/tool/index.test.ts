@@ -6,6 +6,7 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const {
   authAppByTmbIdMock,
@@ -15,7 +16,8 @@ const {
   runHTTPToolMock,
   mcpToolCallMock,
   runToolStreamMock,
-  getSystemToolRuntimeMock
+  getSystemToolRuntimeMock,
+  mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
@@ -24,7 +26,13 @@ const {
   runHTTPToolMock: vi.fn(),
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
-  getSystemToolRuntimeMock: vi.fn()
+  getSystemToolRuntimeMock: vi.fn(),
+  mockLogger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -55,13 +63,7 @@ vi.mock('@fastgpt/service/common/logger', async () => {
 
   return {
     ...actual,
-    getLogger: vi.fn(() => ({
-      log: vi.fn(),
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn()
-    }))
+    getLogger: vi.fn(() => mockLogger)
   };
 });
 
@@ -625,5 +627,53 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(result.response).toBeTruthy();
+  });
+
+  it('should return MCP user config errors without logging them as system errors', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      inputSchema: { type: 'object', properties: {} }
+    };
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [tool]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              toolList: [tool]
+            }
+          }
+        }
+      ]
+    });
+    getMCPChildrenMock.mockResolvedValueOnce([tool]);
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+
+    const result = await dispatchTool(
+      createDispatchToolProps({
+        mcpTool: {
+          toolId: 'mcp-victim-toolset/search'
+        }
+      })
+    );
+
+    expect(result.response).toBe('Invalid MCP URL');
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 });

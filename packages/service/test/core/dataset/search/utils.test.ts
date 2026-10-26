@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -427,5 +429,45 @@ describe('datasetSearchQueryExtension', () => {
 
     expect(result.searchQueries).toEqual(['怎么退钱 退款']);
     expect(result.reRankQuery).toBe('怎么退钱');
+  });
+
+  it('should not log user config errors and fall back to the original query', async () => {
+    const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
+    const errorLog = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    mockQueryExtension.mockRejectedValue(new UserConfigError('Invalid OpenAI key'));
+
+    const result = await datasetSearchQueryExtension({
+      query: 'original query',
+      llmModel: 'mock-llm',
+      embeddingModel: 'mock-embedding',
+      userKey: {
+        key: 'invalid-key'
+      },
+      teamId: 'team-id'
+    });
+
+    expect(result.searchQueries).toEqual(['original query']);
+    expect(result.reRankQuery).toBe('original query');
+    expect(errorLog).not.toHaveBeenCalled();
+    errorLog.mockRestore();
+  });
+
+  it('should keep logging unexpected extension failures', async () => {
+    const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
+    const errorLog = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const error = new Error('unexpected failure');
+    mockQueryExtension.mockRejectedValue(error);
+
+    await datasetSearchQueryExtension({
+      query: 'original query',
+      llmModel: 'mock-llm',
+      embeddingModel: 'mock-embedding',
+      teamId: 'team-id'
+    });
+
+    expect(errorLog).toHaveBeenCalledExactlyOnceWith('Failed to generate extension queries', {
+      error
+    });
+    errorLog.mockRestore();
   });
 });

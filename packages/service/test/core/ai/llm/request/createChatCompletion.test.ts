@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import OpenAI from '@fastgpt/global/core/ai';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 
@@ -172,15 +173,25 @@ describe('createChatCompletion', () => {
       baseUrl: 'https://api.openai.com/v1'
     });
 
-    await expect(
-      createChatCompletion({
-        modelData: createModel(),
-        body: createBody(),
-        userKey: {
-          key: 'user-key'
-        } as any
+    const request = createChatCompletion({
+      modelData: createModel(),
+      body: createBody(),
+      userKey: {
+        key: 'user-key'
+      } as any
+    });
+
+    await expect(request).rejects.toBeInstanceOf(UserConfigError);
+    await expect(request).rejects.toMatchObject({
+      message: expect.stringContaining('您的 OpenAI key 出错了')
+    });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'User AI API error',
+      expect.objectContaining({
+        fastgpt: true
       })
-    ).rejects.toMatch('您的 OpenAI key 出错了');
+    );
   });
 
   it('should reject when model config is missing', async () => {
@@ -255,8 +266,11 @@ describe('createChatCompletion', () => {
       const create = vi.fn().mockRejectedValue(error);
       mockApi({ create, usedUserOpenAIKey });
       const request = createChatCompletion({ modelData: createModel(), body });
-      if (usedUserOpenAIKey) await expect(request).rejects.toContain('upstream failed');
-      else await expect(request).rejects.toBe(error);
+      if (usedUserOpenAIKey) {
+        await expect(request).rejects.toBeInstanceOf(UserConfigError);
+      } else {
+        await expect(request).rejects.toBe(error);
+      }
 
       const messages = [
         {
@@ -274,6 +288,7 @@ describe('createChatCompletion', () => {
       expect(log).toHaveBeenCalledExactlyOnceWith(
         usedUserOpenAIKey ? 'User AI API error' : 'LLM response error',
         expect.objectContaining({
+          ...(usedUserOpenAIKey && { fastgpt: true }),
           request: { ...body, messages },
           error: expect.objectContaining({
             message: 'upstream failed',
@@ -283,6 +298,9 @@ describe('createChatCompletion', () => {
         })
       );
       expect(JSON.stringify(log.mock.calls)).not.toContain(base64);
+      if (usedUserOpenAIKey) {
+        expect(mockLogger.error).not.toHaveBeenCalled();
+      }
       expect(body.messages).toEqual(originalMessages);
       expect(create.mock.calls[0][0]).toBe(body);
       expect(error.cause).toEqual({ request: body });
@@ -311,13 +329,13 @@ describe('createChatCompletion', () => {
     const create = vi.fn().mockRejectedValue(new OpenAI.APIUserAbortError());
     mockApi({ create, usedUserOpenAIKey: true, baseUrl: 'https://api.openai.com/v1' });
 
-    // 用户 key 分支会 reject 字符串；中断路径应原样透传 Error 对象
+    // 用户 key 配置错误会被包装；中断路径应原样透传 Error 对象
     await expect(
       createChatCompletion({
         modelData: createModel(),
         body: createBody(),
         userKey: { key: 'user-key' } as any
       })
-    ).rejects.toBeInstanceOf(Error);
+    ).rejects.not.toBeInstanceOf(UserConfigError);
   });
 });

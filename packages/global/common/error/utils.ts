@@ -105,6 +105,29 @@ export class UserError extends Error {
 }
 
 /**
+ * 用户配置导致的预期内错误。
+ *
+ * 这类错误应直接返回给调用方，不进入系统错误日志或 OTel error 指标，
+ * 避免第三方 key、MCP 地址等用户配置问题污染系统可用性观测。
+ */
+export class UserConfigError extends UserError {
+  constructor(message: string, displayMessage?: string) {
+    super(message, displayMessage);
+    this.name = 'UserConfigError';
+  }
+}
+
+/** 兼容错误跨构建产物或序列化后 instanceof 失效的情况。 */
+export const isUserConfigError = (
+  error: unknown
+): error is UserConfigError | { name: 'UserConfigError'; displayMessage?: string } =>
+  error instanceof UserConfigError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'UserConfigError');
+
+/**
  * 表示错误提示已经由业务侧自行展示，通用请求层应跳过重复 toast。
  */
 export class ToastHandledError extends Error {

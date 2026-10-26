@@ -29,6 +29,8 @@ import type { AppPublishedWorkflow } from '../../../core/app/version/controller'
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
 import { UserError } from '../../../common/error';
+import { getLogger, LogCategories } from '../../../common/logger';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -199,6 +201,18 @@ describe('MCPClient', () => {
       client.listTools.mockResolvedValue({ tools: 'not-array' });
 
       await expect(mcpClient.getTools()).rejects.toThrow('Get tools response is not an array');
+    });
+
+    it('should not log user config errors', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      client.listTools.mockRejectedValue(new UserConfigError('Invalid MCP URL'));
+
+      await expect(mcpClient.getTools()).rejects.toBeInstanceOf(UserConfigError);
+
+      expect(errorLog).not.toHaveBeenCalled();
     });
 
     it('should fallback to original schema when dereference fails', async () => {
@@ -535,6 +549,20 @@ describe('MCPClient', () => {
       );
       expect(closeSpy).toHaveBeenCalled();
     });
+
+    it('should not log user config errors', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      client.callTool.mockRejectedValue(new StreamableHTTPError(410, 'Url is expired'));
+
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
+        UserConfigError
+      );
+
+      expect(errorLog).not.toHaveBeenCalled();
+    });
   });
 
   describe('getConnection', () => {
@@ -599,10 +627,16 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'))
         .mockRejectedValueOnce(new Error('SSE handshake failed'));
 
-      await expect((mcpClient as any).getConnection()).rejects.toThrow(
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const infoLog = vi.spyOn(logger, 'info');
+      const request = (mcpClient as any).getConnection();
+
+      await expect(request).rejects.toBeInstanceOf(UserConfigError);
+      await expect(request).rejects.toThrow(
         /Streamable HTTP:.*Not Found.*SSE:.*SSE handshake failed/s
       );
       expect(client.connect).toHaveBeenCalledTimes(2);
+      expect(infoLog).not.toHaveBeenCalled();
     });
 
     it('should return client on StreamableHTTP success', async () => {

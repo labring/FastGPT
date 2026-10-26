@@ -3,6 +3,7 @@ import { addHours } from 'date-fns';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
@@ -288,7 +289,11 @@ export const datasetSearchQueryExtension = async ({
       if (result.extensionQueries?.length === 0) return;
       return result;
     } catch (error) {
-      logger.error('Failed to generate extension queries', { error });
+      // query extension 是可选增强能力；用户自带的 key/地址配置错误直接降级为原始 query，
+      // 不再重复写入系统 error 日志。
+      if (!isUserConfigError(error)) {
+        logger.error('Failed to generate extension queries', { error });
+      }
     }
   })();
 

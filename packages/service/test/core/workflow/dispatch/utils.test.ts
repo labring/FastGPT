@@ -26,6 +26,7 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -1903,6 +1904,18 @@ describe('getNodeErrResponse', () => {
       code: 500,
       detail: 'internal'
     });
+  });
+
+  it('should mark user config errors for workflow-level log suppression', () => {
+    const result = getNodeErrResponse({
+      error: new UserConfigError('Invalid MCP URL')
+    });
+
+    expect(result.error).toMatchObject({
+      [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL',
+      name: 'UserConfigError'
+    });
+    expect(isUserConfigError(result.error)).toBe(true);
   });
 
   it('should include responseData in nodeResponse', () => {

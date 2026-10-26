@@ -17,7 +17,7 @@ import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migra
 import { parseSecretValue } from '@fastgpt/global/common/secret/utils';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { ZodError } from 'zod';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -47,6 +47,7 @@ type McpChildToolType = McpToolConfigType & {
 const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
+const MCP_USER_CONFIG_ERROR_CODES = new Set([401, 403, 404, 410]);
 
 type McpRequestInit = RequestInit & {
   dispatcher?: Dispatcher;
@@ -390,6 +391,38 @@ const toMcpProtocolUserError = (error: unknown): UserError => {
   );
 };
 
+/**
+ * 判断 MCP 4xx 是否明确来自用户可修正的地址或鉴权配置。
+ *
+ * 400、429 等状态可能由协议实现或临时限流引起，仍保留系统诊断日志；
+ * 401/403/404/410 则直接作为用户配置错误返回，避免进入 OTel error 指标。
+ */
+const isMcpUserConfigResponse = (error: unknown): boolean => {
+  const code = (() => {
+    if (error instanceof StreamableHTTPError) {
+      return error.code;
+    }
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof error.code === 'number'
+    ) {
+      return error.code;
+    }
+  })();
+
+  return typeof code === 'number' && MCP_USER_CONFIG_ERROR_CODES.has(code);
+};
+
+const normalizeMcpClientError = (error: unknown) => {
+  if (isUserConfigError(error) || !isMcpUserConfigResponse(error)) {
+    return error;
+  }
+
+  return new UserConfigError(getErrorMessage(error));
+};
+
 export class MCPClient {
   private client: Client;
   private url: string;
@@ -473,12 +506,13 @@ export class MCPClient {
             throw toMcpProtocolUserError(sseError);
           }
 
-          // 否则抛出组合错误消息
-          throw new Error(
-            `MCP connection failed. Streamable HTTP: ${getErrorMessage(
-              streamableError
-            )}; SSE: ${getErrorMessage(sseError)}`
-          );
+          const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
+            streamableError
+          )}; SSE: ${getErrorMessage(sseError)}`;
+          if (isMcpUserConfigResponse(streamableError) || isMcpUserConfigResponse(sseError)) {
+            throw new UserConfigError(message);
+          }
+          throw new Error(message);
         }
       }
     });
@@ -486,7 +520,10 @@ export class MCPClient {
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
       if (error?.message?.includes('SSE stream: Not Found')) return;
-      logger.warn('MCP client connection error', { url: this.url, error });
+      // 地址失效或鉴权失败属于用户配置问题，不写入系统错误日志。
+      if (!isMcpUserConfigResponse(error)) {
+        logger.warn('MCP client connection error', { url: this.url, error });
+      }
       this.connectionPromise = null;
       void this.closeSafeFetch();
     };
@@ -580,8 +617,11 @@ export class MCPClient {
       // @ts-ignore
       return tools;
     } catch (error) {
-      logger.error('MCP client failed to get tools', { url: this.url, error });
-      return Promise.reject(error);
+      const normalizedError = normalizeMcpClientError(error);
+      if (!isUserConfigError(normalizedError)) {
+        logger.error('MCP client failed to get tools', { url: this.url, error: normalizedError });
+      }
+      return Promise.reject(normalizedError);
     } finally {
       await this.closeConnection();
     }
@@ -619,8 +659,15 @@ export class MCPClient {
         )
       );
     } catch (error) {
-      logger.error('MCP client tool call failed', { url: this.url, toolName, error });
-      return Promise.reject(error);
+      const normalizedError = normalizeMcpClientError(error);
+      if (!isUserConfigError(normalizedError)) {
+        logger.error('MCP client tool call failed', {
+          url: this.url,
+          toolName,
+          error: normalizedError
+        });
+      }
+      return Promise.reject(normalizedError);
     } finally {
       if (closeConnection) {
         await this.closeConnection();

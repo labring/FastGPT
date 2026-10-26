@@ -2,7 +2,7 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { getErrorMessage, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
@@ -129,7 +129,9 @@ export function processError(params: {
   }
 
   // 3. 根据错误类型记录不同级别的日志
-  if (error instanceof UserError) {
+  if (isUserConfigError(error)) {
+    msg = error.displayMessage || msg;
+  } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });
   } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
