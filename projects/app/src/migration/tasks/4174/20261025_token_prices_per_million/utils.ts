@@ -6,10 +6,10 @@ import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
  * 调用方已排除 STT，业务运行期不使用此函数。
  */
 export const convertModelPricingToMillion = <T extends PriceType>(pricing: T): T => {
-  /** 按十进制移动边界，避免 4.1 / 1000 的二进制误差缩小右闭区间；不截断有效位。 */
-  const convertBoundary = (boundary: number) => {
-    const [significand, exponent] = boundary.toExponential().split('e');
-    return Number(`${significand}e${Number(exponent) - 3}`);
+  /** 十进制移位同时保留单价舍入中点和右闭区间边界，不通过浮点乘除放大误差。 */
+  const shiftDecimal = (value: number, offset: number) => {
+    const [significand, exponent] = value.toExponential().split('e');
+    return Number(`${significand}e${Number(exponent) + offset}`);
   };
 
   return {
@@ -19,20 +19,24 @@ export const convertModelPricingToMillion = <T extends PriceType>(pricing: T): T
           priceTiers: pricing.priceTiers.map((tier) => ({
             ...tier,
             ...(tier.minInputTokens !== undefined
-              ? { minInputTokens: convertBoundary(tier.minInputTokens) }
+              ? { minInputTokens: shiftDecimal(tier.minInputTokens, -3) }
               : {}),
             ...(typeof tier.maxInputTokens === 'number'
-              ? { maxInputTokens: convertBoundary(tier.maxInputTokens) }
+              ? { maxInputTokens: shiftDecimal(tier.maxInputTokens, -3) }
               : {}),
-            inputPrice: tier.inputPrice * 1000,
-            outputPrice: tier.outputPrice * 1000
+            inputPrice: shiftDecimal(tier.inputPrice, 3),
+            outputPrice: shiftDecimal(tier.outputPrice, 3)
           }))
         }
       : {}),
-    ...(pricing.inputPrice !== undefined ? { inputPrice: pricing.inputPrice * 1000 } : {}),
-    ...(pricing.outputPrice !== undefined ? { outputPrice: pricing.outputPrice * 1000 } : {}),
+    ...(pricing.inputPrice !== undefined
+      ? { inputPrice: shiftDecimal(pricing.inputPrice, 3) }
+      : {}),
+    ...(pricing.outputPrice !== undefined
+      ? { outputPrice: shiftDecimal(pricing.outputPrice, 3) }
+      : {}),
     ...(pricing.charsPointsPrice !== undefined
-      ? { charsPointsPrice: pricing.charsPointsPrice * 1000 }
+      ? { charsPointsPrice: shiftDecimal(pricing.charsPointsPrice, 3) }
       : {})
   };
 };

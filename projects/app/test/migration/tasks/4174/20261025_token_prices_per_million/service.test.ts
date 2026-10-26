@@ -4,6 +4,7 @@ vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 import { Types } from '@fastgpt/service/common/mongo';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import { PriceTypeSchema } from '@fastgpt/global/core/ai/model/schema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
@@ -26,6 +27,60 @@ const readAll = async () =>
   readTokenPriceMigrationBatch({ ...(await getTokenPriceMigrationSnapshot()), limit: 100 });
 
 describe('migrateTokenPricesBatch', () => {
+  it.each([
+    [0.000035, 0.04],
+    [0.000065, 0.07]
+  ])(
+    'persists decimal midpoint %s as %s and replays it without changing the fee',
+    async (source, expected) => {
+      await MongoAIModel.collection.insertMany([
+        {
+          ...base,
+          model: 'midpoint-tiers',
+          name: 'Midpoint tiers',
+          priceTiers: [{ inputPrice: source, outputPrice: source }]
+        },
+        ...[
+          ModelTypeEnum.llm,
+          ModelTypeEnum.embedding,
+          ModelTypeEnum.rerank,
+          ModelTypeEnum.tts
+        ].map((type) => ({
+          ...base,
+          type,
+          model: `midpoint-${type}`,
+          name: `Midpoint ${type}`,
+          charsPointsPrice: source
+        })),
+        {
+          ...base,
+          model: 'midpoint-io',
+          name: 'Midpoint IO',
+          inputPrice: source,
+          outputPrice: source
+        }
+      ]);
+      const original = await readAll();
+      await expect(migrateTokenPricesBatch(original)).resolves.toEqual({ errors: [] });
+      const saved = await readAll();
+      for (const record of saved) {
+        const tiers = record.priceTiers;
+        if (tiers) expect(tiers).toMatchObject([{ inputPrice: expected, outputPrice: expected }]);
+        if (record.charsPointsPrice !== undefined) expect(record.charsPointsPrice).toBe(expected);
+        if (record.inputPrice !== undefined) expect(record.inputPrice).toBe(expected);
+        if (record.outputPrice !== undefined) expect(record.outputPrice).toBe(expected);
+        expect(calculateModelPrice({ config: record, inputTokens: 1000000 }).totalPoints).toBe(
+          expected
+        );
+        expect(record.legacyTokenPricing).toEqual(
+          PriceTypeSchema.parse(original.find(({ _id }) => String(_id) === String(record._id)))
+        );
+      }
+      await expect(migrateTokenPricesBatch(saved)).resolves.toEqual({ errors: [] });
+      expect(await readAll()).toEqual(saved);
+    }
+  );
+
   it('preserves decimal tier boundaries through MongoDB migration and runtime billing', async () => {
     const { insertedId } = await MongoAIModel.collection.insertOne({
       ...base,

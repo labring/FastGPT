@@ -19,7 +19,7 @@ describe('convertModelPricingToMillion', () => {
 
   it('converts source prices and boundaries without mutation or filling omitted prices', () => {
     const source = {
-      inputPrice: 0.000125,
+      inputPrice: 0.000035,
       outputPrice: 0,
       charsPointsPrice: 0.5,
       priceTiers: [
@@ -28,13 +28,13 @@ describe('convertModelPricingToMillion', () => {
           minInputTokens: 32,
           maxInputTokens: null,
           inputPrice: 4,
-          outputPrice: 8
+          outputPrice: 0.000065
         }
       ]
     };
     const result = convertModelPricingToMillion(source);
     expect(result).toMatchObject({
-      inputPrice: 0.125,
+      inputPrice: 0.035,
       outputPrice: 0,
       charsPointsPrice: 500,
       priceTiers: [
@@ -48,7 +48,7 @@ describe('convertModelPricingToMillion', () => {
           minInputTokens: 0.032,
           maxInputTokens: null,
           inputPrice: 4000,
-          outputPrice: 8000
+          outputPrice: 0.065
         }
       ]
     });
