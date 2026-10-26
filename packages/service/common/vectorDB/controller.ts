@@ -1,4 +1,5 @@
 /* vector crud */
+import { randomUUID } from 'node:crypto';
 import { TeamVectorCountCache } from '@fastgpt/dal/redis/caches';
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
@@ -32,6 +33,7 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 const recallLease = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 // 覆盖单次召回的连接与查询等待；执行中的任务持续续租，失败重试重新获取额度。
 const RECALL_LEASE_TTL_MS = 180_000;
@@ -45,18 +47,57 @@ export const initVectorStore = Vector.init;
  * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
+  const recallId = randomUUID();
+  let attempt = 0;
   const getConcurrency = () =>
     isProVersion() ? (global.systemEnv?.vectorRecallConcurrency ?? 0) : 0;
-  const recall = () => {
-    if (getConcurrency() === 0) return Vector.embRecall(props);
+  const recall = async () => {
+    const queuedAt = Date.now();
+    const concurrency = getConcurrency();
+    const context = { recallId, attempt: ++attempt, vectorType: getVectorType() };
+    let executionStartedAt: number | undefined;
 
-    return recallLease.withConcurrency({
-      key: 'vector:recall',
-      label: 'vector-recall',
-      concurrency: getConcurrency,
-      ttlMs: RECALL_LEASE_TTL_MS,
-      fn: () => Vector.embRecall(props)
-    });
+    // 在统一入口区分排队与数据库执行，避免把限流等待误判为向量库慢查询。
+    const execute = async () => {
+      executionStartedAt = Date.now();
+      const waitMs = executionStartedAt - queuedAt;
+      logger.debug('Vector recall started', {
+        ...context,
+        concurrency: getConcurrency(),
+        waitMs
+      });
+      const result = await Vector.embRecall(props);
+      logger.debug('Vector recall completed', {
+        ...context,
+        waitMs,
+        durationMs: Date.now() - executionStartedAt,
+        resultCount: result.results.length
+      });
+      return result;
+    };
+
+    try {
+      if (concurrency === 0) return await execute();
+
+      logger.debug('Vector recall waiting', { ...context, concurrency });
+      return await recallLease.withConcurrency({
+        key: 'vector:recall',
+        label: 'vector-recall',
+        concurrency: getConcurrency,
+        ttlMs: RECALL_LEASE_TTL_MS,
+        fn: execute
+      });
+    } catch (error) {
+      logger.warn('Vector recall failed', {
+        ...context,
+        concurrency: getConcurrency(),
+        phase: executionStartedAt === undefined ? 'wait' : 'execute',
+        waitMs: (executionStartedAt ?? Date.now()) - queuedAt,
+        durationMs: executionStartedAt === undefined ? 0 : Date.now() - executionStartedAt,
+        error
+      });
+      throw error;
+    }
   };
 
   const result = await retryFn(async () => {
