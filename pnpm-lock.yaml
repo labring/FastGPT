@@ -196,8 +196,8 @@ catalogs:
       specifier: 15.4.2
       version: 15.4.2
     nodemailer:
-      specifier: ^10.0.2
-      version: 10.0.12
+      specifier: 10.1.4
+      version: 10.1.4
     postcss:
       specifier: ^8.5.12
       version: 8.5.22
@@ -1156,7 +1156,7 @@ importers:
         version: 16.3.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       nodemailer:
         specifier: 'catalog:'
-        version: 10.0.12
+        version: 10.1.4
       pg:
         specifier: ^8.10.0
         version: 8.14.0
@@ -1605,7 +1605,7 @@ importers:
         version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
-        version: 10.0.12
+        version: 10.1.4
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -11775,8 +11775,8 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
-  nodemailer@10.0.12:
-    resolution: {integrity: sha512-PQ46oNbNMuH/Sno7B5IWIU9etytwrO0xdTFvWXpIQFRXhBAXtzD48243AS+BCbQQTPD8y3fqUrgLn0tSo77gvg==}
+  nodemailer@10.1.4:
+    resolution: {integrity: sha512-EsMnOR2oRv4LGnWvHgcVYkkQ4O2j8KO4WTw6l+PHR4sOXo8SAgIraxtEnGDmotjbhv0hDsu3IuDIFZm8iXwO4A==}
     engines: {node: '>=20.0.0'}
 
   non-layered-tidy-tree-layout@2.0.2:
@@ -27233,7 +27233,7 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  nodemailer@10.0.12: {}
+  nodemailer@10.1.4: {}
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
