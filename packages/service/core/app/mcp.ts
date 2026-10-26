@@ -578,11 +578,7 @@ export class MCPClient {
           const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
             streamableError
           )}; SSE: ${getErrorMessage(sseError)}`;
-          const sseErrorCode = getMcpErrorCode(sseError);
-          const isUserConfigFailure =
-            isMcpUserConfigCode(sseError, MCP_CONNECT_USER_CONFIG_ERROR_CODES) ||
-            (sseErrorCode === undefined &&
-              isMcpUserConfigCode(streamableError, MCP_ACTIVE_SESSION_USER_CONFIG_ERROR_CODES));
+          const isUserConfigFailure = isMcpUserConfigCode(sseError, MCP_CONNECT_USER_CONFIG_ERROR_CODES);
           if (isUserConfigFailure) {
             throw new UserConfigError(message, undefined, { cause: sseError });
           }

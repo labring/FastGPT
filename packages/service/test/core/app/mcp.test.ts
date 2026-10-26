@@ -714,7 +714,7 @@ describe('MCPClient', () => {
       expect(infoLog).toHaveBeenCalledWith('SSE error', expect.any(Error));
     });
 
-    it('keeps the Streamable HTTP auth failure when the SSE fallback fails without a status', async () => {
+    it('keeps the final SSE failure as a system error after an initial auth failure', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       client.connect = vi
@@ -722,7 +722,7 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'))
         .mockRejectedValueOnce(new Error('SSE network unreachable'));
 
-      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      await expect((mcpClient as any).getConnection()).rejects.not.toBeInstanceOf(UserConfigError);
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
