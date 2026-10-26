@@ -10,6 +10,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type DashboardDataEntry = {
   timestamp: number;
@@ -32,6 +33,7 @@ type DataTableComponentProps = {
       inputPrice?: number;
       outputPrice?: number;
       charsPointsPrice?: number;
+      type?: ModelTypeEnum;
       priceTiers?: ModelPriceTierType[];
     }
   >;
@@ -163,7 +165,7 @@ const DataTableComponent = ({
           model: item.model,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
-          totalCost: Math.floor(item.totalCost),
+          totalCost: item.totalCost,
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
           cacheHitRate
@@ -233,7 +235,7 @@ const DataTableComponent = ({
           model: modelName,
           totalCalls: item.totalCalls,
           errorCalls: item.errorCalls,
-          totalCost: Math.floor(item.totalCost),
+          totalCost: item.totalCost,
           avgResponseTime: successCalls > 0 ? item.totalResponseTime / successCalls / 1000 : 0,
           avgTtfb: successCalls > 0 ? item.totalTtfb / successCalls / 1000 : 0,
           cacheHitRate
@@ -363,7 +365,7 @@ const DataTableComponent = ({
                     {showChannelColumn && <Td>{item.channelName}</Td>}
                     <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
                     <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
-                    {showBilling && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
+                    {showBilling && <Td>{formatNumber(item.totalCost, 100).toLocaleString()}</Td>}
                     <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
                       {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
                     </Td>

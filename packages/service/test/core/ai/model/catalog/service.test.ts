@@ -128,7 +128,7 @@ describe('loadSystemModels', () => {
     expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
   });
 
-  it('resolves inactive legacy model pricing with progressive fallback for admin display', async () => {
+  it('keeps explicit free tiers authoritative when displaying inactive models', async () => {
     await MongoAIModel.collection.insertOne({
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
@@ -146,9 +146,7 @@ describe('loadSystemModels', () => {
     await loadInstalledModels();
 
     expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(1);
-    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([
-      { minInputTokens: 0, inputPrice: 2, outputPrice: 2 }
-    ]);
+    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 

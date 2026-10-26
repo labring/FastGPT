@@ -928,7 +928,7 @@
   "model.name": "模型名",
   "model.output_price": "输出价格",
   "model.permission_config_hint": "若无协作者，默认全部成员可用",
-  "model.price_tier_range": "输入区间：k/tokens",
+  "model.price_tier_range": "输入区间：M Tokens",
   "model.provider": "模型提供商",
   "model.provider_title": "模型提供商",
   "model.system_model_tag": "系统",

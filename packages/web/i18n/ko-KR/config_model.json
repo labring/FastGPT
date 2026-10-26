@@ -134,7 +134,7 @@
   "model.censor": "검열 확인",
   "model.censor_tip": "민감어 검증이 필요한 경우 이 스위치를 켜세요",
   "model.charsPointsPrice": "문자당 가격",
-  "model.charsPointsPrice_tip": "모델 입력과 출력을 합산하여 토큰 과금합니다. 언어 모델이 입력과 출력을 별도로 과금하도록 설정된 경우, 입력과 출력을 각각 계산합니다.",
+  "model.charsPointsPrice_tip": "토큰 모델은 M Tokens당, TTS는 1M 문자당, STT는 60초당 가격을 책정합니다.",
   "model.defaultConfig": "추가 Body 파라미터",
   "model.defaultConfig_tip": "모든 요청에 이 추가 Body 파라미터가 포함됩니다.",
   "model.default_config": "Body 추가 필드",

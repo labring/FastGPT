@@ -133,6 +133,8 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![alt text](../../../../public/imgs/image-98.png) | ![alt text](../../../../public/imgs/image-99.png) |
 
+所有 Token 模型的单价与阶梯输入边界均以 M Tokens 为单位；语音合成按每 1M 字符、语音识别按每 60 秒计价。单价最多保留两位小数。
+
 <Accordions>
 <Accordion title="语言模型字段说明">
 ```json
@@ -148,7 +150,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "maxResponse": 16000, // 最大回复
     "quoteMaxToken": 120000, // 最大引用内容
     "maxTemperature": 1.2, // 最大温度
-    "charsPointsPrice": 0, // n积分/1k token（商业版）
+    "charsPointsPrice": 0, // 积分 / M Tokens（商业版）
     "censor": false, // 是否开启敏感校验（商业版）
     "vision": true, // 是否支持图片输入
     "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）
@@ -174,7 +176,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "provider": "OpenAI", // 模型提供商
     "model": "text-embedding-3-small", // 模型ID
     "name": "text-embedding-3-small", // 模型别名
-    "charsPointsPrice": 0, // n积分/1k token
+    "charsPointsPrice": 0, // 积分 / M Tokens
     "defaultToken": 512, // 默认文本分割时候的 token
     "maxToken": 3000 // 最大 token
   }
@@ -226,7 +228,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
         "value": "fishaudio/fish-speech-1.5:anna" // 音色ID
       }
     ],
-    "charsPointsPrice": 0 // n积分/1k token
+    "charsPointsPrice": 0 // 积分 / 1M 字符
   }
 }
 ```
@@ -244,7 +246,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "provider": "OpenAI", // 模型提供商
     "model": "gpt-transcribe", // 模型ID
     "name": "gpt-transcribe", // 模型别名
-    "charsPointsPrice": 0, // n积分/1k token
+    "charsPointsPrice": 0, // 积分 / 60 秒
     "type": "stt" // 模型类型
   }
 }

@@ -89,11 +89,10 @@ describe('admin settings model updateWithJson api', () => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
   });
 
-  it('keeps legacy prices across an export/import round trip while removing old fields on save', async () => {
+  it('keeps million-unit prices across an export/import round trip', async () => {
     const existingModel = await MongoAIModel.create({
       ...buildStoredLlm('legacy-priced'),
-      inputPrice: 1,
-      outputPrice: 3
+      priceTiers: [{ inputPrice: 1, outputPrice: 3 }]
     });
     const root = await getRootUser();
     const exported = await Call<string>(getConfigJsonApi, { auth: root });
@@ -105,7 +104,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(saved).not.toHaveProperty('outputPrice');
   });
 
-  it('converts legacy imports like opening the editor and saves canonical free tiers without old fields', async () => {
+  it('normalizes imported field shapes without rescaling million-unit prices and saves canonical free tiers without old fields', async () => {
     const existingModel = await MongoAIModel.create(buildStoredLlm('import-priced'));
     const input = {
       ...buildLlmConfig({ modelId: String(existingModel._id) }),
@@ -127,7 +126,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(saved).not.toHaveProperty('outputPrice');
   });
 
-  it('canonicalizes newly imported LLM prices without changing non-LLM pricing', async () => {
+  it('canonicalizes newly imported LLM prices and keeps embedding prices in M tokens', async () => {
     const result = await callUpdateWithJson(
       JSON.stringify([
         { ...buildLlmConfig({ modelId: 'external-llm', model: 'new-llm' }), charsPointsPrice: 3 },
@@ -144,6 +143,47 @@ describe('admin settings model updateWithJson api', () => {
     expect(await MongoAIModel.findOne({ model: 'new-embedding' }).lean()).toMatchObject({
       charsPointsPrice: 4
     });
+  });
+
+  it('round-trips million-unit token and TTS prices while keeping STT duration prices unchanged', async () => {
+    const entries = [
+      { type: ModelTypeEnum.embedding, config: { defaultToken: 500, maxToken: 3000, weight: 0 } },
+      { type: ModelTypeEnum.rerank, config: {} },
+      { type: ModelTypeEnum.tts, config: { voices: [{ label: 'Default', value: 'default' }] } },
+      { type: ModelTypeEnum.stt, config: {} }
+    ].map(({ type, config }) => ({
+      modelId: `external-${type}`,
+      model: `unit-${type}`,
+      name: type,
+      provider: 'OpenAI',
+      type,
+      scope: 'system',
+      isActive: true,
+      config,
+      charsPointsPrice: 0.125
+    }));
+    expect((await callUpdateWithJson(JSON.stringify(entries))).code).toBe(200);
+    const first = await MongoAIModel.find({}).lean();
+    for (const entry of entries) {
+      expect(first.find(({ model }) => model === entry.model)).toMatchObject({
+        charsPointsPrice: 0.13
+      });
+    }
+    const root = await getRootUser();
+    const exported = await Call<string>(getConfigJsonApi, { auth: root });
+    expect((await callUpdateWithJson(exported.data)).code).toBe(200);
+    const second = await MongoAIModel.find({}).lean();
+    expect(
+      second.map(({ model, charsPointsPrice }) => ({
+        model,
+        charsPointsPrice
+      }))
+    ).toEqual(
+      first.map(({ model, charsPointsPrice }) => ({
+        model,
+        charsPointsPrice
+      }))
+    );
   });
 
   it('updates matching IDs, creates external models by model and deletes omitted records', async () => {
@@ -244,7 +284,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(res.code).toBe(200);
     const updated = await MongoAIModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updated?._id)).toBe(String(existing._id));
-    expect(updated?.config.maxContext).toBe(16000);
+    expect(updated?.config).toMatchObject({ maxContext: 16000 });
     expect(updated).not.toHaveProperty('requestAuth');
     expect(updated).not.toHaveProperty('charsPointsPrice');
   });

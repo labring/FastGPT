@@ -462,8 +462,8 @@ const ModelConfigForm = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
-    if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ M Tokens';
+    if (isTTSModel) return `/ 1M ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
@@ -818,6 +818,7 @@ const ModelConfigForm = ({
                     register={register}
                     name="charsPointsPrice"
                     step={0.01}
+                    precision={2}
                     {...NumberInputStyles}
                   />
                   <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>

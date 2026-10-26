@@ -134,7 +134,7 @@
   "model.censor": "啟用敏感校驗",
   "model.censor_tip": "如果需要進行敏感校驗，則開啟該開關",
   "model.charsPointsPrice": "模型綜合價格",
-  "model.charsPointsPrice_tip": "將模型輸入和輸出合併起來進行 Tokens 計費，語言模型如果單獨設定了輸入和輸出計費，則按輸入和輸出分別計算",
+  "model.charsPointsPrice_tip": "Token 模型按 M Tokens、TTS 按 1M 字元、STT 按 60 秒計價。",
   "model.defaultConfig": "額外 Body 參數",
   "model.defaultConfig_tip": "每次請求時候，都會攜帶該額外 Body 參數",
   "model.default_config": "Body 額外欄位",

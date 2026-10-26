@@ -1,6 +1,6 @@
 import { Box, Button, Flex, Input, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
+import { MAX_MODEL_PRICE_TIERS, roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useState } from 'react';
 import {
@@ -273,10 +273,30 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   setValueAs: getOptionalNumber
                 });
                 const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
-                  setValueAs: getOptionalNumber
+                  setValueAs: (value) => {
+                    const price = getOptionalNumber(value);
+                    return price === undefined ? price : roundModelPrice(price);
+                  },
+                  onBlur: (event) => {
+                    const price = getOptionalNumber(event.target.value);
+                    if (price === undefined) return;
+                    setValue(`priceTiers.${index}.inputPrice`, roundModelPrice(price), {
+                      shouldDirty: true
+                    });
+                  }
                 });
                 const outputPriceRegister = register(`priceTiers.${index}.outputPrice`, {
-                  setValueAs: getOptionalNumber
+                  setValueAs: (value) => {
+                    const price = getOptionalNumber(value);
+                    return price === undefined ? price : roundModelPrice(price);
+                  },
+                  onBlur: (event) => {
+                    const price = getOptionalNumber(event.target.value);
+                    if (price === undefined) return;
+                    setValue(`priceTiers.${index}.outputPrice`, roundModelPrice(price), {
+                      shouldDirty: true
+                    });
+                  }
                 });
 
                 return (

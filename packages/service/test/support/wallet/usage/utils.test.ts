@@ -1,4 +1,4 @@
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ const createModel = (
   ...data,
   type: ModelTypeEnum.llm,
   provider: 'test',
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }
 });
@@ -64,23 +64,23 @@ describe('formatModelChars2Points', () => {
   it('should calculate points with legacy input/output pricing', () => {
     const result = formatModelChars2Points({
       model: mockModels['gpt-4'],
-      inputTokens: 1000,
-      outputTokens: 500
+      inputTokens: 1000000,
+      outputTokens: 500000
     });
     expect(result.modelId).toBe('507f1f77bcf86cd799439021');
-    // inputPrice:3 * (1000/1000) + outputPrice:6 * (500/1000) = 3 + 3 = 6
+    // 每百万单价：1M 输入和 0.5M 输出，共 6 积分。
     expect(result.totalPoints).toBe(6);
   });
 
   it('should calculate points with comprehensive price', () => {
     const result = formatModelChars2Points({
       model: mockModels['gpt-3.5'],
-      inputTokens: 2000,
-      outputTokens: 1000
+      inputTokens: 2000000,
+      outputTokens: 1000000
     });
     expect(result.modelId).toBe('507f1f77bcf86cd799439022');
     // charsPointsPrice:2 → inputPrice=outputPrice=2
-    // 2 * (2000/1000) + 2 * (1000/1000) = 4 + 2 = 6
+    // 2M 输入和 1M 输出，共 6 积分。
     expect(result.totalPoints).toBe(6);
   });
 
@@ -105,12 +105,11 @@ describe('formatModelChars2Points', () => {
   it('should calculate points with price tiers', () => {
     const result = formatModelChars2Points({
       model: mockModels['tiered-model'],
-      inputTokens: 2000,
-      outputTokens: 100
+      inputTokens: 2000000,
+      outputTokens: 100000
     });
     expect(result.modelId).toBe('507f1f77bcf86cd799439023');
-    // inputTokens:200 匹配第二梯度 (inputPrice:5, outputPrice:10)
-    // 5 * (2000/1000) + 10 * (100/1000) = 10 + 1 = 11
+    // 2M 输入匹配第二档，0.1M 输出，共 11 积分。
     expect(result.totalPoints).toBe(11);
   });
 });

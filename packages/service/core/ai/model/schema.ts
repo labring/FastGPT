@@ -40,6 +40,8 @@ const AIModelSchema = new Schema(
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,
+    // 原价备份与迁移后的价格原子保存，运行期不使用备份计费。
+    legacyTokenPricing: Schema.Types.Mixed,
     charsPointsPrice: Number,
     priceTiers: [
       {

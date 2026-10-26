@@ -129,5 +129,10 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "리소스 {{scannedCount}}개를 검사했으며, 해결되지 않은 레코드는 {{failedCount}}개입니다.",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "App 및 도구 폴더 경로 백필",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "데이터 세트 폴더 경로 백필",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "폴더 경로 검증"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "폴더 경로 검증",
+  "migrations.20261025_token_prices_per_million.name": "모델 가격을 백만 단위로 마이그레이션",
+  "migrations.20261025_token_prices_per_million.description": "시작 시 모든 모델을 확인하고 트래픽을 수신하기 전에 Token 및 TTS 문자 단가를 천 단위에서 백만 단위로 변환합니다. 단가는 소수점 둘째 자리로 반올림되므로 실제 요금이 달라질 수 있으며 기존 가격은 백업됩니다. STT 시간 단가는 변경되지 않습니다. 잘못된 데이터가 있으면 시작이 차단되므로 로그를 확인하여 수정한 후 다시 시작하세요.",
+  "migrations.20261025_token_prices_per_million.models": "토큰 및 TTS 문자 가격 변환",
+  "migrations.20261025_token_prices_per_million.validation": "가격 단위 검증",
+  "migrations.20261025_token_prices_per_million.result": "모델 {{verifiedCount}}개의 가격을 검증했습니다. STT는 기존 단위를 유지합니다."
 }

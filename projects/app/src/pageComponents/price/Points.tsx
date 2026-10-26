@@ -6,6 +6,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getPublicModelList } from '@/web/core/ai/model/catalogApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
+import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 
 const Points = () => {
   const { t } = useSafeTranslation();
@@ -80,7 +81,7 @@ export const AiPointsTable = () => {
               <Box flex={'1 0 0'}>
                 <PriceTiersLabel
                   config={item}
-                  unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+                  unitLabel={`${t('common:support.wallet.subscription.point')} / M Tokens`}
                 />
               </Box>
             </Flex>
@@ -108,9 +109,9 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {item.charsPointsPrice +
+                {roundModelPrice(item.charsPointsPrice ?? 0) +
                   t('common:support.wallet.subscription.point') +
-                  ' / 1000 Tokens'}
+                  ' / M Tokens'}
               </Box>
             </Flex>
           ))}
@@ -134,9 +135,9 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {item.charsPointsPrice +
+                {roundModelPrice(item.charsPointsPrice ?? 0) +
                   t('common:support.wallet.subscription.point') +
-                  ' / 1000' +
+                  ' / 1M ' +
                   t('common:unit.character')}
               </Box>
             </Flex>
@@ -161,7 +162,7 @@ export const AiPointsTable = () => {
             <Flex key={`${item.provider}-${item.name}`} py={4}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
-                {item.charsPointsPrice +
+                {roundModelPrice(item.charsPointsPrice ?? 0) +
                   t('common:support.wallet.subscription.point') +
                   ' / 60' +
                   t('common:unit.seconds')}

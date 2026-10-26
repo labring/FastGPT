@@ -46,6 +46,9 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOrigi
 }));
 
 import createModelApi from '@/pages/api/core/ai/model/create';
+import createFromTemplatesApi from '@/pages/api/core/ai/model/createFromTemplates';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
 import updateModelApi from '@/pages/api/core/ai/model/update';
 
@@ -116,6 +119,155 @@ describe('admin settings model create/update api', () => {
     clearTeamModelCatalogCache();
   });
 
+  it.each([
+    { pricing: { inputPrice: 1000, outputPrice: 2000 }, expected: 1000 },
+    { pricing: { charsPointsPrice: 500 }, expected: 500 },
+    { pricing: { priceTiers: [], inputPrice: 1000, charsPointsPrice: 500 }, expected: 0 },
+    {
+      pricing: {
+        priceTiers: [{ inputPrice: 0, outputPrice: 0 }],
+        inputPrice: 1000,
+        charsPointsPrice: 500
+      },
+      expected: 0
+    }
+  ])(
+    'preserves configured million-unit fees through create, storage and runtime: %j',
+    async ({ pricing, expected }) => {
+      const result = await callApi({
+        handler: createModelApi,
+        body: { modelData: { ...buildLlmDocument(), ...pricing } }
+      });
+      expect(result.code).toBe(200);
+      const stored = await MongoAIModel.findById(result.data.modelId).lean();
+      expect(stored).not.toHaveProperty('inputPrice');
+      expect(stored).not.toHaveProperty('charsPointsPrice');
+      const model = formatDbModelToRuntimeModel(stored!, { fallbackProvider: true });
+      expect(calculateModelPrice({ config: model, inputTokens: 1000000 }).totalPoints).toBe(
+        expected
+      );
+    }
+  );
+
+  it('normalizes template prices before MongoDB adds its empty-tier default', async () => {
+    const templates = [
+      { ...buildLlmDocument(), model: 'template-io', inputPrice: 1000, outputPrice: 2000 },
+      {
+        ...buildLlmDocument(),
+        model: 'template-rounded',
+        priceTiers: [{ inputPrice: 0.125, outputPrice: 2.345 }]
+      },
+      { ...buildLlmDocument(), model: 'template-free', priceTiers: [], charsPointsPrice: 500 }
+    ];
+    configMocks.refreshModelTemplates.mockResolvedValue(templates);
+    const result = await callApi({
+      handler: createFromTemplatesApi,
+      body: { templates: templates.map(({ type, model }) => ({ type, model })) }
+    });
+    expect(result.code).toBe(200);
+    for (const [name, expected] of [
+      ['template-io', 1000],
+      ['template-rounded', 0.13],
+      ['template-free', 0]
+    ] as const) {
+      const stored = await MongoAIModel.findOne({ model: name }).lean();
+      const model = formatDbModelToRuntimeModel(stored!, { fallbackProvider: true });
+      expect(calculateModelPrice({ config: model, inputTokens: 1000000 }).totalPoints).toBe(
+        expected
+      );
+    }
+  });
+
+  it('rounds input and output unit rates at create and update boundaries without rounding tier limits', async () => {
+    const result = await callApi({
+      handler: createModelApi,
+      body: {
+        modelData: {
+          ...buildLlmDocument(),
+          priceTiers: [
+            {
+              maxInputTokens: 0.000125,
+              inputPrice: 0.125,
+              outputPrice: 2.345
+            }
+          ]
+        }
+      }
+    });
+    expect(result.code).toBe(200);
+    const modelId = result.data.modelId;
+    expect((await MongoAIModel.findById(modelId).lean())?.priceTiers).toMatchObject([
+      {
+        maxInputTokens: 0.000125,
+        inputPrice: 0.13,
+        outputPrice: 2.35
+      }
+    ]);
+    const updated = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId,
+        modelData: {
+          ...buildLlmUpdateData(),
+          priceTiers: [
+            {
+              maxInputTokens: 0.000125,
+              inputPrice: 0.335,
+              outputPrice: 3.335
+            }
+          ]
+        }
+      }
+    });
+    expect(updated.code).toBe(200);
+    const stored = await MongoAIModel.findById(modelId).lean();
+    expect(stored?.priceTiers).toMatchObject([
+      {
+        maxInputTokens: 0.000125,
+        inputPrice: 0.34,
+        outputPrice: 3.34
+      }
+    ]);
+    expect(
+      calculateModelPrice({
+        config: formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }),
+        inputTokens: 1000000
+      }).totalPoints
+    ).toBe(0.34);
+  });
+
+  it.each([ModelTypeEnum.tts, ModelTypeEnum.stt])(
+    'rounds non-Token %s prices through create and update',
+    async (type) => {
+      const doc = {
+        ...buildLlmDocument(),
+        type,
+        config: type === ModelTypeEnum.tts ? { voices: [] } : {},
+        charsPointsPrice: 0.125
+      };
+      const created = await callApi({ handler: createModelApi, body: { modelData: doc } });
+      expect(created.code).toBe(200);
+      const modelId = created.data.modelId;
+      expect((await MongoAIModel.findById(modelId).lean())?.charsPointsPrice).toBe(0.13);
+      const { model: _model, ...modelData } = doc;
+      const updated = await callApi({
+        handler: updateModelApi,
+        body: { modelId, modelData: { ...modelData, charsPointsPrice: 1.005 } }
+      });
+      expect(updated.code).toBe(200);
+      const stored = await MongoAIModel.findById(modelId).lean();
+      expect(stored?.charsPointsPrice).toBe(1.01);
+      const multiple = type === ModelTypeEnum.stt ? 60 : 1000000;
+      expect(
+        calculateModelPrice({
+          config: formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }),
+          inputTokens: multiple,
+          multiple
+        }).totalPoints
+      ).toBe(1.01);
+    }
+  );
+
   it('creates a custom model through the dedicated create endpoint', async () => {
     const res = await callApi({
       handler: createModelApi,
@@ -172,7 +324,7 @@ describe('admin settings model create/update api', () => {
     expect(updated).not.toHaveProperty('inputPrice');
     expect(updated).not.toHaveProperty('outputPrice');
     expect(updated).not.toHaveProperty('charsPointsPrice');
-    expect(updated?.priceTiers).toMatchObject([{ inputPrice: 0, outputPrice: 0 }]);
+    expect(updated?.priceTiers).toEqual([]);
   });
 
   it('preserves requestUrl and requestAuth across create and update', async () => {
@@ -273,7 +425,7 @@ describe('admin settings model create/update api', () => {
     expect(updated).not.toHaveProperty('charsPointsPrice');
     expect(updated).not.toHaveProperty('inputPrice');
     expect(updated).not.toHaveProperty('outputPrice');
-    expect(updated).not.toHaveProperty('priceTiers');
+    expect(updated?.priceTiers).toEqual([]);
   });
 
   it('accepts and persists a null max temperature', async () => {

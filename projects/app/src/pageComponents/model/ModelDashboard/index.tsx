@@ -22,6 +22,7 @@ import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 type ModelDashboardData = {
   x: string;
@@ -150,6 +151,7 @@ const ModelDashboard = ({
         inputPrice?: number;
         outputPrice?: number;
         charsPointsPrice?: number;
+        type?: ModelTypeEnum;
         priceTiers?: ModelPriceTierType[];
       }
     >();
@@ -158,6 +160,7 @@ const ModelDashboard = ({
         inputPrice: model.inputPrice,
         outputPrice: model.outputPrice,
         charsPointsPrice: model.charsPointsPrice,
+        type: model.type,
         priceTiers: model.priceTiers
       });
     });
@@ -374,7 +377,8 @@ const ModelDashboard = ({
         inputTokens,
         outputTokens,
         totalTokens,
-        totalCost: Math.floor(totalCost),
+        // 保留费用精度供累计图使用，只在显示时舍入。
+        totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,
@@ -592,7 +596,8 @@ const ModelDashboard = ({
                       {
                         label: t('config_model:aipoint_usage'),
                         dataKey: 'totalCost',
-                        color: '#8774EE'
+                        color: '#8774EE',
+                        formatter: (value: number) => formatNumber(value, 100).toLocaleString()
                       }
                     ]}
                   />

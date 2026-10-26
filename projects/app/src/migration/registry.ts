@@ -25,6 +25,7 @@ import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_datas
 import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder_ancestor_ids';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
+import { migrateTokenPricesPerMillion } from './tasks/4174/20261025_token_prices_per_million';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -576,6 +577,30 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillFolderAncestorIds
+  },
+  {
+    id: '20261025_token_prices_per_million',
+    version: '4.17.4',
+    nameKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261025_token_prices_per_million.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.result'),
+    progressSteps: [
+      {
+        key: 'models',
+        labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.models')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.validation')
+      }
+    ],
+    // 按本次需求接受升级窗口的新旧版本计费偏差，不要求停机或检测旧节点。
+    // blockStartup 只保证新 App 在迁移成功后就绪，不提供跨版本计费兼容。
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: migrateTokenPricesPerMillion
   }
 ] as const satisfies readonly SystemMigration[];
 

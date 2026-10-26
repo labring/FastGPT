@@ -6,10 +6,10 @@ import z from 'zod';
 export const ModelPriceTierSchema = z
   .object({
     minInputTokens: z.number().min(0).optional().meta({
-      description: '最小输入 tokens 值，单位: k/tokens'
+      description: '最小输入量，单位为 M Tokens'
     }),
     maxInputTokens: z.number().min(0).nullish().meta({
-      description: '最大输入 tokens 值，单位: k/tokens. 如果未提供，则视为无限大梯度。'
+      description: '最大输入量，单位为 M Tokens；未提供时为无限大梯度。'
     }),
     inputPrice: z.number(),
     outputPrice: z.number()
@@ -20,7 +20,7 @@ export const ModelPriceTierSchema = z
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
 export const PriceTypeSchema = z.object({
-  charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
+  charsPointsPrice: z.number().optional(), // Token/TTS 固定每百万数量；STT 为每 60 秒。
   // 新版的梯度价格计算字段
   priceTiers: z.array(ModelPriceTierSchema).optional().meta({
     description:
@@ -28,9 +28,9 @@ export const PriceTypeSchema = z.object({
   }),
 
   /** @deprecated */
-  inputPrice: z.number().optional(), // 1k tokens=n points
+  inputPrice: z.number().optional(), // 单位为 M Tokens
   /** @deprecated */
-  outputPrice: z.number().optional() // 1k tokens=n points
+  outputPrice: z.number().optional() // 单位为 M Tokens
 });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 

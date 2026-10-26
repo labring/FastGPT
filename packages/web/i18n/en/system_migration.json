@@ -129,5 +129,10 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "Scanned {{scannedCount}} resource records; {{failedCount}} unresolved records remain.",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "Backfill App and tool folder paths",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "Backfill Dataset folder paths",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "Validate folder paths",
+  "migrations.20261025_token_prices_per_million.name": "Migrate model prices to million units",
+  "migrations.20261025_token_prices_per_million.description": "At startup, scan all models and convert Token and TTS character prices from thousands to millions before accepting traffic. Round unit prices to two decimals, which may change actual fees, and retain original price backups. STT duration pricing stays unchanged. Invalid records block startup; repair them using the logs and restart.",
+  "migrations.20261025_token_prices_per_million.models": "Convert token and TTS character prices",
+  "migrations.20261025_token_prices_per_million.validation": "Validate pricing units",
+  "migrations.20261025_token_prices_per_million.result": "Verified prices for {{verifiedCount}} models; STT keeps its original unit."
 }

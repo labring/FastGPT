@@ -159,7 +159,7 @@ describe('runSkillDebugChat', () => {
     mocks.assertAuthModels.mockResolvedValueOnce({
       handle: {
         findModelData: ({ model }: { model: string }) =>
-          model === 'model-1' ? { modelId: model, inputPrice: 2, outputPrice: 4 } : undefined
+          model === 'model-1' ? { modelId: model, inputPrice: 2000, outputPrice: 4000 } : undefined
       },
       models: [{ modelId: 'model-1' }]
     });

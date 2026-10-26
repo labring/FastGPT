@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model/schema';
+import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
@@ -16,7 +17,7 @@ const formatPriceSummary = ({
   priceKey: 'inputPrice' | 'outputPrice';
   unitLabel: string;
 }) => {
-  const prices = tiers.map((tier) => tier[priceKey] ?? 0);
+  const prices = tiers.map((tier) => roundModelPrice(tier[priceKey] ?? 0));
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
@@ -200,7 +201,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${tier.inputPrice} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.inputPrice)} ${t('common:support.wallet.subscription.point')}`}
                     </Td>
                     <Td
                       px={3}
@@ -210,7 +211,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${tier.outputPrice} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.outputPrice)} ${t('common:support.wallet.subscription.point')}`}
                     </Td>
                   </Tr>
                 ))}

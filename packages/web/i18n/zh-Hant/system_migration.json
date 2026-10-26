@@ -129,5 +129,10 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "已掃描 {{scannedCount}} 筆目錄與資源記錄，尚有 {{failedCount}} 筆未解決記錄。",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 與工具資料夾路徑",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知識庫資料夾路徑",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "驗證資料夾路徑"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "驗證資料夾路徑",
+  "migrations.20261025_token_prices_per_million.name": "遷移模型價格至百萬單位",
+  "migrations.20261025_token_prices_per_million.description": "啟動時自動遍歷全部模型，將所有 Token 模型和 TTS 字元單價從每千換算為每百萬，完成前不接收業務流量。單價四捨五入至 2 位小數，實際費用可能隨之變化，保留舊價備份；STT 時長價格不變。錯誤資料會阻止啟動，請依日誌修復後重新啟動。",
+  "migrations.20261025_token_prices_per_million.models": "遷移 Token 與 TTS 字元單價",
+  "migrations.20261025_token_prices_per_million.validation": "驗證計價單位",
+  "migrations.20261025_token_prices_per_million.result": "已驗證 {{verifiedCount}} 個模型價格，STT 保持原單位。"
 }
