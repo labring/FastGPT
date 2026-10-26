@@ -599,7 +599,30 @@ describe('MCPClient', () => {
       expect(errorLog).toHaveBeenCalledWith(
         'MCP client tool call failed',
         expect.objectContaining({
+          urlHost: 'example.com',
           error: expect.any(StreamableHTTPError)
+        })
+      );
+    });
+
+    it('does not treat an arbitrary numeric error code as an MCP HTTP status', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      const error = Object.assign(new Error('JSON-RPC unauthorized'), {
+        name: 'McpError',
+        code: 401
+      });
+      client.callTool.mockRejectedValue(error);
+
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBe(error);
+
+      expect(errorLog).toHaveBeenCalledWith(
+        'MCP client tool call failed',
+        expect.objectContaining({
+          urlHost: 'example.com',
+          error
         })
       );
     });
@@ -689,6 +712,18 @@ describe('MCPClient', () => {
       );
       expect(client.connect).toHaveBeenCalledTimes(2);
       expect(infoLog).toHaveBeenCalledWith('SSE error', expect.any(Error));
+    });
+
+    it('keeps the Streamable HTTP auth failure when the SSE fallback fails without a status', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'))
+        .mockRejectedValueOnce(new Error('SSE network unreachable'));
+
+      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
     it('should classify the final SSE failure as a user config error', async () => {

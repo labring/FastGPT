@@ -130,7 +130,7 @@ export function processError(params: {
 
   // 3. 根据错误类型记录不同级别的日志
   if (isUserConfigError(error)) {
-    msg = error.displayMessage || msg;
+    msg = typeof error.displayMessage === 'string' ? error.displayMessage || msg : msg;
   } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;
     logger.info('Request error', { url, message: msg });

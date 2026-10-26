@@ -54,12 +54,17 @@ export const getWorkflowStepStatus = (
   result: WorkflowObservedStepResult
 ): 'ok' | 'error' | 'user_error' => {
   const nodeResponse = result.result[DispatchNodeResponseKeyEnum.nodeResponse];
+  const topLevelError = result.result.error;
 
-  if (isUserConfigError(result.result.error) || nodeResponse?.errorType === 'UserConfigError') {
+  // 顶层错误存在时以它为准，防止遗留的用户配置标记掩盖后续系统故障。
+  if (topLevelError) {
+    return isUserConfigError(topLevelError) ? 'user_error' : 'error';
+  }
+  if (nodeResponse?.errorType === 'UserConfigError') {
     return 'user_error';
   }
 
-  return nodeResponse?.error || result.result.error ? 'error' : 'ok';
+  return nodeResponse?.error ? 'error' : 'ok';
 };
 
 /**

@@ -181,6 +181,20 @@ describe('dispatchRunTool runtime toolset auth', () => {
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
   });
 
+  it('classifies invalid selected MCP tool ids as user configuration errors', async () => {
+    const result = await dispatchRunTool(
+      createRunToolProps({
+        mcpTool: { toolId: 'invalid-id' }
+      })
+    );
+
+    expect(result.error).toMatchObject({
+      system_error_text: 'Invalid MCP tool id: invalid-id',
+      name: 'UserConfigError'
+    });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+  });
+
   it.each(['mcp', 'http'] as const)(
     'executes a %s child authorized by the member outside the snapshot selection',
     async (source) => {

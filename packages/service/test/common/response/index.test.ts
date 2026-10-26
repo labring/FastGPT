@@ -111,6 +111,20 @@ describe('processError zod logging', () => {
     expect(logger.info).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
   });
+
+  it('falls back safely when a serialized user config error has a non-string display message', () => {
+    const processed = processError({
+      error: {
+        name: 'UserConfigError',
+        message: 'Invalid API key',
+        displayMessage: { text: 'unexpected object' }
+      } as any,
+      url: '/api/test',
+      defaultCode: 400
+    });
+
+    expect(processed.message).toBe('Invalid API key');
+  });
 });
 
 describe('processError HTTP status mapping', () => {

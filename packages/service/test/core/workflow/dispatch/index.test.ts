@@ -25,6 +25,7 @@ import {
 import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1460,6 +1461,57 @@ describe('Workflow runtime LLM token summary', () => {
 });
 
 describe('Workflow runtime error summary', () => {
+  it('uses the node response error type when the dispatcher does not return an error object', async () => {
+    const original = callbackMap[FlowNodeTypeEnum.textEditor];
+    const node = createNode('editor-node', FlowNodeTypeEnum.textEditor);
+    node.isEntry = true;
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        error: 'invalid API key',
+        errorType: 'UserConfigError'
+      }
+    }));
+    const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+    const warn = vi.spyOn(logger, 'warn');
+    warn.mockClear();
+
+    try {
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runningAppInfo: {
+          id: '67e0d5535c02d1d5cdede721',
+          name: 'node response error type',
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        runningUserInfo: {
+          teamId: '654a4107c32f3bf5f998452f',
+          tmbId: '65ab7007462ada7dbb899948'
+        },
+        histories: [],
+        query: [],
+        chatConfig: {},
+        runtimeNodes: [node],
+        runtimeEdges: [],
+        variableState: createWorkflowVariableState(),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 10,
+        checkIsStopping: () => false
+      } as any);
+
+      expect(result.workflowRuntimeSummary).toMatchObject({
+        hasError: true,
+        hasUserConfigError: true,
+        errorText: 'invalid API key'
+      });
+      expect(warn).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
+    } finally {
+      callbackMap[FlowNodeTypeEnum.textEditor] = original;
+    }
+  });
+
   it('工具执行错误只保留在节点详情中，不计入工作流失败', async () => {
     const original = callbackMap[FlowNodeTypeEnum.tool];
     const node = createNode('tool-node', FlowNodeTypeEnum.tool);
@@ -1470,6 +1522,9 @@ describe('Workflow runtime error summary', () => {
         errorType: 'UserConfigError'
       }
     }));
+    const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+    const warn = vi.spyOn(logger, 'warn');
+    warn.mockClear();
 
     try {
       const result = await runWorkflow({
@@ -1502,6 +1557,7 @@ describe('Workflow runtime error summary', () => {
         errorCount: 0
       });
       expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
+      expect(warn).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
     } finally {
       callbackMap[FlowNodeTypeEnum.tool] = original;
     }

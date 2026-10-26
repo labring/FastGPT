@@ -1027,7 +1027,9 @@ export class WorkflowQueue {
       })();
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
-      const isUserConfigFailure = isUserConfigError(dispatchRes.error);
+      const isUserConfigFailure =
+        isUserConfigError(dispatchRes.error) ||
+        formatCurrentNodeResponse?.errorType === 'UserConfigError';
       if (
         currentNodeError !== undefined &&
         !formatCurrentNodeResponse?.errorCaptured &&
@@ -1036,7 +1038,7 @@ export class WorkflowQueue {
         nodeSummary.mergeNodeSummary({
           hasError: true,
           hasUserConfigError: isUserConfigFailure,
-          errorText: String(currentNodeError)
+          errorText: getErrText(currentNodeError)
         });
       }
 
