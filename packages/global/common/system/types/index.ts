@@ -416,6 +416,10 @@ export const SystemEnvSchema = z.looseObject({
 
   hnswEfSearch: NumSchema.default(100).meta({ description: 'HNSW 向量检索 efSearch 参数' }),
   hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
+  vectorRecallConcurrency: IntSchema.min(0).max(1000).default(0).meta({
+    description: '商业版所有向量库召回共享的并发上限，0 表示不限制，仅通过 Admin 配置',
+    example: 0
+  }),
   customPdfParse: CustomPdfParseSchema.optional(),
   langfuse: LangfuseConfigSchema.optional(),
   sso: z

@@ -136,8 +136,10 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const results: any = await OgClient.query(
-      `BEGIN;
+    const results: any = await OgClient.query({
+      // 客户端等待长于服务端的 90 秒超时，避免顶层提前释放并发额度。
+      query_timeout: 120_000,
+      text: `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SELECT id, collection_id, vector <#> '[${vector}]' AS score
             FROM ${DatasetVectorTableName}
@@ -147,7 +149,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
               ${forbidCollectionSql}
             ORDER BY score LIMIT ${limit};
         COMMIT;`
-    );
+    });
     const rows = results?.[results.length - 2]?.rows as {
       id: string;
       collection_id: string;

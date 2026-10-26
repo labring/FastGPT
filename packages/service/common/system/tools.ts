@@ -19,15 +19,16 @@ export const SERVICE_LOCAL_HOST =
 
 /**
  * 校验并加载文件、数据库或热更新配置到全局状态。
- * 沙箱配额必须在加载时校验，读取端只负责优先级；其他历史配置保留校验失败时的兼容行为。
+ * 配额和向量检索并发必须在加载时校验；其他历史配置保留校验失败时的兼容行为。
  */
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   if (!config?.feConfigs || !config?.systemEnv) return;
 
   // 配额校验先于任何状态修改，避免整体配置降级时把非法配额带入运行时。
-  const sandboxQuotas = SystemEnvSchema.pick({
+  const runtimeLimits = SystemEnvSchema.pick({
     agentSandboxMax: true,
-    agentSandboxMaxPerTeam: true
+    agentSandboxMaxPerTeam: true,
+    vectorRecallConcurrency: true
   })
     .strip()
     .parse(config.systemEnv);
@@ -68,7 +69,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   const safeConfig = parseResult.success ? parseResult.data : config;
 
   global.feConfigs = safeConfig.feConfigs || config.feConfigs;
-  global.systemEnv = { ...(safeConfig.systemEnv ?? config.systemEnv), ...sandboxQuotas };
+  global.systemEnv = { ...(safeConfig.systemEnv ?? config.systemEnv), ...runtimeLimits };
   global.subPlans = safeConfig.subPlans ?? config.subPlans;
 };
 

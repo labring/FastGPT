@@ -10,6 +10,23 @@ import {
   resetVectorMocks
 } from '@test/mocks/common/vector';
 import { mockGetVectors } from '@test/mocks/core/ai/embedding';
+import * as vectorConstants from '@fastgpt/service/common/vectorDB/constants';
+import {
+  RedisLeaseAcquireError,
+  RedisLeaseLostError,
+  RedisLeaseWaitTimeoutError
+} from '@fastgpt/dal/redis/caches/lease';
+
+const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
+vi.mock('@fastgpt/dal/redis/caches/lease', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches/lease')>();
+  return {
+    ...actual,
+    LeaseCache: class {
+      withConcurrency = withConcurrency;
+    }
+  };
+});
 
 // Import controller functions after mocks are set up
 import {
@@ -31,19 +48,21 @@ const mockLoggerWarn = vi.fn();
 
 vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/dal/redis/caches')>();
+  const { RedisCacheAdapter } = await import('@fastgpt/dal/redis/adapter');
+  const redis = new RedisCacheAdapter({
+    getCommandClient: () => {
+      throw new Error('Unexpected raw Redis command in vector cache unit test');
+    }
+  });
+  redis.set = (...args) => mockRedisStringSet(...args);
+  redis.get = (...args) => mockRedisStringGet(...args);
+  redis.delete = (...args) => mockRedisStringDelete(...args);
 
   return {
     ...actual,
     TeamVectorCountCache: class MockTeamVectorCountCache extends actual.TeamVectorCountCache {
-      constructor({ logger }: Parameters<typeof actual.TeamVectorCountCache>[0]) {
-        super({
-          logger,
-          redis: {
-            set: (...args: any[]) => mockRedisStringSet(...args),
-            get: (...args: any[]) => mockRedisStringGet(...args),
-            delete: (...args: any[]) => mockRedisStringDelete(...args)
-          }
-        });
+      constructor({ logger }: ConstructorParameters<typeof actual.TeamVectorCountCache>[0]) {
+        super({ logger, redis });
       }
     }
   };
@@ -66,6 +85,9 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
+    global.feConfigs = { ...global.feConfigs, isPlus: false };
+    global.systemEnv = { ...global.systemEnv, vectorRecallConcurrency: 0 };
+    withConcurrency.mockReset().mockImplementation(({ fn }) => fn());
     mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     mockRedisStringGet.mockReset();
     mockRedisStringSet.mockReset();
@@ -111,6 +133,140 @@ describe('VectorDB Controller', () => {
   });
 
   describe('recallFromVectorStore', () => {
+    const props = {
+      teamId: 'team',
+      datasetIds: ['dataset'],
+      vector: [0.1],
+      limit: 100,
+      forbidCollectionIdList: []
+    };
+
+    it.each(['pg', 'milvus', 'oceanbase', 'seekdb', 'opengauss'])(
+      'applies the same shared limit to the %s provider',
+      async (provider) => {
+        vi.resetModules();
+        vi.doMock('@fastgpt/service/common/vectorDB/constants', () => ({
+          ...vectorConstants,
+          getVectorType: () => provider
+        }));
+        vi.doMock('@fastgpt/service/common/vectorDB/opengauss', () => ({
+          OpenGaussVectorCtrl: class {
+            embRecall = mockVectorEmbRecall;
+          }
+        }));
+        global.feConfigs.isPlus = true;
+        global.systemEnv.vectorRecallConcurrency = 8;
+        try {
+          const { recallFromVectorStore: recall } =
+            await import('@fastgpt/service/common/vectorDB/controller');
+          await recall(props);
+          expect(withConcurrency).toHaveBeenCalledOnce();
+          const options = withConcurrency.mock.calls[0][0];
+          expect(options).toMatchObject({
+            key: 'vector:recall',
+            label: 'vector-recall',
+            ttlMs: 30_000,
+            renewIntervalMs: 10_000
+          });
+          expect(options.concurrency()).toBe(8);
+          expect(mockVectorEmbRecall).toHaveBeenCalledWith(props);
+        } finally {
+          vi.doUnmock('@fastgpt/service/common/vectorDB/constants');
+          vi.doUnmock('@fastgpt/service/common/vectorDB/opengauss');
+        }
+      }
+    );
+
+    it.each([
+      { isPlus: false, concurrency: 8 },
+      { isPlus: true, concurrency: 0 },
+      { isPlus: true, concurrency: undefined }
+    ])(
+      'bypasses coordination for edition/default configuration %j',
+      async ({ isPlus, concurrency }) => {
+        global.feConfigs.isPlus = isPlus;
+        if (concurrency === undefined)
+          Reflect.deleteProperty(global.systemEnv, 'vectorRecallConcurrency');
+        else global.systemEnv.vectorRecallConcurrency = concurrency;
+        await recallFromVectorStore(props);
+        expect(withConcurrency).toHaveBeenCalledOnce();
+        expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(0);
+        expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+      }
+    );
+
+    it('exposes the latest Admin limit to queued work', async () => {
+      global.feConfigs.isPlus = true;
+      global.systemEnv.vectorRecallConcurrency = 4;
+      withConcurrency.mockImplementation(async ({ concurrency, fn }) => {
+        expect(concurrency()).toBe(4);
+        global.systemEnv.vectorRecallConcurrency = 1;
+        expect(concurrency()).toBe(1);
+        return fn();
+      });
+      await recallFromVectorStore(props);
+      expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      new RedisLeaseWaitTimeoutError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseLostError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseAcquireError({ key: 'recall', label: 'recall', cause: new Error('Redis down') })
+    ])('does not start or retry recall when coordination fails: $name', async (error) => {
+      global.feConfigs.isPlus = true;
+      global.systemEnv.vectorRecallConcurrency = 8;
+      withConcurrency.mockRejectedValueOnce(error);
+      await expect(recallFromVectorStore(props)).rejects.toBe(error);
+      expect(withConcurrency).toHaveBeenCalledOnce();
+      expect(mockVectorEmbRecall).not.toHaveBeenCalled();
+    });
+
+    it('reacquires shared capacity for every database retry', async () => {
+      vi.useFakeTimers();
+      global.feConfigs.isPlus = true;
+      global.systemEnv.vectorRecallConcurrency = 8;
+      mockVectorEmbRecall.mockRejectedValueOnce(new Error('temporary database failure'));
+      const result = recallFromVectorStore(props);
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(result).resolves.toHaveProperty('results');
+      expect(withConcurrency).toHaveBeenCalledTimes(2);
+      expect(mockVectorEmbRecall).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      new RedisLeaseWaitTimeoutError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseLostError({ key: 'recall', label: 'recall' }),
+      new RedisLeaseAcquireError({ key: 'recall', label: 'recall', cause: new Error('Redis down') })
+    ])('does not retry lease coordination errors: $name', async (error) => {
+      mockVectorEmbRecall.mockRejectedValueOnce(error);
+
+      await expect(
+        recallFromVectorStore({
+          teamId: 'team',
+          datasetIds: ['dataset'],
+          vector: [0.1],
+          limit: 100,
+          forbidCollectionIdList: []
+        })
+      ).rejects.toBe(error);
+      expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
+    });
+
+    it('continues retrying transient vector database errors', async () => {
+      mockVectorEmbRecall.mockRejectedValueOnce(new Error('temporary database failure'));
+
+      await expect(
+        recallFromVectorStore({
+          teamId: 'team',
+          datasetIds: ['dataset'],
+          vector: [0.1],
+          limit: 100,
+          forbidCollectionIdList: []
+        })
+      ).resolves.toHaveProperty('results');
+      expect(mockVectorEmbRecall).toHaveBeenCalledTimes(2);
+    });
+
     it('should call Vector.embRecall with correct props', async () => {
       const props = {
         teamId: 'team_123',

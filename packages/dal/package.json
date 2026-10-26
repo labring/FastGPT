@@ -8,6 +8,7 @@
     "./redis/bullmq": "./redis/bullmq/index.ts",
     "./redis/bullmq/services/*": "./redis/bullmq/services/*.ts",
     "./redis/caches": "./redis/caches/index.ts",
+    "./redis/caches/lease": "./redis/caches/lease.ts",
     "./redis/types": "./redis/types.ts",
     "./redis/runtime": "./redis/runtime/index.ts"
   },
@@ -22,6 +23,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
+    "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "bullmq": "5.52.2",
     "ioredis": "^5.11.1",

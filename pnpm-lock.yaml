@@ -474,6 +474,9 @@ importers:
 
   packages/dal:
     dependencies:
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global

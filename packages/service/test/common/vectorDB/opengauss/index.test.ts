@@ -24,7 +24,9 @@ describe('OpenGaussVectorCtrl.embRecall', () => {
     });
 
     expect(OgClient.query).toHaveBeenCalledOnce();
-    const [sql] = vi.mocked(OgClient.query).mock.calls[0];
+    const [query] = vi.mocked(OgClient.query).mock.calls[0];
+    expect(query).toMatchObject({ query_timeout: 120_000 });
+    const sql = typeof query === 'string' ? query : query.text;
     expect(sql).toMatch(
       /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
     );

@@ -12,6 +12,8 @@ import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
+import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import { isProVersion } from '../system/constants';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -30,13 +32,42 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
+const recallLease = new LeaseCache();
+// 执行期间每 10 秒续租；释放失败时，额度在最后一次续租后 30 秒过期。
+const RECALL_LEASE_TTL_MS = 30_000;
 const teamVectorCountCache = new TeamVectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
 export const initVectorStore = Vector.init;
-export const recallFromVectorStore: VectorControllerType['embRecall'] = (props) =>
-  retryFn(() => Vector.embRecall(props));
+/**
+ * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
+ * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
+ */
+export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
+  const result = await retryFn(async () => {
+    try {
+      return {
+        success: true as const,
+        value: await recallLease.withConcurrency({
+          key: 'vector:recall',
+          label: 'vector-recall',
+          concurrency: () =>
+            isProVersion() ? (global.systemEnv?.vectorRecallConcurrency ?? 0) : 0,
+          ttlMs: RECALL_LEASE_TTL_MS,
+          renewIntervalMs: 10_000,
+          fn: () => Vector.embRecall(props)
+        })
+      };
+    } catch (error) {
+      if (isRedisLeaseError(error)) return { success: false as const, error };
+      throw error;
+    }
+  });
+
+  if (!result.success) throw result.error;
+  return result.value;
+};
 
 type DatasetVectorInput = string | GetVectorsProps['inputs'][number];
 
