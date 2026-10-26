@@ -10,7 +10,8 @@ import {
   createInheritedResourceCollaboratorCalculator,
   mergeResourceCollaborators,
   shouldInheritResourcePermission,
-  toInheritedCollaborators
+  toInheritedCollaborators,
+  toInheritedPermissionValue
 } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
@@ -35,6 +36,15 @@ describe('toInheritedCollaborators', () => {
     expect(
       toInheritedCollaborators([user('owner', OwnerRoleVal), user('reader', ReadRoleVal)])
     ).toEqual([user('owner', ManageRoleVal), user('reader', ReadRoleVal)]);
+  });
+});
+
+describe('toInheritedPermissionValue', () => {
+  it('caps an inherited owner role at manage and keeps other roles unchanged', () => {
+    expect(toInheritedPermissionValue(OwnerRoleVal)).toBe(ManageRoleVal);
+    expect(toInheritedPermissionValue(ManageRoleVal)).toBe(ManageRoleVal);
+    expect(toInheritedPermissionValue(ReadRoleVal)).toBe(ReadRoleVal);
+    expect(toInheritedPermissionValue(0)).toBe(0);
   });
 });
 
