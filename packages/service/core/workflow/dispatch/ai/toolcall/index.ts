@@ -18,11 +18,13 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
-import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
-import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
-import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
-import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
+import {
+  buildAgentLoopCoreRequestMessages,
+  createAgentLoopCoreChildInteractiveParams,
+  createAgentLoopCoreToolCallNodeResponse,
+  getAgentLoopCorePersistedTextOutput,
+  summarizeAgentLoopCoreToolRunFlowResponses
+} from '../agentLoopCore/interface';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
