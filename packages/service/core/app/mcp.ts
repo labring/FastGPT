@@ -1,5 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { SSEClientTransport, SseError } from '@modelcontextprotocol/sdk/client/sse.js';
 import {
   StreamableHTTPClientTransport,
   StreamableHTTPError
@@ -377,18 +377,19 @@ export class McpHttpStatusError extends Error {
 }
 
 /**
- * SSE transport 在 send() 中会丢掉非 2xx 响应的状态码。
- * 在 fetch 边界提前转成带 code 的错误，确保会话建立后的鉴权/失效错误仍可分类。
+ * SSE transport 在 send() 中会把非 2xx POST 转成无状态码的普通 Error。
+ * 只在 POST 边界提前转成带 code 的错误；GET 握手保留 Response，让 EventSource
+ * 继续通过 SseError.code 传递状态码。
  */
 export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
   return async (url, init) => {
     const response = await fetchImpl(url, init);
-    if (response.ok) {
-      return response;
+    if (init?.method?.toUpperCase() === 'POST' && !response.ok) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new McpHttpStatusError(response.status, response.statusText);
     }
 
-    await response.body?.cancel().catch(() => undefined);
-    throw new McpHttpStatusError(response.status, response.statusText);
+    return response;
   };
 };
 
@@ -432,7 +433,11 @@ const getMcpErrorCode = (error: unknown, visited = new Set<unknown>()): number |
   }
   visited.add(error);
 
-  if (error instanceof StreamableHTTPError || error instanceof McpHttpStatusError) {
+  if (
+    error instanceof StreamableHTTPError ||
+    error instanceof McpHttpStatusError ||
+    error instanceof SseError
+  ) {
     return error.code;
   }
   if ('cause' in error) {

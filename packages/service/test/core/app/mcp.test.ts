@@ -786,6 +786,26 @@ describe('MCPClient', () => {
 describe('createMcpSseFetch', () => {
   const url = new URL('https://example.com/mcp');
 
+  it.each([401, 403, 404, 410])(
+    'preserves SSE GET handshake status %s through the real SDK',
+    async (status) => {
+      const fetchImpl = vi.fn().mockResolvedValue(
+        new Response('expired', {
+          status,
+          statusText: 'MCP request rejected'
+        })
+      );
+      const transport = new SSEClientTransport(url, {
+        fetch: createMcpSseFetch(fetchImpl)
+      });
+
+      await expect(transport.start()).rejects.toMatchObject({
+        code: status
+      });
+      await transport.close();
+    }
+  );
+
   it.each([401, 403, 410])(
     'preserves SSE POST status %s for MCP error classification',
     async (status) => {

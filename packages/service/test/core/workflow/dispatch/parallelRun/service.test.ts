@@ -535,6 +535,28 @@ describe('parallelRun/service', () => {
       });
     });
 
+    it('用户配置错误经过 parse、wrapper 和 summary 后仍保持分类', () => {
+      const response = makeDispatchFlowResponse({
+        nodeResponses: [
+          {
+            id: 'llm',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            errorText: 'Invalid API key',
+            errorType: 'UserConfigError'
+          } as any
+        ]
+      });
+      const result = parseTaskResponse({ index: 0, response });
+      const { responseDetails } = agg([result]);
+      const summary = summarizeRuntimeNodeResponses(undefined, responseDetails);
+
+      expect(summary).toMatchObject({
+        hasError: true,
+        hasUserConfigError: true,
+        errorText: 'Invalid API key'
+      });
+    });
+
     it('wrapper.runningTime 使用任务自身耗时，不累加子节点耗时', () => {
       const withTimings: ParallelTaskResult = {
         success: true,
