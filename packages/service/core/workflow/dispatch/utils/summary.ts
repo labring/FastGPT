@@ -10,6 +10,25 @@ import type { NodeSummary, NodeSummaryCollector } from '../../types/runtime';
 const concreteChildParentIds = new WeakMap<WorkflowRuntimeSummaryType, Set<string>>();
 
 /**
+ * 合并未捕获错误分类。
+ *
+ * 系统错误优先级高于用户配置错误：只要同一运行链路出现过系统错误，
+ * 最终错误就不能再标记为用户配置错误。
+ */
+const mergeErrorClassification = (
+  target: { hasError?: boolean; hasUserConfigError?: boolean },
+  source: { hasError?: boolean; hasUserConfigError?: boolean }
+) => {
+  if (!source.hasError) return;
+
+  const hadError = !!target.hasError;
+  target.hasError = true;
+  target.hasUserConfigError = hadError
+    ? !!target.hasUserConfigError && !!source.hasUserConfigError
+    : !!source.hasUserConfigError;
+};
+
+/**
  * 创建 runtime nodeResponse 的轻量汇总对象。
  *
  * 该 summary 用于在当前 workflow dispatch 过程中保存运行信号，避免把完整
@@ -62,8 +81,10 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
-      summary.hasError ||= !!source.hasError;
-      summary.hasUserConfigError ||= !!source.hasUserConfigError;
+      mergeErrorClassification(summary, {
+        hasError: !!source.hasError,
+        hasUserConfigError: !!source.hasUserConfigError
+      });
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -94,7 +115,7 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.responseIds?.length ? { responseIds: [...summary.responseIds] } : {}),
   ...(summary.finishedNodeIds?.length ? { finishedNodeIds: [...summary.finishedNodeIds] } : {}),
   ...(summary.hasError ? { hasError: true } : {}),
-  ...(summary.hasUserConfigError ? { hasUserConfigError: true } : {}),
+  ...(summary.hasError && summary.hasUserConfigError ? { hasUserConfigError: true } : {}),
   ...(summary.errorText ? { errorText: summary.errorText } : {}),
   ...(summary.errorCount ? { errorCount: summary.errorCount } : {}),
   ...(summary.citeCollectionIds?.length
@@ -261,7 +282,10 @@ export const summarizeRuntimeNodeResponses = (
       !isToolExecutionResponse(response) &&
       (response.error || response.errorText)
     ) {
-      summary.hasError = true;
+      mergeErrorClassification(summary, {
+        hasError: true,
+        hasUserConfigError: response.errorType === 'UserConfigError'
+      });
       summary.errorCount += 1;
       summary.errorText = getErrText(response.error || response.errorText);
     }
@@ -346,8 +370,7 @@ export const mergeWorkflowRuntimeSummary = ({
 
       merged.responseIds.push(...(summary.responseIds ?? []));
       merged.finishedNodeIds.push(...(summary.finishedNodeIds ?? []));
-      merged.hasError ||= summary.hasError;
-      merged.hasUserConfigError ||= summary.hasUserConfigError;
+      mergeErrorClassification(merged, summary);
       if (summary.errorText) {
         merged.errorText = summary.errorText;
       }
@@ -376,8 +399,10 @@ export const mergeWorkflowRuntimeSummary = ({
   if (nodeSummary) {
     merged.responseIds.push(...(nodeSummary.responseIds ?? []));
     merged.finishedNodeIds.push(...(nodeSummary.finishedNodeIds ?? []));
-    merged.hasError ||= !!nodeSummary.hasError;
-    merged.hasUserConfigError ||= !!nodeSummary.hasUserConfigError;
+    mergeErrorClassification(merged, {
+      hasError: !!nodeSummary.hasError,
+      hasUserConfigError: !!nodeSummary.hasUserConfigError
+    });
     if (nodeSummary.errorText) {
       merged.errorText = nodeSummary.errorText;
     }

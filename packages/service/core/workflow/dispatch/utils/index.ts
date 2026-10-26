@@ -705,6 +705,7 @@ export const getNodeErrResponse = <TError extends Record<string, any> = Record<s
     } & TError,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       errorText,
+      ...(isUserConfigFailure ? { errorType: 'UserConfigError' as const } : {}),
       ...(typeof responseData === 'object' ? responseData : {})
     },
     [DispatchNodeResponseKeyEnum.toolResponse]: {

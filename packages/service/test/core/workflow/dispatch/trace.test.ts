@@ -58,4 +58,17 @@ describe('getWorkflowStepStatus', () => {
       )
     ).toBe('user_error');
   });
+
+  it('recognizes the node response error marker', () => {
+    expect(
+      getWorkflowStepStatus(
+        createResult({
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            error: 'Invalid MCP configuration',
+            errorType: 'UserConfigError'
+          }
+        })
+      )
+    ).toBe('user_error');
+  });
 });

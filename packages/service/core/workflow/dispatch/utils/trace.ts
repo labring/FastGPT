@@ -55,7 +55,7 @@ export const getWorkflowStepStatus = (
 ): 'ok' | 'error' | 'user_error' => {
   const nodeResponse = result.result[DispatchNodeResponseKeyEnum.nodeResponse];
 
-  if (isUserConfigError(result.result.error)) {
+  if (isUserConfigError(result.result.error) || nodeResponse?.errorType === 'UserConfigError') {
     return 'user_error';
   }
 

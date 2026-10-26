@@ -908,6 +908,7 @@ export class WorkflowQueue {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {
+              const isUserConfigFailure = isUserConfigError(result.error);
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
                 // Callback returned with `result.error` set instead of throwing;
@@ -921,7 +922,8 @@ export class WorkflowQueue {
                   ...result,
                   [DispatchNodeResponseKeyEnum.nodeResponse]: {
                     ...nodeResponseBase,
-                    error: errText
+                    error: errText,
+                    ...(isUserConfigFailure && { errorType: 'UserConfigError' as const })
                   },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
@@ -987,6 +989,7 @@ export class WorkflowQueue {
                 : {}),
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
+                ...(isUserConfigFailure && { errorType: 'UserConfigError' as const }),
                 ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
@@ -1024,8 +1027,12 @@ export class WorkflowQueue {
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
       const isUserConfigFailure = isUserConfigError(dispatchRes.error);
-      if (isUserConfigFailure) {
-        nodeSummary.mergeNodeSummary({ hasUserConfigError: true });
+      if (currentNodeError !== undefined && !formatCurrentNodeResponse?.errorCaptured) {
+        nodeSummary.mergeNodeSummary({
+          hasError: true,
+          hasUserConfigError: isUserConfigFailure,
+          errorText: String(currentNodeError)
+        });
       }
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse

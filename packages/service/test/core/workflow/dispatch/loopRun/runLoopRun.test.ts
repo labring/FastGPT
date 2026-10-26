@@ -689,6 +689,33 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     });
   });
 
+  it('does not reuse a user config marker for a later system failure', async () => {
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'database unavailable' })],
+        workflowRuntimeSummary: {
+          ...createWorkflowRuntimeSummary(),
+          hasError: true,
+          hasUserConfigError: false,
+          errorText: 'database unavailable',
+          errorCount: 2
+        }
+      })
+    );
+
+    const result: any = await dispatchLoopRun(
+      makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first']
+      })
+    );
+
+    expect(result.error).toMatchObject({
+      [NodeOutputKeyEnum.errorText]: 'database unavailable'
+    });
+    expect(result.error).not.toHaveProperty('name');
+  });
+
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);
