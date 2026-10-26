@@ -46,7 +46,6 @@ describe('runAgentLoopApplication tool visibility', () => {
   ): Extract<AgentLoopEvent, { type: 'tool_run_end' }> => ({
     type: 'tool_run_end',
     call,
-    rawResponse: 'tool result',
     response: 'tool result',
     seconds: 1
   });

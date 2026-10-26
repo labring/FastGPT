@@ -96,7 +96,6 @@ describe('runAgentLoopCore', () => {
       runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'tool result',
         response: 'tool result',
         seconds: 0.1
       });
@@ -222,7 +221,6 @@ describe('runAgentLoopCore', () => {
             arguments: '{"q":"FastGPT"}'
           }
         },
-        rawResponse: 'tool result',
         response: 'tool result',
         seconds: 0.1
       });
@@ -399,7 +397,6 @@ describe('runAgentLoopCore', () => {
               runtime.emitEvent?.({
                 type: 'tool_run_end',
                 call,
-                rawResponse: call === privateCall ? 'internal access denied' : 'public result',
                 response: call === privateCall ? 'internal access denied' : 'public result',
                 errorMessage: call === privateCall ? 'INTERNAL_ACCESS_DENIED' : undefined,
                 seconds: 0.1
@@ -640,7 +637,6 @@ describe('Agent Loop summary ownership', () => {
       runtime.emitEvent({
         type: 'tool_run_end',
         call: { id: 'tool', function: { name: 'child', arguments: '{}' } },
-        rawResponse: '',
         response: '',
         seconds: 1,
         usages: [],
@@ -700,7 +696,6 @@ describe('Agent Loop summary ownership', () => {
         runtime.emitEvent({
           type: 'tool_run_end',
           call: { id: 'tool', function: { name: 'child', arguments: '{}' } },
-          rawResponse: '',
           response: '',
           seconds: 1,
           usages: [childUsage],
