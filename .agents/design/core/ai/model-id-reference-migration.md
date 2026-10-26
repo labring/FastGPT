@@ -618,13 +618,13 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 
 ### 11.1 模型结构接管与资源迁移
 
-旧版 `cleanSystemModelConfigs` 不再提供。新版本不修改 `system_models`：阻塞升级任务在单个事务中把旧记录转换为 canonical 结构并按 `model` 合并到 `ai_models`。同名目标保留现有 `_id`，其余配置由旧表覆盖；旧表独有模型沿用旧 `_id` 新增；新表独有模型保留。已有且有效的默认槽位优先，旧表 `isDefault*` 只补齐缺失或失效槽位。升级状态表仍是迁移 Runner 是否调度任务的唯一依据。单模型新增/更新和 JSON 批量更新只接受 canonical 数据；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
+旧版 `cleanSystemModelConfigs` 不再提供。新版本不修改 `system_models`：后台升级任务在单个事务中把旧记录转换为 canonical 结构并按 `model` 合并到 `ai_models`。同名目标保留现有 `_id`，其余配置由旧表覆盖；旧表独有模型沿用旧 `_id` 新增；新表独有模型保留。已有且有效的默认槽位优先，旧表 `isDefault*` 只补齐缺失或失效槽位。升级状态表仍是迁移 Runner 是否调度任务的唯一依据。单模型新增/更新和 JSON 批量更新只接受 canonical 数据；JSON 中没有 `modelId` 的旧记录直接过滤。JSON 的未知 `modelId` 表示跨实例导入：目标端按 `model` 复用已有系统实例或创建新实例。
 
 启动迁移、动态模板读取和数据库实例加载必须保持三个独立职责：
 
-1. `bootstrapAIModelsFromLegacy` 只由阻塞升级任务调用；它不读取升级状态、不保存 checkpoint、不生成缓存，也不由模型加载、定时刷新或管理接口调用。它先读取并全量校验旧表与插件类型，再在单事务中读取最新目标快照，按 `model` 更新同名实例、插入缺失实例并合并默认槽位。任务因节点退出被 lease 接管后可以确定性重复调用，事务失败不会留下部分结果。
+1. `bootstrapAIModelsFromLegacy` 只由后台升级任务调用；它不读取升级状态、不保存 checkpoint、不生成缓存，也不由模型加载、定时刷新或管理接口调用。它先读取并全量校验旧表与插件类型，再在单事务中读取最新目标快照，按 `model` 更新同名实例、插入缺失实例并合并默认槽位，与目录修订号递增原子提交。任务因节点退出被 lease 接管后可以确定性重复调用，事务失败不会留下部分结果。
 2. `refreshModelTemplates` 只在管理员打开模板列表和提交模板安装时实时获取并校验候选快照，不缓存、不触发数据库变更，也不参与启动加载。
-3. `loadInstalledModels` 只读取并严格解析数据库实例与 system scope 默认配置，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员提交和数据库 Change Stream 只触发这一层。
+3. `loadInstalledModels` 只读取并严格解析数据库实例与 system scope 默认配置，在局部构建 list/map/defaults 后原子发布；不 repair、不拉插件、不创建或删除模型。管理员写入提交后刷新本节点；其他节点通过运行期目录修订号检查触发这一层，不依赖模型集合 Change Stream。
 
 启动只预加载 Provider 并读取已安装模型，不请求 Plugin 模板。模型迁移任务在旧表非空时读取 Plugin 模板用于兼容性修复，再执行 `bootstrap legacy -> load installed`；旧表为空时直接以空模板执行。`bootstrap legacy` 在事务内读取最新目标快照并完成覆盖、插入和默认配置合并。迁移失败时事务不留下部分数据。管理员模板安装为 `实时拉取模板 -> 校验/过滤 -> 先绑定渠道 -> MongoDB 事务批量创建 -> load installed`；跨 AIProxy 与 MongoDB 不做分布式补偿。
 
