@@ -23,7 +23,7 @@ const modelFields = [
 ] as const;
 const resourceTypes: ResourceType[] = ['dataset', 'app', 'version'];
 
-/** 一次请求完成替换；执行前用确认弹窗展示映射和历史版本变更说明。 */
+/** 一次请求完成替换；执行前确认团队资源和历史版本会被修改。 */
 const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
   const { modelList } = useModelList({ enabled: true });
@@ -45,11 +45,6 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const close = () => {
     if (!loading) onClose();
   };
-  const selectedModels = modelFields.map(({ key, label }) => ({
-    key,
-    label,
-    model: modelList.find((item) => item.modelId === replacement[key])
-  }));
   const selectedTts = modelList.find((model) => model.modelId === replacement.ttsModelId);
   const canConfirm =
     modelFields.every(({ key }) => Boolean(replacement[key])) &&
@@ -59,9 +54,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const confirmReplacement = () => {
     openConfirm({
       title: t('config_model:replace_invalid_review'),
-      customContent: `${t('config_model:replace_invalid_confirm_warning')}\n\n${selectedModels
-        .map(({ key, label, model }) => `${t(label)}：${model?.name ?? replacement[key]}`)
-        .join('\n')}`,
+      customContent: t('config_model:replace_invalid_confirm_warning'),
       confirmText: t('config_model:replace_invalid_execute'),
       onConfirm: () => runAsync({ replacement })
     })();
@@ -99,7 +92,6 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
     >
       {step === 'select' && (
         <Box>
-          <Text mb={5}>{t('config_model:replace_invalid_scope')}</Text>
           {modelFields.map(({ key, type, label }) => (
             <Box key={key} mb={4}>
               <Text mb={1} fontWeight="medium">
@@ -112,16 +104,8 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
                   setReplacement((current) => ({ ...current, [key]: modelId }))
                 }
               />
-              {type === ModelTypeEnum.tts && (
-                <Text mt={1} color="myGray.600" fontSize="sm">
-                  {t('config_model:replace_invalid_tts_note')}
-                </Text>
-              )}
             </Box>
           ))}
-          <Text color="myGray.600" fontSize="sm">
-            {t('config_model:replace_invalid_vision_note')}
-          </Text>
         </Box>
       )}
 
