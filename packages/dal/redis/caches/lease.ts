@@ -4,7 +4,8 @@ import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '..
 import { RedisInvalidArgumentError, RedisInvalidResponseError } from '../runtime/errors';
 import { parsePositiveInteger } from '../runtime/validation';
 
-const logger = getLogger(['redis', 'lease', 'concurrency']);
+const leaseLogger = getLogger(['redis', 'lease']);
+const concurrencyLogger = getLogger(['redis', 'lease', 'concurrency']);
 
 const LEASE_KEY_PREFIX = 'lock:';
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -337,7 +338,7 @@ export class LeaseCache {
             Number.isSafeInteger(queuedCount) &&
             queuedCount > 0
           ) {
-            logger.info('Redis concurrency lease queued', { key, label, queuedCount });
+            concurrencyLogger.info('Redis concurrency lease queued', { key, label, queuedCount });
           }
         }
         assertWaiting();
@@ -454,12 +455,12 @@ export class LeaseCache {
         }
 
         markLeaseLost();
-        logger.warn('Redis lease renew failed because token no longer matches', {
+        leaseLogger.warn('Redis lease renew failed because token no longer matches', {
           key: leaseKey,
           label
         });
       } catch (error) {
-        logger.warn('Redis lease renew failed', { key: leaseKey, label, error });
+        leaseLogger.warn('Redis lease renew failed', { key: leaseKey, label, error });
         if (Date.now() >= leaseExpiresAt) {
           markLeaseLost();
         }
@@ -485,7 +486,7 @@ export class LeaseCache {
         void renew()
           .finally(() => scheduleRenewal())
           .catch((error) => {
-            logger.warn('Redis lease renewal scheduler failed', {
+            leaseLogger.warn('Redis lease renewal scheduler failed', {
               key: leaseKey,
               label,
               error
@@ -504,7 +505,7 @@ export class LeaseCache {
         ttlMs: parsedTtlMs
       });
     } catch (error) {
-      logger.warn('Redis lease acquire failed', { key: leaseKey, label, error });
+      leaseLogger.warn('Redis lease acquire failed', { key: leaseKey, label, error });
       throw new RedisLeaseAcquireError({ key: leaseKey, label, cause: error });
     }
 
@@ -532,7 +533,7 @@ export class LeaseCache {
       try {
         await operations.releaseLease({ key: leaseKey, token });
       } catch (error) {
-        logger.warn('Redis lease release failed', { key: leaseKey, label, error });
+        leaseLogger.warn('Redis lease release failed', { key: leaseKey, label, error });
       }
     }
   }

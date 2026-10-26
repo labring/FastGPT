@@ -9,8 +9,18 @@ import {
 } from '@fastgpt/dal/redis/caches';
 import { RedisLeaseWaitTimeoutError } from '@fastgpt/dal/redis/caches/lease';
 
-const { logger } = vi.hoisted(() => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
-vi.mock('@fastgpt-sdk/otel/logger', () => ({ getLogger: () => logger }));
+const { leaseLogger, concurrencyLogger } = vi.hoisted(() => ({
+  leaseLogger: { warn: vi.fn(), info: vi.fn() },
+  concurrencyLogger: { warn: vi.fn(), info: vi.fn() }
+}));
+vi.mock('@fastgpt-sdk/otel/logger', () => ({
+  getLogger: (categories: string[]) => {
+    const category = categories.join('.');
+    if (category === 'redis.lease') return leaseLogger;
+    if (category === 'redis.lease.concurrency') return concurrencyLogger;
+    throw new Error(`Unexpected logger category: ${category}`);
+  }
+}));
 
 const key = asRedisLogicalKey('lock:agent-sandbox:init:sandbox-1');
 
@@ -102,10 +112,11 @@ describe('LeaseCache', () => {
     resolveWork();
 
     await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(leaseLogger.warn).toHaveBeenCalledWith(
       'Redis lease renew failed because token no longer matches',
       expect.objectContaining({ key, label: 'agent-sandbox-init' })
     );
+    expect(concurrencyLogger.warn).not.toHaveBeenCalled();
   });
 
   it('marks the lease lost when renewal errors continue past its expiry', async () => {
@@ -133,7 +144,7 @@ describe('LeaseCache', () => {
       resolveWork();
 
       await expect(resultPromise).rejects.toBeInstanceOf(RedisLeaseLostError);
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(leaseLogger.warn).toHaveBeenCalledWith(
         'Redis lease renew failed',
         expect.objectContaining({ key, label: 'agent-sandbox-init', error: expect.any(Error) })
       );
@@ -339,7 +350,7 @@ describe('LeaseCache', () => {
       resolveWork();
 
       await expect(resultPromise).resolves.toBe('ok');
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(leaseLogger.warn).toHaveBeenCalledWith(
         'Redis lease renew failed',
         expect.objectContaining({ key, label: 'agent-sandbox-init' })
       );
@@ -377,7 +388,7 @@ describe('LeaseCache', () => {
         fn: async () => 'ok'
       })
     ).resolves.toBe('ok');
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(leaseLogger.warn).toHaveBeenCalledWith(
       'Redis lease release failed',
       expect.objectContaining({ key, label: 'agent-sandbox-init' })
     );
@@ -508,7 +519,7 @@ describe('LeaseCache.withConcurrency', () => {
     expect(redis.renewLease).toHaveBeenCalled();
     expect(held.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
-    expect(logger.info.mock.calls.map(([, metadata]) => metadata.queuedCount)).toEqual([
+    expect(concurrencyLogger.info.mock.calls.map(([, metadata]) => metadata.queuedCount)).toEqual([
       1, 2, 3, 4
     ]);
     expect(waiting.size).toBe(0);
@@ -555,12 +566,13 @@ describe('LeaseCache.withConcurrency', () => {
     expect(redis.acquireLease).toHaveBeenCalledTimes(3);
     expect(vi.getTimerCount()).toBe(0);
     expect(isRedisLeaseError(new RedisLeaseWaitTimeoutError(options))).toBe(true);
-    expect(logger.info).toHaveBeenCalledOnce();
-    expect(logger.info).toHaveBeenCalledWith('Redis concurrency lease queued', {
+    expect(concurrencyLogger.info).toHaveBeenCalledOnce();
+    expect(concurrencyLogger.info).toHaveBeenCalledWith('Redis concurrency lease queued', {
       key: options.key,
       label: options.label,
       queuedCount: 1
     });
+    expect(leaseLogger.info).not.toHaveBeenCalled();
     expect(waiting.size).toBe(0);
   });
 
@@ -784,7 +796,7 @@ describe('LeaseCache.withConcurrency', () => {
       })
     ).resolves.toBe('unlimited');
     expect(redis.evalScript).not.toHaveBeenCalled();
-    expect(logger.info).not.toHaveBeenCalled();
+    expect(concurrencyLogger.info).not.toHaveBeenCalled();
 
     redis.acquireLease.mockResolvedValue(false);
     let concurrency = 1;
@@ -851,7 +863,7 @@ describe('LeaseCache.withConcurrency', () => {
     await expect(result).resolves.toBe('done');
     expect(redis.acquireLease).toHaveBeenCalledTimes(2);
     expect(fn).toHaveBeenCalledOnce();
-    expect(logger.info).not.toHaveBeenCalled();
+    expect(concurrencyLogger.info).not.toHaveBeenCalled();
     expect(held.size).toBe(0);
     expect(waiting.size).toBe(0);
   });

@@ -3,8 +3,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { LeaseCache, RedisLeaseLostError } from '@fastgpt/dal/redis/caches/lease';
 
-const { logger } = vi.hoisted(() => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
-vi.mock('@fastgpt-sdk/otel/logger', () => ({ getLogger: () => logger }));
+const { leaseLogger, concurrencyLogger } = vi.hoisted(() => ({
+  leaseLogger: { warn: vi.fn(), info: vi.fn() },
+  concurrencyLogger: { warn: vi.fn(), info: vi.fn() }
+}));
+vi.mock('@fastgpt-sdk/otel/logger', () => ({
+  getLogger: (categories: string[]) => {
+    const category = categories.join('.');
+    if (category === 'redis.lease') return leaseLogger;
+    if (category === 'redis.lease.concurrency') return concurrencyLogger;
+    throw new Error(`Unexpected logger category: ${category}`);
+  }
+}));
 
 const redisUrl = process.env.REDIS_INTEGRATION_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
@@ -58,7 +68,7 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
 
   it('logs shared queue counts once per waiter and removes cancelled or expired entries', async () => {
     const key = keys[3];
-    logger.info.mockClear();
+    concurrencyLogger.info.mockClear();
     const caches = [new LeaseCache({ redis: adapter }), new LeaseCache({ redis: adapter })];
     let finish!: () => void;
     let started!: () => void;
@@ -90,11 +100,11 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
     try {
       await vi.waitFor(async () => {
         expect(await client.zcard(queueKey(key))).toBe(2);
-        expect(logger.info).toHaveBeenCalledTimes(2);
+        expect(concurrencyLogger.info).toHaveBeenCalledTimes(2);
       });
-      expect(logger.info.mock.calls.map(([, metadata]) => metadata.queuedCount).sort()).toEqual([
-        1, 2
-      ]);
+      expect(
+        concurrencyLogger.info.mock.calls.map(([, metadata]) => metadata.queuedCount).sort()
+      ).toEqual([1, 2]);
       expect(await client.zcard(physicalKey(key))).toBe(1);
       expect(work).not.toHaveBeenCalled();
     } finally {
