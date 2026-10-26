@@ -9,11 +9,14 @@ import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import { parseToolArgs } from '../../../../ai/utils';
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
 import { runAgentCall } from '../../../../ai/llm/agentCall';
 
+/**
+ * 编排工具执行与模型调用；普通调用和交互续跑的 SSE 均透传完整工具结果。
+ * 客户端接收的 response 与交给模型的 response 保持一致，不额外截取头尾。
+ */
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunToolResponse> => {
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
@@ -224,7 +227,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
               toolName: '',
               toolAvatar: '',
               params: '',
-              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+              response: stringToolResponse
             }
           }
         });
@@ -275,7 +278,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<RunTo
               toolName: '',
               toolAvatar: '',
               params: '',
-              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
+              response: stringToolResponse
             }
           }
         });

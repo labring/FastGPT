@@ -1,6 +1,3 @@
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -16,25 +13,6 @@ export const updateToolInputValue = ({
     ...input,
     value: params[input.key] ?? input.value
   }));
-};
-
-export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
-  return response.map((item) => {
-    if (item.type === ChatItemValueTypeEnum.tool) {
-      const formatTools = item.tools?.map((tool) => {
-        return {
-          ...tool,
-          response: sliceStrStartEnd(tool.response, 500, 500)
-        };
-      });
-      return {
-        ...item,
-        tools: formatTools
-      };
-    }
-
-    return item;
-  });
 };
 
 export const formatToolResponse = (toolResponses: any) => {

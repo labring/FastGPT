@@ -22,7 +22,6 @@ import { formatModelChars2Points } from '../../../../../support/wallet/usage/uti
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt } from './constants';
-import { filterToolResponseToPreview } from './utils';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -36,6 +35,10 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
+/**
+ * 执行工具调用节点，保留模型可见的完整工具结果供聊天记录持久化。
+ * 成功、交互暂停及模型报错后的已完成工具响应均不再进行展示裁剪。
+ */
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   let {
     node: { nodeId, name, isEntry, version, inputs },
@@ -222,11 +225,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     // concat tool usage
     const totalPointsUsage = modelUsage + toolTotalPoints;
 
-    // Preview assistant responses
-    const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
-
     if (error) {
-      return getNodeErrResponse({
+      const errorResponse = getNodeErrResponse({
         error,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           totalPoints: totalPointsUsage,
@@ -263,11 +263,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           ]
         })
       });
+      return {
+        ...errorResponse,
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? assistantResponses
+          : undefined
+      };
     }
 
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: previewAssistantResponses
+        [NodeOutputKeyEnum.answerText]: assistantResponses
           .filter((item) => item.text?.content)
           .map((item) => item.text?.content || '')
           .join('')
@@ -277,7 +283,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         0
       ),
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-        ? previewAssistantResponses
+        ? assistantResponses
         : undefined,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         // 展示的积分消耗

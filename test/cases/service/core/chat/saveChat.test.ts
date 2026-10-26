@@ -110,6 +110,45 @@ describe('saveChat', () => {
   });
 
   describe('saveChat function', () => {
+    it('stores a complete tool response longer than 10000 characters', async () => {
+      // 测试连接会清空数据库，先完成集合和索引重建，避免与首次事务写入竞争。
+      await Promise.all([MongoChat.createIndexes(), MongoChatItem.createIndexes()]);
+      const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                type: ChatItemValueTypeEnum.tool,
+                tools: [
+                  {
+                    id: 'call_search',
+                    toolName: 'Search',
+                    toolAvatar: '',
+                    functionName: 'search',
+                    params: '{}',
+                    response
+                  }
+                ]
+              }
+            ],
+            responseData: []
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await saveChat(props);
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+
+      expect(aiItem?.value).toEqual(props.aiContent.value);
+    });
+
     it('should skip saving if chatId is empty', async () => {
       const props = createMockProps(
         { chatId: '' },
