@@ -47,7 +47,7 @@ export const UpdateConfigBodySchema = z.object({
       systemEnv: SystemEnvSchema.pick({
         agentSandboxMax: true,
         agentSandboxMaxPerTeam: true,
-        pgVectorRecallConcurrency: true
+        vectorRecallConcurrency: true
       }).meta({ example: {}, description: '服务端系统运行配置' }),
       subPlans: SubPlanInputSchema.optional().meta({
         example: {},

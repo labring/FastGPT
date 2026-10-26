@@ -19,7 +19,7 @@ export const SERVICE_LOCAL_HOST =
 
 /**
  * 校验并加载文件、数据库或热更新配置到全局状态。
- * 配额和 PG 检索并发必须在加载时校验；其他历史配置保留校验失败时的兼容行为。
+ * 配额和向量检索并发必须在加载时校验；其他历史配置保留校验失败时的兼容行为。
  */
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   if (!config?.feConfigs || !config?.systemEnv) return;
@@ -28,7 +28,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   const runtimeLimits = SystemEnvSchema.pick({
     agentSandboxMax: true,
     agentSandboxMaxPerTeam: true,
-    pgVectorRecallConcurrency: true
+    vectorRecallConcurrency: true
   })
     .strip()
     .parse(config.systemEnv);

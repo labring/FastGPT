@@ -197,7 +197,7 @@ export type ConfigFormType = {
       vlmMaxProcess: number;
       hnswEfSearch: number;
       hnswMaxScanTuples: number;
-      pgVectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['pgVectorRecallConcurrency'];
+      vectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['vectorRecallConcurrency'];
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
       ip_whitelist?: string;

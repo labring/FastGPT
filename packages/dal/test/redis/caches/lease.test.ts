@@ -418,7 +418,7 @@ describe('LeaseCache.withConcurrency', () => {
     evalScript: vi.fn()
   } as any;
   const options = {
-    key: 'vector:pg:recall',
+    key: 'vector:recall',
     label: 'vector-recall',
     concurrency: 2,
     ttlMs: 100,

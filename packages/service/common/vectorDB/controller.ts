@@ -12,7 +12,8 @@ import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
-import { isRedisLeaseError } from '@fastgpt/dal/redis/caches/lease';
+import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import { isProVersion } from '../system/constants';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -31,16 +32,36 @@ const getVectorObj = (): VectorControllerType => {
 };
 
 const Vector = getVectorObj();
+const recallLease = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
+// 覆盖单次召回的连接与查询等待；执行中的任务持续续租，失败重试重新获取额度。
+const RECALL_LEASE_TTL_MS = 180_000;
 const teamVectorCountCache = new TeamVectorCountCache({
   logger: getLogger(LogCategories.INFRA.REDIS)
 });
 
 export const initVectorStore = Vector.init;
-/** 重试向量库瞬时故障；lease 等待超时、失效或 Redis 故障直接上抛，避免重复排队加重过载。 */
+/**
+ * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
+ * 商业版未配置或开源版直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
+ */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
+  const getConcurrency = () =>
+    isProVersion() ? (global.systemEnv?.vectorRecallConcurrency ?? 0) : 0;
+  const recall = () => {
+    if (getConcurrency() === 0) return Vector.embRecall(props);
+
+    return recallLease.withConcurrency({
+      key: 'vector:recall',
+      label: 'vector-recall',
+      concurrency: getConcurrency,
+      ttlMs: RECALL_LEASE_TTL_MS,
+      fn: () => Vector.embRecall(props)
+    });
+  };
+
   const result = await retryFn(async () => {
     try {
-      return { success: true as const, value: await Vector.embRecall(props) };
+      return { success: true as const, value: await recall() };
     } catch (error) {
       if (isRedisLeaseError(error)) return { success: false as const, error };
       throw error;

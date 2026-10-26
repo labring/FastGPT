@@ -201,8 +201,8 @@ export const Settings = () => {
       </FormItem>
       {isPlus && (
         <FormItem
-          title="PG 向量检索最大并发数"
-          description="默认 0 表示不限制；大于 0 时所有服务实例共享该并发上限。仅对 PostgreSQL 向量检索生效。"
+          title="向量检索最大并发数"
+          description="默认 0 表示不限制；大于 0 时所有服务实例共享该并发上限。对所有向量库的召回生效。"
         >
           <MyNumberInput
             min={0}
@@ -211,9 +211,9 @@ export const Settings = () => {
             precision={0}
             bg="white"
             inputFieldProps={{ bg: 'white' }}
-            value={watch('systemEnv.pgVectorRecallConcurrency') ?? 0}
+            value={watch('systemEnv.vectorRecallConcurrency') ?? 0}
             onChange={(value) =>
-              setValue('systemEnv.pgVectorRecallConcurrency', typeof value === 'number' ? value : 0)
+              setValue('systemEnv.vectorRecallConcurrency', typeof value === 'number' ? value : 0)
             }
           />
         </FormItem>
