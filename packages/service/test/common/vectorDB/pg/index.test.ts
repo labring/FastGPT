@@ -97,6 +97,12 @@ describe('PgVectorCtrl.embRecall', () => {
           );
         }, 90_000);
       };
+      // 分组查询使用绑定参数，模拟扩展协议完成发送后再等待服务端超时。
+      connection.parse = () => {};
+      connection.bind = () => {};
+      connection.describe = () => {};
+      connection.execute = () => {};
+      connection.sync = connection.query;
       global.pgClient = { query: client.query.bind(client) } as unknown as Pool;
       vi.mocked(PgClient.query).mockImplementation(actualPgClient.query.bind(actualPgClient));
       let settled = false;
@@ -141,8 +147,10 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
   });
 
   it('keeps settings and query in one transaction and returns FP32 scores', async () => {
-    poolClient.query.mockImplementation(async (sql: string) => ({
-      rows: sql.includes('grouped_results') ? [{ id: '7', collection_id: 'file', score: -0.9 }] : []
+    poolClient.query.mockImplementation(async (sql: string | { text: string }) => ({
+      rows: (typeof sql === 'string' ? sql : sql.text).includes('grouped_results')
+        ? [{ id: '7', collection_id: 'file', score: -0.9 }]
+        : []
     }));
     expect(await new PgVectorCtrl().embRecall(props)).toEqual({
       results: [{ id: '7', collectionId: 'file', score: 0.9 }]
@@ -150,15 +158,17 @@ describe('PgVectorCtrl.embRecall indexed transactions', () => {
     expect(poolClient.query.mock.calls.map(([sql]) => sql)[0]).toBe('BEGIN');
     expect(poolClient.query.mock.calls.at(-1)?.[0]).toBe('COMMIT');
     expect(poolClient.query.mock.calls[1][1]).toEqual(['100', '100000']);
+    expect(poolClient.query.mock.calls[2][0]).toMatchObject({ query_timeout: 120_000 });
     expect(poolClient.release).toHaveBeenCalledExactlyOnceWith(false);
   });
 
   it.each([false, true])(
     'rolls back failed queries; destroys connection if rollback fails=%s',
     async (rollbackFails) => {
-      poolClient.query.mockImplementation(async (sql: string) => {
-        if (sql.includes('grouped_results')) throw new Error('query failed');
-        if (sql === 'ROLLBACK' && rollbackFails) throw new Error('connection lost');
+      poolClient.query.mockImplementation(async (sql: string | { text: string }) => {
+        const text = typeof sql === 'string' ? sql : sql.text;
+        if (text.includes('grouped_results')) throw new Error('query failed');
+        if (text === 'ROLLBACK' && rollbackFails) throw new Error('connection lost');
         return { rows: [] };
       });
       await expect(new PgVectorCtrl().embRecall(props)).rejects.toThrow('query failed');
