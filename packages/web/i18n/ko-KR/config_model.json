@@ -159,8 +159,6 @@
   "model.normalization_tip": "Embedding API가 벡터 값을 정규화하지 않는 경우 이 옵션을 활성화하면 FastGPT가 정규화합니다.\n정규화되지 않은 API는 벡터 검색 점수가 1보다 크게 나타날 수 있습니다.",
   "model.params_config_section": "파라미터 설정",
   "model.price_config_section": "가격 설정",
-  "model.price_tier_max_required": "마지막 단계를 제외한 모든 단계에는 상한값이 필요합니다",
-  "model.price_tier_price_required": "각 가격 단계에는 최소한 입력 또는 출력 가격이 필요합니다",
   "model.price_tier_range_invalid": "유효하지 않은 가격 단계 범위입니다. 상한값이 계속 증가하도록 해주세요",
   "model.reasoning": "모델이 사고 과정을 지원함",
   "model.reasoning_tip": "예를 들어 Deepseek-reasoner는 사고 과정을 출력할 수 있습니다.",

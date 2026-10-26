@@ -159,8 +159,6 @@
   "model.normalization_tip": "Turn this on if the Embedding API does not normalize vector values. FastGPT will normalize them automatically.\nAn unnormalized API may return vector search scores greater than 1.",
   "model.params_config_section": "Parameter config",
   "model.price_config_section": "Price config",
-  "model.price_tier_max_required": "All tiers except the last one need an upper bound",
-  "model.price_tier_price_required": "Each price tier needs at least an input or output price",
   "model.price_tier_range_invalid": "Invalid price tier range. Please make sure upper bounds keep increasing",
   "model.reasoning": "Model supports thinking",
   "model.reasoning_tip": "For example, Deepseek-reasoner can output the thinking process.",

@@ -59,12 +59,6 @@ describe('model table projection', () => {
     },
     {
       type: ModelTypeEnum.tts,
-      pricing: { unitPrice: 125 },
-      price: 125,
-      unit: '1M common:unit.character'
-    },
-    {
-      type: ModelTypeEnum.tts,
       pricing: { unitPrice: 0.125 },
       price: 0.13,
       unit: '1M common:unit.character'

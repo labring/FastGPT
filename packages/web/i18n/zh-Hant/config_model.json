@@ -159,8 +159,6 @@
   "model.normalization_tip": "如果 Embedding API 未對向量值進行歸一化，可以啟用該開關，系統會進行歸一化處理。\n未歸一化的 API，表現為向量檢索得分會大於 1。",
   "model.params_config_section": "參數配置",
   "model.price_config_section": "價格配置",
-  "model.price_tier_max_required": "除了最後一個梯度，其餘都需要填寫區間上限",
-  "model.price_tier_price_required": "每個價格梯度都需要至少設定一個輸入價或輸出價",
   "model.price_tier_range_invalid": "價格梯度區間設定有誤，請確認區間上限有持續遞增",
   "model.reasoning": "模型支援思考",
   "model.reasoning_tip": "例如 Deepseek-reasoner，可以輸出思考過程。",

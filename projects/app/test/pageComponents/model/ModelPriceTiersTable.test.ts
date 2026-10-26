@@ -1,73 +1,27 @@
 import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import React, { act } from 'react';
 import { JSDOM } from 'jsdom';
-import { createRoot, type Root } from 'react-dom/client';
-import { ChakraProvider } from '@chakra-ui/react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   AIModelDocumentDataType,
   ModelPriceTierType
 } from '@fastgpt/global/core/ai/model/schema';
-import ModelPriceTiersTable from '@/pageComponents/model/ModelPriceTiersTable';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-// 样式由真实浏览器验证；这里保留原生 DOM 和真实 react-hook-form，专门验证编辑与保存行为。
-vi.mock('@chakra-ui/react', () => {
-  const element = (tag: string) =>
-    React.forwardRef<HTMLElement, Record<string, any>>(function Element(
-      { children, ...props },
-      ref
-    ) {
-      return React.createElement(
-        tag,
-        {
-          ref,
-          type: props.type ?? (tag === 'button' ? 'button' : undefined),
-          name: props.name,
-          value: props.value,
-          step: props.step,
-          min: props.min,
-          placeholder: props.placeholder,
-          disabled: props.disabled ?? props.isDisabled,
-          'aria-label': props['aria-label'],
-          onInput: props.onChange,
-          onBlur: props.onBlur,
-          onClick: props.onClick,
-          style: { minWidth: props.minW, width: props.w }
-        },
-        children
-      );
-    });
-  return {
-    ChakraProvider: ({ children }: React.PropsWithChildren) => children,
-    ...Object.fromEntries(
-      Object.entries({
-        Box: 'div',
-        Flex: 'div',
-        Input: 'input',
-        Button: 'button',
-        Table: 'table',
-        Thead: 'thead',
-        Tbody: 'tbody',
-        Tr: 'tr',
-        Th: 'th',
-        Td: 'td'
-      }).map(([name, tag]) => [name, element(tag)])
-    )
-  };
-});
-
 let dom: JSDOM;
 let container: HTMLDivElement;
-let root: Root;
+let root: import('react-dom/client').Root;
+let createRoot: typeof import('react-dom/client').createRoot;
+let ChakraProvider: typeof import('@chakra-ui/react').ChakraProvider;
+let ModelPriceTiersTable: typeof import('@/pageComponents/model/ModelPriceTiersTable').default;
 let form: UseFormReturn<AIModelDocumentDataType>;
 const save = vi.fn();
 
 const Fixture = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
   const fixtureForm = useForm<AIModelDocumentDataType>({
-    defaultValues: { pricing: { tiers: tiers } }
+    defaultValues: { pricing: { tiers } }
   });
   React.useEffect(() => {
     form = fixtureForm;
@@ -84,19 +38,25 @@ const Fixture = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
   );
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
+beforeAll(async () => {
   dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true });
-  vi.stubGlobal('window', dom.window);
-  vi.stubGlobal('document', dom.window.document);
-  vi.stubGlobal('FileList', dom.window.FileList);
-  vi.stubGlobal('Blob', dom.window.Blob);
-  vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
-  vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
-  vi.stubGlobal('Event', dom.window.Event);
-  vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle);
-  vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame);
-  vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame);
+  for (const key of [
+    'window',
+    'document',
+    'Element',
+    'Node',
+    'HTMLElement',
+    'HTMLInputElement',
+    'FileList',
+    'Blob',
+    'Event',
+    'FocusEvent',
+    'getComputedStyle',
+    'requestAnimationFrame',
+    'cancelAnimationFrame'
+  ] as const) {
+    vi.stubGlobal(key, key === 'window' ? dom.window : dom.window[key]);
+  }
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal(
     'ResizeObserver',
@@ -112,6 +72,14 @@ beforeEach(() => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn()
   }));
+  // DOM 建立后再加载 ReactDOM，保留真实的输入、失焦和补档焦点行为。
+  ({ createRoot } = await import('react-dom/client'));
+  ({ ChakraProvider } = await import('@chakra-ui/react'));
+  ({ default: ModelPriceTiersTable } = await import('@/pageComponents/model/ModelPriceTiersTable'));
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -120,6 +88,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+});
+afterAll(() => {
   dom.window.close();
   vi.unstubAllGlobals();
 });
@@ -134,10 +104,11 @@ const input = (key: string, row = 0) =>
 const fill = async (key: string, value: string) => {
   const field = input(key);
   await act(async () => {
+    field.focus();
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, value);
     field.dispatchEvent(new Event('input', { bubbles: true }));
-    field.dispatchEvent(new dom.window.FocusEvent('focusout', { bubbles: true }));
   });
+  await act(async () => field.blur());
 };
 
 describe('ModelPriceTiersTable', () => {
@@ -153,6 +124,21 @@ describe('ModelPriceTiersTable', () => {
       inputPrice: 0.13,
       outputPrice: 1.01
     });
+
+    // 单档清空保留空行；重新填写上限后补一档，再清空原档应只留下新的空行。
+    const clear = () => container.querySelector<HTMLButtonElement>('tbody button')!;
+    await act(async () => clear().click());
+    expect(form.getValues('pricing.tiers')).toEqual([
+      { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }
+    ]);
+    await fill('maxInputTokens', '0.0041');
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    expect(form.getValues('pricing.tiers')).toHaveLength(2);
+    expect(input('maxInputTokens').value).toBe('0.0041');
+    await act(async () => clear().click());
+    expect(form.getValues('pricing.tiers')).toEqual([
+      { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }
+    ]);
   });
 
   it('keeps cleared prices optional and explicit zero prices numeric', async () => {

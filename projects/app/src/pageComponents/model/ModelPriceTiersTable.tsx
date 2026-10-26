@@ -271,32 +271,6 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   min: lowerBound,
                   setValueAs: getOptionalNumber
                 });
-                const inputPriceRegister = register(`pricing.tiers.${index}.inputPrice`, {
-                  setValueAs: (value) => {
-                    const price = getOptionalNumber(value);
-                    return price === undefined ? price : roundModelPrice(price);
-                  },
-                  onBlur: (event) => {
-                    const price = getOptionalNumber(event.target.value);
-                    if (price === undefined) return;
-                    setValue(`pricing.tiers.${index}.inputPrice`, roundModelPrice(price), {
-                      shouldDirty: true
-                    });
-                  }
-                });
-                const outputPriceRegister = register(`pricing.tiers.${index}.outputPrice`, {
-                  setValueAs: (value) => {
-                    const price = getOptionalNumber(value);
-                    return price === undefined ? price : roundModelPrice(price);
-                  },
-                  onBlur: (event) => {
-                    const price = getOptionalNumber(event.target.value);
-                    if (price === undefined) return;
-                    setValue(`pricing.tiers.${index}.outputPrice`, roundModelPrice(price), {
-                      shouldDirty: true
-                    });
-                  }
-                });
 
                 return (
                   <Tr key={field.id}>
@@ -358,48 +332,44 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                         />
                       </Flex>
                     </Td>
-                    <Td
-                      px={0}
-                      py="2.5px"
-                      borderTop="1px solid"
-                      borderRight="1px solid"
-                      borderColor="myGray.200"
-                    >
-                      <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
-                        <Input
-                          type="number"
-                          step={0.01}
-                          {...inputPriceRegister}
-                          {...PriceInputStyles}
-                          {...BorderlessPriceInputStyles}
-                          {...FixedPriceValueInputStyles}
-                        />
-                        <Box flexShrink={0} color="myGray.500">
-                          {t('common:support.wallet.subscription.point')}
-                        </Box>
-                      </Flex>
-                    </Td>
-                    <Td
-                      px={0}
-                      py="2.5px"
-                      borderTop="1px solid"
-                      borderRight="1px solid"
-                      borderColor="myGray.200"
-                    >
-                      <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
-                        <Input
-                          type="number"
-                          step={0.01}
-                          {...outputPriceRegister}
-                          {...PriceInputStyles}
-                          {...BorderlessPriceInputStyles}
-                          {...FixedPriceValueInputStyles}
-                        />
-                        <Box flexShrink={0} color="myGray.500">
-                          {t('common:support.wallet.subscription.point')}
-                        </Box>
-                      </Flex>
-                    </Td>
+                    {(['inputPrice', 'outputPrice'] as const).map((priceKey) => {
+                      const name = `pricing.tiers.${index}.${priceKey}` as const;
+                      const priceRegister = register(name, {
+                        setValueAs: (value) => {
+                          const price = getOptionalNumber(value);
+                          return price === undefined ? price : roundModelPrice(price);
+                        },
+                        onBlur: (event) => {
+                          const price = getOptionalNumber(event.target.value);
+                          if (price === undefined) return;
+                          setValue(name, roundModelPrice(price), { shouldDirty: true });
+                        }
+                      });
+                      return (
+                        <Td
+                          key={priceKey}
+                          px={0}
+                          py="2.5px"
+                          borderTop="1px solid"
+                          borderRight="1px solid"
+                          borderColor="myGray.200"
+                        >
+                          <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
+                            <Input
+                              type="number"
+                              step={0.01}
+                              {...priceRegister}
+                              {...PriceInputStyles}
+                              {...BorderlessPriceInputStyles}
+                              {...FixedPriceValueInputStyles}
+                            />
+                            <Box flexShrink={0} color="myGray.500">
+                              {t('common:support.wallet.subscription.point')}
+                            </Box>
+                          </Flex>
+                        </Td>
+                      );
+                    })}
                     <Td
                       w="64px"
                       maxW="64px"

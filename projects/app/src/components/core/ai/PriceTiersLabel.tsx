@@ -6,9 +6,6 @@ import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
-const getTierLowerBoundLabel = (tiers: ModelPriceTierType[], index: number) =>
-  String(tiers[index - 1]?.maxInputTokens ?? 0);
-
 const formatPriceSummary = ({
   tiers,
   priceKey,
@@ -186,7 +183,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                         color={'myGray.700'}
                         whiteSpace={'nowrap'}
                       >
-                        <Box>{`${getTierLowerBoundLabel(tiers, index)} < `}</Box>
+                        <Box>{`${tiers[index - 1]?.maxInputTokens ?? 0} < `}</Box>
                         <Box>{t('common:Input')}</Box>
                         {typeof tier.maxInputTokens === 'number' ? (
                           <Box>{` <= ${tier.maxInputTokens}`}</Box>
@@ -260,7 +257,7 @@ export const PriceLine = React.memo(
     fontSize?: string;
     color?: string;
   }) => {
-    const tiers = config.pricing?.tiers || [];
+    const tiers = config.pricing?.tiers ?? [];
     if (tiers.length === 0) return <Box>-</Box>;
     return (
       <TierTooltip tiers={tiers} color={color}>
@@ -271,7 +268,7 @@ export const PriceLine = React.memo(
 );
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
-  const tiers = config.pricing?.tiers || [];
+  const tiers = config.pricing?.tiers ?? [];
   if (tiers.length === 0) return <Box>-</Box>;
   return (
     <TierTooltip tiers={tiers} color={'myGray.700'}>

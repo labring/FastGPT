@@ -1,4 +1,4 @@
-import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
+import { ModelPricingSchema, type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,6 +23,17 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 100),
   countPromptTokens: vi.fn(async () => 100)
 }));
+
+const createModel = (): LLMModelDataType => ({
+  modelId: '507f1f77bcf86cd799439012',
+  model: 'million-test',
+  name: 'Million test',
+  provider: 'openai',
+  type: ModelTypeEnum.llm,
+  scope: ModelScopeEnum.system,
+  pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
+  config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
+});
 
 const teamId = '507f1f77bcf86cd799439011';
 let server: Server;
@@ -94,34 +105,24 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
   it.each([false, true])(
     'persists million-unit prices, parses usage and bills once, stream=%s',
     async (stream) => {
-      const pricing = {
-        pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] }
-      };
-      const [saved] = await MongoAIModel.create([
-        {
-          model: 'million-test',
-          name: 'Million test',
-          provider: 'openai',
-          type: ModelTypeEnum.llm,
-          scope: ModelScopeEnum.system,
-          config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 },
-          ...pricing
-        }
-      ]);
+      const { modelId: _modelId, ...document } = createModel();
+      const saved = await MongoAIModel.create(document);
       const stored = await MongoAIModel.findById(saved._id).lean();
-      const model = formatDbModelToRuntimeModel(stored!, { fallbackProvider: true });
-      if (model.type !== ModelTypeEnum.llm) throw new Error('Expected LLM model');
+      const storedModel = formatDbModelToRuntimeModel(stored!, { fallbackProvider: true });
+      if (storedModel.type !== ModelTypeEnum.llm) throw new Error('Expected LLM model');
       const writes = vi.spyOn(recordController, 'saveLLMRequestRecord');
       const result = await createLLMResponse({
         teamId,
-        body: { model, stream, messages: [{ role: 'user', content: 'hello' }] }
+        body: { model: storedModel, stream, messages: [{ role: 'user', content: 'hello' }] }
       });
       expect(result.usage).toEqual({
         inputTokens: 10000,
         outputTokens: 2000,
         usedUserOpenAIKey: false
       });
-      expect(formatModelChars2Points({ model, ...result.usage }).totalPoints).toBeCloseTo(28);
+      expect(
+        formatModelChars2Points({ model: storedModel, ...result.usage }).totalPoints
+      ).toBeCloseTo(28);
       await Promise.all(writes.mock.results.map(({ value }) => value));
       const record = await MongoLLMRequestRecord.findOne({ requestId: result.requestId }).lean();
       expect(record?.response.usage).toMatchObject({ inputTokens: 10000, outputTokens: 2000 });
@@ -134,16 +135,7 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
 
   it('accumulates continuation usage and bills million-unit prices', async () => {
     continuation = true;
-    const model = {
-      modelId: '507f1f77bcf86cd799439012',
-      model: 'legacy',
-      name: 'Legacy',
-      provider: 'openai',
-      type: ModelTypeEnum.llm as const,
-      scope: ModelScopeEnum.system,
-      pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
-      config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
-    };
+    const model = createModel();
     const result = await createLLMResponse({
       teamId,
       saveLLMResponseRecord: false,
@@ -162,24 +154,15 @@ describe('million-unit pricing with real HTTP/SSE and MongoDB', () => {
 it.each([false, true])(
   'bills an Agent request with million-unit prices and respects user keys: %s',
   async (userKey) => {
-    const client = localClient;
     vi.mocked(getAIApi).mockReturnValue({
-      ...client,
+      ...localClient,
       requestMeta: {
-        ...client.requestMeta,
+        ...localClient.requestMeta,
         usedUserOpenAIKey: userKey
       }
     });
-    const model = {
-      modelId: '507f1f77bcf86cd799439012',
-      model: 'agent',
-      name: 'Agent',
-      provider: 'openai',
-      type: ModelTypeEnum.llm as const,
-      scope: ModelScopeEnum.system,
-      pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
-      config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
-    };
+
+    const model = createModel();
     const onLLMRequestEnd = vi.fn();
     const writes = vi.spyOn(recordController, 'saveLLMRequestRecord');
     const result = await runAgentLoop({

@@ -42,45 +42,40 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
 export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] =>
   sanitizeModelPriceTiers(config?.pricing?.tiers);
 
-/** 统一单价精度，不改变阶梯边界或未配置状态。 */
-export const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
-  ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
-  ...(pricing.tiers === undefined
-    ? {}
-    : {
-        tiers: sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
-          ...tier,
-          inputPrice: roundModelPrice(tier.inputPrice),
-          outputPrice: roundModelPrice(tier.outputPrice)
-        }))
-      })
-});
-
 /** 编辑读取时统一单价显示精度；不写库，运行期费用仍读取数据库原值。 */
 export const normalizeModelPricingForRead = (
   model: AIModelDocumentDataType
-): AIModelDocumentDataType => {
-  if (model.pricing === undefined) return model;
-  const schema = model.type === ModelTypeEnum.llm ? LLMModelPricingSchema : UnitModelPricingSchema;
-  return {
-    ...model,
-    pricing: schema.parse(roundModelPricing(model.pricing))
-  } as AIModelDocumentDataType;
-};
+): AIModelDocumentDataType =>
+  model.pricing === undefined ? model : normalizeModelPricingForSave(model);
 
 /** 保存仅规范新 pricing；空配置和显式零价均保留，不读取历史根字段。 */
 export const normalizeModelPricingForSave = (
   model: AIModelDocumentDataType
 ): AIModelDocumentDataType => {
+  /** 统一单价精度，不改变阶梯边界或未配置状态。 */
+  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
+    ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
+    ...(pricing.tiers === undefined
+      ? {}
+      : {
+          tiers: sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
+            ...tier,
+            inputPrice: roundModelPrice(tier.inputPrice),
+            outputPrice: roundModelPrice(tier.outputPrice)
+          }))
+        })
+  });
+
   // 新版保存即使清空价格也持久化空对象，后台迁移不能再用历史价格覆盖此编辑。
+  const pricing = roundModelPricing(model.pricing ?? {});
   if (model.type === ModelTypeEnum.llm)
     return {
       ...model,
-      pricing: LLMModelPricingSchema.parse(roundModelPricing(model.pricing ?? {}))
+      pricing: LLMModelPricingSchema.parse(pricing)
     };
   return {
     ...model,
-    pricing: UnitModelPricingSchema.parse(roundModelPricing(model.pricing ?? {}))
+    pricing: UnitModelPricingSchema.parse(pricing)
   };
 };
 

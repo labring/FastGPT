@@ -21,42 +21,38 @@ vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
     React.createElement('div', null, children, label && React.createElement('aside', null, label))
 }));
 
-const render = (config: PriceType) => {
+const render = (config: PriceType, priceKey?: 'input' | 'output') => {
+  const props = { config, unitLabel: 'points / M Tokens' };
   const markup = renderToStaticMarkup(
     React.createElement(
       ChakraProvider,
       null,
-      React.createElement(PriceTiersLabel, {
-        config,
-        unitLabel: 'points / M Tokens'
-      })
+      priceKey
+        ? React.createElement(PriceLine, { ...props, priceKey })
+        : React.createElement(PriceTiersLabel, props)
     )
   );
   const dom = new JSDOM(markup);
   dom.window.document.querySelectorAll('style').forEach((style) => style.remove());
-  const text = dom.window.document.body.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = dom.window.document.querySelectorAll('tbody tr');
   const values = Array.from(rows, (row) =>
     Array.from(row.querySelectorAll('td'), (cell) => cell.textContent)
   );
-  const tooltips = Array.from(dom.window.document.querySelectorAll('aside'), (tip) => ({
-    trigger: tip.previousElementSibling?.textContent?.replace(/\s+/g, ' ') ?? '',
-    text: tip.textContent?.replace(/\s+/g, ' ') ?? ''
-  }));
+  const tooltipCount = dom.window.document.querySelectorAll('aside').length;
   dom.window.document.querySelectorAll('aside').forEach((tip) => tip.remove());
   const visibleText = dom.window.document.body.textContent?.replace(/\s+/g, ' ') ?? '';
   dom.window.close();
-  return { text, visibleText, values, tooltips };
+  return { visibleText, values, tooltipCount };
 };
 
 describe('PriceTiersLabel', () => {
   it('shows million-unit input and output rates with at most two decimals', () => {
-    const { visibleText, tooltips } = render({
+    const { visibleText, tooltipCount } = render({
       pricing: { tiers: [{ inputPrice: 1.005, outputPrice: 2.675 }] }
     });
     expect(visibleText).toContain('Input: 1.01 points/M Tokens');
     expect(visibleText).toContain('Output: 2.68 points/M Tokens');
-    expect(tooltips).toEqual([]);
+    expect(tooltipCount).toBe(0);
   });
 
   it('rounds tier summaries and details without truncating input boundaries', () => {
@@ -80,19 +76,13 @@ describe('PriceTiersLabel', () => {
   it('retains the existing empty-price display', () => {
     expect(render({}).visibleText).toBe('-');
   });
+});
 
-  it('formats the single-line model settings price through the same rounding', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(
-        ChakraProvider,
-        null,
-        React.createElement(PriceLine, {
-          config: { pricing: { tiers: [{ inputPrice: 1, outputPrice: 1.005 }] } },
-          priceKey: 'output',
-          unitLabel: 'points / M Tokens'
-        })
-      )
-    );
-    expect(html).toContain('1.01 points/M Tokens');
+describe('PriceLine', () => {
+  it('uses the same price formatting and empty-price display for model settings', () => {
+    expect(
+      render({ pricing: { tiers: [{ inputPrice: 1, outputPrice: 1.005 }] } }, 'output').visibleText
+    ).toBe('Output: 1.01 points/M Tokens');
+    expect(render({}, 'output').visibleText).toBe('-');
   });
 });

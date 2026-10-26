@@ -136,7 +136,8 @@ describe('registerNodeInstrumentation', () => {
     );
     const registration = registerNodeInstrumentation();
     try {
-      await vi.waitFor(() => expect(mocks.watch).toHaveBeenCalledTimes(1));
+      // 真实启动包含动态导入和 Mongo I/O，不使用 waitFor 默认的一秒期限。
+      await vi.waitFor(() => expect(mocks.watch).toHaveBeenCalledTimes(1), { timeout: 10000 });
       expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).not.toBe(
         SystemMigrationStatusEnum.succeeded
       );

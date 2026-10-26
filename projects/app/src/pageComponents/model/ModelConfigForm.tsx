@@ -485,32 +485,9 @@ const ModelConfigForm = ({
         }
 
         const tiers = getRuntimeResolvedPriceTiers(data);
-
-        let currentLowerExclusiveBound = 0;
-
-        for (let index = 0; index < tiers.length; index++) {
-          const tier = tiers[index];
-          const hasPrice =
-            typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
-
-          if (!hasPrice) {
-            return Promise.reject(t('config_model:model.price_tier_price_required'));
-          }
-
-          if (index < tiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
-            return Promise.reject(t('config_model:model.price_tier_max_required'));
-          }
-
-          if (
-            typeof tier.maxInputTokens === 'number' &&
-            tier.maxInputTokens <= currentLowerExclusiveBound
-          ) {
-            return Promise.reject(t('config_model:model.price_tier_range_invalid'));
-          }
-
-          if (typeof tier.maxInputTokens === 'number') {
-            currentLowerExclusiveBound = tier.maxInputTokens;
-          }
+        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求首档上限大于零。
+        if (tiers[0]?.maxInputTokens === 0) {
+          return Promise.reject(t('config_model:model.price_tier_range_invalid'));
         }
 
         data.pricing = { tiers };
