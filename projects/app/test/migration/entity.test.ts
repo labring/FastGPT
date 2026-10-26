@@ -57,6 +57,52 @@ describe('system migration entity lease', () => {
     expect(claims.filter(Boolean)).toHaveLength(1);
   });
 
+  it('renews and reclaims failed startup work only with explicit opt-in and an expired owner lease', async () => {
+    const migrationId = '20261026_entity_startup';
+    const runId = randomUUID();
+    await ensureMigrationStates([{ id: migrationId }]);
+    await claimMigrationLease({ migrationId, runId, leaseDurationMs: 90_000 });
+    await saveMigrationCheckpoint({ migrationId, runId, checkpoint: { cursor: 1 } });
+    await failMigration({ migrationId, runId, error: { message: 'startup failed' } });
+    expect(
+      await renewMigrationLease({ migrationId, runId, leaseDurationMs: 90_000, allowFailed: true })
+    ).toBe(true);
+    expect(
+      await claimMigrationLease({
+        migrationId,
+        runId: 'too-early',
+        leaseDurationMs: 90_000,
+        allowFailed: true
+      })
+    ).toBeNull();
+    await MongoSystemMigrationState.updateOne(
+      { _id: migrationId },
+      { $set: { leaseExpireAt: new Date(0) } }
+    );
+    expect(
+      await renewMigrationLease({ migrationId, runId, leaseDurationMs: 90_000, allowFailed: true })
+    ).toBe(false);
+    expect(
+      await claimMigrationLease({ migrationId, runId: 'not-opted-in', leaseDurationMs: 90_000 })
+    ).toBeNull();
+    const claims = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        claimMigrationLease({
+          migrationId,
+          runId: randomUUID(),
+          leaseDurationMs: 90_000,
+          allowFailed: true
+        })
+      )
+    );
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(claims.find(Boolean)).toMatchObject({
+      status: SystemMigrationStatusEnum.running,
+      checkpoint: { cursor: 1 },
+      lastError: { message: 'startup failed' }
+    });
+  });
+
   describe('claimMigrationLease', () => {
     it.each([1, 90_123])('adds %i milliseconds to Mongo server time', async (leaseDurationMs) => {
       const migrationId = '20260903_entity_claim_server_time';

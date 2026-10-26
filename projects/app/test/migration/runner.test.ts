@@ -102,6 +102,249 @@ describe('system migration runner', () => {
     );
   });
 
+  it('prioritizes startup dependencies across nodes before enabling any background queue', async () => {
+    const order: string[] = [];
+    const recorded = (id: string) =>
+      createMigration(`20260903_runner_${id}`, async () => {
+        order.push(id);
+      });
+    const ordinary = recorded('unrelated');
+    const prerequisite = { ...recorded('startup_base'), independent: true };
+    const middle = { ...recorded('startup_middle'), dependsOn: [prerequisite.id] };
+    const root = { ...recorded('startup_root'), blockStartup: true, dependsOn: [middle.id] };
+    const independent = { ...recorded('background_independent'), independent: true };
+    const migrations = [ordinary, prerequisite, middle, root, independent];
+    const runners = ['owner', 'follower'].map((runnerId) =>
+      createSystemMigrationRunner({ migrations, runnerId, logger })
+    );
+    try {
+      expect(() => runners[0].startBackgroundMigrations()).toThrow(
+        'Startup migrations have not completed'
+      );
+      await Promise.all(runners.map((runner) => runner.start()));
+      await runners[0].start();
+      await Promise.all(runners.map((runner) => runner.tick()));
+      expect(order).toEqual(['startup_base', 'startup_middle', 'startup_root']);
+      expect(redisCacheAdapter.evalScript).not.toHaveBeenCalled();
+      await Promise.all(runners.map((runner) => runner.waitForBlockingMigrations()));
+      await runners[0].waitForBlockingMigrations();
+      expect(order).toHaveLength(3);
+      runners.forEach((runner) => runner.startBackgroundMigrations());
+      runners[0].startBackgroundMigrations();
+      await Promise.all(runners.map((runner) => runner.tick()));
+      expect(order.slice(3).sort()).toEqual(['background_independent', 'unrelated']);
+      expect(concurrencyTokens.size).toBe(0);
+      // 成功状态属于整个集群：后续节点启动不会重放已完成的启动写入。
+      const laterNode = createSystemMigrationRunner({ migrations, logger });
+      runners.push(laterNode);
+      await laterNode.start();
+      await laterNode.waitForBlockingMigrations();
+      laterNode.startBackgroundMigrations();
+      await laterNode.tick();
+      expect(order).toHaveLength(5);
+    } finally {
+      runners.forEach((runner) => runner.stop());
+      await Promise.all(runners.map((runner) => runner.tick()));
+    }
+  });
+
+  it.each(['throw', 'reported', 'complete'] as const)(
+    'holds a failed startup lease until the owner stops (%s)',
+    async (failureType) => {
+      let executions = 0;
+      const blocked = createMigration('20260903_runner_failed_startup', async (context) => {
+        executions += 1;
+        if (executions === 1) {
+          await context.saveCheckpoint({ cursor: 1 });
+          if (failureType === 'complete') return;
+          if (failureType === 'reported') await context.fail({ message: 'startup source invalid' });
+          throw new Error('startup source invalid');
+        }
+        expect(await context.getCheckpoint(z.object({ cursor: z.number() }))).toEqual({
+          cursor: 1
+        });
+      });
+      blocked.blockStartup = true;
+      const backgroundRun = vi.fn(async () => undefined);
+      const migrations = [blocked, createMigration('20260903_runner_after_startup', backgroundRun)];
+      const timing = {
+        scanIntervalMs: 10,
+        heartbeatIntervalMs: 10,
+        leaseDurationMs: 2_000,
+        blockingPollIntervalMs: 10
+      };
+      const owner = createSystemMigrationRunner({
+        migrations,
+        runnerId: 'startup-owner',
+        timing,
+        logger,
+        store:
+          failureType === 'complete'
+            ? createStore({
+                complete: vi
+                  .fn(completeMigration)
+                  .mockRejectedValueOnce(new Error('success state commit failed'))
+              })
+            : undefined
+      });
+      const follower = createSystemMigrationRunner({
+        migrations,
+        runnerId: 'startup-follower',
+        timing,
+        logger
+      });
+      const restarted = createSystemMigrationRunner({
+        migrations,
+        runnerId: 'startup-restarted',
+        timing,
+        logger
+      });
+      let ownerWait: Promise<PromiseSettledResult<void>[]> | undefined;
+      let followerWait: Promise<void> | undefined;
+      try {
+        await owner.start();
+        ownerWait = Promise.allSettled([owner.waitForBlockingMigrations()]);
+        await vi.waitFor(async () => {
+          expect(await MongoSystemMigrationState.findById(blocked.id).lean()).toMatchObject({
+            status: SystemMigrationStatusEnum.failed
+          });
+        });
+        const initialFailure = await MongoSystemMigrationState.findById(blocked.id).lean();
+        await follower.start();
+        await follower.tick();
+        followerWait = follower.waitForBlockingMigrations();
+        void followerWait.catch(() => undefined);
+        // failed 后仍有 heartbeat，其他节点不能接管或重放，后台也不能提前开始。
+        await vi.waitFor(async () => {
+          const state = await MongoSystemMigrationState.findById(blocked.id).lean();
+          expect(state!.heartbeatAt!.getTime()).toBeGreaterThan(
+            initialFailure!.heartbeatAt!.getTime()
+          );
+        });
+        expect(executions).toBe(1);
+        expect(backgroundRun).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledWith(
+          'Startup migration failed; App nodes remain not ready',
+          expect.objectContaining({ requiredAction: expect.stringContaining('restart') })
+        );
+        if (failureType === 'reported') {
+          expect(logger.error).toHaveBeenCalledWith(
+            'System migration reported a failure',
+            expect.objectContaining({ message: 'startup source invalid' })
+          );
+        }
+
+        owner.stop();
+        await owner.tick();
+        expect((await ownerWait)[0].status).toBe('rejected');
+        // 精确模拟失败 owner 停止后的租约到期，不依赖真实等待两秒。
+        await MongoSystemMigrationState.updateOne(
+          { _id: blocked.id },
+          { $set: { leaseExpireAt: new Date(0) } }
+        );
+        await restarted.start();
+        await Promise.all([followerWait, restarted.waitForBlockingMigrations()]);
+        expect(executions).toBe(2);
+        expect(backgroundRun).not.toHaveBeenCalled();
+        restarted.startBackgroundMigrations();
+        await restarted.tick();
+        expect(backgroundRun).toHaveBeenCalledTimes(1);
+        expect(await MongoSystemMigrationState.findById(blocked.id).lean()).toMatchObject({
+          status: SystemMigrationStatusEnum.succeeded,
+          checkpoint: { cursor: 1 }
+        });
+      } finally {
+        [owner, follower, restarted].forEach((runner) => runner.stop());
+        await Promise.all([owner, follower, restarted].map((runner) => runner.tick()));
+        await ownerWait;
+        await followerWait?.catch(() => undefined);
+      }
+    }
+  );
+
+  it('keeps startup closed through transient read errors, missing states and observed failure', async () => {
+    vi.useFakeTimers();
+    const migration = {
+      ...createMigration('20260903_runner_startup_poll', async () => undefined),
+      blockStartup: true
+    };
+    const now = new Date();
+    const getStates = vi
+      .fn<SystemMigrationRunnerStore['getStates']>()
+      .mockRejectedValueOnce(new Error('Mongo unavailable'))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          _id: migration.id,
+          status: SystemMigrationStatusEnum.failed,
+          createdAt: now,
+          updatedAt: now
+        }
+      ])
+      .mockResolvedValue([
+        {
+          _id: migration.id,
+          status: SystemMigrationStatusEnum.succeeded,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]);
+    const runner = createSystemMigrationRunner({
+      migrations: [migration],
+      timing: { blockingPollIntervalMs: 10 },
+      store: createStore({ getStates }),
+      logger
+    });
+    let ready = false;
+    try {
+      const waiting = runner.waitForBlockingMigrations().then(() => {
+        ready = true;
+      });
+      await vi.advanceTimersByTimeAsync(20);
+      expect(ready).toBe(false);
+      await vi.advanceTimersByTimeAsync(10);
+      await waiting;
+      expect(ready).toBe(true);
+      expect(getStates).toHaveBeenCalledTimes(4);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Unable to read startup migration states; App remains not ready',
+        expect.anything()
+      );
+    } finally {
+      runner.stop();
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not release startup when the runner stops during its final state read', async () => {
+    const migration = {
+      ...createMigration('20260903_runner_stopped_startup', async () => undefined),
+      blockStartup: true
+    };
+    const now = new Date();
+    const getStates = vi.fn(async () => {
+      runner.stop();
+      return [
+        {
+          _id: migration.id,
+          status: SystemMigrationStatusEnum.succeeded,
+          createdAt: now,
+          updatedAt: now
+        }
+      ];
+    });
+    const runner = createSystemMigrationRunner({
+      migrations: [migration],
+      store: createStore({ getStates }),
+      logger
+    });
+    await expect(runner.waitForBlockingMigrations()).rejects.toThrow('Runner stopped');
+    // 已停止的等待也不能重新读取并放行，即使共享任务已经成功。
+    await expect(runner.waitForBlockingMigrations()).rejects.toThrow('Runner stopped');
+    expect(getStates).toHaveBeenCalledTimes(1);
+    expect(() => runner.startBackgroundMigrations()).toThrow('have not completed');
+  });
+
   it.each([
     { method: 'saveCheckpoint', throws: false },
     { method: 'saveCheckpoint', throws: true },

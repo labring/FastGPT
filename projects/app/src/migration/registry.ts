@@ -79,7 +79,9 @@ export type SystemMigration = {
   resultKey: string;
   /** 按执行顺序声明全部阶段；展示文案不写入 Mongo。 */
   progressSteps: readonly SystemMigrationProgressStep[];
-  /** 独立任务自动竞争集群共享的 3 个并发名额，不受普通队列顺序约束；不能配置 manual、delay 或依赖。 */
+  /** 业务启动前必须成功；其完整依赖链一并提升到启动阶段。 */
+  blockStartup?: boolean;
+  /** 启动链完成后竞争集群共享的 3 个名额；与 blockStartup、manual、delay、非空依赖互斥。 */
   independent?: boolean;
   /**
    * 是否在获得租约后延迟执行。
@@ -122,6 +124,7 @@ export const systemMigrations = [
   },
   {
     id: '20260903_migrate_legacy_system_models',
+    blockStartup: true,
     version: '4.17.0',
     nameKey: i18nT('system_migration:migrations.20260903_migrate_legacy_system_models.name'),
     descriptionKey: i18nT(
@@ -579,6 +582,10 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
 
     if (migration.manual && migration.delay) {
       throw new Error(`Manual system migration ${migration.id} cannot be delayed`);
+    }
+
+    if (migration.blockStartup && migration.independent) {
+      throw new Error(`Blocking system migration ${migration.id} cannot run independently`);
     }
 
     if (

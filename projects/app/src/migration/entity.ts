@@ -155,18 +155,21 @@ export const getMigrationServerTime = async (): Promise<Date> => {
 };
 
 /**
- * 原子获取 pending 或 lease 已过期的 running 任务；failed 必须先由管理员重置。
+ * 原子获取 pending 或 lease 已过期的 running 任务。
+ * 启动链允许在失败持有者重启、lease 过期后接管 failed；后台任务仍需管理员重置。
  * 所有 lease 时间由 MongoDB 的 $$NOW 生成，避免多节点宿主机时钟偏差。
  */
 export const claimMigrationLease = async (
   {
     migrationId,
     runId,
-    leaseDurationMs
+    leaseDurationMs,
+    allowFailed = false
   }: {
     migrationId: string;
     runId: string;
     leaseDurationMs: number;
+    allowFailed?: boolean;
   },
   session?: ClientSession
 ): Promise<SystemMigrationStateSchemaType | null> => {
@@ -177,7 +180,9 @@ export const claimMigrationLease = async (
       $or: [
         { status: SystemMigrationStatusEnum.pending },
         {
-          status: SystemMigrationStatusEnum.running,
+          status: allowFailed
+            ? { $in: [SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed] }
+            : SystemMigrationStatusEnum.running,
           $expr: {
             $lte: [{ $ifNull: ['$leaseExpireAt', new Date(0)] }, '$$NOW']
           }
@@ -206,19 +211,26 @@ export const claimMigrationLease = async (
   ).lean();
 };
 
-/** 仅允许当前仍有效的 runId 续租，过期执行器不能把自己重新续活。 */
+/** 仅当前有效 runId 可续租；启动链失败后继续持有 lease，直到 owner 停止或失权。 */
 export const renewMigrationLease = async (
   {
     migrationId,
     runId,
-    leaseDurationMs
+    leaseDurationMs,
+    allowFailed = false
   }: ActiveRunProps & {
     leaseDurationMs: number;
+    allowFailed?: boolean;
   },
   session?: ClientSession
 ): Promise<boolean> => {
   const result = await MongoSystemMigrationState.updateOne(
-    getActiveRunFilter({ migrationId, runId }),
+    {
+      ...getActiveRunFilter({ migrationId, runId }),
+      ...(allowFailed
+        ? { status: { $in: [SystemMigrationStatusEnum.running, SystemMigrationStatusEnum.failed] } }
+        : {})
+    },
     [
       {
         $set: {
@@ -398,7 +410,7 @@ export const completeMigration = async (
 
 /**
  * 当前 lease 持有者写入最近错误；只有显式携带 failedRecords 才替换错误快照。
- * failed 不允许续租或自动接管，只能由管理员修复后重置。
+ * 后台 failed 等待管理员重试；启动链 failed 由 Runner 持续续租，修复后重启恢复。
  */
 export const failMigration = async (
   {

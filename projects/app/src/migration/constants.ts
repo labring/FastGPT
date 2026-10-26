@@ -23,5 +23,6 @@ export const systemMigrationDefaultTiming = {
   scanIntervalMs: 60_000,
   heartbeatIntervalMs: 15_000,
   leaseDurationMs: 90_000,
+  blockingPollIntervalMs: 2_000,
   delayMs: systemMigrationDelayMs
 } as const;

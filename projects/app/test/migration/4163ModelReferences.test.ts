@@ -144,6 +144,8 @@ describe('4163 dataset model reference migration', () => {
     });
     try {
       await runner.start();
+      await runner.waitForBlockingMigrations();
+      runner.startBackgroundMigrations();
       await runner.tick();
       const states = await getMigrationStates(migrations.map(({ id }) => id));
       expect(states).toHaveLength(5);

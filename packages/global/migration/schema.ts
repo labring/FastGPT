@@ -137,6 +137,9 @@ export const SystemMigrationListItemSchema = z.object({
   order: z.number().int().positive().meta({ description: '注册表顺序；独立任务不受此顺序约束' }),
   nameKey: z.string().meta({ description: '脚本名称的 i18n key' }),
   descriptionKey: z.string().meta({ description: '脚本描述的 i18n key' }),
+  blockStartup: z
+    .boolean()
+    .meta({ description: '是否属于启动阻塞任务或其前置依赖', example: false }),
   independent: z
     .boolean()
     .meta({ description: '是否独立调度，不受普通队列顺序约束', example: false }),

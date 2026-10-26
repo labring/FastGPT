@@ -18,6 +18,7 @@ import {
 import { systemMigrations, type SystemMigration } from './registry';
 import type { SystemMigrationStateSchemaType } from './mongoSchema';
 import { SystemMigrationDependencyError } from './error';
+import { createSystemMigrationPlan } from './plan';
 
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
@@ -46,6 +47,9 @@ const assertMigrationDependenciesComplete = async (
 export const getSystemMigrationList = async (
   migrations: readonly SystemMigration[] = systemMigrations
 ): Promise<SystemMigrationListResponse> => {
+  const startupIds = new Set(
+    createSystemMigrationPlan(migrations).startupMigrations.map((migration) => migration.id)
+  );
   const migrationIds = migrations.map((migration) => migration.id);
   let states = await getMigrationStates(migrationIds);
   const existingIds = new Set(states.map((state) => state._id));
@@ -77,7 +81,8 @@ export const getSystemMigrationList = async (
         order: index + 1,
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
-        independent: migration.independent ?? false,
+        blockStartup: startupIds.has(migration.id),
+        independent: !startupIds.has(migration.id) && migration.independent === true,
         status:
           state?.status ??
           (migration.manual
@@ -145,6 +150,13 @@ export const retrySystemMigration = async (
 ): Promise<void> => {
   const migration = migrations.find((item) => item.id === migrationId);
   if (!migration) throw new UserError('System migration not found');
+  if (
+    createSystemMigrationPlan(migrations).startupMigrations.some((item) => item.id === migrationId)
+  ) {
+    throw new UserError(
+      'Startup migration must be recovered by restarting the lease-owning App node'
+    );
+  }
   await assertMigrationDependenciesComplete(migration, migrations);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。

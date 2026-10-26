@@ -46,6 +46,9 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.at(-3)).toMatchObject({
       dependsOn: ['20261008_migrate_chunk_training']
     });
+    expect(
+      systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
+    ).toEqual(['20260903_migrate_legacy_system_models']);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 

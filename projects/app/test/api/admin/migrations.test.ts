@@ -32,6 +32,9 @@ import failedRecordsHandler from '@/pages/api/admin/migrations/failedRecords';
 import listHandler from '@/pages/api/admin/migrations/list';
 import retryHandler from '@/pages/api/admin/migrations/retry';
 
+// NextAPI 已替换为原 handler；这些路径返回业务值，不读取 response。
+const unusedResponse = {} as Parameters<typeof listHandler>[1];
+
 describe('system migration admin APIs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,6 +51,7 @@ describe('system migration admin APIs', () => {
           order: 1,
           nameKey: 'system_migration:migrations.api.name',
           descriptionKey: 'system_migration:migrations.api.description',
+          blockStartup: false,
           independent: true,
           status: SystemMigrationStatusEnum.running,
           progress: [],
@@ -58,14 +62,16 @@ describe('system migration admin APIs', () => {
     mocks.getSystemMigrationList.mockResolvedValue(response);
     const req = { headers: {} } as any;
 
-    await expect(listHandler(req)).resolves.toEqual(response);
+    await expect(listHandler(req, unusedResponse)).resolves.toEqual(response);
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
   });
 
   it('does not reach the service when root authentication fails', async () => {
     mocks.authSystemAdmin.mockRejectedValue(new Error('unAuthorization'));
 
-    await expect(listHandler({ headers: {} } as any)).rejects.toThrow('unAuthorization');
+    await expect(listHandler({ headers: {} } as any, unusedResponse)).rejects.toThrow(
+      'unAuthorization'
+    );
     expect(mocks.getSystemMigrationList).not.toHaveBeenCalled();
   });
 
@@ -75,7 +81,7 @@ describe('system migration admin APIs', () => {
       body: { migrationId: '20260903_non_blocking' }
     } as any;
 
-    await expect(retryHandler(req)).resolves.toBeUndefined();
+    await expect(retryHandler(req, unusedResponse)).resolves.toBeUndefined();
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
     expect(mocks.retrySystemMigration).toHaveBeenCalledWith('20260903_non_blocking');
     expect(mocks.wakeSystemMigrationRunner).toHaveBeenCalledTimes(1);
@@ -83,21 +89,21 @@ describe('system migration admin APIs', () => {
 
   it('starts a manual task and wakes the runner only after a successful enqueue', async () => {
     const req = { headers: {}, body: { migrationId: '20261008_manual' } } as any;
-    await startHandler(req);
+    await startHandler(req, unusedResponse);
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
     expect(mocks.startManualSystemMigration).toHaveBeenCalledWith(req.body.migrationId);
     expect(mocks.wakeSystemMigrationRunner).toHaveBeenCalledTimes(1);
     mocks.wakeSystemMigrationRunner.mockClear();
     mocks.startManualSystemMigration.mockRejectedValueOnce(new Error('already started'));
-    await expect(startHandler(req)).rejects.toThrow('already started');
+    await expect(startHandler(req, unusedResponse)).rejects.toThrow('already started');
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
   });
 
   it('rejects unauthenticated and malformed manual requests before enqueueing', async () => {
-    await expect(startHandler({ headers: {}, body: {} } as any)).rejects.toThrow();
+    await expect(startHandler({ headers: {}, body: {} } as any, unusedResponse)).rejects.toThrow();
     mocks.authSystemAdmin.mockRejectedValueOnce(new Error('unAuthorization'));
     await expect(
-      startHandler({ headers: {}, body: { migrationId: '20261008_manual' } } as any)
+      startHandler({ headers: {}, body: { migrationId: '20261008_manual' } } as any, unusedResponse)
     ).rejects.toThrow('unAuthorization');
     expect(mocks.startManualSystemMigration).not.toHaveBeenCalled();
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
@@ -117,7 +123,7 @@ describe('system migration admin APIs', () => {
       query: { migrationId: response.migrationId, stageKey: response.stageKey }
     } as any;
 
-    await expect(failedRecordsHandler(req)).resolves.toEqual(response);
+    await expect(failedRecordsHandler(req, unusedResponse)).resolves.toEqual(response);
     expect(mocks.authSystemAdmin).toHaveBeenCalledWith({ req });
     expect(mocks.getSystemMigrationFailedRecords).toHaveBeenCalledWith(
       response.migrationId,
@@ -126,7 +132,7 @@ describe('system migration admin APIs', () => {
   });
 
   it('rejects an invalid retry body before calling the service', async () => {
-    await expect(retryHandler({ headers: {}, body: {} } as any)).rejects.toThrow();
+    await expect(retryHandler({ headers: {}, body: {} } as any, unusedResponse)).rejects.toThrow();
     expect(mocks.retrySystemMigration).not.toHaveBeenCalled();
     expect(mocks.wakeSystemMigrationRunner).not.toHaveBeenCalled();
   });

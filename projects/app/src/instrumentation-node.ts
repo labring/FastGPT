@@ -23,7 +23,7 @@ export async function registerNodeInstrumentation() {
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
-      { loadSystemModels },
+      { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
@@ -39,6 +39,7 @@ export async function registerNodeInstrumentation() {
       { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
+      { startBusinessAfterSystemMigrations },
       { appEnv }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
@@ -67,6 +68,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
+      import('@/migration/startup'),
       import('@/env')
     ]);
 
@@ -230,7 +232,7 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    await runInitializationStep({
+    const migrationRunner = await runInitializationStep({
       step: 'start-system-migration-runner',
       action: () => startSystemMigrationRunner(),
       logger,
@@ -238,8 +240,8 @@ export async function registerNodeInstrumentation() {
     });
 
     /**
-     * 迁移已交给后台 Runner，业务消费者和 HTTP readiness 不再等待任务完成。
-     * 迁移脚本必须兼容业务流量和滚动升级期间的并发读写。
+     * 启动链成功且本节点模型缓存刷新后才启动业务消费者。
+     * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
       await Promise.all([
@@ -278,7 +280,18 @@ export async function registerNodeInstrumentation() {
       logger.info('System business services are ready');
     };
 
-    await startBusinessServices();
+    await startBusinessAfterSystemMigrations({
+      runner: migrationRunner,
+      reloadModels: () =>
+        runInitializationStep({
+          step: 'reload-system-models-after-startup-migrations',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => loadInstalledModels(),
+          logger,
+          getErrText
+        }),
+      startBusinessServices
+    });
 
     logger.info('System initialized successfully');
   } catch (error) {

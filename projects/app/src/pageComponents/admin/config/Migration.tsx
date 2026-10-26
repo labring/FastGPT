@@ -228,6 +228,9 @@ const MigrationCard = ({
             {migration.independent && (
               <Badge colorScheme={'purple'}>{t('system_migration:mode_independent')}</Badge>
             )}
+            {migration.blockStartup && (
+              <Badge colorScheme={'orange'}>{t('system_migration:mode_startup')}</Badge>
+            )}
           </Flex>
           <Box mt={2} fontSize={'sm'} color={'myGray.500'} lineHeight={1.7}>
             {t(migration.descriptionKey as any)}
@@ -244,7 +247,7 @@ const MigrationCard = ({
             {t('system_migration:start_migration')}
           </Button>
         )}
-        {migration.status === SystemMigrationStatusEnum.failed && (
+        {!migration.blockStartup && migration.status === SystemMigrationStatusEnum.failed && (
           <Button
             flexShrink={0}
             size={'sm'}
@@ -267,7 +270,11 @@ const MigrationCard = ({
           fontSize={'sm'}
           color={'yellow.700'}
         >
-          {t('system_migration:failure_allows_following')}
+          {t(
+            migration.blockStartup
+              ? 'system_migration:failure_blocks_startup'
+              : 'system_migration:failure_allows_following'
+          )}
         </Box>
       )}
 

@@ -37,6 +37,37 @@ const migrations: readonly SystemMigration[] = [
 ];
 
 describe('system migration service', () => {
+  it('reports promoted prerequisites as startup work and refuses online retry for the whole chain', async () => {
+    const prerequisite = migrations[1];
+    const blocker = {
+      ...migrations[0],
+      id: '20261026_service_blocker',
+      blockStartup: true,
+      dependsOn: [prerequisite.id]
+    };
+    const registry = [migrations[0], prerequisite, blocker];
+    const list = await getSystemMigrationList(registry);
+    expect(
+      list.migrations.map(({ blockStartup, independent }) => ({ blockStartup, independent }))
+    ).toEqual([
+      { blockStartup: false, independent: false },
+      { blockStartup: true, independent: false },
+      { blockStartup: true, independent: false }
+    ]);
+    for (const migration of [prerequisite, blocker]) {
+      await MongoSystemMigrationState.updateOne(
+        { _id: migration.id },
+        { $set: { status: SystemMigrationStatusEnum.failed } }
+      );
+      await expect(retrySystemMigration(migration.id, registry)).rejects.toThrow(
+        'restarting the lease-owning App node'
+      );
+      expect((await MongoSystemMigrationState.findById(migration.id))?.status).toBe(
+        SystemMigrationStatusEnum.failed
+      );
+    }
+  });
+
   it('merges static ordered metadata with generic Mongo state', async () => {
     await MongoSystemMigrationState.create({
       _id: migrations[0].id,

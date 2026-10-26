@@ -8,12 +8,12 @@ FastGPT 当前存在多个需要管理员手动调用 API 或运行脚本的数�
 
 ## 2. 目标
 
-1. 使用静态数组声明任务，普通任务按数组顺序串行执行，独立任务分别自动执行。
-2. 所有迁移在后台运行，不参与 HTTP readiness 或 worker、cron、watch 的启动判定。
+1. 使用静态数组声明任务，启动链优先执行，后台普通任务按数组顺序串行执行，独立任务分别自动执行。
+2. 阻塞任务及其完整前置依赖成功后，每个节点重载模型缓存，再放行 App readiness、worker、cron、watch 和后台迁移。
 3. Mongo 状态表记录每个任务最新状态，错误表逐条保存坏数据；任务通过统一 Context 报告进度、checkpoint、错误和最终结果。
 4. 每个任务使用独立的 Mongo lease 与 runId fencing，多个节点竞争时只允许一个有效持有者。
-5. 进程退出后接管过期的 running；明确 failed 不自动重试，由管理员修复后重置。
-6. 独立任务不等待普通队列的执行、延迟或失败，也不等待其他独立任务。
+5. 进程退出后接管过期 running；启动链 failed 保持续租，修复并重启 lease owner 后过期接管；后台 failed 由管理员修复后重置。
+6. 启动链完成后，独立任务不等待后台普通队列的执行、延迟或失败，也不等待其他独立任务。
 7. 保持幂等、滚动升级兼容、错误数据边界和局部测试约束。
 
 ## 3. 非目标
@@ -29,13 +29,13 @@ FastGPT 当前存在多个需要管理员手动调用 API 或运行脚本的数�
 
 - **Migration / 升级任务**：一次可独立标识、可重复执行的数据或结构升级函数。
 - **Registry / 注册表**：按执行顺序排列的静态任务数组。
-- **Runner / 执行器**：扫描注册表、竞争 lease、构造上下文并调度普通队列与独立任务的后台组件。
+- **Runner / 执行器**：扫描注册表、竞争 lease、构造上下文并调度启动链、后台普通队列与独立任务的执行组件。
 - **Lease / 租约**：MongoDB 中有时限的任务执行权。
 - **Run ID**：每次成功获取 lease 后生成的随机 ID，同时作为执行批次标识和 fencing token。
 - **Runner ID**：标识一次 Node.js 进程实例，仅用于排查，例如 `hostname:pid:bootId`。
 - **Checkpoint**：分批任务决定异常恢复位置的可选持久化游标，不等同于面向管理员的进度文案；全量重跑任务不需要 checkpoint。
 - **Independent / 独立任务**：不依赖任何其他迁移，先竞争集群共享的并发名额，再竞争自身 lease；最多 3 个独立任务并发。
-- **Dependency / 前置依赖**：dependsOn 声明任务执行前必须成功的全部前置；失败只阻止依赖它的任务，失败任务本身仍只能由管理员重试。
+- **Dependency / 前置依赖**：dependsOn 声明任务执行前必须成功的全部前置；后台失败只阻止依赖它的任务；启动链依赖失败则保持所有新版本 App 节点未就绪。
 
 ## 5. 第一性原理与核心约束
 
@@ -43,16 +43,17 @@ FastGPT 当前存在多个需要管理员手动调用 API 或运行脚本的数�
 
 | 模式 | 配置 | 行为 |
 | --- | --- | --- |
-| 普通自动 | 默认 | 进入普通串行队列 |
+| 启动阻塞 | `blockStartup: true` | 自身与完整依赖闭包优先串行执行，成功前不放行业务和后台迁移 |
+| 普通自动 | 默认 | 启动链完成后进入后台普通串行队列 |
 | 延迟自动 | `delay: true` | 取得 lease 后等待配置时长，期间占用普通队列 |
 | 手动触发 | `manual: true` | `waiting` 被管理员改为 `pending` 后进入普通队列 |
-| 独立执行 | `independent: true` | 每个任务单独调度，不受普通队列顺序约束；集群共享 3 个并发名额 |
+| 独立执行 | `independent: true` | 启动链完成后单独调度，不受普通队列顺序约束；集群共享 3 个并发名额 |
 
-所有队列均在后台运行。普通队列按注册顺序执行，跳过 waiting、已成功任务和前置尚未成功的任务。失败项始终跳过，不暂停其他无依赖任务；通过 dependsOn 直接或间接依赖失败项的任务仍等待全部前置成功。不再提供 onFailure 或 stop/continue 配置。
+启动链为所有 `blockStartup` 根任务及其递归 `dependsOn` 的并集，优先于无关任务执行。依赖只能指向更早注册的任务，筛选原注册顺序即可得到稳定拓扑顺序；多个根任务共享的前置只执行一次。独立前置被提升到启动链后串行执行且不占 Redis 后台名额；启动链禁止包含手动或延迟任务，根任务不能同时声明 independent。
 
-独立任务与 `manual`、`delay`、非空 `dependsOn` 互斥。普通任务允许依赖更早注册的独立任务，其尚为 pending/running 时普通队列保留探活，成功后自动推进；失败时等待管理员重试。
+后台普通队列按注册顺序执行，跳过 waiting、已成功任务、明确失败项和前置尚未成功的任务。不提供 onFailure 或 stop/continue 配置；任务的成功前提必须显式声明。独立任务与 `manual`、`delay`、非空 `dependsOn` 互斥，普通任务可以依赖独立任务。
 
-启动阻塞模式已移除。原成员角色清理采用独立模式，旧系统模型迁移保持普通自动模式；保留任务 ID、顺序与函数，已成功状态不重跑。
+目前只有 `20260903_migrate_legacy_system_models` 声明启动阻塞，防止消费者先读取空模型目录，或在迁移尚未记为 succeeded 时允许管理员修改可能被重放覆盖的模型配置。成员角色清理继续使用独立模式；任务 ID、顺序与函数保持不变，历史 succeeded 不重跑。
 
 ### 5.2 Lease 不是幂等替代品
 
@@ -60,7 +61,7 @@ FastGPT 当前存在多个需要管理员手动调用 API 或运行脚本的数�
 
 ### 5.3 自动迁移必须兼容滚动升级
 
-迁移与新旧版本的业务流量并发执行，因此所有自动任务必须兼容当前版本和至少前一个版本：
+后台迁移与业务并发执行，启动链也不能阻止旧版本节点或独立 Pro 服务继续运行，因此所有自动任务必须兼容当前版本和至少前一个版本：
 
 - 优先新增字段、集合和索引，不直接删除旧结构；
 - 读取使用 `newValue ?? oldValue`；
@@ -88,8 +89,10 @@ FastGPT 当前存在多个需要管理员手动调用 API 或运行脚本的数�
 │   │    ├─ Mongo 原子竞争 lease                                          │
 │   │    ├─ 持有者每 15 秒续租                                            │
 │   │    └─ 按任务策略断点续跑或幂等全量重跑                              │
-│   ├─ 普通队列串行，独立任务共享 Redis 并发名额（集群 3 个）               │
-│   └─ 不等待迁移完成，继续启动 worker/cron/watch 与 HTTP 服务                │
+│   ├─ 优先执行阻塞任务及其完整依赖链                                    │
+│   ├─ 所有节点等待成功，分别重载本地模型缓存                              │
+│   ├─ 启动 worker/cron/watch，放行 App readiness                         │
+│   └─ 启用后台普通队列与独立任务（Redis 集群共享 3 个名额）                │
 │                                                                        │
 │ projects/app 管理页 ── GET 状态列表 ─┐                                 │
 └──────────────────────────────────────┼── system_migration_states        │
@@ -110,7 +113,9 @@ projects/app/src/migration/
   mongoSchema.ts     迁移状态与错误数据的 Mongo Schema 和 Model
   entity.ts          原子 claim、heartbeat、进度、完成、失败
   registry.ts        静态任务数组及注册表校验
-  runner.ts          普通队列与独立任务调度、lease 生命周期
+  plan.ts            启动依赖闭包和后台任务分组
+  startup.ts         本节点等待、模型重载和业务初始化顺序
+  runner.ts          启动链、后台队列调度和 lease 生命周期
   service.ts         状态列表、失败重试和手动入队
   tasks/README.md          新任务编写约束
   tasks/<version>/<task-id>/         每个生产升级任务的自包含目录
@@ -135,11 +140,12 @@ projects/app/src/pageComponents/admin/AdminContainer.tsx
 projects/app/test/migration/registry.test.ts
 projects/app/test/migration/runner.test.ts
 projects/app/test/migration/service.test.ts
-projects/app/test/instrumentation-node.test.ts（只验证接入边界，若现有模块可隔离）
+projects/app/test/migration/plan.test.ts
+projects/app/test/migration/startup.test.ts
 projects/app/test/...（API 和页面可测逻辑）
 ```
 
-模型迁移任务 `20260903_migrate_legacy_system_models` 按普通队列执行，负责把旧
+模型迁移任务 `20260903_migrate_legacy_system_models` 在启动链执行，负责把旧
 `system_models` 数据迁移到 `ai_models`。mock 任务只存在于测试和本地集成脚本，
 防止测试数据升级逻辑进入真实部署。
 
@@ -157,8 +163,10 @@ type SystemMigration = {
   resultKey: string;
   /** 按展示和执行顺序声明阶段；key 永久稳定，labelKey 只存在于代码。 */
   progressSteps: readonly { key: string; labelKey: string }[];
-  /** 自动独立执行，不受普通队列顺序约束，集群共享 3 个并发名额；与 manual、delay、非空 dependsOn 互斥。 */
+  /** 自动独立执行，不受普通队列顺序约束，集群共享 3 个并发名额；与 blockStartup、manual、delay、非空 dependsOn 互斥。 */
   independent?: boolean;
+  /** 自身和完整依赖链成功前阻塞 App 启动；与 independent 互斥。 */
+  blockStartup?: boolean;
   manual?: boolean;
   dependsOn?: readonly string[];
   /**
@@ -279,7 +287,7 @@ waiting（仅 manual） --管理员执行--> pending --claim--> running --成功
                                                        +--lease 过期--> running（新 runId）
 ```
 
-`succeeded` 是终态。`failed` 不能续租或直接 claim，即使旧 lease 已过期也必须由管理员重置。
+`succeeded` 是终态。后台 `failed` 不能续租或直接 claim，必须由管理员重置。启动链 `failed` 由当前 owner 继续续租，不在存活期间重放；修复并重启该 owner 后，过期 lease 才允许原子接管为 running。
 
 ## 10. Lease 协议
 
@@ -288,6 +296,7 @@ waiting（仅 manual） --管理员执行--> pending --claim--> running --成功
 默认值：
 
 ```text
+blocking poll        2 秒（只观察启动链是否全部成功）
 scan interval       60 秒
 heartbeat interval  15 秒
 lease duration      90 秒
@@ -307,10 +316,10 @@ heartbeat interval < lease duration / 3
 
 ### 10.3 选择任务
 
-普通任务组成一个串行队列，每个独立任务组成一个单任务队列。每个队列独立扫描、防重入和维护空闲定时器：
+启动阶段只有完整启动链串行队列参与调度。全部成功且本节点模型重载和业务初始化完成后，才启用后台普通串行队列和每个独立任务的单任务队列。每个队列独立扫描、防重入和维护空闲定时器：
 
 - 跳过 succeeded 和 waiting；依赖未成功时跳过任务，但不把依赖视为成功。
-- failed 不自动 claim，跳过后继续后续可执行项；只有显式依赖未成功前置的任务等待。
+- 后台 failed 不自动 claim，跳过后继续后续可执行项；启动 failed 等待 owner 停止续租并过期，不越过该任务。
 - pending 尝试 claim，running 等待持有者或在 lease 过期后接管。
 - 普通队列不能越过正在执行或延迟中的普通任务；独立任务不受此限制。
 - 只有等待管理员操作或所有任务成功时停止对应队列的扫描；依赖其他队列 pending/running 的任务继续探活。
@@ -323,6 +332,8 @@ claim 使用单条 `findOneAndUpdate`，过滤条件只接受：
 status = pending
 或
 status = running 且 leaseExpireAt <= Mongo $$NOW
+或（仅启动链显式 allowFailed）
+status = failed 且 leaseExpireAt <= Mongo $$NOW
 ```
 
 更新内容：
@@ -343,7 +354,7 @@ heartbeat 更新必须同时匹配：
 _id + status = running + runId + leaseExpireAt > $$NOW
 ```
 
-匹配失败说明当前执行器已经失去 lease。runner 立即：
+仅启动链允许 `allowFailed` 将续租状态扩为 running/failed；runId 和未过期条件不变，业务 Context 的状态写入仍只接受 running。匹配失败说明当前执行器已经失去 lease。runner 立即：
 
 1. 标记本地 `leaseLost`；
 2. abort 上下文的 `AbortSignal`；
@@ -368,13 +379,15 @@ Fencing 只能保护迁移状态表，不能自动保护其他业务集合。因
 
 ### 11.1 节点启动
 
-Mongo、Redis、S3、VectorDB、基础配置和模型运行时就绪后创建 Runner，原子初始化状态并同时唤醒所有队列。`start()` 不等待任务执行完成，instrumentation 继续启动 worker、cron、watch 并结束注册。
+Mongo、Redis、S3、VectorDB、基础配置和模型运行时就绪后创建 Runner，初始化所有任务状态，只唤醒启动链。`start()` 返回不代表 readiness；instrumentation 必须等待 `waitForBlockingMigrations()` 观察整个闭包全部为 succeeded。缺失状态、读取异常、pending、running、failed 都不放行。
 
-任务状态不决定 App readiness；数据库不可用等基础初始化错误仍按原初始化流程处理。旧系统模型迁移复用 `runModelTransaction`，将模型、默认配置与目录修订号原子提交，并保留执行节点的主动重载。其他节点即使在迁移前已缓存空目录，也会在正常模型读取时检测到更高修订号并刷新，不依赖启动等待或 Mongo watch。
+共享状态成功后，每个 App 节点都重新执行 `loadInstalledModels`，使跟随节点的内存模型目录可用，然后启动 worker、cron、watch，最后启用后台迁移。模型加载或业务初始化失败也不会提前启用后台任务。没有启动任务时保留后台 Runner 的直接启动能力。
+
+旧系统模型迁移通过 `runModelTransaction` 原子提交模型、默认配置与目录修订号，保留执行节点主动重载；修订号仍用于运行期缓存同步。App 启动屏障不控制旧版本 App 或独立 Pro 服务，这些服务仍需遵守滚动升级兼容约定。
 
 ### 11.2 队列隔离
 
-每个队列维护自己的 tick Promise、扫描定时器和唤醒代次。普通任务与每个独立任务可并发执行；同一任务在单进程内防重入，跨节点通过 Mongo lease 互斥。独立任务还需通过 Redis LeaseCache.withConcurrency 获取共享名额，集群上限固定为 3；普通队列不占额度。任何一个队列的长任务、延迟或失败都不阻止其他队列扫描。
+后台启用后，每个队列维护自己的 tick Promise、扫描定时器和唤醒代次。普通任务与每个独立任务可并发执行；同一任务在单进程内防重入，跨节点通过 Mongo lease 互斥。独立任务还需通过 Redis LeaseCache.withConcurrency 获取共享名额，集群上限固定为 3；普通队列不占额度。任何一个队列的长任务、延迟或失败都不阻止其他队列扫描。
 
 管理员重试会同时唤醒各队列；旧扫描结束时不能取消新唤醒的定时器。执行中的 tick 不会重复进入同一任务。Runner 停止时取消所有队列定时器，并中止每一个活跃任务的 AbortSignal 和 heartbeat；不能只保存一个当前 controller。
 
@@ -392,7 +405,7 @@ Mongo、Redis、S3、VectorDB、基础配置和模型运行时就绪后创建 Ru
 
 成功时要求所有声明阶段均为 succeeded，校验返回值后原子提交 succeeded 与最终结果并清理错误明细。普通队列继续下一项；独立任务仅完成自身。
 
-明确失败统一停止 heartbeat 并等待管理员重试，重启进程不重试 failed。进程中断或失权保留 running，由过期接管恢复。恢复时保留 checkpoint、progress、lastError 和失败快照。
+后台明确失败停止 heartbeat 并等待管理员重试，重启进程不重试后台 failed。启动链明确失败保持续租、保持未就绪并记录日志；owner 停止且 lease 过期后，由一个节点竞争接管。进程中断或失权保留 running，由过期接管恢复。所有恢复均保留 checkpoint、progress、lastError 和失败快照。
 
 ## 12. Migration Context
 
@@ -496,11 +509,11 @@ lease 决定，重复执行会得到相同结果。最终结果分别展示旧�
 
 ## 14. 错误与恢复
 
-`context.fail`、普通异常、checkpoint 解析失败或完成校验失败均进入 failed。Runner 保存有限的 lastError，停止 heartbeat，不会因节点重启或 lease 过期自动重试；队列跳过失败项并继续其他可执行任务，仅直接或间接依赖失败项的任务等待。
+`context.fail`、普通异常、checkpoint 解析失败或完成校验失败均进入 failed，Runner 保存有限的 lastError。后台失败停止 heartbeat，队列继续其他可执行任务，仅依赖该任务的后续任务等待；管理员修复后通过页面将 failed 原子重置为 pending，再竞争 lease。
 
-进程无法执行 catch 时状态保留 running，lease 过期后由一个节点以新 runId 接管。管理员修复数据或配置后点击重试，原子将 failed 改为 pending 并移除旧所有权，再通过正常 lease 竞争执行。
+启动链失败时页面不可用，所有新版本 App 节点保持未就绪，普通和独立后台任务均不得开始。失败 owner 持续续租，其他节点不能趁其存活重放。通过日志中的 migrationId、runId、runnerId 和错误原因定位，修复后重启持有租约的 App 节点；lease 过期后由一个节点接管失败任务。跟随节点观察失败但不放行、不通过管理接口重置启动任务。
 
-两种入口均保留 checkpoint、progress、lastError 和错误明细。分批任务先重试错误快照再断点续跑；全量任务按固定策略完整重跑。成功后才清理错误数据；普通 throw 保留之前上报的最新快照，context.fail 显式携带 failedRecords 时才替换。pending、running、waiting、succeeded 不允许通过重试 API 重置。
+进程无法执行 catch 时保留 running，lease 过期后由一个节点以新 runId 接管。恢复均保留 checkpoint、progress、lastError 和错误明细。分批任务先重试错误快照再断点续跑；全量任务按固定策略完整重跑。成功后才清理错误数据；普通 throw 保留最新快照，context.fail 显式携带 failedRecords 时才替换。pending、running、waiting、succeeded 不允许通过重试 API 重置。
 
 ## 15. 管理员 API
 
@@ -516,12 +529,13 @@ GET /api/admin/migrations/list
 - 无请求业务参数，不创建空入参 Schema；
 - 将静态注册表与 Mongo 状态合并，并从错误集合一次聚合任务和阶段的 `failedRecordCount`，不在高频轮询中传输明细数组；
 - Mongo 状态缺失按注册模式原子初始化，manual 为 waiting，其余为 pending；
+- blockStartup 返回完整启动闭包的有效标记；提升的独立前置返回 independent=false；
 - 使用 Zod response schema 校验返回值。
 
 响应包含：
 
 ```text
-id, version, order, nameKey, descriptionKey, independent,
+id, version, order, nameKey, descriptionKey, blockStartup, independent,
 status, progress, result, lastError, failedRecordCount,
 heartbeatAt, leaseExpireAt,
 startedAt, lastStartedAt, completedAt, updatedAt
@@ -537,7 +551,7 @@ body: { migrationId: string }
 ```
 
 - 使用 `authSystemAdmin` 校验 root 管理员并通过 `parseApiInput` 校验 body；
-- 仅把 `failed` 状态原子重置为 `pending`；
+- 只允许后台任务，将 `failed` 原子重置为 `pending`；启动根任务及其前置依赖均拒绝在线重置，需修复并重启 owner；
 - 重置成功后立即唤醒处理该 API 的本节点 runner，再通过正常 lease 竞争执行；若该节点在重置后、
   获得 lease 前异常退出，任务保持 `pending`，后续节点启动时仍会发现它。
 
@@ -561,11 +575,11 @@ GET /api/admin/migrations/failedRecords?migrationId=...&stageKey=...
 
 ### 16.1 页面与交互
 
-管理端按倒序展示注册任务及版本、说明、状态、全部阶段进度和最终结果。独立任务展示“独立模式”标记，不承诺卡片顺序就是其执行顺序。
+管理端按倒序展示注册任务及版本、说明、状态、全部阶段进度和最终结果。启动链展示“启动阻塞”标记，后台独立任务展示“独立模式”标记，不承诺卡片顺序就是其执行顺序。
 
 - 列表每 10 秒刷新，全部 succeeded 后停止；离开页面停止轮询。
-- 所有 failed 任务均显示重试按钮，waiting 显示首次执行按钮。
-- 失败提示未依赖该任务的升级任务可以继续；所有失败任务均保留单独重试入口。
+- 后台 failed 显示重试按钮，启动 failed 提示日志排障并重启 owner，waiting 显示首次执行按钮。
+- 后台失败提示无依赖任务可以继续；启动链失败阻止全部业务与后台任务，不显示在线重试。
 - running 且 lease 过期时展示等待接管，不能把它误报为正常运行。
 - 失败阶段展示异常数据数量；管理员按需打开只读 JSON Editor 查看定位字段及原因。
 - 页面不展示、也不从迁移状态推断 App readiness。
@@ -610,13 +624,17 @@ migrationId, runId, runnerId, status
 | 场景 | 预期结果 |
 | --- | --- |
 | 多节点 claim 同一 pending | 只有一个 lease 持有者 |
-| 普通队列长任务、延迟或任务失败 | 独立任务立即竞争共享名额，取得后竞争自身 lease |
+| 后台普通队列长任务、延迟或任务失败 | 独立任务立即竞争共享名额，取得后竞争自身 lease |
 | 一个独立任务长期运行或失败 | 其他独立任务和普通队列继续调度 |
 | 多节点执行多个独立任务 | 集群最多占用 3 个共享名额，普通队列不占额度 |
 | 共享名额占满或 Redis 不可用 | 不领取新任务，不将等待标记为失败 |
 | 共享租约失效 | 中止任务并停止 Mongo 续租，保留断点等待过期接管 |
 | 普通任务依赖运行中的独立任务 | 保留探活，前置成功后执行 |
-| 明确失败且 lease 过期 | 不续租、不自动 claim，等待管理员重试 |
+| 后台明确失败且 lease 过期 | 不续租、不自动 claim，等待管理员重试 |
+| 启动链及递归依赖存在 | 跳过无关任务，稳定拓扑顺序串行执行，后台不提前领取 lease |
+| 启动链明确失败，owner 仍存活 | failed 持续续租，所有新 App 节点保持未就绪 |
+| 启动失败 owner 重启且 lease 过期 | 一个节点接管，保留断点和错误数据 |
+| 跟随节点观察到启动链成功 | 本地模型重载后再启用业务与后台任务 |
 | running 持有者退出 | 保留断点，过期后由一个节点接管 |
 | 旧持有者恢复 | runId 与 lease 校验拒绝其状态写入 |
 | 业务提交后、checkpoint 前退出 | 重放同一幂等批次 |
@@ -625,7 +643,7 @@ migrationId, runId, runnerId, status
 
 ## 19. 测试方案
 
-使用现有隔离 Mongo 测试框架，覆盖注册参数互斥、多节点 lease 竞争、普通串行顺序、独立任务不等待普通长任务/延迟/失败、集群共享 3 个名额、额度等待与 Redis 故障、共享租约失效、依赖完成后自动推进、失败不自动接管、管理员重试、checkpoint 与失败快照恢复、旧 runId 拒写、停止时取消等待与全部活跃执行，以及 API 鉴权和校验。Runner 测试复用真实 LeaseCache 生命周期，仅替换 Redis 原子脚本边界；Redis 租约本身沿用 DAL 局部测试验证。
+使用现有隔离 Mongo 测试框架，覆盖启动依赖闭包优先级、共享前置去重、独立前置提升、手动/延迟前置拒绝、全节点模型重载顺序、失败持有续租与重启接管、启动任务禁止在线重试、注册参数互斥、多节点 lease 竞争、普通串行顺序、独立任务不等待普通长任务/延迟/失败、集群共享 3 个名额、额度等待与 Redis 故障、共享租约失效、依赖完成后自动推进、后台失败不自动接管、管理员重试、checkpoint 与失败快照恢复、旧 runId 拒写、停止时取消等待与全部活跃执行，以及 API 鉴权和校验。Runner 测试复用真实 LeaseCache 生命周期，仅替换 Redis 原子脚本边界；Redis 租约本身沿用 DAL 局部测试验证。
 
 只运行本次改动和受影响的 migration、API、管理页派生逻辑局部测试，以及 App typecheck、相关 ESLint 和 diff 检查；最终验收前不主动运行全量测试。
 
@@ -642,7 +660,7 @@ migrationId, runId, runnerId, status
 
 1. 过期 running 的最坏接管时间约为剩余 lease 加 60 秒扫描间隔；仅剩终态或人工操作时停止对应队列探活。
 2. 独立模式使用 Redis 共享并发租约，集群上限为 3。等待名额时不领取新的 Mongo lease；完成、失败或未领取到任务 lease 后释放名额。Redis 故障时保留原任务状态，不放行执行。
-3. 所有迁移均不阻塞业务启动，业务必须能处理回填尚未完成的数据，不能把是否 ready 当作迁移完成标志。
+3. readiness 只保证启动链成功，业务仍必须能处理后台回填尚未完成的数据。启动失败需要日志排障和重启 owner，页面不可用是预期行为。
 4. 状态表不保存事件历史，完整时间线依赖结构化日志；业务写入的安全仍依赖幂等与批次事务。
 5. 滚动升级期间，旧 Runner 可能仍按原顺序获取相同任务的 Mongo lease，且不遵守新共享额度。任务互斥仍有效；集群并发上限和依赖调度语义需在全部节点升级后统一生效。
 
@@ -655,7 +673,7 @@ migrationId, runId, runnerId, status
 - [x] 新增 Mongo migration state schema/entity
 - [x] 实现静态注册表与校验
 - [x] 实现 context、lease、heartbeat、fencing 和 runner
-- [x] App instrumentation 启动后台 Runner，业务启动不等待迁移
+- [x] App instrumentation 等待启动链，每个节点重载模型后启用业务与后台 Runner
 - [x] 实现状态列表 service
 - [x] 实现 projects/app list API
 - [x] 实现 projects/app 版本升级页面、导航与轮询
@@ -666,8 +684,8 @@ migrationId, runId, runnerId, status
 - [x] 运行受影响的局部测试、typecheck 和 lint
 - [x] 审查安全、并发、启动顺序、索引、API 校验、i18n 和未提交差异
 - [x] 在升级 runner 前初始化模型运行时；旧系统模型迁移完成后再次发布最新模型缓存
-- [x] 所有失败任务不自动重试，支持管理员重试 API
-- [x] 移除启动阻塞模式，增加独立任务调度、互斥校验和管理端标记
+- [x] 后台失败支持管理员重试；启动失败持有续租，重启 owner 后允许过期接管
+- [x] 实现启动依赖闭包优先执行、独立任务调度、互斥校验和管理端有效模式标记
 - [x] 移除全队列失败暂停，以显式依赖约束成功前提
 - [x] 将已确认的七个任务切换为独立模式，增加集群共享 3 个并发名额
 - [x] 保存失败数据，并在按需加载的 JSON Editor 弹窗中展示逐条原因
@@ -675,9 +693,9 @@ migrationId, runId, runnerId, status
 
 ## 23. 已确认决策
 
-1. 启动阻塞模式已删除，所有任务均后台执行；原任务 ID 和顺序保持稳定，历史 succeeded 不重跑，历史 failed 由管理员重试。
+1. 仅旧系统模型迁移声明 blockStartup；阻塞根及递归前置优先串行，成功并完成本节点模型重载后放行业务与后台任务。原任务 ID、顺序和函数保持稳定，历史 succeeded 不重跑。
 2. 普通任务共享串行队列，失败后继续后续可执行项。成功前提全部由 dependsOn 表达：模型权限、知识库、评测和应用模型引用回填依赖旧系统模型迁移；资源快照依赖应用模型引用回填，索引重建状态依赖旧版训练任务迁移。
-3. 七个独立任务为成员角色清理、资源创建时间回填、历史订单字段回填、知识库标签升级、成员名设置标记回填、沙箱团队归属回填和目录祖先路径回填。只切换调度模式，不改变业务函数和恢复策略；与 manual、delay、非空 dependsOn 互斥。
+3. 七个独立任务为成员角色清理、资源创建时间回填、历史订单字段回填、知识库标签升级、成员名设置标记回填、沙箱团队归属回填和目录祖先路径回填。只切换调度模式，不改变业务函数和恢复策略；与 blockStartup、manual、delay、非空 dependsOn 互斥。
 4. 独立任务集群共享 3 个 Redis 并发名额，先取得名额再领取 Mongo lease；异常、停止和恢复规则见 11.3。普通队列不占额度。
-5. 普通和独立任务复用相同的 Mongo lease、Context、重试、断点和错误报告。明确失败停止 heartbeat，由管理员重试；进程中断留下的 running 可过期接管，两者均保留恢复数据。
+5. 普通和独立任务复用相同的 Mongo lease、Context、重试、断点和错误报告。后台明确失败停止 heartbeat，由管理员重试；启动明确失败保持续租，修复并重启 owner 后过期接管。进程中断留下的 running 也可过期接管，均保留恢复数据。
 6. 不增加事件集合、不记录执行次数、不提供强制成功或让管理员临时切换恢复策略的入口。
