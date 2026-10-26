@@ -41,7 +41,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       const event = {
         type: 'tool_run_end' as const,
         call,
-        rawResponse: 'confirmed',
         response: 'confirmed',
         seconds: 0
       };
@@ -181,14 +180,12 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'raw response',
       response: 'tool response',
       seconds: 0.3
     });
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'duplicate response',
       response: 'duplicate response',
       seconds: 0.4
     });
@@ -309,7 +306,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'hidden response',
       response: 'hidden response',
       seconds: 0.1
     });
@@ -339,7 +335,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'upstream unavailable',
       response: 'upstream unavailable',
       errorMessage: 'upstream unavailable',
       seconds: 0.1
@@ -378,7 +373,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'child result',
       response: 'child result',
       seconds: 0.1,
       assistantResponses: [{ text: { content: 'child answer' } }]

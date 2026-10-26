@@ -1103,7 +1103,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
-        rawResponse: 'large search result',
         response: 'compressed:large search result',
         seconds: 1.23,
         toolResponseCompress: expect.objectContaining({
@@ -1112,6 +1111,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         })
       })
     );
+    expect(onToolRunEnd.mock.calls[0]?.[0]).not.toHaveProperty('rawResponse');
   });
 
   it('forwards tool call events from createLLMResponse without replaying final tool calls', async () => {
@@ -1327,7 +1327,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
         call: expect.objectContaining({ id: 'call_search' }),
-        rawResponse: 'Tool error: network failed',
         response: 'Tool error: network failed',
         errorMessage: 'Tool error: network failed'
       })
