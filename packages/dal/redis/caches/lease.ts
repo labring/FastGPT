@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
 import { RedisInvalidArgumentError, RedisInvalidResponseError } from '../runtime/errors';
 import { parsePositiveInteger } from '../runtime/validation';
-import type { RedisCacheLogger } from '../types';
+import type { RedisCacheLogger, RedisLogMethod } from '../types';
 
 const LEASE_KEY_PREFIX = 'lock:';
 const MAX_TIMER_DELAY_MS = 2_147_483_647;
@@ -36,6 +36,17 @@ return 1
 
 const RELEASE_CONCURRENCY_LEASE_SCRIPT = `
 return redis.call("ZREM", KEYS[1], ARGV[1])
+`;
+
+// 等待者独立按等待期限过期，实例退出后不会永久抬高排队数；统计不参与额度判断。
+const REGISTER_CONCURRENCY_WAITER_SCRIPT = `
+local clock = redis.call("TIME")
+local now = clock[1] * 1000 + math.floor(clock[2] / 1000)
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
+redis.call("ZADD", KEYS[1], now + tonumber(ARGV[2]), ARGV[1])
+local last = redis.call("ZREVRANGE", KEYS[1], 0, 0, "WITHSCORES")
+redis.call("PEXPIREAT", KEYS[1], last[2])
+return redis.call("ZCARD", KEYS[1])
 `;
 
 type LeaseOperations = Pick<RedisCacheAdapter, 'acquireLease' | 'renewLease' | 'releaseLease'>;
@@ -79,7 +90,7 @@ export const isRedisLeaseError = (error: unknown) =>
 
 export type LeaseCacheOptions = {
   redis?: RedisCacheAdapter;
-  logger: RedisCacheLogger<'warn'>;
+  logger: RedisCacheLogger<'warn'> & { info?: RedisLogMethod };
 };
 
 export type RedisLeaseContext = {
@@ -115,7 +126,7 @@ export type WithConcurrencyOptions<T> = WithLeaseOptions<T> & {
  */
 export class LeaseCache {
   private readonly redis: RedisCacheAdapter;
-  private readonly logger: RedisCacheLogger<'warn'>;
+  private readonly logger: LeaseCacheOptions['logger'];
 
   constructor({ redis = redisCacheAdapter, logger }: LeaseCacheOptions) {
     this.redis = redis;
@@ -160,6 +171,7 @@ export class LeaseCache {
    *
    * 所有调用方须使用同一配置源；getter 让已排队任务也能读取热更新后的上限。
    * 0 直接执行，不访问 Redis；只重试额度占满，不重试 Redis 故障或业务异常，不保证 FIFO。
+   * 仅首次进入等待时记录共享排队数；统计失败不改变限流结果，退出等待后清理计数。
    * 回调必须响应 signal / assertValid，或自行设置覆盖执行时长的超时；lease 不能强制
    * 停止外部操作。续租、token 校验和释放均复用 withLease。
    */
@@ -225,79 +237,121 @@ export class LeaseCache {
       return result === 1;
     };
 
-    while (true) {
-      assertWaiting();
-      const limit = getLimit();
-      if (limit === 0) {
-        const result = await fn({
-          signal: signal ?? new AbortController().signal,
-          assertValid: () => signal?.throwIfAborted()
-        });
-        signal?.throwIfAborted();
-        return result;
-      }
+    const queueKey = this.getLeaseKey(`concurrency-waiters:${key}`);
+    let waiterToken: string | undefined;
+    const leaveQueue = async () => {
+      if (waiterToken === undefined) return;
+      // 排队统计只用于日志；清理失败由等待期限兜底，不能覆盖业务结果。
+      await this.redis
+        .evalScript({
+          script: RELEASE_CONCURRENCY_LEASE_SCRIPT,
+          keys: [queueKey],
+          args: [waiterToken]
+        })
+        .catch(() => {});
+      waiterToken = undefined;
+    };
 
-      // 检查总占用与新增 token 在同一脚本内完成，降额后不能从其他编号槽位旁路进入。
-      const operations: LeaseOperations = {
-        acquireLease: ({ key, token, ttlMs }) =>
-          evalLeaseScript({
-            script: ACQUIRE_CONCURRENCY_LEASE_SCRIPT,
-            keys: [key],
-            args: [token, ttlMs, limit]
-          }),
-        renewLease: ({ key, token, ttlMs }) =>
-          evalLeaseScript({
-            script: RENEW_CONCURRENCY_LEASE_SCRIPT,
-            keys: [key],
-            args: [token, ttlMs]
-          }),
-        releaseLease: ({ key, token }) =>
-          evalLeaseScript({
-            script: RELEASE_CONCURRENCY_LEASE_SCRIPT,
-            keys: [key],
-            args: [token]
-          })
-      };
-      let entered = false;
-      try {
-        return await this.runWithLease(
-          {
-            key: `concurrency:${key}`,
-            label,
-            ttlMs,
-            renewIntervalMs,
-            fn: async (context) => {
-              // Redis 获取成功也可能已超过等待期限，此时释放额度但不启动业务。
-              assertWaiting();
-              // 配置可能在 Redis 往返期间变化，释放旧额度后按最新上限重新竞争。
-              if (getLimit() !== limit) throw new RedisLeaseUnavailableError({ key, label });
-              entered = true;
-              const result = await fn({
-                signal: signal ? AbortSignal.any([signal, context.signal]) : context.signal,
-                assertValid: () => {
-                  context.assertValid();
-                  signal?.throwIfAborted();
-                }
-              });
-              signal?.throwIfAborted();
-              return result;
-            }
-          },
-          operations
+    try {
+      while (true) {
+        assertWaiting();
+        const limit = getLimit();
+        if (limit === 0) {
+          await leaveQueue();
+          assertWaiting();
+          if (getLimit() !== 0) continue;
+          const result = await fn({
+            signal: signal ?? new AbortController().signal,
+            assertValid: () => signal?.throwIfAborted()
+          });
+          signal?.throwIfAborted();
+          return result;
+        }
+
+        // 检查总占用与新增 token 在同一脚本内完成，降额后不能从其他编号槽位旁路进入。
+        const operations: LeaseOperations = {
+          acquireLease: ({ key, token, ttlMs }) =>
+            evalLeaseScript({
+              script: ACQUIRE_CONCURRENCY_LEASE_SCRIPT,
+              keys: [key],
+              args: [token, ttlMs, limit]
+            }),
+          renewLease: ({ key, token, ttlMs }) =>
+            evalLeaseScript({
+              script: RENEW_CONCURRENCY_LEASE_SCRIPT,
+              keys: [key],
+              args: [token, ttlMs]
+            }),
+          releaseLease: ({ key, token }) =>
+            evalLeaseScript({
+              script: RELEASE_CONCURRENCY_LEASE_SCRIPT,
+              keys: [key],
+              args: [token]
+            })
+        };
+        let entered = false;
+        try {
+          return await this.runWithLease(
+            {
+              key: `concurrency:${key}`,
+              label,
+              ttlMs,
+              renewIntervalMs,
+              fn: async (context) => {
+                await leaveQueue();
+                context.assertValid();
+                // Redis 获取成功也可能已超过等待期限，此时释放额度但不启动业务。
+                assertWaiting();
+                // 配置可能在 Redis 往返期间变化，释放旧额度后按最新上限重新竞争。
+                if (getLimit() !== limit) throw new RedisLeaseUnavailableError({ key, label });
+                entered = true;
+                const result = await fn({
+                  signal: signal ? AbortSignal.any([signal, context.signal]) : context.signal,
+                  assertValid: () => {
+                    context.assertValid();
+                    signal?.throwIfAborted();
+                  }
+                });
+                signal?.throwIfAborted();
+                return result;
+              }
+            },
+            operations
+          );
+        } catch (error) {
+          // 业务本身也可能抛出同名错误，进入回调后绝不能因此重复执行任务。
+          if (entered || !(error instanceof RedisLeaseUnavailableError)) throw error;
+        }
+
+        assertWaiting();
+        if (waiterToken === undefined) {
+          waiterToken = randomUUID();
+          const queuedCount = await this.redis
+            .evalScript({
+              script: REGISTER_CONCURRENCY_WAITER_SCRIPT,
+              keys: [queueKey],
+              args: [waiterToken, Math.max(1, deadline - Date.now())]
+            })
+            .catch(() => undefined);
+          if (
+            typeof queuedCount === 'number' &&
+            Number.isSafeInteger(queuedCount) &&
+            queuedCount > 0
+          ) {
+            this.logger.info?.('Redis concurrency lease queued', { key, label, queuedCount });
+          }
+        }
+        assertWaiting();
+        await waitForRetry(
+          Math.min(
+            retryMs + Math.floor(Math.random() * retryMs),
+            deadline - Date.now(),
+            MAX_TIMER_DELAY_MS
+          )
         );
-      } catch (error) {
-        // 业务本身也可能抛出同名错误，进入回调后绝不能因此重复执行任务。
-        if (entered || !(error instanceof RedisLeaseUnavailableError)) throw error;
       }
-
-      assertWaiting();
-      await waitForRetry(
-        Math.min(
-          retryMs + Math.floor(Math.random() * retryMs),
-          deadline - Date.now(),
-          MAX_TIMER_DELAY_MS
-        )
-      );
+    } finally {
+      await leaveQueue();
     }
   }
 

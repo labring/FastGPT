@@ -165,7 +165,8 @@ describe('VectorDB Controller', () => {
           expect(options).toMatchObject({
             key: 'vector:recall',
             label: 'vector-recall',
-            ttlMs: 180_000
+            ttlMs: 30_000,
+            renewIntervalMs: 10_000
           });
           expect(options.concurrency()).toBe(8);
           expect(mockVectorEmbRecall).toHaveBeenCalledWith(props);
@@ -188,7 +189,8 @@ describe('VectorDB Controller', () => {
           Reflect.deleteProperty(global.systemEnv, 'vectorRecallConcurrency');
         else global.systemEnv.vectorRecallConcurrency = concurrency;
         await recallFromVectorStore(props);
-        expect(withConcurrency).not.toHaveBeenCalled();
+        expect(withConcurrency).toHaveBeenCalledOnce();
+        expect(withConcurrency.mock.calls[0][0].concurrency()).toBe(0);
         expect(mockVectorEmbRecall).toHaveBeenCalledOnce();
       }
     );

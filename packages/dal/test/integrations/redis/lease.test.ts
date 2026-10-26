@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RedisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { LeaseCache, RedisLeaseLostError } from '@fastgpt/dal/redis/caches/lease';
 
@@ -8,8 +8,9 @@ const describeWithRedis = redisUrl ? describe : describe.skip;
 
 describeWithRedis('LeaseCache concurrency Redis integration', () => {
   const namespace = `integration:concurrency-lease:${process.pid}:${Date.now()}`;
-  const keys = ['shared', 'ttl', 'takeover'].map((name) => `${namespace}:${name}`);
+  const keys = ['shared', 'ttl', 'takeover', 'waiters'].map((name) => `${namespace}:${name}`);
   const physicalKey = (key: string) => `fastgpt:lock:concurrency:${key}`;
+  const queueKey = (key: string) => `fastgpt:lock:concurrency-waiters:${key}`;
   let client: Redis;
   let adapter: RedisCacheAdapter;
   const logger = { warn: () => undefined };
@@ -22,7 +23,7 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
 
   afterAll(async () => {
     if (!client) return;
-    await client.del(...keys.map(physicalKey));
+    await client.del(...keys.flatMap((key) => [physicalKey(key), queueKey(key)]));
     await client.quit();
   });
 
@@ -54,6 +55,59 @@ describeWithRedis('LeaseCache concurrency Redis integration', () => {
     );
     expect(peak).toBe(3);
     expect(await client.exists(physicalKey(key))).toBe(0);
+  });
+
+  it('logs shared queue counts once per waiter and removes cancelled or expired entries', async () => {
+    const key = keys[3];
+    const queueLogger = { warn: () => undefined, info: vi.fn() };
+    const caches = [
+      new LeaseCache({ redis: adapter, logger: queueLogger }),
+      new LeaseCache({ redis: adapter, logger: queueLogger })
+    ];
+    let finish!: () => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const options = { key, label: 'queue', concurrency: 1, ttlMs: 1_000, retryIntervalMs: 5 };
+    const running = caches[0].withConcurrency({
+      ...options,
+      fn: () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+          started();
+        })
+    });
+    await ready;
+    await client.zadd(queueKey(key), 1, 'expired-waiter');
+    const controllers = [new AbortController(), new AbortController()];
+    const work = vi.fn(async () => undefined);
+    const cancelled = controllers.map((controller, index) =>
+      expect(
+        caches[index].withConcurrency({
+          ...options,
+          signal: controller.signal,
+          fn: work
+        })
+      ).rejects.toThrow('cancelled')
+    );
+    try {
+      await vi.waitFor(async () => {
+        expect(await client.zcard(queueKey(key))).toBe(2);
+        expect(queueLogger.info).toHaveBeenCalledTimes(2);
+      });
+      expect(
+        queueLogger.info.mock.calls.map(([, metadata]) => metadata.queuedCount).sort()
+      ).toEqual([1, 2]);
+      expect(await client.zcard(physicalKey(key))).toBe(1);
+      expect(work).not.toHaveBeenCalled();
+    } finally {
+      controllers.forEach((controller) => controller.abort(new Error('cancelled')));
+      await Promise.all(cancelled);
+      finish();
+      await running;
+    }
+    expect(await client.exists(queueKey(key))).toBe(0);
   });
 
   it('keeps a long holder alive when a shorter holder acquires and renews', async () => {

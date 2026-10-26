@@ -410,7 +410,8 @@ describe('LeaseCache', () => {
 
 describe('LeaseCache.withConcurrency', () => {
   const held = new Map<string, { key: string; expiresAt: number }>();
-  const logger = { warn: vi.fn() };
+  const waiting = new Map<string, { key: string; expiresAt: number }>();
+  const logger = { warn: vi.fn(), info: vi.fn() };
   const redis = {
     acquireLease: vi.fn(),
     releaseLease: vi.fn(),
@@ -432,6 +433,7 @@ describe('LeaseCache.withConcurrency', () => {
     vi.clearAllMocks();
     vi.spyOn(Math, 'random').mockReturnValue(0);
     held.clear();
+    waiting.clear();
     redis.acquireLease.mockImplementation(async ({ key, token, ttlMs, concurrency }: any) => {
       for (const [heldToken, lease] of held) {
         if (lease.expiresAt <= Date.now()) held.delete(heldToken);
@@ -455,6 +457,16 @@ describe('LeaseCache.withConcurrency', () => {
     });
     redis.evalScript.mockImplementation(async ({ script, keys: [key], args }: any) => {
       const [token, ttlMs, concurrency] = args;
+      if (key.includes('concurrency-waiters:')) {
+        for (const [waiter, item] of waiting) {
+          if (item.expiresAt <= Date.now()) waiting.delete(waiter);
+        }
+        if (script.includes('ZADD')) {
+          waiting.set(token, { key, expiresAt: Date.now() + ttlMs });
+          return [...waiting.values()].filter((item) => item.key === key).length;
+        }
+        return Number(waiting.delete(token));
+      }
       if (script.includes('ZCARD')) {
         return Number(await redis.acquireLease({ key, token, ttlMs, concurrency }));
       }
@@ -495,6 +507,10 @@ describe('LeaseCache.withConcurrency', () => {
     expect(redis.renewLease).toHaveBeenCalled();
     expect(held.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
+    expect(logger.info.mock.calls.map(([, metadata]) => metadata.queuedCount)).toEqual([
+      1, 2, 3, 4
+    ]);
+    expect(waiting.size).toBe(0);
   });
 
   it('keeps different resource keys independent and provides default wait settings', async () => {
@@ -538,6 +554,13 @@ describe('LeaseCache.withConcurrency', () => {
     expect(redis.acquireLease).toHaveBeenCalledTimes(3);
     expect(vi.getTimerCount()).toBe(0);
     expect(isRedisLeaseError(new RedisLeaseWaitTimeoutError(options))).toBe(true);
+    expect(logger.info).toHaveBeenCalledOnce();
+    expect(logger.info).toHaveBeenCalledWith('Redis concurrency lease queued', {
+      key: options.key,
+      label: options.label,
+      queuedCount: 1
+    });
+    expect(waiting.size).toBe(0);
   });
 
   it('releases a slot acquired after the wait deadline without starting work', async () => {
@@ -613,6 +636,7 @@ describe('LeaseCache.withConcurrency', () => {
 
     expect(fn).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+    expect(waiting.size).toBe(0);
   });
 
   it('does not acquire for an already aborted caller', async () => {
@@ -759,6 +783,7 @@ describe('LeaseCache.withConcurrency', () => {
       })
     ).resolves.toBe('unlimited');
     expect(redis.evalScript).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
 
     redis.acquireLease.mockResolvedValue(false);
     let concurrency = 1;
@@ -769,6 +794,65 @@ describe('LeaseCache.withConcurrency', () => {
     await vi.advanceTimersByTimeAsync(5);
     await expect(queued).resolves.toBe('disabled');
     expect(work).toHaveBeenCalledOnce();
+    expect(waiting.size).toBe(0);
+  });
+
+  it('rechecks a re-enabled limit after removing a queued waiter', async () => {
+    let concurrency = 1;
+    const cache = new LeaseCache({ redis, logger });
+    let finish!: () => void;
+    const running = cache.withConcurrency({
+      ...options,
+      concurrency: 1,
+      fn: () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const work = vi.fn(async () => 'done');
+    const queued = cache.withConcurrency({ ...options, concurrency: () => concurrency, fn: work });
+    await vi.advanceTimersByTimeAsync(0);
+    const evaluate = redis.evalScript.getMockImplementation()!;
+    redis.evalScript.mockImplementation((input: any) => {
+      if (input.keys[0].includes('concurrency-waiters:') && !input.script.includes('ZADD')) {
+        concurrency = 1;
+      }
+      return evaluate(input);
+    });
+    concurrency = 0;
+    await vi.advanceTimersByTimeAsync(5);
+    expect(work).not.toHaveBeenCalled();
+    expect(held.size).toBe(1);
+
+    finish();
+    await running;
+    await vi.advanceTimersByTimeAsync(5);
+    await expect(queued).resolves.toBe('done');
+    expect(waiting.size).toBe(0);
+  });
+
+  it('keeps enforcing capacity when queue statistics fail', async () => {
+    const evaluate = redis.evalScript.getMockImplementation()!;
+    redis.evalScript.mockImplementation((input: any) => {
+      if (input.keys[0].includes('concurrency-waiters:') && input.script.includes('ZADD')) {
+        return Promise.reject(new Error('queue statistics unavailable'));
+      }
+      return evaluate(input);
+    });
+    redis.acquireLease.mockResolvedValueOnce(false);
+    const cache = new LeaseCache({ redis, logger });
+    const fn = vi.fn(async () => 'done');
+    const result = cache.withConcurrency({ ...options, fn });
+
+    await vi.advanceTimersByTimeAsync(5);
+
+    await expect(result).resolves.toBe('done');
+    expect(redis.acquireLease).toHaveBeenCalledTimes(2);
+    expect(fn).toHaveBeenCalledOnce();
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(held.size).toBe(0);
+    expect(waiting.size).toBe(0);
   });
 
   it('rejects malformed Lua results without entering the callback', async () => {
