@@ -132,9 +132,11 @@ export class PgVectorCtrl implements VectorControllerType {
   embRecall: VectorControllerType['embRecall'] = async (props) => {
     const query = buildPgVectorRecallQuery(props);
     if (!query) return { results: [] };
+    // 精确分组与 HNSW 分组都等待服务端先终止超时 SQL，再归还外层并发额度。
+    const recallQuery = { text: query.text, query_timeout: RECALL_QUERY_TIMEOUT_MS };
 
     const result = await (async () => {
-      if (!query.usesHnsw) return PgClient.query(query.text, query.values);
+      if (!query.usesHnsw) return PgClient.query(recallQuery, query.values);
 
       const client = await (await connectPg()).connect();
       let destroyClient = false;
@@ -150,7 +152,7 @@ export class PgVectorCtrl implements VectorControllerType {
           ]
         );
         const result = await client.query<{ id: string; collection_id: string; score: number }>(
-          query.text,
+          recallQuery,
           query.values
         );
         await client.query('COMMIT');
