@@ -21,7 +21,16 @@ vi.mock('@/pageComponents/account/AccountContainer', () => ({
   default: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', null, children)
 }));
-vi.mock('@/components/core/ai/ModelTable', () => ({ default: () => null }));
+vi.mock('@/components/core/ai/ModelTable', () => ({
+  default: ({ onReplaceInvalidModels }: { onReplaceInvalidModels?: () => void }) =>
+    onReplaceInvalidModels
+      ? React.createElement(
+          'button',
+          { onClick: onReplaceInvalidModels },
+          'config_model:replace_invalid_title'
+        )
+      : null
+}));
 vi.mock('@/pageComponents/model/ModelManagementContainer', () => ({ default: () => null }));
 vi.mock('@/pageComponents/model/ReplaceInvalidModelsModal', () => ({ default: () => null }));
 

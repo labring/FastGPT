@@ -1,5 +1,6 @@
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import {
   getWorkflowNodeModelInputs,
@@ -12,13 +13,18 @@ import {
 } from '@fastgpt/global/core/workflow/model/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import {
+  legacySystemConfigNodeType,
+  migrateSystemConfigToChatConfig
+} from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { AppChatConfigType, AppResourcesType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppResourcesType } from '@fastgpt/global/core/app/type';
 import type { ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { resolveStoredAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { cloneDeep } from 'lodash-es';
 import { Types } from 'mongoose';
@@ -39,6 +45,7 @@ type PlainObject = Record<string, unknown>;
 type Replacement = { llmModelId: string; ttsModelId: string; rerankModelId: string };
 type Model = ReturnType<ModelHandle['getAllModels']>[number];
 type LegacyAppRow = { _id: string; modules?: StoreNodeItemType[]; chatConfig?: AppChatConfigType };
+type LegacyAppVersionRow = AppVersionSchemaType & { resourceRefs?: unknown };
 
 export type ReplaceInvalidModelReferencesResult = {
   completed: boolean;
@@ -119,14 +126,31 @@ export const createInvalidReferenceReplacer = ({
       : modelsById.get(value);
   };
 
-  const isInvalid = (reference: Reference, type: ModelTypeEnum) => {
+  const isInvalid = ({
+    reference,
+    type,
+    vision = false
+  }: {
+    reference: Reference;
+    type: ModelTypeEnum;
+    vision?: boolean;
+  }) => {
     const value = getReferenceValue(reference);
     if (isEmptyModelValue(value) || Array.isArray(value) || isWorkflowModelExpression(value)) {
       return undefined;
     }
     if (typeof value !== 'string') return undefined;
-    const model = resolveReference(reference, type);
-    return !model || !model.isActive || model.type !== type;
+
+    const modelReference = isEmptyModelValue(reference.modelId)
+      ? { model: value }
+      : { modelId: value };
+    try {
+      handle.getModelData(modelReference, { type, vision });
+      return false;
+    } catch (error) {
+      if (isModelConfigError(error)) return true;
+      throw error;
+    }
   };
 
   const addReplacedId = (reference: Reference, type: ModelTypeEnum, replacedIds: Set<string>) => {
@@ -139,6 +163,7 @@ export const createInvalidReferenceReplacer = ({
     modelIdKey,
     legacyKey,
     type,
+    vision,
     changes,
     replacedIds
   }: {
@@ -146,12 +171,13 @@ export const createInvalidReferenceReplacer = ({
     modelIdKey: string;
     legacyKey: string;
     type: ModelTypeEnum;
+    vision?: boolean;
     changes: Record<ModelKind, Change>;
     replacedIds: Set<string>;
   }) => {
     const kind = getKind(type);
     const reference = { modelId: config[modelIdKey], model: config[legacyKey] };
-    const invalid = isInvalid(reference, type);
+    const invalid = isInvalid({ reference, type, vision });
     if (invalid === undefined) {
       changes[kind].skippedReferences++;
       return;
@@ -160,6 +186,7 @@ export const createInvalidReferenceReplacer = ({
     addReplacedId(reference, type, replacedIds);
     config[modelIdKey] = targets[kind].modelId;
     config[legacyKey] = targets[kind].model;
+    if (type === ModelTypeEnum.tts) config.voice = firstTtsVoice;
     changes[kind].replacedReferences++;
   };
 
@@ -191,7 +218,7 @@ export const createInvalidReferenceReplacer = ({
             modelId: input.key === slot.modelIdKey ? input.value : undefined,
             model: input.key === slot.legacyKey ? input.value : legacyInputs[0]?.value
           };
-          const invalid = isInvalid(reference, slot.type);
+          const invalid = isInvalid({ reference, type: slot.type });
           if (invalid === undefined) {
             changes[kind].skippedReferences++;
             continue;
@@ -212,6 +239,28 @@ export const createInvalidReferenceReplacer = ({
             node.inputs.push({ ...input, key: slot.modelIdKey, value: target.modelId });
           }
           changes[kind].replacedReferences++;
+        }
+      }
+
+      if ((node.flowNodeType as string) === legacySystemConfigNodeType) {
+        // 读取路径会把旧 userGuide 配置迁入 chatConfig；写入时保留节点原形，只更新引用值。
+        for (const [inputKey, type] of [
+          [NodeInputKeyEnum.questionGuide, ModelTypeEnum.llm],
+          [NodeInputKeyEnum.tts, ModelTypeEnum.tts]
+        ] as const) {
+          const input = node.inputs.find(({ key }) => key === inputKey);
+          if (!input || nodeInputIsReference(input) || !isObject(input.value)) continue;
+
+          const config = input.value;
+          if (type === ModelTypeEnum.tts && config.type !== 'model') continue;
+          replaceConfigReference({
+            config,
+            modelIdKey: 'modelId',
+            legacyKey: 'model',
+            type,
+            changes,
+            replacedIds
+          });
         }
       }
 
@@ -252,7 +301,6 @@ export const createInvalidReferenceReplacer = ({
       isObject(nextChatConfig.ttsConfig) &&
       nextChatConfig.ttsConfig.type === 'model'
     ) {
-      const before = changes.tts.replacedReferences;
       replaceConfigReference({
         config: nextChatConfig.ttsConfig,
         modelIdKey: 'modelId',
@@ -261,7 +309,6 @@ export const createInvalidReferenceReplacer = ({
         changes,
         replacedIds
       });
-      if (changes.tts.replacedReferences > before) nextChatConfig.ttsConfig.voice = firstTtsVoice;
     }
     return { nodes: nextNodes, chatConfig: nextChatConfig, changes, replacedIds };
   };
@@ -286,7 +333,12 @@ export const replaceInvalidModelReferences = async ({
   const failedSamples: ReplaceInvalidModelReferencesResult['failedSamples'] = [];
   const teamObjectId = new Types.ObjectId(teamId);
   const result: ReplaceInvalidModelReferencesResult = { completed: true, counts, failedSamples };
-  const targetLLM = handle.getAllModels().find((item) => item.modelId === replacement.llmModelId);
+  const targetSupportsVision =
+    replacer.isInvalid({
+      reference: { modelId: replacement.llmModelId },
+      type: ModelTypeEnum.llm,
+      vision: true
+    }) === false;
   const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
   let stopError: unknown;
 
@@ -353,7 +405,7 @@ export const replaceInvalidModelReferences = async ({
     value === undefined ? { [field]: { $exists: false } } : { [field]: value };
 
   // 非视觉目标不能替换图片理解槽位，必须在第一条写入前完成全团队检查。
-  if (targetLLM?.type === ModelTypeEnum.llm && !targetLLM.config.vision) {
+  if (!targetSupportsVision) {
     let after: string | undefined;
     while (true) {
       const rows = await MongoDataset.collection
@@ -370,7 +422,11 @@ export const replaceInvalidModelReferences = async ({
       if (rows.length === 0) break;
       for (const row of rows) {
         if (
-          replacer.isInvalid({ modelId: row.vlmModelId, model: row.vlmModel }, ModelTypeEnum.llm)
+          replacer.isInvalid({
+            reference: { modelId: row.vlmModelId, model: row.vlmModel },
+            type: ModelTypeEnum.llm,
+            vision: true
+          })
         ) {
           throw new Error('Replacement LLM must support vision for invalid dataset image models');
         }
@@ -417,12 +473,12 @@ export const replaceInvalidModelReferences = async ({
           for (let attempt = 0; attempt < 3; attempt++) {
             // 预检查后若有并发改写，也不能把图片理解引用换成纯文本模型。
             if (
-              targetLLM?.type === ModelTypeEnum.llm &&
-              !targetLLM.config.vision &&
-              replacer.isInvalid(
-                { modelId: current.vlmModelId, model: current.vlmModel },
-                ModelTypeEnum.llm
-              )
+              !targetSupportsVision &&
+              replacer.isInvalid({
+                reference: { modelId: current.vlmModelId, model: current.vlmModel },
+                type: ModelTypeEnum.llm,
+                vision: true
+              })
             ) {
               stopError = new Error('Replacement LLM must support vision');
               throw stopError;
@@ -445,6 +501,7 @@ export const replaceInvalidModelReferences = async ({
               modelIdKey: 'vlmModelId',
               legacyKey: 'vlmModel',
               type: ModelTypeEnum.llm,
+              vision: true,
               changes,
               replacedIds
             });
@@ -589,8 +646,8 @@ export const replaceInvalidModelReferences = async ({
           })
             .sort({ _id: 1 })
             .limit(batchSize)
-            .select('_id appId nodes chatConfig resources')
-            .lean();
+            .select('_id appId nodes chatConfig resources resourceRefs')
+            .lean<LegacyAppVersionRow[]>();
           if (versions.length === 0) break;
           logBatch({
             stage: 'scanned',
@@ -621,17 +678,24 @@ export const replaceInvalidModelReferences = async ({
                   addChanges('version', next.changes, false);
                   break;
                 }
-                const extracted = extractAppResources({
-                  nodes: next.nodes as StoreNodeItemType[],
-                  chatConfig: next.chatConfig as AppChatConfigType
+                const effectiveWorkflow = migrateSystemConfigToChatConfig({
+                  nodes: Array.isArray(next.nodes) ? next.nodes : [],
+                  edges: [],
+                  chatConfig: next.chatConfig
+                });
+                const postResources = resolveStoredAppResources({
+                  resources: undefined,
+                  nodes: effectiveWorkflow.nodes as StoreNodeItemType[],
+                  chatConfig: effectiveWorkflow.chatConfig,
+                  resourceRefs: current.resourceRefs
                 });
                 const postModelIds = new Set(
-                  extracted
+                  postResources
                     .filter((resource) => resource.type === 'model')
                     .map((resource) => resource.id)
                 );
                 const resources: AppResourcesType = (() => {
-                  if (!Array.isArray(current.resources)) return extracted;
+                  if (!Array.isArray(current.resources)) return postResources;
                   const retained = current.resources.filter(
                     (resource) =>
                       resource.type !== 'model' ||
@@ -643,7 +707,7 @@ export const replaceInvalidModelReferences = async ({
                       .filter((resource) => resource.type === 'model')
                       .map((resource) => resource.id)
                   );
-                  const added = extracted.filter(
+                  const added = postResources.filter(
                     (resource) =>
                       resource.type === 'model' &&
                       (resource.id === replacement.llmModelId ||
@@ -660,7 +724,8 @@ export const replaceInvalidModelReferences = async ({
                     appId: new Types.ObjectId(String(app._id)),
                     ...fieldMatch('nodes', current.nodes),
                     ...fieldMatch('chatConfig', current.chatConfig),
-                    ...fieldMatch('resources', current.resources)
+                    ...fieldMatch('resources', current.resources),
+                    ...fieldMatch('resourceRefs', current.resourceRefs)
                   },
                   {
                     $set: {
@@ -684,8 +749,8 @@ export const replaceInvalidModelReferences = async ({
                   break;
                 }
                 const refreshed = await MongoAppVersion.findById(version._id)
-                  .select('_id appId nodes chatConfig resources')
-                  .lean();
+                  .select('_id appId nodes chatConfig resources resourceRefs')
+                  .lean<LegacyAppVersionRow>();
                 if (!refreshed || String(refreshed.appId) !== String(app._id)) break;
                 current = refreshed;
               }

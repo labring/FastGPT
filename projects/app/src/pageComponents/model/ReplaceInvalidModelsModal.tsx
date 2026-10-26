@@ -16,15 +16,25 @@ type Replacement = ReplaceInvalidModelReferencesBody['replacement'];
 type ResourceType = keyof ReplaceInvalidModelReferencesResponse['counts'];
 
 const modelFields = [
-  { key: 'llmModelId', type: ModelTypeEnum.llm, label: 'common:model.type.chat' },
-  { key: 'ttsModelId', type: ModelTypeEnum.tts, label: 'common:model.type.tts' },
-  { key: 'rerankModelId', type: ModelTypeEnum.rerank, label: 'common:model.type.reRank' }
+  { key: 'llmModelId', type: ModelTypeEnum.llm },
+  { key: 'ttsModelId', type: ModelTypeEnum.tts },
+  { key: 'rerankModelId', type: ModelTypeEnum.rerank }
 ] as const;
 const resourceTypes: ResourceType[] = ['dataset', 'app', 'version'];
 
 /** 一次请求完成替换；执行前确认团队资源和历史版本会被修改。 */
 const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
+  const modelLabels = {
+    [ModelTypeEnum.llm]: t('common:model.type.chat'),
+    [ModelTypeEnum.tts]: t('common:model.type.tts'),
+    [ModelTypeEnum.rerank]: t('common:model.type.reRank')
+  };
+  const resourceLabels = {
+    dataset: t('config_model:replace_invalid_dataset'),
+    app: t('config_model:replace_invalid_app'),
+    version: t('config_model:replace_invalid_version')
+  };
   const [replacement, setReplacement] = useState<Replacement>({
     llmModelId: '',
     ttsModelId: '',
@@ -60,7 +70,7 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
       onClose={close}
       closeOnOverlayClick={!loading}
       showCloseButton={!loading}
-      size="lg"
+      size={step === 'result' ? 'lg' : 'sm'}
       title={t('config_model:replace_invalid_title')}
       footer={
         step === 'select' ? (
@@ -86,10 +96,10 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
     >
       {step === 'select' && (
         <Box>
-          {modelFields.map(({ key, type, label }) => (
+          {modelFields.map(({ key, type }) => (
             <Box key={key} mb={4}>
               <Text mb={1} fontWeight="medium">
-                {t(label)}
+                {modelLabels[type]}
               </Text>
               <AIModelSelector
                 modelType={type}
@@ -107,16 +117,18 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
       {step === 'result' && result && (
         <Box>
           <Text mb={3} fontWeight="medium">
-            {t(
-              result.completed
-                ? hasFailures
-                  ? 'config_model:replace_invalid_done_with_failures'
-                  : 'config_model:replace_invalid_done'
-                : 'config_model:replace_invalid_stopped'
-            )}
+            {result.completed
+              ? hasFailures
+                ? t('config_model:replace_invalid_done_with_failures')
+                : t('config_model:replace_invalid_done')
+              : t('config_model:replace_invalid_stopped')}
           </Text>
           {result.stoppedReason && (
-            <Text mb={3}>{t(`config_model:replace_invalid_${result.stoppedReason}`)}</Text>
+            <Text mb={3}>
+              {result.stoppedReason === 'conditions_changed'
+                ? t('config_model:replace_invalid_conditions_changed')
+                : t('config_model:replace_invalid_scan_interrupted')}
+            </Text>
           )}
           <Box overflowX="auto">
             <Table size="sm">
@@ -133,12 +145,12 @@ const ReplaceInvalidModelsModal = ({ onClose }: { onClose: () => void }) => {
               </Thead>
               <Tbody>
                 {resourceTypes.flatMap((resource) =>
-                  modelFields.map(({ key, type, label }) => {
+                  modelFields.map(({ key, type }) => {
                     const count = result.counts[resource][type];
                     return (
                       <Tr key={`${resource}-${key}`}>
-                        <Td>{t(`config_model:replace_invalid_${resource}`)}</Td>
-                        <Td>{t(label)}</Td>
+                        <Td>{resourceLabels[resource]}</Td>
+                        <Td>{modelLabels[type]}</Td>
                         <Td isNumeric>{count.scannedRecords}</Td>
                         <Td isNumeric>{count.replacedReferences}</Td>
                         <Td isNumeric>{count.skippedReferences}</Td>

@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import type { ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import {
   createInvalidReferenceReplacer,
   replaceInvalidModelReferences
@@ -33,6 +34,14 @@ const models = [
     isActive: false,
     scope: ModelScopeEnum.system,
     config: { vision: true }
+  },
+  {
+    modelId: 'active-text-llm',
+    model: 'active-text-llm-name',
+    type: ModelTypeEnum.llm,
+    isActive: true,
+    scope: ModelScopeEnum.system,
+    config: { vision: false }
   },
   {
     modelId: 'new-tts',
@@ -62,9 +71,24 @@ const models = [
     isActive: false,
     scope: ModelScopeEnum.system,
     config: { voices: [{ label: 'Old', value: 'old-voice' }] }
+  },
+  {
+    modelId: 'valid-tts',
+    model: 'valid-tts-name',
+    type: ModelTypeEnum.tts,
+    isActive: true,
+    scope: ModelScopeEnum.system,
+    config: { voices: [{ label: 'Valid', value: 'valid-voice' }] }
   }
 ];
-const handle = { getAllModels: () => models } as unknown as ModelHandle;
+const createHandle = (modelList = models) =>
+  createModelHandle({
+    models: modelList as unknown as Parameters<typeof createModelHandle>[0]['models'],
+    configuredDefaultModelIds: {},
+    revision: 1,
+    version: 'test'
+  });
+const handle = createHandle();
 const ids = {
   team: new Types.ObjectId(),
   otherTeam: new Types.ObjectId(),
@@ -316,6 +340,158 @@ describe('replaceInvalidModelReferences', () => {
     expect(legacy.changes.tts.replacedReferences).toBe(1);
   });
 
+  it('preserves legacy model and skill grants when creating a missing version snapshot', async () => {
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'legacy app',
+      type: 'workflow',
+      modules: []
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: String(ids.member),
+      nodes: [
+        {
+          nodeId: 'legacy-system-config',
+          flowNodeType: legacySystemConfigNodeType,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.tts,
+              value: {
+                type: 'model',
+                modelId: 'valid-tts',
+                model: 'valid-tts-name',
+                voice: 'valid-voice'
+              }
+            }
+          ]
+        },
+        {
+          nodeId: 'chat-node',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: 'old-llm' }]
+        }
+      ],
+      resourceRefs: { skillIds: ['legacy-skill'] }
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const version = await MongoAppVersion.collection.findOne({ _id: ids.version });
+
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(version?.resources).toEqual(
+      expect.arrayContaining([
+        { type: 'model', id: 'new-llm' },
+        { type: 'model', id: 'valid-tts' },
+        { type: 'skill', id: 'legacy-skill' }
+      ])
+    );
+    expect(version?.nodes[0].flowNodeType).toBe(legacySystemConfigNodeType);
+    expect(version?.nodes[0].inputs[0].value).toMatchObject({
+      modelId: 'valid-tts',
+      voice: 'valid-voice'
+    });
+    expect(version?.nodes[1].inputs[0].value).toBe('new-llm');
+  });
+
+  it('replaces legacy userGuide model inputs in app modules and version nodes in place', async () => {
+    const preservedResource = {
+      type: 'dataset' as const,
+      id: 'legacy-dataset',
+      legacyMetadata: 'preserve'
+    };
+    const legacyNode = {
+      nodeId: 'legacy-system-config',
+      flowNodeType: legacySystemConfigNodeType,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.questionGuide,
+          value: { open: true, modelId: 'old-llm', model: 'old-llm-name' }
+        },
+        {
+          key: NodeInputKeyEnum.tts,
+          value: { type: 'model', modelId: 'old-tts', model: 'old-tts-name', voice: 'old-voice' }
+        }
+      ]
+    };
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'legacy app',
+      type: 'workflow',
+      modules: [legacyNode]
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: String(ids.member),
+      nodes: [legacyNode],
+      resources: [
+        preservedResource,
+        { type: 'model', id: 'old-llm' },
+        { type: 'model', id: 'old-tts' }
+      ]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const [app, version] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+    const updatedInputs = [app?.modules[0].inputs, version?.nodes[0].inputs];
+
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.app.tts.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.tts.replacedReferences).toBe(1);
+    updatedInputs.forEach((inputs) => {
+      expect(inputs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: NodeInputKeyEnum.questionGuide,
+            value: { open: true, modelId: 'new-llm', model: 'new-llm-name' }
+          }),
+          expect.objectContaining({
+            key: NodeInputKeyEnum.tts,
+            value: {
+              type: 'model',
+              modelId: 'new-tts',
+              model: 'new-tts-name',
+              voice: 'first-voice'
+            }
+          })
+        ])
+      );
+    });
+    expect(app?.modules[0].flowNodeType).toBe(legacySystemConfigNodeType);
+    expect(app?.chatConfig).toBeUndefined();
+    expect(version?.nodes[0].flowNodeType).toBe(legacySystemConfigNodeType);
+    expect(version?.chatConfig).toBeUndefined();
+    expect(version?.resources).toEqual(
+      expect.arrayContaining([
+        { type: 'model', id: 'new-llm' },
+        { type: 'model', id: 'new-tts' }
+      ])
+    );
+    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-llm' });
+    expect(version?.resources).not.toContainEqual({ type: 'model', id: 'old-tts' });
+    expect(version?.resources).toContainEqual(preservedResource);
+  });
+
   it('writes a TTS-only change and updates the version model resource', async () => {
     await MongoApp.collection.insertOne({
       _id: ids.app,
@@ -356,14 +532,13 @@ describe('replaceInvalidModelReferences', () => {
   });
 
   it('rejects a TTS target without a usable voice before writing', async () => {
-    const noVoiceHandle = {
-      getAllModels: () =>
-        models.map((model) =>
-          model.modelId === 'new-tts'
-            ? { ...model, config: { voices: [{ label: 'Empty', value: '' }] } }
-            : model
-        )
-    } as unknown as ModelHandle;
+    const noVoiceHandle = createHandle(
+      models.map((model) =>
+        model.modelId === 'new-tts'
+          ? { ...model, config: { voices: [{ label: 'Empty', value: '' }] } }
+          : model
+      )
+    );
     await expect(
       replaceInvalidModelReferences({
         teamId: String(ids.team),
@@ -474,14 +649,13 @@ describe('replaceInvalidModelReferences', () => {
       name: 'dataset',
       type: 'dataset',
       agentModelId: 'old-llm',
-      vlmModelId: 'old-llm'
+      vlmModelId: 'active-text-llm'
     });
-    const textOnlyHandle = {
-      getAllModels: () =>
-        models.map((model) =>
-          model.modelId === 'new-llm' ? { ...model, config: { vision: false } } : model
-        )
-    } as unknown as ModelHandle;
+    const textOnlyHandle = createHandle(
+      models.map((model) =>
+        model.modelId === 'new-llm' ? { ...model, config: { vision: false } } : model
+      )
+    );
 
     await expect(
       replaceInvalidModelReferences({
@@ -493,7 +667,30 @@ describe('replaceInvalidModelReferences', () => {
     ).rejects.toThrow('vision');
     const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
     expect(dataset?.agentModelId).toBe('old-llm');
-    expect(dataset?.vlmModelId).toBe('old-llm');
+    expect(dataset?.vlmModelId).toBe('active-text-llm');
+  });
+
+  it('replaces an active text-only model in the dataset image slot', async () => {
+    await MongoDataset.collection.insertOne({
+      _id: ids.dataset,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'dataset with text-only image model',
+      type: 'dataset',
+      vlmModelId: 'active-text-llm',
+      vlmModel: 'active-text-llm-name'
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+    const dataset = await MongoDataset.collection.findOne({ _id: ids.dataset });
+
+    expect(result.counts.dataset.llm.replacedReferences).toBe(1);
+    expect(dataset).toMatchObject({ vlmModelId: 'new-llm', vlmModel: 'new-llm-name' });
   });
 
   it('rejects a non-vision target for a BSON image model ID before writing', async () => {
@@ -507,12 +704,11 @@ describe('replaceInvalidModelReferences', () => {
       agentModelId: 'old-llm',
       vlmModelId: oldVlmId
     });
-    const textOnlyHandle = {
-      getAllModels: () =>
-        models.map((model) =>
-          model.modelId === 'new-llm' ? { ...model, config: { vision: false } } : model
-        )
-    } as unknown as ModelHandle;
+    const textOnlyHandle = createHandle(
+      models.map((model) =>
+        model.modelId === 'new-llm' ? { ...model, config: { vision: false } } : model
+      )
+    );
 
     await expect(
       replaceInvalidModelReferences({

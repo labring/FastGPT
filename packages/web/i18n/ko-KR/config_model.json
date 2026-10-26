@@ -278,7 +278,7 @@
   "replace_invalid_title": "사용할 수 없는 모델 교체",
   "replace_invalid_review": "확인",
   "replace_invalid_execute": "교체 확인",
-  "replace_invalid_confirm_warning": "현재 팀의 지식베이스, 앱 및 모든 이전 버전에서 사용할 수 없는 모델 참조를 수정합니다.",
+  "replace_invalid_confirm_warning": "현재 팀의 지식베이스, 앱 및 모든 이전 버전에서 사용할 수 없는 모델 참조를 수정합니다. 전체 작업에는 시간이 오래 걸릴 수 있습니다.",
   "replace_invalid_done": "검색과 교체가 완료되었습니다",
   "replace_invalid_done_with_failures": "검색은 완료되었지만 일부 레코드가 실패했습니다",
   "replace_invalid_stopped": "교체가 중단되었습니다. 지금까지의 결과:",

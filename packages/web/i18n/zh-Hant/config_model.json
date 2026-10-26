@@ -278,7 +278,7 @@
   "replace_invalid_title": "替換已失效模型",
   "replace_invalid_review": "確認",
   "replace_invalid_execute": "確認替換",
-  "replace_invalid_confirm_warning": "將修改目前團隊的知識庫、應用及全部歷史版本中的失效模型引用。",
+  "replace_invalid_confirm_warning": "將修改目前團隊的知識庫、應用及全部歷史版本中的失效模型引用。整個過程可能需要較長時間，請耐心等候。",
   "replace_invalid_done": "掃描與替換已完成",
   "replace_invalid_done_with_failures": "掃描已完成，部分記錄處理失敗",
   "replace_invalid_stopped": "替換已中斷，以下為已完成部分的統計",
