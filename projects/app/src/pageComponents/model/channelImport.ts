@@ -113,28 +113,30 @@ export const buildBlankChannelModelData = ({
   const configSource: Record<string, unknown> = {
     ...(isRecord(modelData?.config) ? modelData.config : {})
   };
-  const contextLimit = Number.isFinite(contextLength) ? (contextLength ?? 0) : 0;
-  const getLimit = (key: string, fallback = 0) => {
+  const contextLimit =
+    typeof contextLength === 'number' && Number.isFinite(contextLength) ? contextLength : undefined;
+  const getBaseLimit = (key: string) => {
+    const value = baseConfig[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  };
+  const getLimit = (key: string, fallback = getBaseLimit(key)) => {
     const value = configSource[key];
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   };
-  const maxContext = getLimit('maxContext', contextLimit);
-  const baseMaxResponse = baseConfig.maxResponse;
-  const maxResponseFallback =
-    typeof baseMaxResponse === 'number' && Number.isFinite(baseMaxResponse) ? baseMaxResponse : 0;
+  const maxContext = contextLimit ?? getLimit('maxContext');
   const config = {
     ...base.config,
     ...configSource,
     ...(type === ModelTypeEnum.llm
       ? {
           maxContext,
-          maxResponse: maxCompletionTokens ?? getLimit('maxResponse', maxResponseFallback),
+          maxResponse: maxCompletionTokens ?? getLimit('maxResponse'),
           // 空白模型表单用 NaN 表示未填；导入时按保存逻辑回退到上下文的 80%。
           quoteMaxToken: getLimit('quoteMaxToken', Math.floor(maxContext * 0.8))
         }
       : {}),
     ...(type === ModelTypeEnum.embedding || type === ModelTypeEnum.rerank
-      ? { maxToken: getLimit('maxToken', contextLimit) }
+      ? { maxToken: contextLimit ?? getLimit('maxToken') }
       : {})
   };
 

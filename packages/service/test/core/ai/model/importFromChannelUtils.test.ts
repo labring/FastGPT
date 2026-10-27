@@ -279,7 +279,7 @@ describe('channel model import drafts', () => {
     });
   });
 
-  it('builds a blank draft from upstream fields and defaults missing context to zero', () => {
+  it('keeps missing context absent from an upstream blank draft', () => {
     const item = createBlankModelData({
       id: 'openai/gpt-4o',
       name: 'GPT-4o',
@@ -295,10 +295,11 @@ describe('channel model import drafts', () => {
         type: ModelTypeEnum.llm,
         model: 'openai/gpt-4o',
         name: 'GPT-4o',
-        config: { maxContext: 0, maxResponse: 4096 }
+        config: { maxResponse: 4096 }
       }
     });
     if (item.category === 'blank') {
+      expect(item.modelData).not.toHaveProperty('config.maxContext');
       expect(item.modelData?.provider).toBeUndefined();
       expect(item.modelData).not.toHaveProperty('inputPrice');
       expect(item.modelData).not.toHaveProperty('outputPrice');
