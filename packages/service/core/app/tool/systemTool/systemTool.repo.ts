@@ -24,6 +24,8 @@ import type {
   ToolDetailType as SDKToolDetailType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { withDurationLog } from '../../../../common/logger/timing';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
 import {
@@ -59,6 +61,8 @@ type SystemToolRuntimeType = {
   secretsVal?: Record<string, any>;
   permissions?: PluginPermissionEnumType[];
 };
+
+const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
@@ -321,16 +325,33 @@ export class SystemToolRepo {
   }): Promise<SystemToolListItemType[]> => {
     // 1. get all tools from plugin by sources
     const filteredTags = tags ? filterPluginTags(tags) : undefined;
-    const tools = await withPluginClientLocale(lang, () =>
-      pluginClient.listTools({
-        op,
-        sources,
-        tags: filteredTags
-      })
+    const tools = await withDurationLog(
+      {
+        logger,
+        message: 'System tool list stage finished',
+        properties: { stage: 'plugin.listTools', op, sources },
+        summary: (items) => ({ toolCount: items.length })
+      },
+      () =>
+        withPluginClientLocale(lang, () =>
+          pluginClient.listTools({
+            op,
+            sources,
+            tags: filteredTags
+          })
+        )
     );
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
-    const DBPlugins = await this.getAllSystemToolRecords();
+    const DBPlugins = await withDurationLog(
+      {
+        logger,
+        message: 'System tool list stage finished',
+        properties: { stage: 'mongo.systemToolConfig' },
+        summary: (records) => ({ configCount: records.length })
+      },
+      () => this.getAllSystemToolRecords()
+    );
     const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
 
     const formattedTools = tools.map((tool) => {

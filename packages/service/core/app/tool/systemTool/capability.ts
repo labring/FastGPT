@@ -27,6 +27,10 @@ import {
   resolveTeamPluginList
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { withDurationLog } from '../../../../common/logger/timing';
+
+const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
 export type AuthorizedSystemToolListItem = NodeTemplateListItemType & { source: string };
 
@@ -80,7 +84,16 @@ const filterTemplateBySearchKey = ({
 };
 
 const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?: string }) => {
-  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
+  const status = await withDurationLog(
+    {
+      logger,
+      message: 'System tool templates stage finished',
+      properties: { stage: 'plugin.debugSessionStatus', tmbId }
+    },
+    // 调试通道未开通属于预期分支，与慢请求排查无关，继续用 catch 归为“无调试来源”。
+    () => pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined)
+  );
+
   if (
     status?.enabled &&
     (status.status === 'enabled' || status.status === 'connected') &&
@@ -191,7 +204,14 @@ const getSystemToolTemplateList = async ({
 export const listAuthorizedSystemToolTemplates = async (
   params: SystemToolTemplateListParams
 ): Promise<AuthorizedSystemToolListItem[]> => {
-  const userDetail = await getUserDetail({ tmbId: params.tmbId });
+  const userDetail = await withDurationLog(
+    {
+      logger,
+      message: 'System tool templates stage finished',
+      properties: { stage: 'user.detail', tmbId: params.tmbId }
+    },
+    () => getUserDetail({ tmbId: params.tmbId })
+  );
   return getSystemToolTemplateList({
     ...params,
     userTags: userDetail.tags ?? []
