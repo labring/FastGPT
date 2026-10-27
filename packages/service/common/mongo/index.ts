@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { getLogger, LogCategories } from '../logger';
 import { isProfiling, recordMongoOperation } from '../profiling';
@@ -42,6 +43,15 @@ export const connectionLogMongo = (() => {
 })();
 
 const installedSchemas = new WeakSet<mongoose.Schema>();
+
+/**
+ * 单次 Mongo 操作的起始时间。
+ *
+ * Model 级 middleware（如 insertMany）的 `this` 是所有调用共享的构造函数，
+ * 不能把计时状态挂在上下文对象上；这里用 AsyncLocalStorage 按调用隔离，
+ * 保证并发、逆序完成时每个操作都能拿到自己的起点。
+ */
+const operationStartStorage = new AsyncLocalStorage<number>();
 
 /** 从 Query、Aggregate、Document 或 Model middleware 上下文解析集合名。 */
 const getCollectionName = (context: any) => {
@@ -101,23 +111,18 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
   ];
 
   /**
-   * 取本次操作在 pre hook 记录的起始时间。
+   * 取本次操作的起始时间。
    *
+   * Query / Document 每次调用都是独立对象，直接读挂在自身上的 `_startTime`；
    * Model 级 middleware（如 insertMany）的 `this` 是所有调用共享的构造函数，
-   * 不能把计时状态直接挂在上面，否则并发调用会互相覆盖、漏计；这里为 Model
-   * 使用先进先出的起点队列，其余上下文（Query / Document）每次操作都是独立对象，
-   * 直接读 `_startTime` 即可。
+   * 只能通过 AsyncLocalStorage 按调用隔离，避免并发或逆序完成时互相覆盖。
    */
-  const takeOperationStartTime = (context: any): number | undefined => {
-    if (typeof context === 'function') {
-      return context._profileStartQueue?.shift();
-    }
-    return context._startTime;
-  };
+  const getOperationStartTime = (context: any): number | undefined =>
+    typeof context === 'function' ? operationStartStorage.getStore() : context._startTime;
 
   /** 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。 */
   const finishOperation = (context: any) => {
-    const startedAt = takeOperationStartTime(context);
+    const startedAt = getOperationStartTime(context);
     if (startedAt === undefined) return;
 
     const duration = Date.now() - startedAt;
@@ -161,13 +166,15 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
   operations.forEach((op: any) => {
     schema.pre(op, function (this: any, next) {
-      if (typeof this === 'function') {
-        (this._profileStartQueue ??= []).push(Date.now());
-      } else {
-        this._startTime = Date.now();
-      }
       this._query = this.getQuery ? this.getQuery() : null;
 
+      if (typeof this === 'function') {
+        // Model 上下文共享，用 AsyncLocalStorage 在 next() 的执行链上携带本次起点。
+        operationStartStorage.run(Date.now(), next);
+        return;
+      }
+
+      this._startTime = Date.now();
       next();
     });
 

@@ -50,6 +50,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import {
+  markProfileError,
   profileStage,
   setProfileMeta,
   withRequestProfile
@@ -362,6 +363,12 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
           }
         })
       );
+
+      // dispatchWorkFlow 正常返回但工作流内部存在未捕获错误时，本次调用仍应视为失败，
+      // 避免失败请求进入成功分位数；响应与落库行为保持不变。
+      if (workflowRuntimeSummary?.hasError || workflowRuntimeSummary?.errorText) {
+        markProfileError(workflowRuntimeSummary.errorText || 'Workflow run failed');
+      }
 
       // Save chat
       const aiResponse: AIChatItemType & { dataId?: string } = {

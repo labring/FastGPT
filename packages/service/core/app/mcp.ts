@@ -481,8 +481,6 @@ export class MCPClient {
         }
       }
     });
-      }
-    });
 
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误

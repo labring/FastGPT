@@ -123,6 +123,51 @@ describe('Mongo profile middleware', () => {
     expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(2);
   });
 
+  it('attributes out-of-order insertMany durations to the correct call', async () => {
+    const { model } = createModel();
+    const gates: Record<string, () => Promise<unknown>> = {};
+    const originalInsertMany = model.collection.insertMany.bind(model.collection);
+
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+    vi.spyOn(model.collection, 'insertMany').mockImplementation(
+      (docs: any, options: any) =>
+        new Promise((resolve, reject) => {
+          gates[String(docs[0].name)] = () =>
+            originalInsertMany(docs, options).then(resolve, reject);
+        })
+    );
+
+    const waitForGate = async (name: string) => {
+      for (let i = 0; i < 50 && !gates[name]; i++) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      expect(gates[name]).toBeDefined();
+    };
+
+    const slow = model.insertMany([{ name: 'slow' }]);
+    await waitForGate('slow');
+
+    nowSpy.mockReturnValue(2500);
+    const fast = model.insertMany([{ name: 'fast' }]);
+    await waitForGate('fast');
+
+    // fast 后开始、先完成；slow 先开始、后完成。
+    nowSpy.mockReturnValue(2600);
+    await gates.fast();
+    nowSpy.mockReturnValue(3500);
+    await gates.slow();
+
+    await Promise.all([slow, fast]);
+    nowSpy.mockRestore();
+
+    const durations = profilingMocks.recordMongoOperation.mock.calls.map(([arg]) => arg.durationMs);
+
+    expect(durations).toHaveLength(2);
+    // 完成顺序是 fast、slow，耗时必须各自对应自己的起点。
+    expect(durations[0]).toBe(100);
+    expect(durations[1]).toBe(2500);
+  });
+
   it('records concurrent failed insertMany calls separately', async () => {
     const { model } = createModel();
     const insertSpy = vi
