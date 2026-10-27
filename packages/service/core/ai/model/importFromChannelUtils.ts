@@ -103,7 +103,7 @@ export const createBlankModelData = (
   const maxResponse = getMaxCompletionTokens(channelModel);
   const base = {
     model: channelModel.id,
-    name: channelModel.name ?? channelModel.id,
+    name: channelModel.name?.trim() || channelModel.id,
     ...(provider ? { provider } : {})
   };
 

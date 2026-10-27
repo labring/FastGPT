@@ -1,5 +1,6 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { PreviewImportFromChannelResponseSchema } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
   classifyChannelModels,
   createBlankModelData,
@@ -217,6 +218,48 @@ describe('channel model import matching', () => {
       expect(items[4].modelData?.provider).toBe('provider-from-channel');
       expect(items[4].modelData).not.toHaveProperty('config');
     }
+  });
+
+  it('falls back to model IDs for blank upstream names in mixed directories', () => {
+    const items = classifyChannelModels({
+      channelModels: [
+        {
+          id: 'vendor/unlisted',
+          name: '',
+          architecture: { output_modalities: ['text'] }
+        },
+        {
+          id: 'vendor/gpt-4o',
+          name: '   ',
+          architecture: { output_modalities: ['text'] }
+        },
+        {
+          id: 'vendor/custom',
+          name: '  Custom Model  ',
+          architecture: { output_modalities: ['text'] }
+        }
+      ],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: [createTemplate({ model: 'gpt-4o' })]
+    });
+    const response = PreviewImportFromChannelResponseSchema.parse({ items });
+
+    expect(response.items).toHaveLength(3);
+    expect(response.items[0].candidates[0]).toMatchObject({
+      category: 'blank',
+      modelData: { name: 'vendor/unlisted' }
+    });
+    expect(response.items[1].candidates[0]).toMatchObject({
+      category: 'template',
+      blankModelData: { name: 'vendor/gpt-4o' }
+    });
+    expect(response.items[2].candidates[0]).toMatchObject({
+      category: 'blank',
+      modelData: { name: 'Custom Model' }
+    });
   });
 
   it('uses matching templates instead of models already linked to another channel', () => {
