@@ -1,6 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getLogger } from '@fastgpt/service/common/logger/client';
-import { LogCategories } from '@fastgpt/service/common/logger/categories';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -9,12 +7,6 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-
-// 复用全局 Logger mock 的输出端，桥接到计时器直接引用的 client 模块。
-vi.mock('@fastgpt/service/common/logger/client', async () => {
-  const { getLogger } = await import('@fastgpt/service/common/logger');
-  return { getLogger };
-});
 
 const mocks = vi.hoisted(() => ({
   getUserDetail: vi.fn(),
@@ -92,18 +84,10 @@ const createTemplate = (
 });
 
 describe('listAuthorizedSystemToolTemplates', () => {
-  const logger = getLogger([...LogCategories.TRACE, 'system_tool.templates.stage_finished']);
-
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.spyOn(logger, 'debug').mockImplementation(() => {});
-    vi.spyOn(logger, 'warn').mockImplementation(() => {});
     mocks.getUserDetail.mockResolvedValue({ tags: ['hidden-user'] });
     mocks.getDebugSessionStatus.mockResolvedValue(undefined);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('filters top-level system and team tools without loading details or toolset children', async () => {
@@ -145,32 +129,9 @@ describe('listAuthorizedSystemToolTemplates', () => {
     });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
     expect(mocks.getClientToolPreviewNode).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
-      event: 'system_tool.templates.stage_finished',
-      stage: 'templates.resolvePermissions',
-      teamId: context.teamId,
-      inputCount: 11,
-      outputCount: 8,
-      durationMs: expect.any(Number)
-    });
-    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
-      event: 'system_tool.templates.stage_finished',
-      stage: 'templates.sort',
-      teamId: context.teamId,
-      toolCount: 8,
-      durationMs: expect.any(Number)
-    });
-    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
-      event: 'system_tool.templates.stage_finished',
-      stage: 'templates.filter',
-      teamId: context.teamId,
-      inputCount: 8,
-      outputCount: 4,
-      durationMs: expect.any(Number)
-    });
   });
 
-  it('preserves debug priority, root visibility and search filtering while logging counts', async () => {
+  it('preserves debug priority, root visibility and search filtering', async () => {
     const debugSource = 'debug:tmbId:member-1';
     mocks.getSystemToolList.mockResolvedValue([
       createTool('systemTool-match', { hideTags: ['hidden-user'] }),
@@ -191,23 +152,15 @@ describe('listAuthorizedSystemToolTemplates', () => {
     });
 
     expect(tools.map((tool) => tool.id)).toEqual(['systemTool-debug-match', 'systemTool-match']);
-    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
-      event: 'system_tool.templates.stage_finished',
-      stage: 'templates.filter',
-      teamId: context.teamId,
-      inputCount: 3,
-      outputCount: 2,
-      durationMs: expect.any(Number)
-    });
   });
 
   it.each([
-    [PluginStatusEnum.Normal, true, ['systemTool-set/match'], 3],
-    [PluginStatusEnum.Hidden, true, [], 3],
-    [PluginStatusEnum.Normal, false, [], 0]
+    [PluginStatusEnum.Normal, true, ['systemTool-set/match']],
+    [PluginStatusEnum.Hidden, true, []],
+    [PluginStatusEnum.Normal, false, []]
   ] as const)(
-    'logs child filtering for parent status %s with children=%s',
-    async (status, hasChildren, expectedIds, inputCount) => {
+    'filters children for parent status %s with children=%s',
+    async (status, hasChildren, expectedIds) => {
       mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
         ...createTool('systemTool-set', { isToolSet: true, status }),
         children: hasChildren
@@ -226,15 +179,6 @@ describe('listAuthorizedSystemToolTemplates', () => {
       });
 
       expect(tools.map((tool) => tool.id)).toEqual(expectedIds);
-      expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
-        event: 'system_tool.templates.stage_finished',
-        stage: 'templates.filter',
-        teamId: context.teamId,
-        parentId: 'systemTool-set',
-        inputCount,
-        outputCount: expectedIds.length,
-        durationMs: expect.any(Number)
-      });
       expect(mocks.getSystemToolList).not.toHaveBeenCalled();
     }
   );

@@ -17,7 +17,6 @@ import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/pl
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { MongoTeamInstalledPlugin } from './schema/teamInstalledPluginSchema';
 import { SystemToolRepo } from '../app/tool/systemTool/systemTool.repo';
-import { withTiming } from '../../common/logger/timing';
 
 export type TeamPluginPolicyRecord = TeamInstalledPluginSchemaType;
 
@@ -59,21 +58,7 @@ export const getTeamPluginPolicyStatus = (policy?: TeamInstalledPluginSchemaType
 };
 
 export const getTeamPluginPolicyMap = async (teamId: string) => {
-  /** 保留 lean 查询；withTiming 会等待 Mongo Query 的 thenable 完成后再记录耗时。 */
-  function loadPolicies(teamId: string) {
-    return MongoTeamInstalledPlugin.find({ teamId }).lean();
-  }
-  const getPolicies = withTiming(
-    {
-      event: 'team_plugin.list.stage_finished',
-      stage: 'mongo.teamPluginPolicy',
-      properties: (teamId) => ({ teamId }),
-      summary: (records) => ({ policyCount: records.length })
-    },
-    loadPolicies
-  );
-  const policies = await getPolicies(teamId);
-
+  const policies = await MongoTeamInstalledPlugin.find({ teamId }).lean();
   return new Map(policies.map((policy) => [policy.pluginId, policy]));
 };
 

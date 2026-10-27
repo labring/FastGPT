@@ -12,7 +12,6 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { withTiming } from '@fastgpt/service/common/logger/timing';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import {
   getTeamPluginSource,
@@ -31,19 +30,6 @@ export type listBody = Record<string, never>;
 
 export type listResponse = GetTeamPluginListResponseType;
 
-const authToolListRequest = withTiming(
-  { event: 'team_plugin.list.stage_finished', stage: 'auth' },
-  authUserPer
-);
-const getTimedUserDetail = withTiming(
-  {
-    event: 'team_plugin.list.stage_finished',
-    stage: 'user.detail',
-    properties: ({ tmbId }) => ({ tmbId })
-  },
-  getUserDetail
-);
-
 const hasMatchedUserTag = ({
   userTags,
   targetTags
@@ -61,7 +47,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
     querySchema: GetTeamSystemPluginListQuerySchema
   });
 
-  const { teamId, tmbId, permission } = await authToolListRequest({ req, authToken: true });
+  const { teamId, tmbId, permission } = await authUserPer({ req, authToken: true });
   const debugSource = await getActiveDebugSource(tmbId);
   const teamSource = getTeamPluginSource(teamId);
 
@@ -73,7 +59,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
       sources: ['system', teamSource, ...(debugSource ? [debugSource] : [])],
       lang
     }),
-    getTimedUserDetail({ tmbId }),
+    getUserDetail({ tmbId }),
     getTeamPluginPolicyMap(teamId)
   ]);
   const userTags = userDetail.tags || [];
@@ -104,19 +90,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 export default NextAPI(handler);
 
 async function getActiveDebugSource(tmbId: string) {
-  /** 保持调试通道不可用时的降级，计时覆盖查询与降级处理。 */
-  function loadDebugSession(params: { tmbId: string }) {
-    return pluginClient.getDebugSessionStatus(params).catch(() => undefined);
-  }
-  const getDebugSessionStatus = withTiming(
-    {
-      event: 'team_plugin.list.stage_finished',
-      stage: 'plugin.debugSessionStatus',
-      properties: ({ tmbId }) => ({ tmbId })
-    },
-    loadDebugSession
-  );
-  const status = await getDebugSessionStatus({ tmbId });
+  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
 
   if (
     status?.enabled &&
