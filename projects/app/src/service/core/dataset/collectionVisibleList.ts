@@ -1,11 +1,11 @@
 import { getFolderPathIndex } from '@fastgpt/global/common/parentFolder/tree';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { getVisibleChildren } from '@fastgpt/global/common/parentFolder/visibleChildren';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { Types } from '@fastgpt/service/common/mongo';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { serviceEnv } from '@fastgpt/service/env';
 import {
   getReadableCollectionIds,
   type CollectionPermissionItemType
@@ -58,7 +58,8 @@ export const getCollectionVisibleChildren = ({
       parentId: toParentId(folder.parentId)
     })),
     currentFolderId,
-    maxDepth: serviceEnv.MAX_FOLDER_DEPTH
+    // 展示路径只用于定位文件夹，不施加“新建文件夹”的策略上限，否则深层历史目录会被直接过滤掉。
+    maxDepth: defaultSubtreeMaxDepth
   });
   const folders = folderDocs.flatMap((folder) => {
     const id = String(folder._id);

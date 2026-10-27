@@ -1,10 +1,10 @@
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { getFolderPathIndex } from '@fastgpt/global/common/parentFolder/tree';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import type { ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { serviceEnv } from '../../../../env';
 import { MongoAgentSkills } from '../model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
@@ -42,7 +42,8 @@ export const getSkillFolderListScope = async ({
   const paths = getFolderPathIndex({
     folders: folderNodes,
     currentFolderId,
-    maxDepth: serviceEnv.MAX_FOLDER_DEPTH
+    // 展示路径只用于定位文件夹，不施加“新建文件夹”的策略上限，否则深层历史目录会被直接过滤掉。
+    maxDepth: defaultSubtreeMaxDepth
   });
   const folders = folderDocs.flatMap((folder) => {
     const id = String(folder._id);

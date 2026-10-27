@@ -16,7 +16,7 @@ import {
   getFolderAncestorIdsFromParentId,
   rewriteFolderSubtreeAncestorIds
 } from '@fastgpt/service/common/parentFolder/ancestorIds';
-import { serviceEnv } from '@fastgpt/service/env';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
   syncChildrenPermission,
@@ -127,7 +127,8 @@ export const moveDataset = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: id,
         rootAncestorIds: ancestorIds,
-        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+        // 与 getFolderAncestorIdsFromParentId 保持同一上限：移动只需重写路径，不能再施加策略深度。
+        maxDepth: defaultSubtreeMaxDepth,
         findChildFolders: (parentIds) =>
           MongoDataset.find({
             teamId: dataset.teamId,
