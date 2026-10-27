@@ -76,7 +76,7 @@ describe('folder ancestor path migration service', () => {
         { id: String(datasetIds[2]), reason: 'folder parent cycle detected' },
         {
           id: String(depthIds[depthIds.length - 1]),
-          reason: 'folder depth exceeds the configured maximum'
+          reason: 'folder hierarchy exceeds the traversal limit'
         }
       ])
     );
@@ -173,6 +173,46 @@ describe('folder ancestor path migration service', () => {
       parentId: appIds[2],
       ancestorIds: [appIds[0], appIds[2]]
     });
+  });
+
+  it('backfills folders deeper than the create-time policy limit', async () => {
+    // 历史数据存在在深度上限生效前就已超过 4 层的合法嵌套；迁移必须能回填，
+    // 不能把“新建文件夹”的策略上限当成迁移边界。
+    const chainIds = Array.from({ length: 6 }, () => new Types.ObjectId());
+    await MongoDataset.collection.insertMany(
+      chainIds.map((id, index) => ({
+        _id: id,
+        teamId,
+        type: 'folder',
+        parentId: chainIds[index - 1] ?? null
+      }))
+    );
+
+    try {
+      const result = await migrateFolderMigrationBatch({
+        stage: 'datasets',
+        docs: await MongoDataset.collection
+          .find({ _id: { $in: chainIds } })
+          .sort({ _id: 1 })
+          .toArray()
+      });
+
+      expect(result.errors).toEqual([]);
+      // 第 6 层文件夹的路径应包含全部 5 个祖先。
+      const tail = await MongoDataset.collection.findOne({ _id: chainIds[5] });
+      expect(tail?.ancestorIds?.map(String)).toEqual(chainIds.slice(0, 5).map(String));
+
+      // 回填后必须能通过校验。
+      await expect(
+        migrateFolderMigrationBatch({
+          stage: 'datasets',
+          docs: await MongoDataset.collection.find({ _id: { $in: chainIds } }).toArray(),
+          verifyOnly: true
+        })
+      ).resolves.toEqual({ errors: [], changedCount: 0 });
+    } finally {
+      await MongoDataset.collection.deleteMany({ _id: { $in: chainIds } });
+    }
   });
 
   it('validates without writing and remains idempotent after a successful backfill', async () => {

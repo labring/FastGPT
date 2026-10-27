@@ -1,10 +1,10 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { serviceEnv } from '@fastgpt/service/env';
 
 export type FolderMigrationStage = 'apps' | 'datasets';
 type FolderMigrationDoc = {
@@ -155,8 +155,11 @@ const planDocument = async ({
   while (parentId) {
     if (!Types.ObjectId.isValid(parentId)) return { reason: 'parentId is not a valid ObjectId' };
     if (visited.has(parentId)) return { reason: 'folder parent cycle detected' };
-    if (ancestorIds.length >= serviceEnv.MAX_FOLDER_DEPTH - 1) {
-      return { reason: 'folder depth exceeds the configured maximum' };
+    // 这里只防失控遍历，不能复用 MAX_FOLDER_DEPTH：那是“新建文件夹”的策略上限，而历史数据存在
+    // 限制生效前就已超出的合法嵌套。两者语义不同，运行时写路径的 getFolderAncestorIdsFromParentId
+    // 同样用 defaultSubtreeMaxDepth，迁移要与它保持一致。
+    if (ancestorIds.length >= defaultSubtreeMaxDepth - 1) {
+      return { reason: 'folder hierarchy exceeds the traversal limit' };
     }
     visited.add(parentId);
 
