@@ -54,7 +54,7 @@ describe('validateSystemMigrationRegistry', () => {
     ).toEqual(['20260903_migrate_legacy_system_models']);
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261025_token_prices_per_million',
-      version: '4.17.4',
+      version: '4.17.3',
       progressSteps: [{ key: 'models' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
