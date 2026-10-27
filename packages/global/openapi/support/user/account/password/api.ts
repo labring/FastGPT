@@ -211,6 +211,18 @@ export type PasswordAuthorizationResponse = z.infer<typeof PasswordAuthorization
 
 export const UpdatePasswordBodySchema = z
   .object({
+    /**
+     * 旧密码摘要。商业版由一次性改密 Session 承担身份验证；开源版没有认证服务，
+     * 只能用旧密码证明是本人，因此该字段在开源版改密时必填。
+     */
+    oldPsw: z
+      .string()
+      .length(64)
+      .optional()
+      .meta({
+        description: '客户端 SHA-256 处理后的旧密码摘要；开源版改密必填',
+        example: 'b'.repeat(64)
+      }),
     newPsw: z
       .string()
       .length(64)
@@ -219,7 +231,7 @@ export const UpdatePasswordBodySchema = z
         example: 'a'.repeat(64)
       }),
     passwordChangeSession: z.string().min(1).max(128).optional().meta({
-      description: '身份验证成功后签发的一次性改密 Session',
+      description: '身份验证成功后签发的一次性改密 Session（商业版必填）',
       example: 'password-change-session'
     })
   })

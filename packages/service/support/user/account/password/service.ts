@@ -79,15 +79,19 @@ export const createPasswordChangeSession = async ({
 /**
  * 在同一 Mongo 事务中更新密码；提供 sessionId 时先校验并消费一次性改密 Session，
  * 只有密码更新和凭证删除都成功，事务才会提交，避免凭证被提前消费或重复使用。
+ * 开源版没有商业版认证服务签发 Session，改密时由调用方传入 oldPassword 证明身份。
  */
 export const updatePassword = async ({
   sessionId,
   userId,
   loginSessionId,
-  newPassword
+  newPassword,
+  oldPassword
 }: PasswordChangeSessionData & {
   sessionId?: string;
   newPassword: string;
+  /** 开源版改密必传的旧密码摘要；商业版由一次性改密 Session 承担身份验证。 */
+  oldPassword?: string;
 }) =>
   mongoSessionRun(async (session) => {
     const dataId = sessionId ? getPasswordChangeSessionDataId(sessionId) : undefined;
@@ -102,6 +106,11 @@ export const updatePassword = async ({
         .lean();
 
       if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
+    }
+
+    // 旧密码校验与写入放在同一事务内，避免校验后、写入前被并发改密绕过。
+    if (oldPassword !== undefined) {
+      await assertOldPasswordMatches({ userId, oldPassword, session });
     }
 
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
@@ -168,6 +177,21 @@ export const activateAccount = async ({
     );
     if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
   });
+
+/** 拒绝与持久化密码不匹配的旧密码；Schema setter 负责把单层摘要对齐为存储格式。 */
+export const assertOldPasswordMatches = async ({
+  userId,
+  oldPassword,
+  session
+}: {
+  userId: string;
+  oldPassword: string;
+  session?: ClientSession;
+}) => {
+  const query = MongoUser.exists({ _id: userId, password: oldPassword });
+  if (session) query.session(session);
+  if (!(await query)) throw new UserError(UserErrEnum.oldPasswordError);
+};
 
 /** 拒绝将当前持久化密码再次设置为新密码。Schema setter 负责沿用现有双层哈希协议。 */
 export const assertNewPasswordDiffersFromCurrent = async ({

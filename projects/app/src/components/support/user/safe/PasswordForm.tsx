@@ -5,6 +5,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 export type PasswordFormType = {
+  oldPassword: string;
   newPassword: string;
   confirmPassword: string;
 };
@@ -26,13 +27,16 @@ const PasswordForm = ({
   form,
   submitting,
   onSubmit,
-  onKeyDown
+  onKeyDown,
+  showOldPassword = false
 }: {
   form: UseFormReturn<PasswordFormType>;
   submitting: boolean;
   onSubmit: () => void;
   /** 透传到表单容器，供调用方拦截 Enter 提交。 */
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  /** 开源版改密没有服务端认证，需要用户先填写旧密码证明身份。 */
+  showOldPassword?: boolean;
 }) => {
   const { t } = useTranslation();
   const {
@@ -43,6 +47,26 @@ const PasswordForm = ({
 
   return (
     <VStack align="stretch" spacing={6} mt={6} onKeyDown={onKeyDown}>
+      {showOldPassword && (
+        <FormControl isInvalid={!!errors.oldPassword}>
+          <Input
+            size="lg"
+            type="password"
+            bg="myGray.50"
+            _invalid={invalidInputStyles}
+            placeholder={t('common:password_old_placeholder')}
+            aria-label={t('common:password_old_placeholder')}
+            {...register('oldPassword', {
+              required: t('common:password_old_placeholder')
+            })}
+          />
+          {errors.oldPassword?.message && (
+            <FormErrorMessage mt={2} fontSize="mini" lineHeight={4}>
+              {errors.oldPassword.message}
+            </FormErrorMessage>
+          )}
+        </FormControl>
+      )}
       <FormControl isInvalid={!!errors.newPassword}>
         <Input
           size="lg"

@@ -79,8 +79,15 @@ describe('password API contracts', () => {
         passwordChangeSession: 'session'
       })
     ).toBeDefined();
+    expect(
+      UpdatePasswordBodySchema.parse({ oldPsw: 'c'.repeat(64), newPsw: 'b'.repeat(64) })
+    ).toBeDefined();
     expect(() =>
       UpdatePasswordBodySchema.parse({ newPsw: 'short', passwordChangeSession: 'session' })
+    ).toThrow();
+    // 旧密码同样必须是摘要，不能把明文透传到服务端。
+    expect(() =>
+      UpdatePasswordBodySchema.parse({ oldPsw: 'plain-password', newPsw: 'b'.repeat(64) })
     ).toThrow();
     expect(() =>
       UpdatePasswordBodySchema.parse({

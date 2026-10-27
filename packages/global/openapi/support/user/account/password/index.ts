@@ -48,7 +48,8 @@ export const PasswordPath: OpenAPIPath = {
   '/support/user/account/password/update': {
     post: {
       summary: '设置或修改密码',
-      description: '使用当前 Session 和一次性改密 Session 设置或修改密码，并注销其他 Session',
+      description:
+        '使用当前 Session 设置或修改密码，并注销其他 Session。商业版必须额外提交一次性改密 Session；开源版没有认证服务，已设置密码的账号必须提交旧密码（oldPsw）。',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: { 'application/json': { schema: UpdatePasswordBodySchema } }
@@ -63,8 +64,7 @@ export const PasswordPath: OpenAPIPath = {
   '/support/user/account/password/activate': {
     post: {
       summary: '激活账号',
-      description:
-        '未激活账号首次设置密码的入口；成功后将账号标记为已激活，并注销其他 Session',
+      description: '未激活账号首次设置密码的入口；成功后将账号标记为已激活，并注销其他 Session',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: { 'application/json': { schema: ActivateAccountBodySchema } }

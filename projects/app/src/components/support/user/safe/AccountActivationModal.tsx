@@ -22,7 +22,7 @@ const AccountActivationModal = ({ onFinish }: { onFinish: () => void }) => {
   const { initUserInfo } = useUserStore();
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<PasswordFormType>({
-    defaultValues: { newPassword: '', confirmPassword: '' }
+    defaultValues: { oldPassword: '', newPassword: '', confirmPassword: '' }
   });
 
   const submit = useCallback(

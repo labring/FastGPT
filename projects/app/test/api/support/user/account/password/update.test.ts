@@ -38,6 +38,8 @@ describe('password/update API', () => {
   let testTeam: any;
   let testTmb: any;
 
+  const OLD_PASSWORD = 'old-password';
+
   beforeEach(async () => {
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
@@ -45,7 +47,7 @@ describe('password/update API', () => {
     global.systemEnv = { ...global.systemEnv, sso: undefined };
     testUser = await MongoUser.create({
       username: 'password-update-user',
-      password: hashStr('old-password')
+      password: hashStr(OLD_PASSWORD)
     });
     testTeam = await MongoTeam.create({
       name: 'Password Update Team',
@@ -72,8 +74,14 @@ describe('password/update API', () => {
 
   const getBody = async ({
     userId = String(testUser._id),
-    newPsw = hashStr('new-password')
+    newPsw = hashStr('new-password'),
+    oldPsw = hashStr(OLD_PASSWORD)
+  }: {
+    userId?: string;
+    newPsw?: string;
+    oldPsw?: string;
   } = {}): Promise<UpdatePasswordBody> => ({
+    ...(oldPsw ? { oldPsw } : {}),
     newPsw,
     passwordChangeSession: (
       await createPasswordChangeSession({ userId, loginSessionId: 'current-session' })
@@ -113,7 +121,7 @@ describe('password/update API', () => {
     expect(response.code).toBe(500);
     expect(mocks.withUserLock).not.toHaveBeenCalled();
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
   });
 
@@ -143,7 +151,7 @@ describe('password/update API', () => {
 
     expect(response.code).toBe(500);
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
   });
 
@@ -161,12 +169,12 @@ describe('password/update API', () => {
 
     expect(response.code).toBe(500);
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
   });
 
   it('keeps the session available when the password update is rejected', async () => {
-    const body = await getBody({ newPsw: hashStr('old-password') });
+    const body = await getBody({ newPsw: hashStr(OLD_PASSWORD) });
     const rejectedResponse = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       { body, auth: getAuth() }
@@ -216,7 +224,7 @@ describe('password/update API', () => {
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
       {
-        body: await getBody({ newPsw: hashStr('old-password') }),
+        body: await getBody({ newPsw: hashStr(OLD_PASSWORD) }),
         auth: getAuth()
       }
     );
@@ -241,14 +249,14 @@ describe('password/update API', () => {
 
     expect(response.code).toBe(500);
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
   });
 
   it('updates the password from the login Session when the commercial license is inactive', async () => {
     const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
       updatePasswordApi,
-      { body: { newPsw: hashStr('new-password') }, auth: getAuth() }
+      { body: await getBody(), auth: getAuth() }
     );
 
     expect(response.code).toBe(200);
@@ -256,6 +264,40 @@ describe('password/update API', () => {
       await MongoUser.exists({ _id: testUser._id, password: hashStr('new-password') })
     ).toBeTruthy();
     expect(delUserAllSession).toHaveBeenCalledWith(String(testUser._id), ['current-session']);
+  });
+
+  it('requires the old password in OSS when a password is already stored', async () => {
+    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+      updatePasswordApi,
+      {
+        // 显式传空串模拟“开源版改密未提交旧密码”，不能传 undefined（会回落到默认值）。
+        body: await getBody({ oldPsw: '' }),
+        auth: getAuth()
+      }
+    );
+
+    expect(response.code).toBe(500);
+    expect(response.error).toMatchObject({ message: UserErrEnum.oldPasswordError });
+    expect(
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
+    ).toBeTruthy();
+  });
+
+  it('rejects a wrong old password in OSS', async () => {
+    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+      updatePasswordApi,
+      {
+        body: await getBody({ oldPsw: hashStr('wrong-old-password') }),
+        auth: getAuth()
+      }
+    );
+
+    expect(response.code).toBe(500);
+    expect(response.error).toMatchObject({ message: UserErrEnum.oldPasswordError });
+    expect(delUserAllSession).not.toHaveBeenCalled();
+    expect(
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
+    ).toBeTruthy();
   });
 
   it('rejects a missing password change session when the commercial license is active', async () => {
@@ -270,7 +312,7 @@ describe('password/update API', () => {
       message: UserErrEnum.passwordChangeAuthorizationInvalid
     });
     expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
   });
 
@@ -345,7 +387,7 @@ describe('password/update API', () => {
     expect(response.error).toMatchObject({ message: UserErrEnum.ssoPasswordUnavailable });
     expect(delUserAllSession).not.toHaveBeenCalled();
     await expect(
-      MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+      MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).resolves.toBeTruthy();
     const unchangedUser = await MongoUser.findById(testUser._id).lean();
     expect(unchangedUser?.passwordUpdateTime).toBeUndefined();

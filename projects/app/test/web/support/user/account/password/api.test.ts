@@ -54,4 +54,16 @@ describe('password account API', () => {
       newPsw: hashStr('Strong-password-123')
     });
   });
+
+  it('hashes the old password for the open-source change flow', async () => {
+    await updatePassword({
+      oldPassword: 'Old-password-123',
+      newPassword: 'Strong-password-123'
+    });
+
+    expect(POST).toHaveBeenCalledWith('/support/user/account/password/update', {
+      oldPsw: hashStr('Old-password-123'),
+      newPsw: hashStr('Strong-password-123')
+    });
+  });
 });

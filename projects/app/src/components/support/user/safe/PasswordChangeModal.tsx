@@ -83,7 +83,7 @@ const PasswordChangeModal = ({
   });
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<PasswordFormType>({
-    defaultValues: { newPassword: '', confirmPassword: '' }
+    defaultValues: { oldPassword: '', newPassword: '', confirmPassword: '' }
   });
 
   useEffect(() => {
@@ -206,11 +206,13 @@ const PasswordChangeModal = ({
     onClose?.();
   };
 
-  const submitNewPassword = async ({ newPassword }: PasswordFormType) => {
+  const submitNewPassword = async ({ oldPassword, newPassword }: PasswordFormType) => {
     if (stage.type !== 'password') return;
     setSubmitting(true);
     try {
       await updatePassword({
+        // 仅商业版需要旧密码：开源版没有认证服务，表单会要求用户先填写旧密码。
+        oldPassword: stage.authorization ? undefined : oldPassword,
         newPassword,
         passwordChangeSession: stage.authorization?.sessionId
       });
@@ -231,10 +233,16 @@ const PasswordChangeModal = ({
         setStage(isPlus ? { type: 'authorizing' } : { type: 'unavailable' });
         return;
       }
-      const errorTitle =
-        errorResponse?.statusText === UserErrEnum.newPasswordSameAsOld
-          ? t('common:user.Password has no change')
-          : t('common:password_update_error');
+      const errorTitle = (() => {
+        if (errorResponse?.statusText === UserErrEnum.newPasswordSameAsOld) {
+          return t('common:user.Password has no change');
+        }
+        // 旧密码错误只可能发生在开源版：商业版由一次性改密 Session 证明身份。
+        if (errorResponse?.statusText === UserErrEnum.oldPasswordError) {
+          return t('common:user.Old password is error');
+        }
+        return t('common:password_update_error');
+      })();
       toast({ status: 'error', title: errorTitle });
     } finally {
       setSubmitting(false);
@@ -374,6 +382,7 @@ const PasswordChangeModal = ({
             submitting={submitting}
             onSubmit={form.handleSubmit(submitNewPassword)}
             onKeyDown={handlePasswordEnterKeyDown}
+            showOldPassword={!stage.authorization && !!userInfo?.hasPassword}
           />
         </Box>
       )}

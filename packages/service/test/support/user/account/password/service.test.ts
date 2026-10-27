@@ -53,6 +53,47 @@ describe('password change session service', () => {
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
   });
 
+  describe('old password check used by the open-source flow', () => {
+    let userId: string;
+    let loginSessionId: string;
+
+    beforeEach(async () => {
+      const user = await MongoUser.create({
+        username: 'old-password-user',
+        password: hashStr('current-password')
+      });
+      userId = String(user._id);
+      loginSessionId = 'login-old-password';
+    });
+
+    it('updates the password when the submitted old password matches', async () => {
+      await updatePassword({
+        userId,
+        loginSessionId,
+        oldPassword: hashStr('current-password'),
+        newPassword: hashStr('next-password')
+      });
+
+      const updated = await MongoUser.findById(userId).select('+password').lean();
+      expect(updated?.password).toBe(hashStr(hashStr('next-password')));
+    });
+
+    it('rejects a wrong old password and leaves the password unchanged', async () => {
+      await expect(
+        updatePassword({
+          userId,
+          loginSessionId,
+          oldPassword: hashStr('wrong-password'),
+          newPassword: hashStr('next-password')
+        })
+      ).rejects.toThrow(UserErrEnum.oldPasswordError);
+
+      const unchanged = await MongoUser.findById(userId).select('+password').lean();
+      expect(unchanged?.password).toBe(hashStr(hashStr('current-password')));
+      expect(unchanged?.passwordUpdateTime).toBeUndefined();
+    });
+  });
+
   it('activates an inactive account after setting a password with a change session', async () => {
     const user = await MongoUser.create({
       username: 'update-password-activation',
