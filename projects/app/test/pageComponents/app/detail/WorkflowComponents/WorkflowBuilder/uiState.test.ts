@@ -322,6 +322,32 @@ describe('getWorkflowBuilderPendingInteractiveKey', () => {
 });
 
 describe('isWorkflowBuilderVersionGenerating', () => {
+  it('restores confirmed progress without a separate Human message and stops it for an archived version', () => {
+    const interactive = createPreviewInteractive();
+    interactive.params.decision = 'confirm';
+    const record = {
+      obj: ChatRoleEnum.AI,
+      dataId: 'preview',
+      value: [{ interactive }]
+    } as ChatItemObjItemType & { dataId: string };
+    expect(getWorkflowBuilderPendingInteractiveKey([record])).toBeUndefined();
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [record], isChatGenerating: true })
+    ).toBe(true);
+    record.value.unshift({
+      workflowBuilderVersion: {
+        versionNo: 1,
+        name: 'Version',
+        filename: 'workflow.json',
+        checksum: 'checksum',
+        generatedAt: '2026-10-23T00:00:00.000Z'
+      }
+    });
+    expect(
+      isWorkflowBuilderVersionGenerating({ chatRecords: [record], isChatGenerating: true })
+    ).toBe(false);
+  });
+
   it.each([
     { value: '确认并开始搭建', expected: true },
     { value: '取消本次搭建', expected: false },

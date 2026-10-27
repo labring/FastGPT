@@ -1086,6 +1086,15 @@ describe('checkWorkflowNodeIssues', () => {
       }
     },
     {
+      name: 'manual plaintext secret',
+      config: {
+        value: {
+          type: SystemToolSecretInputTypeEnum.manual,
+          value: { apiKey: { value: 'test-only-api-key' } }
+        }
+      }
+    },
+    {
       name: 'configured default',
       config: { defaultValue: { type: SystemToolSecretInputTypeEnum.system } }
     },
@@ -1098,6 +1107,8 @@ describe('checkWorkflowNodeIssues', () => {
               key: NodeInputKeyEnum.systemInputConfig,
               label: '',
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              // 保留真实工具模板中的字段定义，Core 据此校验允许写入的密钥字段。
+              inputList: [{ key: 'apiKey', label: 'API Key', inputType: 'secret', required: true }],
               ...config
             }
           ]
@@ -1110,6 +1121,39 @@ describe('checkWorkflowNodeIssues', () => {
 
     expect(result.hasError).toBe(false);
     expect(result.issueMap).toEqual({});
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it.each([
+    { name: 'unknown credential field', value: { unknownKey: { secret: 'encrypted' } } },
+    { name: 'invalid credential wrapper', value: { apiKey: 'test-only-invalid-api-key' } }
+  ])('blocks a linear tool with $name', ({ value }) => {
+    const node = makeNode('tool', FlowNodeTypeEnum.tool, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          inputList: [{ key: 'apiKey', label: 'API Key', inputType: 'secret', required: true }],
+          value: { type: SystemToolSecretInputTypeEnum.manual, value }
+        }
+      ]
+    });
+    const result = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, node],
+      edges: [{ id: 'e-start-tool', source: 'start', target: 'tool', type: EDGE_TYPE }]
+    });
+
+    expect(result.hasError).toBe(true);
+    expect(result.firstErrorNodeId).toBe('tool');
+    expect(result.diagnostics).toEqual([
+      {
+        code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
+        severity: 'error',
+        nodeId: 'tool',
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      }
+    ]);
   });
 
   it('reports offline tools', () => {

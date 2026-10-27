@@ -826,6 +826,36 @@ describe('validateNodeIO', () => {
     expect(check(node, isTool)).toEqual([]);
   });
 
+  it.each([false, true])(
+    'validates configured authorization without leaking its value (mounted: %s)',
+    (isTool) => {
+      const input: Input = {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        inputList: [{ key: 'apiKey', label: 'API Key', inputType: 'secret', required: true }]
+      };
+      const node = makeNode({ flowNodeType: FlowNodeTypeEnum.tool, inputs: [input] });
+      for (const value of [
+        { type: 'system' },
+        { type: 'manual', value: {} },
+        { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext', value: '' } } }
+      ]) {
+        input.value = value;
+        expect(check(node, isTool)).toEqual([]);
+      }
+      input.value = { type: 'manual', value: { apiKey: 'sensitive-invalid-value' } };
+      expect(check(node, isTool)).toEqual([
+        {
+          code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
+          severity: 'error',
+          nodeId: node.nodeId,
+          inputKey: input.key
+        }
+      ]);
+    }
+  );
+
   it('checks editable code parameter names and references without a duplicate generic required issue', () => {
     const node = makeNode({
       flowNodeType: FlowNodeTypeEnum.code,

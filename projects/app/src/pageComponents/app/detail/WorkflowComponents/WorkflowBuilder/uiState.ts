@@ -167,6 +167,7 @@ export const isWorkflowBuilderVersionGenerating = ({
       return;
     }
     if (record.obj !== ChatRoleEnum.AI) return;
+    const hasDeliveredVersion = record.value.some((value) => value.workflowBuilderVersion);
     record.value.forEach((value) => {
       valueOrder += 1;
 
@@ -178,6 +179,8 @@ export const isWorkflowBuilderVersionGenerating = ({
       const interactive = extractDeepestInteractive(value.interactive);
       if (interactive.type === 'workflowBuilderPreview') {
         latestPreviewOrder = valueOrder;
+        if (interactive.params.decision === 'confirm' && !hasDeliveredVersion)
+          latestConfirmedPreviewOrder = valueOrder;
       }
     });
   });

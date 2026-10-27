@@ -202,6 +202,8 @@ export const getLastInteractiveValue = (
 
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
     if (!finalInteractive) return;
+    if (finalInteractive.type === 'workflowBuilderPreview' && finalInteractive.params.decision)
+      return;
     if (isAskInteractive(finalInteractive)) {
       const schema = isAgentAskInteractive(finalInteractive)
         ? AgentAskInteractiveSchema

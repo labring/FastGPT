@@ -72,9 +72,42 @@ export const WorkflowBuilderPreviewInteractiveSchema = z.object({
     title: z.string().trim().min(1),
     mermaid: z.string().trim().min(1),
     sections: z.array(WorkflowBuilderPreviewSectionSchema),
+    decision: z.enum(['confirm', 'cancel']).optional(),
     actions: z.array(WorkflowBuilderPreviewActionSchema).length(3)
   })
 });
 export type WorkflowBuilderPreviewInteractive = z.infer<
   typeof WorkflowBuilderPreviewInteractiveSchema
 >;
+
+/** Builder 只持久化业务执行事实；对话、计划和模型暂停状态沿用 ChatItem 协议。 */
+export const WorkflowBuilderTaskSchema = z.object({
+  schemaVersion: z.literal(1),
+  taskId: z.string().min(1),
+  requestChatItemId: z.string().min(1),
+  baseChecksum: WorkflowChecksumSchema,
+  preview: z.object({
+    previewId: z.string().min(1),
+    responseChatItemId: z.string().min(1),
+    checksum: WorkflowChecksumSchema
+  }),
+  confirmation: z
+    .object({
+      previewId: z.string().min(1),
+      checksum: WorkflowChecksumSchema,
+      responseChatItemId: z.string().min(1),
+      answer: z.string()
+    })
+    .optional(),
+  cancelled: z.boolean().optional(),
+  delivery: z
+    .object({
+      operationId: z.string().min(1),
+      draftRevision: z.string().min(1),
+      targetChecksum: WorkflowChecksumSchema,
+      responseChatItemId: z.string().min(1),
+      version: WorkflowBuilderVersionSchema.optional()
+    })
+    .optional()
+});
+export type WorkflowBuilderTask = z.infer<typeof WorkflowBuilderTaskSchema>;

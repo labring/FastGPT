@@ -13,7 +13,7 @@ import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
-import { assertValueSchema } from '../template/valueSchema';
+import { assertValueSchema, getNodeInputValueSchema } from '../template/valueSchema';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
 export type WorkflowReferenceValue = [string, string];
@@ -194,11 +194,13 @@ export const setInputValue = ({
       }
     ]);
   }
-  const valueSchema =
-    getInputAutomationMeta(
+  const valueSchema = getNodeInputValueSchema({
+    input,
+    automationMeta: getInputAutomationMeta(
       document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
       inputKey
-    )?.valueSchema ?? input.customJsonSchema;
+    )
+  });
   if (valueSchema)
     assertValueSchema({ value: effectiveValue, schema: valueSchema, nodeId, inputKey });
 

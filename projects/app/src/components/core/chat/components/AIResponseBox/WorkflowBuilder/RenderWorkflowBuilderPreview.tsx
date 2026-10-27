@@ -13,7 +13,7 @@ const RenderWorkflowBuilderPreview = ({
 
   return (
     <Flex flexDirection={'column'} gap={4} maxW={'100%'}>
-      <Markdown source={`\`\`\`mermaid\n${mermaid}\n\`\`\``} showAnimation={false} />
+      <Markdown source={`\`\`\`mermaid\n${mermaid}\n\`\`\``} showAnimation={false} forbidZhFormat />
       {sections.map((section, index) => (
         <Box key={`${section.title}-${index}`}>
           <Box mb={1.5} fontWeight={'semibold'}>

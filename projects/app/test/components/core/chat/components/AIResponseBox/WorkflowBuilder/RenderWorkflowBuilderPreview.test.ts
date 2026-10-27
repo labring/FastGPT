@@ -10,7 +10,8 @@ vi.mock('@chakra-ui/react', () => {
   return { Box: Container, Flex: Container };
 });
 vi.mock('@/components/Markdown', () => ({
-  default: ({ source }: { source: string }) => React.createElement('pre', null, source)
+  default: ({ source, forbidZhFormat }: { source: string; forbidZhFormat?: boolean }) =>
+    React.createElement('pre', { 'data-forbid-zh-format': String(forbidZhFormat ?? false) }, source)
 }));
 
 const preview: WorkflowBuilderPreviewInteractive = {
@@ -59,5 +60,22 @@ describe('RenderWorkflowBuilderPreview', () => {
     );
     expect(html).toContain('```mermaid');
     expect(html).not.toContain('Plan details');
+  });
+
+  it('preserves full-width punctuation in the Mermaid source', () => {
+    const mermaid =
+      'flowchart LR\n  Start["Form表单输入<br/>岗位要求（必填）<br/>简历文本（未上传文件时）"]';
+    const html = renderToStaticMarkup(
+      React.createElement(RenderWorkflowBuilderPreview, {
+        interactive: {
+          ...preview,
+          params: { ...preview.params, mermaid }
+        }
+      })
+    );
+
+    expect(html).toContain('data-forbid-zh-format="true"');
+    expect(html).toContain('岗位要求（必填）');
+    expect(html).toContain('简历文本（未上传文件时）');
   });
 });

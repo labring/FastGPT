@@ -1019,6 +1019,10 @@ describe('getLastInteractiveValue', () => {
           ]
         });
       expect(getLastInteractiveValue(messages)).toBe(answered ? undefined : interactive);
+      for (const decision of ['confirm', 'cancel'] as const) {
+        interactive.params.decision = decision;
+        expect(getLastInteractiveValue([messages[0]])).toBeUndefined();
+      }
     }
   );
 

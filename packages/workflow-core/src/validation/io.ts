@@ -20,7 +20,7 @@ import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/a
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
 import { valueMatchesType } from '../reference/service';
 import { hasConfiguredValue } from '../template/defaultValue';
-import { valueMatchesSchema } from '../template/valueSchema';
+import { getNodeInputValueSchema, valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -251,8 +251,10 @@ export const validateNodeIO = ({
         params: { expected: input.valueType }
       });
     } else {
-      const valueSchema =
-        getInputAutomationMeta(node.flowNodeType, input.key)?.valueSchema ?? input.customJsonSchema;
+      const valueSchema = getNodeInputValueSchema({
+        input,
+        automationMeta: getInputAutomationMeta(node.flowNodeType, input.key)
+      });
       if (valueSchema && !valueMatchesSchema(validationValue, valueSchema)) {
         diagnostics.push({
           code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
