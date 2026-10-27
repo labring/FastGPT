@@ -11,7 +11,7 @@ import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { migrateTokenPricesPerMillion } from '@/migration/tasks/4174/20261025_token_prices_per_million';
+import { migrateTokenPricesPerMillion } from '@/migration/tasks/4173/20261025_token_prices_per_million';
 
 const createContext = () =>
   ({

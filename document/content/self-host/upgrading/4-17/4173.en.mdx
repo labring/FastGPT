@@ -14,10 +14,13 @@ upgradeTags:
 
 ### Upgrade scripts
 
-This release includes the following automatic system migrations. They run after you update the images and restart the services, without blocking service startup:
+The system first completes startup migrations and their full dependency chain. Each App instance then reloads its models before starting business services. If the startup chain fails, the App remains unready. Check the logs, fix the issue, and restart the App instance holding the task lease.
+
+This release adds the following automatic background migrations. They run independently after the startup chain completes, sharing up to 3 concurrent slots across the cluster. A failed task does not block unrelated background tasks. Fix the data and retry the task from the admin console:
 
 - `20261009_backfill_agent_sandbox_team_id`: Added with sandbox quotas. Backfills team ownership for existing Agent sandbox instances from their source App or Skill. Orphaned instances whose source has been deleted are skipped and counted.
 - `20261022_backfill_folder_ancestor_ids`: Rebuilds ancestor paths for App, Tool, and Dataset folders from parent relationships and removes stale path fields from resources that are not folders.
+- `20261025_token_prices_per_million`: Converts legacy system model prices and tier boundaries to million units and saves them in `pricing`. Original root-level prices are preserved, and models with valid existing `pricing` are skipped. Team models are excluded from the migration.
 
 ### Configuration and API compatibility
 
@@ -26,6 +29,8 @@ This release includes the following automatic system migrations. They run after 
 - OpenSandbox adds `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`. Both default to 1 and must be at least 1. They apply only to the Kubernetes runtime with OpenSandbox Server v0.2.1 or later, reducing resource requests while keeping limits unchanged. Changes apply only to newly created or recreated sandboxes, not when connecting to or resuming existing sandboxes.
 - The `/api/core/dataset/exportAll` endpoint now exports a single Dataset and no longer supports exporting an entire folder. When file-level permissions are enabled, exports include only files the current member can read. Update folder export integrations to request each Dataset separately.
 - The Commercial edition admin console adds a maximum vector retrieval concurrency setting (`systemEnv.vectorRecallConcurrency`). It accepts integers from 0 to 1000 and defaults to 0, meaning unlimited. A positive value sets a shared recall limit across all service instances and vector databases. This limit does not apply to the Open-source edition and has no corresponding environment variable.
+- Model prices now use `pricing`: LLMs use `pricing.tiers`, and other models use `pricing.unitPrice`. Token prices and the `maxInputTokens` upper bound of each LLM tier use M Tokens (million tokens). TTS prices are per million characters, while STT prices remain per 60 seconds. Unit prices support up to two decimal places. The migration multiplies legacy Token/TTS prices by 1000, divides legacy LLM tier upper bounds by 1000, and leaves STT prices unchanged.
+- The new APIs and runtime no longer read legacy root-level pricing fields. Only system models are billed; team models are free. Price migration runs in the background, and system models without `pricing` are temporarily free. During mixed-version operation, older instances continue using legacy prices, and prices saved by the new version are not written back to legacy fields. After upgrading, confirm that price migration succeeded and review system model prices.
 
 ## 🚀 New features
 
@@ -43,6 +48,7 @@ This release includes the following automatic system migrations. They run after 
 12. The admin user list in the Commercial edition now supports All, Active, Disabled, and Cancelled status filters, defaults to Active, and can combine status filtering with username searches. Cancelled accounts are identified by current and legacy anonymized username formats for filtering and display; the account's stored status is unchanged.
 13. Improved folder navigation for Apps, Tools, Skills, and Datasets. Members can follow folder paths to authorized child resources. When a member only has access to a child resource, parent folders appear as navigation entries without granting additional folder management permissions.
 14. Team audit logs now record restored permission inheritance for Apps, Skills, Datasets, and Collections, preserving resource paths and supporting event-type filters.
+15. Model management in the Commercial edition now supports replacing invalid model references. Team owners can select available LLM, TTS, and Rerank models to replace invalid static references in their team's Datasets, legacy App configurations, and historical versions, then review replacement and failure counts. Valid references, empty values, and dynamic variable references are preserved. Embedding models are excluded.
 
 ## ⚙️ Optimizations
 
@@ -116,11 +122,13 @@ This release includes the following automatic system migrations. They run after 
 39. Fixed parent folder ownership being inherited as ownership of child resources. Parent owners now inherit only Manage permission on child resources.
 40. Fixed multi-Dataset searches excluding an entire Dataset when it did not define a specified tag. Negative and empty-value conditions now follow the same rules as missing tags.
 41. Fixed Tool call results being truncated again in chat history and streamed responses. Both now retain the complete Tool results used by the model.
-42. Fixed large CSV files failing during empty-column filtering and large OFD files failing during body font size detection because too many arguments were passed to a function.
+42. Fixed large CSV files failing during empty-column filtering and large OFD files failing during font size detection, row layout, or page range calculations because too many arguments were passed to a function.
 43. External document parsing services can now return `pdfEncrypted` and `pdfCorrupted` errors to display instructions for removing a PDF password or uploading the file again.
 44. Fixed MCP message requests hanging after an SSE session expires. Unknown sessions now return HTTP 404. Message handling errors are caught to prevent them from affecting other sessions.
 45. Fixed Commercial edition team member department paths displaying ancestors out of order or duplicating path segments. Paths now follow the actual ancestor order.
 46. Fixed unnecessary errors when clients cancel S3 multipart uploads. Storage requests are aborted promptly, and errors are no longer written to closed responses.
+47. Fixed Agent chat history token estimates omitting reasoning content from earlier messages. Restoring history and appending messages now use consistent counting rules.
+48. Fixed missing shared panel context in the Workflow Tool editor, restoring Node list and plugin configuration interactions.
 
 ## 🛠️ Code improvements
 
@@ -138,4 +146,4 @@ This release includes the following automatic system migrations. They run after 
 12. Fixed repeated errors when a Dataset parsing task runs out of points during processing. The task now skips the current attempt, and the team balance check pauses processing when tasks are next claimed.
 13. Fixed website Dataset synchronization continuing to crawl after model configuration errors and deleting existing pages after an incomplete crawl. Outdated page cleanup is now skipped when quota or model configuration errors stop a crawl early, the page limit truncates the crawl, a page fails to load, or completion cannot be confirmed. Final task logs now include completion status, pending page counts, and failed page counts to help troubleshoot synchronization issues.
 14. File loading tasks now log expected DNS, network connection, and user errors as warnings while still returning failures to callers. Errors involving placeholder domains and unknown failures remain at the error level to reduce unnecessary alerts.
-15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, and Undici to 7.30.1.
+15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, Undici to 7.30.1, and Zod to 4.6.6.
