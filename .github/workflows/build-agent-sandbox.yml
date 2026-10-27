@@ -7,6 +7,9 @@ on:
         required: true
         type: string
 
+env:
+  FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
@@ -86,6 +89,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -108,6 +112,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Build for Ali Hub ${{ matrix.arch }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         id: build-aliyun
         uses: docker/build-push-action@v6
         with:
@@ -126,11 +131,13 @@ jobs:
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests/ghcr
-          mkdir -p ${{ runner.temp }}/digests/aliyun
           ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
-          aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
           touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
-          touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            mkdir -p ${{ runner.temp }}/digests/aliyun
+            aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
+            touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          fi
 
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
@@ -141,6 +148,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Ali Hub digest
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: aliyun-digests-fastgpt-agent-sandbox-${{ matrix.variant }}-${{ github.sha }}-${{ matrix.arch }}
@@ -172,6 +180,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -191,6 +200,7 @@ jobs:
           merge-multiple: true
 
       - name: Download Ali Hub digests
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/aliyun
@@ -223,12 +233,18 @@ jobs:
             GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
           done
           ALI_SOURCES=()
-          for digest_file in aliyun/*; do
-            [[ -f "$digest_file" ]] || continue
-            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
-          done
-          if [[ "${#GHCR_SOURCES[@]}" -ne 2 || "${#ALI_SOURCES[@]}" -ne 2 ]]; then
-            echo "Expected two GHCR and two Ali Hub digests"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            for digest_file in aliyun/*; do
+              [[ -f "$digest_file" ]] || continue
+              ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+            done
+          fi
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR digests"
+            exit 1
+          fi
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two Ali Hub digests"
             exit 1
           fi
 
@@ -255,17 +271,19 @@ jobs:
             retry_imagetools_create "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
-          for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
-            retry_imagetools_create "$TAG" "${ALI_SOURCES[@]}"
-            sleep 5
-          done
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
+              retry_imagetools_create "$TAG" "${ALI_SOURCES[@]}"
+              sleep 5
+            done
 
-          manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
-          jq -e '
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
-          ' <<<"$manifest" >/dev/null
+            manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
+            jq -e '
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
+            ' <<<"$manifest" >/dev/null
+          fi
 
   # ── volume-manager ─────────────────────────────────────────────────────────
   build-fastgpt-volume-manager-images:
@@ -310,6 +328,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -332,6 +351,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Build for Ali Hub ${{ matrix.arch }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         id: build-aliyun
         uses: docker/build-push-action@v6
         with:
@@ -350,11 +370,13 @@ jobs:
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests/ghcr
-          mkdir -p ${{ runner.temp }}/digests/aliyun
           ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
-          aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
           touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
-          touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            mkdir -p ${{ runner.temp }}/digests/aliyun
+            aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
+            touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          fi
 
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
@@ -365,6 +387,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Ali Hub digest
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: aliyun-digests-fastgpt-agent-volume-manager-${{ github.sha }}-${{ matrix.arch }}
@@ -389,6 +412,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -408,6 +432,7 @@ jobs:
           merge-multiple: true
 
       - name: Download Ali Hub digests
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/aliyun
@@ -439,12 +464,18 @@ jobs:
             GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
           done
           ALI_SOURCES=()
-          for digest_file in aliyun/*; do
-            [[ -f "$digest_file" ]] || continue
-            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
-          done
-          if [[ "${#GHCR_SOURCES[@]}" -ne 2 || "${#ALI_SOURCES[@]}" -ne 2 ]]; then
-            echo "Expected two GHCR and two Ali Hub digests"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            for digest_file in aliyun/*; do
+              [[ -f "$digest_file" ]] || continue
+              ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+            done
+          fi
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR digests"
+            exit 1
+          fi
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two Ali Hub digests"
             exit 1
           fi
 
@@ -471,14 +502,16 @@ jobs:
             retry_imagetools_create "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
-          for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
-            retry_imagetools_create "$TAG" "${ALI_SOURCES[@]}"
-            sleep 5
-          done
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
+              retry_imagetools_create "$TAG" "${ALI_SOURCES[@]}"
+              sleep 5
+            done
 
-          manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
-          jq -e '
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
-          ' <<<"$manifest" >/dev/null
+            manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
+            jq -e '
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
+            ' <<<"$manifest" >/dev/null
+          fi
