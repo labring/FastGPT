@@ -14,6 +14,7 @@ concurrency:
 
 env:
   FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+  DOCKER_HUB_NAME: ${{ secrets.DOCKER_HUB_NAME }}
 
 jobs:
   validate-version:
@@ -270,6 +271,7 @@ jobs:
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
       - name: Login to Docker Hub
+        if: ${{ env.DOCKER_HUB_NAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_NAME }}
@@ -300,8 +302,10 @@ jobs:
           echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
           echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
           echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          fi
 
       - name: Create manifest lists
         working-directory: ${{ runner.temp }}/digests
@@ -329,7 +333,11 @@ jobs:
             echo "Expected two Ali Hub digests"
             exit 1
           fi
-          for tag in "${Git_Tag}" "${Docker_Hub_Tag}"; do
+          TAGS=("${Git_Tag}")
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            TAGS+=("${Docker_Hub_Tag}")
+          fi
+          for tag in "${TAGS[@]}"; do
             docker buildx imagetools create -t "${tag}" "${GHCR_SOURCES[@]}"
             sleep 5
           done
@@ -349,7 +357,11 @@ jobs:
           fi
 
           if [[ "${{ needs.validate-version.outputs.stable }}" == "true" ]]; then
-            for tag in "${Git_Latest}" "${Docker_Hub_Latest}"; do
+            LATEST_TAGS=("${Git_Latest}")
+            if [[ -n "$DOCKER_HUB_NAME" ]]; then
+              LATEST_TAGS+=("${Docker_Hub_Latest}")
+            fi
+            for tag in "${LATEST_TAGS[@]}"; do
               docker buildx imagetools create -t "${tag}" "${GHCR_SOURCES[@]}"
               sleep 5
             done

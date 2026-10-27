@@ -9,6 +9,7 @@ on:
 
 env:
   FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+  DOCKER_HUB_NAME: ${{ secrets.DOCKER_HUB_NAME }}
 
 jobs:
   validate-version:
@@ -187,6 +188,7 @@ jobs:
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Login to Docker Hub
+        if: ${{ env.DOCKER_HUB_NAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_NAME }}
@@ -218,8 +220,10 @@ jobs:
           echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
           echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
           echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:${VERSION}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${IMAGE_NAME}:latest" >> $GITHUB_ENV
+          fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -267,7 +271,11 @@ jobs:
             done
           }
 
-          for TAG in "${Git_Tag}" "${Git_Latest}" "${Docker_Hub_Tag}" "${Docker_Hub_Latest}"; do
+          TAGS=("${Git_Tag}" "${Git_Latest}")
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            TAGS+=("${Docker_Hub_Tag}" "${Docker_Hub_Latest}")
+          fi
+          for TAG in "${TAGS[@]}"; do
             retry_imagetools_create "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
@@ -419,6 +427,7 @@ jobs:
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Login to Docker Hub
+        if: ${{ env.DOCKER_HUB_NAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_NAME }}
@@ -449,8 +458,10 @@ jobs:
           echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
           echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
           echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
+          fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -498,7 +509,11 @@ jobs:
             done
           }
 
-          for TAG in "${Git_Tag}" "${Git_Latest}" "${Docker_Hub_Tag}" "${Docker_Hub_Latest}"; do
+          TAGS=("${Git_Tag}" "${Git_Latest}")
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            TAGS+=("${Docker_Hub_Tag}" "${Docker_Hub_Latest}")
+          fi
+          for TAG in "${TAGS[@]}"; do
             retry_imagetools_create "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
