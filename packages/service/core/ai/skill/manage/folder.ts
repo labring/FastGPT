@@ -1,5 +1,7 @@
+import { checkCreateResourceParent } from '../../../../common/parentFolder/depth';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
+import { getFolderParentPathItems } from '../../../../common/parentFolder/ancestorIds';
 import { getFolderPathIndex } from '@fastgpt/global/common/parentFolder/tree';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import type { ClientSession } from '../../../../common/mongo';
@@ -121,7 +123,7 @@ export async function findSkillAndAllChildren({
 }
 
 /**
- * Create a skill folder.
+ * 创建个人 Skill 文件夹；共享入口统一检查父级类型、父链和新建深度。
  */
 export async function createSkillFolder(
   data: {
@@ -134,6 +136,16 @@ export async function createSkillFolder(
   session?: ClientSession
 ): Promise<AgentSkillSchemaType> {
   const { name, description, parentId, teamId, tmbId } = data;
+
+  await checkCreateResourceParent({
+    parentId,
+    teamId,
+    model: {
+      findById: (id, select) => MongoAgentSkills.findById(id, select).session(session ?? null)
+    },
+    isFolder: true,
+    isFolderType: (type) => type === AgentSkillTypeEnum.folder
+  });
 
   const folder = new MongoAgentSkills({
     type: AgentSkillTypeEnum.folder,
@@ -153,7 +165,7 @@ export async function createSkillFolder(
 }
 
 /**
- * Get folder path from a skill/folder to root.
+ * 查询 Skill 面包屑，返回根到目标的顺序；遇到环、断链或遍历上限时截断展示路径。
  */
 export async function getSkillFolderPath(
   skillId: string | null,
@@ -173,35 +185,20 @@ export async function getSkillFolderPath(
   }
 
   const targetId = type === 'current' ? skillId : (skill.parentId ?? null);
-  return await getParents(targetId, teamId);
-}
-
-async function getParents(
-  parentId: string | null,
-  teamId: string
-): Promise<{ parentId: string | null; parentName: string }[]> {
-  if (!parentId) {
-    return [];
-  }
-
-  const parent = await MongoAgentSkills.findOne(
-    {
-      _id: parentId,
-      teamId,
-      type: AgentSkillTypeEnum.folder,
-      source: AgentSkillSourceEnum.personal,
-      deleteTime: null
-    },
-    'name parentId'
-  );
-  if (!parent) {
-    return [];
-  }
-
-  const paths = await getParents(parent.parentId ? String(parent.parentId) : null, teamId);
-  paths.push({ parentId, parentName: parent.name });
-
-  return paths;
+  return getFolderParentPathItems({
+    folderId: targetId ? String(targetId) : null,
+    findFolder: (id) =>
+      MongoAgentSkills.findOne(
+        {
+          _id: id,
+          teamId,
+          type: AgentSkillTypeEnum.folder,
+          source: AgentSkillSourceEnum.personal,
+          deleteTime: null
+        },
+        'name parentId'
+      ).lean()
+  });
 }
 
 /**

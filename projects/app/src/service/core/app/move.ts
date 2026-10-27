@@ -27,7 +27,7 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
-import { validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
+import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
 const logAppMove = ({
   tmbId,
@@ -95,12 +95,10 @@ export const moveApp = async ({
   // 普通应用与工具分属两棵目录树，移动目标必须是同一棵树内的文件夹。
   await validateParentFolderType({ parentId, childType: app.type });
 
-  const isFolderType =
-    app.type === AppTypeEnum.toolFolder
-      ? (type: string) => type === AppTypeEnum.toolFolder
-      : app.type === AppTypeEnum.folder
-        ? (type: string) => type === AppTypeEnum.folder
-        : () => false;
+  const folderTree = getAppFolderTree(app.type);
+  const isFolderType = (type: string) =>
+    AppFolderTypeList.includes(type as AppTypeEnum) &&
+    (!folderTree || getAppFolderTree(type) === folderTree);
 
   await checkMoveFolderDepth({
     resourceId: appId,

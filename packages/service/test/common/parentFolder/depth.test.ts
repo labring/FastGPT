@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
   checkCreateFolderDepth,
+  checkCreateResourceParent,
   checkMoveFolderDepth
 } from '@fastgpt/service/common/parentFolder/depth';
 
@@ -46,9 +47,9 @@ describe('folder depth checks', () => {
   it('allows creating a root folder without querying parent chain', async () => {
     const { model, findByIdCalls } = createModel([]);
 
-    await expect(checkCreateFolderDepth({ parentId: null, teamId, model })).resolves.toBe(
-      undefined
-    );
+    await expect(
+      checkCreateFolderDepth({ parentId: null, teamId, model, isFolderType: folderType })
+    ).resolves.toBe(undefined);
     expect(findByIdCalls).toEqual([]);
   });
 
@@ -59,9 +60,9 @@ describe('folder depth checks', () => {
       { _id: 'level-3', parentId: 'level-2', teamId, type: 'folder' }
     ]);
 
-    await expect(checkCreateFolderDepth({ parentId: 'level-3', teamId, model })).resolves.toBe(
-      undefined
-    );
+    await expect(
+      checkCreateFolderDepth({ parentId: 'level-3', teamId, model, isFolderType: folderType })
+    ).resolves.toBe(undefined);
   });
 
   it('rejects creating beyond the default max depth without scanning remaining ancestors', async () => {
@@ -72,9 +73,9 @@ describe('folder depth checks', () => {
       { _id: 'level-4', parentId: 'level-3', teamId, type: 'folder' }
     ]);
 
-    await expect(checkCreateFolderDepth({ parentId: 'level-4', teamId, model })).rejects.toBe(
-      CommonErrEnum.folderDepthLimit
-    );
+    await expect(
+      checkCreateFolderDepth({ parentId: 'level-4', teamId, model, isFolderType: folderType })
+    ).rejects.toBe(CommonErrEnum.folderDepthLimit);
     expect(findByIdCalls).toEqual(['level-4', 'level-3', 'level-2', 'level-1']);
   });
 
@@ -237,10 +238,20 @@ describe('folder depth checks', () => {
     ]);
 
     await expect(
-      checkCreateFolderDepth({ parentId: 'missing-parent', teamId, model })
+      checkCreateFolderDepth({
+        parentId: 'missing-parent',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
     ).rejects.toBe(CommonErrEnum.invalidParams);
     await expect(
-      checkCreateFolderDepth({ parentId: 'foreign-parent', teamId, model })
+      checkCreateFolderDepth({
+        parentId: 'foreign-parent',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
     ).rejects.toBe(CommonErrEnum.invalidParams);
     await expect(
       checkMoveFolderDepth({
@@ -286,8 +297,68 @@ describe('folder depth checks', () => {
       { _id: 'cycle-b', parentId: 'cycle-a', teamId, type: 'folder' }
     ]);
 
-    await expect(checkCreateFolderDepth({ parentId: 'cycle-a', teamId, model })).rejects.toBe(
-      CommonErrEnum.invalidParams
-    );
+    await expect(
+      checkCreateFolderDepth({ parentId: 'cycle-a', teamId, model, isFolderType: folderType })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
+  });
+});
+
+describe('checkCreateResourceParent', () => {
+  it.each([false, true])(
+    'rejects a leaf used as a direct or indirect parent (folder=%s)',
+    async (isFolder) => {
+      const { model } = createModel([
+        { _id: 'leaf', parentId: null, teamId, type: 'file' },
+        { _id: 'folder', parentId: 'leaf', teamId, type: 'folder' }
+      ]);
+      for (const parentId of ['leaf', 'folder']) {
+        await expect(
+          checkCreateResourceParent({
+            parentId,
+            teamId,
+            model,
+            isFolder,
+            isFolderType: folderType
+          })
+        ).rejects.toBe(CommonErrEnum.invalidParams);
+        await expect(
+          checkMoveFolderDepth({
+            resourceId: 'moving',
+            targetParentId: parentId,
+            teamId,
+            model,
+            isFolderType: folderType
+          })
+        ).rejects.toBe(CommonErrEnum.invalidParams);
+      }
+    }
+  );
+
+  it('allows leaves in historical deep folders but caps traversal independently', async () => {
+    const docs: TestFolderDoc[] = Array.from({ length: 21 }, (_, i) => ({
+      _id: `level-${i + 1}`,
+      parentId: i ? `level-${i}` : null,
+      teamId,
+      type: 'folder'
+    }));
+    const { model } = createModel(docs);
+    await expect(
+      checkCreateResourceParent({
+        parentId: 'level-20',
+        teamId,
+        model,
+        isFolder: false,
+        isFolderType: folderType
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      checkCreateResourceParent({
+        parentId: 'level-21',
+        teamId,
+        model,
+        isFolder: false,
+        isFolderType: folderType
+      })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
   });
 });

@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { serviceEnv } from '@fastgpt/service/env';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -14,7 +16,7 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 type EmptyRequestParams = Record<string, never>;
 
@@ -237,4 +239,60 @@ describe('create api', () => {
     );
     expect(validCreate.error).toBeUndefined();
   });
+});
+
+describe('generic app creation folder depth', () => {
+  it('validates a parent created in the same transaction', async () => {
+    const { owner } = await getFakeUsers(1);
+    const { mongoSessionRun } = await vi.importActual<
+      typeof import('@fastgpt/service/common/mongo/sessionRun')
+    >('@fastgpt/service/common/mongo/sessionRun');
+    const props = { teamId: owner.teamId, tmbId: owner.tmbId, type: AppTypeEnum.folder };
+    const childId = await mongoSessionRun(async (session) => {
+      const parentId = await createapi.onCreateApp({ ...props, name: 'parent', session });
+      return createapi.onCreateApp({ ...props, name: 'child', parentId, session });
+    });
+    expect((await MongoApp.findById(childId).lean())?.ancestorIds).toHaveLength(1);
+  });
+
+  it.each([AppTypeEnum.folder, AppTypeEnum.toolFolder])(
+    'enforces the depth boundary for %s and still permits leaves',
+    async (type) => {
+      const { owner } = await getFakeUsers(1);
+      const ids: string[] = [];
+      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH - 1; i++) {
+        const folder = await MongoApp.create({
+          name: `level-${i}`,
+          type,
+          parentId: ids.at(-1) ?? null,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        });
+        ids.push(String(folder._id));
+      }
+      const lastFolder = await Call(createapi.default, {
+        auth: owner,
+        body: { name: 'last-folder', type, parentId: ids.at(-1) }
+      });
+      expect(lastFolder.code).toBe(200);
+      expect((await MongoApp.findById(lastFolder.data).lean())?.ancestorIds.map(String)).toEqual(
+        ids
+      );
+      const overflow = await Call(createapi.default, {
+        auth: owner,
+        body: { name: 'overflow', type, parentId: lastFolder.data }
+      });
+      expect(overflow.error).toBe(CommonErrEnum.folderDepthLimit);
+      expect(await MongoApp.countDocuments({ name: 'overflow' })).toBe(0);
+      const leaf = await Call(createapi.default, {
+        auth: owner,
+        body: {
+          name: 'leaf',
+          type: type === AppTypeEnum.folder ? AppTypeEnum.simple : AppTypeEnum.workflowTool,
+          parentId: lastFolder.data
+        }
+      });
+      expect(leaf.code).toBe(200);
+    }
+  );
 });

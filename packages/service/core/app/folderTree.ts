@@ -1,6 +1,8 @@
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { ClientSession } from '../../common/mongo';
 import { MongoApp } from './schema';
 
 /**
@@ -41,25 +43,29 @@ const getFolderTypeOfTree = (tree: AppFolderTreeType) =>
  *
  * 边界约定：
  * - 未传 parentId 表示目标为根目录，根目录同时容纳两棵树，直接通过；
- * - 父级不存在时不在此处报错，交由调用方的鉴权逻辑处理，避免改变既有错误引导；
+ * - 父级不存在时拒绝，避免复用历史 parentId 的创建入口产生孤儿资源；
  * - 子资源类型无法归类时跳过校验，不改变存量行为。
  *
  * @throws {AppErrEnum.parentFolderTypeMismatch} 父文件夹与子资源不在同一棵目录树
  */
 export const validateParentFolderType = async ({
   parentId,
-  childType
+  childType,
+  session
 }: {
   parentId: ParentIdType;
   childType: AppTypeEnum | string;
+  session?: ClientSession;
 }): Promise<void> => {
   if (!parentId) return;
 
   const childTree = getAppFolderTree(childType);
   if (!childTree) return;
 
-  const parentApp = await MongoApp.findById(parentId, 'type').lean();
-  if (!parentApp) return;
+  const parentApp = await MongoApp.findById(parentId, 'type')
+    .session(session ?? null)
+    .lean();
+  if (!parentApp) throw CommonErrEnum.invalidParams;
 
   if (parentApp.type !== getFolderTypeOfTree(childTree)) {
     return Promise.reject(AppErrEnum.parentFolderTypeMismatch);

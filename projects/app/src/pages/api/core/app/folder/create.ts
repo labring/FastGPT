@@ -56,7 +56,12 @@ async function handler(req: ApiRequestProps<CreateAppFolderBodyType>): Promise<v
   // 普通文件夹与工具文件夹是两棵独立的树，父文件夹类型必须与新建文件夹一致。
   await validateParentFolderType({ parentId, childType: type });
 
-  await checkCreateFolderDepth({ parentId, teamId, model: MongoApp });
+  await checkCreateFolderDepth({
+    parentId,
+    teamId,
+    model: MongoApp,
+    isFolderType: (parentType) => parentType === type
+  });
 
   // Create app
   await mongoSessionRun(async (session) => {

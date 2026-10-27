@@ -18,6 +18,8 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -61,6 +63,14 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
         per: TeamDatasetCreatePermissionVal
       });
 
+  await checkCreateResourceParent({
+    parentId,
+    teamId,
+    model: MongoDataset,
+    isFolder: type === DatasetTypeEnum.folder,
+    isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
+  });
+
   // check model valid & permission
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
@@ -96,10 +106,22 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   await checkTeamDatasetLimit(teamId);
 
   const datasetId = await mongoSessionRun(async (session) => {
+    const ancestorIds =
+      type === DatasetTypeEnum.folder
+        ? await getFolderAncestorIdsFromParentId({
+            parentId: parentId ? String(parentId) : null,
+            findFolder: (id) =>
+              MongoDataset.findOne({ _id: id, teamId, type: DatasetTypeEnum.folder })
+                .select('_id parentId')
+                .session(session)
+                .lean()
+          })
+        : undefined;
     const [dataset] = await MongoDataset.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ...(ancestorIds ? { ancestorIds } : {}),
           name,
           intro,
           teamId,

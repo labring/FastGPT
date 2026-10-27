@@ -1,3 +1,4 @@
+import { checkCreateResourceParent } from '../../../common/parentFolder/depth';
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
@@ -698,7 +699,8 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
 };
 /**
  * 批量创建集合，统一标签解析、文档构造、文件 TTL 和 ACL 初始化。
- * 同一团队/知识库/标签组合只解析一次；父目录须已完成创建，目录树由上层按层提交。
+ * 同一团队/知识库/标签组合只解析一次；父目录须已创建且类型合法，目录树由上层按层提交。
+ * 统一校验新建目录深度，叶子资源不占目录层数；祖先读取在当前事务内复用。
  * 单条与批量均使用此入口；集合、ACL 和文件状态共享事务，任一失败整体回滚。
  */
 export async function createCollections({
@@ -793,6 +795,45 @@ export async function createCollections({
     const newIds = new Set(docs.map((doc) => String(doc._id)));
     if (docs.some((doc) => doc.parentId && newIds.has(String(doc.parentId)))) {
       throw new Error('Collection batch parents must already exist');
+    }
+
+    // 父级必须属于同一知识库且为文件夹；只有新建文件夹才增加策略深度。
+    const checkedParents = new Set<string>();
+    // 同批文件夹常共享祖先；缓存事务内的只读查询，避免沿每条父链重复往返数据库。
+    const parentCache = new Map<
+      string,
+      Promise<Pick<DatasetCollectionSchemaType, '_id' | 'parentId' | 'teamId' | 'type'> | null>
+    >();
+    for (const doc of docs) {
+      const isFolder = doc.type === DatasetCollectionTypeEnum.folder;
+      const key = JSON.stringify([doc.teamId, doc.datasetId, doc.parentId, isFolder]);
+      if (checkedParents.has(key)) continue;
+      await checkCreateResourceParent({
+        parentId: doc.parentId,
+        teamId: doc.teamId,
+        model: {
+          findById: (id, select) => ({
+            lean: () => {
+              const key = JSON.stringify([doc.teamId, doc.datasetId, id]);
+              const cached = parentCache.get(key);
+              if (cached) return cached;
+              const parent = Promise.resolve(
+                MongoDatasetCollection.findOne(
+                  { _id: id, teamId: doc.teamId, datasetId: doc.datasetId },
+                  select
+                )
+                  .session(s)
+                  .lean()
+              );
+              parentCache.set(key, parent);
+              return parent;
+            }
+          })
+        },
+        isFolder,
+        isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
+      });
+      checkedParents.add(key);
     }
 
     // 2. 创建集合并按父级去重初始化快照。关闭态不需要 collection ACL；独立态仍须拒绝。

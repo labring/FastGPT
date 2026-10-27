@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import updateHandler from '@/pages/api/core/dataset/collection/update';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -190,4 +191,18 @@ describe('update collection', () => {
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
   });
+});
+
+it('rejects moving into a leaf even when the target is manageable', async () => {
+  const { owner, source, target } = await fixture();
+  await MongoDatasetCollection.updateOne(
+    { _id: target._id },
+    { type: DatasetCollectionTypeEnum.virtual }
+  );
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { id: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
 });

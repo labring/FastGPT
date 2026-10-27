@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoApp } from '../../../core/app/schema';
 import { getAppFolderTree, validateParentFolderType } from '../../../core/app/folderTree';
@@ -26,7 +27,7 @@ describe('getAppFolderTree', () => {
 });
 
 describe('validateParentFolderType', () => {
-  it('accepts the root and missing parents', async () => {
+  it('accepts the root and rejects missing parents', async () => {
     const { owner } = await getFakeUsers(1);
     const folder = await MongoApp.create({
       name: 'folder',
@@ -42,13 +43,13 @@ describe('validateParentFolderType', () => {
       validateParentFolderType({ parentId: undefined, childType: AppTypeEnum.workflowTool })
     ).resolves.toBeUndefined();
 
-    // 父级不存在时不拦截，交给调用方的鉴权逻辑报错。
+    // 共享创建入口可能复用历史 parentId，缺失父级必须拒绝。
     await expect(
       validateParentFolderType({
         parentId: '000000000000000000000000',
         childType: AppTypeEnum.simple
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toBe(CommonErrEnum.invalidParams);
 
     // 废弃类型不参与校验。
     await expect(

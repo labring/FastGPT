@@ -42,8 +42,10 @@ import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamL
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
+import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
@@ -116,7 +118,8 @@ export const config = {
 };
 
 /**
- * 新建应用及初始版本、默认协作者。所有新增入口统一按资源类型校验配额；
+ * 新建应用及初始版本、默认协作者。所有新增入口统一校验配额、父链与目录深度，
+ * 新建文件夹同时写入祖先路径；
  * 复制、转换新建和工具集创建传入的 session 会继续复用，原地转换不走此入口。
  */
 export const onCreateApp = async ({
@@ -167,7 +170,18 @@ export const onCreateApp = async ({
   });
 
   // 普通应用与工具分属两棵目录树，父文件夹类型必须是同一棵树内的文件夹。
-  await validateParentFolderType({ parentId, childType: type });
+  await validateParentFolderType({ parentId, childType: type, session });
+
+  const folderTree = getAppFolderTree(type);
+  await checkCreateResourceParent({
+    parentId,
+    teamId,
+    model: { findById: (id, select) => MongoApp.findById(id, select).session(session ?? null) },
+    isFolder: AppFolderTypeList.includes(type),
+    isFolderType: (parentType) =>
+      AppFolderTypeList.includes(parentType as AppTypeEnum) &&
+      (!folderTree || getAppFolderTree(parentType) === folderTree)
+  });
 
   // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
   const normalizedWorkflow = migrateWorkflowToCurrent({
@@ -222,10 +236,22 @@ export const onCreateApp = async ({
       });
     })();
 
+    const ancestorIds = AppFolderTypeList.includes(type)
+      ? await getFolderAncestorIdsFromParentId({
+          parentId: parentId ? String(parentId) : null,
+          findFolder: (id) =>
+            MongoApp.findOne({ _id: id, teamId, type })
+              .select('_id parentId')
+              .session(session)
+              .lean()
+        })
+      : undefined;
+
     const [app] = await MongoApp.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ...(ancestorIds ? { ancestorIds } : {}),
           avatar: _avatar,
           name,
           intro,

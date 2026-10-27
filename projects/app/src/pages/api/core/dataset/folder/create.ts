@@ -47,7 +47,12 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<v
 
   await checkTeamDatasetFolderLimit({ teamId });
 
-  await checkCreateFolderDepth({ parentId, teamId, model: MongoDataset });
+  await checkCreateFolderDepth({
+    parentId,
+    teamId,
+    model: MongoDataset,
+    isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
+  });
 
   await mongoSessionRun(async (session) => {
     // parentId 是权威来源，兼容尚未完成回填的历史目录。

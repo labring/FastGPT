@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import updateHandler from '@/pages/api/core/dataset/update';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
@@ -1216,4 +1217,17 @@ describe('update dataset audit', () => {
     expect(JSON.stringify(logs)).not.toContain('secret-token');
     expect(logs[1].metadata?.newValue).toBe('[REDACTED]');
   });
+});
+
+it('rejects moving a leaf beneath another leaf without changing its parent', async () => {
+  const { owner } = await getFakeUsers(1);
+  const props = { teamId: owner.teamId, tmbId: owner.tmbId, type: DatasetTypeEnum.dataset };
+  const target = await MongoDataset.create({ ...props, name: 'leaf-target' });
+  const source = await MongoDataset.create({ ...props, name: 'source' });
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { id: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoDataset.findById(source._id).lean())?.parentId).toBeNull();
 });

@@ -1,6 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { serviceEnv } from '../../env';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 
 type FolderResourceDoc = {
   _id: unknown;
@@ -15,25 +16,28 @@ type FolderResourceModel = {
     id: string,
     select?: string
   ) => {
-    lean: <T = FolderResourceDoc>() => Promise<T | null>;
+    lean: () => Promise<FolderResourceDoc | null>;
   };
   find: (
     query: { parentId?: string; teamId?: string },
     select?: string
   ) => {
-    lean: <T = FolderResourceDoc>() => Promise<T[]>;
+    lean: () => Promise<FolderResourceDoc[]>;
   };
 };
 
 type FolderTypeChecker = (type: string) => boolean;
 
-type FolderDepthModelProps = {
-  model: FolderResourceModel;
+type ParentFolderModelProps = {
+  model: Pick<FolderResourceModel, 'findById'>;
   teamId: string;
 };
 
-type CheckCreateFolderDepthProps = FolderDepthModelProps & {
+type FolderDepthModelProps = ParentFolderModelProps & { model: FolderResourceModel };
+
+type CheckCreateFolderDepthProps = ParentFolderModelProps & {
   parentId: ParentIdType;
+  isFolderType: FolderTypeChecker;
 };
 
 type CheckMoveFolderDepthProps = FolderDepthModelProps & {
@@ -56,9 +60,10 @@ const getParentFolderDepth = async ({
   parentId,
   teamId,
   model,
+  isFolderType,
   maxAllowedDepth,
   limitErr = CommonErrEnum.invalidParams
-}: FolderDepthModelProps & { parentId: ParentIdType } & DepthLimitOptions): Promise<number> => {
+}: CheckCreateFolderDepthProps & DepthLimitOptions): Promise<number> => {
   if (!parentId) return 0;
 
   let depth = 0;
@@ -72,9 +77,9 @@ const getParentFolderDepth = async ({
     visited.add(currentId);
 
     const doc: FolderResourceDoc | null = await model
-      .findById(currentId, 'parentId teamId')
-      .lean<FolderResourceDoc>();
-    if (!doc || String(doc.teamId) !== String(teamId)) {
+      .findById(currentId, 'parentId teamId type')
+      .lean();
+    if (!doc || String(doc.teamId) !== String(teamId) || !doc.type || !isFolderType(doc.type)) {
       throw CommonErrEnum.invalidParams;
     }
 
@@ -104,7 +109,7 @@ const getSubtreeMaxFolderDepth = async ({
   resourceId: string;
   isFolderType: FolderTypeChecker;
 } & DepthLimitOptions): Promise<number> => {
-  const resource = await model.findById(resourceId, 'type teamId').lean<FolderResourceDoc>();
+  const resource = await model.findById(resourceId, 'type teamId').lean();
   if (!resource || String(resource.teamId) !== String(teamId)) {
     throw CommonErrEnum.invalidResource;
   }
@@ -126,9 +131,7 @@ const getSubtreeMaxFolderDepth = async ({
       throw CommonErrEnum.folderMoveDepthLimit;
     }
 
-    const children = await model
-      .find({ parentId: current.id, teamId }, '_id type')
-      .lean<FolderResourceDoc>();
+    const children = await model.find({ parentId: current.id, teamId }, '_id type').lean();
 
     for (const child of children) {
       if (!child.type || !isFolderType(child.type)) continue;
@@ -163,9 +166,7 @@ const isInSubtree = async ({
     if (visited.has(currentId)) throw CommonErrEnum.invalidParams;
     visited.add(currentId);
 
-    const doc: FolderResourceDoc | null = await model
-      .findById(currentId, 'parentId teamId')
-      .lean<FolderResourceDoc>();
+    const doc: FolderResourceDoc | null = await model.findById(currentId, 'parentId teamId').lean();
     if (!doc || String(doc.teamId) !== String(teamId)) return false;
     currentId = doc.parentId ? String(doc.parentId) : null;
   }
@@ -174,23 +175,30 @@ const isInSubtree = async ({
 };
 
 /**
- * 创建文件夹前校验：parentDepth + 1 不得超过最大深度。
- * 权限校验应在本函数之前完成。
+ * 创建资源前校验父级链：所有父级必须是同团队的合法文件夹，不允许缺失或成环。
+ * 文件夹占一层，遵循新建深度策略；叶子资源不增加目录深度，允许放入历史深层目录，
+ * 但仍受独立的遍历上限保护。调用方须先完成权限校验，并按需将 model 查询限定到同一知识库。
  */
-export const checkCreateFolderDepth = async ({
+export const checkCreateResourceParent = async ({
   parentId,
   teamId,
-  model
-}: CheckCreateFolderDepthProps) => {
-  const maxDepth = serviceEnv.MAX_FOLDER_DEPTH;
+  model,
+  isFolderType,
+  isFolder
+}: CheckCreateFolderDepthProps & { isFolder: boolean }) => {
   await getParentFolderDepth({
     parentId,
     teamId,
     model,
-    maxAllowedDepth: maxDepth - 1,
-    limitErr: CommonErrEnum.folderDepthLimit
+    isFolderType,
+    maxAllowedDepth: isFolder ? serviceEnv.MAX_FOLDER_DEPTH - 1 : defaultSubtreeMaxDepth,
+    limitErr: isFolder ? CommonErrEnum.folderDepthLimit : CommonErrEnum.invalidParams
   });
 };
+
+/** 创建文件夹前校验：parentDepth + 1 不得超过最大深度，父级必须是合法文件夹。 */
+export const checkCreateFolderDepth = async (props: CheckCreateFolderDepthProps) =>
+  checkCreateResourceParent({ ...props, isFolder: true });
 
 /**
  * 移动资源前校验：目标父级深度 + 子树最大文件夹深度不得超过最大深度。
@@ -213,6 +221,7 @@ export const checkMoveFolderDepth = async ({
     parentId: targetParentId,
     teamId,
     model,
+    isFolderType,
     maxAllowedDepth: maxDepth,
     limitErr: CommonErrEnum.folderMoveDepthLimit
   });

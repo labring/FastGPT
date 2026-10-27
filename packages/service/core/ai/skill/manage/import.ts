@@ -1,3 +1,4 @@
+import { checkCreateResourceParent } from '../../../../common/parentFolder/depth';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type {
@@ -23,7 +24,7 @@ type ImportSkillParams = {
 };
 
 /**
- * Import an opaque package stream as the initial Skill version.
+ * 校验父级文件夹链后，将不透明的包流导入为 Skill 初始版本。
  *
  * Import intentionally does not parse or validate package contents. This function uploads the
  * package before opening the Mongo transaction, then creates the default ACL, binds currentVersionId,
@@ -39,6 +40,14 @@ export async function importSkill({
   contentLength,
   parentId
 }: ImportSkillParams): Promise<string> {
+  await checkCreateResourceParent({
+    parentId,
+    teamId,
+    model: MongoAgentSkills,
+    isFolder: false,
+    isFolderType: (type) => type === AgentSkillTypeEnum.folder
+  });
+
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
 
   const newSkill = new MongoAgentSkills({
