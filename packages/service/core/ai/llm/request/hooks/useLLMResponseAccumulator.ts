@@ -11,7 +11,6 @@ const createEmptyUsage = (): LLMAccumulatedUsage => ({
   prompt_tokens: 0,
   completion_tokens: 0,
   total_tokens: 0,
-  cached_tokens: 0,
   cache_read_tokens: 0,
   cache_write_tokens: 0
 });
@@ -71,7 +70,6 @@ export const useLLMResponseAccumulator = () => {
         usage.completion_tokens += response.usage.completion_tokens || 0;
         usage.total_tokens += response.usage.total_tokens || 0;
         const { cacheReadTokens, cacheCreationTokens } = normalizeLLMCacheUsage(response.usage);
-        usage.cached_tokens += cacheReadTokens;
         usage.cache_read_tokens += cacheReadTokens;
         usage.cache_write_tokens += cacheCreationTokens;
       }

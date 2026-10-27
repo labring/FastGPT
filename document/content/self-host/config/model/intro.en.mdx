@@ -147,6 +147,8 @@ Token model prices and tier boundaries use M Tokens. Text-to-speech is priced pe
 
 Only system models use these prices; team models are free. Pricing is stored under pricing: LLMs use tiers with inputPrice, outputPrice, and an optional maxInputTokens upper limit in M Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use unitPrice: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Legacy root-level prices are read only by the migration and ignored by the new runtime. Missing pricing is free until migration completes.
 
+Each LLM tier under `pricing.tiers` also supports optional `cacheReadPrice` and `cacheCreationPrice` rates per M Tokens. Omitted rates inherit the tier's input price; an explicit `0` makes that cache category free. Total input, including cached tokens, selects the tier. Ordinary input, cache reads, cache creation, and output are billed separately, without charging cached tokens again as ordinary input. Price summaries show input and output; hover over or focus the input price to view cache rates.
+
 <Accordions>
 <Accordion title="Language Model Fields">
 ```json

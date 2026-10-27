@@ -1,3 +1,4 @@
+import { LLMModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -92,8 +93,15 @@ afterEach(async () => {
 
 describe('cache pricing with real HTTP/SSE and MongoDB', () => {
   it.each([false, true])(
-    'persists price tiers, parses cache usage and bills once, stream=%s',
+    'persists million-unit prices, parses cache usage and bills once, stream=%s',
     async (stream) => {
+      const pricing = {
+        pricing: {
+          tiers: [
+            { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
+          ]
+        }
+      };
       const [saved] = await MongoAIModel.create([
         {
           model: 'cache-test',
@@ -102,9 +110,7 @@ describe('cache pricing with real HTTP/SSE and MongoDB', () => {
           type: ModelTypeEnum.llm,
           scope: ModelScopeEnum.system,
           config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 },
-          priceTiers: [
-            { inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }
-          ]
+          ...pricing
         }
       ]);
       const stored = await MongoAIModel.findById(saved._id).lean();
@@ -129,14 +135,14 @@ describe('cache pricing with real HTTP/SSE and MongoDB', () => {
         cacheReadTokens: 6000,
         cacheCreationTokens: 1000
       });
-      expect(stored?.priceTiers?.[0]).toMatchObject({
-        cacheReadPrice: 0.2,
-        cacheCreationPrice: 2.5
+      expect(LLMModelPricingSchema.parse(stored?.pricing).tiers?.[0]).toMatchObject({
+        cacheReadPrice: 200,
+        cacheCreationPrice: 2500
       });
     }
   );
 
-  it('accumulates continuation caches and preserves legacy prices', async () => {
+  it('accumulates continuation caches and inherits missing cache prices', async () => {
     continuation = true;
     const model = {
       modelId: '507f1f77bcf86cd799439012',
@@ -145,15 +151,14 @@ describe('cache pricing with real HTTP/SSE and MongoDB', () => {
       provider: 'openai',
       type: ModelTypeEnum.llm as const,
       scope: ModelScopeEnum.system,
-      inputPrice: 2,
-      outputPrice: 4,
+      pricing: { tiers: [{ inputPrice: 2000, outputPrice: 4000 }] },
       config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
     };
     const result = await createLLMResponse({
       teamId,
       saveLLMResponseRecord: false,
       maxContinuations: 2,
-      body: { model, stream: true, messages: [{ role: 'user', content: 'continue' }] }
+      body: { model, tools: [], stream: true, messages: [{ role: 'user', content: 'continue' }] }
     });
     expect(requests).toHaveLength(2);
     expect(result.usage).toMatchObject({
@@ -184,7 +189,11 @@ it.each([false, true])(
       provider: 'openai',
       type: ModelTypeEnum.llm as const,
       scope: ModelScopeEnum.system,
-      priceTiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }],
+      pricing: {
+        tiers: [
+          { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
+        ]
+      },
       config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
     };
     const onLLMRequestEnd = vi.fn();
@@ -192,7 +201,9 @@ it.each([false, true])(
     const result = await runAgentLoop({
       teamId,
       maxRunAgentTimes: 1,
-      body: { model, stream: true, messages: [{ role: 'user', content: 'hello' }] },
+      body: { model, tools: [], stream: true, messages: [{ role: 'user', content: 'hello' }] },
+      isAborted: () => false,
+      onRunInteractiveTool: vi.fn(),
       onRunTool: vi.fn(),
       onLLMRequestEnd
     });

@@ -69,46 +69,77 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
 import ModelDashboard from '@/pageComponents/model/ModelDashboard';
 import DataTableComponent from '@/pageComponents/model/ModelDashboard/DataTableComponent';
 
-const tier = { inputPrice: 2000, outputPrice: 4000 };
+const cacheTier = {
+  inputPrice: 2000,
+  outputPrice: 4000,
+  cacheReadPrice: 200,
+  cacheCreationPrice: 2500
+};
 
-describe('model dashboard million-unit pricing', () => {
+describe('model dashboard cache pricing', () => {
   beforeEach(() => {
     mocks.requestIndex = 0;
   });
 
   it.each([
     {
-      name: 'M tiers selected by total input',
+      name: 'ordinary input without cache metadata',
       pricing: {
-        pricing: { tiers: [{ maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 }, tier] }
+        pricing: {
+          tiers: [
+            { maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 },
+            { inputPrice: 2000, outputPrice: 4000 }
+          ]
+        }
       } satisfies PriceType,
+      usage: {},
       expected: 28,
       displayedTotal: 56
     },
     {
-      name: 'fractional costs are accumulated before display rounding',
-      pricing: {
-        pricing: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
-      } satisfies PriceType,
+      name: 'ordinary fractional costs before display rounding',
+      pricing: { pricing: { tiers: [{ inputPrice: 2, outputPrice: 4 }] } } satisfies PriceType,
+      usage: {},
       expected: 0.028,
       displayedTotal: 0.06
     },
     {
       name: 'explicit free LLM tiers',
       pricing: { pricing: { tiers: [] } } satisfies PriceType,
+      usage: { cached_tokens: 6000, cache_creation_tokens: 1000 },
       expected: 0,
       displayedTotal: 0
+    },
+    {
+      name: 'M tiers selected by total input including cache',
+      pricing: {
+        pricing: { tiers: [{ maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 }, cacheTier] }
+      } satisfies PriceType,
+      usage: { cached_tokens: 6000, cache_creation_tokens: 1000 },
+      expected: 17.7,
+      displayedTotal: 35.4
+    },
+    {
+      name: 'fractional costs are accumulated before display rounding',
+      pricing: {
+        pricing: {
+          tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }]
+        }
+      } satisfies PriceType,
+      usage: { cached_tokens: 6000, cache_creation_tokens: 1000 },
+      expected: 0.0177,
+      displayedTotal: 0.04
     }
   ])(
     'keeps chart, model and channel totals consistent for $name',
-    ({ pricing, expected, displayedTotal }) => {
+    ({ pricing, usage, expected, displayedTotal }) => {
       mocks.models = [
         {
           ...pricing,
-          model: 'unit-model',
+          model: 'cache-model',
           provider: 'openai',
-          type: ModelTypeEnum.llm,
-          scope: ModelScopeEnum.system
+          scope: ModelScopeEnum.system,
+          type: ModelTypeEnum.llm
         }
       ];
       mocks.data = GetChannelDashboardResponseSchema.parse(
@@ -116,11 +147,12 @@ describe('model dashboard million-unit pricing', () => {
           timestamp,
           summary: [
             {
-              model: 'unit-model',
+              model: 'cache-model',
               channel_id: 12,
               request_count: 1,
               input_tokens: 10000,
-              output_tokens: 2000
+              output_tokens: 2000,
+              ...usage
             }
           ]
         }))
@@ -143,7 +175,7 @@ describe('model dashboard million-unit pricing', () => {
         const table = render(
           React.createElement(DataTableComponent, {
             data: mocks.data,
-            filterProps: byChannel ? { model: 'unit-model' } : {},
+            filterProps: byChannel ? { model: 'cache-model' } : {},
             channelList: [{ label: 'Channel', value: '12' }],
             modelPriceMap: new Map(mocks.models.map((model) => [model.model, model])),
             isLLMModel: () => true,

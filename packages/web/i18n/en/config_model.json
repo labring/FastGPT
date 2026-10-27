@@ -1,5 +1,5 @@
 {
-  "active_model": "Available Models",
+  "active_model": "Available models",
   "max_response_tokens": "Maximum response Tokens",
   "voices_array_required": "Voices must be a non-empty array with label and value in each item",
   "select_model_provider_placeholder": "Select a provider",
@@ -106,7 +106,6 @@
   "video": "Video recognition",
   "video_tip": "Turn this on if the model supports video recognition.",
   "waiting_test": "Waiting for testing",
-  "active_model": "Available models",
   "channel": "Model provider",
   "config_model": "Model configuration",
   "create_model": "Add new model",
@@ -294,5 +293,6 @@
   "replace_invalid_failed_samples": "Failure samples",
   "replace_invalid_retry": "Run again",
   "replace_invalid_retry_note": "Run the same mapping again to handle remaining unavailable references.",
-  "replace_invalid_request_failed": "Replacement request failed. Saved changes are not rolled back; you can run it again."
+  "replace_invalid_request_failed": "Replacement request failed. Saved changes are not rolled back; you can run it again.",
+  "model.cache_price_tip": "Prices are in points / M tokens, with up to 2 decimal places. Leave cache read or creation blank to use the input price for that tier; enter 0 for free caching."
 }

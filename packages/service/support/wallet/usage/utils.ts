@@ -5,16 +5,22 @@ import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 export const formatModelChars2Points = ({
   model,
   inputTokens = 0,
-  outputTokens = 0
+  outputTokens = 0,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0
 }: {
   model: AIModelDataType;
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
 }) => {
   const { totalPoints } = calculateModelPrice({
     config: model,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   return {

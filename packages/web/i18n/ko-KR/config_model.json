@@ -106,7 +106,6 @@
   "video": "영상 인식",
   "video_tip": "모델이 영상 인식을 지원하는 경우 켜세요.",
   "waiting_test": "테스트 대기 중",
-  "active_model": "사용 가능한 모델",
   "channel": "모델 제공업체",
   "config_model": "모델 설정",
   "create_model": "새 모델 추가",
@@ -294,5 +293,6 @@
   "replace_invalid_failed_samples": "실패 예시",
   "replace_invalid_retry": "다시 실행",
   "replace_invalid_retry_note": "동일한 매핑으로 다시 실행하여 남은 참조를 처리할 수 있습니다.",
-  "replace_invalid_request_failed": "교체 요청에 실패했습니다. 이미 저장된 변경 사항은 되돌리지 않으며 다시 실행할 수 있습니다."
+  "replace_invalid_request_failed": "교체 요청에 실패했습니다. 이미 저장된 변경 사항은 되돌리지 않으며 다시 실행할 수 있습니다.",
+  "model.cache_price_tip": "가격 단위: 포인트 / M 토큰, 소수점 이하 최대 2자리. 캐시 읽기 또는 생성 가격을 비워 두면 해당 구간의 입력 가격을 적용하며, 0을 입력하면 무료입니다."
 }

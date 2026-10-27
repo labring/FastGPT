@@ -26,7 +26,9 @@ describe('useLLMResponseAccumulator', () => {
       usage: {
         prompt_tokens: 10,
         completion_tokens: 2,
-        total_tokens: 12
+        total_tokens: 12,
+        cache_creation_tokens: 1,
+        prompt_tokens_details: { cached_tokens: 6 }
       }
     });
     accumulator.appendResponse({
@@ -37,7 +39,8 @@ describe('useLLMResponseAccumulator', () => {
       usage: {
         prompt_tokens: 3,
         completion_tokens: 4,
-        total_tokens: 7
+        total_tokens: 7,
+        prompt_tokens_details: { cached_tokens: 2, cache_write_tokens: 1 }
       }
     });
 
@@ -50,7 +53,9 @@ describe('useLLMResponseAccumulator', () => {
     expect(response.usage).toMatchObject({
       prompt_tokens: 13,
       completion_tokens: 6,
-      total_tokens: 19
+      total_tokens: 19,
+      cache_read_tokens: 7,
+      cache_write_tokens: 2
     });
     expect(response.toolCalls).toEqual([
       createToolCall('call_1', 'search', '{}'),
@@ -124,44 +129,21 @@ describe('useLLMResponseAccumulator', () => {
     expect(accumulator.shouldContinue()).toBe(false);
     expect(accumulator.getResponse().error).toBe(error);
   });
-});
 
-it('accumulates cache reads and creation across continuation rounds in production', () => {
-  const accumulator = useLLMResponseAccumulator();
-  for (const finish_reason of ['length', 'stop'] as const) {
+  it('keeps empty provider usage at zero', () => {
+    const accumulator = useLLMResponseAccumulator();
     accumulator.appendResponse({
-      answerText: 'answer',
+      answerText: '',
       reasoningText: '',
-      finish_reason,
-      usage: {
-        prompt_tokens: 1000,
-        completion_tokens: 20,
-        total_tokens: 1020,
-        cache_creation_tokens: 100,
-        prompt_tokens_details: { cached_tokens: 600 }
-      }
+      finish_reason: 'stop',
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
     });
-  }
-  expect(accumulator.getResponse().usage).toMatchObject({
-    prompt_tokens: 2000,
-    cache_read_tokens: 1200,
-    cache_write_tokens: 200
-  });
-});
-
-it('keeps empty provider usage at zero', () => {
-  const accumulator = useLLMResponseAccumulator();
-  accumulator.appendResponse({
-    answerText: '',
-    reasoningText: '',
-    finish_reason: 'stop',
-    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-  });
-  expect(accumulator.getResponse().usage).toMatchObject({
-    prompt_tokens: 0,
-    completion_tokens: 0,
-    total_tokens: 0,
-    cache_read_tokens: 0,
-    cache_write_tokens: 0
+    expect(accumulator.getResponse().usage).toMatchObject({
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0
+    });
   });
 });

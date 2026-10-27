@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const {
   agentPromptMock,
@@ -13,7 +14,6 @@ const {
   agentRunTransformContext,
   agentTransformContextRepeatCount,
   agentResponseText,
-  agentCacheUsage,
   agentToolToExecute,
   runSandboxToolsMock,
   compressRequestMessagesMock
@@ -28,7 +28,6 @@ const {
   agentFailAfterPayload: { value: undefined as string | undefined },
   agentRunTransformContext: { value: false },
   agentTransformContextRepeatCount: { value: 1 },
-  agentCacheUsage: { cacheRead: 0, cacheWrite: 0 },
   agentResponseText: {
     value: 'pi answer'
   },
@@ -216,8 +215,7 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               content: [{ type: 'text', text: agentResponseText.value }],
               usage: {
                 input: 3,
-                output: 2,
-                ...agentCacheUsage
+                output: 2
               },
               stopReason: 'stop'
             }
@@ -240,12 +238,12 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   }))
 }));
 
-import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { runPiAgentLoop as runPiAgentLoopWithoutModelData } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
+import { runPiAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/run';
 
 const modelData = {
   modelId: '68ad85a7463006c963799a67',
   type: ModelTypeEnum.llm,
+  scope: ModelScopeEnum.system,
   provider: 'openai',
   model: 'gpt-5',
   name: 'GPT-5',
@@ -263,19 +261,7 @@ const modelData = {
     reasoning: true,
     reasoningEffort: true
   }
-} as any;
-
-const runPiAgentLoop: typeof runPiAgentLoopWithoutModelData = (props) =>
-  runPiAgentLoopWithoutModelData({
-    ...props,
-    runtime: {
-      ...props.runtime,
-      llmParams: {
-        ...props.runtime.llmParams,
-        model: modelData
-      }
-    }
-  });
+} satisfies LLMModelDataType;
 
 describe('runPiAgentLoop', () => {
   beforeEach(() => {
@@ -287,8 +273,6 @@ describe('runPiAgentLoop', () => {
     agentRunTransformContext.value = false;
     agentTransformContextRepeatCount.value = 1;
     agentResponseText.value = 'pi answer';
-    agentCacheUsage.cacheRead = 0;
-    agentCacheUsage.cacheWrite = 0;
     agentToolToExecute.value = undefined;
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
@@ -302,8 +286,9 @@ describe('runPiAgentLoop', () => {
         systemPrompt: 'system prompt'
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5',
+          model: modelData,
           reasoningEffort: 'high',
           stream: true
         },
@@ -387,7 +372,7 @@ describe('runPiAgentLoop', () => {
       input: { messages: [{ role: 'user', content: 'build it' }] },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         completionPolicy,
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
@@ -424,7 +409,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5', useVision: true },
+        llmParams: { model: modelData, useVision: true },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false)
@@ -453,7 +438,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false)
@@ -499,7 +484,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false),
@@ -576,7 +561,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false),
@@ -601,7 +586,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         maxRunAgentTimes: 1,
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
@@ -621,7 +606,7 @@ describe('runPiAgentLoop', () => {
       input: { messages: [{ role: 'user', content: 'build it' }] },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         maxRunAgentTimes: 1,
         completionPolicy: () => ({ action: 'continue', message: 'Continue.' }),
         toolCatalog: { runtimeTools: [] },
@@ -645,7 +630,7 @@ describe('runPiAgentLoop', () => {
       },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-5' },
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false),
@@ -667,8 +652,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         toolCatalog: {
           runtimeTools: []
@@ -686,8 +672,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         systemTools: {
           plan: { enabled: true },
@@ -722,7 +709,7 @@ describe('runPiAgentLoop', () => {
       runtime: {
         teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         systemTools: {
           sandbox: {
@@ -765,8 +752,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'Create a plan' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         systemTools: {
           plan: { enabled: true }
@@ -800,8 +788,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         systemTools: {
           plan: { enabled: true },
@@ -915,7 +904,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: {
           runtimeTools: [
             {
@@ -988,7 +978,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: {
           runtimeTools: [
             {
@@ -1053,7 +1044,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: {
           runtimeTools: [
             {
@@ -1110,7 +1102,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: {
           runtimeTools: [
             {
@@ -1150,7 +1143,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: {
           runtimeTools: [
             {
@@ -1231,7 +1225,8 @@ describe('runPiAgentLoop', () => {
         }
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         executeInteractiveTool,
@@ -1310,7 +1305,8 @@ describe('runPiAgentLoop', () => {
         }
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         executeInteractiveTool: vi.fn().mockResolvedValue({
@@ -1386,7 +1382,8 @@ describe('runPiAgentLoop', () => {
         }
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         executeInteractiveTool: vi.fn().mockRejectedValue(new Error('resume failed')),
@@ -1425,8 +1422,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         systemTools: {
           sandbox: {
@@ -1499,8 +1497,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5',
+          model: modelData,
           maxTokens: 2000,
           temperature: 5,
           topP: 0.7,
@@ -1553,8 +1552,9 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         responseParams: {
           retainDatasetCite: false
@@ -1600,7 +1600,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: '搭建工作流' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         systemTools: { ask: { enabled: true, validate } },
         executeTool: vi.fn(),
@@ -1647,7 +1648,8 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: '分析销售数据' }]
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         systemTools: { ask: { enabled: true } },
         executeTool: vi.fn(),
@@ -1728,8 +1730,9 @@ describe('runPiAgentLoop', () => {
         userAnswer: '我要分析销售数据'
       },
       runtime: {
+        teamId: 'team_1',
         llmParams: {
-          model: 'gpt-5'
+          model: modelData
         },
         toolCatalog: {
           runtimeTools: []
@@ -1783,7 +1786,8 @@ describe('runPiAgentLoop', () => {
         userAnswer: '我要分析销售数据'
       },
       runtime: {
-        llmParams: { model: 'gpt-5' },
+        teamId: 'team_1',
+        llmParams: { model: modelData },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         checkIsStopping: vi.fn(() => false)
@@ -1802,40 +1806,5 @@ describe('runPiAgentLoop', () => {
     expect(agentConstructorArgs).toHaveLength(0);
     expect(agentPromptMock).not.toHaveBeenCalled();
     expect(agentContinueMock).not.toHaveBeenCalled();
-  });
-  it('converts pi cache categories to total input and forwards them to billing and usage', async () => {
-    agentCacheUsage.cacheRead = 6000;
-    agentCacheUsage.cacheWrite = 1000;
-    const usagePush = vi.fn();
-    const result = await runPiAgentLoop({
-      input: { messages: [{ role: 'user', content: 'hello' }] },
-      runtime: {
-        teamId: 'team_1',
-        llmParams: { model: modelData },
-        toolCatalog: { runtimeTools: [] },
-        executeTool: vi.fn(),
-        usagePush
-      }
-    });
-    expect(formatModelChars2Points).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputTokens: 7003,
-        outputTokens: 2,
-        cacheReadTokens: 6000,
-        cacheCreationTokens: 1000
-      })
-    );
-    expect(usagePush).toHaveBeenCalledWith([
-      expect.objectContaining({
-        inputTokens: 7003,
-        cacheReadTokens: 6000,
-        cacheCreationTokens: 1000
-      })
-    ]);
-    expect(result.usages?.[0]).toMatchObject({
-      inputTokens: 7003,
-      cacheReadTokens: 6000,
-      cacheCreationTokens: 1000
-    });
   });
 });

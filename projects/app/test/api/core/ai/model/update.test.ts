@@ -198,7 +198,9 @@ describe('admin settings model create/update api', () => {
               {
                 maxInputTokens: 0.000125,
                 inputPrice: 0.125,
-                outputPrice: 2.345
+                outputPrice: 2.345,
+                cacheReadPrice: 0,
+                cacheCreationPrice: 0.125
               }
             ]
           }
@@ -213,7 +215,9 @@ describe('admin settings model create/update api', () => {
       {
         maxInputTokens: 0.000125,
         inputPrice: 0.13,
-        outputPrice: 2.35
+        outputPrice: 2.35,
+        cacheReadPrice: 0,
+        cacheCreationPrice: 0.13
       }
     ]);
     const updated = await callApi({
@@ -227,7 +231,8 @@ describe('admin settings model create/update api', () => {
               {
                 maxInputTokens: 0.000125,
                 inputPrice: 0.335,
-                outputPrice: 3.335
+                outputPrice: 3.335,
+                cacheReadPrice: 1.005
               }
             ]
           }
@@ -240,7 +245,8 @@ describe('admin settings model create/update api', () => {
       {
         maxInputTokens: 0.000125,
         inputPrice: 0.34,
-        outputPrice: 3.34
+        outputPrice: 3.34,
+        cacheReadPrice: 1.01
       }
     ]);
     expect(
@@ -249,6 +255,16 @@ describe('admin settings model create/update api', () => {
         inputTokens: 1000000
       }).totalPoints
     ).toBe(0.34);
+    expect(ModelPricingSchema.parse(stored?.pricing).tiers?.[0]).not.toHaveProperty(
+      'cacheCreationPrice'
+    );
+    expect(
+      calculateModelPrice({
+        config: formatDbModelToRuntimeModel(stored!, { fallbackProvider: true }),
+        inputTokens: 1000000,
+        cacheReadTokens: 1000000
+      }).totalPoints
+    ).toBe(1.01);
   });
 
   it.each([ModelTypeEnum.tts, ModelTypeEnum.stt])(

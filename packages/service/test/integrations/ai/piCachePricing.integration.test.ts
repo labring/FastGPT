@@ -62,10 +62,11 @@ beforeEach(async () => {
     isActive: true,
     requestUrl: `http://127.0.0.1:${address.port}/v1/chat/completions`,
     requestAuth: 'local-test',
-    tokenPriceUnit: 'M',
-    priceTiers: [
-      { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
-    ],
+    pricing: {
+      tiers: [
+        { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
+      ]
+    },
     config: { maxContext: 100000, maxResponse: 10000, quoteMaxToken: 80000 }
   };
 });
