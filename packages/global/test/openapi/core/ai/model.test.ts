@@ -213,7 +213,6 @@ describe('admin system model API schemas', () => {
       type: 'llm' as const,
       model: 'openai/gpt-4o',
       name: 'GPT-4o',
-      inputPrice: 0.0001,
       config: { maxContext: 32000 }
     };
     const result = PreviewImportFromChannelResponseSchema.parse({
@@ -234,7 +233,6 @@ describe('admin system model API schemas', () => {
                 model: 'gpt-4o',
                 name: 'GPT-4o',
                 scope: 'system',
-                inputPrice: 1,
                 config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 12000 }
               },
               blankModelData
