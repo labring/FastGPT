@@ -102,6 +102,33 @@ describe('system tool secrets', () => {
     }
   });
 
+  it('prefers the plaintext value when both legacy fields are populated', () => {
+    const legacyValue = { value: 'plain-api-key', secret: encryptSecret('cipher-api-key') };
+
+    for (const value of [legacyValue, JSON.stringify(legacyValue)]) {
+      expect(decryptSystemToolSecrets({ apiKey: value })).toEqual({ apiKey: 'plain-api-key' });
+      expect(
+        maskSystemToolSecrets({
+          secretsVal: { apiKey: value },
+          secretKeys
+        })
+      ).toEqual({ apiKey: SystemToolSecretMaskedValue });
+
+      const submitted = encryptSystemToolSecrets({
+        secretsVal: { apiKey: value },
+        secretKeys
+      });
+      expect(decryptSystemToolSecrets(submitted)).toEqual({ apiKey: 'plain-api-key' });
+
+      const stored = encryptSystemToolSecrets({
+        secretsVal: { apiKey: SystemToolSecretMaskedValue },
+        existingSecretsVal: { apiKey: value },
+        secretKeys
+      });
+      expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: 'plain-api-key' });
+    }
+  });
+
   it('encrypts a plain secret wrapper and clears an edited empty value', () => {
     const stored = encryptSystemToolSecrets({
       secretsVal: { apiKey: { value: 'new-api-key' } },

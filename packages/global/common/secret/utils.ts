@@ -75,7 +75,11 @@ export const normalizeLegacySecretValue = <T>(
     if (candidate.value === '' && typeof candidate.secret === 'string') {
       return { secret: candidate.secret };
     }
-    if (typeof candidate.value === 'string' && candidate.value !== '' && candidate.secret === '') {
+    if (
+      typeof candidate.value === 'string' &&
+      candidate.value !== '' &&
+      typeof candidate.secret === 'string'
+    ) {
       return { value: candidate.value };
     }
   }
