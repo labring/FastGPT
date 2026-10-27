@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { convertLegacyModelPricing } from '@/migration/tasks/4174/20261025_token_prices_per_million/utils';
+import { convertLegacyModelPricing } from '@/migration/tasks/4173/20261025_token_prices_per_million/utils';
 
 describe('legacy pricing conversion', () => {
   it.each([
