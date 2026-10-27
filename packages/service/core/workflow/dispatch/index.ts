@@ -147,7 +147,7 @@ export async function dispatchWorkFlow({
     histories,
     query,
     chatId,
-    generationRunId: providedGenerationRunId,
+    generationRunnerId: providedGenerationRunId,
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
@@ -161,7 +161,7 @@ export async function dispatchWorkFlow({
   const generationLease = providedGenerationRunId
     ? getActiveChatGenerationLease({ ...chatSource, chatId }, providedGenerationRunId)
     : undefined;
-  const generationRunId = providedGenerationRunId;
+  const generationRunnerId = providedGenerationRunId;
 
   /* Init function */
   // Check point
@@ -229,7 +229,7 @@ export async function dispatchWorkFlow({
     delAgentRuntimeStopSign({
       ...chatSource,
       chatId,
-      ...(generationRunId && { generationRunId })
+      ...(generationRunnerId && { generationRunnerId })
     })
   ]);
 
@@ -286,7 +286,7 @@ export async function dispatchWorkFlow({
           const shouldStop = await shouldWorkflowStop({
             ...chatSource,
             chatId,
-            ...(generationRunId && { generationRunId })
+            ...(generationRunnerId && { generationRunnerId })
           });
           if (shouldStop) {
             stopping = true;
@@ -363,7 +363,7 @@ export async function dispatchWorkFlow({
             await delAgentRuntimeStopSign({
               ...chatSource,
               chatId,
-              ...(generationRunId && { generationRunId })
+              ...(generationRunnerId && { generationRunnerId })
             });
           });
       }

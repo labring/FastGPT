@@ -1,48 +1,46 @@
 import {
   ChatGenerationLeaseCache,
   type ChatGenerationLeaseParams as DalChatGenerationLeaseParams
-} from '@fastgpt/dal/redis/caches';
-import {
-  ChatGenerateStatusEnum,
-  type ChatSourceTypeEnum
-} from '@fastgpt/global/core/chat/constants';
+} from '@fastgpt/dal/redis/caches/chatGenerationLease';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '../../common/logger';
-import { MongoChat } from './chatSchema';
-import { buildChatSourceQuery } from './source';
+import { touchLegacyStreamResumeActive } from './resume';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 const generationLeaseCache = new ChatGenerationLeaseCache();
 
-/** lease 必须显著短于 cleaner 判定周期，给 Redis/Mongo 瞬时失败保留续租窗口。 */
+/** runner 心跳间隔必须显著短于 lease TTL，给 Redis 瞬时失败保留重试窗口。 */
 export const CHAT_GENERATION_LEASE_TTL_MS = 90 * 1000;
 export const CHAT_GENERATION_LEASE_RENEW_INTERVAL_MS = 30 * 1000;
 
 export type ChatGenerationLeaseParams = Omit<DalChatGenerationLeaseParams, 'sourceType'> & {
   sourceType: ChatSourceTypeEnum;
+  /** 只用于滚动升级时刷新旧 cleaner 的 legacy active key。 */
+  teamId?: string;
 };
 
 export type ChatGenerationLeaseStartParams = ChatGenerationLeaseParams & {
-  generationRunId: string;
+  generationRunnerId: string;
 };
 
 export type ChatGenerationLease = {
-  generationRunId: string;
+  generationRunnerId: string;
   signal: AbortSignal;
   assertValid: () => void;
-  abort: (reason?: unknown) => void;
   stop: () => Promise<void>;
 };
 
-class ChatGenerationLostError extends Error {
-  constructor(message = 'Chat generation lease was lost') {
+export class ChatGenerationLeaseLostError extends Error {
+  constructor(message = 'Chat generation runner lease was lost') {
     super(message);
-    this.name = 'ChatGenerationLostError';
+    this.name = 'ChatGenerationLeaseLostError';
   }
 }
 
 type ActiveLease = ChatGenerationLease & {
   params: ChatGenerationLeaseParams;
   timer: ReturnType<typeof setInterval>;
+  expiresAt: number;
 };
 
 const activeLeases = new Map<string, ActiveLease>();
@@ -50,126 +48,99 @@ const activeLeases = new Map<string, ActiveLease>();
 const getLeaseMapKey = (params: ChatGenerationLeaseParams) =>
   `${params.sourceType}:${params.sourceId}:${params.chatId}`;
 
+const getLeaseCacheParams = ({ teamId: _teamId, ...params }: ChatGenerationLeaseParams) => params;
+
 /**
- * 启动当前生成 run 的独立 lease heartbeat。
+ * 尝试启动一个 chat generation runner lease。
  *
- * 该 heartbeat 只代表执行任务是否存活，不依赖 HTTP response、SSE 或 resume mirror。
- * Redis token 负责跨节点 fencing，Mongo heartbeat 用于 Redis 异常时保留持久判据。
+ * Redis key 是跨实例互斥真源；同一个 chat 已有 runner 时直接返回 undefined，
+ * 不会中止或覆盖已有执行体。
  */
-export const startChatGenerationLease = async ({
-  generationRunId,
+export const tryStartChatGenerationLease = async ({
+  generationRunnerId,
   ...params
-}: ChatGenerationLeaseStartParams): Promise<ChatGenerationLease> => {
+}: ChatGenerationLeaseStartParams): Promise<ChatGenerationLease | undefined> => {
   const mapKey = getLeaseMapKey(params);
-  const previousLease = activeLeases.get(mapKey);
-  if (previousLease?.generationRunId === generationRunId) {
-    return previousLease;
-  }
-  if (previousLease && previousLease.generationRunId !== generationRunId) {
-    previousLease.abort(new ChatGenerationLostError('Chat generation lease was replaced'));
-    await previousLease.stop();
+  const leaseCacheParams = getLeaseCacheParams(params);
+  const existingLease = activeLeases.get(mapKey);
+  if (existingLease) {
+    return existingLease.generationRunnerId === generationRunnerId ? existingLease : undefined;
   }
 
-  await generationLeaseCache.start({
-    params,
-    token: generationRunId,
+  const acquired = await generationLeaseCache.tryAcquire({
+    params: leaseCacheParams,
+    token: generationRunnerId,
     ttlMs: CHAT_GENERATION_LEASE_TTL_MS
   });
+  if (!acquired) return;
 
   const abortController = new AbortController();
   let stopped = false;
   let renewing = false;
   let lost = false;
+  let expiresAt = Date.now() + CHAT_GENERATION_LEASE_TTL_MS;
 
-  const abort = (error?: unknown) => {
+  function markLost(error?: unknown) {
     if (lost) return;
     lost = true;
     clearInterval(timer);
     if (!abortController.signal.aborted) {
       abortController.abort(
-        error instanceof Error ? error : new ChatGenerationLostError(String(error || ''))
+        error instanceof Error ? error : new ChatGenerationLeaseLostError(String(error || ''))
       );
     }
-  };
-
-  const markLost = (error: unknown) => {
-    abort(error);
-  };
+  }
 
   const assertValid = () => {
-    if (lost) throw new ChatGenerationLostError();
+    if (!lost && Date.now() >= expiresAt) {
+      markLost(new ChatGenerationLeaseLostError('Chat generation runner lease expired'));
+    }
+    if (lost) throw new ChatGenerationLeaseLostError();
   };
 
   const renew = async () => {
     if (stopped || lost || renewing) return;
     renewing = true;
-    const heartbeatAt = new Date();
 
     try {
-      const [redisResult, mongoResult] = await Promise.allSettled([
-        generationLeaseCache.renew({
-          params,
-          token: generationRunId,
-          ttlMs: CHAT_GENERATION_LEASE_TTL_MS
-        }),
-        MongoChat.updateOne(
-          {
-            ...buildChatSourceQuery(params),
-            chatId: params.chatId,
-            chatGenerateStatus: ChatGenerateStatusEnum.generating,
-            generationRunId
-          },
-          {
-            $set: {
-              generationHeartbeatAt: heartbeatAt,
-              generationLeaseExpiresAt: new Date(
-                heartbeatAt.getTime() + CHAT_GENERATION_LEASE_TTL_MS
-              )
-            }
-          }
-        )
-      ]);
-
-      if (mongoResult.status === 'rejected') {
-        logger.warn('Chat generation Mongo heartbeat failed', {
+      const renewed = await generationLeaseCache.renew({
+        params: leaseCacheParams,
+        token: generationRunnerId,
+        ttlMs: CHAT_GENERATION_LEASE_TTL_MS
+      });
+      if (!renewed) {
+        markLost();
+        logger.warn('Chat generation runner lease token no longer matches', {
           ...params,
-          generationRunId,
-          error: mongoResult.reason
-        });
-      } else if ((mongoResult.value.matchedCount ?? 0) === 0) {
-        markLost(new ChatGenerationLostError());
-        logger.warn('Chat generation Mongo heartbeat lost ownership', {
-          ...params,
-          generationRunId
+          generationRunnerId
         });
         return;
       }
 
-      if (redisResult.status === 'rejected') {
-        logger.warn('Chat generation Redis lease renew failed', {
-          ...params,
-          generationRunId,
-          error: redisResult.reason
-        });
-      } else if (!redisResult.value) {
-        // Redis key 丢失/重启但 Mongo runId 仍属于当前执行体时，重建 token 而不是中断任务。
-        await generationLeaseCache.start({
-          params,
-          token: generationRunId,
-          ttlMs: CHAT_GENERATION_LEASE_TTL_MS
-        });
-        logger.warn('Chat generation Redis lease was recreated after token loss', {
-          ...params,
-          generationRunId
+      expiresAt = Date.now() + CHAT_GENERATION_LEASE_TTL_MS;
+      if (params.teamId) {
+        await touchLegacyStreamResumeActive({
+          teamId: params.teamId,
+          sourceType: params.sourceType,
+          sourceId: params.sourceId,
+          chatId: params.chatId
+        }).catch((error) => {
+          logger.warn('Chat generation legacy active heartbeat failed', {
+            ...params,
+            generationRunnerId,
+            error
+          });
         });
       }
     } catch (error) {
-      // Redis/Mongo 瞬时失败不能立即判死；只要任意一侧仍保留有效期，cleaner 就不会清理。
-      logger.warn('Chat generation lease heartbeat failed', {
+      logger.warn('Chat generation runner lease renew failed', {
         ...params,
-        generationRunId,
+        generationRunnerId,
         error
       });
+      if (Date.now() >= expiresAt) {
+        markLost(error);
+      }
     } finally {
       renewing = false;
     }
@@ -184,16 +155,16 @@ export const startChatGenerationLease = async ({
     clearInterval(timer);
 
     const currentLease = activeLeases.get(mapKey);
-    if (currentLease?.generationRunId === generationRunId) {
+    if (currentLease?.generationRunnerId === generationRunnerId) {
       activeLeases.delete(mapKey);
     }
 
     try {
-      await generationLeaseCache.release({ params, token: generationRunId });
+      await generationLeaseCache.release({ params: leaseCacheParams, token: generationRunnerId });
     } catch (error) {
-      logger.warn('Chat generation lease release failed', {
+      logger.warn('Chat generation runner lease release failed', {
         ...params,
-        generationRunId,
+        generationRunnerId,
         error
       });
     }
@@ -201,56 +172,69 @@ export const startChatGenerationLease = async ({
 
   const lease: ActiveLease = {
     params,
-    generationRunId,
+    generationRunnerId,
     signal: abortController.signal,
     assertValid,
-    abort,
     stop,
-    timer
+    timer,
+    expiresAt
   };
   activeLeases.set(mapKey, lease);
+
+  if (params.teamId) {
+    await touchLegacyStreamResumeActive({
+      teamId: params.teamId,
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      chatId: params.chatId
+    }).catch((error) => {
+      logger.warn('Chat generation legacy active heartbeat failed', {
+        ...params,
+        generationRunnerId,
+        error
+      });
+    });
+  }
 
   return lease;
 };
 
 /**
- * 终止指定 run 的本地 heartbeat，并按 token 尝试释放 Redis lease。
- *
- * 旧 run 在新 run 启动后调用时，本地 map 和 Redis token 都不会影响新 run。
+ * 终止指定 runner 的本地心跳，并按 token 尝试释放 Redis lease。
+ * 旧 runner 调用时不会影响已经接管的新 runner。
  */
 export const stopChatGenerationLease = async ({
-  generationRunId,
+  generationRunnerId,
   ...params
 }: ChatGenerationLeaseStartParams) => {
-  const mapKey = getLeaseMapKey(params);
-  const currentLease = activeLeases.get(mapKey);
-
-  if (currentLease?.generationRunId === generationRunId) {
+  const leaseCacheParams = getLeaseCacheParams(params);
+  const currentLease = activeLeases.get(getLeaseMapKey(params));
+  if (currentLease?.generationRunnerId === generationRunnerId) {
     await currentLease.stop();
     return;
   }
 
   try {
-    await generationLeaseCache.release({ params, token: generationRunId });
+    await generationLeaseCache.release({ params: leaseCacheParams, token: generationRunnerId });
   } catch (error) {
-    logger.warn('Chat generation orphan lease release failed', {
+    logger.warn('Chat generation runner orphan lease release failed', {
       ...params,
-      generationRunId,
+      generationRunnerId,
       error
     });
   }
 };
 
-/** 返回当前进程内匹配 chat 的活动 lease；传入 runId 时必须精确匹配。 */
+/** 返回当前进程内匹配 chat 的活动 lease；传入 runnerId 时必须精确匹配。 */
 export const getActiveChatGenerationLease = (
   params: ChatGenerationLeaseParams,
-  generationRunId?: string
+  generationRunnerId?: string
 ) => {
   const lease = activeLeases.get(getLeaseMapKey(params));
-  if (generationRunId && lease?.generationRunId !== generationRunId) return;
+  if (generationRunnerId && lease?.generationRunnerId !== generationRunnerId) return;
   return lease;
 };
 
-/** 返回当前 token；cleaner 用其确认 Redis lease 是否仍然有效。 */
+/** 返回 Redis 中的当前 runner token；cleaner 和 resume 用它判断真实运行状态。 */
 export const getChatGenerationLeaseToken = (params: ChatGenerationLeaseParams) =>
-  generationLeaseCache.getToken(params);
+  generationLeaseCache.getToken(getLeaseCacheParams(params));

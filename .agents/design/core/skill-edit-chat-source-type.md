@@ -397,7 +397,7 @@ stop key：
 
 ```ts
 agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}
-agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}:${generationRunId}
+agent_runtime_stopping:${sourceType}:${sourceId}:${chatId}:${generationRunnerId}
 ```
 
 stream resume key：
@@ -405,11 +405,11 @@ stream resume key：
 ```ts
 stream:resume:data:${teamId}:${sourceType}:${sourceId}:${chatId}
 stream:resume:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}
-stream:resume:data:${teamId}:${sourceType}:${sourceId}:${chatId}:${generationRunId}
-stream:resume:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}:${generationRunId}
+stream:resume:data:${teamId}:${sourceType}:${sourceId}:${chatId}:${generationRunnerId}
+stream:resume:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}:${generationRunnerId}
 ```
 
-新 run 使用带 `generationRunId` 的 key；无 runId 的历史数据继续使用 legacy key。stop、resume、catchUp、runtime status 的 key 构造必须集中到 helper，禁止各处手写。
+新 run 使用带 `generationRunnerId` 的 key；无 runnerId 的历史数据继续使用 legacy key。stop、resume、catchUp、runtime status 的 key 构造必须集中到 helper，禁止各处手写。
 
 ## 删除与清理
 

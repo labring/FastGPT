@@ -2,6 +2,7 @@ import { createAuxiliaryGenerationStream } from './stream';
 import { createAuxiliaryGenerationUsage } from './usage';
 import { clearAuxiliaryGenerationStop, shouldAuxiliaryGenerationStop } from './stop';
 import type { AuxiliaryGenerationRunParams, AuxiliaryGenerationRunResult } from './type';
+import { getActiveChatGenerationLease } from '../../chat/generationLease';
 
 /**
  * 执行一次辅助生成。
@@ -21,6 +22,7 @@ export const runAuxiliaryGeneration = async <T>({
   sourceType,
   sourceId,
   chatId,
+  generationRunnerId,
   query,
   userAnswer,
   files,
@@ -44,57 +46,89 @@ export const runAuxiliaryGeneration = async <T>({
     teamId,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    generationRunnerId
   });
-  onStreamContextReady?.(streamContext);
-
-  const usageContext = await createAuxiliaryGenerationUsage({
-    teamId,
-    tmbId,
-    appName,
-    sourceType,
-    sourceId,
-    usageSource
-  });
-  await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-
-  // 只有显式 stop 信号才中止模型；断开 SSE 仅代表客户端要从恢复镜像接管。
-  const stopCheckTimer = setInterval(async () => {
-    if (stopping) return;
-    stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-  }, 100);
 
   try {
-    const result = await processor({
-      query,
-      userAnswer,
-      files,
-      data,
-      histories,
-      requestOrigin: req.headers.origin,
-      streamWriter: streamContext.write,
-      checkIsStopping: () => stopping,
-      usageSink: usageContext.pushUsage,
-      maxFiles,
-      customPdfParse,
-      user: {
-        teamId,
-        tmbId,
-        userId,
-        isRoot,
-        lang
-      }
+    onStreamContextReady?.(streamContext);
+    const usageContext = await createAuxiliaryGenerationUsage({
+      teamId,
+      tmbId,
+      appName,
+      sourceType,
+      sourceId,
+      usageSource
+    });
+    await clearAuxiliaryGenerationStop({
+      sourceType,
+      sourceId,
+      chatId,
+      ...(generationRunnerId && { generationRunnerId })
     });
 
-    streamContext.writeDone();
-
-    return {
-      ...result,
-      durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
-      streamContext
+    const getGenerationLeaseStopped = () => {
+      if (!generationRunnerId) return false;
+      const lease = getActiveChatGenerationLease(
+        { sourceType, sourceId, chatId },
+        generationRunnerId
+      );
+      return !lease || lease.signal.aborted;
     };
-  } finally {
-    clearInterval(stopCheckTimer);
-    await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+
+    const stopCheckTimer = setInterval(async () => {
+      if (stopping) return;
+      stopping =
+        getGenerationLeaseStopped() ||
+        (await shouldAuxiliaryGenerationStop({
+          sourceType,
+          sourceId,
+          chatId,
+          ...(generationRunnerId && { generationRunnerId })
+        }));
+    }, 100);
+
+    try {
+      const result = await processor({
+        query,
+        userAnswer,
+        files,
+        data,
+        histories,
+        requestOrigin: req.headers.origin,
+        streamWriter: streamContext.write,
+        checkIsStopping: () => stopping || getGenerationLeaseStopped(),
+        usageSink: usageContext.pushUsage,
+        maxFiles,
+        customPdfParse,
+        user: {
+          teamId,
+          tmbId,
+          userId,
+          isRoot,
+          lang
+        }
+      });
+
+      streamContext.writeDone();
+
+      return {
+        ...result,
+        durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
+        streamContext
+      };
+    } finally {
+      clearInterval(stopCheckTimer);
+      await clearAuxiliaryGenerationStop({
+        sourceType,
+        sourceId,
+        chatId,
+        ...(generationRunnerId && { generationRunnerId })
+      });
+    }
+  } catch (error) {
+    await streamContext.flushResume().catch(() => undefined);
+    streamContext.cleanup();
+    throw error;
   }
 };

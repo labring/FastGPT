@@ -60,9 +60,9 @@ export const getStreamResumeRedisKeys = ({
   sourceType,
   sourceId,
   chatId,
-  generationRunId
+  generationRunnerId
 }: StreamResumeRedisKeysParams) =>
-  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId, generationRunId });
+  streamResumeCache.getKeys({ teamId, sourceType, sourceId, chatId, generationRunnerId });
 
 export type StreamResumeUnavailableState = DalStreamResumeUnavailableState & {
   reason: `${StreamResumeUnavailableReasonEnum}`;
@@ -175,6 +175,10 @@ const isResponseClosed = (res: NodeHttpResponse) =>
 export const getStreamResumeUnavailableState = async (params: StreamResumeRedisKeysParams) => {
   return streamResumeCache.getUnavailable(params);
 };
+
+/** 刷新旧实例 cleaner 使用的 legacy active key；新 cleaner 不依赖该信号。 */
+export const touchLegacyStreamResumeActive = (params: StreamResumeRedisKeysParams) =>
+  streamResumeCache.touchLegacyActive(params);
 
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;

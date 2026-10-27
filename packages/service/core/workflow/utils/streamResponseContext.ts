@@ -20,7 +20,7 @@ type CreateWorkflowStreamResponseContextBaseParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
   responseId?: string;
   showNodeStatus?: boolean;
 };
@@ -125,7 +125,7 @@ export async function createWorkflowStreamResponseContext({
   sourceType,
   sourceId,
   chatId,
-  generationRunId,
+  generationRunnerId,
   responseId,
   showNodeStatus = true,
   enableStreamResume = true
@@ -139,7 +139,7 @@ export async function createWorkflowStreamResponseContext({
           sourceType,
           sourceId,
           chatId,
-          generationRunId
+          generationRunnerId
         })
       : undefined;
   const stopMirrorKeepAlive = startStreamResumeMirrorKeepAlive(mirror);

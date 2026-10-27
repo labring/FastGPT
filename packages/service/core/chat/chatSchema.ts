@@ -138,10 +138,8 @@ const ChatSchema = new Schema({
     ],
     default: ChatGenerateStatusEnum.done
   },
-  generationRunId: String,
+  generationRunnerId: String,
   generationResponseChatItemId: String,
-  generationHeartbeatAt: Date,
-  generationLeaseExpiresAt: Date,
   hasBeenRead: {
     type: Boolean,
     default: false
@@ -203,15 +201,6 @@ defineIndex(ChatSchema, {
   options: {
     partialFilterExpression: {
       chatGenerateStatus: ChatGenerateStatusEnum.generating
-    }
-  }
-});
-defineIndex(ChatSchema, {
-  key: { chatGenerateStatus: 1, generationLeaseExpiresAt: 1 },
-  options: {
-    partialFilterExpression: {
-      chatGenerateStatus: ChatGenerateStatusEnum.generating,
-      generationRunId: { $exists: true }
     }
   }
 });

@@ -46,20 +46,47 @@ describe('StreamResumeCache', () => {
     expect(cache.getKeys(params)).toEqual({
       keyOfStream: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1'),
       keyOfUnavailable: asRedisLogicalKey('stream:resume:unavailable:team-1:app:app-1:chat-1'),
-      keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1')
+      keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
+      keyOfLegacyActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1')
     });
   });
 
   it('isolates mirror keys by generation run id', () => {
     const cache = createCache();
 
-    expect(cache.getKeys({ ...params, generationRunId: 'run-1' })).toEqual({
+    expect(cache.getKeys({ ...params, generationRunnerId: 'run-1' })).toEqual({
       keyOfStream: asRedisLogicalKey('stream:resume:data:team-1:app:app-1:chat-1:run-1'),
       keyOfUnavailable: asRedisLogicalKey(
         'stream:resume:unavailable:team-1:app:app-1:chat-1:run-1'
       ),
-      keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-1')
+      keyOfActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-1'),
+      keyOfLegacyActive: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1')
     });
+  });
+
+  it('refreshes both the run-scoped and legacy active keys for rolling upgrades', async () => {
+    const redis = createRedis();
+    const cache = new StreamResumeCache({
+      redis,
+      logger,
+      streamTtlSeconds: 300,
+      postCompleteTtlSeconds: 30,
+      ttlTouchIntervalMs: 1_000
+    });
+    const mirror = cache.createMirror({ ...params, generationRunnerId: 'run-1' });
+
+    await mirror.touch();
+
+    expect(redis.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-1')
+      })
+    );
+    expect(redis.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1')
+      })
+    );
   });
 
   it('parses valid unavailable state and treats malformed state as a miss', async () => {
@@ -151,8 +178,8 @@ describe('StreamResumeCache', () => {
       postCompleteTtlSeconds: 30,
       ttlTouchIntervalMs: 1_000
     });
-    const oldMirror = cache.createMirror({ ...params, generationRunId: 'run-old' });
-    const newMirror = cache.createMirror({ ...params, generationRunId: 'run-new' });
+    const oldMirror = cache.createMirror({ ...params, generationRunnerId: 'run-old' });
+    const newMirror = cache.createMirror({ ...params, generationRunnerId: 'run-new' });
 
     await oldMirror.enqueueRaw('old');
     await oldMirror.flush();
@@ -174,6 +201,10 @@ describe('StreamResumeCache', () => {
     });
     expect(redis.expireStream).toHaveBeenCalledWith({
       key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1:run-old'),
+      ttlSeconds: 30
+    });
+    expect(redis.expireStream).toHaveBeenCalledWith({
+      key: asRedisLogicalKey('stream:resume:active:team-1:app:app-1:chat-1'),
       ttlSeconds: 30
     });
   });

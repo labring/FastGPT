@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { FASTGPT_REDIS_PREFIX, getRedisRuntime } from '@fastgpt/dal/redis/runtime';
+import { getChatGenerationLeaseKey } from '@fastgpt/dal/redis/caches/chatGenerationLease';
 import {
   getPreparedRoundDataIds,
   NO_RECORD_CHAT_ID,
@@ -120,7 +122,7 @@ describe('prepare chat round', () => {
     expect(result.chatId).toBeTruthy();
     expect(result.chatId).not.toBe('');
     expect(result.responseChatItemId).toBe('generated-round-data-id');
-    expect(result.generationRunId).toBeTruthy();
+    expect(result.generationRunnerId).toBeTruthy();
     expect(result.shouldPersistChatRound).toBe(true);
     expect(result.shouldFinalizePreparedRound).toBe(true);
     expect(params.userContent.dataId).toBe('generated-round-data-id');
@@ -133,10 +135,8 @@ describe('prepare chat round', () => {
     ]);
 
     const chat = await MongoChat.findOne({ appId: testAppId, chatId: result.chatId }).lean();
-    expect(chat?.generationRunId).toBe(result.generationRunId);
+    expect(chat?.generationRunnerId).toBe(result.generationRunnerId);
     expect(chat?.generationResponseChatItemId).toBe(result.responseChatItemId);
-    expect(chat?.generationHeartbeatAt).toBeInstanceOf(Date);
-    expect(chat?.generationLeaseExpiresAt).toBeInstanceOf(Date);
   });
 
   it('should skip persistence for no-record chat id and keep caller ids', async () => {
@@ -209,6 +209,30 @@ describe('prepare chat round', () => {
     expect(chat?.updateTime?.getTime()).toBe(originalUpdateTime.getTime());
     expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
+  });
+
+  it('should reject before creating a chat when the Redis runner exists', async () => {
+    const chatId = 'redis-runner-conflict-chat';
+    const leaseKey = `${FASTGPT_REDIS_PREFIX}${getChatGenerationLeaseKey({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: testAppId,
+      chatId
+    })}`;
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    await redis.set(leaseKey, 'existing-runner', 'PX', 90_000);
+
+    await expect(
+      preChatRound(
+        createPreChatRoundParams(
+          { chatId },
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        )
+      )
+    ).rejects.toBe(ChatErrEnum.chatIsGenerating);
+
+    expect(await MongoChat.countDocuments({ appId: testAppId, chatId })).toBe(0);
+    await expect(redis.get(leaseKey)).resolves.toBe('existing-runner');
+    await redis.del(leaseKey);
   });
 
   it('should reject duplicated AI dataId and release generate lock as error', async () => {

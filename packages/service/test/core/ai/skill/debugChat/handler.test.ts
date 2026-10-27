@@ -104,7 +104,7 @@ beforeEach(() => {
   mocks.preChatRound.mockResolvedValue({
     chatId: 'chat-1',
     responseChatItemId: 'response-1',
-    generationRunId: 'run-1',
+    generationRunnerId: 'run-1',
     shouldPersistChatRound: true,
     shouldFinalizePreparedRound: true
   });
@@ -132,18 +132,18 @@ describe('runSkillDebugChat', () => {
       teamId: 'team-1',
       skillId,
       chatId: 'chat-1',
-      generationRunId: 'run-1'
+      generationRunnerId: 'run-1'
     });
     expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({
         res: undefined,
-        generationRunId: 'run-1',
+        generationRunnerId: 'run-1',
         agentSandboxPrepareActions: options.agentSandboxPrepareActions,
         workflowStreamResponse: streamContext.responseWrite
       })
     );
     expect(mocks.finalizeChatRound).toHaveBeenCalledWith(
-      expect.objectContaining({ generationRunId: 'run-1' })
+      expect.objectContaining({ generationRunnerId: 'run-1' })
     );
     expect(streamContext.flushResume).toHaveBeenCalledOnce();
     expect(mocks.teamFrequencyLimit).not.toHaveBeenCalled();

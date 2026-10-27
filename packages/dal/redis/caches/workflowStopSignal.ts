@@ -12,7 +12,7 @@ export const WorkflowStopSignalParamsSchema = z.object({
   sourceType: z.string().min(1),
   sourceId: z.string().min(1),
   chatId: z.string().min(1),
-  generationRunId: z.string().min(1).optional()
+  generationRunnerId: z.string().min(1).optional()
 });
 
 export type WorkflowStopSignalParams = z.infer<typeof WorkflowStopSignalParamsSchema>;
@@ -27,13 +27,13 @@ export const getWorkflowStopSignalKey = ({
   sourceType,
   sourceId,
   chatId,
-  generationRunId
+  generationRunnerId
 }: WorkflowStopSignalParams) => {
   const parsed = WorkflowStopSignalParamsSchema.safeParse({
     sourceType,
     sourceId,
     chatId,
-    generationRunId
+    generationRunnerId
   });
   if (!parsed.success) {
     throw new RedisInvalidArgumentError({
@@ -44,7 +44,7 @@ export const getWorkflowStopSignalKey = ({
 
   return asRedisLogicalKey(
     `${WORKFLOW_STOP_SIGNAL_PREFIX}:${parsed.data.sourceType}:${parsed.data.sourceId}:${parsed.data.chatId}${
-      parsed.data.generationRunId ? `:${parsed.data.generationRunId}` : ''
+      parsed.data.generationRunnerId ? `:${parsed.data.generationRunnerId}` : ''
     }`
   );
 };
@@ -67,9 +67,9 @@ export class WorkflowStopSignalCache {
   /** 设置 run 级停止标记，同时写短 TTL legacy key 兼容滚动发布；Redis 错误向上抛出。 */
   async set(params: WorkflowStopSignalParams) {
     const keys = [getWorkflowStopSignalKey(params)];
-    if (params.generationRunId) {
+    if (params.generationRunnerId) {
       // 滚动发布期间兼容仍只读取 legacy key 的旧实例。
-      keys.push(getWorkflowStopSignalKey({ ...params, generationRunId: undefined }));
+      keys.push(getWorkflowStopSignalKey({ ...params, generationRunnerId: undefined }));
     }
 
     await Promise.all(
@@ -78,7 +78,7 @@ export class WorkflowStopSignalCache {
           key,
           value: '1',
           ttlMs:
-            (params.generationRunId && index === 0
+            (params.generationRunnerId && index === 0
               ? WORKFLOW_STOP_SIGNAL_RUN_TTL_SECONDS
               : WORKFLOW_STOP_SIGNAL_TTL_SECONDS) * 1000
         })
@@ -89,8 +89,8 @@ export class WorkflowStopSignalCache {
   /** 检查停止标记；Redis 读取故障按 false 降级。 */
   async isStopping(params: WorkflowStopSignalParams) {
     const keys = [getWorkflowStopSignalKey(params)];
-    if (params.generationRunId) {
-      keys.push(getWorkflowStopSignalKey({ ...params, generationRunId: undefined }));
+    if (params.generationRunnerId) {
+      keys.push(getWorkflowStopSignalKey({ ...params, generationRunnerId: undefined }));
     }
 
     try {
@@ -99,7 +99,7 @@ export class WorkflowStopSignalCache {
     } catch (error) {
       this.logger.warn(
         'Workflow stop signal read failed open',
-        params.generationRunId ? { keys, error } : { key: keys[0], error }
+        params.generationRunnerId ? { keys, error } : { key: keys[0], error }
       );
       return false;
     }
@@ -108,8 +108,8 @@ export class WorkflowStopSignalCache {
   /** 删除停止标记；清理失败只记录 warning，不覆盖业务结果。 */
   async clear(params: WorkflowStopSignalParams) {
     const keys = [getWorkflowStopSignalKey(params)];
-    if (params.generationRunId) {
-      keys.push(getWorkflowStopSignalKey({ ...params, generationRunId: undefined }));
+    if (params.generationRunnerId) {
+      keys.push(getWorkflowStopSignalKey({ ...params, generationRunnerId: undefined }));
     }
 
     try {
@@ -117,7 +117,7 @@ export class WorkflowStopSignalCache {
     } catch (error) {
       this.logger.warn(
         'Workflow stop signal clear failed',
-        params.generationRunId ? { keys, error } : { key: keys[0], error }
+        params.generationRunnerId ? { keys, error } : { key: keys[0], error }
       );
     }
   }

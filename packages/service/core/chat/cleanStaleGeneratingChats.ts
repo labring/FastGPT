@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { subMinutes } from 'date-fns';
+import { ChatGenerationLeaseCache } from '@fastgpt/dal/redis/caches/chatGenerationLease';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
@@ -7,14 +9,17 @@ import {
 import { getLogger, LogCategories } from '../../common/logger';
 import { MongoChat } from './chatSchema';
 import { MongoChatItem } from './chatItemSchema';
-import { CHAT_GENERATION_LEASE_TTL_MS, getChatGenerationLeaseToken } from './generationLease';
 import { buildChatSourceQuery } from './source';
 import { writeResumeTerminalError } from './resume';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
+const generationLeaseCache = new ChatGenerationLeaseCache();
 
-/** 老数据没有 generationRunId，只能保留 30 分钟兜底。 */
+/** 老数据没有 generationRunnerId，只能保留 30 分钟兜底。 */
 export const STALE_GENERATING_CHAT_MINUTES = 30;
+/** runner 记录最多每 90 秒失效一次，扫描时额外留出 Redis 故障窗口。 */
+export const STALE_GENERATING_RUNNER_MINUTES = 2;
+const CLEANUP_LEASE_TTL_MS = 30 * 1000;
 export const GENERATION_INTERRUPTED_ERROR = 'Chat generation was interrupted';
 
 type GeneratingChat = {
@@ -24,10 +29,8 @@ type GeneratingChat = {
   appId: { toString: () => string } | string;
   chatId: string;
   updateTime?: Date;
-  generationRunId?: string;
+  generationRunnerId?: string;
   generationResponseChatItemId?: string;
-  generationHeartbeatAt?: Date;
-  generationLeaseExpiresAt?: Date;
 };
 
 type CleanStaleGeneratingChatsResult = {
@@ -47,15 +50,12 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
     {
       _id: chat._id,
       chatGenerateStatus: ChatGenerateStatusEnum.generating,
-      ...(chat.generationRunId
+      ...(chat.generationRunnerId
         ? {
-            generationRunId: chat.generationRunId,
-            generationLeaseExpiresAt: chat.generationLeaseExpiresAt
-              ? chat.generationLeaseExpiresAt
-              : { $exists: false }
+            generationRunnerId: chat.generationRunnerId
           }
         : {
-            generationRunId: { $exists: false },
+            generationRunnerId: { $exists: false },
             updateTime: chat.updateTime
           })
     },
@@ -66,7 +66,8 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
         hasBeenRead: false
       },
       $unset: {
-        generationLeaseExpiresAt: ''
+        generationRunnerId: '',
+        generationResponseChatItemId: ''
       }
     }
   );
@@ -76,8 +77,7 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
     logger.warn('cleanStaleGeneratingChats: candidate CAS failed', {
       ...source,
       chatId: chat.chatId,
-      generationRunId: chat.generationRunId,
-      expectedLeaseExpiresAt: chat.generationLeaseExpiresAt,
+      generationRunnerId: chat.generationRunnerId,
       expectedUpdateTime: chat.updateTime
     });
     return 0;
@@ -100,7 +100,7 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
       logger.warn('Failed to mark interrupted AI response', {
         ...source,
         chatId: chat.chatId,
-        generationRunId: chat.generationRunId,
+        generationRunnerId: chat.generationRunnerId,
         error
       });
     });
@@ -110,13 +110,13 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
     teamId: chat.teamId.toString(),
     ...source,
     chatId: chat.chatId,
-    generationRunId: chat.generationRunId,
+    generationRunnerId: chat.generationRunnerId,
     message: GENERATION_INTERRUPTED_ERROR
   }).catch((error) => {
     logger.warn('Failed to write interrupted generation terminal event', {
       ...source,
       chatId: chat.chatId,
-      generationRunId: chat.generationRunId,
+      generationRunnerId: chat.generationRunnerId,
       error
     });
   });
@@ -127,13 +127,13 @@ const markChatAsError = async ({ chat, now }: { chat: GeneratingChat; now: Date 
 /**
  * 纠正异常中断后残留的 generating 状态。
  *
- * 新 run 以 Redis lease token 为主、Mongo heartbeat 为持久兜底；任一侧仍有效都不会清理。
- * 只有 Redis token 已不存在，且 Mongo lease 到期时间与读取时一致时才执行 CAS，避免
- * cleaner 读取候选后新 run 已完成或启动时误写新状态。
+ * Redis runner key 是唯一存活真源。cleaner 先抢同一个 key 的 cleanup token，
+ * 抢到后才能执行状态 CAS；新 runner 在 cleanup 期间无法启动。
  */
 export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingChatsResult> => {
   const now = new Date();
   const fallbackThreshold = subMinutes(now, STALE_GENERATING_CHAT_MINUTES);
+  const runnerThreshold = subMinutes(now, STALE_GENERATING_RUNNER_MINUTES);
   let modifiedCount = 0;
   let leaseExpiredCount = 0;
   let fallbackCount = 0;
@@ -144,17 +144,12 @@ export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingC
       chatGenerateStatus: ChatGenerateStatusEnum.generating,
       $or: [
         {
-          generationRunId: { $exists: false },
+          generationRunnerId: { $exists: false },
           updateTime: { $lt: fallbackThreshold }
         },
         {
-          generationRunId: { $exists: true },
-          generationLeaseExpiresAt: { $lte: now }
-        },
-        {
-          generationRunId: { $exists: true },
-          generationLeaseExpiresAt: { $exists: false },
-          updateTime: { $lt: fallbackThreshold }
+          generationRunnerId: { $exists: true },
+          updateTime: { $lt: runnerThreshold }
         }
       ]
     },
@@ -165,42 +160,19 @@ export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingC
       appId: 1,
       chatId: 1,
       updateTime: 1,
-      generationRunId: 1,
-      generationResponseChatItemId: 1,
-      generationHeartbeatAt: 1,
-      generationLeaseExpiresAt: 1
+      generationRunnerId: 1,
+      generationResponseChatItemId: 1
     }
   )
     .lean()
     .exec()) as GeneratingChat[];
 
   for (const chat of generatingChats) {
-    if (!chat.generationRunId) {
-      if (chat.updateTime && chat.updateTime < fallbackThreshold) {
-        const currentModifiedCount = await markChatAsError({ chat, now });
-        modifiedCount += currentModifiedCount;
-        fallbackCount += currentModifiedCount;
-      }
-      continue;
-    }
-
-    // 滚动发布期间，旧实例开始新 run 时不会更新 runId/heartbeat；按 legacy 路径保守处理。
     if (
-      !chat.generationHeartbeatAt ||
-      (chat.updateTime &&
-        chat.updateTime.getTime() - chat.generationHeartbeatAt.getTime() >
-          CHAT_GENERATION_LEASE_TTL_MS)
+      chat.generationRunnerId
+        ? !chat.updateTime || chat.updateTime >= runnerThreshold
+        : !chat.updateTime || chat.updateTime >= fallbackThreshold
     ) {
-      if (chat.updateTime && chat.updateTime < fallbackThreshold) {
-        const currentModifiedCount = await markChatAsError({ chat, now });
-        modifiedCount += currentModifiedCount;
-        fallbackCount += currentModifiedCount;
-      }
-      continue;
-    }
-
-    // Mongo heartbeat 仍然新鲜时直接跳过；这层兜底不依赖 Redis 可用性。
-    if (chat.generationLeaseExpiresAt && chat.generationLeaseExpiresAt > now) {
       continue;
     }
 
@@ -208,23 +180,52 @@ export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingC
       continue;
     }
 
+    const source = getChatSource(chat);
+    const cleanupToken = `cleanup:${randomUUID()}`;
+    let cleanupLeaseAcquired = false;
     try {
-      const leaseToken = await getChatGenerationLeaseToken({
-        ...getChatSource(chat),
-        chatId: chat.chatId
+      cleanupLeaseAcquired = await generationLeaseCache.tryAcquire({
+        params: {
+          ...source,
+          chatId: chat.chatId
+        },
+        token: cleanupToken,
+        ttlMs: CLEANUP_LEASE_TTL_MS
       });
-      if (leaseToken) continue;
     } catch (error) {
       redisFailed = true;
-      logger.warn('cleanStaleGeneratingChats: failed to inspect generation lease', {
+      logger.warn('cleanStaleGeneratingChats: failed to acquire cleanup lease', {
         error
       });
       continue;
     }
+    if (!cleanupLeaseAcquired) continue;
 
-    const currentModifiedCount = await markChatAsError({ chat, now });
-    modifiedCount += currentModifiedCount;
-    leaseExpiredCount += currentModifiedCount;
+    try {
+      const currentModifiedCount = await markChatAsError({ chat, now });
+      modifiedCount += currentModifiedCount;
+      if (chat.generationRunnerId) {
+        leaseExpiredCount += currentModifiedCount;
+      } else {
+        fallbackCount += currentModifiedCount;
+      }
+    } finally {
+      await generationLeaseCache
+        .release({
+          params: {
+            ...source,
+            chatId: chat.chatId
+          },
+          token: cleanupToken
+        })
+        .catch((error) => {
+          logger.warn('cleanStaleGeneratingChats: failed to release cleanup lease', {
+            ...source,
+            chatId: chat.chatId,
+            error
+          });
+        });
+    }
   }
 
   if (modifiedCount > 0) {

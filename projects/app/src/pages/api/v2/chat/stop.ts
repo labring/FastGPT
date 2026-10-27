@@ -39,7 +39,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<Stop
       chatId,
       chatGenerateStatus: ChatGenerateStatusEnum.generating
     },
-    'generationRunId'
+    'generationRunnerId'
   )
     .lean()
     .catch((error) => {
@@ -57,7 +57,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse): Promise<Stop
     sourceType,
     sourceId: resolvedSourceId,
     chatId,
-    ...(chat?.generationRunId && { generationRunId: chat.generationRunId })
+    ...(chat?.generationRunnerId && { generationRunnerId: chat.generationRunnerId })
   });
 
   return StopV2ChatResponseSchema.parse({

@@ -58,7 +58,7 @@ class ChatGenerationOwnershipLostError extends Error {
 export type Props = ChatSourceParams & {
   chatId: string;
   /** 当前生成 run ID；新入口必须传入，用于防止旧任务覆盖新任务状态。 */
-  generationRunId?: string;
+  generationRunnerId?: string;
   versionId?: string;
   teamId: string;
   tmbId: string;
@@ -243,7 +243,7 @@ const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummar
 
 type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
   responseChatItemId?: string;
   error: unknown;
 };
@@ -338,9 +338,8 @@ export const finalizeChatRound = async (props: Props) => {
         {
           ...buildChatSourceQuery(chatSource),
           chatId,
-          ...(props.generationRunId && {
-            chatGenerateStatus: ChatGenerateStatusEnum.generating,
-            generationRunId: props.generationRunId
+          ...(props.generationRunnerId && {
+            generationRunnerId: props.generationRunnerId
           })
         },
         {
@@ -367,18 +366,24 @@ export const finalizeChatRound = async (props: Props) => {
             'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
             'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
             ...(errorCount > 0 ? { errorCount } : {})
-          }
+          },
+          ...(props.generationRunnerId && {
+            $unset: {
+              generationRunnerId: '',
+              generationResponseChatItemId: ''
+            }
+          })
         },
         {
           session
         }
       );
 
-      if (props.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+      if (props.generationRunnerId && (chatUpdateResult.matchedCount ?? 0) === 0) {
         logger.warn('finalizeChatRound aborted because generation ownership was lost', {
           ...chatSource,
           chatId,
-          generationRunId: props.generationRunId
+          generationRunnerId: props.generationRunnerId
         });
         throw new ChatGenerationOwnershipLostError();
       }
@@ -438,11 +443,11 @@ export const finalizeChatRound = async (props: Props) => {
       }
     });
   } finally {
-    if (props.generationRunId) {
+    if (props.generationRunnerId) {
       await stopChatGenerationLease({
         ...chatSource,
         chatId,
-        generationRunId: props.generationRunId
+        generationRunnerId: props.generationRunnerId
       });
     }
   }
@@ -531,9 +536,8 @@ export const failChatRound = async (params: FailChatRoundParams) => {
           {
             ...buildChatSourceQuery(chatSource),
             chatId,
-            ...(params.generationRunId && {
-              chatGenerateStatus: ChatGenerateStatusEnum.generating,
-              generationRunId: params.generationRunId
+            ...(params.generationRunnerId && {
+              generationRunnerId: params.generationRunnerId
             })
           },
           {
@@ -541,18 +545,24 @@ export const failChatRound = async (params: FailChatRoundParams) => {
               chatGenerateStatus: ChatGenerateStatusEnum.error,
               updateTime: now,
               hasBeenRead: false
-            }
+            },
+            ...(params.generationRunnerId && {
+              $unset: {
+                generationRunnerId: '',
+                generationResponseChatItemId: ''
+              }
+            })
           },
           {
             session
           }
         );
 
-        if (params.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+        if (params.generationRunnerId && (chatUpdateResult.matchedCount ?? 0) === 0) {
           logger.warn('failChatRound aborted because generation ownership was lost', {
             ...chatSource,
             chatId,
-            generationRunId: params.generationRunId
+            generationRunnerId: params.generationRunnerId
           });
           throw new ChatGenerationOwnershipLostError();
         }
@@ -577,11 +587,11 @@ export const failChatRound = async (params: FailChatRoundParams) => {
         }
       });
     } finally {
-      if (params.generationRunId) {
+      if (params.generationRunnerId) {
         await stopChatGenerationLease({
           ...chatSource,
           chatId,
-          generationRunId: params.generationRunId
+          generationRunnerId: params.generationRunnerId
         });
       }
     }
@@ -856,11 +866,11 @@ export const updateInteractiveChat = async ({
   }).sort({ _id: -1 });
   if (!chatItem || chatItem.obj !== ChatRoleEnum.AI) {
     // 没有可续写的 AI 记录时不写库，但仍要释放本 run 的生成租约。
-    if (props.generationRunId) {
+    if (props.generationRunnerId) {
       await stopChatGenerationLease({
         ...chatSource,
         chatId,
-        generationRunId: props.generationRunId
+        generationRunnerId: props.generationRunnerId
       });
     }
     return;
@@ -1073,9 +1083,8 @@ export const updateInteractiveChat = async ({
       {
         ...buildChatSourceQuery(chatSource),
         chatId,
-        ...(props.generationRunId && {
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          generationRunId: props.generationRunId
+        ...(props.generationRunnerId && {
+          generationRunnerId: props.generationRunnerId
         })
       },
       {
@@ -1094,11 +1103,11 @@ export const updateInteractiveChat = async ({
       }
     );
 
-    if (props.generationRunId && (chatUpdateResult.matchedCount ?? 0) === 0) {
+    if (props.generationRunnerId && (chatUpdateResult.matchedCount ?? 0) === 0) {
       logger.warn('updateInteractiveChat aborted because generation ownership was lost', {
         ...chatSource,
         chatId,
-        generationRunId: props.generationRunId
+        generationRunnerId: props.generationRunnerId
       });
       throw new ChatGenerationOwnershipLostError();
     }
@@ -1112,11 +1121,11 @@ export const updateInteractiveChat = async ({
     });
   });
 
-  if (props.generationRunId) {
+  if (props.generationRunnerId) {
     await stopChatGenerationLease({
       ...chatSource,
       chatId,
-      generationRunId: props.generationRunId
+      generationRunnerId: props.generationRunnerId
     });
   }
 

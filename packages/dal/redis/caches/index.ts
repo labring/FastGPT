@@ -52,16 +52,6 @@ export {
 export type { LeaseCacheOptions, RedisLeaseContext, WithLeaseOptions } from './lease';
 
 export {
-  ChatGenerationLeaseCache,
-  ChatGenerationLeaseParamsSchema,
-  getChatGenerationLeaseKey
-} from './chatGenerationLease';
-export type {
-  ChatGenerationLeaseCacheOptions,
-  ChatGenerationLeaseParams
-} from './chatGenerationLease';
-
-export {
   WORKFLOW_STOP_SIGNAL_RUN_TTL_SECONDS,
   WORKFLOW_STOP_SIGNAL_TTL_SECONDS,
   WorkflowStopSignalCache,

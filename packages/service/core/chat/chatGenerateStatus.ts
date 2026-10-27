@@ -5,12 +5,12 @@
 import { MongoChat } from './chatSchema';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
-import { CHAT_GENERATION_LEASE_TTL_MS, stopChatGenerationLease } from './generationLease';
+import { stopChatGenerationLease } from './generationLease';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
-type EnsureGenerateChatParams = ChatSourceParams & {
+type StartGenerateChatParams = ChatSourceParams & {
   chatId: string;
   teamId: string;
   tmbId: string;
@@ -18,11 +18,11 @@ type EnsureGenerateChatParams = ChatSourceParams & {
   sourceName?: string;
   shareId?: string;
   outLinkUid?: string;
-  generationRunId?: string;
+  generationRunnerId: string;
   generationResponseChatItemId?: string;
 };
 
-const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
+const buildGeneratingChatUpdate = (params: StartGenerateChatParams) => {
   const now = new Date();
   const { sourceType, sourceId, ...chatFields } = params;
   const chatSource = {
@@ -39,13 +39,9 @@ const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
       updateTime: now,
       hasBeenRead: false,
       chatGenerateStatus: ChatGenerateStatusEnum.generating,
-      ...(params.generationRunId && {
-        generationRunId: params.generationRunId,
-        ...(params.generationResponseChatItemId && {
-          generationResponseChatItemId: params.generationResponseChatItemId
-        }),
-        generationHeartbeatAt: now,
-        generationLeaseExpiresAt: new Date(now.getTime() + CHAT_GENERATION_LEASE_TTL_MS)
+      generationRunnerId: params.generationRunnerId,
+      ...(params.generationResponseChatItemId && {
+        generationResponseChatItemId: params.generationResponseChatItemId
       })
     },
     $setOnInsert: {
@@ -56,24 +52,6 @@ const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
       }
     }
   };
-};
-
-export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
-  const { $set, $setOnInsert, chatSource } = buildGeneratingChatUpdate(params);
-
-  await MongoChat.updateOne(
-    {
-      ...buildChatSourceQuery(chatSource),
-      chatId: params.chatId
-    },
-    {
-      $set,
-      $setOnInsert
-    },
-    {
-      upsert: true
-    }
-  );
 };
 
 /**
@@ -87,7 +65,7 @@ export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
  * chat source 唯一索引报 11000，再转换为 false。这样被拒绝的并发请求不会刷新
  * updateTime 或覆盖 source/sourceName。
  */
-export const tryStartGenerateChat = async (params: EnsureGenerateChatParams) => {
+export const tryStartGenerateChat = async (params: StartGenerateChatParams) => {
   const { $set, $setOnInsert, chatSource } = buildGeneratingChatUpdate(params);
 
   try {
@@ -117,16 +95,16 @@ export const tryStartGenerateChat = async (params: EnsureGenerateChatParams) => 
 };
 
 type UpdateChatGenerateStatusParams = Pick<
-  EnsureGenerateChatParams,
+  StartGenerateChatParams,
   'sourceType' | 'sourceId' | 'chatId'
 > & {
   status: ChatGenerateStatusEnum;
-  generationRunId?: string;
+  generationRunnerId?: string;
   /** 若传入则覆盖；否则在 done/error 时默认未读（前台看完可再调 markRead） */
   hasBeenRead?: boolean;
 };
 export const updateChatGenerateStatus = async (params: UpdateChatGenerateStatusParams) => {
-  const { chatId, status, generationRunId, hasBeenRead } = params;
+  const { chatId, status, generationRunnerId, hasBeenRead } = params;
   const chatSource = {
     sourceType: params.sourceType,
     sourceId: params.sourceId
@@ -136,45 +114,54 @@ export const updateChatGenerateStatus = async (params: UpdateChatGenerateStatusP
     chatGenerateStatus: status,
     updateTime: now
   };
+  const $unset: Record<string, ''> = {};
   if (hasBeenRead !== undefined) {
     $set.hasBeenRead = hasBeenRead;
   } else if (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error) {
     $set.hasBeenRead = false;
   }
+  if (
+    generationRunnerId &&
+    (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error)
+  ) {
+    $unset.generationRunnerId = '';
+    $unset.generationResponseChatItemId = '';
+  }
+
   let updated = false;
   try {
     const result = await MongoChat.updateOne(
       {
         ...buildChatSourceQuery(chatSource),
         chatId,
-        ...(generationRunId && {
-          generationRunId,
-          ...(status !== ChatGenerateStatusEnum.generating && {
-            chatGenerateStatus: ChatGenerateStatusEnum.generating
-          })
+        ...(generationRunnerId && {
+          generationRunnerId
         })
       },
-      { $set }
+      {
+        $set,
+        ...(Object.keys($unset).length > 0 && { $unset })
+      }
     );
     updated = (result.matchedCount ?? 0) > 0;
 
-    if (generationRunId && !updated) {
-      logger.warn('Chat generate status update lost run ownership', {
+    if (generationRunnerId && !updated) {
+      logger.warn('Chat generate status update lost runner ownership', {
         ...chatSource,
         chatId,
-        generationRunId,
+        generationRunnerId,
         status
       });
     }
   } finally {
     if (
-      generationRunId &&
+      generationRunnerId &&
       (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error)
     ) {
       await stopChatGenerationLease({
         ...chatSource,
         chatId,
-        generationRunId
+        generationRunnerId
       });
     }
   }

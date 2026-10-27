@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '../adapter';
 
-const CHAT_GENERATION_LEASE_PREFIX = 'chat:generation:lease';
+const CHAT_GENERATION_RUNNER_PREFIX = 'chat:generation:runner';
 
 export const ChatGenerationLeaseParamsSchema = z.object({
   sourceType: z.string().min(1),
@@ -14,19 +14,19 @@ export type ChatGenerationLeaseCacheOptions = {
   redis?: RedisCacheAdapter;
 };
 
-/** 构造生成执行体 lease key；同一个 chat 同时只应存在一个 run 的 token。 */
+/** 构造生成 runner lease key；同一个 chat 同时只允许一个 runner token。 */
 export const getChatGenerationLeaseKey = (params: ChatGenerationLeaseParams) => {
   const parsed = ChatGenerationLeaseParamsSchema.parse(params);
   return asRedisLogicalKey(
-    `${CHAT_GENERATION_LEASE_PREFIX}:${parsed.sourceType}:${parsed.sourceId}:${parsed.chatId}`
+    `${CHAT_GENERATION_RUNNER_PREFIX}:${parsed.sourceType}:${parsed.sourceId}:${parsed.chatId}`
   );
 };
 
 /**
- * Chat generation lease。
+ * Chat generation runner lease。
  *
- * Mongo 的 chatGenerateStatus 负责业务状态和最终 CAS，Redis lease 只负责执行体存活与 token fencing。
- * start 覆盖旧 token，renew/release 必须携带当前 token，避免旧 run 误操作新 run。
+ * Redis token 是 runner 存活和所有权的唯一真源；Mongo 状态只用于展示和持久化 fencing。
+ * acquire 使用 SET NX，绝不覆盖已有 runner。
  */
 export class ChatGenerationLeaseCache {
   private readonly redis: RedisCacheAdapter;
@@ -35,7 +35,7 @@ export class ChatGenerationLeaseCache {
     this.redis = redis;
   }
 
-  async start({
+  async tryAcquire({
     params,
     token,
     ttlMs
@@ -43,10 +43,10 @@ export class ChatGenerationLeaseCache {
     params: ChatGenerationLeaseParams;
     token: string;
     ttlMs: number;
-  }) {
-    await this.redis.set({
+  }): Promise<boolean> {
+    return this.redis.acquireLease({
       key: getChatGenerationLeaseKey(params),
-      value: token,
+      token,
       ttlMs
     });
   }

@@ -12,7 +12,7 @@ export type WorkflowStatusParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
 };
 
 /** 获取运行态停止状态键。key 必须带 sourceType，避免 App 与 Skill Edit 共用 sourceId 时串号。 */
@@ -46,14 +46,14 @@ export const waitForWorkflowComplete = async ({
   sourceType,
   sourceId,
   chatId,
-  generationRunId,
+  generationRunnerId,
   timeout = 5000,
   pollInterval = 50
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
   timeout?: number;
   pollInterval?: number;
 }) => {
@@ -64,7 +64,7 @@ export const waitForWorkflowComplete = async ({
       sourceType,
       sourceId,
       chatId,
-      ...(generationRunId && { generationRunId })
+      ...(generationRunnerId && { generationRunnerId })
     });
 
     // 如果没有暂停中的标志，则认为已经完成任务了。

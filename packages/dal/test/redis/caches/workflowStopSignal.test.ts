@@ -36,7 +36,7 @@ describe('WorkflowStopSignalCache', () => {
   });
 
   it('isolates stop signals by generation run id', () => {
-    expect(getWorkflowStopSignalKey({ ...params, generationRunId: 'run-1' })).toBe(
+    expect(getWorkflowStopSignalKey({ ...params, generationRunnerId: 'run-1' })).toBe(
       'agent_runtime_stopping:app:app-1:chat-1:run-1'
     );
   });
@@ -56,7 +56,7 @@ describe('WorkflowStopSignalCache', () => {
   it('writes run-scoped and legacy stop keys during rolling upgrades', async () => {
     const cache = new WorkflowStopSignalCache({ redis, logger });
 
-    await cache.set({ ...params, generationRunId: 'run-1' });
+    await cache.set({ ...params, generationRunnerId: 'run-1' });
 
     expect(redis.set).toHaveBeenNthCalledWith(1, {
       key: 'agent_runtime_stopping:app:app-1:chat-1:run-1',
@@ -83,7 +83,7 @@ describe('WorkflowStopSignalCache', () => {
     const cache = new WorkflowStopSignalCache({ redis, logger });
     redis.get.mockResolvedValueOnce(null).mockResolvedValueOnce('1');
 
-    await expect(cache.isStopping({ ...params, generationRunId: 'run-1' })).resolves.toBe(true);
+    await expect(cache.isStopping({ ...params, generationRunnerId: 'run-1' })).resolves.toBe(true);
     expect(redis.get).toHaveBeenNthCalledWith(1, 'agent_runtime_stopping:app:app-1:chat-1:run-1');
     expect(redis.get).toHaveBeenNthCalledWith(2, 'agent_runtime_stopping:app:app-1:chat-1');
   });

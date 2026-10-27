@@ -738,7 +738,7 @@ describe('pushChatRecords', () => {
       const props = createMockProps(
         {
           chatId: 'old-run-finalize-chat',
-          generationRunId: 'old-run',
+          generationRunnerId: 'old-run',
           userContent: {
             dataId: responseChatItemId,
             obj: ChatRoleEnum.Human,
@@ -767,7 +767,7 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        generationRunId: 'new-run',
+        generationRunnerId: 'new-run',
         generationResponseChatItemId: 'new-run-ai',
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false,
@@ -803,7 +803,7 @@ describe('pushChatRecords', () => {
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
       expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
-      expect(chat?.generationRunId).toBe('new-run');
+      expect(chat?.generationRunnerId).toBe('new-run');
       expect(chat?.summary).toEqual({
         llmInputTokens: 1,
         llmOutputTokens: 2
@@ -819,6 +819,79 @@ describe('pushChatRecords', () => {
       expect(await MongoAppChatLog.countDocuments({ appId: testAppId, chatId: props.chatId })).toBe(
         0
       );
+    });
+
+    it('should finalize the owning runner even when the display status was cleaned early', async () => {
+      const responseChatItemId = 'display-status-recovery-ai';
+      const props = createMockProps(
+        {
+          chatId: 'display-status-recovery-chat',
+          generationRunnerId: 'run-owner',
+          userContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: [{ text: { content: 'question' } }]
+          },
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [{ text: { content: 'answer' } }]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        generationRunnerId: 'run-owner',
+        generationResponseChatItemId: responseChatItemId,
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
+        hasBeenRead: false,
+        summary: {
+          llmInputTokens: 1,
+          llmOutputTokens: 2
+        }
+      });
+      await MongoChatItem.create([
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.Human,
+          value: []
+        },
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: []
+        }
+      ]);
+
+      await finalizeChatRound(props);
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
+      expect(chat?.generationRunnerId).toBeUndefined();
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI
+      }).lean();
+      expect(aiItem?.value[0].text?.content).toBe('answer');
     });
 
     it('should persist skill edit uploaded files by removing S3 TTL after finalization', async () => {
@@ -970,7 +1043,7 @@ describe('pushChatRecords', () => {
       const props = createMockProps(
         {
           chatId: 'stale-run-error-chat',
-          generationRunId: 'old-run'
+          generationRunnerId: 'old-run'
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
@@ -982,7 +1055,7 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        generationRunId: 'new-run',
+        generationRunnerId: 'new-run',
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });
@@ -1001,14 +1074,14 @@ describe('pushChatRecords', () => {
         sourceType: ChatSourceTypeEnum.app,
         sourceId: testAppId,
         chatId: props.chatId,
-        generationRunId: 'old-run',
+        generationRunnerId: 'old-run',
         responseChatItemId,
         error: new Error('late failure')
       });
 
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
       expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
-      expect(chat?.generationRunId).toBe('new-run');
+      expect(chat?.generationRunnerId).toBe('new-run');
 
       const aiItem = await MongoChatItem.findOne({
         appId: testAppId,
@@ -2149,7 +2222,7 @@ describe('pushChatRecords', () => {
       const props = createMockProps(
         {
           chatId,
-          generationRunId: 'old-run'
+          generationRunnerId: 'old-run'
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
       );
@@ -2175,7 +2248,7 @@ describe('pushChatRecords', () => {
         tmbId: testTmbId,
         sourceType: ChatSourceTypeEnum.app,
         source: props.source,
-        generationRunId: 'new-run',
+        generationRunnerId: 'new-run',
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
       });

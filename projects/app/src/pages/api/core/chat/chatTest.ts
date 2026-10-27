@@ -239,7 +239,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: runningSourceId,
       chatId: runningChatId,
-      generationRunId: preparedRound.generationRunId,
+      generationRunnerId: preparedRound.generationRunnerId,
       responseId: runningChatId,
       showNodeStatus: true
     });
@@ -272,7 +272,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
       chatId: runningChatId,
-      generationRunId: preparedRound.generationRunId,
+      generationRunnerId: preparedRound.generationRunnerId,
       responseChatItemId,
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
@@ -308,7 +308,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const params = {
       ...chatSource,
       chatId: runningChatId,
-      generationRunId: preparedRound.generationRunId,
+      generationRunnerId: preparedRound.generationRunnerId,
       teamId,
       tmbId: tmbId,
       nodes,
@@ -342,7 +342,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...chatSource,
         chatId: runningChatId,
         status: ChatGenerateStatusEnum.done,
-        generationRunId: preparedRound.generationRunId
+        generationRunnerId: preparedRound.generationRunnerId
       });
     }
   } catch (err: any) {
@@ -353,7 +353,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
-          generationRunId: preparedRound.generationRunId,
+          generationRunnerId: preparedRound.generationRunnerId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
@@ -363,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           status: ChatGenerateStatusEnum.error,
-          generationRunId: preparedRound.generationRunId
+          generationRunnerId: preparedRound.generationRunnerId
         });
       }
     }

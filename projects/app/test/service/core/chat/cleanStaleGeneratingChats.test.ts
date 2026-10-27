@@ -5,7 +5,7 @@ import {
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { getChatGenerationLeaseKey } from '@fastgpt/dal/redis/caches';
+import { getChatGenerationLeaseKey } from '@fastgpt/dal/redis/caches/chatGenerationLease';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import {
@@ -59,135 +59,7 @@ describe('cleanStaleGeneratingChats', () => {
     vi.mocked(MongoChatItem.updateOne).mockResolvedValue({ modifiedCount: 1 } as any);
   });
 
-  it('keeps a run while its Mongo lease is still fresh', async () => {
-    mockGeneratingChats([
-      {
-        _id: 'fresh-chat',
-        teamId,
-        appId,
-        chatId: 'fresh',
-        updateTime: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationRunId: 'run-fresh',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 30_000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() + 60_000)
-      }
-    ]);
-
-    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
-      modifiedCount: 0,
-      leaseExpiredCount: 0,
-      fallbackCount: 0
-    });
-    expect(MongoChat.updateOne).not.toHaveBeenCalled();
-  });
-
-  it('keeps rolling-upgrade runs created by old instances on the legacy fallback path', async () => {
-    mockGeneratingChats([
-      {
-        _id: 'old-instance-chat',
-        teamId,
-        appId,
-        chatId: 'old-instance',
-        updateTime: new Date(baseNow.getTime() - 60_000),
-        generationRunId: 'stale-old-run',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() - 30_000)
-      }
-    ]);
-
-    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
-      modifiedCount: 0,
-      leaseExpiredCount: 0,
-      fallbackCount: 0
-    });
-    expect(MongoChat.updateOne).not.toHaveBeenCalled();
-  });
-
-  it('corrects an old-instance run after the 30 minute fallback', async () => {
-    const updateTime = new Date(
-      baseNow.getTime() - STALE_GENERATING_CHAT_MINUTES * 60 * 1000 - 1_000
-    );
-    mockGeneratingChats([
-      {
-        _id: 'old-instance-expired-chat',
-        teamId,
-        appId,
-        chatId: 'old-instance-expired',
-        updateTime,
-        generationRunId: 'stale-old-run',
-        generationHeartbeatAt: new Date(updateTime.getTime() - 120_000),
-        generationLeaseExpiresAt: new Date(updateTime.getTime() - 30_000)
-      }
-    ]);
-
-    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
-      modifiedCount: 1,
-      leaseExpiredCount: 0,
-      fallbackCount: 1
-    });
-    expect(MongoChat.updateOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _id: 'old-instance-expired-chat',
-        generationRunId: 'stale-old-run',
-        generationLeaseExpiresAt: new Date(updateTime.getTime() - 30_000)
-      }),
-      expect.any(Object)
-    );
-  });
-
-  it('falls back when a run id exists but lease fields are missing', async () => {
-    const updateTime = new Date(
-      baseNow.getTime() - STALE_GENERATING_CHAT_MINUTES * 60 * 1000 - 1_000
-    );
-    mockGeneratingChats([
-      {
-        _id: 'missing-lease-chat',
-        teamId,
-        appId,
-        chatId: 'missing-lease',
-        updateTime,
-        generationRunId: 'legacy-run-without-lease'
-      }
-    ]);
-
-    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
-      modifiedCount: 1,
-      leaseExpiredCount: 0,
-      fallbackCount: 1
-    });
-    expect(MongoChat.updateOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _id: 'missing-lease-chat',
-        generationRunId: 'legacy-run-without-lease',
-        generationLeaseExpiresAt: { $exists: false }
-      }),
-      expect.any(Object)
-    );
-  });
-
-  it('cleans a new run when heartbeat is only slightly older than its prepare time', async () => {
-    const updateTime = new Date(baseNow.getTime() - 10 * 60 * 1000);
-    mockGeneratingChats([
-      {
-        _id: 'new-run-crash-chat',
-        teamId,
-        appId,
-        chatId: 'new-run-crash',
-        updateTime,
-        generationRunId: 'run-crashed',
-        generationHeartbeatAt: new Date(updateTime.getTime() - 5_000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() - 1_000)
-      }
-    ]);
-
-    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
-      modifiedCount: 1,
-      leaseExpiredCount: 1,
-      fallbackCount: 0
-    });
-  });
-
-  it('keeps a run while the Redis generation lease still exists', async () => {
+  it('keeps a chat while the Redis runner token exists', async () => {
     mockGeneratingChats([
       {
         _id: 'redis-live-chat',
@@ -195,12 +67,9 @@ describe('cleanStaleGeneratingChats', () => {
         appId,
         chatId: 'redis-live',
         updateTime: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationRunId: 'run-live',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 91_000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() - 1_000)
+        generationRunnerId: 'run-live'
       }
     ]);
-
     await (getRedisRuntime().getCommandConnection() as any).set(
       getLeaseRedisKey('redis-live'),
       'run-live',
@@ -208,12 +77,15 @@ describe('cleanStaleGeneratingChats', () => {
       90_000
     );
 
-    await cleanStaleGeneratingChats();
+    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
+      modifiedCount: 0,
+      leaseExpiredCount: 0,
+      fallbackCount: 0
+    });
     expect(MongoChat.updateOne).not.toHaveBeenCalled();
   });
 
-  it('CASes an expired run to error and marks the exact AI item', async () => {
-    const leaseExpiresAt = new Date(baseNow.getTime() - 1_000);
+  it('CASes an interrupted runner to error and marks the exact AI item', async () => {
     mockGeneratingChats([
       {
         _id: 'expired-chat',
@@ -221,16 +93,12 @@ describe('cleanStaleGeneratingChats', () => {
         appId,
         chatId: 'expired',
         updateTime: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationRunId: 'run-expired',
-        generationResponseChatItemId: 'ai-item-id',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 91_000),
-        generationLeaseExpiresAt: leaseExpiresAt
+        generationRunnerId: 'run-expired',
+        generationResponseChatItemId: 'ai-item-id'
       }
     ]);
 
-    const result = await cleanStaleGeneratingChats();
-
-    expect(result).toEqual({
+    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
       modifiedCount: 1,
       leaseExpiredCount: 1,
       fallbackCount: 0
@@ -239,8 +107,7 @@ describe('cleanStaleGeneratingChats', () => {
       {
         _id: 'expired-chat',
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
-        generationRunId: 'run-expired',
-        generationLeaseExpiresAt: leaseExpiresAt
+        generationRunnerId: 'run-expired'
       },
       {
         $set: {
@@ -249,7 +116,8 @@ describe('cleanStaleGeneratingChats', () => {
           hasBeenRead: false
         },
         $unset: {
-          generationLeaseExpiresAt: ''
+          generationRunnerId: '',
+          generationResponseChatItemId: ''
         }
       }
     );
@@ -277,7 +145,7 @@ describe('cleanStaleGeneratingChats', () => {
     );
   });
 
-  it('does not overwrite a run whose heartbeat wins the CAS race', async () => {
+  it('does not overwrite a runner that wins the CAS race', async () => {
     vi.mocked(MongoChat.updateOne).mockResolvedValue({ modifiedCount: 0 } as any);
     mockGeneratingChats([
       {
@@ -286,10 +154,8 @@ describe('cleanStaleGeneratingChats', () => {
         appId,
         chatId: 'race',
         updateTime: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationRunId: 'run-race',
-        generationResponseChatItemId: 'race-ai',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 91_000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() - 1_000)
+        generationRunnerId: 'run-race',
+        generationResponseChatItemId: 'race-ai'
       }
     ]);
 
@@ -301,14 +167,17 @@ describe('cleanStaleGeneratingChats', () => {
     expect(MongoChatItem.updateOne).not.toHaveBeenCalled();
   });
 
-  it('uses the 30 minute fallback only for legacy records without run id', async () => {
+  it('uses the 30 minute fallback only for legacy records without a runner token', async () => {
+    const staleUpdateTime = new Date(
+      baseNow.getTime() - STALE_GENERATING_CHAT_MINUTES * 60 * 1000 - 1_000
+    );
     mockGeneratingChats([
       {
         _id: 'legacy-chat',
         teamId,
         appId,
         chatId: 'legacy',
-        updateTime: new Date(baseNow.getTime() - STALE_GENERATING_CHAT_MINUTES * 60 * 1000 - 1_000)
+        updateTime: staleUpdateTime
       },
       {
         _id: 'legacy-fresh-chat',
@@ -319,9 +188,7 @@ describe('cleanStaleGeneratingChats', () => {
       }
     ]);
 
-    const result = await cleanStaleGeneratingChats();
-
-    expect(result).toEqual({
+    await expect(cleanStaleGeneratingChats()).resolves.toEqual({
       modifiedCount: 1,
       leaseExpiredCount: 0,
       fallbackCount: 1
@@ -329,14 +196,14 @@ describe('cleanStaleGeneratingChats', () => {
     expect(MongoChat.updateOne).toHaveBeenCalledWith(
       expect.objectContaining({
         _id: 'legacy-chat',
-        generationRunId: { $exists: false },
-        updateTime: new Date(baseNow.getTime() - STALE_GENERATING_CHAT_MINUTES * 60 * 1000 - 1_000)
+        generationRunnerId: { $exists: false },
+        updateTime: staleUpdateTime
       }),
       expect.any(Object)
     );
   });
 
-  it('skips quick cleanup when Redis lease lookup fails', async () => {
+  it('skips cleanup when Redis cannot acquire the cleanup token', async () => {
     mockGeneratingChats([
       {
         _id: 'redis-down-chat',
@@ -344,14 +211,12 @@ describe('cleanStaleGeneratingChats', () => {
         appId,
         chatId: 'redis-down',
         updateTime: new Date(baseNow.getTime() - 60 * 60 * 1000),
-        generationRunId: 'run-redis-down',
-        generationHeartbeatAt: new Date(baseNow.getTime() - 91_000),
-        generationLeaseExpiresAt: new Date(baseNow.getTime() - 1_000)
+        generationRunnerId: 'run-redis-down'
       }
     ]);
 
     const redis = getRedisRuntime().getCommandConnection() as any;
-    redis.get.mockRejectedValueOnce(new Error('redis down'));
+    redis.set.mockRejectedValueOnce(new Error('redis down'));
 
     await expect(cleanStaleGeneratingChats()).resolves.toEqual({
       modifiedCount: 0,

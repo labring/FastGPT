@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { getRedisRuntime } from '@fastgpt/dal/redis/runtime';
 import { FASTGPT_REDIS_PREFIX } from '@fastgpt/dal/redis/runtime';
+import { getChatGenerationLeaseKey } from '@fastgpt/dal/redis/caches/chatGenerationLease';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
@@ -82,11 +83,14 @@ const createStreamEntry = (id: string, raw: string): StreamEntry => [id, ['raw',
 
 const setupRedisStreamMock = ({
   historyItems,
-  liveResponses = []
+  liveResponses = [],
+  streamKey = keyOfStream
 }: {
   historyItems: StreamEntry[];
   liveResponses?: ([string, StreamEntry[]][] | null)[];
+  streamKey?: string;
 }) => {
+  const rawStreamKey = `${FASTGPT_REDIS_PREFIX}${streamKey}`;
   const redis = getRedisRuntime().getCommandConnection() as any;
   const blockingRedis = {
     on: vi.fn().mockReturnThis(),
@@ -108,7 +112,7 @@ const setupRedisStreamMock = ({
 
     if (command === 'XRANGE') {
       const [, key, start, end, ...rest] = args;
-      expect(key).toBe(rawKeyOfStream);
+      expect(key).toBe(rawStreamKey);
 
       const countIndex = rest.findIndex((arg: string | number) => arg === 'COUNT');
       const count = countIndex >= 0 ? Number(rest[countIndex + 1]) : historyItems.length;
@@ -318,20 +322,31 @@ describe('stream resume api', () => {
     expect(res.writableEnded).toBe(true);
   });
 
-  it('should fall back to the legacy mirror when generationRunId is stale', async () => {
+  it('should trust the Redis runner token even when the Mongo display status is stale', async () => {
+    const generationRunnerId = 'run-live';
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating,
-        generationRunId: 'stale-run',
-        generationHeartbeatAt: new Date(Date.now() - 10 * 60 * 1000),
-        updateTime: new Date()
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
+        generationRunnerId
       })
+    );
+    const redis = getRedisRuntime().getCommandConnection() as any;
+    await redis.set(
+      `${FASTGPT_REDIS_PREFIX}${getChatGenerationLeaseKey({
+        sourceType: appSource.sourceType,
+        sourceId: appSource.sourceId,
+        chatId
+      })}`,
+      generationRunnerId,
+      'PX',
+      90_000
     );
 
     const historyItem = createStreamEntry('1-0', 'event: done\ndata: [DONE]\n\n');
     setupRedisStreamMock({
-      historyItems: [historyItem]
+      historyItems: [historyItem],
+      streamKey: `${keyOfStream}:${generationRunnerId}`
     });
 
     const { chunks } = await invokeStreamingHandler(
@@ -979,15 +994,15 @@ describe('stream resume helpers', () => {
   });
 
   it('should isolate resume mirrors by generation run id', async () => {
-    const generationRunId = 'run-1';
-    const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId, generationRunId });
-    const mirror = mirrorChatStream({ teamId, ...appSource, chatId, generationRunId });
+    const generationRunnerId = 'run-1';
+    const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId, generationRunnerId });
+    const mirror = mirrorChatStream({ teamId, ...appSource, chatId, generationRunnerId });
 
     await mirror.enqueueRaw('data: run-1\n\n');
     await mirror.flush();
 
     expect(keys.keyOfStream).toBe(
-      `stream:resume:data:${teamId}:${appSource.sourceType}:${appSource.sourceId}:${chatId}:${generationRunId}`
+      `stream:resume:data:${teamId}:${appSource.sourceType}:${appSource.sourceId}:${chatId}:${generationRunnerId}`
     );
   });
 });

@@ -19,7 +19,7 @@ import {
   syncGeneratedChatTitleFromUserContent
 } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
-import { startChatGenerationLease, stopChatGenerationLease } from '../generationLease';
+import { stopChatGenerationLease, tryStartChatGenerationLease } from '../generationLease';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -53,7 +53,7 @@ export type EnsurePendingChatRoundParams = ChatSourceParams & {
 
 export type PrepareChatRoundParams = ChatSourceParams & {
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
   teamId: string;
   tmbId: string;
   source: `${ChatSourceEnum}`;
@@ -80,7 +80,7 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
 export type PreChatRoundResult = {
   chatId: string;
   responseChatItemId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
   titleGeneration?: Promise<string | undefined>;
@@ -123,7 +123,7 @@ export const prepareChatRound = async (
 ): Promise<PrepareChatRoundResult> => {
   const {
     chatId,
-    generationRunId,
+    generationRunnerId,
     teamId,
     tmbId,
     source,
@@ -170,7 +170,7 @@ export const prepareChatRound = async (
       {
         ...buildChatSourceQuery(chatSource),
         chatId,
-        ...(generationRunId && { generationRunId })
+        ...(generationRunnerId && { generationRunnerId })
       },
       {
         $set: {
@@ -178,7 +178,7 @@ export const prepareChatRound = async (
           tmbId,
           ...sourceWriteFields,
           chatId,
-          ...(generationRunId && { generationRunId }),
+          ...(generationRunnerId && { generationRunnerId }),
           source,
           sourceName,
           shareId,
@@ -242,7 +242,7 @@ export const prepareChatRound = async (
 export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatRoundResult> => {
   const chatId = resolvePreChatRoundChatId(params.chatId);
   const responseChatItemId = params.responseChatItemId || getNanoid(24);
-  const generationRunId = getNanoid(24);
+  const generationRunnerId = getNanoid(24);
   const shouldPersistChatRound = !isSkipSaveChatId(chatId);
   const interactiveStatus = getInteractiveResponseStatus({
     interactive: params.interactive,
@@ -259,31 +259,35 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     };
   }
 
-  const canStartGenerate = await tryStartGenerateChat({
+  const generationLease = await tryStartChatGenerationLease({
     sourceType: params.sourceType,
     sourceId: params.sourceId,
     chatId,
     teamId: params.teamId,
-    tmbId: params.tmbId,
-    source: params.source,
-    sourceName: params.sourceName,
-    shareId: params.shareId,
-    outLinkUid: params.outLinkUid,
-    generationRunId,
-    generationResponseChatItemId: responseChatItemId
+    generationRunnerId
   });
 
-  if (!canStartGenerate) {
+  if (!generationLease) {
     throw ChatErrEnum.chatIsGenerating;
   }
 
   try {
-    await startChatGenerationLease({
+    const canStartGenerate = await tryStartGenerateChat({
       sourceType: params.sourceType,
       sourceId: params.sourceId,
       chatId,
-      generationRunId
+      teamId: params.teamId,
+      tmbId: params.tmbId,
+      source: params.source,
+      sourceName: params.sourceName,
+      shareId: params.shareId,
+      outLinkUid: params.outLinkUid,
+      generationRunnerId,
+      generationResponseChatItemId: responseChatItemId
     });
+    if (!canStartGenerate) {
+      throw ChatErrEnum.chatIsGenerating;
+    }
 
     if (isInteractiveContinue) {
       const previousAiItem = await MongoChatItem.findOne(
@@ -306,7 +310,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         {
           ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
           chatId,
-          generationRunId
+          generationRunnerId
         },
         {
           $set: {
@@ -321,7 +325,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       return {
         chatId,
         responseChatItemId: previousAiItem.dataId,
-        generationRunId,
+        generationRunnerId,
         shouldPersistChatRound: true,
         shouldFinalizePreparedRound: false
       };
@@ -338,7 +342,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     const preparedChatRound = await prepareChatRound({
       ...params,
       chatId,
-      generationRunId,
+      generationRunnerId,
       responseChatItemId
     });
 
@@ -376,7 +380,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     return {
       chatId,
       responseChatItemId,
-      generationRunId,
+      generationRunnerId,
       shouldPersistChatRound: true,
       shouldFinalizePreparedRound: true,
       titleGeneration
@@ -386,14 +390,14 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       sourceType: params.sourceType,
       sourceId: params.sourceId,
       chatId,
-      generationRunId
+      generationRunnerId
     });
     await updateChatGenerateStatus({
       sourceType: params.sourceType,
       sourceId: params.sourceId,
       chatId,
       status: ChatGenerateStatusEnum.error,
-      generationRunId
+      generationRunnerId
     });
     throw error;
   }

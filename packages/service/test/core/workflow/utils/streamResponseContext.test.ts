@@ -264,13 +264,13 @@ describe('createWorkflowStreamResponseContext', () => {
   it('should isolate resume mirror keys by generation run id', async () => {
     const redis = getRedisRuntime().getCommandConnection() as any;
     const sourceType = ChatSourceTypeEnum.app;
-    const generationRunId = 'run-1';
+    const generationRunnerId = 'run-1';
     const keys = getStreamResumeRedisKeys({
       teamId,
       sourceType,
       sourceId,
       chatId,
-      generationRunId
+      generationRunnerId
     });
 
     const context = await createWorkflowStreamResponseContext({
@@ -282,7 +282,7 @@ describe('createWorkflowStreamResponseContext', () => {
       sourceType,
       sourceId,
       chatId,
-      generationRunId,
+      generationRunnerId,
       responseId: chatId
     });
 
@@ -302,13 +302,13 @@ describe('createWorkflowStreamResponseContext', () => {
     vi.useFakeTimers();
     const redis = getRedisRuntime().getCommandConnection() as any;
     const res = createRes();
-    const generationRunId = 'run-keepalive';
+    const generationRunnerId = 'run-keepalive';
     const keys = getStreamResumeRedisKeys({
       teamId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId,
       chatId,
-      generationRunId
+      generationRunnerId
     });
 
     const context = await createWorkflowStreamResponseContext({
@@ -320,7 +320,7 @@ describe('createWorkflowStreamResponseContext', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId,
       chatId,
-      generationRunId,
+      generationRunnerId,
       responseId: chatId
     });
 
@@ -355,7 +355,7 @@ describe('createWorkflowStreamResponseContext', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId,
       chatId,
-      generationRunId: 'run-finish',
+      generationRunnerId: 'run-finish',
       responseId: chatId
     });
 

@@ -9,7 +9,7 @@ type AuxiliaryGenerationStopParams = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  generationRunId?: string;
+  generationRunnerId?: string;
 };
 
 /**

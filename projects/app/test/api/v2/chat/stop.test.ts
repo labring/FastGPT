@@ -108,7 +108,7 @@ describe('v2 chat stop skill edit target', () => {
       chatId,
       source: ChatSourceEnum.test,
       chatGenerateStatus: ChatGenerateStatusEnum.generating,
-      generationRunId: 'run-1'
+      generationRunnerId: 'run-1'
     });
 
     await Call<StopV2ChatParams, any, StopV2ChatResponse>(handler, {
@@ -123,7 +123,7 @@ describe('v2 chat stop skill edit target', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       chatId,
-      generationRunId: 'run-1'
+      generationRunnerId: 'run-1'
     });
   });
 

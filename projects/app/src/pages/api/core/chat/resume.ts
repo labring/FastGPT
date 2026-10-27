@@ -29,13 +29,13 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { CHAT_GENERATION_LEASE_TTL_MS } from '@fastgpt/service/core/chat/generationLease';
+import { getChatGenerationLeaseToken } from '@fastgpt/service/core/chat/generationLease';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
 const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'> & {
-  generationRunId?: string;
+  generationRunnerId?: string;
 };
 const resumeGeneratingRequiresSseMessage =
   'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
@@ -57,21 +57,6 @@ const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
 const writeSseComment = (res: NextApiResponse, comment: string) => {
   if (isResponseClosed(res)) return;
   res.write(`: ${comment}\n\n`);
-};
-
-const resolveResumeGenerationRunId = (chat: {
-  generationRunId?: string;
-  generationHeartbeatAt?: Date;
-  updateTime?: Date;
-}) => {
-  if (!chat.generationRunId || !chat.generationHeartbeatAt) return;
-  if (
-    chat.updateTime &&
-    chat.updateTime.getTime() - chat.generationHeartbeatAt.getTime() > CHAT_GENERATION_LEASE_TTL_MS
-  ) {
-    return;
-  }
-  return chat.generationRunId;
 };
 
 const writeResumeUnavailable = (
@@ -130,18 +115,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       {
         hasBeenRead: 1,
         chatGenerateStatus: 1,
-        generationRunId: 1,
-        generationHeartbeatAt: 1,
+        generationRunnerId: 1,
         updateTime: 1
       }
     ).lean();
     if (!chat) {
       return Promise.reject(new Error('Chat not found'));
     }
+    const redisRunner = await getChatGenerationLeaseToken({
+      sourceType,
+      sourceId: resolvedSourceId,
+      chatId
+    }).catch((error) => {
+      logger.warn('Failed to inspect resume generation runner', {
+        sourceType,
+        sourceId: resolvedSourceId,
+        chatId,
+        error
+      });
+      return;
+    });
+    const activeRunnerId = redisRunner?.startsWith('cleanup:') ? undefined : redisRunner;
+
     return {
       hasBeenRead: chat.hasBeenRead ?? false,
-      chatGenerateStatus: chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
-      generationRunId: resolveResumeGenerationRunId(chat)
+      chatGenerateStatus: activeRunnerId
+        ? ChatGenerateStatusEnum.generating
+        : (chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done),
+      generationRunnerId: activeRunnerId ?? chat.generationRunnerId
     };
   };
 
@@ -170,7 +171,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         sourceType,
         sourceId: resolvedSourceId,
         chatId,
-        generationRunId: chat.generationRunId
+        generationRunnerId: chat.generationRunnerId
       });
     }
 
@@ -214,7 +215,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   };
 
-  const { chatGenerateStatus, generationRunId } = await findCurrentChat();
+  const { chatGenerateStatus, generationRunnerId } = await findCurrentChat();
 
   // Chat has been completed, no need to catch up history items and resume stream
   if (chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
@@ -253,7 +254,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     sourceType,
     sourceId: resolvedSourceId,
     chatId,
-    generationRunId
+    generationRunnerId
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.catchup);
@@ -275,7 +276,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     sourceType,
     sourceId: resolvedSourceId,
     chatId,
-    generationRunId
+    generationRunnerId
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
@@ -285,7 +286,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     sourceType,
     sourceId: resolvedSourceId,
     chatId,
-    generationRunId,
+    generationRunnerId,
     cursor
   });
 

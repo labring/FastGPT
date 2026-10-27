@@ -16,7 +16,7 @@ export const StreamResumeParamsSchema = z.object({
   sourceId: z.string().min(1),
   chatId: z.string().min(1),
   /** 新 run 使用 runId 隔离 mirror；旧数据缺省时继续使用 legacy key。 */
-  generationRunId: z.string().min(1).optional()
+  generationRunnerId: z.string().min(1).optional()
 });
 export type StreamResumeParams = z.infer<typeof StreamResumeParamsSchema>;
 
@@ -34,6 +34,8 @@ export type StreamResumeKeys = {
   keyOfStream: RedisLogicalKey;
   keyOfUnavailable: RedisLogicalKey;
   keyOfActive: RedisLogicalKey;
+  /** 滚动发布期间旧实例 cleaner 仍读取不带 runnerId 的 active key。 */
+  keyOfLegacyActive: RedisLogicalKey;
 };
 
 export type StreamResumeCacheOptions = {
@@ -45,6 +47,11 @@ export type StreamResumeCacheOptions = {
 };
 
 type StreamResumeBlockingReader = ReturnType<RedisCacheAdapter['createBlockingStreamReader']>;
+
+const getActiveKeys = (keys: StreamResumeKeys) =>
+  keys.keyOfActive === keys.keyOfLegacyActive
+    ? [keys.keyOfActive]
+    : [keys.keyOfActive, keys.keyOfLegacyActive];
 
 const parsePositiveConfig = ({
   operation,
@@ -106,8 +113,8 @@ export class StreamResumeCache {
 
   getKeys = (params: StreamResumeParams): StreamResumeKeys => {
     const parsed = this.parseParams(params);
-    const { teamId, sourceType, sourceId, chatId, generationRunId } = parsed;
-    const runSuffix = generationRunId ? `:${generationRunId}` : '';
+    const { teamId, sourceType, sourceId, chatId, generationRunnerId } = parsed;
+    const runSuffix = generationRunnerId ? `:${generationRunnerId}` : '';
     return {
       keyOfStream: asRedisLogicalKey(
         `${STREAM_RESUME_NAMESPACE}:data:${teamId}:${sourceType}:${sourceId}:${chatId}${runSuffix}`
@@ -117,6 +124,9 @@ export class StreamResumeCache {
       ),
       keyOfActive: asRedisLogicalKey(
         `${STREAM_RESUME_NAMESPACE}:active:${teamId}:${sourceType}:${sourceId}:${chatId}${runSuffix}`
+      ),
+      keyOfLegacyActive: asRedisLogicalKey(
+        `${STREAM_RESUME_NAMESPACE}:active:${teamId}:${sourceType}:${sourceId}:${chatId}`
       )
     };
   };
@@ -127,12 +137,14 @@ export class StreamResumeCache {
         key: keys.keyOfStream,
         ttlSeconds: this.parsedStreamTtlSeconds
       }),
-      // 滚动发布兼容：旧实例 cleaner 仍读取 active key，新 cleaner 不依赖它。
-      this.redis.set({
-        key: keys.keyOfActive,
-        value: JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
-        ttlMs: this.parsedStreamTtlSeconds * 1000
-      })
+      // 滚动发布兼容：旧实例 cleaner 只认 legacy active key。
+      ...getActiveKeys(keys).map((key) =>
+        this.redis.set({
+          key,
+          value: JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
+          ttlMs: this.parsedStreamTtlSeconds * 1000
+        })
+      )
     ]);
   };
 
@@ -140,7 +152,7 @@ export class StreamResumeCache {
     await Promise.all([
       this.redis.delete(keys.keyOfUnavailable),
       this.redis.delete(keys.keyOfStream),
-      this.redis.delete(keys.keyOfActive)
+      ...getActiveKeys(keys).map((key) => this.redis.delete(key))
     ]);
   };
 
@@ -165,6 +177,15 @@ export class StreamResumeCache {
     } catch {
       return;
     }
+  }
+
+  /** 仅刷新旧实例 cleaner 读取的 legacy active key，供滚动升级兼容心跳使用。 */
+  async touchLegacyActive(params: StreamResumeParams) {
+    await this.redis.set({
+      key: this.getKeys(params).keyOfLegacyActive,
+      value: JSON.stringify({ updatedAt: Date.now() } satisfies StreamResumeActiveState),
+      ttlMs: this.parsedStreamTtlSeconds * 1000
+    });
   }
 
   /** 读取 Redis 内存水位；是否阻止创建镜像由 service 的运行策略决定。 */
@@ -234,10 +255,12 @@ export class StreamResumeCache {
               key: keys.keyOfStream,
               ttlSeconds: this.parsedPostCompleteTtlSeconds
             }),
-            this.redis.expireStream({
-              key: keys.keyOfActive,
-              ttlSeconds: this.parsedPostCompleteTtlSeconds
-            })
+            ...getActiveKeys(keys).map((key) =>
+              this.redis.expireStream({
+                key,
+                ttlSeconds: this.parsedPostCompleteTtlSeconds
+              })
+            )
           ]);
         } catch (error) {
           this.logger.error('Failed to shrink stream resume redis ttl', {
@@ -275,10 +298,15 @@ export class StreamResumeCache {
       key,
       ttlSeconds: this.parsedPostCompleteTtlSeconds
     });
-    await this.redis.expireStream({
-      key: this.getKeys(params).keyOfActive,
-      ttlSeconds: this.parsedPostCompleteTtlSeconds
-    });
+    const keys = this.getKeys(params);
+    await Promise.all(
+      getActiveKeys(keys).map((key) =>
+        this.redis.expireStream({
+          key,
+          ttlSeconds: this.parsedPostCompleteTtlSeconds
+        })
+      )
+    );
   }
 
   /**

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ensureGenerateChat,
   tryStartGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
@@ -47,51 +46,11 @@ describe('chatGenerateStatus', () => {
     } as any);
   });
 
-  it('should ensure a chat is marked as generating', async () => {
-    vi.mocked(MongoChat.updateOne).mockResolvedValue({} as any);
-
-    await ensureGenerateChat(baseParams);
-
-    expect(MongoChat.updateOne).toHaveBeenCalledWith(
-      {
-        ...buildChatSourceQuery({
-          sourceType: baseParams.sourceType,
-          sourceId: baseParams.sourceId
-        }),
-        chatId: baseParams.chatId
-      },
-      {
-        $set: expect.objectContaining({
-          sourceType: baseParams.sourceType,
-          appId: baseParams.sourceId,
-          chatId: baseParams.chatId,
-          teamId: baseParams.teamId,
-          tmbId: baseParams.tmbId,
-          source: baseParams.source,
-          sourceName: baseParams.sourceName,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          updateTime: expect.any(Date)
-        }),
-        $setOnInsert: {
-          createTime: expect.any(Date),
-          summary: {
-            llmInputTokens: 0,
-            llmOutputTokens: 0
-          }
-        }
-      },
-      {
-        upsert: true
-      }
-    );
-  });
-
   it('should acquire generate slot when the chat is not already generating', async () => {
     await expect(
       tryStartGenerateChat({
         ...baseParams,
-        generationRunId: 'run-1',
+        generationRunnerId: 'run-1',
         generationResponseChatItemId: 'ai-item-1'
       })
     ).resolves.toBe(true);
@@ -116,10 +75,8 @@ describe('chatGenerateStatus', () => {
           sourceName: baseParams.sourceName,
           hasBeenRead: false,
           chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          generationRunId: 'run-1',
+          generationRunnerId: 'run-1',
           generationResponseChatItemId: 'ai-item-1',
-          generationHeartbeatAt: expect.any(Date),
-          generationLeaseExpiresAt: expect.any(Date),
           updateTime: expect.any(Date)
         }),
         $setOnInsert: {
@@ -145,7 +102,9 @@ describe('chatGenerateStatus', () => {
         })
     } as any);
 
-    await expect(tryStartGenerateChat(baseParams)).resolves.toBe(false);
+    await expect(
+      tryStartGenerateChat({ ...baseParams, generationRunnerId: 'run-1' })
+    ).resolves.toBe(false);
   });
 
   it('should reject acquiring generate slot when chat is already generating', async () => {
@@ -156,7 +115,9 @@ describe('chatGenerateStatus', () => {
         })
     } as any);
 
-    await expect(tryStartGenerateChat(baseParams)).resolves.toBe(false);
+    await expect(
+      tryStartGenerateChat({ ...baseParams, generationRunnerId: 'run-1' })
+    ).resolves.toBe(false);
 
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
@@ -189,7 +150,9 @@ describe('chatGenerateStatus', () => {
       lean: () => Promise.reject(error)
     } as any);
 
-    await expect(tryStartGenerateChat(baseParams)).rejects.toThrow(error);
+    await expect(
+      tryStartGenerateChat({ ...baseParams, generationRunnerId: 'run-1' })
+    ).rejects.toThrow(error);
   });
 
   it('should update chat status to done or error without changing caller metadata', async () => {
@@ -229,7 +192,7 @@ describe('chatGenerateStatus', () => {
         sourceId: baseParams.sourceId,
         chatId: baseParams.chatId,
         status: ChatGenerateStatusEnum.done,
-        generationRunId: 'run-1'
+        generationRunnerId: 'run-1'
       })
     ).resolves.toBe(true);
 
@@ -240,16 +203,23 @@ describe('chatGenerateStatus', () => {
           sourceId: baseParams.sourceId
         }),
         chatId: baseParams.chatId,
-        generationRunId: 'run-1',
-        chatGenerateStatus: ChatGenerateStatusEnum.generating
+        generationRunnerId: 'run-1'
       },
-      expect.any(Object)
+      {
+        $set: expect.objectContaining({
+          chatGenerateStatus: ChatGenerateStatusEnum.done
+        }),
+        $unset: {
+          generationRunnerId: '',
+          generationResponseChatItemId: ''
+        }
+      }
     );
     expect(stopChatGenerationLeaseMock).toHaveBeenCalledWith({
       sourceType: baseParams.sourceType,
       sourceId: baseParams.sourceId,
       chatId: baseParams.chatId,
-      generationRunId: 'run-1'
+      generationRunnerId: 'run-1'
     });
   });
 
@@ -262,7 +232,7 @@ describe('chatGenerateStatus', () => {
         sourceId: baseParams.sourceId,
         chatId: baseParams.chatId,
         status: ChatGenerateStatusEnum.error,
-        generationRunId: 'old-run'
+        generationRunnerId: 'old-run'
       })
     ).resolves.toBe(false);
 
@@ -270,7 +240,7 @@ describe('chatGenerateStatus', () => {
       sourceType: baseParams.sourceType,
       sourceId: baseParams.sourceId,
       chatId: baseParams.chatId,
-      generationRunId: 'old-run'
+      generationRunnerId: 'old-run'
     });
   });
 
@@ -283,12 +253,12 @@ describe('chatGenerateStatus', () => {
         sourceId: baseParams.sourceId,
         chatId: baseParams.chatId,
         status: ChatGenerateStatusEnum.error,
-        generationRunId: 'run-1'
+        generationRunnerId: 'run-1'
       })
     ).rejects.toThrow('mongo down');
 
     expect(stopChatGenerationLeaseMock).toHaveBeenCalledWith(
-      expect.objectContaining({ generationRunId: 'run-1' })
+      expect.objectContaining({ generationRunnerId: 'run-1' })
     );
   });
 });

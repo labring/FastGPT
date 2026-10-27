@@ -143,7 +143,7 @@ export const getScheduleTriggerApp = async () => {
         const saveParams: SaveChatProps = {
           ...chatSource,
           chatId: preparedRound.chatId,
-          generationRunId: preparedRound.generationRunId,
+          generationRunnerId: preparedRound.generationRunnerId,
           versionId,
           teamId: String(app.teamId),
           tmbId: String(app.tmbId),
@@ -178,7 +178,7 @@ export const getScheduleTriggerApp = async () => {
         } = await retryFn(async () => {
           return dispatchWorkFlow({
             chatId: preparedRound.chatId,
-            generationRunId: preparedRound.generationRunId,
+            generationRunnerId: preparedRound.generationRunnerId,
             responseChatItemId: preparedRound.responseChatItemId,
             mode: 'chat',
             usageId,
@@ -237,7 +237,7 @@ export const getScheduleTriggerApp = async () => {
             await failChatRound({
               ...chatSource,
               chatId: preparedRound.chatId,
-              generationRunId: preparedRound.generationRunId,
+              generationRunnerId: preparedRound.generationRunnerId,
               responseChatItemId: preparedRound.responseChatItemId,
               error
             }).catch();
@@ -246,7 +246,7 @@ export const getScheduleTriggerApp = async () => {
               ...chatSource,
               chatId: preparedRound.chatId,
               status: ChatGenerateStatusEnum.error,
-              generationRunId: preparedRound.generationRunId
+              generationRunnerId: preparedRound.generationRunnerId
             }).catch();
           }
         }
