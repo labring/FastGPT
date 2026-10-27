@@ -101,6 +101,7 @@ export const pushTrack = {
       logger.error('Failed to record Workflow Builder track', {
         teamId: data.teamId,
         appId: data.appId,
+        chatId: data.chatId,
         action: data.action
       });
     }

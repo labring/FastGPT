@@ -111,30 +111,50 @@ describe('pushTrack.workflowBuilder', () => {
   });
 
   it('stores the authenticated team separately from app/action', async () => {
-    await pushTrack.workflowBuilder({ teamId: 'team-1', appId: 'app-1', action: 'result_ready' });
+    await pushTrack.workflowBuilder({
+      teamId: 'team-1',
+      appId: 'app-1',
+      chatId: 'chat-1',
+      action: 'result_ready'
+    });
     expect(mocks.trackCreate).toHaveBeenCalledWith({
       event: TrackEnum.workflowBuilder,
       teamId: 'team-1',
       uid: undefined,
       tmbId: undefined,
-      data: { appId: 'app-1', action: 'result_ready' }
+      data: { appId: 'app-1', chatId: 'chat-1', action: 'result_ready' }
     });
   });
 
   it('skips non-plus and isolates synchronous and asynchronous database failures', async () => {
     global.feConfigs = { isPlus: false } as any;
-    await pushTrack.workflowBuilder({ teamId: 'team-1', appId: 'app-1', action: 'result_ready' });
+    await pushTrack.workflowBuilder({
+      teamId: 'team-1',
+      appId: 'app-1',
+      chatId: 'chat-1',
+      action: 'result_ready'
+    });
     expect(mocks.trackCreate).not.toHaveBeenCalled();
     global.feConfigs = { isPlus: true } as any;
     mocks.trackCreate.mockRejectedValueOnce(new Error('db failed'));
     await expect(
-      pushTrack.workflowBuilder({ teamId: 'team-1', appId: 'app-1', action: 'result_ready' })
+      pushTrack.workflowBuilder({
+        teamId: 'team-1',
+        appId: 'app-1',
+        chatId: 'chat-1',
+        action: 'result_ready'
+      })
     ).resolves.toBeUndefined();
     mocks.trackCreate.mockImplementationOnce(() => {
       throw new Error('sync db failed');
     });
     await expect(
-      pushTrack.workflowBuilder({ teamId: 'team-1', appId: 'app-1', action: 'result_ready' })
+      pushTrack.workflowBuilder({
+        teamId: 'team-1',
+        appId: 'app-1',
+        chatId: 'chat-1',
+        action: 'result_ready'
+      })
     ).resolves.toBeUndefined();
     expect(mocks.loggerError).toHaveBeenCalledTimes(2);
   });

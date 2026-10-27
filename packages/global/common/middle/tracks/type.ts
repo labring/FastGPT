@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 export const WorkflowBuilderTrackDataSchema = z.object({
   appId: z.string(),
+  chatId: z.string(),
   action: z.enum([
     'message_accepted',
     'preview_generated',
