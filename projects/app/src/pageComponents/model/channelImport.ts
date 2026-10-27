@@ -83,7 +83,7 @@ export const getBlankChannelImportDraft = (item: BlankPreviewItem) => {
 
 /**
  * Build a complete system-model payload from inferred fields and the existing blank-model defaults.
- * Known context length fills the selected type's limit; absent required limits default to zero.
+ * Known context length fills the selected type's limit; a missing response cap keeps the base default.
  */
 export const buildBlankChannelModelData = ({
   providerModelSlug,
@@ -107,6 +107,7 @@ export const buildBlankChannelModelData = ({
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
   const base = createModelData(type);
+  const baseConfig: Record<string, unknown> = isRecord(base.config) ? base.config : {};
   const configSource: Record<string, unknown> = {
     ...(isRecord(modelData?.config) ? modelData.config : {})
   };
@@ -116,13 +117,16 @@ export const buildBlankChannelModelData = ({
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   };
   const maxContext = getLimit('maxContext', contextLimit);
+  const baseMaxResponse = baseConfig.maxResponse;
+  const maxResponseFallback =
+    typeof baseMaxResponse === 'number' && Number.isFinite(baseMaxResponse) ? baseMaxResponse : 0;
   const config = {
     ...base.config,
     ...configSource,
     ...(type === ModelTypeEnum.llm
       ? {
           maxContext,
-          maxResponse: getLimit('maxResponse'),
+          maxResponse: getLimit('maxResponse', maxResponseFallback),
           // 空白模型表单用 NaN 表示未填；导入时按保存逻辑回退到上下文的 80%。
           quoteMaxToken: getLimit('quoteMaxToken', Math.floor(maxContext * 0.8))
         }

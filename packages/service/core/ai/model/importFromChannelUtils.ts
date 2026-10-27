@@ -82,14 +82,14 @@ export const inferChannelModelType = (modalities?: string[]): ModelTypeEnum | un
   return types.size === 1 ? [...types][0] : undefined;
 };
 
-/** 保留模板自身标识与价格；响应上限采用上游值，上下文上限缺失或无效时填 0。 */
+/** 保留模板自身标识与价格；上游限制仅在有效值存在时覆盖模板字段。 */
 export const mergeTemplateModelData = (
   template: AIModelDocumentDataType,
   channelModel: AiproxyChannelModel
 ): AIModelDocumentDataType =>
   mergeChannelTemplateModelData({
     template,
-    contextLength: getContextLength(channelModel) ?? 0,
+    contextLength: getContextLength(channelModel),
     maxCompletionTokens: getMaxCompletionTokens(channelModel)
   });
 
@@ -213,11 +213,11 @@ export const classifyChannelModels = ({
   }
 
   return channelModels.map((channelModel, channelModelIndex) => {
-    const contextLength = getContextLength(channelModel) ?? 0;
+    const contextLength = getContextLength(channelModel);
     const maxCompletionTokens = getMaxCompletionTokens(channelModel);
     const rowData = {
       providerModelSlug: channelModel.id,
-      contextLength,
+      ...(contextLength === undefined ? {} : { contextLength }),
       ...(maxCompletionTokens === undefined ? {} : { maxCompletionTokens })
     };
     const localMatch = localMatchByChannelModelIndex.get(channelModelIndex);
