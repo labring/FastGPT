@@ -168,7 +168,7 @@ export const createInvalidReferenceReplacer = ({
     type,
     vision,
     changes,
-    preserveShape = true
+    preserveLegacyField = true
   }: {
     config: PlainObject;
     modelIdKey: string;
@@ -176,7 +176,7 @@ export const createInvalidReferenceReplacer = ({
     type: ModelTypeEnum;
     vision?: boolean;
     changes: Record<ModelKind, Change>;
-    preserveShape?: boolean;
+    preserveLegacyField?: boolean;
   }) => {
     const kind = getKind(type);
     const reference = { modelId: config[modelIdKey], model: config[legacyKey] };
@@ -186,11 +186,8 @@ export const createInvalidReferenceReplacer = ({
       return;
     }
     if (!invalid) return;
-    if (preserveShape) {
-      if (!isEmptyModelValue(config[modelIdKey])) config[modelIdKey] = targets[kind].modelId;
-      if (!isEmptyModelValue(config[legacyKey])) config[legacyKey] = targets[kind].model;
-    } else {
-      config[modelIdKey] = targets[kind].modelId;
+    config[modelIdKey] = targets[kind].modelId;
+    if (!preserveLegacyField || !isEmptyModelValue(config[legacyKey])) {
       config[legacyKey] = targets[kind].model;
     }
     if (type === ModelTypeEnum.tts) config.voice = firstTtsVoice;
@@ -247,6 +244,7 @@ export const createInvalidReferenceReplacer = ({
             });
           } else {
             input.value = target.model;
+            node.inputs.push({ ...input, key: slot.modelIdKey, value: target.modelId });
           }
           changes[kind].replacedReferences++;
         }
@@ -509,7 +507,7 @@ export const replaceInvalidModelReferences = async ({
               legacyKey: 'agentModel',
               type: ModelTypeEnum.llm,
               changes,
-              preserveShape: false
+              preserveLegacyField: false
             });
             const agentReplaced = changes.llm.replacedReferences > 0;
             const beforeVlm = changes.llm.replacedReferences;
@@ -520,7 +518,7 @@ export const replaceInvalidModelReferences = async ({
               type: ModelTypeEnum.llm,
               vision: true,
               changes,
-              preserveShape: false
+              preserveLegacyField: false
             });
             const vlmReplaced = changes.llm.replacedReferences > beforeVlm;
             if (changes.llm.replacedReferences === 0) {

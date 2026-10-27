@@ -141,15 +141,94 @@ describe('replaceInvalidModelReferences', () => {
     expect(content.changes.tts.replacedReferences).toBe(1);
     expect(content.changes.rerank.replacedReferences).toBe(1);
     expect(content.chatConfig).toMatchObject({
-      questionGuide: { model: 'new-llm-name' },
+      questionGuide: { modelId: 'new-llm', model: 'new-llm-name' },
       ttsConfig: { modelId: 'new-tts', voice: 'first-voice' }
     });
-    expect(content.chatConfig?.questionGuide).not.toHaveProperty('modelId');
     expect(content.chatConfig?.ttsConfig).not.toHaveProperty('model');
     const nodes = content.nodes as Array<{ inputs: Array<{ value: string }> }>;
     expect(nodes[0].inputs[0].value).toBe('{{modelId}}');
     expect(nodes[1].inputs[0].value).toBe('missing');
     expect(nodes[2].inputs[0].value).toBe('new-rerank');
+  });
+
+  it('persists team model IDs for legacy config and node references', () => {
+    const systemModel = {
+      modelId: 'system-shared-llm',
+      model: 'shared-llm-name',
+      type: ModelTypeEnum.llm,
+      isActive: true,
+      scope: ModelScopeEnum.system,
+      config: { vision: true }
+    };
+    const teamModel = {
+      modelId: 'team-llm',
+      model: 'shared-llm-name',
+      type: ModelTypeEnum.llm,
+      isActive: true,
+      scope: ModelScopeEnum.team,
+      teamId: String(ids.team),
+      config: { vision: true }
+    };
+    const teamHandle = createHandle([...models, systemModel, teamModel]);
+    const replacer = createInvalidReferenceReplacer({
+      handle: teamHandle,
+      replacement: { ...replacement, llmModelId: teamModel.modelId }
+    });
+    const content = replacer.replaceAppContent({
+      nodes: [
+        {
+          nodeId: 'legacy-chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModel,
+              label: 'Model',
+              value: 'old-llm-name',
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              selectedTypeIndex: 0,
+              customMetadata: 'preserve'
+            }
+          ]
+        }
+      ],
+      chatConfig: {
+        questionGuide: {
+          open: true,
+          model: 'old-llm-name',
+          customMetadata: 'preserve'
+        }
+      }
+    });
+    const node = (content.nodes as Array<{ inputs: Array<Record<string, unknown>> }>)[0];
+
+    expect(
+      teamHandle.getModelData({ model: teamModel.model }, { type: ModelTypeEnum.llm }).modelId
+    ).toBe(systemModel.modelId);
+    expect(
+      teamHandle.getModelData({ modelId: content.chatConfig?.questionGuide?.modelId }).modelId
+    ).toBe(teamModel.modelId);
+    expect(content.changes.llm.replacedReferences).toBe(2);
+    expect(content.chatConfig?.questionGuide).toMatchObject({
+      modelId: teamModel.modelId,
+      model: teamModel.model,
+      customMetadata: 'preserve'
+    });
+    expect(node.inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModel,
+          value: teamModel.model,
+          selectedTypeIndex: 0,
+          customMetadata: 'preserve'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.aiModelId,
+          value: teamModel.modelId,
+          selectedTypeIndex: 0,
+          customMetadata: 'preserve'
+        })
+      ])
+    );
   });
 
   it('replaces invalid LLM, TTS and rerank references across one team and preserves embedding', async () => {
@@ -522,9 +601,8 @@ describe('replaceInvalidModelReferences', () => {
       ttsConfig: { modelId: 'new-tts', voice: 'chosen-voice' }
     });
     expect(legacy.chatConfig).toMatchObject({
-      ttsConfig: { model: 'new-tts-name', voice: 'first-voice' }
+      ttsConfig: { modelId: 'new-tts', model: 'new-tts-name', voice: 'first-voice' }
     });
-    expect(legacy.chatConfig?.ttsConfig).not.toHaveProperty('modelId');
     expect(disabled.changes.tts.replacedReferences).toBe(0);
     expect(browser.changes.tts.replacedReferences).toBe(0);
     expect(valid.changes.tts.replacedReferences).toBe(0);
