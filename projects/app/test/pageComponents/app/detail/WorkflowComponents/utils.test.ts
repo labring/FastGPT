@@ -132,6 +132,97 @@ describe('WorkflowComponents utils', () => {
       ]);
     });
 
+    it('preserves canonical compact Agent tools imported from an unfiltered export', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'review-tool',
+                    name: 'Review tool',
+                    inputs: [{ key: 'query', mode: 'manual' }],
+                    config: { query: 'saved query' }
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        {
+          id: 'review-tool',
+          name: 'Review tool',
+          inputs: [{ key: 'query', mode: 'manual' }],
+          config: { query: 'saved query' }
+        }
+      ]);
+    });
+
+    it('preserves config for invalid canonical Agent tools with empty inputs', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'missing-tool',
+                    pluginId: 'missing-tool',
+                    name: 'Missing tool',
+                    avatar: 'core/workflow/template/tool',
+                    version: '',
+                    source: 'teamId:team-1',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    inputs: [],
+                    outputs: [],
+                    config: { query: 'saved query' },
+                    configStatus: 'invalid',
+                    pluginData: { error: 'tool_missing' }
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        {
+          id: 'missing-tool',
+          name: 'Missing tool',
+          avatar: 'core/workflow/template/tool',
+          version: '',
+          source: 'teamId:team-1',
+          inputs: [],
+          config: { query: 'saved query' }
+        }
+      ]);
+    });
+
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {
       const mockQuerySelector = vi.fn().mockReturnValue({
         querySelectorAll: () => []

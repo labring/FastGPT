@@ -4,6 +4,8 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 
 vi.mock('@/pageComponents/app/detail/Edit/SimpleApp/utils', () => ({
   form2AppWorkflow: vi.fn((data) => ({
@@ -681,5 +683,50 @@ describe('parseWorkflowImportConfig', () => {
         t
       })
     ).rejects.toThrow('app:type_not_recognized');
+  });
+
+  it('keeps canonical Agent tools through canvas import and save', async () => {
+    const compactTool = {
+      id: 'review-tool',
+      name: 'Review tool',
+      inputs: [{ key: 'query', mode: 'manual' }],
+      config: { query: 'saved query' }
+    };
+
+    const imported = await parseWorkflowImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [
+          createWorkflowNode('workflowStart', 'start'),
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: 'agent',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+                selectedType: FlowNodeInputTypeEnum.selectTool,
+                value: [compactTool]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      t
+    });
+
+    const uiNodes = imported.nodes.map((item) => storeNode2FlowNode({ item, t, isTool: false }));
+    const saved = uiWorkflow2StoreWorkflow({ nodes: uiNodes, edges: imported.edges });
+    const savedAgent = saved.nodes.find((node) => node.nodeId === 'agent');
+    const savedTools = savedAgent?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    )?.value;
+
+    expect(savedTools).toEqual([compactTool]);
   });
 });
