@@ -30,6 +30,8 @@ ENV NEXT_PUBLIC_DOC_TRACK_SITE_ID=$DOC_TRACK_SITE_ID
 
 COPY . .
 RUN corepack enable
+# The standalone docs context needs shared catalogs, but does not use the app SDK patches.
+RUN pnpm config delete patchedDependencies --location=project
 RUN pnpm install
 RUN pnpm build
 
