@@ -928,7 +928,7 @@
   "model.name": "Model name",
   "model.output_price": "output price",
   "model.permission_config_hint": "If no collaborators are added, all members are available by default",
-  "model.price_tier_range": "Input interval: k/tokens",
+  "model.price_tier_range": "Input interval: M Tokens",
   "model.provider": "Provider",
   "model.provider_title": "Model provider",
   "model.system_model_tag": "System",

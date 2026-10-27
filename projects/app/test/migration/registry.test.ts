@@ -32,7 +32,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261008_migrate_chunk_training',
       '20261009_migrate_dataset_rebuild_status',
       '20261009_backfill_agent_sandbox_team_id',
-      '20261022_backfill_folder_ancestor_ids'
+      '20261022_backfill_folder_ancestor_ids',
+      '20261025_token_prices_per_million'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
@@ -43,16 +44,23 @@ describe('validateSystemMigrationRegistry', () => {
     expect(
       systemMigrations.filter((task: SystemMigration) => task.manual).map(({ id }) => id)
     ).toEqual(['20261008_migrate_chunk_training', '20261009_migrate_dataset_rebuild_status']);
-    expect(systemMigrations.at(-3)).toMatchObject({
+    expect(
+      systemMigrations.find(({ id }) => id === '20261009_migrate_dataset_rebuild_status')
+    ).toMatchObject({
       dependsOn: ['20261008_migrate_chunk_training']
     });
     expect(
       systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
     ).toEqual(['20260903_migrate_legacy_system_models']);
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261025_token_prices_per_million',
+      version: '4.17.4',
+      progressSteps: [{ key: 'models' }]
+    });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
 
-  it('runs only the seven selected production tasks independently', () => {
+  it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
       '20260907_cleanup_team_member_roles',
@@ -61,7 +69,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260907_migrate_dataset_tags_v2',
       '20260928_backfill_member_name_set',
       '20261009_backfill_agent_sandbox_team_id',
-      '20261022_backfill_folder_ancestor_ids'
+      '20261022_backfill_folder_ancestor_ids',
+      '20261025_token_prices_per_million'
     ]);
   });
 

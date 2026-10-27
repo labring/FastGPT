@@ -131,5 +131,9 @@
   "migrations.20261022_backfill_folder_ancestor_ids.result": "已扫描 {{scannedCount}} 条目录和资源记录，未解决异常 {{failedCount}} 条。",
   "migrations.20261022_backfill_folder_ancestor_ids.apps": "回填 App 与工具文件夹路径",
   "migrations.20261022_backfill_folder_ancestor_ids.datasets": "回填知识库文件夹路径",
-  "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径"
+  "migrations.20261022_backfill_folder_ancestor_ids.validation": "校验文件夹路径",
+  "migrations.20261025_token_prices_per_million.name": "迁移系统模型价格至百万单位",
+  "migrations.20261025_token_prices_per_million.description": "后台一次读取系统模型并批量写入 pricing，Token/TTS 单价乘以 1000，STT 原价复制；保留根级原值，已有合法 pricing 跳过。团队模型不计费，不阻塞启动；失败后修复数据并重试。",
+  "migrations.20261025_token_prices_per_million.models": "更新系统模型单价",
+  "migrations.20261025_token_prices_per_million.result": "已迁移 {{migratedCount}} 个系统模型至 pricing，旧价格原值和团队模型保持不变。"
 }

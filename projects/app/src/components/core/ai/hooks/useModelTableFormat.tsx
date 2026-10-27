@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import type { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
 import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
+import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 
 type ModelConfigCapabilityFields = {
   maxContext?: number;
@@ -23,7 +24,6 @@ export type BaseFormatModelItem = Partial<PriceType> & {
   model?: string;
   type: ModelTypeEnum;
   provider: string;
-  charsPointsPrice?: number;
   config?: ModelConfigCapabilityFields | Record<string, unknown>;
   isActive?: boolean;
   testMode?: boolean;
@@ -96,20 +96,22 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
         item.type === ModelTypeEnum.stt
           ? `60${t('common:unit.seconds')}`
           : item.type === ModelTypeEnum.tts
-            ? `1K ${t('common:unit.character')}`
-            : '1K Tokens';
+            ? `1M ${t('common:unit.character')}`
+            : 'M Tokens';
       const priceLabel =
-        item.type === ModelTypeEnum.llm ? (
+        item.scope === ModelScopeEnum.team ? (
+          '-'
+        ) : item.type === ModelTypeEnum.llm ? (
           <PriceTiersLabel
             config={item}
             unitLabel={`${t('common:support.wallet.subscription.point')} / ${unit}`}
           />
-        ) : item.charsPointsPrice ? (
+        ) : typeof item.pricing?.unitPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             {(item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) &&
               `${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {roundModelPrice(item.pricing?.unitPrice)}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / ${unit}`}
           </Flex>

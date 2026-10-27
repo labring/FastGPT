@@ -98,10 +98,7 @@ type SystemModelDocument = {
   requestUrl?: string;
   requestAuth?: string;
 
-  charsPointsPrice?: number;
-  priceTiers?: ModelPriceTier[];
-  inputPrice?: number;
-  outputPrice?: number;
+  pricing?: ModelPricingType;
 
   config: ModelConfig;
 };
@@ -195,18 +192,18 @@ Mongoose 顶层字段应显式声明，`config` 可以使用 `Schema.Types.Mixed
 插件 SDK 1.1.0 的模型协议仍是扁平结构。各类型共同提供：
 
 - 身份/展示字段：`type`、`provider`、`model`、`name`。
-- 初始价格字段：`charsPointsPrice`、`inputPrice`、`outputPrice`。
+- 当前初始价格仅接受 `pricing`；旧 SDK 的根级价格不会进入业务 Schema，也不参与运行期计费，详见[模型计价设计](./model-token-price-unit.md)。
 - LLM 能力字段：`maxContext`、`maxTokens`、`quoteMaxToken`、温度/返回格式/多模态/推理/工具调用能力、`defaultSystemChatPrompt`、`defaultConfig`、`fieldMap` 等。
 - Embedding 能力字段：`defaultToken`、`maxToken`、`weight`、`hidden`、`normalization`、`defaultConfig`、`dbConfig`、`queryConfig`。
 - Rerank 能力字段：`maxToken`；TTS 能力字段：`voices`；STT 没有额外能力字段。
 
-插件协议不提供 `scope`、`isActive`、`testMode`、默认模型标记、`requestUrl`、`requestAuth` 和 `priceTiers`。其中 `scope` 在本轮固定写为 `system`，其余均为 FastGPT 数据库业务字段。
+插件协议不提供 `scope`、`isActive`、`testMode`、默认模型标记、`requestUrl` 和 `requestAuth`。其中 `scope` 在本轮固定写为 `system`，其余均为 FastGPT 数据库业务字段。
 
 插件数据进入系统时，只允许由一个 normalize 函数完成以下转换，数据库、API 和缓存不得各自实现字段分拣：
 
 1. `maxTokens` 映射为 `config.maxResponse`，其余类型能力字段放入对应 `config`。
 2. `type/provider/model/name` 保留为顶层初始化字段。
-3. 插件的旧价格字段保留为顶层初始化价格，不放入 `config`。
+3. 只接受模板的新 `pricing` 价格结构，不放入 `config`；旧价格仅存在于迁移专属解析器。
 4. 插件中的 deprecated 场景开关只用于旧数据兼容，不进入新的 canonical schema。
 
 模型加载阶段不得再使用 `{ ...pluginModel, ...dbModel }` 合并整个对象。数据库文档是可独立运行的完整实例和唯一权威来源；插件模板只在首次物化时提供身份、展示、价格和 `config` 初始值：
@@ -598,10 +595,10 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 公开响应使用独立 `PublicPriceSystemModelSchema`，只包含：
 
 - 所有类型共有 `name`、`provider`、`type`、`testMode`。
-- LLM 仅增加运行时归一化后的 `priceTiers`，以及 `config.maxContext/vision/audio/video/reasoning`。
-- Embedding/Rerank 仅增加 `charsPointsPrice` 和 `config.maxToken`；TTS/STT 仅增加 `charsPointsPrice`，不返回空 `config`。
+- LLM 仅增加 `pricing.tiers`，以及 `config.maxContext/vision/audio/video/reasoning`。
+- Embedding/Rerank 仅增加 `pricing.unitPrice` 和 `config.maxToken`；TTS/STT 仅增加 `pricing.unitPrice`，不返回空 `config`。
 
-不得返回 `modelId/model/avatar/inputPrice/outputPrice`、`requestUrl/requestAuth`、默认 system prompt、`defaultConfig/fieldMap/dbConfig/queryConfig`、voices、默认模型标记、权限信息或其他管理字段。价格页改为给展示组件显式传入这份公开列表，不再从全局模型 store 读取。该常规公共接口需要完整 Zod contract、响应 parse 和 OpenAPI 文档；因为没有入参，不创建空 Query Schema，也不调用空的 `parseApiInput`。
+不得返回 `modelId/model/avatar`、旧根级价格字段、`requestUrl/requestAuth`、默认 system prompt、`defaultConfig/fieldMap/dbConfig/queryConfig`、voices、默认模型标记、权限信息或其他管理字段。价格页改为给展示组件显式传入这份公开列表，不再从全局模型 store 读取。该常规公共接口需要完整 Zod contract、响应 parse 和 OpenAPI 文档；因为没有入参，不创建空 Query Schema，也不调用空的 `parseApiInput`。
 
 ## 10. OpenAPI 与跨仓库改动
 
