@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -84,10 +85,18 @@ const createTemplate = (
 });
 
 describe('listAuthorizedSystemToolTemplates', () => {
+  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.spyOn(logger, 'debug').mockImplementation(() => {});
+    vi.spyOn(logger, 'warn').mockImplementation(() => {});
     mocks.getUserDetail.mockResolvedValue({ tags: ['hidden-user'] });
     mocks.getDebugSessionStatus.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('filters top-level system and team tools without loading details or toolset children', async () => {
@@ -129,7 +138,94 @@ describe('listAuthorizedSystemToolTemplates', () => {
     });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
     expect(mocks.getClientToolPreviewNode).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+      stage: 'templates.resolvePermissions',
+      teamId: context.teamId,
+      inputCount: 11,
+      outputCount: 8,
+      durationMs: expect.any(Number)
+    });
+    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+      stage: 'templates.sort',
+      teamId: context.teamId,
+      toolCount: 8,
+      durationMs: expect.any(Number)
+    });
+    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+      stage: 'templates.filter',
+      teamId: context.teamId,
+      inputCount: 8,
+      outputCount: 4,
+      durationMs: expect.any(Number)
+    });
   });
+
+  it('preserves debug priority, root visibility and search filtering while logging counts', async () => {
+    const debugSource = 'debug:tmbId:member-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-match', { hideTags: ['hidden-user'] }),
+      createTool('systemTool-other'),
+      createTool('systemTool-debug-match', { source: debugSource })
+    ]);
+    mocks.getDebugSessionStatus.mockResolvedValue({
+      enabled: true,
+      status: 'enabled',
+      source: debugSource
+    });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
+
+    const tools = await listAuthorizedSystemToolTemplates({
+      ...context,
+      isRoot: true,
+      searchKey: 'MATCH'
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-debug-match', 'systemTool-match']);
+    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+      stage: 'templates.filter',
+      teamId: context.teamId,
+      inputCount: 3,
+      outputCount: 2,
+      durationMs: expect.any(Number)
+    });
+  });
+
+  it.each([
+    [PluginStatusEnum.Normal, true, ['systemTool-set/match'], 3],
+    [PluginStatusEnum.Hidden, true, [], 3],
+    [PluginStatusEnum.Normal, false, [], 0]
+  ] as const)(
+    'logs child filtering for parent status %s with children=%s',
+    async (status, hasChildren, expectedIds, inputCount) => {
+      mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
+        ...createTool('systemTool-set', { isToolSet: true, status }),
+        children: hasChildren
+          ? [
+              { id: 'match', name: 'Match', status: PluginStatusEnum.Normal },
+              { id: 'other', name: 'Other', status: PluginStatusEnum.Normal },
+              { id: 'hidden-match', name: 'Hidden match', status: PluginStatusEnum.Hidden }
+            ]
+          : undefined
+      });
+
+      const tools = await listAuthorizedSystemToolTemplates({
+        ...context,
+        parentId: 'systemTool-set',
+        searchKey: 'match'
+      });
+
+      expect(tools.map((tool) => tool.id)).toEqual(expectedIds);
+      expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+        stage: 'templates.filter',
+        teamId: context.teamId,
+        parentId: 'systemTool-set',
+        inputCount,
+        outputCount: expectedIds.length,
+        durationMs: expect.any(Number)
+      });
+      expect(mocks.getSystemToolList).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('getAuthorizedSystemToolTemplateCatalog', () => {

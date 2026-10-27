@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { withDurationLog } from '@fastgpt/service/common/logger/timing';
+import { withDurationLog, withSyncDurationLog } from '@fastgpt/service/common/logger/timing';
 
 const createLogger = () => ({
   debug: vi.fn(),
@@ -11,6 +11,88 @@ const mockNowQueue = (timestamps: number[]) => {
   let index = 0;
   return vi.spyOn(Date, 'now').mockImplementation(() => timestamps[index++] ?? 0);
 };
+
+describe('withSyncDurationLog', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns the original result synchronously with properties, summary and duration', () => {
+    const logger = createLogger();
+    const tools = ['a', 'b'];
+    mockNowQueue([1000, 1040]);
+
+    const result = withSyncDurationLog(
+      {
+        logger,
+        message: 'Stage finished',
+        properties: { stage: 'tools.merge', inputCount: 1 },
+        summary: (items: string[]) => ({ outputCount: items.length })
+      },
+      () => tools
+    );
+
+    expect(result).toBe(tools);
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+      stage: 'tools.merge',
+      inputCount: 1,
+      outputCount: 2,
+      durationMs: 40
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [999, 'debug'],
+    [1000, 'warn']
+  ] as const)(
+    'logs a %ims stage at %s without requiring properties or summary',
+    (durationMs, level) => {
+      const logger = createLogger();
+      mockNowQueue([0, durationMs]);
+
+      expect(
+        withSyncDurationLog({ logger, message: 'Stage finished' }, () => undefined)
+      ).toBeUndefined();
+
+      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('Stage finished', { durationMs });
+      expect(logger[level === 'debug' ? 'warn' : 'debug']).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    [20, 'debug'],
+    [1000, 'warn']
+  ] as const)(
+    'records a failed %ims stage at %s and rethrows the same error',
+    (durationMs, level) => {
+      const logger = createLogger();
+      const error = new Error('Tool filtering failed');
+      mockNowQueue([0, durationMs]);
+
+      let caughtError: unknown;
+      try {
+        withSyncDurationLog(
+          { logger, message: 'Stage finished', properties: { stage: 'templates.filter' } },
+          () => {
+            throw error;
+          }
+        );
+      } catch (caught) {
+        caughtError = caught;
+      }
+
+      expect(caughtError).toBe(error);
+
+      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+        stage: 'templates.filter',
+        durationMs,
+        failed: true
+      });
+      expect(logger[level === 'debug' ? 'warn' : 'debug']).not.toHaveBeenCalled();
+    }
+  );
+});
 
 describe('withDurationLog', () => {
   afterEach(() => {

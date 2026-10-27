@@ -25,7 +25,7 @@ import type {
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { withDurationLog } from '../../../../common/logger/timing';
+import { withDurationLog, withSyncDurationLog } from '../../../../common/logger/timing';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
 import {
@@ -66,13 +66,7 @@ const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
-  | 'id'
-  | 'name'
-  | 'status'
-  | 'description'
-  | 'icon'
-  | 'currentCost'
-  | 'systemKeyCost'
+  'id' | 'name' | 'status' | 'description' | 'icon' | 'currentCost' | 'systemKeyCost'
 >;
 
 type SystemToolDisplayInfoType = Pick<
@@ -102,7 +96,6 @@ type SystemToolDisplayInfoType = Pick<
 > & {
   children?: SystemToolDisplayChildType[];
 };
-
 
 const getChildIconMap = (children?: { id: string; icon?: string }[]) =>
   new Map(
@@ -352,39 +345,61 @@ export class SystemToolRepo {
       },
       () => this.getAllSystemToolRecords()
     );
-    const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
+    // 3. 单独记录配置合并耗时，避免将归一化处理混入插件服务或 Mongo 查询耗时。
+    const concatTools = withSyncDurationLog(
+      {
+        logger,
+        message: 'System tool list stage finished',
+        properties: {
+          stage: 'tools.merge',
+          inputCount: tools.length,
+          configCount: DBPlugins.length
+        },
+        summary: (items) => ({ outputCount: items.length })
+      },
+      () => {
+        const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
+        const formattedTools = tools.map((tool) => {
+          const isTeamSource = isTeamPluginSource(tool.source);
+          const item = SystemToolCodec.attachToolConfig({
+            tool,
+            config: isTeamSource
+              ? undefined
+              : getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
+            source: tool.source
+          });
 
-    const formattedTools = tools.map((tool) => {
-      const isTeamSource = isTeamPluginSource(tool.source);
-      const item = SystemToolCodec.attachToolConfig({
-        tool,
-        config: isTeamSource ? undefined : getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
-        source: tool.source
-      });
+          return {
+            ...item,
+            status: getVisiblePluginStatus({
+              status: item.status,
+              source: tool.source
+            })
+          };
+        });
 
-      return {
-        ...item,
-        status: getVisiblePluginStatus({
-          status: item.status,
-          source: tool.source
-        })
-      };
-    });
+        /** 工作流插件，admin 后台配的 */
+        const DBWorkflowPlugins =
+          !sources || sources.includes('system')
+            ? DBPlugins.filter((item) => item.customConfig?.associatedPluginId)
+            : [];
 
-    /** 工作流插件，admin 后台配的 */
-    const DBWorkflowPlugins =
-      !sources || sources.includes('system')
-        ? DBPlugins.filter((item) => item.customConfig?.associatedPluginId)
-        : [];
+        return [
+          ...formattedTools,
+          ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
+        ];
+      }
+    );
 
-    const concatTools = [
-      ...formattedTools,
-      ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
-    ];
-
-    concatTools.sort(createSystemToolSorter(tags));
-
-    return concatTools;
+    // 4. 排序依赖工具数量和标签匹配次数，与配置合并分别计时。
+    return withSyncDurationLog(
+      {
+        logger,
+        message: 'System tool list stage finished',
+        properties: { stage: 'tools.sort', toolCount: concatTools.length }
+      },
+      () => concatTools.sort(createSystemToolSorter(tags))
+    );
   };
 
   /** 获取单一插件的 Detail 信息 */
@@ -564,7 +579,8 @@ export class SystemToolRepo {
       secretsVal: visibleSecretsVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
       intro:
-        dbTool?.customConfig?.intro ?? (childPluginId ? (child!.description ?? '') : tool.description),
+        dbTool?.customConfig?.intro ??
+        (childPluginId ? (child!.description ?? '') : tool.description),
       isToolSet: tool.isToolset && !childPluginId,
       ...(children ? { children } : {}),
       name: dbTool?.customConfig?.name ?? (childPluginId ? child!.name : tool.name),
@@ -670,7 +686,7 @@ export class SystemToolRepo {
       : getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId);
     const parent = SystemToolCodec.attachToolConfig({
       tool,
-      config: parentConfig,
+      config: parentConfig
     });
     parent.status = getVisiblePluginStatus({
       status: parent.status,
