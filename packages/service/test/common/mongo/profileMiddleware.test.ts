@@ -168,6 +168,27 @@ describe('Mongo profile middleware', () => {
     expect(durations[1]).toBe(2500);
   });
 
+  it('does not reuse a previous Document timer when a later save fails validation', async () => {
+    const schema = new Schema<TestMongoRecord>({ name: { type: String, required: true } });
+    const model = getMongoModel<TestMongoRecord>(`MongoProfileDocReuse${randomUUID()}`, schema);
+    const document = new model({ name: 'valid' });
+
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+    await document.save();
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(1);
+
+    profilingMocks.recordMongoOperation.mockClear();
+
+    // required 校验由 Mongoose 内置 pre hook 执行，先于计时 pre hook；错误 post hook 仍会触发。
+    nowSpy.mockReturnValue(6000);
+    document.name = undefined as any;
+    await expect(document.save()).rejects.toThrow();
+
+    // 没有执行本次计时 pre hook，就不能消费上一次保存的起点。
+    expect(profilingMocks.recordMongoOperation).not.toHaveBeenCalled();
+    nowSpy.mockRestore();
+  });
+
   it('records concurrent failed insertMany calls separately', async () => {
     const { model } = createModel();
     const insertSpy = vi

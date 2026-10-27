@@ -123,6 +123,14 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
   /** 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。 */
   const finishOperation = (context: any) => {
     const startedAt = getOperationStartTime(context);
+
+    // 用完即清除实例上的计时状态。Mongoose 的内置校验在计时 pre hook 之前执行，
+    // 同一个 Document 再次 save 若在本地校验阶段失败，错误 post hook 仍会触发，
+    // 此时不能沿用上一次保存的起点，否则业务间隔会被算成 Mongo 耗时并触发慢查询告警。
+    if (context && typeof context === 'object') {
+      delete context._startTime;
+    }
+
     if (startedAt === undefined) return;
 
     const duration = Date.now() - startedAt;
