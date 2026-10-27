@@ -74,7 +74,7 @@ export const beforeUpdateAppFormat = async ({
   };
 
   nodes.forEach((node) => {
-    // pluginData.error 是详情/水合接口按当前资源状态生成的展示态，重新读取时会重建，不能落库。
+    // pluginData.error 是详情接口按当前资源状态生成的展示态，重新读取时会重建，不能落库。
     if (node.pluginData?.error) {
       delete node.pluginData.error;
     }

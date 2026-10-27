@@ -15,8 +15,6 @@ import type {
   GetAppBasicInfoResponseType,
   GetAppDetailQueryType,
   GetAppDetailResponseType,
-  HydrateWorkflowBodyType,
-  HydrateWorkflowResponseType,
   ListAppBodyType,
   ListAppResponseType,
   ListAppV2BodyType,
@@ -67,10 +65,6 @@ export const delAppById = (id: DeleteAppQueryType['appId']) =>
  */
 export const getAppDetailById = (id: GetAppDetailQueryType['appId']) =>
   GET<GetAppDetailResponseType>(`/core/app/detail?appId=${id}`);
-
-/** 导入工作流前补全工具/技能/知识库状态，不写入数据库。 */
-export const postHydrateWorkflow = (data: HydrateWorkflowBodyType) =>
-  POST<HydrateWorkflowResponseType>('/core/app/hydrateWorkflow', data);
 
 /**
  * 根据 ID 更新应用

@@ -156,6 +156,26 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
   return false;
 };
 
+/**
+ * 判断文件链接输入是否真正具备文件来源。
+ * agentGenerated 由上层 Agent 在运行时通过工具参数写入 URL；off 不接收文件；
+ * 引用/JSONEditor 必须有非空绑定，与 dispatchRunAgent 的 parseHistoryFiles 口径一致。
+ */
+export const isFileUrlInputConfigured = (
+  input?: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedType' | 'value'> | null
+) => {
+  if (!input) return false;
+
+  const selectedType = getSelectedInputRenderType(input);
+  if (selectedType === FlowNodeInputTypeEnum.agentGenerated) return true;
+  if (selectedType === FlowNodeInputTypeEnum.off) return false;
+
+  const { value } = input;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'string') return value.trim().length > 0;
+  return false;
+};
+
 // Check the value is a valid reference value format: [variableId, outputId]
 export const isValidReferenceValueFormat = (
   value: any,

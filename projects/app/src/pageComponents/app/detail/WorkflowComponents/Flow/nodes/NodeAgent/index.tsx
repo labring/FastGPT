@@ -1,12 +1,9 @@
 import { Box, Button, Flex, Grid, HStack, Switch, useDisclosure } from '@chakra-ui/react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -30,7 +27,6 @@ import { WorkflowBufferDataContext } from '../../../context/workflowInitContext'
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getEditorVariables } from '../../../utils';
 import { useWorkflowQuoteLimit } from '../../hooks/useWorkflowQuoteLimit';
@@ -40,15 +36,15 @@ import { useAgentSkillManager } from './useAgentSkillManager';
 import { restoreDatasetParams } from './utils';
 
 import DatasetCard from '@/components/core/app/DatasetCard';
+import SelectedToolCard from '@/components/core/app/SelectedToolCard';
 import SkillCard from '@/components/core/app/SkillCard';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
-import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkflowSandboxConfig, {
@@ -222,7 +218,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           usingReRank: true,
           rerankModelId: undefined,
           rerankWeight: 0.6,
-          datasetSearchUsingExtensionQuery: true,
+          datasetSearchUsingExtensionQuery: false,
           datasetSearchExtensionModelId: undefined,
           datasetSearchExtensionBg: ''
         },
@@ -315,6 +311,21 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
     onOpenDatasetSelect();
   }, [onOpenDatasetParams, onOpenDatasetSelect, selectedDatasets.length]);
+  const onDeleteDataset = useCallback(
+    (datasetId: string) => {
+      if (!datasetSelectInput) return;
+      onChangeNode({
+        nodeId,
+        key: NodeInputKeyEnum.datasetSelectList,
+        type: 'updateInput',
+        value: {
+          ...datasetSelectInput,
+          value: selectedDatasets.filter((dataset) => dataset.datasetId !== datasetId)
+        }
+      });
+    },
+    [datasetSelectInput, nodeId, onChangeNode, selectedDatasets]
+  );
 
   // ---- Skills ----
   const {
@@ -409,6 +420,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     selectedAgentSkills,
     canUploadFile,
     onClickSkill,
+    onConfigTool,
     onRemoveSkill,
     onUpdateOrAddTool,
     onDeleteTool,
@@ -504,13 +516,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     onOpen: onOpenToolSelect,
     onClose: onCloseToolSelect
   } = useDisclosure();
-
-  // ---- Model ----
-  const { model: currentModel } = useModelDetail({
-    modelType: ModelTypeEnum.llm,
-    modelId: inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value,
-    model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value
-  });
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
@@ -647,68 +652,17 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   {t('app:Add_tool')}
                 </ResourceSelectButton>
                 {selectedTools.map((item) => (
-                  <MyTooltip
+                  <SelectedToolCard
                     key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-                    label={item.intro}
-                  >
-                    <Flex
-                      alignItems={'center'}
-                      h={10}
-                      boxShadow={'sm'}
-                      bg={'white'}
-                      border={'base'}
-                      px={2}
-                      borderRadius={'md'}
-                      _hover={{
-                        borderColor: 'primary.300',
-                        '& .delete-btn': { display: 'flex' },
-                        '& .tool-status-tag': { display: 'none' },
-                        '& .setting-btn': { display: 'flex' }
-                      }}
-                    >
-                      <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                      <Box
-                        ml={1.5}
-                        flex={'1 0 0'}
-                        w={0}
-                        className="textEllipsis"
-                        fontWeight={'bold'}
-                        fontSize={['sm', 'sm']}
-                      >
-                        {item.name}
-                      </Box>
-                      {isDebugToolSource(item.source) && (
-                        <DebugToolTag className="tool-status-tag" />
-                      )}
-                      <MyIconButton
-                        className="setting-btn"
-                        display={'none'}
-                        icon="common/setting"
-                        tip={t('app:tool_param_config')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onClickSkill(item.pluginId ?? item.id);
-                        }}
-                      />
-                      <Box className="delete-btn" display={'none'}>
-                        <MyIconButton
-                          icon="delete"
-                          hoverBg="red.50"
-                          hoverColor="red.600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteTool(item.pluginId ?? item.id, item.source);
-                          }}
-                        />
-                      </Box>
-                    </Flex>
-                  </MyTooltip>
+                    tool={item}
+                    onConfig={onConfigTool}
+                    onDelete={(tool) => onDeleteTool(tool.pluginId ?? tool.id, tool.source)}
+                  />
                 ))}
               </Grid>
-              {isOpenToolSelect && currentModel && (
+              {isOpenToolSelect && (
                 <ToolSelectModal
                   selectedTools={selectedTools}
-                  selectedModel={currentModel}
                   fileSelectConfig={canUploadFile ? { canSelectFile: true } : {}}
                   onAddTool={(tool) => onUpdateOrAddTool({ ...tool, id: tool.pluginId ?? tool.id })}
                   onRemoveTool={(tool) => onDeleteTool(tool.id, tool.source)}
@@ -765,7 +719,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       {t('common:core.chat.Select dataset')}
                     </ResourceSelectButton>
                     {selectedDatasets.map((dataset) => (
-                      <DatasetCard key={dataset.datasetId} dataset={dataset} />
+                      <DatasetCard
+                        key={dataset.datasetId}
+                        dataset={dataset}
+                        onDelete={onDeleteDataset}
+                      />
                     ))}
                   </Grid>
                   {isOpenDatasetSelect && (
@@ -799,7 +757,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         )}
 
         {/* 7. Chat input (userChatInput) */}
-        {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
+        {chatInputs.length > 0 && (
+          <RenderInput nodeId={nodeId} flowInputList={chatInputs} isTool={isTool} />
+        )}
       </Container>
 
       {successOutputs.length > 0 && (

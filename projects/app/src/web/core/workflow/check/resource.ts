@@ -6,6 +6,7 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getSelectedInputRenderType,
+  isFileUrlInputConfigured,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getAgentPromptToolIds } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowRuleIssue } from '../type';
@@ -153,6 +155,16 @@ export const checkWorkflowNodeResourceRules = ({
         .filter(Boolean)
         .map(String)
     );
+    // 内置能力通过 @ 选择时只写入 Prompt（{{@dataset_search@}} 等），不会进入 selectedTools；
+    // 这里仅把 Prompt 引用并入前置能力判断，不能写回 selectedTools 或资源快照。
+    const promptInput = inputs.get(NodeInputKeyEnum.aiSystemPrompt);
+    if (
+      promptInput &&
+      !nodeInputIsReference(promptInput) &&
+      typeof promptInput.value === 'string'
+    ) {
+      getAgentPromptToolIds(promptInput.value).forEach((id) => selectedToolIds.add(id));
+    }
     const getSelectedToolName = (id: string) =>
       getResourceName(
         selectedTools.find((tool) =>
@@ -239,8 +251,7 @@ export const checkWorkflowNodeResourceRules = ({
       return false;
     })();
     const fileInput = inputs.get(NodeInputKeyEnum.fileUrlList);
-    const hasFileInput =
-      !!fileInput && getSelectedInputRenderType(fileInput) !== FlowNodeInputTypeEnum.off;
+    const hasFileInput = isFileUrlInputConfigured(fileInput);
 
     if (selectedToolIds.has(SubAppIds.datasetSearch) && !hasDataset) {
       addAgentIssue({

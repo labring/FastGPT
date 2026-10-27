@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAgentSkillInputUpdates,
+  getAgentToolConfigId,
   restoreDatasetParams
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeAgent/utils';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
@@ -140,5 +141,30 @@ describe('restoreDatasetParams', () => {
       (input) => input.key !== NodeInputKeyEnum.datasetSimilarity
     );
     expect(restoreDatasetParams({ state, inputs })).toBe(state);
+  });
+});
+
+describe('AgentNode defaults', () => {
+  it('disables dataset query extension by default', () => {
+    expect(getInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery).value).toBe(false);
+  });
+});
+
+describe('getAgentToolConfigId', () => {
+  it('uses the source-prefixed identity for sourced tools', () => {
+    expect(getAgentToolConfigId({ pluginId: 'tool-1', source: 'teamId:team-1' } as any)).toBe(
+      'teamId:team-1:tool-1'
+    );
+  });
+
+  it('keeps the bare id for unsourced tools', () => {
+    expect(getAgentToolConfigId({ pluginId: 'tool-1' } as any)).toBe('tool-1');
+    expect(getAgentToolConfigId({ id: 'tool-2' } as any)).toBe('tool-2');
+  });
+
+  it('falls back to id for sourced tools without pluginId', () => {
+    expect(getAgentToolConfigId({ id: 'tool-2', source: 'teamId:team-1' } as any)).toBe(
+      'teamId:team-1:tool-2'
+    );
   });
 });

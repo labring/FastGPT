@@ -228,7 +228,7 @@ export const AgentNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
-      value: true
+      value: false
     },
     {
       key: NodeInputKeyEnum.datasetSearchExtensionModelId,

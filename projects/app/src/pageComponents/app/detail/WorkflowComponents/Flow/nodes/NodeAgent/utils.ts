@@ -1,7 +1,23 @@
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  SelectedAgentSkillItemType,
+  SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+/**
+ * 工具配置弹窗使用的 id。
+ * useSkillManager 对带 source 的工具使用 `source:id` 复合键，系统工具则保持裸 id，
+ * 这里必须沿用同一口径，避免给 system 工具错误补 `system:` 前缀。
+ */
+export const getAgentToolConfigId = (
+  tool: Pick<SelectedToolItemType, 'id' | 'pluginId' | 'source'>
+) => {
+  const toolId = tool.pluginId ?? tool.id;
+  return tool.source ? getToolIdentityKey(toolId, tool.source) : toolId;
+};
 
 export type AgentSkillInputUpdate = {
   nodeId: string;

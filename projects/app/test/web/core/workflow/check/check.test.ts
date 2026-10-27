@@ -1057,18 +1057,15 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
-  it('reports Agent tool context prerequisites without a sandbox', () => {
+  it('reports Agent tool context prerequisites referenced in the prompt', () => {
     const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
       inputs: [
         {
-          key: NodeInputKeyEnum.selectedTools,
-          label: '工具',
-          renderTypeList: [FlowNodeInputTypeEnum.custom],
-          value: [
-            { id: SubAppIds.datasetSearch },
-            { id: SubAppIds.readFiles },
-            { id: AGENT_SANDBOX_TOOLSET_ID }
-          ]
+          key: NodeInputKeyEnum.aiSystemPrompt,
+          label: '提示词',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.textarea,
+          value: `{{@${SubAppIds.datasetSearch}@}} {{@${SubAppIds.readFiles}@}} {{@${AGENT_SANDBOX_TOOLSET_ID}@}}`
         },
         {
           key: NodeInputKeyEnum.skills,
@@ -1105,6 +1102,104 @@ describe('checkWorkflowNodeIssues', () => {
         })
       ])
     );
+  });
+
+  it('checks readFiles file input only when it is actually bound', () => {
+    const fileInputCases = [
+      { name: 'absent', fileInput: undefined, expectIssue: true },
+      {
+        name: 'empty reference',
+        fileInput: {
+          key: NodeInputKeyEnum.fileUrlList,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+          value: []
+        },
+        expectIssue: true
+      },
+      {
+        name: 'bound reference',
+        fileInput: {
+          key: NodeInputKeyEnum.fileUrlList,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+          value: [['start', NodeOutputKeyEnum.userFiles]]
+        },
+        expectIssue: false
+      },
+      {
+        name: 'agent generated',
+        fileInput: {
+          key: NodeInputKeyEnum.fileUrlList,
+          renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          value: []
+        },
+        expectIssue: false
+      },
+      {
+        name: 'off',
+        fileInput: {
+          key: NodeInputKeyEnum.fileUrlList,
+          renderTypeList: [FlowNodeInputTypeEnum.off],
+          selectedType: FlowNodeInputTypeEnum.off,
+          value: ['start', NodeOutputKeyEnum.userFiles]
+        },
+        expectIssue: true
+      }
+    ] as const;
+
+    for (const { name, fileInput, expectIssue } of fileInputCases) {
+      const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiSystemPrompt,
+            label: '提示词',
+            renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.textarea,
+            value: `{{@${SubAppIds.readFiles}@}}`
+          },
+          ...(fileInput ? [fileInput] : [])
+        ] as any
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, agentNode],
+        edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+      });
+      const fileIssues = (result.agent ?? []).filter(
+        (issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList
+      );
+
+      expect(fileIssues.length > 0, name).toBe(expectIssue);
+    }
+  });
+
+  it('does not parse prompt tool references when the prompt is a reference', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiSystemPrompt,
+          label: '提示词',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: `{{@${SubAppIds.datasetSearch}@}} {{@${SubAppIds.readFiles}@}} {{@${AGENT_SANDBOX_TOOLSET_ID}@}}`
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect(
+      (result.agent ?? []).filter((issue) =>
+        [
+          NodeInputKeyEnum.datasetSelectList,
+          NodeInputKeyEnum.fileUrlList,
+          NodeInputKeyEnum.useAgentSandbox
+        ].includes(issue.inputKey as NodeInputKeyEnum)
+      )
+    ).toEqual([]);
   });
 
   it('skips Agent tool context checks when the context inputs are references', () => {

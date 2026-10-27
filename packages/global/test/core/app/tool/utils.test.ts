@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getAgentPromptToolIds,
   getTeamPluginSource,
   getToolIdentityKey,
   getToolNameCandidates,
@@ -9,6 +10,7 @@ import {
   hasDebugToolInSelectedTools,
   isTeamPluginSource,
   mergeToolSetChildDescriptions,
+  normalizeToolIdentity,
   parseDebugToolSource,
   parseTeamPluginSource,
   parseToolsetToolId,
@@ -282,6 +284,53 @@ describe('getToolIdentityKey', () => {
     expect(getToolIdentityKey('systemTool-weather', undefined)).toBe(
       getToolIdentityKey('systemTool-weather', 'system')
     );
+  });
+});
+
+describe('normalizeToolIdentity', () => {
+  it('uses pluginId as the canonical id', () => {
+    expect(
+      normalizeToolIdentity({ id: 'preview-random-id', pluginId: 'real-tool-id' })
+    ).toMatchObject({ id: 'real-tool-id', pluginId: 'real-tool-id' });
+  });
+
+  it('falls back to id when pluginId is missing', () => {
+    expect(normalizeToolIdentity({ id: 'stored-tool-id' })).toEqual({
+      id: 'stored-tool-id',
+      pluginId: 'stored-tool-id'
+    });
+    expect(normalizeToolIdentity({ pluginId: 'plugin-id' })).toEqual({
+      id: 'plugin-id',
+      pluginId: 'plugin-id'
+    });
+  });
+
+  it('keeps tools without any identity unchanged', () => {
+    const tool = { name: 'tool' };
+    expect(normalizeToolIdentity(tool)).toBe(tool);
+  });
+});
+
+describe('getAgentPromptToolIds', () => {
+  it('extracts unique tool ids from prompt tokens', () => {
+    expect(
+      getAgentPromptToolIds(
+        'use {{@dataset_search@}} and {{@read_files@}}, then {{@dataset_search@}}'
+      )
+    ).toEqual(['dataset_search', 'read_files']);
+  });
+
+  it('trims whitespace and ignores malformed tokens', () => {
+    expect(getAgentPromptToolIds('{{@ read_files @}} {{@unclosed')).toEqual(['read_files']);
+    expect(getAgentPromptToolIds('')).toEqual([]);
+    expect(getAgentPromptToolIds(undefined)).toEqual([]);
+    expect(getAgentPromptToolIds(['{{@read_files@}}'] as any)).toEqual([]);
+  });
+
+  it('keeps composite tool ids intact', () => {
+    expect(
+      getAgentPromptToolIds('{{@systemTool-search@}} {{@teamId:t:tool-1@}} {{@mcp-app/tool@}}')
+    ).toEqual(['systemTool-search', 'teamId:t:tool-1', 'mcp-app/tool']);
   });
 });
 

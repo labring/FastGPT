@@ -37,7 +37,7 @@ import { getSkillListV2 } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey, normalizeToolIdentity } from '@fastgpt/global/core/app/tool/utils';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
@@ -62,7 +62,7 @@ const toSkillLabelItem = (
   configStatus: SkillLabelItemType['configStatus']
 ): SkillLabelItemType => ({
   ...tool,
-  id: getSkillId(tool.pluginId, tool.source),
+  id: getSkillId(tool.pluginId ?? tool.id, tool.source),
   name: tool.name,
   configStatus: tool.pluginData?.error ? 'invalid' : configStatus
 });
@@ -246,7 +246,9 @@ export const useSkillManager = ({
         }
       );
       return {
-        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined, i18n.language)),
+        list: response.list.map((item) =>
+          toTeamAppItem(item, parentId ?? undefined, i18n.language)
+        ),
         total: response.total
       };
     },
@@ -354,7 +356,7 @@ export const useSkillManager = ({
       // Check tool exists, if exists, not update/add tool
       const toolIdentityKey = getToolIdentityKey(toolId, source);
       const existsTool = lastSelectedTools.current?.find(
-        (tool) => getToolIdentityKey(tool.pluginId, tool.source) === toolIdentityKey
+        (tool) => getToolIdentityKey(tool.pluginId ?? tool.id, tool.source) === toolIdentityKey
       );
       if (existsTool) {
         const skill = toSkillLabelItem(
@@ -430,7 +432,7 @@ export const useSkillManager = ({
       const tool = inheritToolInputConfig({
         tool: {
           ...toolTemplate,
-          id: toolTemplate.pluginId!
+          id: toolTemplate.pluginId ?? toolTemplate.id
         }
       });
       const configStatus = getToolConfigStatus({ tool }).status;
@@ -610,7 +612,7 @@ export const useSkillManager = ({
         if (tool.pluginData?.error) {
           return 'invalid';
         }
-        if (tool.pluginId === SubAppIds.datasetSearch) {
+        if ((tool.pluginId ?? tool.id) === SubAppIds.datasetSearch) {
           return hasSelectedDataset ? 'configured' : 'waitingForConfig';
         }
         return getToolConfigStatus({ tool }).status;
@@ -618,7 +620,7 @@ export const useSkillManager = ({
 
       return {
         ...tool,
-        id: getSkillId(tool.pluginId, tool.source),
+        id: getSkillId(tool.pluginId ?? tool.id, tool.source),
         name: tool.name,
         configStatus
       };
@@ -695,11 +697,13 @@ export const useSkillManager = ({
         return;
       }
 
-      const tool = selectedTools.find((tool) => getSkillId(tool.pluginId, tool.source) === id);
+      const tool = selectedTools.find(
+        (tool) => getSkillId(tool.pluginId ?? tool.id, tool.source) === id
+      );
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        setConfigTool(tool);
+        setConfigTool(normalizeToolIdentity(tool));
       }
     },
     [onClickDatasetSearch, selectedAgentSkills, selectedTools]
@@ -714,10 +718,12 @@ export const useSkillManager = ({
             configTool={configTool}
             onCloseConfigTool={() => setConfigTool(undefined)}
             onAddTool={(tool) =>
-              onUpdateOrAddTool({
-                ...tool,
-                configStatus: 'configured'
-              })
+              onUpdateOrAddTool(
+                normalizeToolIdentity({
+                  ...tool,
+                  configStatus: 'configured'
+                })
+              )
             }
           />
         )}

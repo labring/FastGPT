@@ -39,7 +39,7 @@ import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey, normalizeToolIdentity } from '@fastgpt/global/core/app/tool/utils';
 
 const getToolSelectionKey = (id?: string, source?: string) =>
   source ? getToolIdentityKey(id, source) : id || '';
@@ -87,9 +87,8 @@ export const appWorkflow2AgentForm = ({
       const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
       if (tools) {
         defaultAppForm.selectedTools = tools.map((tool) => ({
-          ...tool,
-          id: tool.pluginId!,
-          configStatus: getToolConfigStatus({ tool }).status
+          ...normalizeToolIdentity(tool),
+          configStatus: getToolConfigStatus({ tool: { inputs: tool.inputs ?? [] } }).status
         }));
       }
 
@@ -316,7 +315,7 @@ export function agentForm2AppWorkflow(
                 );
 
                 return {
-                  id: tool.pluginId,
+                  id: tool.pluginId ?? tool.id,
                   name: tool.name,
                   avatar: tool.avatar,
                   version: tool.version,
@@ -456,7 +455,7 @@ export const loadGeneratedTools = async ({
         const identityKey = getToolSelectionKey(toolId, source);
         // 已经存在的工具，直接返回
         const existTool = existsTools.find(
-          (tool) => getToolSelectionKey(tool.pluginId, tool.source) === identityKey
+          (tool) => getToolSelectionKey(tool.pluginId ?? tool.id, tool.source) === identityKey
         );
         if (existTool) {
           return existTool;
@@ -484,16 +483,16 @@ export const loadGeneratedTools = async ({
         }
 
         const generatedTool = generatedSelectedTools.find(
-          (item) => getToolSelectionKey(item.pluginId, item.source) === identityKey
+          (item) => getToolSelectionKey(item.pluginId ?? item.id, item.source) === identityKey
         );
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 
-        return {
+        return normalizeToolIdentity({
           ...inheritedTool,
           id: toolId,
           source,
           configStatus: getToolConfigStatus({ tool: inheritedTool }).status
-        };
+        });
       })
     )
   ).filter((item) => item !== undefined);

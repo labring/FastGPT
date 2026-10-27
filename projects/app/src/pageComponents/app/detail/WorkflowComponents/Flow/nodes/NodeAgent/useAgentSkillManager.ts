@@ -8,13 +8,14 @@ import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { getToolIdentityKey, normalizeToolIdentity } from '@fastgpt/global/core/app/tool/utils';
 import { useLatest } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillOptionItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
-import { buildAgentSkillInputUpdates } from './utils';
+import { isFileUrlInputConfigured } from '@fastgpt/global/common/workflow/reference';
+import { buildAgentSkillInputUpdates, getAgentToolConfigId } from './utils';
 
 /**
  * Adapts the ChatAgent's useSkillManager to work in the workflow node context.
@@ -44,7 +45,12 @@ export const useAgentSkillManager = ({
     [inputs]
   );
   const selectedTools: SelectedToolItemType[] = useMemo(
-    () => (Array.isArray(toolsInput?.value) ? toolsInput!.value : []),
+    () =>
+      Array.isArray(toolsInput?.value)
+        ? toolsInput!.value
+            .filter((tool): tool is SelectedToolItemType => !!tool && typeof tool === 'object')
+            .map((tool) => normalizeToolIdentity(tool))
+        : [],
     [toolsInput]
   );
 
@@ -71,8 +77,8 @@ export const useAgentSkillManager = ({
     () => inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList),
     [inputs]
   );
-  // 文件输入存在即具备文件解析能力，不要求当前已经上传文件。
-  const canUploadFile = !!fileLinkInput;
+  // 只有文件输入真正绑定到文件来源（或由 Agent 生成）时才具备解析能力。
+  const canUploadFile = isFileUrlInputConfigured(fileLinkInput);
 
   const datasetInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.datasetSelectList),
@@ -82,16 +88,17 @@ export const useAgentSkillManager = ({
 
   const onUpdateOrAddTool = useCallback(
     (tool: SelectedToolItemType) => {
-      const toolId = tool.pluginId ?? tool.id;
-      const toolKey = getToolIdentityKey(toolId, tool.source);
+      const normalizedTool = normalizeToolIdentity(tool);
+      const toolId = normalizedTool.pluginId ?? normalizedTool.id;
+      const toolKey = getToolIdentityKey(toolId, normalizedTool.source);
       const exists = selectedTools.find(
         (t) => getToolIdentityKey(t.pluginId ?? t.id, t.source) === toolKey
       );
       const newTools = exists
         ? selectedTools.map((t) =>
-            getToolIdentityKey(t.pluginId ?? t.id, t.source) === toolKey ? tool : t
+            getToolIdentityKey(t.pluginId ?? t.id, t.source) === toolKey ? normalizedTool : t
           )
-        : [...selectedTools, tool];
+        : [...selectedTools, normalizedTool];
 
       if (toolsInput) {
         onChangeNode({
@@ -201,6 +208,13 @@ export const useAgentSkillManager = ({
     onClickDatasetSearch
   });
 
+  const onConfigTool = useCallback(
+    (tool: SelectedToolItemType) => {
+      onClickSkill(getAgentToolConfigId(tool));
+    },
+    [onClickSkill]
+  );
+
   /**
    * 与 Agent V2 保持一致：通过 @ 选中虚拟机工具集时同步打开虚拟机开关。
    * 依赖保持稳定，避免提示词输入触发 @ 菜单列状态重置。
@@ -237,6 +251,7 @@ export const useAgentSkillManager = ({
     selectedAgentSkills,
     canUploadFile,
     onClickSkill,
+    onConfigTool,
     onRemoveSkill,
     onUpdateOrAddTool,
     onDeleteTool,
