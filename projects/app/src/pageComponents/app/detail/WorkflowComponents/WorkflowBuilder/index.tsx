@@ -29,7 +29,7 @@ import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilder = () => {
-  const { t } = useTranslation('workflow');
+  const { t } = useTranslation(['workflow']);
   const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
