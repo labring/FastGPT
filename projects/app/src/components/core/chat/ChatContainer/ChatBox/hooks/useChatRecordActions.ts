@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { delChatRecordById } from '@/web/core/chat/record/api';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
@@ -44,6 +45,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -69,10 +71,10 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
   /**
    * 生成某条 human 消息的“重试”回调。
    *
-   * 重试不是简单地重新发送当前文本，而是先定位目标 `dataId`：
-   * 1. 删除该消息以及它之后的所有服务端记录，避免新回答和旧后续历史并存。
-   * 2. 将本地 records 裁剪到目标消息之前，让生成链路看到正确的 history。
-   * 3. 从被删除的第一条记录恢复 text/files，并交给 `sendPrompt` 重新发送。
+   * 按目标 `dataId` 裁剪该条及后续消息，再原样重发输入：
+   * 1. 保存目标 user 的 text/files/select，裁剪该消息及后续记录。
+   * 2. 重新加载历史窗口和分页锚点，原 Ask/Preview 自然成为末轮待回答交互。
+   * 3. 原样重发结构化输入；不补查原问题、不回写旧 AI。
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
    */
@@ -85,33 +87,37 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       const delHistory = chatRecords.slice(index);
 
       try {
+        const user = delHistory[0];
+        if (index < 0 || user?.obj !== ChatRoleEnum.Human) return;
         await onDelMessages(delHistory.map((item) => item.dataId));
-        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
+        const refreshedHistory = await refreshChatRecords();
 
         sendPrompt({
-          ...formatChatValue2InputType(delHistory[0].value),
-          hideInUI: hideInUI || delHistory[0].hideInUI,
-          history: chatRecords.slice(0, index)
+          ...formatChatValue2InputType(user.value),
+          hideInUI: hideInUI || user.hideInUI,
+          history: refreshedHistory
         });
       } catch (error) {
         toast({
           status: 'warning',
           title: t(getErrText(error, 'Retry failed'))
         });
+      } finally {
+        setIsRecordActionLoading(false);
       }
-      setIsRecordActionLoading(false);
     };
   });
 
   /**
    * 生成某条 human 消息的“编辑后发送”回调。
    *
-   * 编辑和重试的核心流程一致：先删除目标 human 消息及后续记录，再用裁剪前的 history
-   * 重新发起一轮对话。text/files 使用编辑表单提交的新内容；删除旧记录时仍保留文件，
-   * 避免编辑后的消息继续引用原附件或新附件时被提前清理。
+   * 结构化 Ask/Preview 回复没有普通文本编辑器，不提供编辑回调。普通消息先删除目标及
+   * 后续记录，再用编辑后的 text/files 和重新加载的 history 发起对话；保留原附件供复用。
    */
   const editInput = useMemoizedFn((dataId?: string) => {
     if (!dataId) return;
+    const user = chatRecords.find((item) => item.dataId === dataId);
+    if (user?.obj !== ChatRoleEnum.Human || getUserChatSelect(user.value)) return;
 
     return async (input: ChatBoxInputType) => {
       setIsRecordActionLoading(true);
@@ -122,12 +128,12 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
         if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
 
         await onDelMessages(delHistory.map((item) => item.dataId));
-        setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
+        const history = await refreshChatRecords();
 
         sendPrompt({
           ...formatChatValue2InputType(delHistory[0].value),
           ...input,
-          history: chatRecords.slice(0, index)
+          history
         });
       } catch (error) {
         toast({
@@ -146,13 +152,13 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    * ChatBox 的一轮普通对话通常是 human 后面紧跟 AI 回复，因此删除 human 时需要同步删除
    * 紧随其后的 AI 记录，避免界面只剩下一条失去问题上下文的回答。这里只删除“紧随其后”
    * 且仍有 `dataId` 的 AI，避免误删更远处的历史或还未落库的临时消息。
+   * 删除末轮回答及 AI 后，底部输入由剩余的末轮 Ask/Preview 自然恢复。
    */
   const delOneMessage = useMemoizedFn((dataId: string) => {
     return () => {
       setChatRecords((state) => {
         let aiIndex = -1;
         const deletedDataIds: string[] = [];
-
         const nextState = state.filter((chat, i) => {
           if (chat.dataId === dataId) {
             aiIndex = i + 1;

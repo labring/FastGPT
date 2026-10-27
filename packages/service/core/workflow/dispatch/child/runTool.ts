@@ -9,8 +9,6 @@ import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
@@ -146,15 +144,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     headerSecret?: StoreSecretValueType | null;
   }) => {
     toolInput = params;
-    const { requestSchema } = getHTTPToolRuntimeSchemas(tool);
-    assertToolRuntimeParams({ jsonSchema: requestSchema, params });
     const { data, errorMsg } = await runHTTPTool({
       apiSchemaStr,
       baseUrl: baseUrl || '',
       toolPath: tool.path,
       method: tool.method,
       params,
-      headerSecret,
+      headerSecret: tool.headerSecret || headerSecret,
       customHeaders: customHeaders
         ? typeof customHeaders === 'string'
           ? JSON.parse(customHeaders)
@@ -237,8 +233,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         version: tool.version ?? version,
         fallbackLatestVersion: true
       });
-      assertToolRuntimeParams({ jsonSchema: toolDetail.inputSchema, params: toolInput });
-
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
@@ -379,18 +373,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
         const mcpClient = getMcpClient({ url, headerSecret: headerSecret ?? undefined });
         toolInput = params;
-        assertToolRuntimeParams({ jsonSchema: referencedTool.inputSchema, params });
         const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
         return formatToolResult(result);
       }
 
-      const { name: toolName, url, headerSecret, inputSchema } = mcpTool;
+      const { name: toolName, url, headerSecret } = mcpTool;
       if (!url) throw new Error('MCP tool set URL is missing');
       await assertMCPUrlNotInternal(url);
 
       const mcpClient = getMcpClient({ url, headerSecret: headerSecret ?? undefined });
       toolInput = params;
-      assertToolRuntimeParams({ jsonSchema: inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return formatToolResult(result);
     } else if (toolConfig?.httpTool) {
@@ -451,7 +443,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
       const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return formatToolResult(result);

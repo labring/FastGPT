@@ -37,8 +37,9 @@ type State = {
   agentChatTestTab: AgentChatTestTabEnum;
   setAgentChatTestTab: (e: AgentChatTestTabEnum) => any;
 
-  outLinkAuthData: OutLinkChatAuthProps;
-  setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
+  /** 非外链场景不保存鉴权数据；存在时必须包含完整的外链身份。 */
+  outLinkAuthData?: OutLinkChatAuthProps;
+  setOutLinkAuthData: (e?: OutLinkChatAuthProps) => any;
 
   resetChatCache: () => any;
 };
@@ -256,7 +257,7 @@ export const useChatStore = create<State>()(
             state.agentChatTestTab = e;
           });
         },
-        outLinkAuthData: {},
+        outLinkAuthData: undefined,
         setOutLinkAuthData(e) {
           set((state) => {
             const currentCacheKey = getAppChatIdCacheKey({
@@ -295,7 +296,7 @@ export const useChatStore = create<State>()(
             state.sourceChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.agentChatTestTab = AgentChatTestTabEnum.chatDebug;
-            state.outLinkAuthData = {};
+            state.outLinkAuthData = undefined;
           });
         }
       })),

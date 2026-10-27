@@ -77,7 +77,7 @@ const createBlankModelData = ({
     provider: '',
     model: '',
     name: '',
-    charsPointsPrice: 0,
+    pricing: {},
     isActive: false
   };
 

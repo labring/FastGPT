@@ -1,4 +1,5 @@
 import { createSuccessEnvelope, renderError, renderSuccess } from '../src/output/render';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 
 describe('CLI output', () => {
@@ -32,14 +33,28 @@ describe('CLI output', () => {
 
   it('renders errors as pure JSON or readable text', () => {
     expect(
-      JSON.parse(renderError({ command: 'x', code: 'BAD', params: { key: 1 }, format: 'json' }))
+      JSON.parse(
+        renderError({
+          command: 'x',
+          code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid,
+          params: { key: 1 },
+          format: 'json'
+        })
+      )
     ).toMatchObject({
       ok: false,
       changed: false,
-      errors: [{ code: 'BAD', params: { key: 1 } }]
+      errors: [{ code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid, params: { key: 1 } }]
     });
     expect(
-      renderError({ command: 'x', code: 'BAD', diagnostics: [{ code: 'D' }], format: 'text' })
-    ).toContain('"code": "D"');
+      renderError({
+        command: 'x',
+        code: WorkflowDiagnosticCodeEnum.validationFailed,
+        diagnostics: [
+          { code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch, severity: 'error' }
+        ],
+        format: 'text'
+      })
+    ).toContain(`"code": "${WorkflowDiagnosticCodeEnum.referenceTypeMismatch}"`);
   });
 });

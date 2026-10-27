@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   FlowNodeInputTypeEnum,
@@ -5,6 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isToolInputValueConfigured } from '@fastgpt/global/core/app/formEdit/utils';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowRuleIssue } from '../type';
@@ -31,19 +33,32 @@ export const checkWorkflowNodeResourceRules = ({
     }
   }
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
-    issues.push({ code: 'tool_offline' });
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
   } else if (data.pluginData?.error) {
     issues.push({ code: resolvePluginDataErrorIssueCode(data.pluginData.error) });
+  }
+
+  // 密钥激活是运行/发布前置条件，普通串联工具与 selectedTools 挂载工具都需要检查。
+  const systemInputConfig = inputs.get(NodeInputKeyEnum.systemInputConfig);
+  if (systemInputConfig && !isToolInputValueConfigured({ input: systemInputConfig })) {
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
+      inputKey: NodeInputKeyEnum.systemInputConfig
+    });
   }
 
   /** 资源删除/权限标记来自服务端快照，不根据客户端身份重新鉴权。 */
   const addResourceIssues = (value: unknown, inputKey: string) => {
     if (!Array.isArray(value)) return;
-    if (value.some((item) => item?.error === 'resource_no_permission')) {
-      issues.push({ code: 'resource_no_permission', inputKey });
+    if (value.some((item) => item?.error === WorkflowCheckIssueCodeEnum.resourceNoPermission)) {
+      issues.push({ code: WorkflowCheckIssueCodeEnum.resourceNoPermission, inputKey });
     }
-    if (value.some((item) => item?.error && item.error !== 'resource_no_permission')) {
-      issues.push({ code: 'resource_missing', inputKey });
+    if (
+      value.some(
+        (item) => item?.error && item.error !== WorkflowCheckIssueCodeEnum.resourceNoPermission
+      )
+    ) {
+      issues.push({ code: WorkflowCheckIssueCodeEnum.resourceMissing, inputKey });
     }
   };
   for (const key of [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills]) {
@@ -69,7 +84,11 @@ export const checkWorkflowNodeResourceRules = ({
     const renderType = getSelectedInputRenderType(input);
     if (renderType === FlowNodeInputTypeEnum.hidden || renderType === FlowNodeInputTypeEnum.off)
       continue;
-    issues.push({ code: 'required_input_empty', inputKey: input.key, input });
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+      inputKey: input.key,
+      input
+    });
   }
   return issues;
 };

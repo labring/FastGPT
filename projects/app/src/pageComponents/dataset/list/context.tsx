@@ -44,7 +44,7 @@ const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: () => Promise<void>;
+  loadMyDatasets: (options?: { silent?: boolean; resourceId?: string }) => Promise<void>;
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
@@ -110,7 +110,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50,
+  pageSize: 20,
 
   isBatchMode: false,
   setIsBatchMode: () => {},
@@ -160,27 +160,31 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const { columnCount, pageSize } = useResponsiveGridPageSize(
     parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 3, lg: 3, xl: 4 }
   );
+  const listParams = {
+    searchKey,
+    withAppCount: true,
+    withFileCount: true,
+    ...(listType ? { type: listType } : {}),
+    ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
+    ...(tmbIds !== undefined ? { tmbIds } : {})
+  };
 
   const {
     data: myDatasets = [],
     fetchData,
+    refreshItems,
     ScrollData,
     isLoading: isFetchingDatasets,
     isEmpty
   } = useScrollPagination(
-    ({ offset = 0, pageSize = 50 }) =>
-      getDatasetsV2({
-        searchKey,
-        parentId,
-        offset,
-        pageSize,
-        withAppCount: true,
-        withFileCount: true,
-        ...(listType ? { type: listType } : {}),
-        ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
-        ...(tmbIds !== undefined ? { tmbIds } : {})
-      }),
+    ({ offset = 0, pageSize = 20 }, cancelToken) =>
+      getDatasetsV2({ ...listParams, parentId, offset, pageSize }, cancelToken),
     {
+      refreshByIds: {
+        getId: (item) => item._id,
+        api: (datasetIds, cancelToken) =>
+          getDatasetsV2({ ...listParams, datasetIds }, cancelToken).then(({ list }) => list)
+      },
       refreshDeps: [
         parentId,
         searchKey,
@@ -196,14 +200,13 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       showPaginationTip: false
     }
   );
-  const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);
-
-  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
-    () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
-    {
-      manual: false,
-      refreshDeps: [parentId]
-    }
+  /** 列表卡片（含文件夹）按 ID 同步；侧栏权限变更等未指定 ID 的刷新从首屏重新分页。 */
+  const loadMyDatasets = useCallback(
+    ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
+      if (resourceId) return refreshItems([resourceId]);
+      return fetchData({ init: true, silent });
+    },
+    [fetchData, refreshItems]
   );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
@@ -216,6 +219,31 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       refreshDeps: [parentId]
     }
   );
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+
+  const {
+    data: requestedFolderDetail,
+    error: folderDetailError,
+    loading: isLoadingFolderDetail,
+    runAsync: refetchFolderDetail
+  } = useRequest(() => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)), {
+    manual: false,
+    ready: !parentId || currentFolderPath?.folderAccessMode === 'read',
+    refreshDeps: [parentId, currentFolderPath?.folderAccessMode]
+  });
+  // 仅真实可读目录请求详情；导航目录只展示路径和子资源，不请求无权读取的目录详情。
+  const folderDetail = (() => {
+    if (!parentId || currentFolderPath?.folderAccessMode === 'navigate') return undefined;
+    if (
+      currentFolderPath?.folderAccessMode !== 'read' ||
+      isLoadingFolderDetail ||
+      folderDetailError ||
+      requestedFolderDetail?._id !== parentId
+    ) {
+      return undefined;
+    }
+    return requestedFolderDetail;
+  })();
 
   const { runAsync: onUpdateDataset } = useRequest(putDatasetById, {
     onSuccess: () => Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()])
@@ -240,6 +268,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         {
           parentId,
           type: DatasetTypeEnum.folder,
+          withAppCount: false,
           offset,
           pageSize
         },

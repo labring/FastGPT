@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -278,7 +279,7 @@ describe('fileSelectConfig output synchronization', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_FILE_OUTPUT_STILL_REFERENCED',
+          code: WorkflowDiagnosticCodeEnum.fileOutputStillReferenced,
           nodeId: 'start'
         })
       ]
@@ -318,7 +319,7 @@ describe('global variable references', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_VARIABLE_STILL_REFERENCED'
+          code: WorkflowDiagnosticCodeEnum.variableStillReferenced
         })
       ]
     });
@@ -337,7 +338,7 @@ describe('global variable references', () => {
     ).rejects.toMatchObject({
       diagnostics: [
         expect.objectContaining({
-          code: 'WORKFLOW_VARIABLE_TYPE_CHANGE_INCOMPATIBLE',
+          code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
           nodeId: 'read',
           inputKey: NodeInputKeyEnum.fileUrlList
         })

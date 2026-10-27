@@ -66,15 +66,26 @@ describe('resolveResponseChatItemId', () => {
         chatId: base.chatId,
         responseChatItemId: 'client-response-id',
         interactive: {
-          type: 'agentPlanAskQuery',
+          type: 'agentAsk',
           askId: 'call_ask',
-          params: {
-            content: 'Need more input',
-            options: ['Use repo', 'Use docs', 'Use defaults']
-          },
           entryNodeIds: [],
           memoryEdges: [],
-          nodeOutputs: []
+          nodeOutputs: [],
+          params: {
+            description: '',
+            submitted: false,
+            questions: [
+              {
+                question: 'Need more input',
+                options: [
+                  { summary: 'Use repo', value: 'Use repo' },
+                  { summary: 'Use docs', value: 'Use docs' },
+                  { summary: 'Use defaults', value: 'Use defaults' }
+                ],
+                answer: ''
+              }
+            ]
+          }
         },
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -104,11 +115,22 @@ describe('resolveResponseChatItemId', () => {
               toolCallId: 'tool_1'
             },
             childrenResponse: {
-              type: 'agentPlanAskQuery',
+              type: 'agentAsk',
               askId: 'call_ask',
               params: {
-                content: 'Need more input',
-                options: ['Use repo', 'Use docs', 'Use defaults']
+                description: '',
+                submitted: false,
+                questions: [
+                  {
+                    question: 'Need more input',
+                    options: [
+                      { summary: 'Use repo', value: 'Use repo' },
+                      { summary: 'Use docs', value: 'Use docs' },
+                      { summary: 'Use defaults', value: 'Use defaults' }
+                    ],
+                    answer: ''
+                  }
+                ]
               }
             }
           }

@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getCachedSystemModelHandle,
@@ -125,10 +126,10 @@ describe('loadSystemModels', () => {
     await loadInstalledModels();
 
     expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(1);
-    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
+    expect(getCachedSystemModelHandle()?.getAllModels()[0].pricing).toBeUndefined();
   });
 
-  it('resolves inactive legacy model pricing with progressive fallback for admin display', async () => {
+  it('keeps explicit free tiers authoritative when displaying inactive models', async () => {
     await MongoAIModel.collection.insertOne({
       type: ModelTypeEnum.llm,
       provider: 'OpenAI',
@@ -136,19 +137,17 @@ describe('loadSystemModels', () => {
       name: 'Inactive legacy priced LLM',
       scope: 'system',
       isActive: false,
-      priceTiers: [],
-      inputPrice: 0,
-      outputPrice: 0,
-      charsPointsPrice: 2,
+      pricing: { tiers: [] },
+
       config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
     });
 
     await loadInstalledModels();
 
     expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(1);
-    expect(getCachedSystemModelHandle()?.getAllModels()[0].priceTiers).toEqual([
-      { minInputTokens: 0, inputPrice: 2, outputPrice: 2 }
-    ]);
+    expect(
+      ModelPricingSchema.parse(getCachedSystemModelHandle()?.getAllModels()[0].pricing).tiers
+    ).toEqual([]);
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 

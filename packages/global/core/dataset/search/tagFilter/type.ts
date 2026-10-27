@@ -41,7 +41,8 @@ export type DatasetTagFilterCondition = z.infer<typeof DatasetTagFilterCondition
 
 export const DatasetTagFilterValueSchema = z.object({
   logic: z.enum(DatasetTagFilterLogicEnum),
-  conditions: z.array(DatasetTagFilterConditionSchema)
+  conditions: z.array(DatasetTagFilterConditionSchema),
+  open: z.boolean().optional()
 });
 export type DatasetTagFilterValue = z.infer<typeof DatasetTagFilterValueSchema>;
 

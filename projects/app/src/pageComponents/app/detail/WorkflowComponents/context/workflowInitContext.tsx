@@ -263,10 +263,12 @@ const WorkflowInitContextProvider = ({
 
   const getNodeList = useMemoizedFn(() => nodeList);
 
+  // 保持订阅粒度不变，但查询必须读取最新配置，尤其是不会改变 compareNodeList 的分支值。
+  const getNodesMap = useMemoizedFn(() => nodesMap);
   const getNodeById = useCallback(
     (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
       if (!nodeId) return undefined;
-      const node = nodesMap[nodeId];
+      const node = getNodesMap()[nodeId];
       if (node) {
         if (condition) {
           return condition(node) ? node : undefined;
@@ -276,7 +278,9 @@ const WorkflowInitContextProvider = ({
 
       return undefined;
     },
-    [compareNodeList]
+    // compareNodeList 变化时通知现有订阅者；其他配置通过稳定查询读取最新值。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [compareNodeList, getNodesMap]
   );
 
   const rawNodeFormat = useMemo(() => {

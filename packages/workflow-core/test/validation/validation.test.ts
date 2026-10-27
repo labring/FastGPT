@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -60,7 +61,11 @@ describe('validateWorkflow', () => {
   it.each([aiWorkflow, staticWorkflow, commonLinearWorkflow])(
     'accepts a golden workflow',
     (workflow) => {
-      expect(validateWorkflow(WorkflowDocumentSchema.parse(workflow))).toEqual([]);
+      expect(
+        validateWorkflow(WorkflowDocumentSchema.parse(workflow), {
+          invalidReferencePolicy: 'error'
+        })
+      ).toEqual([]);
     }
   );
 
@@ -70,10 +75,64 @@ describe('validateWorkflow', () => {
     broken.nodes[0].inputs[0].value = undefined;
     broken.nodes.push({ ...broken.nodes[0], nodeId: broken.nodes[0].nodeId });
     broken.executionEdges = [];
-    const codes = validateWorkflow(broken).map((item) => item.code);
-    expect(codes).toContain('WORKFLOW_NODE_ID_DUPLICATED');
-    expect(codes).toContain('WORKFLOW_START_COUNT_INVALID');
-    expect(codes).toContain('WORKFLOW_REQUIRED_INPUT_MISSING');
+    const codes = validateWorkflow(broken, { invalidReferencePolicy: 'error' }).map(
+      (item) => item.code
+    );
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.nodeIdDuplicated);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.startCountInvalid);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.requiredInputMissing);
+  });
+
+  it('reports serial cycles and accepts conditional or error feedback without deleting edges', () => {
+    const document = makeDocument();
+    document.nodes.push({ ...document.nodes[1], nodeId: 'downstream' });
+    document.executionEdges.push(
+      {
+        source: { kind: 'next', nodeId: 'target' },
+        target: { kind: 'target', nodeId: 'downstream' }
+      },
+      {
+        source: { kind: 'next', nodeId: 'downstream' },
+        target: { kind: 'target', nodeId: 'target' }
+      }
+    );
+    const before = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toHaveLength(2);
+    expect(document).toEqual(before);
+
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.ifElseNode;
+    document.executionEdges[1].source = { kind: 'branch', nodeId: 'target', branchKey: 'ELSE' };
+    const branched = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(document).toEqual(branched);
+
+    const withCatch = structuredClone(before);
+    withCatch.nodes[1].catchError = true;
+    withCatch.executionEdges[1].source = { kind: 'catch', nodeId: 'target' };
+    const caught = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(caught);
+
+    withCatch.executionEdges[1].source = { kind: 'next', nodeId: 'target' };
+    const successful = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(successful);
   });
 
   it('reports incomplete variable update rows', async () => {
@@ -98,9 +157,11 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    const codes = validateWorkflow(update.document).map((item) => item.code);
-    expect(codes).toContain('WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING');
-    expect(codes).toContain('WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING');
+    const codes = validateWorkflow(update.document, { invalidReferencePolicy: 'error' }).map(
+      (item) => item.code
+    );
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.variableUpdateValueMissing);
   });
 
   it('reports malformed and non-upstream references', () => {
@@ -109,22 +170,22 @@ describe('validateWorkflow', () => {
       .find((node) => node.nodeId === 'ai')!
       .inputs.find((item) => item.key === 'userChatInput')!;
     input.value = ['missing'];
-    expect(validateWorkflow(malformed).map((item) => item.code)).toContain(
-      'WORKFLOW_REFERENCE_FORMAT_INVALID'
-    );
+    expect(
+      validateWorkflow(malformed, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.referenceFormatInvalid);
 
     input.value = ['ai', 'answerText'];
-    expect(validateWorkflow(malformed).map((item) => item.code)).toContain(
-      'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
-    );
+    expect(
+      validateWorkflow(malformed, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream);
   });
 
   it('explains how to repair a disconnected reference without allowing cross-scope edges', () => {
     const document = WorkflowDocumentSchema.parse(aiWorkflow);
     document.executionEdges = [];
 
-    const diagnostic = validateWorkflow(document).find(
-      (item) => item.code === 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
+    const diagnostic = validateWorkflow(document, { invalidReferencePolicy: 'error' }).find(
+      (item) => item.code === WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
     );
     expect(diagnostic).toMatchObject({
       nodeId: 'ai',
@@ -159,7 +220,7 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    expect(validateWorkflow(search.document)).toEqual([]);
+    expect(validateWorkflow(search.document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('allows a downstream AI node to use retrieval results with or without a quote reference', async () => {
@@ -194,7 +255,7 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    expect(validateWorkflow(ai.document)).toEqual([]);
+    expect(validateWorkflow(ai.document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     const linked = await applyWorkflowCommand({
       document: ai.document,
@@ -207,13 +268,14 @@ describe('validateWorkflow', () => {
       dependencies
     });
 
-    expect(validateWorkflow(linked.document)).toEqual([]);
+    expect(validateWorkflow(linked.document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('returns schema diagnostics instead of throwing', () => {
-    expect(validateWorkflow({ schemaVersion: 'wrong' } as never)[0]?.code).toBe(
-      'WORKFLOW_SCHEMA_INVALID'
-    );
+    expect(
+      validateWorkflow({ schemaVersion: 'wrong' } as never, { invalidReferencePolicy: 'error' })[0]
+        ?.code
+    ).toBe(WorkflowDiagnosticCodeEnum.schemaInvalid);
   });
 
   it('reports duplicate and invalid execution edges', () => {
@@ -223,10 +285,12 @@ describe('validateWorkflow', () => {
       source: { kind: 'next', nodeId: 'missing' },
       target: { kind: 'target', nodeId: 'ai' }
     });
-    const codes = validateWorkflow(broken).map((item) => item.code);
-    expect(codes).toContain('WORKFLOW_EDGE_DUPLICATED');
-    expect(codes).toContain('WORKFLOW_NODE_NOT_FOUND');
-    expect(codes).not.toContain('WORKFLOW_EDGE_INVALID');
+    const codes = validateWorkflow(broken, { invalidReferencePolicy: 'error' }).map(
+      (item) => item.code
+    );
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.edgeDuplicated);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.nodeNotFound);
+    expect(codes).not.toContain(WorkflowDiagnosticCodeEnum.edgeInvalid);
   });
 
   it('validates global references, reference types and deleted relation leftovers', () => {
@@ -246,24 +310,35 @@ describe('validateWorkflow', () => {
     textInput.renderTypeList.push(FlowNodeInputTypeEnum.reference);
     textInput.value = [VARIABLE_NODE_ID, 'count'];
     textInput.selectedType = FlowNodeInputTypeEnum.reference;
-    const codes = validateWorkflow(broken).map((item) => item.code);
-    expect(codes).toContain('WORKFLOW_PARENT_NODE_NOT_FOUND');
-    expect(codes).toContain('WORKFLOW_REFERENCE_TYPE_MISMATCH');
+    const codes = validateWorkflow(broken, { invalidReferencePolicy: 'error' }).map(
+      (item) => item.code
+    );
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.parentNodeNotFound);
+    expect(codes).toContain(WorkflowDiagnosticCodeEnum.referenceTypeMismatch);
 
     textInput.value = [VARIABLE_NODE_ID, 'deleted-variable'];
-    expect(validateWorkflow(broken).map((item) => item.code)).toContain(
-      'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND'
-    );
+    expect(
+      validateWorkflow(broken, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.referenceOutputNotFound);
   });
 
   it.each([
-    { flowNodeType: FlowNodeTypeEnum.httpRequest468, code: 'WORKFLOW_REQUIRED_INPUT_MISSING' },
-    { flowNodeType: FlowNodeTypeEnum.contentExtract, code: 'WORKFLOW_EXTRACT_FIELDS_REQUIRED' },
-    { flowNodeType: FlowNodeTypeEnum.datasetConcatNode, code: 'WORKFLOW_REQUIRED_INPUT_MISSING' }
+    {
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      code: WorkflowDiagnosticCodeEnum.requiredInputMissing
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.contentExtract,
+      code: WorkflowDiagnosticCodeEnum.extractFieldsRequired
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.datasetConcatNode,
+      code: WorkflowDiagnosticCodeEnum.requiredInputMissing
+    }
   ])('requires Web-specific local configuration on $flowNodeType', ({ flowNodeType, code }) => {
-    expect(validateWorkflow(makeDocument({ flowNodeType }))).toEqual([
-      expect.objectContaining({ nodeId: 'target', code })
-    ]);
+    expect(
+      validateWorkflow(makeDocument({ flowNodeType }), { invalidReferencePolicy: 'error' })
+    ).toEqual([expect.objectContaining({ nodeId: 'target', code })]);
   });
 
   it('accepts local HTTP and extraction configuration when filled', () => {
@@ -280,7 +355,7 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(http)).toEqual([]);
+    expect(validateWorkflow(http, { invalidReferencePolicy: 'error' })).toEqual([]);
     const extract = makeDocument({
       flowNodeType: FlowNodeTypeEnum.contentExtract,
       inputs: [
@@ -293,13 +368,13 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(extract)).toEqual([]);
+    expect(validateWorkflow(extract, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('accepts a workflow tool input as the root entry while retaining the single-entry constraint', () => {
     const document = makeDocument();
     document.nodes[0].flowNodeType = FlowNodeTypeEnum.pluginInput;
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
     document.nodes.push({
       nodeId: 'another-start',
       name: '',
@@ -307,17 +382,22 @@ describe('validateWorkflow', () => {
       inputs: [],
       outputs: []
     });
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_START_COUNT_INVALID'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.startCountInvalid);
   });
 
   it('rejects disconnected nodes and cycles', () => {
     const document = makeDocument();
     document.executionEdges = [];
-    expect(validateWorkflow(document).map((item) => [item.nodeId, item.code])).toEqual([
-      ['start', 'WORKFLOW_NODE_ISOLATED'],
-      ['target', 'WORKFLOW_NODE_NOT_REACHABLE']
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => [
+        item.nodeId,
+        item.code
+      ])
+    ).toEqual([
+      ['start', WorkflowDiagnosticCodeEnum.nodeIsolated],
+      ['target', WorkflowDiagnosticCodeEnum.nodeNotReachable]
     ]);
     document.nodes[1].flowNodeType = FlowNodeTypeEnum.textEditor;
     document.nodes.push({ ...document.nodes[1], nodeId: 'other' });
@@ -326,8 +406,8 @@ describe('validateWorkflow', () => {
       { source: { kind: 'next', nodeId: 'other' }, target: { kind: 'target', nodeId: 'target' } }
     );
     expect(
-      validateWorkflow(document)
-        .filter((item) => item.code === 'WORKFLOW_NODE_NOT_REACHABLE')
+      validateWorkflow(document, { invalidReferencePolicy: 'error' })
+        .filter((item) => item.code === WorkflowDiagnosticCodeEnum.nodeNotReachable)
         .map((item) => item.nodeId)
     ).toEqual(['target', 'other']);
   });
@@ -337,11 +417,11 @@ describe('validateWorkflow', () => {
     (flowNodeType) => {
       const document = makeDocument();
       document.nodes[0].flowNodeType = flowNodeType;
-      expect(validateWorkflow(document)).toEqual([]);
+      expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
       document.executionEdges = [];
       document.nodes = [document.nodes[0]];
-      expect(validateWorkflow(document)).toEqual([
-        { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+      expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([
+        { code: WorkflowDiagnosticCodeEnum.nodeIsolated, severity: 'error', nodeId: 'start' }
       ]);
     }
   );
@@ -356,13 +436,13 @@ describe('validateWorkflow', () => {
       inputs: [],
       outputs: []
     });
-    const issues = validateWorkflow(document);
-    expect(issues.filter((item) => item.code === 'WORKFLOW_NODE_ISOLATED')).toEqual([
-      { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+    const issues = validateWorkflow(document, { invalidReferencePolicy: 'error' });
+    expect(issues.filter((item) => item.code === WorkflowDiagnosticCodeEnum.nodeIsolated)).toEqual([
+      { code: WorkflowDiagnosticCodeEnum.nodeIsolated, severity: 'error', nodeId: 'start' }
     ]);
     expect(issues.filter((item) => item.nodeId === 'target')).toEqual([
       {
-        code: 'WORKFLOW_NODE_NOT_REACHABLE',
+        code: WorkflowDiagnosticCodeEnum.nodeNotReachable,
         severity: 'error',
         nodeId: 'target',
         params: { reason: 'no_upstream' }
@@ -400,17 +480,24 @@ describe('validateWorkflow', () => {
       source: { kind: 'next', nodeId: 'nested-start' },
       target: { kind: 'target', nodeId: 'nested-end' }
     });
-    expect(validateWorkflow(document)).toEqual([
-      expect.objectContaining({ nodeId: 'orphan', code: 'WORKFLOW_NODE_NOT_REACHABLE' })
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([
+      expect.objectContaining({
+        nodeId: 'orphan',
+        code: WorkflowDiagnosticCodeEnum.nodeNotReachable
+      })
     ]);
     const disconnected = { ...document, executionEdges: [document.executionEdges[0]] };
     expect(
-      validateWorkflow(disconnected).filter((item) => item.code === 'WORKFLOW_NODE_ISOLATED')
-    ).toEqual([{ code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'nested-start' }]);
+      validateWorkflow(disconnected, { invalidReferencePolicy: 'error' }).filter(
+        (item) => item.code === WorkflowDiagnosticCodeEnum.nodeIsolated
+      )
+    ).toEqual([
+      { code: WorkflowDiagnosticCodeEnum.nodeIsolated, severity: 'error', nodeId: 'nested-start' }
+    ]);
     document.nodes[1].inputs[0].value = [];
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_CONTAINER_CHILDREN_OUT_OF_SYNC'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.containerChildrenOutOfSync);
   });
 
   it.each([
@@ -418,13 +505,13 @@ describe('validateWorkflow', () => {
       variable: ['deleted', 'text'],
       value: ['string', 'value'],
       renderType: FlowNodeInputTypeEnum.input,
-      expected: ['WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING']
+      expected: [WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing]
     },
     {
       variable: ['start', 'text'],
       value: ['deleted', 'text'],
       renderType: FlowNodeInputTypeEnum.reference,
-      expected: ['WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING']
+      expected: [WorkflowDiagnosticCodeEnum.variableUpdateValueMissing]
     },
     {
       variable: ['start', 'text'],
@@ -433,7 +520,7 @@ describe('validateWorkflow', () => {
         ['deleted', 'text']
       ],
       renderType: FlowNodeInputTypeEnum.reference,
-      expected: ['WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING']
+      expected: [WorkflowDiagnosticCodeEnum.variableUpdateValueMissing]
     },
     {
       variable: ['start', 'text'],
@@ -466,8 +553,14 @@ describe('validateWorkflow', () => {
       type: FlowNodeOutputTypeEnum.static
     });
     expect(
-      validateWorkflow(document)
-        .filter((item) => item.code.startsWith('WORKFLOW_VARIABLE_UPDATE_'))
+      validateWorkflow(document, { invalidReferencePolicy: 'error' })
+        .filter(
+          (item) =>
+            item.code === WorkflowDiagnosticCodeEnum.variableUpdateEmpty ||
+            item.code === WorkflowDiagnosticCodeEnum.variableUpdateItemInvalid ||
+            item.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing ||
+            item.code === WorkflowDiagnosticCodeEnum.variableUpdateValueMissing
+        )
         .map((item) => item.code)
     ).toEqual(expected);
   });
@@ -487,9 +580,9 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(select).map((item) => item.code)).toContain(
-      'WORKFLOW_BRANCH_CONFIGURATION_INVALID'
-    );
+    expect(
+      validateWorkflow(select, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.branchConfigurationInvalid);
     const form = makeDocument({
       flowNodeType: FlowNodeTypeEnum.formInput,
       inputs: [
@@ -501,9 +594,9 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(form).map((item) => item.code)).toContain(
-      'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID'
-    );
+    expect(
+      validateWorkflow(form, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.formInputConfigurationInvalid);
   });
 
   it('accepts dynamic choices from upstream or global variables and validates their shared branch', () => {
@@ -544,7 +637,7 @@ describe('validateWorkflow', () => {
     const edge = { source, target: { kind: 'target' as const, nodeId: 'answer' } };
     document.executionEdges.push(edge);
     expect(decompileStoreEdge(compileExecutionEdge(edge, document), document)).toEqual(edge);
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     document.chatConfig.variables = [
       {
@@ -560,11 +653,11 @@ describe('validateWorkflow', () => {
       ['deleted', 'choices'],
       [VARIABLE_NODE_ID, 'options']
     ];
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
     document.executionEdges[1].source = { kind: 'branch', nodeId: 'target', branchKey: 'stale' };
-    expect(validateWorkflow(document).map((issue) => issue.code)).toContain(
-      'WORKFLOW_BRANCH_KEY_NOT_FOUND'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((issue) => issue.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.branchKeyNotFound);
 
     document.nodes[1].inputs[0].selectedType = FlowNodeInputTypeEnum.custom;
     document.nodes[1].inputs[0].value = [{ key: 'literal', value: 'Literal choice' }];
@@ -578,9 +671,9 @@ describe('validateWorkflow', () => {
       nodeId: 'target',
       branchKey: USER_SELECT_REFERENCE_HANDLE_KEY
     };
-    expect(validateWorkflow(document).map((issue) => issue.code)).toContain(
-      'WORKFLOW_BRANCH_KEY_NOT_FOUND'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((issue) => issue.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.branchKeyNotFound);
   });
 
   it.each([
@@ -609,9 +702,9 @@ describe('validateWorkflow', () => {
       valueType: WorkflowIOValueTypeEnum.arrayString,
       ...output
     });
-    expect(validateWorkflow(document)).toEqual([
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_BRANCH_CONFIGURATION_INVALID',
+        code: WorkflowDiagnosticCodeEnum.branchConfigurationInvalid,
         inputKey: NodeInputKeyEnum.userSelectOptions,
         params: { reason: 'empty' }
       })
@@ -636,10 +729,12 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(document).map((item) => item.code)).toEqual(
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toEqual(
       expect.arrayContaining([
-        'WORKFLOW_CONTAINER_SYSTEM_CHILD_INVALID',
-        'WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED'
+        WorkflowDiagnosticCodeEnum.containerSystemChildInvalid,
+        WorkflowDiagnosticCodeEnum.conditionalLoopBreakRequired
       ])
     );
     document.nodes.push(
@@ -665,7 +760,7 @@ describe('validateWorkflow', () => {
       source: { kind: 'next', nodeId: 'loop-start' },
       target: { kind: 'target', nodeId: 'break' }
     });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('retains invalid-parent and missing-system-parent checks while leaving resource state to Web', () => {
@@ -680,14 +775,20 @@ describe('validateWorkflow', () => {
       inputs: [],
       outputs: []
     });
-    expect(validateWorkflow(document).map((item) => item.code)).toEqual(
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toEqual(
       expect.arrayContaining([
-        'WORKFLOW_PARENT_NOT_CONTAINER',
-        'WORKFLOW_SYSTEM_OR_BREAK_PARENT_REQUIRED',
-        'WORKFLOW_EDGE_CROSS_SCOPE'
+        WorkflowDiagnosticCodeEnum.parentNotContainer,
+        WorkflowDiagnosticCodeEnum.systemOrBreakParentRequired,
+        WorkflowDiagnosticCodeEnum.edgeCrossScope
       ])
     );
-    expect(validateWorkflow(makeDocument({ pluginData: { error: 'tool_missing' } }))).toEqual([]);
+    expect(
+      validateWorkflow(makeDocument({ pluginData: { error: 'tool_missing' } }), {
+        invalidReferencePolicy: 'error'
+      })
+    ).toEqual([]);
   });
 
   it('only checks models when the caller supplies model checking context and does not duplicate required issues', () => {
@@ -703,27 +804,34 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
     expect(
       validateWorkflow(document, {
+        invalidReferencePolicy: 'error',
         modelCheck: { templates: [], modelData: { references: [], defaultModelIds: {} } }
       })
     ).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         nodeId: 'target',
         inputKey: 'customModel'
       })
     ]);
     document.nodes[1].inputs[0].value = 'not-in-the-catalog';
-    expect(validateWorkflow(document)).toEqual([]);
-    expect(validateWorkflow(document, { modelCheck: { templates: [] } })).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error', modelCheck: { templates: [] } })
+    ).toEqual([]);
     expect(
       validateWorkflow(document, {
+        invalidReferencePolicy: 'error',
         modelCheck: { templates: [], modelData: { references: [], defaultModelIds: {} } }
       })
     ).toEqual([
-      expect.objectContaining({ code: 'WORKFLOW_MODEL_UNAVAILABLE', inputKey: 'customModel' })
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.modelUnavailable,
+        inputKey: 'customModel'
+      })
     ]);
   });
 
@@ -739,16 +847,18 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(document).map((item) => item.code)).toEqual(
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toEqual(
       expect.arrayContaining([
-        'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING',
-        'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING'
+        WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing,
+        WorkflowDiagnosticCodeEnum.variableUpdateValueMissing
       ])
     );
     document.nodes[1].inputs[0].value = [null];
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_VARIABLE_UPDATE_ITEM_INVALID'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.variableUpdateItemInvalid);
   });
 
   it('preserves stricter empty-branch checks and accepts conditions that need no comparison value', () => {
@@ -763,24 +873,26 @@ describe('validateWorkflow', () => {
         }
       ]
     });
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_BRANCH_CONFIGURATION_INVALID'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.branchConfigurationInvalid);
     document.nodes[1].inputs[0].value = [
       { list: [{ variable: ['start', 'text'], condition: VariableConditionEnum.isEmpty }] }
     ];
-    expect(validateWorkflow(document).map((item) => item.code)).not.toContain(
-      'WORKFLOW_BRANCH_CONFIGURATION_INVALID'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).not.toContain(WorkflowDiagnosticCodeEnum.branchConfigurationInvalid);
     document.nodes[1].inputs[0].value = [{ list: [{ variable: ['start', 'text'] }] }];
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_BRANCH_CONFIGURATION_INVALID'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.branchConfigurationInvalid);
   });
 
   it('requires a tool or the sandbox option on tool calls', () => {
     const document = makeDocument({ flowNodeType: FlowNodeTypeEnum.toolCall });
-    expect(validateWorkflow(document).map((item) => item.code)).toContain('WORKFLOW_TOOL_REQUIRED');
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.toolRequired);
     document.nodes[1].inputs.push({
       key: NodeInputKeyEnum.useAgentSandbox,
       label: '',
@@ -788,6 +900,6 @@ describe('validateWorkflow', () => {
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
     });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 });

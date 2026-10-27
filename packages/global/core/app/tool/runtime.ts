@@ -158,7 +158,7 @@ export const compileToolRuntime = ({
   };
 };
 
-/** 过滤模型未知字段，并将模型参数与固定绑定合并为最终工具入参。 */
+/** 透传模型参数，并将固定绑定合并为最终工具入参；固定绑定始终优先。 */
 export const mergeToolRuntimeParams = ({
   agentGeneratedKeys,
   fixedInputBindings,
@@ -173,8 +173,8 @@ export const mergeToolRuntimeParams = ({
   }
 
   return {
-    ...fixedInputBindings,
-    ...Object.fromEntries(Object.entries(aiParams).filter(([key]) => generatedKeySet.has(key)))
+    ...aiParams,
+    ...fixedInputBindings
   };
 };
 
@@ -289,38 +289,5 @@ export const validateToolInputValue = ({
       success: false,
       errors: [error instanceof Error ? error.message : String(error)]
     };
-  }
-};
-
-/** 在外部工具调用前使用完整原始 schema 校验已经剔除内部字段的参数。 */
-export const validateToolRuntimeParams = ({
-  jsonSchema,
-  params
-}: {
-  jsonSchema?: JSONSchemaInputType;
-  params: Record<string, unknown>;
-}): ToolSchemaValidationResult => {
-  if (!jsonSchema) return { success: true, errors: [] };
-
-  try {
-    const validator = getValidator(jsonSchema);
-    const success = validator(params);
-    return {
-      success,
-      errors: success ? [] : formatValidationErrors(validator.errors)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      errors: [error instanceof Error ? error.message : String(error)]
-    };
-  }
-};
-
-/** 服务端运行时断言，错误信息保持可定位的字段路径。 */
-export const assertToolRuntimeParams = (props: Parameters<typeof validateToolRuntimeParams>[0]) => {
-  const result = validateToolRuntimeParams(props);
-  if (!result.success) {
-    throw new Error(`Tool input validation failed: ${result.errors.join('; ')}`);
   }
 };

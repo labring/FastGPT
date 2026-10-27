@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VARIABLE_NODE_ID,
@@ -19,12 +20,50 @@ import { addNodeFromTemplate } from '../../src/node/add';
 import { assertExecutionEdge } from '../../src/edge/validation';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { createEmptyTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
+import { DatasetTagFilterLogicEnum } from '@fastgpt/global/core/dataset/constants';
 
 describe('input mutation services', () => {
   let document: ReturnType<typeof WorkflowDocumentSchema.parse>;
 
   beforeEach(() => {
     document = WorkflowDocumentSchema.parse(aiWorkflow);
+  });
+
+  it.each([
+    createEmptyTagFilterValue(),
+    { logic: DatasetTagFilterLogicEnum.AND, conditions: [{ tag: 'price', op: '$gte', value: 10 }] }
+  ])('sets structured tag filters without converting the stored editor value: %j', (value) => {
+    const input: FlowNodeInputItemType = {
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      label: 'Tag filter',
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.datasetTagFilter],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType: WorkflowIOValueTypeEnum.string,
+      customJsonSchema: { type: 'string' }
+    };
+    document.nodes.find((node) => node.nodeId === 'ai')!.inputs.push(input);
+    const before = structuredClone(value);
+    setInputValue({ document, nodeId: 'ai', inputKey: input.key, value });
+
+    expect(input.value).toEqual(value);
+    expect(input.value).not.toBe(value);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.datasetTagFilter);
+    expect(value).toEqual(before);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.inputKey === input.key
+      )
+    ).toEqual([]);
+    expect(() =>
+      setInputValue({
+        document,
+        nodeId: 'ai',
+        inputKey: input.key,
+        value: { logic: 'invalid', conditions: [] }
+      })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueTypeInvalid);
+    expect(input.value).toEqual(value);
   });
 
   it('validates node, input, configurability, mode and scalar type', () => {
@@ -61,7 +100,7 @@ describe('input mutation services', () => {
     userInput.renderTypeList = [FlowNodeInputTypeEnum.reference];
     expect(() =>
       setInputValue({ document, nodeId: 'ai', inputKey: userInput.key, value: 'manual' })
-    ).toThrow('WORKFLOW_INPUT_MODE_NOT_ALLOWED');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputModeNotAllowed);
     setInputReference({
       document,
       nodeId: 'ai',
@@ -77,13 +116,13 @@ describe('input mutation services', () => {
         inputKey: userInput.key,
         ref: { nodeId: 'start', outputKey: 'userChatInput' }
       })
-    ).toThrow('WORKFLOW_INPUT_MODE_NOT_ALLOWED');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputModeNotAllowed);
     setInputValue({ document, nodeId: 'ai', inputKey: userInput.key, value: 'manual' });
 
     userInput.renderTypeList = [FlowNodeInputTypeEnum.agentGenerated];
     expect(() =>
       setInputValue({ document, nodeId: 'ai', inputKey: userInput.key, value: 'manual' })
-    ).toThrow('WORKFLOW_INPUT_NOT_CONFIGURABLE');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputNotConfigurable);
     expect(() =>
       setInputReference({
         document,
@@ -91,7 +130,7 @@ describe('input mutation services', () => {
         inputKey: userInput.key,
         ref: { nodeId: 'start', outputKey: 'userChatInput' }
       })
-    ).toThrow('WORKFLOW_INPUT_NOT_CONFIGURABLE');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputNotConfigurable);
 
     userInput.renderTypeList = [
       FlowNodeInputTypeEnum.agentGenerated,
@@ -134,7 +173,7 @@ describe('input mutation services', () => {
         inputKey: 'system_httpReqUrl',
         ref: { nodeId: 'start', outputKey: 'userChatInput' }
       })
-    ).toThrow('WORKFLOW_INPUT_MODE_NOT_ALLOWED');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputModeNotAllowed);
 
     const headers = [{ key: 'X-Custom', value: 'enabled' }];
     setInputValue({
@@ -154,7 +193,7 @@ describe('input mutation services', () => {
         inputKey: NodeInputKeyEnum.httpHeaders,
         value: [{ key: 'X-Custom', value: 1 }]
       })
-    ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
   });
 
   it('validates dynamic input customJsonSchema on input.set', () => {
@@ -165,7 +204,7 @@ describe('input mutation services', () => {
 
     expect(() =>
       setInputValue({ document, nodeId: 'ai', inputKey: promptInput.key, value: 'x' })
-    ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
     setInputValue({ document, nodeId: 'ai', inputKey: promptInput.key, value: 'valid' });
   });
 
@@ -190,7 +229,9 @@ describe('input mutation services', () => {
 
       expect(input).toMatchObject({ value, selectedType: FlowNodeInputTypeEnum.JSONEditor });
       expect(
-        validateWorkflow(document).filter((diagnostic) => diagnostic.inputKey === input.key)
+        validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+          (diagnostic) => diagnostic.inputKey === input.key
+        )
       ).toEqual([]);
     }
   );
@@ -205,7 +246,7 @@ describe('input mutation services', () => {
     input.valueType = valueType;
 
     expect(() => setInputValue({ document, nodeId: 'ai', inputKey: input.key, value })).toThrow(
-      'WORKFLOW_INPUT_VALUE_TYPE_INVALID'
+      WorkflowDiagnosticCodeEnum.inputValueTypeInvalid
     );
   });
 
@@ -229,7 +270,7 @@ describe('input mutation services', () => {
     for (const invalidValue of [{ count: 'two' }, {}]) {
       expect(() =>
         setInputValue({ document, nodeId: 'ai', inputKey: input.key, value: invalidValue })
-      ).toThrow('WORKFLOW_INPUT_VALUE_SCHEMA_INVALID');
+      ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
       expect(input.value).toEqual(value);
     }
 
@@ -295,9 +336,11 @@ describe('input mutation services', () => {
         value: [VARIABLE_NODE_ID, 'fileUrl']
       })
     );
-    expect(validateWorkflow(document).map((diagnostic) => diagnostic.code)).not.toContain(
-      'WORKFLOW_REFERENCE_TYPE_MISMATCH'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map(
+        (diagnostic) => diagnostic.code
+      )
+    ).not.toContain(WorkflowDiagnosticCodeEnum.referenceTypeMismatch);
     expect(() =>
       setInputValue({ document, nodeId: 'ai', inputKey: 'fileUrlList', value: 'not-an-array' })
     ).toThrow(WorkflowCommandError);
@@ -352,7 +395,7 @@ describe('system variable references', () => {
     ).toContainEqual(expect.objectContaining({ ref, valueType }));
     setInputReference({ document, nodeId: 'ai', inputKey: input.key, ref });
     expect(input.value).toEqual([VARIABLE_NODE_ID, key]);
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('uses runtime system types over colliding user variables and rejects invalid references', () => {
@@ -380,11 +423,11 @@ describe('system variable references', () => {
       inputKey: input.key,
       ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'chatId' }
     });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     for (const [key, error] of [
-      ['histories', 'WORKFLOW_REFERENCE_TYPE_MISMATCH'],
-      ['missing', 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND']
+      ['histories', WorkflowDiagnosticCodeEnum.referenceTypeMismatch],
+      ['missing', WorkflowDiagnosticCodeEnum.referenceOutputNotFound]
     ]) {
       expect(() =>
         setInputReference({
@@ -395,7 +438,9 @@ describe('system variable references', () => {
         })
       ).toThrow(error);
       input.value = [VARIABLE_NODE_ID, key];
-      expect(validateWorkflow(document).map((item) => item.code)).toContain(error);
+      expect(
+        validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+      ).toContain(error);
     }
   });
 });
@@ -465,14 +510,14 @@ describe('container reference scopes', () => {
           expect.objectContaining({ ref })
         );
         setInputReference({ ...params, ref });
-        expect(validateWorkflow(document)).toEqual([]);
+        expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
       }
       expect(() =>
         assertExecutionEdge(document, {
           source: { kind: 'next', nodeId: 'ai' },
           target: { kind: 'target', nodeId: 'child' }
         })
-      ).toThrow('WORKFLOW_EDGE_CROSS_SCOPE');
+      ).toThrow(WorkflowDiagnosticCodeEnum.edgeCrossScope);
     }
   );
 
@@ -491,7 +536,7 @@ describe('container reference scopes', () => {
     const ref = { nodeId: 'child', outputKey: 'answerText' };
     expect(getAvailableInputReferences(params)).toContainEqual(expect.objectContaining({ ref }));
     setInputReference({ ...params, ref });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
 
     resultInput.canEdit = false;
     expect(
@@ -501,9 +546,9 @@ describe('container reference scopes', () => {
         inputKey: NodeInputKeyEnum.loopRunInputArray
       })
     ).not.toContainEqual(expect.objectContaining({ ref }));
-    expect(validateWorkflow(document).map((item) => item.code)).toContain(
-      'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
-    );
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).map((item) => item.code)
+    ).toContain(WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream);
     resultInput.canEdit = true;
 
     await addNodeFromTemplate({
@@ -518,7 +563,7 @@ describe('container reference scopes', () => {
       target: { kind: 'target', nodeId: 'next' }
     });
     setInputReference({ document, nodeId: 'next', inputKey: 'userChatInput', ref });
-    expect(validateWorkflow(document)).toEqual([]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
   });
 
   it('inherits reference-only parent inputs without exposing other containers or self references', async () => {
@@ -560,13 +605,17 @@ describe('container reference scopes', () => {
       expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'userChatInput' } })
     );
     setInputReference({ ...params, ref: { nodeId: 'ai', outputKey: 'answerText' } });
-    expect(validateWorkflow(document).filter((item) => item.nodeId === 'child')).toEqual([]);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (item) => item.nodeId === 'child'
+      )
+    ).toEqual([]);
 
     for (const sourceNodeId of ['unrelated', 'foreign', 'child']) {
       const ref = { nodeId: sourceNodeId, outputKey: 'answerText' };
       expect(refs).not.toContainEqual(expect.objectContaining({ ref }));
       expect(() => setInputReference({ ...params, ref })).toThrow(
-        'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM'
+        WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
       );
       document.nodes
         .find((node) => node.nodeId === 'child')!
@@ -574,16 +623,16 @@ describe('container reference scopes', () => {
         sourceNodeId,
         'answerText'
       ];
-      expect(validateWorkflow(document)).toContainEqual(
+      expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
         expect.objectContaining({
-          code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
+          code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
           nodeId: 'child'
         })
       );
     }
     expect(() =>
       setInputReference({ ...params, ref: { nodeId: 'start', outputKey: 'missing' } })
-    ).toThrow('WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND');
+    ).toThrow(WorkflowDiagnosticCodeEnum.referenceOutputNotFound);
     expect(() =>
       setInputReference({
         document,
@@ -591,6 +640,6 @@ describe('container reference scopes', () => {
         inputKey: 'fileUrlList',
         ref: { nodeId: VARIABLE_NODE_ID, outputKey: 'histories' }
       })
-    ).toThrow('WORKFLOW_REFERENCE_TYPE_MISMATCH');
+    ).toThrow(WorkflowDiagnosticCodeEnum.referenceTypeMismatch);
   });
 });

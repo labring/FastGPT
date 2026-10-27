@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import {
   WORKFLOW_DOCUMENT_SCHEMA_VERSION,
@@ -57,7 +58,7 @@ export const createWorkflowCheckDocument = ({
         );
       } else {
         diagnostics.push({
-          code: 'WORKFLOW_EDGE_INVALID',
+          code: WorkflowDiagnosticCodeEnum.edgeInvalid,
           severity: 'error',
           params: {
             edge: storeEdge,

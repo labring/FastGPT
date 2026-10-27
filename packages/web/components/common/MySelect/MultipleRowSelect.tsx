@@ -246,8 +246,15 @@ export const MultipleRowSelect = ({
               }
             : {})}
         >
-          {/* data-preserve-width：避免外层 width:auto 冲掉触发器截断 */}
-          <Flex alignItems={'center'} minW={0} w={'100%'} overflow={'hidden'} data-preserve-width>
+          {/* 保留截断宽度，并恢复 MenuButton 默认屏蔽的标签 hover 事件。 */}
+          <Flex
+            alignItems={'center'}
+            minW={0}
+            w={'100%'}
+            overflow={'hidden'}
+            pointerEvents={'auto'}
+            data-preserve-width
+          >
             <Box
               data-preserve-width
               flex={'1 1 0'}

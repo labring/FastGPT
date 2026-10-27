@@ -365,7 +365,8 @@ const CodeLight = ({
         <Flex
           className="code-header"
           position={'sticky'}
-          top={0}
+          // 工具详情为其吸顶标题留位，普通 Markdown 默认仍贴合滚动区域顶部。
+          top={'var(--code-header-top, 0px)'}
           zIndex={2}
           py={2}
           px={4}

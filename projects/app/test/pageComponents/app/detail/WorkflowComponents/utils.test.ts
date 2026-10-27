@@ -12,9 +12,65 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { filterSensitiveNodesData, storeNode2FlowNode } from '@/web/core/workflow/utils';
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
+    it.each([
+      {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        version: '1.2.3',
+        versionLabel: '1.2.3',
+        isLatestVersion: true
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        version: 'published-version-id',
+        versionLabel: 'Initial release',
+        isLatestVersion: false
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        version: '',
+        versionLabel: undefined,
+        isLatestVersion: true
+      }
+    ])(
+      'preserves $flowNodeType version metadata through sanitized JSON export and import',
+      ({ flowNodeType, ...versionMetadata }) => {
+        const t = ((key: string) => key) as any;
+        const node = storeNode2FlowNode({
+          item: {
+            nodeId: 'tool-node',
+            name: 'Tool',
+            flowNodeType,
+            pluginId: 'systemTool-search',
+            ...versionMetadata,
+            inputs: [],
+            outputs: []
+          },
+          t
+        });
+        const workflow = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        const exportedConfig = JSON.parse(
+          JSON.stringify({
+            ...workflow,
+            nodes: filterSensitiveNodesData(workflow.nodes),
+            chatConfig: {}
+          })
+        );
+        const importedWorkflow = migrateWorkflowToCurrent(exportedConfig);
+        const restoredNode = storeNode2FlowNode({ item: importedWorkflow.nodes[0], t });
+
+        expect({
+          version: restoredNode.data.version,
+          versionLabel: restoredNode.data.versionLabel,
+          isLatestVersion: restoredNode.data.isLatestVersion
+        }).toEqual(versionMetadata);
+      }
+    );
+
     it('should convert UI workflow to store workflow', () => {
       const mockHandleList = [{ getAttribute: () => 'source1' }, { getAttribute: () => 'target1' }];
 

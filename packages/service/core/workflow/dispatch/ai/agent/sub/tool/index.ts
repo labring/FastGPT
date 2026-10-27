@@ -15,8 +15,6 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
-import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
@@ -283,8 +281,6 @@ export const dispatchTool = async ({
         })
       });
 
-      // 工具定义可能在 Agent 生成参数后更新；执行前必须使用本次读取的完整约束校验。
-      assertToolRuntimeParams({ jsonSchema: mcpTool.inputSchema, params });
       const result = await mcpClient.toolCall({
         toolName,
         params
@@ -323,9 +319,6 @@ export const dispatchTool = async ({
         return Promise.reject(`HTTP tool ${toolName} not found`);
       }
 
-      // 仅规范化本次回源的定义，不使用节点快照；兼容旧标量或缺失的 requestSchema。
-      const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
-      assertToolRuntimeParams({ jsonSchema: requestSchema, params });
       const { data, errorMsg } = await runHTTPTool({
         apiSchemaStr: toolSetData?.apiSchemaStr,
         baseUrl: baseUrl || '',

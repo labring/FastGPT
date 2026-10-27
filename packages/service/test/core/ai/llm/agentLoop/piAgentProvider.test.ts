@@ -1083,7 +1083,6 @@ describe('runPiAgentLoop', () => {
       argsDelta: '{"q":"FastGPT"}'
     });
     expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
-      rawResponse: '',
       response: 'none'
     });
     expect(result.completeMessages).toContainEqual({
@@ -1320,7 +1319,6 @@ describe('runPiAgentLoop', () => {
     });
 
     expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
-      rawResponse: '',
       response: 'none'
     });
     expect(agentConstructorArgs.at(-1).initialState.messages).toContainEqual(

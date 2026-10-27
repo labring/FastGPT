@@ -23,6 +23,8 @@ import {
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
+import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
+import { UserChatSelectSchema } from './input/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -176,7 +178,11 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
-  askId: z.string().nullish(),
+  askId: z.string().nullish().meta({
+    deprecated: true,
+    description: '旧版用户回复的交互关联 ID，保留兼容，新消息不再写入'
+  }),
+  select: UserChatSelectSchema.optional(),
   text: z
     .object({
       content: z.string()
@@ -245,6 +251,7 @@ export const AIChatItemValueSchema = z.object({
   agentAsk: AgentLoopAskSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   workflowBuilderVersion: WorkflowBuilderVersionSchema.optional(),
+  chatAgentBuilderVersion: ChatAgentBuilderVersionSchema.optional(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),
   hideInUI: z.boolean().optional()

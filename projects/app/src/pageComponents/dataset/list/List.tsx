@@ -26,7 +26,7 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
-import MyBox from '@fastgpt/web/components/common/MyBox';
+import ResourceListCard from '@/pageComponents/dashboard/ResourceListCard';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -69,11 +69,11 @@ function List() {
     onToggleSelectDataset
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
-  const canCreateDataset = folderDetail
-    ? folderDetail.permission.hasWritePer
-    : !!userInfo?.team?.permission.hasDatasetCreatePer;
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
+  const canCreateDataset = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer)
+    : !!userInfo?.team?.permission.hasDatasetCreatePer;
   const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -183,65 +183,32 @@ function List() {
       updateTime: dataset.updateTime
     });
     const isSelected = selectedDatasetIds.includes(dataset._id);
+    const isNavigableItem = dataset.folderAccessMode === 'navigate';
     const canBatchOperate = Boolean(
       dataset.permission?.hasManagePer || dataset.permission?.isOwner
     );
 
     return (
-      <MyBox
+      <ResourceListCard
         key={dataset._id}
-        data-virtual-item=""
-        display={'flex'}
-        flexDirection={'column'}
         lineHeight={1.5}
         h="100%"
         pt={5}
         pb={3}
         px={5}
-        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         borderWidth={1.5}
         border={'base'}
-        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : undefined}
         boxShadow={'2'}
-        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
         borderRadius={'lg'}
-        position={'relative'}
         minH={'150px'}
-        {...(!isBatchMode &&
-          getBoxProps({
-            dataId: dataset._id,
-            isFolder: dataset.type === DatasetTypeEnum.folder
-          }))}
-        _hover={
-          isBatchMode
-            ? {
-                borderColor: canBatchOperate
-                  ? isSelected
-                    ? 'primary.600'
-                    : 'primary.300'
-                  : 'myGray.200',
-                boxShadow: canBatchOperate ? '1.5' : undefined,
-                '& .time': {
-                  display: 'flex !important'
-                },
-                '& .more': {
-                  display: 'none !important'
-                }
-              }
-            : {
-                borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .delete': {
-                  display: 'block'
-                },
-                '& .more': {
-                  display: 'flex'
-                },
-                '& .time': {
-                  display: ['flex', 'none']
-                }
-              }
-        }
+        isBatchMode={isBatchMode}
+        isSelected={isSelected}
+        canSelect={canBatchOperate}
+        dragProps={getBoxProps({
+          dataId: dataset._id,
+          isFolder: dataset.type === DatasetTypeEnum.folder,
+          isDisabled: isNavigableItem
+        })}
         onClick={() => {
           if (isBatchMode) {
             if (canBatchOperate) {
@@ -306,19 +273,33 @@ function List() {
           )}
         </Flex>
 
-        <Box
-          flex={1}
-          className={'textEllipsis3'}
-          whiteSpace={'pre-wrap'}
-          py={3}
-          fontSize={'xs'}
-          color={'myGray.500'}
+        <MyTooltip
+          label={
+            isNavigableItem
+              ? t('common:no_intro')
+              : dataset.intro ||
+                (dataset.type === DatasetTypeEnum.folder
+                  ? t('common:core.dataset.Folder placeholder')
+                  : t('common:core.dataset.Intro Placeholder'))
+          }
+          showOnlyWhenOverflow
         >
-          {dataset.intro ||
-            (dataset.type === DatasetTypeEnum.folder
-              ? t('common:core.dataset.Folder placeholder')
-              : t('common:core.dataset.Intro Placeholder'))}
-        </Box>
+          <Box
+            flex={1}
+            className={'textEllipsis3'}
+            whiteSpace={'pre-wrap'}
+            py={3}
+            fontSize={'xs'}
+            color={'myGray.500'}
+          >
+            {isNavigableItem
+              ? t('common:no_intro')
+              : dataset.intro ||
+                (dataset.type === DatasetTypeEnum.folder
+                  ? t('common:core.dataset.Folder placeholder')
+                  : t('common:core.dataset.Intro Placeholder'))}
+          </Box>
+        </MyTooltip>
 
         <Flex
           h={'24px'}
@@ -327,6 +308,7 @@ function List() {
           fontSize={'sm'}
           fontWeight={500}
           color={'myGray.500'}
+          display={isNavigableItem ? 'none' : 'flex'}
         >
           <HStack spacing={3.5}>
             <UserBox
@@ -470,7 +452,7 @@ function List() {
               )}
           </HStack>
         </Flex>
-      </MyBox>
+      </ResourceListCard>
     );
   };
 
@@ -551,13 +533,15 @@ function List() {
               postChangeOwner({
                 datasetId: editPerDataset._id,
                 ownerId: tmbId
-              }).then(() => loadMyDatasets())
+              }).then(() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id }))
             }
             hasParent={!!parentId}
-            refetchResource={loadMyDatasets}
+            refetchResource={() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id })}
             isInheritPermission={editPerDataset.inheritPermission}
             resumeInheritPermission={() =>
-              resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
+              resumeInheritPer(editPerDataset._id).then(() =>
+                loadMyDatasets({ silent: true, resourceId: editPerDataset._id })
+              )
             }
             avatar={editPerDataset.avatar}
             name={editPerDataset.name}

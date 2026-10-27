@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { WorkflowExecutionEdge } from '@fastgpt/global/core/workflow/type/edge';
 import { WorkflowCommandError } from '../domain/diagnostic';
@@ -24,7 +25,7 @@ export const disconnectExecutionEdge = ({
   const index = document.executionEdges.findIndex((item) => executionEdgesEqual(item, edge));
   if (index < 0) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_EDGE_NOT_FOUND', severity: 'error', params: { edge } }
+      { code: WorkflowDiagnosticCodeEnum.edgeNotFound, severity: 'error', params: { edge } }
     ]);
   }
   document.executionEdges.splice(index, 1);

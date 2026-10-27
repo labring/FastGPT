@@ -15,6 +15,7 @@ type HumanChatBubbleProps = {
   chatTime?: Date;
   onEditSubmit?: (input: ChatBoxInputType) => void | Promise<void>;
   canEdit?: boolean;
+  content?: React.ReactNode;
   children?: React.ReactNode;
 };
 
@@ -29,6 +30,7 @@ const HumanChatBubble = ({
   chatTime,
   onEditSubmit,
   canEdit = true,
+  content,
   children
 }: HumanChatBubbleProps) => {
   const { isPc } = useSystem();
@@ -79,7 +81,7 @@ const HumanChatBubble = ({
           textAlign={'left'}
           maxW={'100%'}
         >
-          <HumanChatBubbleContent chatValue={chatValue} />
+          {content ?? <HumanChatBubbleContent chatValue={chatValue} />}
           {children}
         </Card>
         <HumanChatBubbleActions

@@ -68,6 +68,22 @@ describe('string tools', () => {
     );
   });
 
+  it('preserves JSON fields and escaped quotes after masking URLs', () => {
+    const text = JSON.stringify({
+      url: 'https://example.com/path',
+      detail: 'sku missing',
+      reason: 'see https://example.com/docs" retry'
+    });
+    const sanitized = replaceSensitiveText(text);
+
+    expect(JSON.parse(sanitized)).toEqual({
+      url: 'https://xxx',
+      detail: 'sku missing',
+      reason: 'see https://xxx" retry'
+    });
+    expect(replaceSensitiveText(sanitized)).toBe(sanitized);
+  });
+
   it('should generate nanoid with lowercase prefix', () => {
     const id = getNanoid(12);
     expect(id).toHaveLength(12);

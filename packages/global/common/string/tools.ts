@@ -32,10 +32,10 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* replace sensitive text */
+/** 隐藏错误文本中的 URL 地址和 ns- 标识，保留 JSON 字段及转义边界。 */
 export const replaceSensitiveText = (text: string) => {
-  // 1. http link
-  text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
+  // 1. URL 脱敏保留 JSON 的引号和转义边界，避免吞掉同一行后续的错误字段。
+  text = text.replace(/(?<=https?:\/\/)[^\s"\\]+/g, 'xxx');
   // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
   // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
   text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');

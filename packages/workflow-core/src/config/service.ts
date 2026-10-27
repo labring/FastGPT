@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { AppChatConfigTypeSchema, type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   VariableItemTypeSchema,
@@ -15,7 +16,11 @@ import { CHAT_CONFIG_PATHS } from './type';
 const assertConfigPath = (path: string) => {
   if (!(CHAT_CONFIG_PATHS as readonly string[]).includes(path)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_CHAT_CONFIG_PATH_NOT_ALLOWED', severity: 'error', params: { path } }
+      {
+        code: WorkflowDiagnosticCodeEnum.chatConfigPathNotAllowed,
+        severity: 'error',
+        params: { path }
+      }
     ]);
   }
 };
@@ -67,7 +72,7 @@ export const syncWorkflowStartFileOutput = ({
   if (references.length > 0) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_FILE_OUTPUT_STILL_REFERENCED',
+        code: WorkflowDiagnosticCodeEnum.fileOutputStillReferenced,
         severity: 'error',
         nodeId: startNode.nodeId,
         params: { references }
@@ -169,7 +174,11 @@ export const addGlobalVariable = ({
 }) => {
   if (getVariables(document).some((item) => item.key === variable.key)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_VARIABLE_KEY_DUPLICATED', severity: 'error', params: { key: variable.key } }
+      {
+        code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
+        severity: 'error',
+        params: { key: variable.key }
+      }
     ]);
   }
   document.chatConfig.variables = [
@@ -191,13 +200,17 @@ export const updateGlobalVariable = ({
   const index = variables.findIndex((item) => item.key === key);
   if (index < 0) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_VARIABLE_NOT_FOUND', severity: 'error', params: { key } }
+      { code: WorkflowDiagnosticCodeEnum.variableNotFound, severity: 'error', params: { key } }
     ]);
   }
   const nextKey = patch.key ?? key;
   if (nextKey !== key && variables.some((item) => item.key === nextKey)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_VARIABLE_KEY_DUPLICATED', severity: 'error', params: { key: nextKey } }
+      {
+        code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
+        severity: 'error',
+        params: { key: nextKey }
+      }
     ]);
   }
   const nextValueType = patch.valueType ?? variables[index].valueType;
@@ -212,7 +225,7 @@ export const updateGlobalVariable = ({
   if (incompatibleReference) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_VARIABLE_TYPE_CHANGE_INCOMPATIBLE',
+        code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
         severity: 'error',
         nodeId: incompatibleReference.node.nodeId,
         inputKey: incompatibleReference.input.key,
@@ -242,14 +255,14 @@ export const removeGlobalVariable = ({
   const variables = getVariables(document);
   if (!variables.some((item) => item.key === key)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_VARIABLE_NOT_FOUND', severity: 'error', params: { key } }
+      { code: WorkflowDiagnosticCodeEnum.variableNotFound, severity: 'error', params: { key } }
     ]);
   }
   const references = getGlobalVariableReferences({ document, key });
   if (references.length > 0) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_VARIABLE_STILL_REFERENCED',
+        code: WorkflowDiagnosticCodeEnum.variableStillReferenced,
         severity: 'error',
         params: {
           key,

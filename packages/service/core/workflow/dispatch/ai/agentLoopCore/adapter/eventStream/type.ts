@@ -6,7 +6,6 @@ export type CreateAgentLoopCoreEventStreamParams = {
   workflowStreamResponse?: WorkflowResponseType;
   streamAnswer?: boolean;
   streamReasoning?: boolean;
-  sliceToolResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
 };
 

@@ -26,6 +26,44 @@ const createCall = ({
   }) as any;
 
 describe('createAgentLoopCoreEventDispatcher', () => {
+  it.each([true, false])(
+    'announces a resumed tool before its result while respecting visibility %s',
+    (visible) => {
+      const workflowStreamResponse = vi.fn();
+      const dispatcher = createAgentLoopCoreEventDispatcher({
+        eventStream: createAgentLoopCoreEventStream({
+          workflowStreamResponse,
+          getToolInfo: () => ({ name: 'Plan preview', avatar: 'preview-avatar' })
+        }),
+        shouldStreamTool: () => visible
+      });
+      const call = createCall({ id: 'resumed-preview', name: 'workflow_builder_present_preview' });
+      const event = {
+        type: 'tool_run_end' as const,
+        call,
+        response: 'confirmed',
+        seconds: 0
+      };
+      dispatcher.emitEvent(event);
+      dispatcher.emitEvent(event);
+
+      const events = workflowStreamResponse.mock.calls.map(([event]) => event);
+      expect(events.map((event) => event.event)).toEqual(
+        visible ? [SseResponseEventEnum.toolCall, SseResponseEventEnum.toolResponse] : []
+      );
+      if (visible) {
+        expect(events[0].data.tool).toEqual({
+          id: call.id,
+          toolName: 'Plan preview',
+          toolAvatar: 'preview-avatar',
+          functionName: call.function.name,
+          params: call.function.arguments
+        });
+        expect(events[1].data.tool.response).toBe('confirmed');
+      }
+    }
+  );
+
   it('streams internal tool activity once without collecting tool run details', () => {
     const workflowStreamResponse = vi.fn();
     const appendToolNodeResponse = vi.fn();
@@ -87,7 +125,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       workflowStreamResponse,
       streamAnswer: true,
       streamReasoning: true,
-      sliceToolResponse: true,
       getToolInfo: () => ({
         name: 'Search',
         avatar: 'tool-avatar'
@@ -143,14 +180,12 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'raw response',
       response: 'tool response',
       seconds: 0.3
     });
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'duplicate response',
       response: 'duplicate response',
       seconds: 0.4
     });
@@ -170,6 +205,11 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     expect(
       workflowStreamResponse.mock.calls.filter(
         ([event]) => event.event === SseResponseEventEnum.toolResponse
+      )
+    ).toHaveLength(1);
+    expect(
+      workflowStreamResponse.mock.calls.filter(
+        ([event]) => event.event === SseResponseEventEnum.toolCall
       )
     ).toHaveLength(1);
     expect(workflowStreamResponse).toHaveBeenCalledWith({
@@ -266,7 +306,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'hidden response',
       response: 'hidden response',
       seconds: 0.1
     });
@@ -296,7 +335,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'upstream unavailable',
       response: 'upstream unavailable',
       errorMessage: 'upstream unavailable',
       seconds: 0.1
@@ -335,7 +373,6 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     dispatcher.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'child result',
       response: 'child result',
       seconds: 0.1,
       assistantResponses: [{ text: { content: 'child answer' } }]

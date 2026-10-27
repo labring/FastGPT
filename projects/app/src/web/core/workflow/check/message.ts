@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowCheckIssue, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TFunction } from 'next-i18next';
@@ -22,59 +23,96 @@ const fieldLabelKeys = {
 
 /** 每个翻译 key 保留静态字面量，避免清理脚本漏识别。 */
 const workflowCheckMessageKeys = {
-  required_input_empty: i18nT('common:core.workflow.check.required_input_empty'),
-  no_upstream: i18nT('common:core.workflow.check.no_upstream'),
-  invalid_reference: i18nT('common:core.workflow.check.invalid_reference'),
-  if_else_incomplete: i18nT('common:core.workflow.check.if_else_incomplete'),
-  user_select_empty: i18nT('common:core.workflow.check.user_select_empty'),
-  user_select_value_empty: i18nT('common:core.workflow.check.user_select_value_empty'),
-  form_input_empty: i18nT('common:core.workflow.check.form_input_empty'),
-  classify_question_empty: i18nT('common:core.workflow.check.classify_question_empty'),
-  classify_question_value_empty: i18nT('common:core.workflow.check.classify_question_value_empty'),
-  code_input_incomplete: i18nT('common:core.workflow.check.code_input_incomplete'),
-  http_url_empty: i18nT('common:core.workflow.check.http_url_empty'),
-  context_extract_empty: i18nT('common:core.workflow.check.context_extract_empty'),
-  tool_call_empty: i18nT('common:core.workflow.check.tool_call_empty'),
-  tool_set_not_configured: i18nT('common:core.workflow.check.tool_set_not_configured'),
-  tool_inactive: i18nT('common:core.workflow.check.tool_inactive'),
-  tool_missing: i18nT('common:core.workflow.check.tool_missing'),
-  tool_load_failed: i18nT('common:core.workflow.check.tool_load_failed'),
-  tool_no_permission: i18nT('common:core.workflow.check.tool_no_permission'),
-  model_unavailable: i18nT('common:core.workflow.check.model_unavailable'),
-  model_unavailable_short: i18nT('common:core.workflow.check.model_unavailable_short'),
-  model_required: i18nT('common:core.workflow.check.model_required_short'),
-  resource_missing: i18nT('common:core.workflow.check.resource_missing'),
-  resource_no_permission: i18nT('common:core.workflow.check.resource_no_permission')
+  [WorkflowCheckIssueCodeEnum.requiredInputEmpty]: i18nT(
+    'common:core.workflow.check.required_input_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.noUpstream]: i18nT('common:core.workflow.check.no_upstream'),
+  [WorkflowCheckIssueCodeEnum.invalidReference]: i18nT(
+    'common:core.workflow.check.invalid_reference'
+  ),
+  [WorkflowCheckIssueCodeEnum.ifElseIncomplete]: i18nT(
+    'common:core.workflow.check.if_else_incomplete'
+  ),
+  [WorkflowCheckIssueCodeEnum.userSelectEmpty]: i18nT(
+    'common:core.workflow.check.user_select_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.userSelectValueEmpty]: i18nT(
+    'common:core.workflow.check.user_select_value_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.formInputEmpty]: i18nT('common:core.workflow.check.form_input_empty'),
+  [WorkflowCheckIssueCodeEnum.classifyQuestionEmpty]: i18nT(
+    'common:core.workflow.check.classify_question_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.classifyQuestionValueEmpty]: i18nT(
+    'common:core.workflow.check.classify_question_value_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.codeInputIncomplete]: i18nT(
+    'common:core.workflow.check.code_input_incomplete'
+  ),
+  [WorkflowCheckIssueCodeEnum.httpUrlEmpty]: i18nT('common:core.workflow.check.http_url_empty'),
+  [WorkflowCheckIssueCodeEnum.contextExtractEmpty]: i18nT(
+    'common:core.workflow.check.context_extract_empty'
+  ),
+  [WorkflowCheckIssueCodeEnum.toolCallEmpty]: i18nT('common:core.workflow.check.tool_call_empty'),
+  [WorkflowCheckIssueCodeEnum.toolSetNotConfigured]: i18nT(
+    'common:core.workflow.check.tool_set_not_configured'
+  ),
+  [WorkflowCheckIssueCodeEnum.toolInactive]: i18nT('common:core.workflow.check.tool_inactive'),
+  [WorkflowCheckIssueCodeEnum.toolMissing]: i18nT('common:core.workflow.check.tool_missing'),
+  [WorkflowCheckIssueCodeEnum.toolLoadFailed]: i18nT('common:core.workflow.check.tool_load_failed'),
+  [WorkflowCheckIssueCodeEnum.toolNoPermission]: i18nT(
+    'common:core.workflow.check.tool_no_permission'
+  ),
+  [WorkflowCheckIssueCodeEnum.modelUnavailable]: i18nT(
+    'common:core.workflow.check.model_unavailable'
+  ),
+  [WorkflowCheckIssueCodeEnum.modelUnavailableShort]: i18nT(
+    'common:core.workflow.check.model_unavailable_short'
+  ),
+  [WorkflowCheckIssueCodeEnum.modelRequired]: i18nT(
+    'common:core.workflow.check.model_required_short'
+  ),
+  [WorkflowCheckIssueCodeEnum.resourceMissing]: i18nT(
+    'common:core.workflow.check.resource_missing'
+  ),
+  [WorkflowCheckIssueCodeEnum.resourceNoPermission]: i18nT(
+    'common:core.workflow.check.resource_no_permission'
+  )
 } as const;
 
 type WorkflowCheckMessageCode = keyof typeof workflowCheckMessageKeys;
 
 /** 只声明问题代码与展示文案不一致的别名，其他代码直接使用对应文案。 */
-const WORKFLOW_CHECK_MESSAGE_ALIASES: Record<string, WorkflowCheckMessageCode> = {
-  isolated_node: 'no_upstream',
-  unreachable_from_start: 'no_upstream',
-  tool_waiting_config: 'tool_inactive',
-  tool_offline: 'tool_missing',
-  loop_run_missing_break: 'if_else_incomplete',
-  variable_update_incomplete: 'code_input_incomplete'
+const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
+  Record<WorkflowCheckIssue['code'], WorkflowCheckMessageCode>
+> = {
+  [WorkflowCheckIssueCodeEnum.isolatedNode]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowCheckIssueCodeEnum.unreachableFromStart]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowCheckIssueCodeEnum.toolWaitingConfig]: WorkflowCheckIssueCodeEnum.toolInactive,
+  [WorkflowCheckIssueCodeEnum.toolOffline]: WorkflowCheckIssueCodeEnum.toolMissing,
+  [WorkflowCheckIssueCodeEnum.loopRunMissingBreak]: WorkflowCheckIssueCodeEnum.ifElseIncomplete,
+  [WorkflowCheckIssueCodeEnum.variableUpdateIncomplete]:
+    WorkflowCheckIssueCodeEnum.codeInputIncomplete
 };
 
 /** 待处理：引用无效、工具不可访问或加载失败。其余均为待完善。 */
-const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
-  'invalid_reference',
-  'tool_missing',
-  'tool_load_failed',
-  'tool_no_permission',
-  'tool_offline',
-  'model_unavailable',
-  'resource_missing',
-  'resource_no_permission'
+const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<WorkflowCheckIssue['code']>([
+  WorkflowCheckIssueCodeEnum.invalidReference,
+  WorkflowCheckIssueCodeEnum.toolMissing,
+  WorkflowCheckIssueCodeEnum.toolLoadFailed,
+  WorkflowCheckIssueCodeEnum.toolNoPermission,
+  WorkflowCheckIssueCodeEnum.toolOffline,
+  WorkflowCheckIssueCodeEnum.modelUnavailable,
+  WorkflowCheckIssueCodeEnum.resourceMissing,
+  WorkflowCheckIssueCodeEnum.resourceNoPermission
 ]);
 
 export type WorkflowCheckUIStatus = 'pending_improve' | 'pending_handle';
 
 /** 按 issue code 映射 UI 状态前缀，不直接使用 level 字段。 */
-export const getWorkflowCheckIssueUIStatus = (code: string): WorkflowCheckUIStatus =>
+export const getWorkflowCheckIssueUIStatus = (
+  code: WorkflowCheckIssue['code']
+): WorkflowCheckUIStatus =>
   WORKFLOW_CHECK_PENDING_HANDLE_CODES.has(code) ? 'pending_handle' : 'pending_improve';
 
 /** 根据 issue.code 返回设计稿固定提示文案，不自由拼接或生成表外文案。 */
@@ -83,12 +121,13 @@ export const getWorkflowCheckIssueMessage = ({
   t,
   params
 }: {
-  issueCode: string;
+  issueCode: WorkflowCheckIssue['code'];
   t?: TFunction;
   params?: WorkflowCheckMessageParams;
 }) => {
-  const isWorkflowCheckMessageCode = (code: string): code is WorkflowCheckMessageCode =>
-    Object.hasOwn(workflowCheckMessageKeys, code);
+  const isWorkflowCheckMessageCode = (
+    code: WorkflowCheckIssue['code']
+  ): code is WorkflowCheckMessageCode => Object.hasOwn(workflowCheckMessageKeys, code);
 
   const messageCode = isWorkflowCheckMessageCode(issueCode)
     ? issueCode
@@ -99,51 +138,51 @@ export const getWorkflowCheckIssueMessage = ({
 
   // 有限文案逐项使用字面量翻译，确保清理脚本能直接识别实际调用的 key。
   switch (messageCode) {
-    case 'required_input_empty':
+    case WorkflowCheckIssueCodeEnum.requiredInputEmpty:
       return t('common:core.workflow.check.required_input_empty', params);
-    case 'no_upstream':
+    case WorkflowCheckIssueCodeEnum.noUpstream:
       return t('common:core.workflow.check.no_upstream', params);
-    case 'invalid_reference':
+    case WorkflowCheckIssueCodeEnum.invalidReference:
       return t('common:core.workflow.check.invalid_reference', params);
-    case 'if_else_incomplete':
+    case WorkflowCheckIssueCodeEnum.ifElseIncomplete:
       return t('common:core.workflow.check.if_else_incomplete', params);
-    case 'user_select_empty':
+    case WorkflowCheckIssueCodeEnum.userSelectEmpty:
       return t('common:core.workflow.check.user_select_empty', params);
-    case 'user_select_value_empty':
+    case WorkflowCheckIssueCodeEnum.userSelectValueEmpty:
       return t('common:core.workflow.check.user_select_value_empty', params);
-    case 'form_input_empty':
+    case WorkflowCheckIssueCodeEnum.formInputEmpty:
       return t('common:core.workflow.check.form_input_empty', params);
-    case 'classify_question_empty':
+    case WorkflowCheckIssueCodeEnum.classifyQuestionEmpty:
       return t('common:core.workflow.check.classify_question_empty', params);
-    case 'classify_question_value_empty':
+    case WorkflowCheckIssueCodeEnum.classifyQuestionValueEmpty:
       return t('common:core.workflow.check.classify_question_value_empty', params);
-    case 'code_input_incomplete':
+    case WorkflowCheckIssueCodeEnum.codeInputIncomplete:
       return t('common:core.workflow.check.code_input_incomplete', params);
-    case 'http_url_empty':
+    case WorkflowCheckIssueCodeEnum.httpUrlEmpty:
       return t('common:core.workflow.check.http_url_empty', params);
-    case 'context_extract_empty':
+    case WorkflowCheckIssueCodeEnum.contextExtractEmpty:
       return t('common:core.workflow.check.context_extract_empty', params);
-    case 'tool_call_empty':
+    case WorkflowCheckIssueCodeEnum.toolCallEmpty:
       return t('common:core.workflow.check.tool_call_empty', params);
-    case 'tool_set_not_configured':
+    case WorkflowCheckIssueCodeEnum.toolSetNotConfigured:
       return t('common:core.workflow.check.tool_set_not_configured', params);
-    case 'tool_inactive':
+    case WorkflowCheckIssueCodeEnum.toolInactive:
       return t('common:core.workflow.check.tool_inactive', params);
-    case 'tool_missing':
+    case WorkflowCheckIssueCodeEnum.toolMissing:
       return t('common:core.workflow.check.tool_missing', params);
-    case 'tool_load_failed':
+    case WorkflowCheckIssueCodeEnum.toolLoadFailed:
       return t('common:core.workflow.check.tool_load_failed', params);
-    case 'tool_no_permission':
+    case WorkflowCheckIssueCodeEnum.toolNoPermission:
       return t('common:core.workflow.check.tool_no_permission', params);
-    case 'model_unavailable':
+    case WorkflowCheckIssueCodeEnum.modelUnavailable:
       return t('common:core.workflow.check.model_unavailable', params);
-    case 'model_unavailable_short':
+    case WorkflowCheckIssueCodeEnum.modelUnavailableShort:
       return t('common:core.workflow.check.model_unavailable_short', params);
-    case 'model_required':
+    case WorkflowCheckIssueCodeEnum.modelRequired:
       return t('common:core.workflow.check.model_required_short', params);
-    case 'resource_missing':
+    case WorkflowCheckIssueCodeEnum.resourceMissing:
       return t('common:core.workflow.check.resource_missing', params);
-    case 'resource_no_permission':
+    case WorkflowCheckIssueCodeEnum.resourceNoPermission:
       return t('common:core.workflow.check.resource_no_permission', params);
   }
 };
@@ -162,12 +201,15 @@ export const getToolErrorMessage = ({
   t: TFunction;
 }): string | undefined => {
   if (status === PluginStatusEnum.Offline) {
-    return getWorkflowCheckIssueMessage({ issueCode: 'tool_offline', t });
+    return getWorkflowCheckIssueMessage({ issueCode: WorkflowCheckIssueCodeEnum.toolOffline, t });
   }
   if (!error) return undefined;
 
   const issueCode = resolvePluginDataErrorIssueCode(error);
-  if (issueCode === 'resource_no_permission' || issueCode === 'tool_missing') {
+  if (
+    issueCode === WorkflowCheckIssueCodeEnum.resourceNoPermission ||
+    issueCode === WorkflowCheckIssueCodeEnum.toolMissing
+  ) {
     return getWorkflowCheckIssueMessage({ issueCode, t });
   }
 
@@ -176,7 +218,10 @@ export const getToolErrorMessage = ({
     return t(errorKey as ParseKeys);
   }
 
-  return error.trim() || getWorkflowCheckIssueMessage({ issueCode: 'tool_load_failed', t });
+  return (
+    error.trim() ||
+    getWorkflowCheckIssueMessage({ issueCode: WorkflowCheckIssueCodeEnum.toolLoadFailed, t })
+  );
 };
 
 /** 将无副作用规则结果补全为页面使用的问题对象，所有翻译集中在此边界。 */

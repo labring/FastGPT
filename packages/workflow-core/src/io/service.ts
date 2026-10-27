@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -40,13 +41,13 @@ export const addNodeInput = ({
   const node = getDocumentNode(document, nodeId);
   if (!supportsDynamicInputs(node)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_DYNAMIC_INPUT_UNSUPPORTED', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.dynamicInputUnsupported, severity: 'error', nodeId }
     ]);
   }
   if (node.inputs.some((item) => item.key === input.key)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_INPUT_KEY_DUPLICATED',
+        code: WorkflowDiagnosticCodeEnum.inputKeyDuplicated,
         severity: 'error',
         nodeId,
         inputKey: input.key
@@ -78,7 +79,7 @@ export const removeNodeInput = ({
   const inputIndex = node.inputs.findIndex((item) => item.key === inputKey);
   if (inputIndex < 0) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_INPUT_NOT_FOUND', severity: 'error', nodeId, inputKey }
+      { code: WorkflowDiagnosticCodeEnum.inputNotFound, severity: 'error', nodeId, inputKey }
     ]);
   }
   if (
@@ -87,7 +88,7 @@ export const removeNodeInput = ({
     node.inputs[inputIndex].canEdit !== true
   ) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_INPUT_REMOVE_FORBIDDEN', severity: 'error', nodeId, inputKey }
+      { code: WorkflowDiagnosticCodeEnum.inputRemoveForbidden, severity: 'error', nodeId, inputKey }
     ]);
   }
   node.inputs.splice(inputIndex, 1);
@@ -106,13 +107,13 @@ export const addNodeOutput = ({
   const node = getDocumentNode(document, nodeId);
   if (!supportsDynamicOutputs(node)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_DYNAMIC_OUTPUT_UNSUPPORTED', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.dynamicOutputUnsupported, severity: 'error', nodeId }
     ]);
   }
   if (node.outputs.some((item) => item.key === output.key)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_OUTPUT_KEY_DUPLICATED',
+        code: WorkflowDiagnosticCodeEnum.outputKeyDuplicated,
         severity: 'error',
         nodeId,
         params: { outputKey: output.key }
@@ -153,7 +154,12 @@ export const removeNodeOutput = ({
   const outputIndex = node.outputs.findIndex((item) => item.key === outputKey);
   if (outputIndex < 0) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_OUTPUT_NOT_FOUND', severity: 'error', nodeId, params: { outputKey } }
+      {
+        code: WorkflowDiagnosticCodeEnum.outputNotFound,
+        severity: 'error',
+        nodeId,
+        params: { outputKey }
+      }
     ]);
   }
   const output = node.outputs[outputIndex];
@@ -162,7 +168,12 @@ export const removeNodeOutput = ({
     output.type !== FlowNodeOutputTypeEnum.source
   ) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_OUTPUT_REMOVE_FORBIDDEN', severity: 'error', nodeId, params: { outputKey } }
+      {
+        code: WorkflowDiagnosticCodeEnum.outputRemoveForbidden,
+        severity: 'error',
+        nodeId,
+        params: { outputKey }
+      }
     ]);
   }
   node.outputs.splice(outputIndex, 1);

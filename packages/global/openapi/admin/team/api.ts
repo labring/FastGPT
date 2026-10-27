@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { PaginationResponseSchema, PaginationSchema } from '../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../api';
 
 /* ============================================================================
  * API: 获取团队列表
@@ -18,7 +18,7 @@ export const TeamItemSchema = z.object({
   ownerName: z.string().optional().meta({ description: '团队所有者用户名' })
 });
 
-export const GetTeamsBodySchema = PaginationSchema.extend({
+export const GetTeamsBodySchema = createPaginationSchema({
   search: z
     .string()
     .trim()

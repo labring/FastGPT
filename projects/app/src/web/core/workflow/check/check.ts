@@ -1,3 +1,7 @@
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import type {
   WorkflowCheckNodeIssueMap,
@@ -7,6 +11,7 @@ import type {
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { validateWorkflow } from '@fastgpt/workflow-core/validation';
+import { resolveWorkflowReferenceDocument } from '@fastgpt/workflow-core/reference/validation';
 import { checkWorkflowModels } from '@fastgpt/workflow-core/validation/model';
 import { collectWorkflowBindings } from '@fastgpt/workflow-core/binding/service';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
@@ -30,12 +35,19 @@ type WorkflowCheckInput = {
 /**
  * 所有 Web 场景共用一次 Core 扫描；Web 只补资源状态和展示，不维护另一套输入、模型或图规则。
  * 无节点归属的诊断单独保留，避免“已阻断但没有具体提示”；原始诊断原样返回供调用方排查。
+ * 客户端把失效引用视为未引用，输入、模型和资源检查共用有效值快照，不改写画布。
  */
 const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: WorkflowCheckInput) => {
   const projected = createWorkflowCheckDocument({ nodes, edges, chatConfig });
+  const document = resolveWorkflowReferenceDocument({
+    document: projected.document,
+    invalidReferencePolicy: 'asEmpty'
+  });
   const diagnostics = [
     ...projected.diagnostics,
-    ...validateWorkflow(projected.document, {
+    // 快照已按 asEmpty 收敛；Core 直接校验有效值，不再次清理引用。
+    ...validateWorkflow(document, {
+      invalidReferencePolicy: 'error',
       modelCheck: { modelData, templates: moduleTemplatesFlat }
     })
   ];
@@ -71,10 +83,12 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
       (diagnostic.path?.[0] === 'chatConfig' ? chatConfigIssues : workflowIssues).push(issue);
       continue;
     }
-    const isModel = diagnostic.code.startsWith('WORKFLOW_MODEL_');
+    const isModel =
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelRequired ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelUnavailable;
     const isConnection =
-      diagnostic.code === 'WORKFLOW_NODE_ISOLATED' ||
-      diagnostic.code === 'WORKFLOW_NODE_NOT_REACHABLE';
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeIsolated ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeNotReachable;
     const order = isModel ? (diagnostic.params?.customSelector ? 0 : 2) : isConnection ? 4 : 3;
     for (const owner of owners) {
       if (nodeId && owner !== nodeId) continue;
@@ -88,17 +102,17 @@ const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: Workf
   }
 
   const bindingsByNode = new Map<string, WorkflowBindingRequirement[]>();
-  for (const binding of collectWorkflowBindings(projected.document)) {
+  for (const binding of collectWorkflowBindings(document)) {
     const bindings = bindingsByNode.get(binding.nodeId) ?? [];
     bindings.push(binding);
     bindingsByNode.set(binding.nodeId, bindings);
   }
-  for (const { data } of nodes) {
+  for (const [index, { data }] of nodes.entries()) {
     if (nodeId && nodeId !== data.nodeId) continue;
     const entries = issueEntries.get(data.nodeId) ?? [];
     entries.push(
       ...checkWorkflowNodeResourceRules({
-        data,
+        data: { ...data, inputs: document.nodes[index].inputs },
         bindings: bindingsByNode.get(data.nodeId) ?? []
       }).map((issue) => ({
         issue: formatWorkflowRuleIssue({ issue, node: data, t }),
@@ -189,6 +203,17 @@ export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
       ? result.issueMap[firstErrorNodeId].find((issue) => issue.level === 'error')
       : errors[0],
     errorNodeIds,
-    errorMessages: [...new Set(errors.map((issue) => issue.message))]
+    // 节点错误统一携带节点名；汇总去重后最多展示 3 条，节点诊断仍完整保留。
+    errorMessages: [
+      ...new Set(
+        errors.map((issue) => {
+          if (!issue.nodeName) return issue.message;
+          // 模型不可用的翻译文案已包含节点名，避免重复拼接。
+          if (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+            return issue.message;
+          return `「${issue.nodeName}」${issue.message}`;
+        })
+      )
+    ].slice(0, 3)
   };
 };

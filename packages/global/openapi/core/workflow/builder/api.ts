@@ -4,7 +4,6 @@ import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 import {
-  AgentPlanAskResponseSchema,
   WorkflowBuilderVersionSchema,
   WorkflowChecksumSchema
 } from '../../../../core/workflow/builder/type';
@@ -41,9 +40,6 @@ export const WorkflowBuilderChatBodySchema = z.object({
   model: z.string().min(1).optional().meta({
     description: '工作流辅助生成使用的 LLM 模型',
     example: 'gpt-5'
-  }),
-  agentPlanAskResponse: AgentPlanAskResponseSchema.optional().meta({
-    description: '用户对当前 Agent 结构化选项的回答'
   }),
   workflowContext: z
     .object({
@@ -146,35 +142,4 @@ export const WorkflowBuilderVersionCommitResponseSchema = WorkflowBuilderVersion
 });
 export type WorkflowBuilderVersionCommitResponse = z.infer<
   typeof WorkflowBuilderVersionCommitResponseSchema
->;
-
-/* ============================================================================
- * API: Workflow Builder 运行环境预热
- * Route: POST /api/proApi/core/workflow/builder/runtime/prewarm
- * Method: POST
- * Description: 在打开 Workflow Builder 后提前准备可复用的 Sandbox 运行环境
- * Tags: ['Workflow Builder']
- * ============================================================================ */
-
-export const WorkflowBuilderRuntimePrewarmBodySchema = z
-  .object({
-    appId: ObjectIdSchema.meta({
-      description: '当前 Workflow 应用 ID',
-      example: '67f4c91c79a4d61b1f116b2a'
-    }),
-    chatId: z.string().min(1).meta({
-      description: '工作流辅助生成独立会话 ID',
-      example: 'workflow-builder-chat-id'
-    })
-  })
-  .strict();
-export type WorkflowBuilderRuntimePrewarmBody = z.infer<
-  typeof WorkflowBuilderRuntimePrewarmBodySchema
->;
-
-export const WorkflowBuilderRuntimePrewarmResponseSchema = z.undefined().meta({
-  description: '运行环境预热完成'
-});
-export type WorkflowBuilderRuntimePrewarmResponse = z.infer<
-  typeof WorkflowBuilderRuntimePrewarmResponseSchema
 >;

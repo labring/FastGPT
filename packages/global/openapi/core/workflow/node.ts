@@ -111,7 +111,7 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
   toolConfig: true,
   position: true
 })
-  .safeExtend({
+  .extend({
     parentNodeId: z.string().optional().meta({
       description: '父节点 ID，用于循环、分组等嵌套节点场景'
     }),

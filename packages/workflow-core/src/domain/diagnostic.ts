@@ -1,9 +1,10 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import z from 'zod';
 
 export const WorkflowDiagnosticSeveritySchema = z.enum(['error', 'warning']);
 
 export const WorkflowDiagnosticSchema = z.object({
-  code: z.string(),
+  code: z.enum(WorkflowDiagnosticCodeEnum),
   severity: WorkflowDiagnosticSeveritySchema,
   path: z.array(z.union([z.string(), z.number()])).optional(),
   nodeId: z.string().optional(),
@@ -14,19 +15,19 @@ export const WorkflowDiagnosticSchema = z.object({
 export type WorkflowDiagnostic = z.infer<typeof WorkflowDiagnosticSchema>;
 
 export class WorkflowCommandError extends Error {
-  readonly code = 'WORKFLOW_COMMAND_FAILED';
+  readonly code = WorkflowDiagnosticCodeEnum.commandFailed;
 
   constructor(readonly diagnostics: WorkflowDiagnostic[]) {
-    super(diagnostics[0]?.code ?? 'WORKFLOW_COMMAND_FAILED');
+    super(diagnostics[0]?.code ?? WorkflowDiagnosticCodeEnum.commandFailed);
     this.name = 'WorkflowCommandError';
   }
 }
 
 export class WorkflowValidationError extends Error {
-  readonly code = 'WORKFLOW_VALIDATION_FAILED';
+  readonly code = WorkflowDiagnosticCodeEnum.validationFailed;
 
   constructor(readonly diagnostics: WorkflowDiagnostic[]) {
-    super(diagnostics[0]?.code ?? 'WORKFLOW_VALIDATION_FAILED');
+    super(diagnostics[0]?.code ?? WorkflowDiagnosticCodeEnum.validationFailed);
     this.name = 'WorkflowValidationError';
   }
 }

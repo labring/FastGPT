@@ -1,3 +1,4 @@
+import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Link, Progress } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
@@ -83,6 +84,10 @@ const QuoteItem = ({
   canDownloadSource,
   canEditData,
   canEditDataset,
+  appId,
+  skillId,
+  sourceType,
+  outLinkAuthData,
   ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseQuoteItemType & {
@@ -211,6 +216,7 @@ const QuoteItem = ({
             rawSourceId={quoteItem.sourceId}
             canView={canDownloadSource}
             {...RawSourceBoxProps}
+            {...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData })}
           />
           <Box flex={1} />
           {quoteItem.id && canEditData && (

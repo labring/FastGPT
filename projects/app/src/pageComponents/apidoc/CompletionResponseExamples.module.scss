@@ -1,0 +1,114 @@
+/* 保留 Scalar 的卡片与 Schema；示例正文使用同一个 ScalarCodeBlock，不再自行绘制 pre/copy UI。 */
+:global(.response-card):has(> .host > .panel) {
+  min-width: 0;
+  overflow: hidden;
+
+  > :global(.response-card-footer) {
+    display: none;
+  }
+
+  &:not(:has(:global(.scalar-card-checkbox-input):checked)) {
+    > :global(.scalar-card-content):not(:global(.scalar-card-header)) {
+      display: none;
+    }
+  }
+
+  &:has(:global(.scalar-card-checkbox-input):checked) > .host {
+    display: none;
+  }
+}
+
+.host,
+.panel,
+.content {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.host,
+.panel,
+.content,
+.content > [role='tabpanel']:not([hidden]) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel {
+  color: var(--scalar-color-1);
+  font-family: var(--scalar-font);
+  font-size: var(--scalar-small, 13px);
+}
+
+.tabs {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-wrap: nowrap;
+  border-bottom: 1px solid var(--scalar-border-color);
+  background: var(--scalar-background-2);
+  scrollbar-width: thin;
+}
+
+.tab {
+  flex: none;
+  padding: 10px 12px;
+  border-bottom: 2px solid transparent;
+  color: var(--scalar-color-2);
+  font-family: var(--scalar-font-code);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--scalar-color-1);
+    background: var(--scalar-background-3);
+  }
+
+  &[aria-selected='true'] {
+    border-bottom-color: var(--scalar-color-accent);
+    color: var(--scalar-color-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--scalar-color-accent);
+    outline-offset: -2px;
+  }
+}
+
+.description {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px;
+  border-bottom: 1px solid var(--scalar-border-color);
+  color: var(--scalar-color-2);
+  line-height: 1.6;
+}
+
+.codeHost {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 440px;
+  overflow: hidden;
+
+  > :global(.scalar-code-block) {
+    flex: 1;
+    width: 100%;
+    background: var(--scalar-background-2);
+  }
+
+  :global(.custom-scroll) {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}

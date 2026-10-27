@@ -1,12 +1,33 @@
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
-import { compileExecutionEdge, decompileStoreEdge } from '../../src/edge/compiler';
+import {
+  compileExecutionEdge,
+  decompileStoreEdge,
+  decompileStoreSourcePort
+} from '../../src/edge/compiler';
 import { createWorkflowDocument } from '../../src/domain/document';
 import aiWorkflow from '../fixtures/basic-ai/workflow.json';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it } from 'vitest';
 
 const document = createWorkflowDocument(aiWorkflow as Parameters<typeof createWorkflowDocument>[0]);
+
+describe('decompileStoreSourcePort', () => {
+  it('reads the source independently of missing or legacy target metadata', () => {
+    expect(
+      decompileStoreSourcePort({
+        edge: { source: 'start', sourceHandle: 'start-source-right' },
+        document
+      })
+    ).toEqual({ kind: 'next', nodeId: 'start' });
+    expect(() =>
+      decompileStoreSourcePort({
+        edge: { source: 'start', sourceHandle: 'unknown' },
+        document
+      })
+    ).toThrow(WorkflowCommandError);
+  });
+});
 
 describe('compileExecutionEdge', () => {
   it.each([

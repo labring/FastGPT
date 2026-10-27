@@ -1,19 +1,14 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Flex, VStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import {
-  batchMoveApps,
-  delAppById,
-  putAppById,
-  resumeInheritPer,
-  changeOwner
-} from '@/web/core/app/api';
+import { batchMoveApps, delAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -29,7 +24,6 @@ import type { EditResourceInfoFormType } from '@/components/common/Modal/EditRes
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
 import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
@@ -46,6 +40,7 @@ import { getDashboardAppListScene } from './utils/appListTypes';
 import { getResourceListDisplayTime, hasAppListActiveFilter } from './filters/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import ResourceListCard from '@/pageComponents/dashboard/ResourceListCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
@@ -98,8 +93,8 @@ const List = () => {
     onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
 
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer && folderDetail.type !== AppTypeEnum.httpPlugin)
     : userInfo?.team.permission.hasAppCreatePer;
   const hasActiveFilter = hasAppListActiveFilter({
     searchKey,
@@ -136,12 +131,6 @@ const List = () => {
   );
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
-
-  const { runAsync: onPutAppById } = useRequest(putAppById, {
-    onSuccess() {
-      loadMyApps();
-    }
-  });
 
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
@@ -193,15 +182,14 @@ const List = () => {
   });
 
   const { runAsync: onResumeInheritPermission } = useRequest(
-    () => {
-      return resumeInheritPer(editPerApp!._id);
+    async (appId: string) => {
+      await resumeInheritPer(appId);
+      // 保存期间可能切换目录或关闭弹窗，始终按发起操作时的 ID 同步。
+      await loadMyApps({ silent: true, resourceId: appId });
     },
     {
       manual: true,
-      errorToast: t('common:permission.Resume InheritPermission Failed'),
-      onSuccess() {
-        loadMyApps();
-      }
+      errorToast: t('common:permission.Resume InheritPermission Failed')
     }
   );
   const renderAppCard = (app: (typeof myApps)[number]) => {
@@ -213,51 +201,24 @@ const List = () => {
     const isAgent = AppTypeList.includes(app.type);
     const isTool = ToolTypeList.includes(app.type);
     const isFolder = AppFolderTypeList.includes(app.type);
+    const isNavigableItem = app.folderAccessMode === 'navigate';
     const isSelected = selectedAppIds.includes(app._id);
     const canBatchOperate = Boolean(app.permission?.hasManagePer || app.permission?.isOwner);
 
     return (
-      <MyBox
+      <ResourceListCard
         key={app._id}
-        data-virtual-item=""
         pt={5}
         pb={3}
         px={5}
-        cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
-        border={'1px solid'}
-        borderColor={isBatchMode && isSelected ? 'primary.600 !important' : 'myGray.200'}
-        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
-        borderRadius={'10px'}
-        position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        _hover={
-          isBatchMode
-            ? {
-                borderColor: canBatchOperate
-                  ? isSelected
-                    ? 'primary.600'
-                    : 'primary.300'
-                  : 'myGray.200',
-                boxShadow: canBatchOperate ? '1.5' : undefined,
-                '& .time': {
-                  display: 'flex !important'
-                },
-                '& .more': {
-                  display: 'none !important'
-                }
-              }
-            : {
-                borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .more': {
-                  display: 'flex'
-                },
-                '& .time': {
-                  display: ['flex', 'none']
-                }
-              }
-        }
+        isBatchMode={isBatchMode}
+        isSelected={isSelected}
+        canSelect={canBatchOperate}
+        dragProps={getBoxProps({
+          dataId: app._id,
+          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder,
+          isDisabled: isNavigableItem
+        })}
         onClick={() => {
           if (isBatchMode) {
             if (canBatchOperate) {
@@ -282,11 +243,6 @@ const List = () => {
             );
           }
         }}
-        {...(!isBatchMode &&
-          getBoxProps({
-            dataId: app._id,
-            isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-          }))}
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
@@ -327,11 +283,22 @@ const List = () => {
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-            {app.intro || t('common:no_intro')}
-          </Box>
+          <MyTooltip
+            label={isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
+            showOnlyWhenOverflow
+          >
+            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+              {isNavigableItem ? t('common:no_intro') : app.intro || t('common:no_intro')}
+            </Box>
+          </MyTooltip>
         </Box>
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+        <HStack
+          h={'24px'}
+          fontSize={'mini'}
+          color={'myGray.500'}
+          w="full"
+          display={isNavigableItem ? 'none' : 'flex'}
+        >
           <HStack flex={'1 0 0'}>
             <UserBox
               sourceMember={app.sourceMember}
@@ -517,7 +484,7 @@ const List = () => {
             )}
           </HStack>
         </HStack>
-      </MyBox>
+      </ResourceListCard>
     );
   };
 
@@ -560,7 +527,11 @@ const List = () => {
             alignItems={'stretch'}
           >
             {!isBatchMode &&
-              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+              (hasCreatePer ? (
+                <ListCreateButton appType={appType} />
+              ) : !parentId ? (
+                <ForbiddenCreateButton />
+              ) : null)}
             {renderVirtualGridItems(renderAppCard)}
           </Grid>
         )}
@@ -583,11 +554,11 @@ const List = () => {
                 changeOwner({
                   appId: editPerApp._id,
                   ownerId: tmbId
-                }).then(() => loadMyApps())
+                }).then(() => loadMyApps({ silent: true, resourceId: editPerApp._id }))
             })}
-            refetchResource={loadMyApps}
+            refetchResource={() => loadMyApps({ silent: true, resourceId: editPerApp._id })}
             hasParent={Boolean(parentId)}
-            resumeInheritPermission={onResumeInheritPermission}
+            resumeInheritPermission={() => onResumeInheritPermission(editPerApp._id)}
             isInheritPermission={editPerApp.inheritPermission}
             avatar={editPerApp.avatar}
             name={editPerApp.name}

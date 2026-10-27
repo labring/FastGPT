@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 import { setImmediate } from 'node:timers/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
@@ -41,8 +41,7 @@ const model: LLMModelDataType = {
   model: 'local-tool-call-simulator',
   name: 'Local simulator',
   isActive: true,
-  inputPrice: 1,
-  outputPrice: 2,
+  pricing: { tiers: [{ inputPrice: 1, outputPrice: 2 }] },
   config: {
     maxContext: 128000,
     maxResponse: 4096,
@@ -97,9 +96,14 @@ let server: Server;
 let baseUrl: string;
 let rounds: Round[];
 let received: Request[];
+let saveRecord: MockInstance<typeof recordController.saveLLMRequestRecord>;
+
+/** 等待本例真实的异步写入，避免固定轮询时限和清库操作与后台 Mongo 写入竞争。 */
+const waitForRecordWrites = () => Promise.all(saveRecord.mock.results.map(({ value }) => value));
 
 /** 每个用例独立分配 loopback 端口和响应队列，模拟真实 JSON/SSE 传输而不访问外部模型。 */
 beforeEach(async () => {
+  saveRecord = vi.spyOn(recordController, 'saveLLMRequestRecord');
   rounds = [];
   received = [];
   server = createServer(async (req, res) => {
@@ -213,20 +217,19 @@ afterEach(async () => {
       });
     }
   } finally {
+    await waitForRecordWrites();
     vi.restoreAllMocks();
   }
 });
 
-/** 等待异步请求追踪落库，直接回读 Mongo，避免只验证 save 函数调用参数。 */
+/** 等待真实写入后回读 Mongo，校验实际记录内容而非仅校验 save 的调用参数。 */
 const readRecord = async (requestId?: string) => {
-  let record: LLMRequestRecordSchemaType | null;
-  await vi.waitFor(async () => {
-    record = await MongoLLMRequestRecord.findOne({
-      teamId,
-      ...(requestId && { requestId })
-    }).lean();
-    expect(record).not.toBeNull();
-  });
+  await waitForRecordWrites();
+  const record: LLMRequestRecordSchemaType | null = await MongoLLMRequestRecord.findOne({
+    teamId,
+    ...(requestId && { requestId })
+  }).lean();
+  expect(record).not.toBeNull();
   return record!;
 };
 const body = (stream: boolean) => ({
@@ -360,7 +363,6 @@ describe('createLLMResponse HTTP/SSE contract', () => {
 
   it.each([true, false])('default throws the fixed error: stream=%s', async (stream) => {
     rounds.push({ toolCalls: [] });
-    const saveRecord = vi.spyOn(recordController, 'saveLLMRequestRecord');
     await expect(createLLMResponse({ teamId, body: body(stream) })).rejects.toThrow(fixedError);
     const record = await readRecord();
     expect(record.response.finish_reason).toBe('tool_calls');

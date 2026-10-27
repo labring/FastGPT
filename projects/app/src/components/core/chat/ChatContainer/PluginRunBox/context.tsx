@@ -276,7 +276,7 @@ const PluginRunContextProvider = ({
     <WorkflowRuntimeContextProvider
       sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: props.appId }}
       chatId={props.chatId}
-      outLinkAuthData={props.outLinkAuthData || {}}
+      outLinkAuthData={props.outLinkAuthData}
       fileUploadMode={props.fileUploadMode ?? 'runtime'}
     >
       <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>

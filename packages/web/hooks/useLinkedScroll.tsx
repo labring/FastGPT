@@ -19,7 +19,7 @@ export function useLinkedScroll<
 >(
   api: (data: TParams) => Promise<TData>,
   {
-    pageSize = 10,
+    pageSize = 20,
     params = {},
     currentData,
     defaultScroll = 'top',

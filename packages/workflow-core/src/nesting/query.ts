@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowCommandError } from '../domain/diagnostic';
@@ -8,7 +9,11 @@ export const listContainerChildren = (document: WorkflowDocument, parentNodeId: 
   const parent = getDocumentNode(document, parentNodeId);
   if (!isNestedParentNodeType(parent.flowNodeType)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_PARENT_NOT_CONTAINER', severity: 'error', nodeId: parentNodeId }
+      {
+        code: WorkflowDiagnosticCodeEnum.parentNotContainer,
+        severity: 'error',
+        nodeId: parentNodeId
+      }
     ]);
   }
   return document.nodes.filter((item) => item.parentNodeId === parentNodeId);

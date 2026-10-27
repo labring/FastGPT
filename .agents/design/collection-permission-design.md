@@ -169,7 +169,7 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 | 接口 | 现状 | 目标 |
 |---|---|---|
 | `POST /api/core/dataset/collection/create` | dataset write | 父 collection folder `write` 或 dataset `write` 及以上；根创建需 dataset `write` |
-| `PUT /api/core/dataset/collection/update` | collection write | 非 move：collection `write`；move：源父级 + 目标父级 `manage`（根 ↔ 目录需 `TeamDatasetCreatePermissionVal`），**不接收 `inheritPermission`** |
+| `PUT /api/core/dataset/collection/update` | collection write | 非 move：collection `manage`（改对象自身信息）；move：源父级 + 目标父级 `manage`（根 ↔ 目录需 `TeamDatasetCreatePermissionVal`），**不接收 `inheritPermission`**；同一请求同时移动并携带字段更新时仍需节点 `manage` |
 | `DELETE /api/core/dataset/collection/delete` | collection write | collection owner（owner 专属操作；manage/write 协作者不可删；folder 递归删子树） |
 | `GET /api/core/dataset/collection/detail` | collection read | dataset `read`（门槛）+ collection `read` |
 | `GET /api/core/dataset/collection/listV2` | dataset read | dataset `read`（门槛）；有 `parentId` 时校验该 folder `read`；列表按可读集合逐条过滤 |
@@ -185,6 +185,7 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 
 | 接口 | 变更点 |
 |---|---|
+| `PUT /api/core/dataset/update`（非移动字段） | 更新知识库自身信息/模型/配置由 dataset `write` 收紧为 dataset `manage`，与 collection 对齐；内容类写接口（上传、同步、训练、数据块 CRUD）保持 `write` |
 | `PUT /api/core/dataset/update`（move） | dataset 自身权限逻辑**不变**（移入是授权行为，仍强制 `inheritPermission=true`）；仅在事务内权限传播完成后追加调用 `syncDatasetToCollections`（§5.3） |
 | `POST /api/proApi/core/dataset/collaborator/update` | dataset 权限逻辑不变；追加 `syncDatasetToCollections` |
 | `POST /api/proApi/core/dataset/resumeInheritPermission` | dataset 权限逻辑不变；追加 `syncDatasetToCollections` |

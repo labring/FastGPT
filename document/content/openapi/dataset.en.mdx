@@ -103,7 +103,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/list?pare
       "vectorModel": {
         "model": "text-embedding-ada-002",
         "name": "Embedding-2",
-        "charsPointsPrice": 0,
+        "pricing": { "unitPrice": 0 },
         "defaultToken": 512,
         "maxToken": 8000,
         "weight": 100
@@ -152,7 +152,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
     "vectorModel": {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "charsPointsPrice": 0,
+      "pricing": { "unitPrice": 0 },
       "defaultToken": 512,
       "maxToken": 8000,
       "weight": 100
@@ -162,7 +162,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
       "name": "FastAI-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "charsPointsPrice": 0
+      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }
     },
     "intro": "",
     "permission": "private",
@@ -213,23 +213,23 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 **Request**
 
-| Parameter        | Description                                                                                                                                     | Required |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| datasetId        | Dataset ID                                                                                                                                      | ✅       |
-| parentId       | Parent ID. Defaults to root directory if not provided                                                                                           |          |
-| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                         | ✅       |
-| indexPrefixTitle | Whether to auto-generate title index                                                                                                            |          |
-| customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                  |          |
-| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                      |          |
-| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                                |          |
-| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                        |          |
-| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                      |          |
-| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                               |          |
-| indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                   |          |
-| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto. |          |
-| qaPrompt         | QA split prompt                                                                                                                                 |          |
-| tags             | Collection tags (string array)                                                                                                                  |          |
-| createTime       | File creation time (Date / String)                                                                                                              |          |
+| Parameter        | Description                                                                                                                                                                                   | Required |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| datasetId        | Dataset ID                                                                                                                                                                                    | ✅       |
+| parentId         | Parent ID. Defaults to root directory if not provided                                                                                                                                         |          |
+| trainingType     | Data processing method. chunk: split by text length; qa: Q&A extraction                                                                                                                       | ✅       |
+| indexPrefixTitle | Whether to auto-generate title index                                                                                                                                                          |          |
+| customPdfParse   | Whether to enable enhanced PDF parsing. Default false: disabled; true: enabled                                                                                                                |          |
+| autoIndexes      | Whether to auto-generate indexes (commercial version only)                                                                                                                                    |          |
+| imageIndex       | Whether to auto-generate image indexes (commercial version only)                                                                                                                              |          |
+| chunkSettingMode | Chunk parameter mode. auto: system default; custom: manual specification                                                                                                                      |          |
+| chunkSplitMode   | Chunk split mode. size: split by length; char: split by character. Ineffective when chunkSettingMode=auto.                                                                                    |          |
+| chunkSize        | Chunk size, default 1500. Ineffective when chunkSettingMode=auto.                                                                                                                             |          |
+| indexSize        | Index size, default 512, must be less than embedding model max token. Ineffective when chunkSettingMode=auto.                                                                                 |          |
+| chunkSplitter    | Custom highest priority split symbol. Won't split further unless exceeding file processing max context. Ineffective when chunkSettingMode=auto.                                               |          |
+| qaPrompt         | QA split prompt                                                                                                                                                                               |          |
+| tags             | Collection tags (Commercial). Accepts structured tag objects (`[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 1}]`) as well as legacy string arrays |          |
+| createTime       | File creation time (Date / String)                                                                                                                                                            |          |
 
 **Response**
 
@@ -593,10 +593,11 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 <Tab value="Parameters" >
 
 - offset: Offset
-- pageSize: Items per page, max 30 (optional)
+- pageSize: Items per page, max 100 (optional)
 - datasetId: Dataset ID (required)
 - parentId: Parent ID (optional)
 - searchText: Fuzzy search text (optional)
+- tagFilters: Filter collection list by tag values (optional, Commercial), formatted as `[{"tagId": "tag_id", "values": ["option_or_number"]}]`
 
 </Tab>
 
@@ -770,7 +771,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - id: Collection ID
 - parentId: Update parent ID (optional)
 - name: Update collection name (optional)
-- tags: Update collection tags (optional)
+- tags: Update collection tags (optional, Commercial). Accepts structured tag objects `[{"tag": "Applicable Dept", "value": ["All", "R&D"]}, {"tag": "Security Level", "value": 2}]` as well as legacy string arrays
 - forbid: Update collection disabled status (optional)
 - createTime: Update collection creation time (optional)
 
@@ -837,7 +838,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 | teamId        | String  | Team ID        | ✅       |
 | tmbId         | String  | Member ID      | ✅       |
 | datasetId     | String  | Dataset ID     | ✅       |
-| collectionId  | String  | Collection ID   | ✅       |
+| collectionId  | String  | Collection ID  | ✅       |
 | q             | String  | Primary data   | ✅       |
 | a             | String  | Auxiliary data | ✖        |
 | fullTextToken | String  | Tokenization   | ✖        |
@@ -1197,14 +1198,14 @@ Returns top k results. limit is the maximum tokens, up to 20000 tokens.
   "statusText": "",
   "data": [
     {
-        "id": "65599c54a5c814fb803363cb",
-        "q": "Who are you?",
-        "a": "I am the FastGPT assistant",
-        "datasetId": "6554684f7f9ed18a39a4d15c",
-        "collectionId": "6556cd795e4b663e770bb66d",
-        "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
-        "sourceId": "6556cd775e4b663e770bb65c",
-        "score": 0.8050316572189331
+      "id": "65599c54a5c814fb803363cb",
+      "q": "Who are you?",
+      "a": "I am the FastGPT assistant",
+      "datasetId": "6554684f7f9ed18a39a4d15c",
+      "collectionId": "6556cd795e4b663e770bb66d",
+      "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",
+      "sourceId": "6556cd775e4b663e770bb65c",
+      "score": 0.8050316572189331
     }
   ]
 }

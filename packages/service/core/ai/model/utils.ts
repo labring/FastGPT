@@ -1,6 +1,5 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { UpdateQuery } from 'mongoose';
 import { isProVersion } from '../../../common/system/constants';
@@ -10,15 +9,7 @@ export type EditableModelData = Omit<AIModelDocumentDataType, 'model'> & {
   model?: string;
 };
 
-const optionalModelConfigFields = [
-  'requestUrl',
-  'requestAuth',
-  'testMode',
-  'charsPointsPrice',
-  'priceTiers',
-  'inputPrice',
-  'outputPrice'
-] as const;
+const optionalModelConfigFields = ['requestUrl', 'requestAuth', 'testMode', 'pricing'] as const;
 
 /**
  * 生成模型配置的替换式更新表达式，清除缺失的可选字段并保护不可修改的 type 与 scope。
@@ -43,12 +34,6 @@ export const getModelConfigUpdate = (
     }
   } else {
     delete mutableModelData.model;
-  }
-
-  if (modelData.type === ModelTypeEnum.llm) {
-    delete mutableModelData.inputPrice;
-    delete mutableModelData.outputPrice;
-    delete mutableModelData.charsPointsPrice;
   }
 
   const fieldsToUnset = optionalModelConfigFields.filter((field) => {

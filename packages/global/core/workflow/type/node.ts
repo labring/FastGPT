@@ -1,4 +1,5 @@
 import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
+import { WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum } from '../diagnostic/constants';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { FlowNodeTemplateOutputItemTypeSchema } from '../template/output';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
@@ -355,7 +356,7 @@ export const WorkflowCheckIssueSchema = z.object({
   nodeName: z.string().optional(),
   nodeType: z.enum(FlowNodeTypeEnum),
   level: WorkflowCheckIssueLevelSchema,
-  code: z.string(),
+  code: z.union([z.enum(WorkflowDiagnosticCodeEnum), z.enum(WorkflowCheckIssueCodeEnum)]),
   message: z.string(),
   inputKey: z.string().optional()
 });

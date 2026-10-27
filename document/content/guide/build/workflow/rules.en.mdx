@@ -1,0 +1,141 @@
+---
+title: Workflow validation rules
+description: Learn about connection types, workflow boundaries, tool entry ownership, conditional feedback, and how connection points are displayed, deleted, and validated.
+---
+
+When you build a workflow, FastGPT checks whether nodes can connect. This page explains the connection rules so you can tell which nodes can connect and why a connection point may be hidden.
+
+## Connection rules
+
+### Connection types
+
+The canvas supports two types of connections. Connection points are also called handles.
+
+| Type               | Connection                                                                                         | Purpose                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Regular connection | A node's regular, branch, or error-catching output → another node's regular input                  | Connect steps in a workflow                      |
+| Tool connection    | The diamond output at the bottom of a Tool Call node → the diamond input at the top of a tool node | Attach a node as the entry point for a tool call |
+
+Regular outputs are usually on the right side of a node, and regular inputs are usually on the left. The two connection types cannot be mixed: a regular output cannot connect to a tool input, and a tool output cannot connect to a regular input.
+
+Only nodes that support being used as tools have a tool input. See [Tool calling and termination](/en/guide/build/workflow/nodes/tool) for usage details.
+
+### Basic restrictions
+
+- A node cannot connect to itself.
+- You cannot create duplicate connections with the same source node, source handle, target node, and target handle.
+- Both nodes and both handles must exist and support the connection type. A node without a regular input or output cannot connect in that direction.
+- Branch connections must use branches or options that exist in the current configuration. Output-field connections require an existing, valid output handle. Error-catching connections require error catching to be enabled on the node.
+
+Subject to the other rules, one output can connect to multiple different nodes, and multiple nodes can connect to the same regular input. Different branch outputs on one node can also connect to the same next node.
+
+### Main and tool workflow boundaries
+
+A Tool Call node belongs to the outer workflow that contains it. A node attached through a diamond tool connection is a **tool entry node**. That entry node and the nodes reachable from it through regular connections form its **tool workflow**.
+
+Each tool entry node defines a separate tool workflow. Even when two tool entry nodes belong to the same Tool Call node, their workflows cannot connect to each other through regular connections.
+
+| Source and target of a regular connection                             | Allowed?                                                            |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Main workflow node → node in the same main workflow                   | Yes                                                                 |
+| Tool workflow node → another node in the same tool workflow           | Yes, subject to the cycle rules and excluding the tool entry node   |
+| Main workflow node → tool workflow node                               | No                                                                  |
+| Tool workflow node → main workflow node                               | No                                                                  |
+| Node in one tool workflow → node in another tool workflow             | No, including separate tool workflows under the same Tool Call node |
+| Tool workflow node → its calling Tool Call node or an ancestor caller | No                                                                  |
+
+For example, if a Tool Call node in the main workflow has “AI Chat #2” attached as a tool, “AI Chat #2” and its subsequent nodes belong to that tool workflow. They cannot connect to “AI Chat #3” in the main workflow, and “AI Chat #3” cannot connect into the tool workflow either.
+
+You can extend a tool workflow from an internal node to an unassigned node or disconnected group of nodes, making them part of that tool workflow. An external node cannot join an existing tool workflow by connecting into it. Intermediate nodes cannot be used to bypass workflow boundaries.
+
+Workflow membership depends on tool attachments and existing connections. A node's position on the canvas does not affect its membership.
+
+### Tool entry attachment rules
+
+- One Tool Call node can have multiple different tool entry nodes.
+- **A tool entry node can belong to only one Tool Call node.** Multiple Tool Call nodes cannot share the same entry node.
+- A node with an existing regular incoming connection cannot be attached as a tool entry node. First, manually delete its regular incoming connections.
+- An attached tool entry node cannot receive regular incoming connections, including connections from inside its own tool workflow.
+- A tool workflow can contain another Tool Call node with its own child tool workflows, but tool calls cannot form a cycle back to the current workflow or an ancestor workflow.
+
+To move a tool entry node to a different Tool Call node, first manually delete the original tool connection, then connect it to the new caller. FastGPT does not automatically change ownership or delete the old connection. If multiple Tool Call nodes need similar tool workflows, add separate tool nodes for each caller.
+
+### Containers and special nodes
+
+Nodes inside [Loop nodes](/en/guide/build/workflow/nodes/loop_run) and [Parallel Run nodes](/en/guide/build/workflow/nodes/parallel_run) must also follow container boundaries:
+
+- Nodes in the same container can connect according to the rules above.
+- Internal nodes cannot connect directly to nodes outside the container or inside another container.
+- The outer workflow connects to the container node's own external handles. The container runs its internal workflow.
+
+Some nodes have additional restrictions: tool parameter configuration nodes can only be attached through tool connections; Tool Calling Termination nodes must be connected within a tool workflow; loop termination nodes are only available inside Loop nodes; Parallel Run nodes do not support connections to interactive nodes such as User Selection and Form Input.
+
+### Cycles and branch merging
+
+**Cycles made entirely of unconditional connections are blocked. Feedback controlled by a conditional output is allowed.** FastGPT checks the actual output handles and every cycle that a new connection would create. Connecting back to an upstream node is not automatically prohibited.
+
+The following outputs can control feedback:
+
+| Output                                            | Rule                                                                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| IF, ELSE IF, and ELSE outputs on a condition node | Branches that exist in the current configuration can control feedback                                      |
+| Question Classification outputs                   | Categories that exist in the current configuration can control feedback                                    |
+| Manual User Selection outputs                     | Options that exist in the current configuration can control feedback                                       |
+| Dynamic User Selection output                     | The shared output for dynamic options can control feedback                                                 |
+| Outputs on a node with error catching enabled     | Both success and error-catching outputs can control feedback; success and failure select different outputs |
+
+Success outputs include the node's regular output and handles for valid output fields. Disabling error catching makes success outputs unconditional again. Diamond tool attachment outputs do not count as conditional outputs here.
+
+These examples assume that all nodes belong to the same workflow and their handles meet the other connection rules:
+
+| Existing structure and proposed connection                                                 | Allowed? | Reason                                                                   |
+| ------------------------------------------------------------------------------------------ | -------- | ------------------------------------------------------------------------ |
+| Regular nodes `A → B`, then `B → A`                                                        | No       | Creates an unconditional cycle                                           |
+| Regular nodes `A → B → C`, then `C → A`                                                    | No       | The cycle has no conditional output                                      |
+| `A → B → D` and `A → C`, then `D → C`                                                      | Yes      | Merges branches without creating a cycle                                 |
+| `A → condition node B → C`, then `C → A`                                                   | Yes      | The cycle passes through a valid branch output on B                      |
+| `A → Question Classification B → C`, then `C → A`                                          | Yes      | The cycle passes through a valid category output on B                    |
+| `A → B → C` with error catching enabled on B, then `C → A`                                 | Yes      | The cycle passes through an output controlled by success or failure on B |
+| An unconditional path `A → B → C`, with a separate conditional branch from A, then `C → A` | No       | A condition outside this cycle cannot control it                         |
+
+The conditional output can appear anywhere in the cycle, including on the proposed connection itself. If another unconditional path bypasses that output, FastGPT still rejects a connection that would close the unconditional cycle. Having conditional branches does not make a node's other regular outputs conditional.
+
+Permission to create feedback does not relax the other rules: self-connections, connections across tool workflow boundaries, and regular incoming connections to tool entry nodes remain prohibited. Variable citations are not execution connections and are excluded from this cycle check.
+
+This check identifies whether a cycle passes through a controlled output. It does not evaluate condition expressions, predict classification results, or guarantee that the workflow will exit. Provide an appropriate exit condition when creating feedback. Workflows that keep looping remain subject to runtime execution limits. The configuration and termination rules inside [Loop nodes](/en/guide/build/workflow/nodes/loop_run) still apply separately.
+
+### Handle visibility and validation
+
+While you drag a connection, the canvas only shows target handles that the current source can connect to. Ineligible target handles are hidden. For example, when you drag a regular connection from inside a tool workflow, inputs in the main workflow and other tool workflows are hidden as connection targets.
+
+Target handle visibility, connection creation, and whole-workflow connection validation use the same rules. If connection conditions change while you drag, FastGPT checks them again when creating the connection.
+
+Targets are also hidden for duplicate connections, self-connections, connections across workflow boundaries, and connections that violate the cycle rules above. Ineligible targets are hidden before you connect.
+
+When you are not dragging a connection, some unconnected inputs are hidden. Collapsing a node can also change where its handles appear. **These display changes do not delete existing connections.**
+
+### When connections are deleted
+
+The following actions delete the corresponding connections:
+
+- Manually deleting a connection.
+- Deleting a node at either end of a connection.
+- Deleting a branch, option, or output field with a connection handle, which removes that handle.
+- Disabling error catching, which removes the error-catching output handle.
+
+Display changes such as temporarily hiding handles or collapsing nodes do not delete connections. If an existing connection fails validation, follow the validation message to adjust it manually. FastGPT does not automatically delete connections because they fail validation.
+
+Reordering or dragging branches, expanding or collapsing nodes, cancelling a drag, and rejecting a connection all preserve existing connections. Disabling error catching removes only connections from its error-catching output. Success connections remain. If those remaining connections now form an unconditional cycle, FastGPT reports it for you to adjust.
+
+### Existing workflows and when validation runs
+
+Opening an existing workflow preserves its connections and displays any issues under the current rules. Older handle formats and condition branch formats remain supported. Existing workflows must still follow the current workflow boundary, tool ownership, and cycle rules.
+
+| Action                                   | Effect of connection validation                                             |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| Open or edit a workflow                  | Displays existing issues; new connections show only eligible target handles |
+| Save a draft                             | Allows unresolved connection issues to remain without blocking the save     |
+| Run, Debug, or test a chat in the editor | Checks the current workflow; fix connection errors before continuing        |
+| Save and publish                         | Checks the current workflow; fix connection errors before continuing        |
+
+For example, an older workflow with connections across tool workflows, multiple callers sharing a tool entry, or an unconditional cycle needs adjustment before it can be debugged or published again. Published versions used through regular chat, share links, or APIs continue to use backend execution logic. These client checks do not modify the execution graph of a published version.

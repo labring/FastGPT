@@ -339,7 +339,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     },
     onToolRunEnd: ({
       call,
-      rawResponse,
       response,
       assistantMessages,
       assistantResponses,
@@ -355,7 +354,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       emitAgentLoopEvent(runtime, {
         type: 'tool_run_end',
         call,
-        rawResponse,
         response,
         assistantMessages,
         assistantResponses,

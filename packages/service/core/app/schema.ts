@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { defineIndex, Schema, getMongoModel } from '../../common/mongo';
-import type { AppSchemaType as AppType } from '@fastgpt/global/core/app/type';
+import type { AppMongoSchemaType } from '@fastgpt/global/core/app/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -30,6 +30,10 @@ const AppSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: AppCollectionName,
       default: null
+    },
+    ancestorIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: AppCollectionName }],
+      default: undefined
     },
     teamId: {
       type: Schema.Types.ObjectId,
@@ -151,6 +155,10 @@ defineIndex(AppSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(AppSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
+defineIndex(AppSchema, {
+  key: { teamId: 1, ancestorIds: 1 },
+  options: { partialFilterExpression: { ancestorIds: { $exists: true } } }
+});
 // 置顶优先排序。置顶项数量很少，只需覆盖排序前缀，不为各排序组合单独建索引
 // defineIndex(AppSchema, { key: { teamId: 1, isPinned: -1, pinnedAt: -1 } });
 
@@ -176,4 +184,4 @@ defineIndex(AppSchema, { key: { deleteTime: 1 } });
 // Admin search
 defineIndex(AppSchema, { key: { name: 1 } });
 
-export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);
+export const MongoApp = getMongoModel<AppMongoSchemaType>(AppCollectionName, AppSchema);

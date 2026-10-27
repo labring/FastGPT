@@ -8,22 +8,29 @@ import type {
   AdminAuditEventEnum,
   AuditEventEnum,
   AdminAuditEventParamsType,
-  AuditEventParamsType
+  AuditEventParamsType,
+  DatasetAuditEvent,
+  DatasetAuditEventParamsType,
+  TeamAuditEvent
 } from '@fastgpt/global/support/user/audit/constants';
+import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import type { AuditResourceType } from '@fastgpt/global/support/user/audit/type';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export type AuditLogInput = {
   tmbId: string;
   teamId: string;
-  event: AuditEventEnum | AdminAuditEventEnum;
+  event: TeamAuditEvent | AdminAuditEventEnum;
+  resources?: AuditResourceType[];
   params?: Record<string, unknown>;
 };
 
 type AddAuditLogInput<T, P> = {
   teamId: string;
   event: T;
+  resources?: AuditResourceType[];
   params?: P;
 } & (
   | {
@@ -85,7 +92,7 @@ export function getI18nInformLevel(level: string): string {
   return i18nT('common:UnKnow');
 }
 
-/** 写入单条审计并在内部重试、记录最终失败；scope 为 member（或省略）时必须提供 tmbId。 */
+/** 写入审计及可选资源关联，内部重试并记录最终失败；member 作用域必须提供 tmbId。 */
 export function addAuditLog<T extends AuditEventEnum>(
   input: AddAuditLogInput<T, AuditEventParamsType[T]>
 ): Promise<void>;
@@ -94,16 +101,22 @@ export function addAuditLog<T extends AdminAuditEventEnum>(
   input: AddAuditLogInput<T, AdminAuditEventParamsType[T]>
 ): Promise<void>;
 
-export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>(
+/** 知识库事件：事件名取 DatasetAuditEventEnum 的点分 value，参数类型按 DatasetAuditEventParamsType 校验。 */
+export function addAuditLog<T extends DatasetAuditEventEnum>(
+  input: AddAuditLogInput<T, DatasetAuditEventParamsType[T]>
+): Promise<void>;
+
+export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum | DatasetAuditEvent>(
   input: AddAuditLogInput<T, any>
 ): Promise<void> {
-  const { teamId, tmbId, scope, event, params } = input;
+  const { teamId, tmbId, scope, event, resources, params } = input;
 
   return retryFn(async () => {
     await MongoTeamAudit.create({
       ...(scope === 'system' ? { scope } : { ...(scope ? { scope } : {}), tmbId }),
       teamId,
       event,
+      ...(resources ? { resources } : {}),
       metadata: params
     });
   }).catch((error) => {
@@ -118,10 +131,11 @@ export const addAuditLogs = async (logs: AuditLogInput[]): Promise<void> => {
   try {
     await retryFn(async () => {
       await MongoTeamAudit.insertMany(
-        logs.map(({ tmbId, teamId, event, params }) => ({
+        logs.map(({ tmbId, teamId, event, resources, params }) => ({
           tmbId,
           teamId,
           event,
+          ...(resources ? { resources } : {}),
           metadata: params
         })),
         { ordered: true }

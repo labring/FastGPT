@@ -178,60 +178,32 @@ describe('form2AppWorkflow model reference', () => {
     );
   });
 
-  it('round-trips collectionFilterMatch through the dataset search node', () => {
+  it('saves a structured filter marker and round-trips conditions without a form version', () => {
     const form = getFormWithDataset();
+    delete form.dataset.collectionFilterVersion;
     form.dataset.collectionFilterMatch = {
-      logic: 'AND',
+      logic: 'OR',
       conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
     };
 
     const workflow = form2AppWorkflow(form, (key: string) => key);
-    const input = workflow.nodes
-      .flatMap((node) => node.inputs)
-      .find((item) => item.key === NodeInputKeyEnum.collectionFilterMatch);
-
-    expect(input).toMatchObject({
-      key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: ['datasetTagFilter', 'reference'],
-      value: form.dataset.collectionFilterMatch
-    });
-    expect(
-      appWorkflow2Form({ nodes: workflow.nodes, chatConfig: form.chatConfig }).dataset
-        .collectionFilterMatch
-    ).toEqual(form.dataset.collectionFilterMatch);
-  });
-
-  it('preserves the explicit legacy filter marker until the user upgrades it', () => {
-    const form = getFormWithDataset();
-    form.dataset[NodeInputKeyEnum.collectionFilterVersion] = 'legacy';
-    form.dataset.collectionFilterMatch = '{"tags":{"$and":["legacy"]}}';
-
-    const workflow = form2AppWorkflow(form, (key: string) => key);
-    const datasetNode = workflow.nodes.find(
-      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    const inputs = workflow.nodes.flatMap((node) => node.inputs);
+    expect(inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.collectionFilterVersion,
+          value: 'structured'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: ['datasetTagFilter', 'reference'],
+          value: form.dataset.collectionFilterMatch
+        })
+      ])
     );
-    expect(datasetNode).toBeTruthy();
-    expect(
-      datasetNode?.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterVersion)
-        ?.value
-    ).toBe('legacy');
-    expect(appWorkflow2Form({ nodes: workflow.nodes, chatConfig: {} }).dataset).toMatchObject({
-      [NodeInputKeyEnum.collectionFilterVersion]: 'legacy',
+    expect(appWorkflow2Form(workflow).dataset).toMatchObject({
+      collectionFilterVersion: 'structured',
       collectionFilterMatch: form.dataset.collectionFilterMatch
-    });
-
-    const unversionedNode = {
-      ...datasetNode!,
-      inputs: datasetNode!.inputs
-        .filter((input) => input.key !== NodeInputKeyEnum.collectionFilterVersion)
-        .map((input) =>
-          input.key === NodeInputKeyEnum.collectionFilterMatch
-            ? { ...input, value: undefined }
-            : input
-        )
-    };
-    expect(appWorkflow2Form({ nodes: [unversionedNode], chatConfig: {} }).dataset).toMatchObject({
-      [NodeInputKeyEnum.collectionFilterVersion]: 'structured'
     });
   });
 

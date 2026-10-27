@@ -18,6 +18,12 @@ import { shouldInheritResourcePermission } from '@fastgpt/service/support/permis
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import {
+  getFolderAncestorIdsFromParentId,
+  rewriteFolderSubtreeAncestorIds
+} from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { serviceEnv } from '@fastgpt/service/env';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
@@ -101,16 +107,53 @@ export const moveApp = async ({
   });
 
   await mongoSessionRun(async (session) => {
-    // 非继承态，仅改parentId 即可。
+    const isPathFolder = app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder;
+    const ancestorIds = isPathFolder
+      ? await getFolderAncestorIdsFromParentId({
+          parentId: parentId ? String(parentId) : null,
+          findFolder: (id) =>
+            MongoApp.findOne({ _id: id, teamId: app.teamId, type: app.type })
+              .select('_id parentId')
+              .session(session)
+              .lean()
+        })
+      : undefined;
+    const rewriteDescendantPaths = async () => {
+      if (!isPathFolder || !ancestorIds) return;
+      await rewriteFolderSubtreeAncestorIds({
+        rootId: appId,
+        rootAncestorIds: ancestorIds,
+        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+        findChildFolders: (parentIds) =>
+          MongoApp.find({ teamId: app.teamId, parentId: { $in: parentIds }, type: app.type })
+            .select('_id parentId')
+            .session(session)
+            .lean(),
+        writeAncestorIds: (updates) =>
+          MongoApp.bulkWrite(
+            updates.map(({ id, ancestorIds: childAncestorIds }) => ({
+              updateOne: {
+                filter: { _id: id, teamId: app.teamId, type: app.type },
+                update: { $set: { ancestorIds: childAncestorIds } }
+              }
+            })),
+            { session }
+          ).then(() => undefined)
+      });
+    };
+
+    // 路径和 parentId 在同一事务写入；权限非继承分支也必须更新后代路径。
     if (!shouldInheritResourcePermission(app.inheritPermission)) {
       await MongoApp.updateOne(
         { _id: appId },
         {
-          parentId,
+          ...parseParentIdInMongo(parentId),
+          ...(ancestorIds ? { ancestorIds } : {}),
           updateTime: new Date()
         },
         { session }
       );
+      await rewriteDescendantPaths();
       return;
     }
 
@@ -160,12 +203,14 @@ export const moveApp = async ({
     await MongoApp.updateOne(
       { _id: appId },
       {
-        parentId,
+        ...parseParentIdInMongo(parentId),
+        ...(ancestorIds ? { ancestorIds } : {}),
         inheritPermission: true,
         updateTime: new Date()
       },
       { session }
     );
+    await rewriteDescendantPaths();
   });
 
   updateParentFoldersUpdateTime({ parentId: app.parentId });

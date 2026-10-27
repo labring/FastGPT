@@ -107,6 +107,10 @@ export const createAgentLoopCoreEventDispatcher = ({
         const functionName = event.call.function.name;
         // 失败结果同样是模型已消费的 toolResponse，必须实时推送给客户端。
         if (shouldStreamTool(functionName)) {
+          // 交互续跑会在新轮次直接结束上一轮工具；先补齐调用信息，与持久化 collector 的行为一致。
+          if (!pendingToolCallMap.has(event.call.id) && !announcedActivityIds.has(event.call.id)) {
+            eventStream.streamToolCall(event.call);
+          }
           eventStream.streamToolResponse({
             toolCallId: event.call.id,
             response: event.response
