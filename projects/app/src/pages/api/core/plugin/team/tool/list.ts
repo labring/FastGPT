@@ -12,6 +12,8 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { withDurationLog } from '@fastgpt/service/common/logger/timing';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import {
   getTeamPluginSource,
@@ -30,6 +32,8 @@ export type listBody = Record<string, never>;
 
 export type listResponse = GetTeamPluginListResponseType;
 
+const logger = getLogger(LogCategories.MODULE.PLUGIN.TEAM);
+
 const hasMatchedUserTag = ({
   userTags,
   targetTags
@@ -47,7 +51,14 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
     querySchema: GetTeamSystemPluginListQuerySchema
   });
 
-  const { teamId, tmbId, permission } = await authUserPer({ req, authToken: true });
+  const { teamId, tmbId, permission } = await withDurationLog(
+    {
+      logger,
+      message: 'Team plugin list stage finished',
+      properties: { stage: 'auth' }
+    },
+    () => authUserPer({ req, authToken: true })
+  );
   const debugSource = await getActiveDebugSource(tmbId);
   const teamSource = getTeamPluginSource(teamId);
 
@@ -59,7 +70,14 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
       sources: ['system', teamSource, ...(debugSource ? [debugSource] : [])],
       lang
     }),
-    getUserDetail({ tmbId }),
+    withDurationLog(
+      {
+        logger,
+        message: 'Team plugin list stage finished',
+        properties: { stage: 'user.detail', tmbId }
+      },
+      () => getUserDetail({ tmbId })
+    ),
     getTeamPluginPolicyMap(teamId)
   ]);
   const userTags = userDetail.tags || [];
@@ -90,7 +108,15 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 export default NextAPI(handler);
 
 async function getActiveDebugSource(tmbId: string) {
-  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
+  const status = await withDurationLog(
+    {
+      logger,
+      message: 'Team plugin list stage finished',
+      properties: { stage: 'plugin.debugSessionStatus', tmbId }
+    },
+    // 调试通道未开通属于预期分支，与慢请求排查无关，继续用 catch 归为“无调试来源”。
+    () => pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined)
+  );
 
   if (
     status?.enabled &&
