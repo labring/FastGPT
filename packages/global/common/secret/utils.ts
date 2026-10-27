@@ -52,8 +52,10 @@ export const getSecretPlainValue = (value: unknown): string | undefined => {
   return typeof plainValue === 'string' ? plainValue : undefined;
 };
 
-/** @deprecated Remove after legacy `{ value: '', secret: string }` data has been migrated. */
-export const normalizeLegacySecretValue = <T>(value: T): T | { secret: string } => {
+/** @deprecated Remove after legacy dual-field secret wrappers have been migrated. */
+export const normalizeLegacySecretValue = <T>(
+  value: T
+): T | { secret: string } | { value: string } => {
   let candidate: unknown = value;
   if (typeof value === 'string') {
     try {
@@ -68,11 +70,14 @@ export const normalizeLegacySecretValue = <T>(value: T): T | { secret: string } 
     hasSecretValueField(candidate, 'secret') &&
     Object.keys(candidate).length === 2 &&
     Object.prototype.hasOwnProperty.call(candidate, 'value') &&
-    Object.prototype.hasOwnProperty.call(candidate, 'secret') &&
-    candidate.value === '' &&
-    typeof candidate.secret === 'string'
+    Object.prototype.hasOwnProperty.call(candidate, 'secret')
   ) {
-    return { secret: candidate.secret };
+    if (candidate.value === '' && typeof candidate.secret === 'string') {
+      return { secret: candidate.secret };
+    }
+    if (typeof candidate.value === 'string' && candidate.value !== '' && candidate.secret === '') {
+      return { value: candidate.value };
+    }
   }
 
   return value;

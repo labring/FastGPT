@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -309,17 +310,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       await assertMCPUrlNotInternal(url);
 
       const context = getWorkflowContext();
-      // Buffer mcpClient in this workflow
-      const mcpClient =
-        context.mcpClientMemory?.[url] ??
-        new MCPClient({
-          url,
-          headers: getSecretValue({
-            storeSecret: headerSecret ?? undefined,
-            resolveReference
-          })
-        });
-      context.mcpClientMemory[url] = mcpClient;
+      const headers = getSecretValue({
+        storeSecret: headerSecret ?? undefined,
+        resolveReference
+      });
+      // 认证引用会随 workflow 变量变化；缓存键保存摘要，避免包含密钥原文。
+      const headersFingerprint = createHash('sha256')
+        .update(
+          JSON.stringify(
+            Object.entries(headers).sort(([left], [right]) => left.localeCompare(right))
+          )
+        )
+        .digest('hex');
+      const cacheKey = JSON.stringify([url, headersFingerprint]);
+      const mcpClient = context.mcpClientMemory?.[cacheKey] ?? new MCPClient({ url, headers });
+      context.mcpClientMemory[cacheKey] = mcpClient;
 
       toolInput = params;
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
