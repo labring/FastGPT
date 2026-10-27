@@ -145,6 +145,38 @@ describe('resolveModelTestTarget', () => {
       config: installedModel.config
     });
   });
+
+  it('uses upstream limits when switching an existing model to blank', () => {
+    const row: ImportRow = {
+      providerModelSlug: 'vendor/gpt-4o',
+      contextLength: 32000,
+      maxCompletionTokens: 4096,
+      candidates: [{ category: 'existing', modelId: 'local-model-id' }]
+    };
+    const catalog = {
+      installedModelById: new Map(),
+      templateMap: new Map(),
+      createModelData
+    };
+    const target = resolveModelTestTarget({
+      row,
+      ...resolveRowSelection({
+        row,
+        catalog,
+        selection: { presetKey: '__blank__', modelType: ModelTypeEnum.llm }
+      }),
+      catalog
+    });
+
+    expect(target).toMatchObject({ source: 'draft' });
+    if (target?.source !== 'draft') {
+      throw new Error('Expected the import test to use a blank model draft');
+    }
+    expect(target.getModelData()).toMatchObject({
+      model: 'vendor/gpt-4o',
+      config: { maxContext: 32000, maxResponse: 4096 }
+    });
+  });
 });
 
 describe('getChannelImportCandidate', () => {
@@ -332,6 +364,22 @@ describe('buildBlankChannelModelData', () => {
     expect(computedMaxToken({ maxToken: 2048, model: modelData })).toBe(2048);
   });
 
+  it('keeps blank LLM defaults when upstream omits its limits', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/model',
+      architecture: { output_modalities: ['text'] }
+    });
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({ config: { maxContext: 64000, maxResponse: 16000 } });
+  });
+
   it('uses the upstream response limit when LLM is selected for an ambiguous model type', () => {
     const [row] = classifyChannelModels({
       channelModels: [
@@ -395,15 +443,20 @@ describe('buildBlankChannelModelData', () => {
     expect(modelData?.config).toMatchObject(config);
   });
 
-  it('sets an absent embedding context limit to zero', () => {
+  it('keeps the blank embedding default when upstream omits its context limit', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/embedding',
+      architecture: { output_modalities: ['embedding'] }
+    });
     const modelData = buildBlankChannelModelData({
       providerModelSlug: 'upstream/embedding',
-      modelType: ModelTypeEnum.embedding,
-      provider: 'provider',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
       createModelData
     });
 
-    expect(modelData).toMatchObject({ config: { maxToken: 0 } });
+    expect(modelData).toMatchObject({ config: { maxToken: 8192 } });
   });
 
   it.each([
@@ -555,7 +608,10 @@ describe('buildChannelImportOperation', () => {
       })
     ).toMatchObject({
       action: 'create',
-      modelData: { model: 'remote/model', config: { maxContext: 4096, maxResponse: 1024 } }
+      modelData: {
+        model: 'remote/model',
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 0 }
+      }
     });
     expect(selectedTemplate.config).toMatchObject({ maxContext: 16384, maxResponse: 8192 });
     expect(

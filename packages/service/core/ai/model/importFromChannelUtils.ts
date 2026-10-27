@@ -100,7 +100,6 @@ export const createBlankModelData = (
 ): Extract<ImportPreviewItem, { category: 'blank' }> => {
   const modelType = inferChannelModelType(channelModel.architecture?.output_modalities);
   const contextLength = getContextLength(channelModel);
-  const contextLimit = contextLength ?? 0;
   const maxResponse = getMaxCompletionTokens(channelModel);
   const base = {
     model: channelModel.id,
@@ -115,14 +114,22 @@ export const createBlankModelData = (
           ...base,
           type: modelType,
           config: {
-            maxContext: contextLimit,
+            ...(contextLength === undefined ? {} : { maxContext: contextLength }),
             ...(maxResponse === undefined ? {} : { maxResponse })
           }
         };
       case ModelTypeEnum.embedding:
-        return { ...base, type: modelType, config: { maxToken: contextLimit } };
+        return {
+          ...base,
+          type: modelType,
+          config: contextLength === undefined ? {} : { maxToken: contextLength }
+        };
       case ModelTypeEnum.rerank:
-        return { ...base, type: modelType, config: { maxToken: contextLimit } };
+        return {
+          ...base,
+          type: modelType,
+          config: contextLength === undefined ? {} : { maxToken: contextLength }
+        };
       case ModelTypeEnum.tts:
         return { ...base, type: modelType };
       default:
