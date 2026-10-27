@@ -51,45 +51,6 @@ export const isTemplateVisible = (
   return !template.isShowInContext || template.isShowInContext(ctx);
 };
 
-/** 校验节点连接的容器和模板上下文，供目标柄展示与最终提交共用。 */
-export const isNodeConnectionAllowed = ({
-  targetTemplate,
-  targetNode,
-  sourceNode,
-  edges,
-  handleId,
-  getNodeById
-}: {
-  targetTemplate?: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
-  targetNode: Pick<FlowNodeItemType, 'parentNodeId'>;
-  sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'isTool' | 'parentNodeId'>;
-  edges: { source?: string; target: string; targetHandle?: string | null }[];
-  handleId?: string | null;
-  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
-}) => {
-  if (sourceNode.parentNodeId !== targetNode.parentNodeId) return false;
-
-  const sourceContext = buildNodeTemplateContext({
-    sourceNode,
-    edges,
-    handleId,
-    getNodeById
-  });
-
-  if (!sourceContext || !targetTemplate) return true;
-
-  if (
-    getNodeContainerCheckError({
-      node: targetTemplate,
-      context: sourceContext
-    })
-  ) {
-    return false;
-  }
-
-  return isTemplateVisible(targetTemplate, sourceContext);
-};
-
 export type NodeContainerCheckError =
   | 'can_not_loop'
   | 'can_not_parallel'
@@ -180,7 +141,9 @@ export const buildNodeTemplateContext = ({
     | undefined;
   edges: { source?: string; target: string; targetHandle?: string | null }[];
   handleId?: string | null;
-  getNodeById: (nodeId: string | undefined | null) => FlowNodeItemType | undefined;
+  getNodeById: (
+    nodeId: string | undefined | null
+  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
   isSidebar?: boolean;
   hasToolNode?: boolean;
   hasLoopRunNode?: boolean;

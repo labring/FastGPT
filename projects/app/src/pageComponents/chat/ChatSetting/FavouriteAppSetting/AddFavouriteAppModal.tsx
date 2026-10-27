@@ -51,7 +51,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
         AppTypeEnum.workflowTool
       ]
     },
-    pageSize: 50,
+    pageSize: 20,
     itemHeight: 40,
     refreshDeps: [parentId, searchAppNameValue],
     throttleWait: 500

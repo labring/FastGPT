@@ -1,11 +1,68 @@
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
+import { getFolderPathIndex } from '@fastgpt/global/common/parentFolder/tree';
 import type { ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { serviceEnv } from '../../../../env';
 import { MongoAgentSkills } from '../model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
+
+type SkillFolderPathItem = {
+  _id: string;
+  parentId: string | null;
+  ancestorIds: string[];
+  type: typeof AgentSkillTypeEnum.folder;
+  name: string;
+  avatar?: string;
+};
+
+/** 加载当前 Skill 目录树中的有效文件夹，并生成相对于浏览起点的祖先路径。 */
+export const getSkillFolderListScope = async ({
+  teamId,
+  currentFolderId
+}: {
+  teamId: string;
+  currentFolderId: string | null;
+}): Promise<{ folders: SkillFolderPathItem[]; folderIds: string[] }> => {
+  const folderDocs = await MongoAgentSkills.find(
+    {
+      teamId,
+      source: AgentSkillSourceEnum.personal,
+      type: AgentSkillTypeEnum.folder,
+      deleteTime: null
+    },
+    '_id parentId name avatar'
+  ).lean();
+  const folderNodes = folderDocs.map((folder) => ({
+    id: String(folder._id),
+    parentId: folder.parentId ? String(folder.parentId) : null
+  }));
+  const paths = getFolderPathIndex({
+    folders: folderNodes,
+    currentFolderId,
+    maxDepth: serviceEnv.MAX_FOLDER_DEPTH
+  });
+  const folders = folderDocs.flatMap((folder) => {
+    const id = String(folder._id);
+    const ancestorIds = paths.get(id);
+    return ancestorIds === undefined
+      ? []
+      : [
+          {
+            _id: id,
+            parentId: folder.parentId ? String(folder.parentId) : null,
+            ancestorIds,
+            type: AgentSkillTypeEnum.folder as const,
+            name: folder.name,
+            ...(folder.avatar ? { avatar: folder.avatar } : {})
+          }
+        ];
+  });
+
+  return { folders, folderIds: folders.map(({ _id }) => _id) };
+};
 
 /**
  * 递归查询一个 skill/folder 及其所有子节点。
@@ -99,34 +156,48 @@ export async function createSkillFolder(
  */
 export async function getSkillFolderPath(
   skillId: string | null,
-  type: 'current' | 'parent'
+  type: 'current' | 'parent',
+  teamId: string
 ): Promise<{ parentId: string | null; parentName: string }[]> {
   if (!skillId) {
     return [];
   }
 
-  const skill = await MongoAgentSkills.findById(skillId, 'name parentId type');
+  const skill = await MongoAgentSkills.findOne(
+    { _id: skillId, teamId, deleteTime: null },
+    'name parentId type'
+  );
   if (!skill) {
     return [];
   }
 
   const targetId = type === 'current' ? skillId : (skill.parentId ?? null);
-  return await getParents(targetId);
+  return await getParents(targetId, teamId);
 }
 
 async function getParents(
-  parentId: string | null
+  parentId: string | null,
+  teamId: string
 ): Promise<{ parentId: string | null; parentName: string }[]> {
   if (!parentId) {
     return [];
   }
 
-  const parent = await MongoAgentSkills.findById(parentId, 'name parentId');
+  const parent = await MongoAgentSkills.findOne(
+    {
+      _id: parentId,
+      teamId,
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      deleteTime: null
+    },
+    'name parentId'
+  );
   if (!parent) {
     return [];
   }
 
-  const paths = await getParents(parent.parentId ?? null);
+  const paths = await getParents(parent.parentId ? String(parent.parentId) : null, teamId);
   paths.push({ parentId, parentName: parent.name });
 
   return paths;

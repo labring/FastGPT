@@ -63,8 +63,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
   const folderDepthLimitTip = t('common:folder_depth_limit_tip');
-  const hasCreatePer = folderDetail
-    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+  // 与 Agent 列表一致：目录内只看该目录的写权限，避免详情未返回时退回团队创建权限。
+  const hasCreatePer = parentId
+    ? Boolean(folderDetail?.permission.hasWritePer && folderDetail.type !== AppTypeEnum.httpPlugin)
     : Boolean(userInfo?.team.permission.hasAppCreatePer);
 
   const {

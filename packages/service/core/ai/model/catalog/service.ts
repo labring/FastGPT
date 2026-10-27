@@ -113,7 +113,7 @@ export const refreshModelHandle = async () => {
 
 /**
  * 启动依赖 Plugin Provider 元数据；模板 listModels 不参与已安装实例的加载和运行。
- * 历史模型迁移由阻塞升级任务负责。
+ * 历史模型迁移由启动阻塞任务负责，各节点在业务启动前重载；运行期仍由读取入口按修订号刷新。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && getCachedSystemModelHandle()) return;

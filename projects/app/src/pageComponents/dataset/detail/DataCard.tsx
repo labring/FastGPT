@@ -94,7 +94,7 @@ const DataCard = () => {
     refreshList,
     setData: setDatasetDataList
   } = useScrollPagination(loadDataList, {
-    pageSize: 15,
+    pageSize: 20,
     params: scrollParams,
     refreshDeps: [searchText, collectionId],
     EmptyTip: EmptyTipDom

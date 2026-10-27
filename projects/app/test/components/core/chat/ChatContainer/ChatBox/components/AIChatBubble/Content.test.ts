@@ -110,6 +110,28 @@ describe('AI chat content', () => {
     expect(view.container.querySelector('[data-process]')).toBeNull();
   });
 
+  it('renders a completed helper configuration reference outside processing groups', async () => {
+    await view.render(
+      React.createElement(
+        Content,
+        contentProps({
+          chatValue: [
+            {
+              chatAgentBuilderVersion: {
+                s3Key: 'chat/helper/config.json',
+                expiresAt: '2099-01-01T00:00:00.000Z'
+              }
+            }
+          ]
+        })
+      )
+    );
+    expect(view.container.querySelector('[data-content="config"]')?.textContent).toBe(
+      'Apply configuration'
+    );
+    expect(view.container.querySelector('[data-process]')).toBeNull();
+  });
+
   it('does not mark an older message as processing while a newer message is generating', async () => {
     await view.render(
       React.createElement(

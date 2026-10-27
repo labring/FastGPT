@@ -17,11 +17,12 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
+import { type ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelPricingType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 type ModelDashboardData = {
   x: string;
@@ -147,18 +148,16 @@ const ModelDashboard = ({
     const map = new Map<
       string,
       {
-        inputPrice?: number;
-        outputPrice?: number;
-        charsPointsPrice?: number;
-        priceTiers?: ModelPriceTierType[];
+        pricing?: ModelPricingType;
+        scope?: ModelScopeEnum;
+        type?: ModelTypeEnum;
       }
     >();
     availableModels.forEach((model) => {
       map.set(model.model, {
-        inputPrice: model.inputPrice,
-        outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice,
-        priceTiers: model.priceTiers
+        pricing: model.pricing,
+        scope: model.scope,
+        type: model.type
       });
     });
     return map;
@@ -374,7 +373,8 @@ const ModelDashboard = ({
         inputTokens,
         outputTokens,
         totalTokens,
-        totalCost: Math.floor(totalCost),
+        // 保留费用精度供累计图使用，只在显示时舍入。
+        totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
         avgTtfb: Math.round(avgTtfb * 100) / 100,
         maxRpm,
@@ -592,7 +592,8 @@ const ModelDashboard = ({
                       {
                         label: t('config_model:aipoint_usage'),
                         dataKey: 'totalCost',
-                        color: '#8774EE'
+                        color: '#8774EE',
+                        formatter: (value: number) => formatNumber(value, 100).toLocaleString()
                       }
                     ]}
                   />

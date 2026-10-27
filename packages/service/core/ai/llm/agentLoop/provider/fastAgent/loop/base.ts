@@ -84,7 +84,6 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   }) => void;
   onToolRunEnd?: (e: {
     call: ChatCompletionMessageToolCall;
-    rawResponse: string;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
     assistantResponses?: AgentLoopAssistantResponse[];
@@ -318,7 +317,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     onToolRunEnd?.({
       call: resumedToolCall,
-      rawResponse: response,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
       assistantResponses: toolAssistantResponses,
@@ -614,7 +612,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
         onToolRunEnd?.({
           call: tool,
-          rawResponse: response,
           response: toolFinalResponse,
           assistantMessages: toolAssistantMessages,
           assistantResponses: toolAssistantResponses,

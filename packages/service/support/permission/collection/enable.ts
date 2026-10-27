@@ -20,7 +20,7 @@ const logger = getLogger(LogCategories.MODULE.PERMISSION.INHERIT);
  * 关键不变量：
  *  - **开关最后置位**：物化 / 清理失败时开关保持原值，读语义不变，重试即再执行一次（幂等）；
  *  - **关闭态无残留**：关闭会删除 ACL 行并把 collection 的 `inheritPermission` 重置为 `true`，
- *    因此重新启用等价于首次启用。
+ *    因此「关闭后再启用」等价于首次启用；已启用时再次启用是 no-op。
  */
 
 type CollectionForEnable = {
@@ -149,7 +149,7 @@ export type EnableDatasetCollectionResult = {
  *     upsert owner 行 → `syncRootCollections` 重建根级快照并递归 folder 子树；
  *  3. 开关最后置位。
  *
- * 幂等：清行 + owner upsert + 快照 diff 写入都可在同一 dataset 上重复执行；失败中断后重跑即可收敛。
+ * 幂等：已启用时直接返回；首次启用失败中断后重跑会重新执行，开关最后置位保证读语义不变。
  */
 export const enableDatasetCollectionPermissions = async ({
   teamId,
@@ -161,6 +161,24 @@ export const enableDatasetCollectionPermissions = async ({
   logger.info(`[collectionPermission] enable dataset: datasetId=${datasetId} teamId=${teamId}`);
 
   const collectionCount = await mongoSessionRun(async (session) => {
+    // 每次事务重试都重读开关：并发启停会让本轮事务重试，重试后才看得到最新状态。
+    const dataset = await MongoDataset.findOne(
+      { _id: datasetId, teamId },
+      'teamId collectionPermissionEnabled'
+    )
+      .session(session)
+      .lean();
+    if (!dataset) {
+      throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
+    }
+
+    // 已启用即 no-op：开关与物化在同一事务提交，true 代表快照完整。
+    // 重跑若继续「清空 + 重建」，会跳过独立节点整棵子树，误删其继承后代已物化的 ACL 行。
+    if (dataset.collectionPermissionEnabled === true) {
+      logger.info(`[collectionPermission] enable skipped: already enabled, datasetId=${datasetId}`);
+      return MongoDatasetCollection.countDocuments({ teamId, datasetId }).session(session);
+    }
+
     // 每次事务重试都重读集合和 dataset ACL，避免复用并发创建前的旧快照。
     const collections = await MongoDatasetCollection.find(
       { teamId, datasetId },
@@ -170,13 +188,6 @@ export const enableDatasetCollectionPermissions = async ({
       .lean<CollectionForEnable[]>();
 
     assertValidCollectionTree(collections, datasetId);
-
-    const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }, 'teamId')
-      .session(session)
-      .lean();
-    if (!dataset) {
-      throw new Error(`Dataset ${datasetId} not found in team ${teamId}`);
-    }
 
     // dataset 已完全物化权限：有效 clbs = 自身快照（无需沿 parentId 链合并）。
     const datasetEffectiveClbs = await getResourceOwnedClbs({

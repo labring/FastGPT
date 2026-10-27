@@ -17,10 +17,9 @@ import type {
   ChatGenerateStatusChangeHandler,
   ChatGeneratingConflictRecovery
 } from './type';
-import type { StartChatFnProps } from '../type';
+import type { generatingMessageProps, StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -73,7 +72,7 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
@@ -90,8 +89,7 @@ const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLay
 const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayout'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
-type Props = OutLinkChatAuthProps &
-  ChatProviderProps &
+type Props = ChatProviderProps &
   BoxProps & {
     isReady: boolean;
     features?: ChatBoxFeatures;
@@ -103,6 +101,8 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    /** 普通生成和刷新续流共用的业务事件回调，在聊天消息合并前调用。 */
+    onGeneratingMessage?: (message: generatingMessageProps) => void;
     onTriggerRefresh?: () => void;
     /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
@@ -163,6 +163,7 @@ const ChatBox = ({
   active = true,
   disabledSendTip,
   onStartChat,
+  onGeneratingMessage,
   chatType,
   onTriggerRefresh,
   onMarkChatRead,
@@ -295,7 +296,7 @@ const ChatBox = ({
     }: {
       status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
-      targetChatTarget?: ChatAuthTargetInput;
+      targetChatTarget?: ResolvedChatAuthTargetInput;
       targetSourceKey?: string;
       targetChatId?: string;
       shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
@@ -380,6 +381,7 @@ const ChatBox = ({
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
+    onGeneratingMessage,
     isRoundPending,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,

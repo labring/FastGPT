@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import {
   GPT_TOKENIZER_ENCODING,
   countGptMessagesTokensInWorker,
@@ -70,6 +74,96 @@ describe('token counter', () => {
     });
 
     expect(tokens).toBeGreaterThan(40);
+  });
+
+  it.each(['tool', 'user'] as const)(
+    'should count historical reasoning when the last message is %s',
+    (lastRole) => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Search FastGPT docs.' },
+        {
+          role: 'assistant',
+          content: '',
+          reasoning_content: 'I need to inspect the documentation before answering. '.repeat(100),
+          tool_calls: [
+            {
+              id: 'call_search',
+              type: 'function',
+              function: { name: 'search', arguments: '{}' }
+            }
+          ]
+        },
+        { role: 'tool', tool_call_id: 'call_search', content: 'Found the documentation.' }
+      ];
+      if (lastRole === 'user') {
+        messages.push({ role: 'user', content: 'Continue with these results.' });
+      }
+      const originalMessages = structuredClone(messages);
+      const withoutReasoning = messages.map(({ reasoning_content, ...message }) => message);
+      const reasoningTokens = countPromptTokensInWorker(messages[1].reasoning_content);
+
+      expect(countGptMessagesTokensInWorker({ messages })).toBeGreaterThan(
+        countGptMessagesTokensInWorker({ messages: withoutReasoning }) + reasoningTokens * 0.9
+      );
+      expect(messages).toEqual(originalMessages);
+    }
+  );
+
+  it('should match incremental counts after each append and when restoring the full history', () => {
+    const tools: ChatCompletionTool[] = [
+      {
+        type: 'function',
+        function: { name: 'search', parameters: { type: 'object', properties: {} } }
+      }
+    ];
+    const initialMessages: ChatCompletionMessageParam[] = [
+      { role: 'system', content: 'Complete the search.' },
+      { role: 'user', content: 'Compare the results.' }
+    ];
+    const newMessages: ChatCompletionMessageParam[] = Array.from({ length: 3 }, (_, index) => [
+      {
+        role: 'assistant' as const,
+        content: '',
+        reasoning_content: `Inspect result ${index} before the next search.`,
+        tool_calls: [
+          {
+            id: `call_${index}`,
+            type: 'function' as const,
+            function: { name: 'search', arguments: JSON.stringify({ page: index + 1 }) }
+          }
+        ]
+      },
+      { role: 'tool' as const, tool_call_id: `call_${index}`, content: `Result ${index}` }
+    ]).flat();
+    newMessages.push({ role: 'user', content: 'Continue.' });
+    const messages = [...initialMessages];
+    let incrementalTokens = countGptMessagesTokensInWorker({ messages, tools });
+
+    for (const message of newMessages) {
+      messages.push(message);
+      incrementalTokens += countGptMessagesTokensInWorker({ messages: [message] });
+      expect(countGptMessagesTokensInWorker({ messages, tools })).toBe(incrementalTokens);
+    }
+
+    expect(countGptMessagesTokensInWorker({ messages: structuredClone(messages), tools })).toBe(
+      incrementalTokens
+    );
+  });
+
+  it('should keep missing and empty historical reasoning equivalent', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'user', content: 'Hello.' },
+      { role: 'assistant', content: 'Hello!' },
+      { role: 'user', content: 'Continue.' }
+    ];
+
+    expect(
+      countGptMessagesTokensInWorker({
+        messages: messages.map((message) =>
+          message.role === 'assistant' ? { ...message, reasoning_content: '' } : message
+        )
+      })
+    ).toBe(countGptMessagesTokensInWorker({ messages }));
   });
 
   it('should replace media payloads with bounded placeholders before tokenizing', () => {

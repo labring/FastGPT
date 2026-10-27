@@ -133,7 +133,7 @@ curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 120000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "charsPointsPrice": 0, // n积分/1k token（商业版）
+      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // 积分 / M Tokens（商业版）
       "censor": false, // 是否开启敏感校验（商业版）
       "vision": true, // 是否支持图片输入
       "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）

@@ -40,18 +40,19 @@ const AIModelSchema = new Schema(
     requestUrl: String,
     requestAuth: String,
     testMode: Boolean,
-    charsPointsPrice: Number,
-    priceTiers: [
-      {
-        _id: false,
-        minInputTokens: Number,
-        maxInputTokens: Number,
-        inputPrice: Number,
-        outputPrice: Number
-      }
-    ],
-    inputPrice: Number,
-    outputPrice: Number,
+    pricing: {
+      type: new Schema(
+        {
+          tiers: {
+            type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
+            default: undefined
+          },
+          unitPrice: Number
+        },
+        { _id: false, minimize: false }
+      ),
+      default: undefined
+    },
     config: {
       type: Schema.Types.Mixed,
       required: true,

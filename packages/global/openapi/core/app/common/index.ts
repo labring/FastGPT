@@ -29,8 +29,10 @@ import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 export const AppCommonPath: OpenAPIPath = {
   '/core/app/list': {
     post: {
+      deprecated: true,
       summary: '获取应用列表',
-      description: '获取当前团队下当前用户可读的应用或文件夹列表',
+      description:
+        '已弃用，请使用 POST /core/app/listV2。旧接口保留兼容，返回当前团队下当前用户可读的应用或文件夹数组；V2 返回分页结构 { list, total }',
       tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
@@ -53,8 +55,9 @@ export const AppCommonPath: OpenAPIPath = {
   },
   '/core/app/listV2': {
     post: {
-      summary: '分页获取应用列表',
-      description: '分页获取当前团队下当前用户可读的应用或文件夹列表',
+      summary: '获取应用列表 V2',
+      description:
+        '分页获取或按 appIds 精确查询当前团队下当前用户可读的应用或文件夹；提供 appIds 时优先按 ID 查询，解析时过滤 parentId 和分页参数，保留公共筛选字段',
       tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
@@ -65,7 +68,7 @@ export const AppCommonPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功获取分页应用列表',
+          description: '成功获取应用列表',
           content: {
             'application/json': {
               schema: ListAppV2ResponseSchema

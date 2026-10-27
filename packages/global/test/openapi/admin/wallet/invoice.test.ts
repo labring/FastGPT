@@ -33,11 +33,11 @@ describe('Admin invoice schemas', () => {
   it('provides default pagination values for invoice list requests', () => {
     const parsed = InvoiceListBodySchema.parse({});
     expect(parsed.pageNum).toBe(1);
-    expect(parsed.pageSize).toBe(10);
+    expect(parsed.pageSize).toBe(20);
 
-    const custom = InvoiceListBodySchema.parse({ pageNum: 2, pageSize: 20, search: 'demo' });
+    const custom = InvoiceListBodySchema.parse({ pageNum: 2, pageSize: 30, search: 'demo' });
     expect(custom.pageNum).toBe(2);
-    expect(custom.pageSize).toBe(20);
+    expect(custom.pageSize).toBe(30);
     expect(custom.search).toBe('demo');
   });
 

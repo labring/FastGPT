@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
@@ -106,9 +107,7 @@ export const SandboxPath: OpenAPIPath = {
       description:
         '将原始二进制请求流直接写入当前 Chat Session 路径，不在 FastGPT 节点生成临时文件',
       tags: [DevApiTagsMap.sandbox],
-      requestParams: {
-        query: SandboxUploadQueryRawSchema
-      },
+      parameters: createChatTargetQueryParameters(SandboxUploadQueryRawSchema),
       requestBody: {
         content: {
           'application/octet-stream': {

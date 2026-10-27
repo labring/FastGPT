@@ -7,6 +7,7 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -322,6 +323,50 @@ describe('pushChatRecords', () => {
       expect(aiItem?.value).toEqual(
         expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }])
       );
+    });
+
+    it('persists and reloads the complete model-visible tool response', async () => {
+      const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                tools: [
+                  {
+                    id: 'call_search',
+                    toolName: 'Search',
+                    toolAvatar: '',
+                    functionName: 'search',
+                    params: '{}',
+                    response
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+      const { histories } = await getChatItems({
+        sourceType: props.sourceType,
+        sourceId: props.sourceId,
+        chatId: props.chatId,
+        field: 'obj value',
+        limit: 2,
+        offset: 0
+      });
+
+      const aiItem = histories.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.value[0].tools?.[0].response).toBe(response);
+      const messages = buildAgentLoopCoreRequestMessages({ messages: histories });
+      expect(messages.find((message) => message.role === 'tool')).toMatchObject({
+        tool_call_id: 'call_search',
+        content: response
+      });
     });
 
     it('should drop inline responseData from aiContent and not persist response rows', async () => {

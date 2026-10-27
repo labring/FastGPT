@@ -1,3 +1,4 @@
+import { createChatTargetQueryParameters } from '../api';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
@@ -71,9 +72,7 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话响应详细数据',
       description: '根据 dataId 获取对话中某条 AI 回复的详细响应数据',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
-      requestParams: {
-        query: GetResDataQueryRawSchema
-      },
+      parameters: createChatTargetQueryParameters(GetResDataQueryRawSchema),
       responses: {
         200: {
           description: '成功返回响应数据'

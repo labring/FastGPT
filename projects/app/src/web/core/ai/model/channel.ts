@@ -19,6 +19,7 @@ import type {
   ProviderMetasResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { PaginationPageSizeLimit } from '@fastgpt/global/openapi/api';
 
 const channelBasePath = '/core/ai/model/channel';
 
@@ -32,16 +33,24 @@ export const getChannelPageList = (
 };
 
 /**
- * 获取渠道列表。强制显式传递 channelType 作用域。
+ * 获取筛选器所需的全部渠道，按接口上限逐页读取，避免默认分页截断候选项。
+ * 显式分页使用 getChannelPageList；保留同一作用域、搜索条件和创建时间排序。
  */
-export const getChannelList = (
-  params: ListChannelsQuery & { channelType: ChannelType }
+export const getChannelList = async (
+  params: Pick<ListChannelsQuery, 'search'> & { channelType: ChannelType }
 ): Promise<ChannelListItem[]> => {
-  return getChannelPageList(params).then((res) => {
-    const list = [...(res?.list ?? [])];
-    list.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0) || b.id - a.id);
-    return list;
-  });
+  const list: ChannelListItem[] = [];
+  for (let pageNum = 1; ; pageNum++) {
+    const page = await getChannelPageList({
+      ...params,
+      pageNum,
+      pageSize: PaginationPageSizeLimit
+    });
+    list.push(...page.list);
+    // 查询期间资源可能被删除，空页时结束，避免仅依赖旧 total 持续请求。
+    if (page.list.length === 0 || list.length >= page.total) break;
+  }
+  return list.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0) || b.id - a.id);
 };
 
 /** 批量删除指定渠道 */

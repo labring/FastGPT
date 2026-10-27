@@ -56,25 +56,25 @@ describe('dataset data list pagination', () => {
   it('honors offset with the default page size when pageSize is omitted', async () => {
     const result = await listData({ offset: 10 });
     expect(result.total).toBe(65);
-    expect(result.list).toHaveLength(10);
+    expect(result.list).toHaveLength(20);
     expect(result.list[0]?.q).toBe('record 11');
-    expect(result.list.at(-1)?.q).toBe('record 20');
+    expect(result.list.at(-1)?.q).toBe('record 30');
   });
 
   it('honors pageNum with the default page size when pageSize is omitted', async () => {
     const result = await listData({ pageNum: 2 });
     expect(result.total).toBe(65);
-    expect(result.list).toHaveLength(10);
-    expect(result.list[0]?.q).toBe('record 11');
-    expect(result.list.at(-1)?.q).toBe('record 20');
+    expect(result.list).toHaveLength(20);
+    expect(result.list[0]?.q).toBe('record 21');
+    expect(result.list.at(-1)?.q).toBe('record 40');
   });
 
   it('uses the first page when all pagination fields are omitted', async () => {
     const result = await listData({});
     expect(result.total).toBe(65);
-    expect(result.list).toHaveLength(10);
+    expect(result.list).toHaveLength(20);
     expect(result.list[0].q).toBe('record 1');
-    expect(result.list.at(-1)?.q).toBe('record 10');
+    expect(result.list.at(-1)?.q).toBe('record 20');
   });
 
   it('returns an empty page past the last record while preserving the total', async () => {

@@ -104,7 +104,7 @@ const parsePageContentTextItems = (doc: Document): ParsedTextItem[] => {
   return items;
 };
 
-const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
+export const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
   const yGroups = new Map<number, ParsedTextItem[]>();
   textItems.forEach((item) => {
     const yKey = Number(item.y.toFixed(1));
@@ -128,14 +128,22 @@ const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
           .map((item) => item.text)
           .join('')
           .trim(),
-        xStart: Math.min(...lineItems.map((item) => item.x)),
+        // 同一 y 组的项数也可能超过函数参数上限，沿用 reduce 求最值避免 RangeError。
+        xStart: minNumber(lineItems.map((item) => item.x)),
         yPos,
-        fontSize: Math.max(...lineItems.map((item) => item.size))
+        fontSize: maxNumber(lineItems.map((item) => item.size))
       };
     });
 };
 
-const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
+/** 文档级/页级行数可能超过函数参数上限，统一用 reduce 求最值。 */
+const minNumber = (values: number[]) =>
+  values.reduce((min, value) => Math.min(min, value), Infinity);
+const maxNumber = (values: number[]) =>
+  values.reduce((max, value) => Math.max(max, value), -Infinity);
+
+/** 统计全文档各字号的行数，识别页码字号后返回正文基准字号。 */
+export const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
   const rows = pagesRows.flat().filter((row) => row.text);
   if (!rows.length) return DEFAULT_FONT_SIZE;
 
@@ -149,15 +157,15 @@ const detectBaseFontSize = (pagesRows: LayoutRow[][]) => {
 
   // 仅当最小字号候选行确实呈现页码特征（页顶/底边距 + 纯数字）时才视为页码字体并降级基准；
   // 否则「正文是最小且最频繁字号、文档无页码」的正常文档会把标题字号误判为基准。
-  if (ranked.length >= 2 && candidate === Math.min(...rows.map((row) => row.fontSize))) {
+  if (ranked.length >= 2 && candidate === minNumber(rows.map((row) => row.fontSize))) {
     let candidateRowCount = 0;
     let pageNumberRowCount = 0;
     pagesRows.forEach((pageContentRows) => {
       const textRows = pageContentRows.filter((row) => row.text);
       if (!textRows.length) return;
       const pageYRange: [number, number] = [
-        Math.min(...textRows.map((row) => row.yPos)),
-        Math.max(...textRows.map((row) => row.yPos))
+        minNumber(textRows.map((row) => row.yPos)),
+        maxNumber(textRows.map((row) => row.yPos))
       ];
       textRows.forEach((row) => {
         if (row.fontSize !== candidate) return;
@@ -200,7 +208,7 @@ const median = (values: number[]) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
+export const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
   const contentRows = rows.filter((row) => row.text);
   if (!contentRows.length) return '';
 
@@ -209,11 +217,12 @@ const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
     .map((row) => row.xStart);
   const baseX = normalXs.length
     ? median(normalXs)
-    : Math.min(...contentRows.map((row) => row.xStart));
+    : minNumber(contentRows.map((row) => row.xStart));
 
+  // 单页行数可能超过函数参数上限（病态高密度页），沿用 reduce 求最值避免 RangeError。
   const pageYRange: [number, number] = [
-    Math.min(...contentRows.map((row) => row.yPos)),
-    Math.max(...contentRows.map((row) => row.yPos))
+    minNumber(contentRows.map((row) => row.yPos)),
+    maxNumber(contentRows.map((row) => row.yPos))
   ];
 
   const parts: string[] = [];

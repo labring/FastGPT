@@ -108,7 +108,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentType: parentId ? parentType : undefined,
       excludeAppId: appDetail._id
     },
-    pageSize: 50,
+    pageSize: 20,
     disabled: !isTeamTemplate,
     refreshDeps: [isTeamTemplate, templateType, parentId, searchKey, appDetail._id]
   });
@@ -392,8 +392,7 @@ const RenderList = React.memo(function RenderList({
     );
     const name = t(selectPluginText(template.name, i18n.language));
     const intro =
-      t(selectPluginText(template.intro, i18n.language)) ||
-      t('common:core.workflow.Not intro');
+      t(selectPluginText(template.intro, i18n.language)) || t('common:core.workflow.Not intro');
     const isDebugTool = isDebugToolSource(template.source);
     const isSystemSource = template.source === 'system';
 

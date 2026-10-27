@@ -157,7 +157,7 @@ describe('application file upload integration', () => {
     expect(getWorkflowDebugRuntimeContext({ appId, chatId })).toEqual({
       sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: appId },
       chatId,
-      outLinkAuthData: {},
+      outLinkAuthData: undefined,
       fileUploadMode: 'draft'
     });
 

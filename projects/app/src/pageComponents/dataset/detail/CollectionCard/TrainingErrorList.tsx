@@ -191,7 +191,7 @@ const TrainingErrorList = ({
     TrainingErrorListParams,
     TrainingErrorListResponse
   >(getErrorData, {
-    pageSize: scope.type === 'collection' ? 15 : 10,
+    pageSize: 20,
     params: (scope.type === 'dataset'
       ? { ...requestParams, itemPageSize: datasetGroupItemPageSize }
       : requestParams) as TrainingErrorRequestParams,

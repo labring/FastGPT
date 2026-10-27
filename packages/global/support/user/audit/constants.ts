@@ -1,5 +1,5 @@
 import type { auditLogMap, adminAuditLogMap } from '../../../../web/support/user/audit/constants';
-import { DatasetAuditEventEnum } from '../../../core/dataset/constants';
+import { DatasetAuditEventEnum } from '../../../core/dataset/audit/constants/event';
 
 export enum AdminAuditEventEnum {
   ADMIN_LOGIN = 'ADMIN_LOGIN',
@@ -47,6 +47,8 @@ export enum AuditEventEnum {
   DELETE_GROUP = 'DELETE_GROUP',
   ASSIGN_PERMISSION = 'ASSIGN_PERMISSION',
   TRANSFER_TEAM_OWNERSHIP = 'TRANSFER_TEAM_OWNERSHIP',
+  // Resource permission
+  RESUME_INHERIT_PERMISSION = 'RESUME_INHERIT_PERMISSION',
   //APP
   CREATE_APP = 'CREATE_APP',
   UPDATE_APP_INFO = 'UPDATE_APP_INFO',
@@ -67,6 +69,7 @@ export enum AuditEventEnum {
   DELETE_EVALUATION = 'DELETE_EVALUATION',
   //Dataset
   CREATE_DATASET = 'CREATE_DATASET',
+  /** @deprecated 知识库配置变更已统一由 DatasetAuditEventEnum.DATASET_CONFIG_UPDATE 记录，保留枚举仅为兼容历史日志展示。 */
   UPDATE_DATASET = 'UPDATE_DATASET',
   DELETE_DATASET = 'DELETE_DATASET',
   MOVE_DATASET = 'MOVE_DATASET',

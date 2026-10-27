@@ -11,7 +11,7 @@ import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 export type WorkflowBuilderVersionActions = {
@@ -22,6 +22,11 @@ export type WorkflowBuilderVersionActions = {
     responseChatItemId: string
   ) => Promise<WorkflowBuilderVersion>;
   notifyVersionExpired: () => void;
+};
+
+type ChatAgentBuilderVersionActions = {
+  isApplying: boolean;
+  applyConfig: (responseChatItemId: string) => void;
 };
 
 type ContextProps = {
@@ -64,7 +69,7 @@ type ChatBoxDataType = {
 };
 
 // 知识库引用相关 type
-export type GetQuoteDataBasicProps = ChatAuthTargetInput & {
+export type GetQuoteDataBasicProps = ResolvedChatAuthTargetInput & {
   chatId: string;
   chatItemDataId: string;
 };
@@ -115,6 +120,7 @@ type ChatItemContextType = {
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
   resetUIState: () => void;
   workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
+  chatAgentBuilderVersionActions?: ChatAgentBuilderVersionActions;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -173,10 +179,12 @@ const ChatItemContextProvider = ({
   showPoints = false,
   showAvatar = true,
   showSandboxAction = true,
-  workflowBuilderVersionActions
+  workflowBuilderVersionActions,
+  chatAgentBuilderVersionActions
 }: {
   children: ReactNode;
   workflowBuilderVersionActions?: WorkflowBuilderVersionActions;
+  chatAgentBuilderVersionActions?: ChatAgentBuilderVersionActions;
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
@@ -271,7 +279,8 @@ const ChatItemContextProvider = ({
       isVariableVisible,
       setIsVariableVisible,
       resetUIState,
-      workflowBuilderVersionActions
+      workflowBuilderVersionActions,
+      chatAgentBuilderVersionActions
     };
   }, [
     chatBoxData,
@@ -295,7 +304,8 @@ const ChatItemContextProvider = ({
     isVariableVisible,
     setIsVariableVisible,
     resetUIState,
-    workflowBuilderVersionActions
+    workflowBuilderVersionActions,
+    chatAgentBuilderVersionActions
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

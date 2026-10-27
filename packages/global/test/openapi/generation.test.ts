@@ -83,3 +83,41 @@ describe('OpenAPI ObjectId generation', () => {
     );
   });
 });
+
+describe('OpenAPI never properties', () => {
+  it.each(['input', 'output'] as const)(
+    'hides forbidden fields in nested %s objects while retaining nullable values',
+    (io) => {
+      const fields = z.object({
+        name: z.string(),
+        forbidden: z.never().optional().optional(),
+        nullableValue: z.never().nullable()
+      });
+      const { schema } = createSchema(z.object({ body: fields, rows: z.array(fields) }), {
+        io,
+        opts: openApiDocumentOptions
+      });
+      if ('$ref' in schema) throw new Error('Unexpected schema reference');
+      const body = schema.properties!.body;
+      const rows = schema.properties!.rows;
+      if ('$ref' in body || '$ref' in rows || !rows.items || '$ref' in rows.items) {
+        throw new Error('Expected inline body and row schemas');
+      }
+
+      for (const item of [body, rows.items]) {
+        expect(item.properties).not.toHaveProperty('forbidden');
+        expect(item.properties).toHaveProperty('name');
+        expect(item.properties).toHaveProperty('nullableValue');
+        expect(item.required?.slice().sort()).toEqual(['name', 'nullableValue']);
+      }
+
+      expect(fields.parse({ name: 'test', nullableValue: null })).toEqual({
+        name: 'test',
+        nullableValue: null
+      });
+      expect(
+        fields.safeParse({ name: 'test', nullableValue: null, forbidden: 'invalid' }).success
+      ).toBe(false);
+    }
+  );
+});

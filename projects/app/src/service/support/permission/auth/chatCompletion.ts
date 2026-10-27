@@ -20,7 +20,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
  *
  * 普通调用直接使用鉴权凭证中的 tmbId。只有开启 authProxy 的团队级 API Key 调用，
  * 才允许通过 authProxy 指定“代表团队内某个成员执行”。代理成员必须仍在当前团队内；
- * username 与 tmbId 同时传入时，两者必须解析到同一个团队成员。
+ * username 与 tmbId 同时传入时只使用 tmbId；ID 无效或成员不可用时不回退到用户名。
  */
 export const resolveChatCompletionEffectiveTmbId = async ({
   authType,
@@ -48,50 +48,32 @@ export const resolveChatCompletionEffectiveTmbId = async ({
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const username = authProxy.username?.trim();
-  if (!username && !authProxy.tmbId) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
+  const member = await (async () => {
+    // 固定选择一种代理身份，避免低优先级的用户名影响已指定的 ID。
+    if (authProxy.tmbId) {
+      return MongoTeamMember.findOne({
+        _id: authProxy.tmbId,
+        teamId,
+        status: notLeaveStatus
+      })
+        .select('_id userId teamId')
+        .lean();
+    }
 
-  const [memberByTmbId, memberByUsername] = await Promise.all([
-    authProxy.tmbId
-      ? MongoTeamMember.findOne({
-          _id: authProxy.tmbId,
-          teamId,
-          status: notLeaveStatus
-        })
-          .select('_id userId teamId')
-          .lean()
-      : null,
-    username
-      ? (async () => {
-          const user = await MongoUser.findOne({ username }).select('_id').lean();
-          if (!user) return null;
+    const username = 'username' in authProxy ? authProxy.username.trim() : undefined;
+    if (!username) return null;
 
-          return MongoTeamMember.findOne({
-            teamId,
-            userId: user._id,
-            status: notLeaveStatus
-          })
-            .select('_id userId teamId')
-            .lean();
-        })()
-      : null
-  ]);
+    const user = await MongoUser.findOne({ username }).select('_id').lean();
+    if (!user) return null;
 
-  if ((authProxy.tmbId && !memberByTmbId) || (username && !memberByUsername)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  if (
-    memberByTmbId &&
-    memberByUsername &&
-    String(memberByTmbId._id) !== String(memberByUsername._id)
-  ) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  const member = memberByTmbId || memberByUsername;
+    return MongoTeamMember.findOne({
+      teamId,
+      userId: user._id,
+      status: notLeaveStatus
+    })
+      .select('_id userId teamId')
+      .lean();
+  })();
   if (!member) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }

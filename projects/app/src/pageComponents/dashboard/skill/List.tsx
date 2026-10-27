@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, Checkbox } from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Box, Grid, IconButton, HStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Trans, useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -44,7 +45,6 @@ import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashb
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getGridPageSize } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   getResourceListDisplayTime,
@@ -82,6 +82,7 @@ const List = ({
     columnCount,
     pageSize,
     parentId,
+    paths,
     isBatchMode,
     selectedSkillIds,
     onToggleSelectSkill,
@@ -98,6 +99,7 @@ const List = ({
     columnCount: v.columnCount,
     pageSize: v.pageSize,
     parentId: v.parentId,
+    paths: v.paths,
     isBatchMode: v.isBatchMode,
     selectedSkillIds: v.selectedSkillIds,
     onToggleSelectSkill: v.onToggleSelectSkill,
@@ -108,6 +110,8 @@ const List = ({
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const currentFolderPath = paths.find(({ parentId: pathId }) => pathId === parentId);
+  const isNavigableFolder = Boolean(parentId && currentFolderPath?.folderAccessMode !== 'read');
   const hasActiveFilter = hasResourceListActiveFilter({
     searchKey,
     creatorMode: listFilters.creator.mode,
@@ -235,6 +239,7 @@ const List = ({
       updateTime: skill.updateTime
     });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
+    const isNavigableItem = skill.folderAccessMode === 'navigate';
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
     const isSkillReady =
       isFolder ||
@@ -423,65 +428,72 @@ const List = ({
           fontSize={'xs'}
           color={'myGray.500'}
         >
-          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-            {skill.description}
-          </Box>
+          <MyTooltip
+            label={isNavigableItem ? t('common:no_intro') : skill.description}
+            showOnlyWhenOverflow
+          >
+            <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
+              {isNavigableItem ? t('common:no_intro') : skill.description}
+            </Box>
+          </MyTooltip>
         </Box>
 
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-          <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
-            <UserBox
-              sourceMember={skill.sourceMember}
-              fontSize="xs"
-              avatarSize="1rem"
-              spacing={0.5}
-              minW={0}
-            />
-            <PermissionIconText
-              flexShrink={0}
-              private={skill.private}
-              color={'myGray.500'}
-              iconColor={'myGray.400'}
-            />
-            {!isFolder && isSkillReady && (
-              <>
-                {typeof skill.appCount === 'number' && (
-                  <ReferencedAppsPopover
-                    resourceId={skill._id}
-                    resourceType="skill"
-                    count={skill.appCount}
-                    trigger={'hover'}
-                  />
-                )}
-              </>
-            )}
-          </HStack>
-          <HStack>
-            {isPc && (
-              <HStack className="time" spacing={0.5}>
-                <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
-              </HStack>
-            )}
-            {!isBatchMode &&
-              isPersonal &&
-              (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
-                <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
-                  <MyMenu
-                    Button={
-                      <IconButton
-                        size={'xsSquare'}
-                        variant={'transparentBase'}
-                        icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                        aria-label={''}
-                      />
-                    }
-                    menuList={menuList}
-                  />
-                </Box>
+        {!isNavigableItem && (
+          <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+            <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
+              <UserBox
+                sourceMember={skill.sourceMember}
+                fontSize="xs"
+                avatarSize="1rem"
+                spacing={0.5}
+                minW={0}
+              />
+              <PermissionIconText
+                flexShrink={0}
+                private={skill.private}
+                color={'myGray.500'}
+                iconColor={'myGray.400'}
+              />
+              {!isFolder && isSkillReady && (
+                <>
+                  {typeof skill.appCount === 'number' && (
+                    <ReferencedAppsPopover
+                      resourceId={skill._id}
+                      resourceType="skill"
+                      count={skill.appCount}
+                      trigger={'hover'}
+                    />
+                  )}
+                </>
               )}
+            </HStack>
+            <HStack>
+              {isPc && (
+                <HStack className="time" spacing={0.5}>
+                  <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
+                  <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
+                </HStack>
+              )}
+              {!isBatchMode &&
+                isPersonal &&
+                (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
+                  <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
+                    <MyMenu
+                      Button={
+                        <IconButton
+                          size={'xsSquare'}
+                          variant={'transparentBase'}
+                          icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
+                          aria-label={''}
+                        />
+                      }
+                      menuList={menuList}
+                    />
+                  </Box>
+                )}
+            </HStack>
           </HStack>
-        </HStack>
+        )}
       </ResourceListCard>
     );
   };
@@ -530,6 +542,7 @@ const List = ({
             alignItems={'stretch'}
           >
             {!isBatchMode &&
+              !isNavigableFolder &&
               (onClickCreate ? (
                 <ListCreateCard onClick={onClickCreate} />
               ) : (
@@ -567,13 +580,15 @@ const List = ({
               postChangeSkillOwner({
                 skillId: selectedSkill._id,
                 ownerId: tmbId
-              }).then(() => refreshSkills())
+              }).then(() => refreshSkills({ silent: true, resourceId: selectedSkill._id }))
             }
             hasParent={!!selectedSkill.parentId}
-            refetchResource={refreshSkills}
+            refetchResource={() => refreshSkills({ silent: true, resourceId: selectedSkill._id })}
             isInheritPermission={selectedSkill.inheritPermission}
             resumeInheritPermission={() =>
-              resumeInheritPer(selectedSkill._id).then(() => refreshSkills())
+              resumeInheritPer(selectedSkill._id).then(() =>
+                refreshSkills({ silent: true, resourceId: selectedSkill._id })
+              )
             }
             avatar={selectedSkill.avatar}
             name={selectedSkill.name}

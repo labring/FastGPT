@@ -55,7 +55,11 @@ export type AuxiliaryGenerationSelectedDatasetType = z.infer<
 
 export const ChatAgentConfigFormDataSchema = z.object({
   systemPrompt: z.string().optional(),
-  tools: z.array(z.string()).optional().default([]),
+  // 兼容旧字符串引用；系统与团队安装的工具需要同时传递 id 和 source。
+  tools: z
+    .array(z.union([z.string(), z.object({ id: z.string(), source: z.string() })]))
+    .optional()
+    .default([]),
   datasets: z.array(AuxiliaryGenerationSelectedDatasetSchema).optional().default([]),
   selectedAgentSkills: z.array(SelectedAgentSkillItemTypeSchema).optional().default([]),
   fileUploadEnabled: z.boolean().optional().default(false),

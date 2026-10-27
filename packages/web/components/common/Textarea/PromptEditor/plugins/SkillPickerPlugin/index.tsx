@@ -31,7 +31,7 @@ const MENU_WIDTH = 'min(954px, calc(100vw - 16px))';
 const MENU_HEIGHT = '337px';
 const FIRST_COLUMN_WIDTH = '200px';
 const CHILD_COLUMN_WIDTH = '280px';
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 const PAGE_LOAD_THRESHOLD = 80;
 
 export type SkillOptionPageType = {
