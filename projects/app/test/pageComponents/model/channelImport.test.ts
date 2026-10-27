@@ -9,6 +9,7 @@ import {
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ApplyChangesBody,
+  ModelConfigListItem,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
@@ -18,7 +19,10 @@ import {
   getChannelImportCandidate,
   getBlankChannelImportDraft
 } from '@/pageComponents/model/channelImport';
-import { resolveRowSelection } from '@/pageComponents/model/ImportModelFromChannelModal/ModelPreviewStep';
+import {
+  resolveModelTestTarget,
+  resolveRowSelection
+} from '@/pageComponents/model/ImportModelFromChannelModal/ModelPreviewStep';
 
 type ImportRow = PreviewImportFromChannelResponse['items'][number];
 type ImportItem = ImportRow['candidates'][number];
@@ -104,6 +108,41 @@ describe('resolveRowSelection', () => {
       presetKey: '__blank__',
       modelType: ModelTypeEnum.embedding,
       isActive: false
+    });
+  });
+});
+
+describe('resolveModelTestTarget', () => {
+  it('uses the upstream model slug to test an existing model before its alias is installed', () => {
+    const installedModel = {
+      ...sourceModel,
+      modelId: 'local-model-id',
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      channels: []
+    } satisfies ModelConfigListItem;
+    const row: ImportRow = {
+      providerModelSlug: 'vendor/gpt-4o',
+      candidates: [{ category: 'existing', modelId: installedModel.modelId }]
+    };
+    const catalog = {
+      installedModelById: new Map([[installedModel.modelId, installedModel]]),
+      templateMap: new Map(),
+      createModelData
+    };
+    const target = resolveModelTestTarget({
+      row,
+      ...resolveRowSelection({ row, catalog }),
+      catalog
+    });
+
+    expect(target).toMatchObject({ source: 'draft' });
+    if (target?.source !== 'draft') {
+      throw new Error('Expected the import test to use a model draft');
+    }
+    expect(target.getModelData()).toMatchObject({
+      model: 'vendor/gpt-4o',
+      config: installedModel.config
     });
   });
 });
@@ -291,6 +330,42 @@ describe('buildBlankChannelModelData', () => {
 
     expect(modelData.config.maxResponse).toBe(16000);
     expect(computedMaxToken({ maxToken: 2048, model: modelData })).toBe(2048);
+  });
+
+  it('uses the upstream response limit when LLM is selected for an ambiguous model type', () => {
+    const [row] = classifyChannelModels({
+      channelModels: [
+        {
+          id: 'upstream/model',
+          context_length: 32000,
+          architecture: { output_modalities: ['text', 'audio'] },
+          top_provider: { max_completion_tokens: 2048 }
+        }
+      ],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: []
+    });
+    const draft = getBlankChannelImportDraft(getChannelImportCandidate(row));
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: row.providerModelSlug,
+      modelType: ModelTypeEnum.llm,
+      modelData: draft.modelData,
+      contextLength: draft.contextLength,
+      maxCompletionTokens: row.maxCompletionTokens,
+      createModelData
+    });
+
+    expect(row.maxCompletionTokens).toBe(2048);
+    expect(draft.modelType).toBeUndefined();
+    if (modelData?.type !== ModelTypeEnum.llm) {
+      throw new Error('Expected an LLM model after manual type selection');
+    }
+
+    expect(modelData.config).toMatchObject({ maxContext: 32000, maxResponse: 2048 });
+    expect(computedMaxToken({ maxToken: 8192, model: modelData })).toBe(2048);
   });
 
   it('defaults a blank LLM quote limit from its context length', () => {

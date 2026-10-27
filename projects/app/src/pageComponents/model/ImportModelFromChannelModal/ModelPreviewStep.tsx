@@ -124,6 +124,7 @@ const buildBlankModelData = ({
     modelType,
     modelData: draft?.modelData,
     contextLength: draft?.contextLength,
+    maxCompletionTokens: row.maxCompletionTokens,
     createModelData
   });
 };
@@ -169,6 +170,34 @@ export const resolveRowSelection = ({
   })();
 
   return { item, candidateModelData, presetKey, selectedPresetData, modelType, isActive };
+};
+
+/** 复用所选配置，并在渠道别名写入前用上游模型 ID 测试。 */
+export const resolveModelTestTarget = ({
+  row,
+  item,
+  presetKey,
+  selectedPresetData,
+  modelType,
+  catalog
+}: {
+  row: ImportPreviewRow;
+  item: ImportPreviewItem;
+  presetKey: string;
+  selectedPresetData: PreviewModelData;
+  modelType?: ModelTypeEnum;
+  catalog: Pick<RowCatalog, 'createModelData'>;
+}): ImportModelTestTarget => {
+  const modelData =
+    presetKey === blankTemplateValue
+      ? buildBlankModelData({ row, item, modelType, createModelData: catalog.createModelData })
+      : selectedPresetData;
+  return modelData
+    ? {
+        source: 'draft',
+        getModelData: () => ({ ...modelData, model: row.providerModelSlug })
+      }
+    : undefined;
 };
 
 const ImportModelTestButton = ({
@@ -266,27 +295,14 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   const candidateAvatar = candidateModelData
     ? catalog.providerById.get(candidateModelData.provider)?.avatar
     : undefined;
-  const modelTestTarget: ImportModelTestTarget = (() => {
-    if (isCurrentModelSelection(item, selectedPresetKey) && 'modelId' in item) {
-      const installedModel = catalog.installedModelById.get(item.modelId);
-      return installedModel
-        ? {
-            source: 'installed',
-            modelId: installedModel.modelId,
-            model: installedModel.model
-          }
-        : undefined;
-    }
-    const modelData = isBlank
-      ? buildBlankModelData({ row, item, modelType, createModelData: catalog.createModelData })
-      : selectedPresetData;
-    return modelData
-      ? {
-          source: 'draft',
-          getModelData: () => ({ ...modelData, model: row.providerModelSlug })
-        }
-      : undefined;
-  })();
+  const modelTestTarget = resolveModelTestTarget({
+    row,
+    item,
+    presetKey: selectedPresetKey,
+    selectedPresetData,
+    modelType,
+    catalog
+  });
 
   return (
     <Tr h="64.5px">

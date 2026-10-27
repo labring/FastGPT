@@ -82,8 +82,8 @@ export const getBlankChannelImportDraft = (item: BlankPreviewItem) => {
 };
 
 /**
- * Build a complete system-model payload from inferred fields and the existing blank-model defaults.
- * Known context length fills the selected type's limit; a missing response cap keeps the base default.
+ * 根据上游推断字段和空白模型默认值构造模型草稿。
+ * 上游响应上限存在时优先用于 LLM `maxResponse`；缺省时保留现有默认值。
  */
 export const buildBlankChannelModelData = ({
   providerModelSlug,
@@ -91,6 +91,7 @@ export const buildBlankChannelModelData = ({
   provider,
   modelData,
   contextLength,
+  maxCompletionTokens,
   createModelData
 }: {
   providerModelSlug: string;
@@ -98,6 +99,7 @@ export const buildBlankChannelModelData = ({
   provider?: string;
   modelData?: BlankModelData;
   contextLength?: number;
+  maxCompletionTokens?: number;
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
 }): AIModelDocumentDataType | undefined => {
   const type = modelType ?? modelData?.type;
@@ -126,7 +128,7 @@ export const buildBlankChannelModelData = ({
     ...(type === ModelTypeEnum.llm
       ? {
           maxContext,
-          maxResponse: getLimit('maxResponse', maxResponseFallback),
+          maxResponse: maxCompletionTokens ?? getLimit('maxResponse', maxResponseFallback),
           // 空白模型表单用 NaN 表示未填；导入时按保存逻辑回退到上下文的 80%。
           quoteMaxToken: getLimit('quoteMaxToken', Math.floor(maxContext * 0.8))
         }
