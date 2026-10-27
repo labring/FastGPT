@@ -156,7 +156,11 @@ describe('referenced app visibility', () => {
       ]
     });
 
-    await expect(invoke('skill')).resolves.toEqual({ list: [], hiddenCount: 1 });
+    await expect(invoke('skill')).resolves.toEqual({
+      list: [],
+      hiddenApps: [{ sourceMember: undefined }],
+      hiddenCount: 1
+    });
   });
 
   it.each([

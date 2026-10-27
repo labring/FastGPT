@@ -125,13 +125,42 @@ describe('update collection', () => {
       String(context.source._id)
     );
   });
-  it('普通字段修改继续要求节点 write，授权后可修改', async () => {
+  it('普通字段修改要求节点 manage：write 被拒、manage 通过', async () => {
     const { actor, file, grant } = await fixture();
     const body = { id: String(file._id), name: 'renamed' };
+    // fixture 只给 file 授予 read
     expect((await Call(updateHandler, { auth: actor, body })).code).not.toBe(200);
     await grant(String(file._id), WriteRoleVal);
+    expect((await Call(updateHandler, { auth: actor, body })).code).not.toBe(200);
+    await grant(String(file._id), ManageRoleVal);
     expect((await Call(updateHandler, { auth: actor, body })).code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.name).toBe('renamed');
+  });
+  it('移动同请求携带字段更新时仍要求节点 manage，不能借移动绕过', async () => {
+    const { actor, file, source, target } = await fixture();
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id), name: 'renamed' }
+    });
+    expect(result.code).not.toBe(200);
+    const updated = await MongoDatasetCollection.findById(file._id).lean();
+    expect(updated?.name).toBe('file');
+    expect(String(updated?.parentId)).toBe(String(source._id));
+  });
+  it('externalFileId 定位只需 dataset read，更新由节点 manage 把关', async () => {
+    const { actor, datasetId, file, grant } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { externalFileId: 'external-meta' });
+    await grant(datasetId, ReadRoleVal, PerResourceTypeEnum.dataset);
+    await grant(String(file._id), ManageRoleVal);
+
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { datasetId, externalFileId: 'external-meta', name: 'renamed-by-external' }
+    });
+    expect(result.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.name).toBe(
+      'renamed-by-external'
+    );
   });
   it('权限允许时仍拒绝父目录移入后代', async () => {
     const { owner, source, target } = await fixture();

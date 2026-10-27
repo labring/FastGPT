@@ -1,18 +1,20 @@
 ---
 name: system-migration-development
-description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其注册信息。涉及系统迁移、升级任务、启动迁移、migration registry、checkpoint、全量重跑、阻塞升级、进度或失败数据时使用；普通业务更新和未接入自动升级框架的一次性手工清洗不使用。
+description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其注册信息。涉及系统迁移、升级任务、启动迁移、migration registry、checkpoint、全量重跑、独立模式、进度或失败数据时使用；普通业务更新和未接入自动升级框架的一次性手工清洗不使用。
 ---
 
 # FastGPT 系统升级脚本开发规范
 
 ## 目标与边界
 
-系统升级任务属于 App 部署生命周期能力。框架负责顺序、状态、lease、并发互斥、重试入口和最终状态；脚本只负责可重复执行的业务迁移、进度、checkpoint，以及与阻塞类型匹配的错误报告方式。
+系统升级任务属于 App 部署生命周期能力。框架负责顺序、状态、每任务 lease 互斥、启动依赖链、后台普通队列与独立任务调度、重试入口和最终状态；脚本只负责可重复执行的业务迁移、进度、checkpoint，以及结构化错误报告。
 
 开始前先查看当前实现，不能凭本 Skill 猜测已经变化的 Context 或目录结构：
 
 - `projects/app/src/migration/registry.ts`
 - `projects/app/src/migration/runner.ts`
+- `projects/app/src/migration/plan.ts`
+- `projects/app/src/migration/startup.ts`
 - `packages/global/migration/constants.ts`
 - `packages/global/migration/schema.ts`
 - `projects/app/src/migration/tasks/README.md`
@@ -27,7 +29,7 @@ description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其�
 1. 永久稳定的任务 ID，格式为 `YYYYMMDD_short_semantic_name`，以及首次发布版本（对应版本目录去除点号，例如版本 `4.17.0` 对应目录 `4170`，`4.17.1` 对应 `4171`）。
 2. 源数据、目标数据、权威数据源和迁移完成条件。
 3. 该任务为什么必须排在当前注册表末尾，以及它依赖哪些前置任务。
-4. 是否阻塞启动，以及失败后应停止还是继续后续任务；只有相互独立的非阻塞任务才能使用继续策略。
+4. 选择启动阻塞、普通自动、延迟自动、手动触发或独立模式；显式声明所有真实的成功前置。启动阻塞任务及其完整依赖链必须在 App 业务启动前成功；后台失败只影响自身与依赖它的任务，后台独立任务必须不依赖其他迁移且允许并发执行。
 5. 恢复策略是“分批断点续跑”还是“幂等全量重跑”。该策略发布后不能切换。
 6. 重复执行的幂等依据：唯一键、确定性覆盖、`$setOnInsert`、compare-and-set 或事务性全量重建。
 7. 数据规模、预期耗时、批次大小和内存上界。
@@ -39,7 +41,7 @@ description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其�
 
 ## 基本要求
 
-- 注册表只允许在数组尾部追加。已发布任务的 ID、顺序、`blockStartup`、`onFailure` 和函数语义不得修改、删除或复用；修复已发布迁移时追加新任务。
+- 注册表只允许在数组尾部追加。已发布任务的 ID、顺序、调度模式、依赖和函数语义不得修改、删除或复用；修复已发布迁移时追加新任务。
 - 完整任务及其可能重放的最小单元必须幂等。Lease 只保证同一时刻的执行权，不提供 exactly-once。
 - 默认追加或回填，不删除旧字段、旧集合、回滚依据或用户数据。破坏性清理应放到后续兼容窗口结束后的独立任务。
 - 自动迁移必须兼容滚动升级；要求全站停机或会立即破坏旧版本的变更不能直接进入该注册表。
@@ -55,7 +57,7 @@ description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其�
 
 | 状态 | 谁负责写入 | 触发条件 |
 | --- | --- | --- |
-| `pending` | 框架 | 首次初始化，或管理员将非阻塞失败任务恢复为待执行 |
+| `pending` | 框架 | 首次初始化，或管理员将失败任务恢复为待执行 |
 | `running` | Runner | 原子获得 lease，并生成新的 `runId` |
 | `failed` | Runner / `context.fail` | 脚本明确报告失败，或普通异常被 Runner 捕获 |
 | `succeeded` | Runner | 脚本正常返回且当前 `runId` 仍持有有效 lease |
@@ -66,21 +68,21 @@ description: 为 FastGPT 新增、修改或审查自动系统升级脚本及其�
 
 - `context.reportProgress(...)`：按注册表声明的阶段 `key` 更新该阶段快照。进入阶段时上报 `running`，完成后上报 `succeeded`；分批任务按合理频率更新 `current/total`，不要每条数据写一次。脚本不得主动上报 `failed`。
 - `context.getCheckpoint(schema)`：读取并用任务自有 Zod Schema 校验断点。仅分批任务使用。
-- `context.getFailedRecords()`：仅供非阻塞任务读取上次失败留下的坏数据。若任务曾跳过坏数据并把 checkpoint 推进到其后，重试时必须先处理这些记录；阻塞任务调用会被 Context 拒绝。
-- `context.reportFailedRecords(records)`：仅供非阻塞任务按批替换“当前完整未解决错误快照”。业务批次提交后应先上报错误快照，再推进 checkpoint；替换语义保证批次重放不会重复追加同一错误。阻塞任务调用会被 Context 拒绝。
+- `context.getFailedRecords()`：读取上次失败留下的坏数据。若任务曾跳过坏数据并把 checkpoint 推进到其后，重试时必须先处理这些记录。
+- `context.reportFailedRecords(records)`：按批替换“当前完整未解决错误快照”。业务批次提交后应先上报错误快照，再推进 checkpoint；替换语义保证批次重放不会重复追加同一错误。
 - `context.saveCheckpoint(value)`：只在一个幂等批次的业务事务完整提交、错误快照成功持久化并校验后保存。禁止先保存 checkpoint 再写业务数据或上报该批错误。
 - `context.assertActive()`：确认当前 `runId` 仍持有 lease。每个业务写入批次前必须调用；全量任务至少在关键事务前及事务后的后续阶段前调用。
-- `context.fail(...)`：保存可预期的结构化错误及最终错误快照，并终止本次执行。主要供需要在管理页面排障和重试的非阻塞任务使用；不要在调用后继续业务逻辑。阻塞任务通过该方法携带 `failedRecords` 会被拒绝。
+- `context.fail(...)`：保存可预期的结构化错误及最终错误快照，并终止本次执行。供需要在管理页面排障和重试的任务使用；不要在调用后继续业务逻辑。
 - `context.logger`：记录诊断信息，框架会附加 migrationId、runId 和 runnerId。日志不能替代进度或结构化失败。
 - `context.signal`：长计算或可取消 I/O 应响应中止信号。
 
 正常返回表示脚本认为业务迁移和完成校验均已成功，由 Runner 标记 `succeeded` 并清理该任务的错误明细。任务可以返回有限标量的业务参数对象；Runner 校验后把参数与 `succeeded` 原子写入，列表接口再从静态注册表取得 `resultKey` 组装展示结果。`nameKey`、`descriptionKey`、`resultKey` 和阶段 `labelKey` 必须在注册表中使用 `i18nT(...)` 声明，禁止把 i18n key 写入 Mongo。不要自行调用完成状态更新，也不要用最后一条 progress 代替最终结果。
 
-普通 `throw` 也会进入 `failed`，Runner 会把错误归属到当前 `running` 阶段，并保留任务之前通过 `reportFailedRecords` 上报的最新快照。只有 `context.fail` 显式携带 `failedRecords`（包括空数组）时才替换或清空旧快照。非阻塞任务的已知数据问题应维护完整未解决错误快照：处理中按批调用 `context.reportFailedRecords`，扫描结束仍有异常时再调用 `context.fail` 写入相同最终快照。错误对象只保存原始 `message`，不得携带 i18n key 或模板参数；每条错误数据必须包含已声明的 `stageKey`，只保存必要 ID 和原因，不复制原文档。框架按阶段记录异常数量，管理员从对应阶段按需打开详情。阻塞任务失败时管理页面本身不可用，应通过 `context.logger` 输出必要诊断后抛出异常；Context 会拒绝其读写错误明细，Runner 只把多节点协调所需的最小 `lastError` 写入状态表。
+普通 `throw` 也会进入 `failed`，Runner 会把错误归属到当前 `running` 阶段，并保留任务之前通过 `reportFailedRecords` 上报的最新快照。只有 `context.fail` 显式携带 `failedRecords`（包括空数组）时才替换或清空旧快照。任务的已知数据问题应维护完整未解决错误快照：处理中按批调用 `context.reportFailedRecords`，扫描结束仍有异常时再调用 `context.fail` 写入相同最终快照。错误对象只保存原始 `message`，不得携带 i18n key 或模板参数；每条错误数据必须包含已声明的 `stageKey`，只保存必要 ID 和原因，不复制原文档。框架按阶段记录异常数量，管理员从对应阶段按需打开详情。后台任务失败后停止 heartbeat，管理员修复后通过页面重试。启动链失败后持续续租，页面不可用，通过日志定位并修复，重启 lease owner 后等待过期接管；独立前置提升为启动任务后同样遵守此规则。
 
 ## 选择恢复策略
 
-任务一旦获得新 runId，无论入口是管理员重置还是过期 lease 接管，都使用同一恢复策略：保留 checkpoint、progress 和最近错误；非阻塞任务还会保留供修复使用的错误明细。但触发条件不同：`running` 的 lease 过期可自动接管，阻塞 `failed` 在 owner 重启、lease 过期后可接管，非阻塞 `failed` 必须由管理员重置为 `pending`。脚本如何恢复由发布时选定的策略决定。
+任务一旦获得新 runId，无论入口是管理员重置还是过期 lease 接管，都使用同一恢复策略：保留 checkpoint、progress 和最近错误；任务还会保留供修复使用的错误明细。但触发条件不同：后台只有 `running` 的 lease 过期可自动接管，`failed` 必须由管理员重置为 `pending`。启动链的 `failed` 由存活 owner 持续续租；修复并重启该 owner 后，过期 failed 允许原子接管，不允许在线重置。脚本如何恢复由发布时选定的策略决定。
 
 ### 分批断点续跑
 
@@ -148,17 +150,21 @@ return
 - 源数据必须在清空目标前完成校验；重复执行和源数据修复后再执行都应产生确定结果。
 - 如果全量操作无法在 lease 内稳定完成，改用分批策略，而不是单纯调大 lease。
 
-## 阻塞与非阻塞
+## 执行模式与失败调度
 
-`blockStartup` 只决定节点 readiness，`onFailure` 只决定失败后是否暂停后续队列；所有任务仍严格按注册表顺序单线程执行。
+`plan.ts` 校验注册表，递归收集所有 `blockStartup: true` 根任务与其 `dependsOn` 闭包。依赖只允许引用更早注册的任务，闭包按原注册顺序串行执行，跳过无关任务；独立前置被提升后不竞争后台 Redis 名额。启动链不得包含 manual 或 delay，根任务不能同时声明 independent。
 
-- 选择阻塞任务：目标 Schema、配置或数据是新版本处理流量的必要前提。任一阻塞任务未成功，节点不能 ready。
-- 选择非阻塞任务：新旧数据均可被业务兼容读取，迁移可在节点 ready 后后台完成。
-- 阻塞任务的阶段进度仍通过 `reportProgress` 保存最新快照并同步输出阶段日志；具体错误诊断写终端日志，不写 `failedRecords`。状态表中的最小 `lastError` 仅用于跨节点观察失败事实，不承担错误日志存储职责。
-- 阻塞任务明确失败后，owner 持续持有 lease 并等待；修复后需要重启 owner，lease 过期后由一个节点接管。
-- 非阻塞任务明确失败后不自动重试；管理员查看错误、修复数据后点击重试，任务重新竞争 lease。
-- `onFailure: 'continue'` 只允许相互独立的非阻塞任务使用：当前任务保持 `failed` 且等待管理员重试，Runner 可以跳过它继续后续任务；`stop` 则暂停后续队列。
-- 位于后续阻塞任务之前且使用 `onFailure: 'stop'` 的非阻塞任务仍是启动前置条件；`continue` 任务失败后允许后续阻塞任务推进，因此必须确认二者没有成功依赖。
+所有节点等待完整启动链持久化为 succeeded，缺失、读取异常、pending、running、failed 都不放行。随后每个节点重载本地模型缓存、启动业务消费者，最后启用后台迁移。共享状态成功不能代替跟随节点的缓存重载；App 屏障不停止旧版本节点或独立 Pro 服务，仍需证明滚动升级兼容。
+
+- 启动阻塞：`blockStartup: true`，自身及递归前置成功前阻塞 App readiness。当前仅旧系统模型迁移声明该模式。
+- 普通自动：启动链成功后进入普通队列，按注册顺序串行执行。
+- 延迟自动：`delay: true`，获得 lease 后等待 SYSTEM_MIGRATION_DELAY_SECONDS 秒，默认 0，期间占用后台普通队列。
+- 手动触发：`manual: true`，初始 waiting；管理员确认前提后入队，随后使用后台普通队列。不能与 delay 或 independent 同时启用，也不能出现在启动闭包中。
+- 独立执行：`independent: true`，启动链完成后每个任务单独调度，不受后台普通队列顺序约束；所有节点通过 Redis LeaseCache.withConcurrency 共享 3 个名额，先取得名额再竞争任务 Mongo lease。不能与 blockStartup、manual、delay 或非空 dependsOn 同时启用。
+- `dependsOn` 只能引用更早注册的任务。普通任务可依赖独立任务；所有前置成功前不得执行。被启动链引用的前置统一提升，列表 DTO 返回有效 blockStartup=true、independent=false。
+- 后台失败不暂停整个队列，不提供 onFailure 或 stop/continue 配置。成功前提必须通过 dependsOn 声明，不能用相邻顺序代替依赖，也不能把无关任务串成依赖链。
+- 启动链失败保持续租，日志记录错误原因和 migrationId/runId/runnerId；修复并重启 lease owner，过期后由一个节点接管。其他节点保持未就绪，后台不能执行。后台明确失败停止续租并等待管理员重试。
+- 所有任务均可报告结构化失败明细、保存恢复数据。独立模式必须证明数据与其他后台任务互不依赖且资源消耗允许并发；App ready 只保证启动链成功，不表示后台回填完成。
 
 ## 文件位置
 
@@ -172,6 +178,8 @@ packages/global/migration/
 projects/app/src/migration/
 ├── constants.ts
 ├── registry.ts
+├── plan.ts
+├── startup.ts
 ├── runner.ts
 ├── entity.ts
 ├── service.ts
@@ -193,7 +201,7 @@ projects/app/src/migration/
 - 注册项必须按执行顺序声明完整的 `progressSteps: [{ key, labelKey }]`；`key` 是永久稳定的机器标识，`labelKey` 放在 client-only `system_migration` i18n namespace，不写入 Mongo。
 - 该任务专属的数据访问、转换和工具函数全部放在同名目录，不要散落到 `packages/global` 或 `packages/service`。
 - 真正被正常运行期业务复用的能力保留在业务模块；迁移通过单向依赖调用它。
-- Next.js API 路由和页面受框架目录约束，可以保留在 `pages/api`、`pages/config`，但必须是调用 migration service 的薄入口，不承载迁移逻辑。
+- Next.js API 路由和页面受框架目录约束，可以保留在 `pages/api`、`pages/admin`，但必须是调用 migration service 的薄入口，不承载迁移逻辑。
 - i18n 文案按项目现有机制放入所有语言文件；任务注册项使用 `i18nT(...)` 保存稳定的 name、description、result 和 progress label key。
 - i18n key 只属于静态注册表和 API 展示 DTO，禁止写入状态表或错误明细表。成功结果只持久化有限标量参数，错误只持久化原始 `message`。
 - 测试放在 `projects/app/test/migration/` 下并严格镜像源码子路径（即 `projects/app/test/migration/tasks/<version>/<migration-id>/`）。
@@ -211,7 +219,10 @@ projects/app/src/migration/
 - 进度阶段、失败记录和日志不包含敏感或无界数据。
 - 每个阶段均按 `running -> succeeded` 上报；任务返回前所有声明阶段都已成功，阶段异常和错误数据使用正确的 `stageKey`。
 - 最终结果只在任务成功后存在；Mongo 只含参数，列表接口从注册表补入 key 后能渲染出预期业务结果。
-- 任务注册在数组尾部，ID 唯一，`blockStartup` 和 `onFailure` 符合数据依赖。
+- 任务注册在数组尾部，ID 唯一，调度模式与显式前置依赖符合业务要求。
+
+- 启动依赖闭包优先执行、共享前置不重复、独立前置提升、手动/延迟前置拒绝；每个节点先等待再重载模型，之后才启用业务与后台任务。
+- 启动链 throw/context.fail 均持续续租并保持未就绪；owner 停止且 lease 过期后多节点只能一个接管，恢复数据保留；管理接口拒绝在线重试启动链。
 
 分批任务额外验证：
 
@@ -221,7 +232,7 @@ projects/app/src/migration/
 - 错误快照会在每批后替换持久化，且崩溃发生在错误上报与 checkpoint 之间时不会丢失或重复追加坏数据。
 - 错误快照之后发生普通异常时，已保存的坏数据不会被空数组覆盖。
 - 中途丢失 lease 后不再开始新的业务批次或保存状态。
-- 阻塞任务调用 `getFailedRecords`、`reportFailedRecords` 或通过 `fail` 携带 `failedRecords` 时会被 Context 拒绝。
+- 启动链成功后，独立任务不受后台普通队列长任务、延迟或失败影响；集群最多持有 3 个独立任务并发名额，排队任务不提前领取 Mongo lease；停止 Runner 时取消等待并通知全部活跃任务中止。
 
 全量任务额外验证：
 
@@ -238,11 +249,12 @@ projects/app/src/migration/
 - [ ] 已证明任务整体及重放单元幂等。
 - [ ] 只在注册表末尾追加，未修改已发布任务语义。
 - [ ] 脚本未直接操作迁移状态表或错误数据表。
-- [ ] 必需进度、lease 检查、完成校验和与阻塞类型匹配的失败出口均已实现。
+- [ ] 必需进度、lease 检查、完成校验和失败出口均已实现。
 - [ ] 需要展示最终产出时已由任务返回有限的 i18n 结果，并由 Runner 随成功终态提交。
 - [ ] checkpoint 保存时机正确，或全量任务明确不使用 checkpoint。
 - [ ] 分批任务在 checkpoint 前及时替换完整错误快照，没有只在任务末尾一次性保存坏数据。
-- [ ] 阻塞任务只写终端诊断和最小 `lastError`，没有调用错误明细能力。
-- [ ] 启动阻塞、失败调度策略、滚动升级兼容性和破坏性操作均已审查。
+- [ ] 后台失败停止续租且可由管理员重试；启动失败保持续租，日志排障并重启 owner 后过期接管，业务与后台不提前放行。
+- [ ] 启动依赖闭包、模式互斥、独立模式集群 3 个共享名额、Redis 故障不放行和租约丢失后的恢复已验证。
+- [ ] 调度模式、显式依赖、滚动升级兼容性和破坏性操作均已审查。
 - [ ] 任务代码与测试严格按 tasks/<version>/<migration-id>/ 规范组织并镜像测试目录，不平铺在 tasks 根目录下，不污染业务模块。
 - [ ] 局部测试、类型检查、lint 和差异检查通过。

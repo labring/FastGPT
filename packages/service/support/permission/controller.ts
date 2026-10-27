@@ -190,9 +190,9 @@ export const getClbsInfo = async ({
   ownerTmbId?: string;
   showUsername?: boolean;
 }): Promise<CollaboratorItemDetailType[]> => {
-  const tmbIds = [];
-  const orgIds = [];
-  const groupIds = [];
+  const tmbIds: string[] = [];
+  const orgIds: string[] = [];
+  const groupIds: string[] = [];
 
   for (const clb of clbs) {
     if (clb.tmbId) tmbIds.push(clb.tmbId);

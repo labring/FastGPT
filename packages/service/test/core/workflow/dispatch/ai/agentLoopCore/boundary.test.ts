@@ -66,7 +66,7 @@ describe('workflow agent-loop core boundary', () => {
     }
   });
 
-  it('keeps domain independent and outer nodes on the public interface', () => {
+  it('keeps domain independent and outer nodes on public core modules', () => {
     for (const file of collectTsFiles('core/workflow/dispatch/ai/agentLoopCore/domain')) {
       const source = readSource(file);
       expect(source, `${file} must not depend on adapters`).not.toContain('../adapter');
@@ -78,17 +78,28 @@ describe('workflow agent-loop core boundary', () => {
       );
     }
 
+    // 公共能力也允许从定义模块直接导入，避免为了边界检查新增 re-export。
+    const publicCoreModules = [
+      'interface',
+      ...Array.from(
+        readSource('core/workflow/dispatch/ai/agentLoopCore/interface/index.ts').matchAll(
+          /export\s+(?:type\s+)?\{[^}]+\}\s+from\s+['"]\.\.\/([^'"]+)['"]/g
+        ),
+        ([, modulePath]) => modulePath
+      )
+    ];
     const outerFiles = [
       ...collectTsFiles('core/workflow/dispatch/ai/agent'),
       ...collectTsFiles('core/workflow/dispatch/ai/toolcall')
     ];
     for (const file of outerFiles) {
       const source = readSource(file);
-      const coreImports = source.match(/from ['"][^'"]*agentLoopCore[^'"]*['"]/g) ?? [];
-      for (const coreImport of coreImports) {
-        expect(coreImport, `${file} must import agentLoopCore through interface`).toContain(
-          'agentLoopCore/interface'
-        );
+      const coreImports = source.matchAll(/from ['"][^'"]*agentLoopCore\/?([^'"]*)['"]/g);
+      for (const [, modulePath] of coreImports) {
+        expect(
+          publicCoreModules,
+          `${file} must only import public agentLoopCore modules`
+        ).toContain(modulePath);
       }
     }
   });

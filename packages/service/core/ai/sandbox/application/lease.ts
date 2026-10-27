@@ -11,8 +11,7 @@ import {
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { LeaseCache } from '@fastgpt/dal/redis/caches';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
-import { getLogger, LogCategories } from '../../../../common/logger';
-const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
+const leaseCache = new LeaseCache();
 
 type LeaseTask<T> = (context: RedisLeaseContext) => Promise<T>;
 

@@ -8,6 +8,9 @@ import {
   type ResumeCollectionInheritPermissionBody
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBody>) {
   const { collectionId } = parseApiInput({
@@ -15,12 +18,17 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
     bodySchema: ResumeCollectionInheritPermissionBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     collectionId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
+
+  const parentCollection = collection.parentId
+    ? await MongoDatasetCollection.findById(collection.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = collection.parentId ? parentCollection?.name : collection.dataset.name;
 
   await resumeCollectionInheritPermission({
     collection: {
@@ -30,6 +38,21 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
       datasetId: String(collection.datasetId),
       type: collection.type,
       teamId: String(collection.teamId)
+    }
+  });
+
+  // 权限恢复成功后才写入事件。
+  addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [
+      { datasetId: String(collection.datasetId) },
+      { collectionId: String(collection._id) }
+    ],
+    params: {
+      targetResource: collection.name,
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });
 }

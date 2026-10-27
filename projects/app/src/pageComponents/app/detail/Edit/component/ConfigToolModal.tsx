@@ -50,7 +50,6 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
-import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
@@ -765,7 +764,7 @@ const ToolVersionSelect = ({
   getValues: UseFormGetValues<Record<string, any>>;
   onChangeTool: (tool: SelectedToolItemType) => void;
 }) => {
-  const { t, i18n } = useSafeTranslation();
+  const { t } = useSafeTranslation();
   const toolSource = useMemo(
     () => (tool.pluginId ? splitCombineToolId(tool.pluginId).source : undefined),
     [tool.pluginId]
@@ -837,14 +836,11 @@ const ToolVersionSelect = ({
         value: ''
       },
       ...versionList.map((item) => ({
-        label:
-          item.versionDescription !== undefined
-            ? selectPluginText(item.versionDescription, i18n.language)
-            : item.version,
+        label: item.version,
         value: item.version
       }))
     ],
-    [i18n.language, t, versionList]
+    [t, versionList]
   );
 
   const valueLabel = useMemo(

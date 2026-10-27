@@ -1,3 +1,4 @@
+import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
   type Connection,
@@ -19,7 +20,7 @@ import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -46,10 +47,9 @@ import { type HelperLinesController } from '../components/HelperLines';
 import {
   buildNodeTemplateContext,
   getNodeContainerCheckError,
-  isNodeConnectionAllowed,
   translateNodeContainerCheckError
 } from '@fastgpt/global/core/workflow/template/context';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { getRemovalNodeIdsWithCore, validateConnectionWithCore } from '../../adapters/command';
 
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
@@ -589,23 +589,34 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   /* node */
   // Remove change node and its child nodes and edges
   const handleRemoveNode = useCallback(
-    (change: NodeRemoveChange, nodeId: string) => {
-      // If the node has child nodes, remove the child nodes
-      const deletedNodeIdList = [nodeId];
-      const deletedEdgeIdList = edges
-        .filter((edge) => edge.source === nodeId || edge.target === nodeId)
-        .map((edge) => edge.id);
+    (_change: NodeRemoveChange, nodeId: string) => {
+      const removalResult = getRemovalNodeIdsWithCore({
+        nodes,
+        edges,
+        nodeId,
+        chatConfig: appDetail.chatConfig
+      });
+      const deletedNodeIdList = (() => {
+        if (removalResult.status === 'success') return removalResult.data;
+        if (removalResult.status === 'domain-error') return [];
 
-      const childNodes = nodes.filter((n) => n.data.parentNodeId === nodeId);
-      if (childNodes.length > 0) {
-        const childNodeIds = childNodes.map((node) => node.id);
-        deletedNodeIdList.push(...childNodeIds);
-
-        const childEdges = edges.filter(
-          (edge) => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target)
+        console.error(
+          '[Workflow Core Adapter] Failed to remove node with Core, falling back to Web behavior',
+          removalResult.error
         );
-        deletedEdgeIdList.push(...childEdges.map((edge) => edge.id));
-      }
+        return [
+          nodeId,
+          ...nodes.filter((node) => node.data.parentNodeId === nodeId).map((node) => node.id)
+        ];
+      })();
+      if (deletedNodeIdList.length === 0) return;
+
+      const deletedEdgeIdList = edges
+        .filter(
+          (edge) =>
+            deletedNodeIdList.includes(edge.source) || deletedNodeIdList.includes(edge.target)
+        )
+        .map((edge) => edge.id);
 
       onNodesChange(
         deletedNodeIdList.map<NodeRemoveChange>((id) => ({
@@ -620,7 +631,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         }))
       );
     },
-    [edges, nodes, onNodesChange, onEdgesChange]
+    [appDetail.chatConfig, edges, nodes, onNodesChange, onEdgesChange]
   );
   const handleSelectNode = useMemoizedFn((change: NodeSelectionChange) => {
     // If the node is not selected and the Ctrl key is pressed, select the node
@@ -931,41 +942,19 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
-      if (!connect.sourceHandle || !connect.targetHandle) {
-        return;
-      }
-      if (connect.source === connect.target) {
+      const result = validateConnectionWithCore({ nodes, edges, connection: connect });
+      if (result.status !== 'success') {
         return toast({
           status: 'warning',
-          title: t('common:core.module.Can not connect self')
+          title: formatWorkflowDiagnostic({ diagnostic: result.diagnostics[0], t }).message
         });
-      }
-
-      const sourceNode = getNodeById(connect.source);
-      const targetNode = getNodeById(connect.target);
-      const targetTemplate = targetNode
-        ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
-        : undefined;
-      if (
-        !sourceNode ||
-        !targetNode ||
-        !isNodeConnectionAllowed({
-          targetTemplate,
-          targetNode,
-          sourceNode,
-          edges,
-          handleId: connect.sourceHandle,
-          getNodeById
-        })
-      ) {
-        return;
       }
 
       onConnect({
         connect
       });
     },
-    [edges, getNodeById, onConnect, t, toast]
+    [edges, nodes, onConnect, t, toast]
   );
 
   /* edge */

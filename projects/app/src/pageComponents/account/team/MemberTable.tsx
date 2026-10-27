@@ -389,7 +389,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             onConfirm={() => onRemoveMember(member.tmbId)}
                           />
                         </HStack>
-                      ) : (
+                      ) : isSyncMode && member.status === TeamMemberStatusEnum.forbidden ? (
                         <PopoverConfirm
                           Trigger={
                             <Box display={'inline-block'}>
@@ -406,7 +406,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           })}
                           onConfirm={() => onRestore(member.tmbId)}
                         />
-                      ))}
+                      ) : null)}
                   </Td>
                 </Tr>
               ))}

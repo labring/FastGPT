@@ -19,7 +19,9 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
-vi.mock('@/service/support/permission/auth/outLink', () => ({ authOutLink: mocks.authOutLink }));
+vi.mock('@fastgpt/service/support/permission/publish/authChat', () => ({
+  authOutLink: mocks.authOutLink
+}));
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   getAuthorizedModelIds: mocks.permission
 }));

@@ -1,19 +1,60 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areWorkflowValueTypesCompatible,
+  getWorkflowReferenceSourceValueTypes,
   getSelectedInputRenderType,
   nodeInputIsReference,
   isValidReferenceValueFormat,
   isValidReferenceValue,
   isValidArrayReferenceValue,
-  getHandleId
+  getHandleId,
+  getWorkflowReferenceSourceNodes
 } from '@fastgpt/global/common/workflow/reference';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+
+describe('getWorkflowReferenceSourceNodes', () => {
+  it('keeps nearest sources first and ignores missing, self and cross-scope edges', () => {
+    const nodes = new Map(
+      ['target', 'direct', 'ancestor', 'foreign'].map((nodeId) => [
+        nodeId,
+        {
+          nodeId,
+          name: nodeId,
+          flowNodeType: FlowNodeTypeEnum.code,
+          parentNodeId: nodeId === 'foreign' ? 'other' : undefined,
+          inputs: [],
+          outputs: []
+        } satisfies StoreNodeItemType
+      ])
+    );
+    const params = {
+      nodeId: 'target',
+      getNodeById: (id: string) => nodes.get(id),
+      edges: [
+        { source: 'ancestor', target: 'direct' },
+        { source: 'direct', target: 'target' },
+        { source: 'target', target: 'ancestor' },
+        { source: 'missing', target: 'target' },
+        { source: 'foreign', target: 'target' }
+      ]
+    };
+    expect(getWorkflowReferenceSourceNodes(params).map((node) => node.nodeId)).toEqual([
+      'direct',
+      'ancestor'
+    ]);
+    expect(getWorkflowReferenceSourceNodes({ ...params, nodeId: 'missing' })).toEqual([]);
+  });
+});
 
 describe('nodeInputIsReference', () => {
   it('should use the canonical selectedType', () => {
@@ -187,5 +228,29 @@ describe('getHandleId', () => {
   it('should handle empty strings', () => {
     const result = getHandleId('', 'source', '');
     expect(result).toBe('-source-');
+  });
+});
+
+describe('getWorkflowReferenceSourceValueTypes', () => {
+  it('publishes the reference selector contract for array inputs', () => {
+    expect(getWorkflowReferenceSourceValueTypes(WorkflowIOValueTypeEnum.arrayString)).toEqual([
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.arrayAny,
+      WorkflowIOValueTypeEnum.any
+    ]);
+  });
+});
+
+describe('areWorkflowValueTypesCompatible', () => {
+  it.each([
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string, true],
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.arrayString, true],
+    [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.number, false],
+    [WorkflowIOValueTypeEnum.arrayObject, WorkflowIOValueTypeEnum.datasetQuote, true],
+    [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.arrayString, false],
+    [WorkflowIOValueTypeEnum.arrayAny, WorkflowIOValueTypeEnum.string, true]
+  ] as const)('checks %s input against %s source: %s', (expected, actual, compatible) => {
+    expect(areWorkflowValueTypesCompatible({ expected, actual })).toBe(compatible);
   });
 });

@@ -37,9 +37,29 @@ import {
 } from '../../../../support/permission/model/controller.schema';
 import { GetModelSummariesBodySchema, GetModelSummariesResponseSchema } from './summary';
 import { ChannelPath } from './channel';
+import {
+  ReplaceInvalidModelReferencesBodySchema,
+  ReplaceInvalidModelReferencesResponseSchema
+} from './invalidReferences';
 
 export const AIModelPath: OpenAPIPath = {
   ...ChannelPath,
+  '/core/ai/model/invalidReferences/replace': {
+    post: {
+      summary: '替换团队内失效模型引用',
+      description: '仅团队 owner 可调用；同步扫描知识库、应用和全部历史版本。STT 目标仅预留。',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: ReplaceInvalidModelReferencesBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '同步替换结果；逐条失败记录在统计和失败样例中',
+          content: { 'application/json': { schema: ReplaceInvalidModelReferencesResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/ai/model/create': {
     post: {
       summary: '创建自定义模型',

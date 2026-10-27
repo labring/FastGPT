@@ -225,7 +225,7 @@ export function useVirtualList<
     refreshDeps,
     itemHeight,
     overscan = defaultOverscan,
-    pageSize = 10,
+    pageSize = 20,
     params,
     EmptyTip,
     showErrorToast = true,

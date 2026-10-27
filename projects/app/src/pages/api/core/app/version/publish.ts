@@ -28,6 +28,7 @@ import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model
 import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
+/** 保存或发布应用版本，资源归属和模型目录以目标应用团队为边界，ACL 保留实际操作者身份。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
@@ -38,13 +39,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     bodySchema: PublishAppBodySchema
   });
 
-  const { app, tmbId, teamId, isRoot } = await authApp({
+  const { app, tmbId, isRoot } = await authApp({
     appId,
     req,
     per: WritePermissionVal,
     authToken: true
   });
 
+  // Root 可管理其他团队的应用；登录团队不能替代应用团队决定资源归属、默认模型和审计范围。
+  const teamId = String(app.teamId);
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
@@ -73,6 +76,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         appId,
         extracted,
         tmbId,
+        teamId,
         isRoot,
         blockOnUnauthorized: false,
         modelHandle,
@@ -131,6 +135,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       appId,
       extracted,
       tmbId,
+      teamId,
       isRoot,
       blockOnUnauthorized: !!isPublish,
       modelHandle,

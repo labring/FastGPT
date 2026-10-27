@@ -48,7 +48,6 @@ describe('createAgentLoopCoreRuntimeEnvironment', () => {
       type: 'tool_run_end',
       call: toolCall(),
       response: 'tool response',
-      rawResponse: 'tool response',
       usages: [],
       seconds: 0.2
     });
@@ -133,7 +132,6 @@ describe('createAgentLoopCoreRuntimeEnvironment', () => {
       type: 'tool_run_end',
       call: toolCall(),
       response: 'tool response',
-      rawResponse: 'tool response',
       usages: [],
       seconds: 0.2
     });

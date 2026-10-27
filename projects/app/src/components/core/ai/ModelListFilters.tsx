@@ -5,7 +5,7 @@ import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provid
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 type ModelListFiltersProps = {
   providers: ModelProviderItemType[];
@@ -17,6 +17,7 @@ type ModelListFiltersProps = {
   search: string;
   onSearchChange: (search: string) => void;
   px?: FlexProps['px'];
+  actions?: ReactNode;
 };
 
 /**
@@ -32,7 +33,8 @@ const ModelListFilters = ({
   onModelTypeChange,
   search,
   onSearchChange,
-  px
+  px,
+  actions
 }: ModelListFiltersProps) => {
   const { t } = useSafeTranslation();
 
@@ -84,6 +86,11 @@ const ModelListFilters = ({
         options={modelTypeOptions}
         onChange={onModelTypeChange}
       />
+      {actions && (
+        <Box ml={['0', 'auto']} alignSelf={['flex-end', 'auto']} flexShrink={0}>
+          {actions}
+        </Box>
+      )}
     </Flex>
   );
 };

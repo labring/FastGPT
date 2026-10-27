@@ -118,6 +118,62 @@ const createDispatchToolProps = (
 
 describe('dispatchTool runtime toolset auth', () => {
   it.each(['mcp', 'http'] as const)(
+    'passes Agent %s params through without schema validation',
+    async (source) => {
+      const schema = {
+        type: 'object',
+        properties: { query: { type: 'string', required: true } },
+        patternProperties: { '^value_': { type: 'number' } },
+        additionalProperties: false
+      };
+      const tool = {
+        name: 'search',
+        description: 'Search',
+        path: '/search',
+        method: 'POST',
+        inputSchema: schema,
+        requestSchema: schema
+      };
+      const nodes = [
+        {
+          toolConfig: {
+            [source === 'mcp' ? 'mcpToolSet' : 'httpToolSet']: {
+              url: 'https://example.com/mcp',
+              baseUrl: 'https://example.com',
+              toolList: [tool]
+            }
+          }
+        }
+      ];
+      authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+      getAppVersionByIdMock.mockResolvedValue({ nodes });
+      getMCPChildrenMock.mockResolvedValue([tool]);
+      getHTTPToolListMock.mockResolvedValue([tool]);
+      mcpToolCallMock.mockResolvedValue({ ok: true });
+      runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+      const config = {
+        [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId: `${source}-victim-toolset/search` }
+      };
+      const params = { query: 'allowed', value_count: 0 };
+      const accepted = await dispatchTool(createDispatchToolProps(config, params));
+      expect(accepted.errorMessage).toBeUndefined();
+      const externalCall = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
+      expect(externalCall).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
+      externalCall.mockClear();
+      for (const params of [
+        { value_count: 0 },
+        { query: 'allowed', value_count: '0' },
+        { query: 'allowed', unknown: 1 }
+      ]) {
+        const result = await dispatchTool(createDispatchToolProps(config, params));
+        expect(result.errorMessage).toBeUndefined();
+        expect(externalCall).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params }));
+        externalCall.mockClear();
+      }
+    }
+  );
+
+  it.each(['mcp', 'http'] as const)(
     'executes an authorized %s child outside the snapshot selection and rejects denied calls',
     async (source) => {
       const tool = {
@@ -188,7 +244,7 @@ describe('dispatchTool runtime toolset auth', () => {
     { name: 'scalar number', requestSchema: { type: 'number' } },
     { name: 'missing', requestSchema: undefined },
     { name: 'empty object', requestSchema: { type: 'object', properties: {} } }
-  ])('normalizes a $name HTTP requestSchema before final execution', async ({ requestSchema }) => {
+  ])('passes HTTP params through with a $name requestSchema', async ({ requestSchema }) => {
     const tool = {
       name: 'legacy_search',
       description: 'Legacy search',
@@ -248,16 +304,19 @@ describe('dispatchTool runtime toolset auth', () => {
 
     runHTTPToolMock.mockClear();
     for (const params of [{}, { query: 123 }, { query: 'blocked' }]) {
-      const rejected = await dispatchTool(createDispatchToolProps(toolConfig, params));
-      expect(rejected.errorMessage).toContain('validation failed');
+      const result = await dispatchTool(createDispatchToolProps(toolConfig, params));
+      expect(result.errorMessage).toBeUndefined();
+      expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ params })
+      );
+      runHTTPToolMock.mockClear();
     }
-    expect(runHTTPToolMock).not.toHaveBeenCalled();
     expect(getAppVersionByIdMock).toHaveBeenCalled();
     expect(tool).toEqual(original);
   });
 
   it.each(['mcp', 'http'] as const)(
-    'validates %s Agent params against freshly loaded definitions instead of stale snapshots',
+    'uses freshly loaded %s definitions and passes model params through',
     async (source) => {
       const latestSchema = {
         type: 'object',
@@ -316,25 +375,22 @@ describe('dispatchTool runtime toolset auth', () => {
           ]
         }
       };
-      const rejected = await dispatchTool(createDispatchToolProps(config, { query: 'stale' }));
-      expect(rejected.errorMessage).toContain('validation failed');
-      expect(mcpToolCallMock).not.toHaveBeenCalled();
-      expect(runHTTPToolMock).not.toHaveBeenCalled();
-      const accepted = await dispatchTool(createDispatchToolProps(config, { query: 'latest' }));
-      expect(accepted.errorMessage).toBeUndefined();
+      const params = { query: 'stale', extra: true };
+      const result = await dispatchTool(createDispatchToolProps(config, params));
+      expect(result.errorMessage).toBeUndefined();
       if (source === 'http') {
-        expect(runHTTPToolMock).toHaveBeenCalledWith(
+        expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
           expect.objectContaining({
             baseUrl: 'https://latest.example.com',
             toolPath: '/latest',
             staticHeaders: tool.staticHeaders,
-            params: { query: 'latest' }
+            params
           })
         );
       } else {
-        expect(mcpToolCallMock).toHaveBeenCalledWith({
+        expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
           toolName: 'search',
-          params: { query: 'latest' }
+          params
         });
       }
       expect(getAppVersionByIdMock).toHaveBeenCalled();

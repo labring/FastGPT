@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -25,6 +26,9 @@ import {
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/audit/training';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -40,6 +44,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     per: OwnerPermissionVal
   });
   const {
+    handle: modelHandle,
     models: [vectorModelData]
   } = await assertAuthModels({
     actor: { teamId, tmbId, isRoot },
@@ -125,6 +130,32 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     datasetId,
     billId: String(usageId)
   });
+
+  // 审计复用鉴权时的模型快照，避免重建提交后为日志再次查询目录版本。
+  // 名称与稳定 ID 分开保留；旧模型已删除时由保存的引用提供展示兜底。
+  {
+    const oldModelReference = getDatasetModelReference(dataset, 'embedding');
+    const oldModel = getTrainingAuditModelLabel({
+      reference: oldModelReference,
+      model: modelHandle.findModelData(oldModelReference)
+    });
+    const newModel = getTrainingAuditModelLabel({
+      reference: { modelId: vectorModelData.modelId, model: vectorModelData.model },
+      model: vectorModelData
+    });
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
+      params: {
+        datasetName: dataset.name,
+        oldModelName: oldModel.modelName,
+        newModelName: newModel.modelName,
+        oldModelId: oldModel.modelId,
+        newModelId: newModel.modelId
+      }
+    });
+  }
 
   return RebuildEmbeddingResponseSchema.parse(undefined);
 }

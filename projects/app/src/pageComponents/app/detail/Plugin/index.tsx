@@ -12,6 +12,7 @@ import { cloneDeep } from 'lodash-es';
 
 import Flow from '../WorkflowComponents/Flow';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';
+import { WorkflowBuilderUIProvider } from '../WorkflowComponents/WorkflowBuilder/context';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -36,7 +37,15 @@ const WorkflowEdit = () => {
       <Header />
 
       {currentTab === TabEnum.appEdit ? (
-        <Flow />
+        // 工具页同样依赖共享面板状态；隐藏 Builder 入口不影响节点列表和插件配置。
+        <WorkflowBuilderUIProvider
+          appId={appDetail._id}
+          canEdit={!!appDetail.permission?.hasWritePer}
+          entryAccess={'hidden'}
+          systemInitialized={true}
+        >
+          <Flow />
+        </WorkflowBuilderUIProvider>
       ) : (
         <Flex
           flexDirection={'column'}

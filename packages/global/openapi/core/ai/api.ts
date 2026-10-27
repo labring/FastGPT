@@ -3,10 +3,10 @@ import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import {
   ChatGenerateStatusSchema,
-  createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
   transformChatAuthTargetInput
 } from '../chat/api';
-import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
+import { OutLinkChatAuthQuerySchema } from '../../../support/permission/chat';
 
 /* ============================================================================
  * API: 优化 Prompt
@@ -98,8 +98,8 @@ export const ChatMessageSchema = z.object({
  * Tags: ['会话操作', 'Read']
  * ============================================================================ */
 
-export const ResumeStreamParamsRawSchema = createOutLinkChatTargetInputSchema({
-  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+export const ResumeStreamParamsRawSchema = createOutLinkChatTargetQuerySchema({
+  outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     description: '外链鉴权数据。GET query 中需 JSON 序列化。'
   }),
   chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })

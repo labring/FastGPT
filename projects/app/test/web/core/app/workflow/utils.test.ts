@@ -1,3 +1,8 @@
+import {
+  filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
 import { describe, it, expect, vi } from 'vitest';
 import type {
   FlowNodeItemType,
@@ -19,10 +24,7 @@ import {
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
-  getNodeAllSource,
-  filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable
+  getNodeAllSource
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
@@ -31,6 +33,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {
@@ -38,7 +41,7 @@ describe('nodeTemplate2FlowNode', () => {
     const node = nodeTemplate2FlowNode({
       template: DatasetSearchModule,
       position: { x: 0, y: 0 },
-      defaultModelIds: { llm: 'default-llm', rerank: 'default-rerank' },
+      initialModelId: 'default-llm',
       t: ((key: string) => key) as any
     });
     const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
@@ -509,16 +512,19 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'legacy-model'
           },
           {
+            label: '',
             key: NodeInputKeyEnum.aiModelId,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: ''
           },
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             value: 'duplicate-legacy-model'
@@ -547,6 +553,7 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel],
             selectedType: FlowNodeInputTypeEnum.settingLLMModel,
@@ -581,6 +588,7 @@ describe('storeNode2FlowNode', () => {
         position: { x: 0, y: 0 },
         inputs: [
           {
+            label: '',
             key: NodeInputKeyEnum.aiModel,
             renderTypeList: [
               FlowNodeInputTypeEnum.settingLLMModel,
@@ -684,6 +692,143 @@ describe('storeNode2FlowNode', () => {
     expect(result.nodes[0].inputs[0].renderTypeList).not.toContain(
       FlowNodeInputTypeEnum.agentGenerated
     );
+  });
+
+  it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'examLoop',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunMode,
+          value: LoopRunModeEnum.array,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunInputArray,
+          value: [],
+          valueType: WorkflowIOValueTypeEnum.arrayAny,
+          renderTypeList: [FlowNodeInputTypeEnum.reference]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopCustomOutputs,
+          value: [],
+          valueType: WorkflowIOValueTypeEnum.dynamic,
+          renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.childrenNodeIdList,
+          value: [],
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      outputs: [
+        {
+          id: 'collectedResults',
+          key: 'collectedResults',
+          label: 'collectedResults',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.arrayAny
+        }
+      ],
+      name: 'Loop',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    const declared = result.data.inputs.find((input) => input.key === 'collectedResults');
+    expect(declared).toBeDefined();
+    expect(declared).toMatchObject({
+      key: 'collectedResults',
+      canEdit: true,
+      valueType: WorkflowIOValueTypeEnum.arrayAny,
+      required: false
+    });
+    expect(declared?.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
+    // 动态输出保留，避免 NodeLoopRun 挂载时被当作未声明输出删除
+    expect(result.data.outputs.find((o) => o.key === 'collectedResults')?.type).toBe(
+      FlowNodeOutputTypeEnum.dynamic
+    );
+  });
+
+  it('loopRun: 已有 canEdit 输入声明的动态输出不重复补齐', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'examLoop',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunMode,
+          value: LoopRunModeEnum.array,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'collectedResults',
+          label: 'collectedResults',
+          valueType: WorkflowIOValueTypeEnum.arrayAny,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          canEdit: true
+        }
+      ],
+      outputs: [
+        {
+          id: 'collectedResults',
+          key: 'collectedResults',
+          label: 'collectedResults',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.arrayAny
+        }
+      ],
+      name: 'Loop',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    const canEditInputs = result.data.inputs.filter((input) => input.canEdit === true);
+    expect(canEditInputs).toHaveLength(1);
+    expect(canEditInputs[0].key).toBe('collectedResults');
+  });
+
+  it('非 loopRun 节点的动态输出不受兜底影响', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      position: { x: 0, y: 0 },
+      inputs: [],
+      outputs: [
+        {
+          id: 'dynamicOutput',
+          key: 'dynamicOutput',
+          label: 'Dynamic Output',
+          type: FlowNodeOutputTypeEnum.dynamic
+        }
+      ],
+      name: 'Test Node',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: any) => key) as any
+    });
+
+    expect(result.data.inputs.some((input) => input.canEdit === true)).toBe(false);
   });
 
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:

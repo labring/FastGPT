@@ -25,7 +25,7 @@ const InvoiceTable = () => {
     total,
     pageSize
   } = usePagination(getInvoiceRecords, {
-    defaultPageSize: 10,
+    defaultPageSize: 20,
     pageSizeCacheKey: 'account-bill-invoices',
     scrollContainerRef
   });

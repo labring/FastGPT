@@ -4,7 +4,6 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { Position } from 'reactflow';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
@@ -23,8 +22,7 @@ const IOTitle = ({
 } & StackProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const onEdgesChange = useContextSelector(WorkflowBufferDataContext, (v) => v.onEdgesChange);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
 
   const handleCatchErrorChange = (checked: boolean) => {
     if (!nodeId) return;
@@ -36,15 +34,10 @@ const IOTitle = ({
       value: checked
     });
 
-    // Delete edges
-    onEdgesChange([
-      {
-        type: 'remove',
-        id: edges.find(
-          (edge) => edge.sourceHandle === getHandleId(nodeId, 'source_catch', Position.Right)
-        )?.id!
-      }
-    ]);
+    // 只有用户关闭异常端口时删线，且删除该端口的全部连线。
+    if (!checked) {
+      onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source_catch', Position.Right) });
+    }
   };
 
   return (

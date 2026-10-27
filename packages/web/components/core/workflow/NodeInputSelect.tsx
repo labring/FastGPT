@@ -29,12 +29,14 @@ const NodeInputSelect = ({
   renderTypeList,
   selectedType,
   onChange,
-  isAgentGeneratedMode = false
+  isAgentGeneratedMode = false,
+  bg = 'myGray.100'
 }: {
   renderTypeList: string[];
   selectedType?: string;
   onChange: (e: string) => void;
   isAgentGeneratedMode?: boolean;
+  bg?: string;
 }) => {
   const { t } = useTranslation();
   const renderType = selectedType ?? renderTypeList[0];
@@ -239,7 +241,7 @@ const NodeInputSelect = ({
           px={'8px'}
           fontSize={'mini'}
           color={'myGray.600'}
-          bg={'myGray.100'}
+          bg={bg}
           minH={'28px'}
           h={'28px'}
           w={renderType === FlowNodeInputTypeEnum.datasetTagFilter ? '90px' : undefined}

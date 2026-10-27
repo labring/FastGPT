@@ -1,8 +1,11 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { AppResourceType } from '@fastgpt/global/core/app/type';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
@@ -12,12 +15,14 @@ import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
 import { assertAuthModels, getAuthorizedModelIds } from '../../../support/permission/model/auth';
 import { authSkillByTmbId } from '../../../support/permission/skill/auth';
+import { getTmbInfoByTmbId } from '../../../support/user/team/controller';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
 import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { MongoApp } from '../../app/schema';
 import { getAppVersionById } from '../../app/version/controller';
 import { MongoDataset } from '../../dataset/schema';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { getWorkflowResourceContext } from '../utils/context';
 import { hasWorkflowResource, createWorkflowResourceContext } from './context';
 
@@ -36,9 +41,20 @@ export const isWorkflowResourceError = (error: unknown): error is WorkflowResour
     error !== null &&
     (error as { name?: string }).name === 'WorkflowResourceError');
 
-/** 普通工作流的快照资源限定所属团队；系统工具和 root 调试允许按 ID 读取。 */
+/** 工作流快照始终限定所属团队；仅系统工具上下文不携带团队限制。 */
 const getSnapshotTeamFilter = (context: WorkflowResourceContext) =>
-  context.teamId && !context.isRoot ? { teamId: context.teamId } : {};
+  context.teamId ? { teamId: context.teamId } : {};
+
+/** 动态引用不继承系统工具静态快照的跨团队特权；root 也只能使用目标团队的资源。 */
+const getDynamicResourceTeamId = async ({
+  context,
+  tmbId
+}: {
+  context?: WorkflowResourceContext;
+  tmbId?: string;
+}) =>
+  context?.teamId ??
+  (context?.isRoot && tmbId ? (await getTmbInfoByTmbId({ tmbId })).teamId : undefined);
 
 export type WorkflowResourceUserInfo = {
   teamId: string;
@@ -114,6 +130,11 @@ export const loadWorkflowModelResource = async <
         : appHandle;
     const modelData = resolveHandle.getModelData({ modelId, model }, { type });
     const resolvedId = rawId || modelData.modelId;
+    // ACL 快照与 root 身份都不能授权其他团队的模型；系统工具内部静态资源保留例外。
+    const resourceTeamId = context?.teamId ?? (isPreAuthorized ? undefined : userInfo.teamId);
+    if (resourceTeamId && isTeamModel(modelData) && String(modelData.teamId) !== resourceTeamId) {
+      throw new UserError(ModelErrEnum.unAuthModel);
+    }
 
     if (!isPreAuthorized && !hasWorkflowResource({ context, type: 'model', id: resolvedId })) {
       await assertAuthModels({
@@ -130,16 +151,25 @@ export const loadWorkflowModelResource = async <
     }
     const authHandle = await getAuthHandle();
     const authorizedIds = await getAuthorizedModelIds({ actor, handle: authHandle });
-    return authHandle.getDefaultModelData(type, {
+    const defaultModel = authHandle.getDefaultModelData(type, {
       authorizedIds,
       optional: true
-    }) as Result;
+    });
+    if (
+      context?.teamId &&
+      defaultModel &&
+      isTeamModel(defaultModel) &&
+      String(defaultModel.teamId) !== context.teamId
+    ) {
+      throw new UserError(ModelErrEnum.unAuthModel);
+    }
+    return defaultModel as Result;
   }
 };
 
 /**
  * 读取工作流使用的知识库。
- * 命中当前 Version 快照的知识库直接实时查询数据库；未命中快照（或无 resourceContext）的知识库统一按运行人 tmbId 鉴权。
+ * 全部知识库都核对团队归属，快照只跳过 ACL；未命中快照时按运行人 tmbId 鉴权。
  */
 export const loadWorkflowDatasetResource = async ({
   datasetId,
@@ -157,10 +187,13 @@ export const loadWorkflowDatasetResource = async ({
   const uncheckedDatasetIds = allDatasetIds.filter(
     (id) => !hasWorkflowResource({ context, type: 'dataset', id })
   );
+  const resourceTeamId = uncheckedDatasetIds.length
+    ? await getDynamicResourceTeamId({ context, tmbId })
+    : undefined;
   const authorizedDatasets = await Promise.all(
     uncheckedDatasetIds.map(async (id) => {
       if (!tmbId) throw DatasetErrEnum.unExist;
-      return (
+      const dataset = (
         await authDatasetByTmbId({
           tmbId,
           datasetId: id,
@@ -168,24 +201,31 @@ export const loadWorkflowDatasetResource = async ({
           ...(context?.isRoot ? { isRoot: true } : {})
         })
       ).dataset;
+      if (resourceTeamId && String(dataset.teamId) !== resourceTeamId) {
+        throw DatasetErrEnum.unAuthDataset;
+      }
+      return dataset;
     })
   );
+  // 检索会消费整个列表，不能只核对首个快照实体而放过其余跨团队知识库。
+  const snapshotIds = allDatasetIds.filter((id) => !uncheckedDatasetIds.includes(id));
+  const datasets = await (async () => {
+    if (snapshotIds.length === 0) return [];
+    try {
+      return await MongoDataset.find({
+        _id: { $in: snapshotIds },
+        deleteTime: null,
+        ...(context ? getSnapshotTeamFilter(context) : {})
+      }).lean();
+    } catch (error) {
+      if (!(error instanceof mongoose.Error.CastError)) throw error;
+      throw DatasetErrEnum.unExist;
+    }
+  })();
+  const snapshotDatasets = new Map(datasets.map((dataset) => [String(dataset._id), dataset]));
+  if (snapshotIds.some((id) => !snapshotDatasets.has(id))) throw DatasetErrEnum.unExist;
   const firstIndex = uncheckedDatasetIds.indexOf(datasetId);
-  if (firstIndex !== -1) return authorizedDatasets[firstIndex];
-
-  let dataset = null;
-  try {
-    dataset = await MongoDataset.findOne({
-      _id: datasetId,
-      deleteTime: null,
-      ...(context ? getSnapshotTeamFilter(context) : {})
-    }).lean();
-  } catch (error) {
-    if (!(error instanceof mongoose.Error.CastError)) throw error;
-    throw DatasetErrEnum.unExist;
-  }
-  if (!dataset) throw DatasetErrEnum.unExist;
-  return dataset;
+  return firstIndex !== -1 ? authorizedDatasets[firstIndex] : snapshotDatasets.get(datasetId)!;
 };
 
 /**
@@ -205,7 +245,7 @@ export const loadWorkflowAppResource = async ({
 }) => {
   const context = getWorkflowResourceContext();
   if (!hasWorkflowResource({ context, type, id: appId, toolName })) {
-    return (
+    const app = (
       await authAppByTmbId({
         appId,
         tmbId,
@@ -213,9 +253,12 @@ export const loadWorkflowAppResource = async ({
         ...(context?.isRoot ? { isRoot: true } : {})
       })
     ).app;
+    const teamId = await getDynamicResourceTeamId({ context, tmbId });
+    if (teamId && String(app.teamId) !== teamId) throw AppErrEnum.unAuthApp;
+    return app;
   }
 
-  let app = null;
+  let app: AppSchemaType | null = null;
   try {
     app = await MongoApp.findOne({
       _id: appId,
@@ -256,7 +299,7 @@ export const loadWorkflowSkillResources = async ({
         const skill = await MongoAgentSkills.findOne({
           _id: skillId,
           deleteTime: null,
-          ...(context?.teamId && !context.isRoot
+          ...(context?.teamId
             ? { $or: [{ teamId: context.teamId }, { source: AgentSkillSourceEnum.system }] }
             : {})
         }).lean();
@@ -265,7 +308,7 @@ export const loadWorkflowSkillResources = async ({
       }
 
       try {
-        return (
+        const skill = (
           await authSkillByTmbId({
             tmbId,
             skillId,
@@ -273,6 +316,15 @@ export const loadWorkflowSkillResources = async ({
             isRoot: context?.isRoot ?? false
           })
         ).skill;
+        const teamId = await getDynamicResourceTeamId({ context, tmbId });
+        if (
+          teamId &&
+          skill.source !== AgentSkillSourceEnum.system &&
+          String(skill.teamId) !== teamId
+        ) {
+          throw SkillErrEnum.unAuthSkill;
+        }
+        return skill;
       } catch (error) {
         if (error !== SkillErrEnum.unAuthSkill && error !== SkillErrEnum.unExist) throw error;
         return null;

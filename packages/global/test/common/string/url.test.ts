@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ensureHttpProtocol,
   isHttpUrl,
+  isValidHttpUrl,
   isSafeHref,
   isSafeImgSrc,
   stripUrlTrailingSlash
@@ -41,6 +43,53 @@ describe('url utils', () => {
       expect(stripUrlTrailingSlash('https://example.com')).toBe('https://example.com');
       expect(stripUrlTrailingSlash('')).toBe('');
       expect(stripUrlTrailingSlash(undefined)).toBe('');
+    });
+  });
+
+  describe('isValidHttpUrl', () => {
+    it('should accept complete http/https URLs', () => {
+      expect(isValidHttpUrl('http://example.com')).toBe(true);
+      expect(isValidHttpUrl('https://example.com')).toBe(true);
+      expect(isValidHttpUrl('HTTPS://EXAMPLE.COM/PATH')).toBe(true);
+      expect(isValidHttpUrl('https://example.com:8080/test?foo=bar#hash')).toBe(true);
+      expect(isValidHttpUrl('http://localhost:3000')).toBe(true);
+      expect(isValidHttpUrl('  https://example.com  ')).toBe(true);
+    });
+
+    it('should reject missing protocols, incomplete URLs and non-http schemes', () => {
+      expect(isValidHttpUrl('api.example.com')).toBe(false);
+      expect(isValidHttpUrl('api.example.com/v1')).toBe(false);
+      expect(isValidHttpUrl('https://')).toBe(false);
+      expect(isValidHttpUrl('ftp://example.com')).toBe(false);
+      expect(isValidHttpUrl('//example.com')).toBe(false);
+      expect(isValidHttpUrl('/path/to/file')).toBe(false);
+      expect(isValidHttpUrl('not a url at all')).toBe(false);
+      expect(isValidHttpUrl('')).toBe(false);
+      expect(isValidHttpUrl(undefined)).toBe(false);
+    });
+  });
+
+  describe('ensureHttpProtocol', () => {
+    it('should prepend https when the protocol is missing', () => {
+      expect(ensureHttpProtocol('api.example.com')).toBe('https://api.example.com');
+      expect(ensureHttpProtocol('api.example.com/v1')).toBe('https://api.example.com/v1');
+      expect(ensureHttpProtocol('  api.example.com  ')).toBe('https://api.example.com');
+      expect(ensureHttpProtocol('//api.example.com')).toBe('https://api.example.com');
+    });
+
+    it('should keep any explicit protocol unchanged', () => {
+      expect(ensureHttpProtocol('https://api.example.com')).toBe('https://api.example.com');
+      expect(ensureHttpProtocol('http://api.example.com')).toBe('http://api.example.com');
+      // 协议大小写不敏感，保留用户原始写法
+      expect(ensureHttpProtocol('HTTPS://api.example.com')).toBe('HTTPS://api.example.com');
+      // 不把其它协议拼成 https://ftp://...
+      expect(ensureHttpProtocol('ftp://api.example.com')).toBe('ftp://api.example.com');
+    });
+
+    it('should return empty string for empty input', () => {
+      expect(ensureHttpProtocol('')).toBe('');
+      expect(ensureHttpProtocol('   ')).toBe('');
+      expect(ensureHttpProtocol(undefined)).toBe('');
     });
   });
 

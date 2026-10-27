@@ -5,7 +5,7 @@ import { GroupMemberRole } from '../../../../../support/permission/memberGroup/c
 import { PermissionSchema } from '../../../../../support/permission/controller';
 import { TeamMemberStatusEnum } from '../../../../../support/user/team/constant';
 import { TeamMemberNameSchema } from '../../../../../support/user/team/memberName';
-import { PaginationResponseSchema, PaginationSchema } from '../../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../../api';
 
 const TeamMemberIdSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a06',
@@ -87,7 +87,7 @@ export type ExportTeamMembersResponseType = z.infer<typeof ExportTeamMembersResp
  * Tags: ['成员管理', '团队管理', 'Read']
  * ============================================================================ */
 
-export const ListTeamMembersBodySchema = PaginationSchema.extend({
+export const ListTeamMembersBodySchema = createPaginationSchema({
   withPermission: z.boolean().optional().meta({
     description: '是否返回成员权限信息'
   }),

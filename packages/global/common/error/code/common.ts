@@ -13,6 +13,8 @@ export enum CommonErrEnum {
   folderDepthLimit = 'folderDepthLimit',
   folderMoveDepthLimit = 'folderMoveDepthLimit',
   pdfParseFailed = 'pdfParseFailed',
+  pdfEncrypted = 'pdfEncrypted',
+  pdfCorrupted = 'pdfCorrupted',
   unsupportedParseFileType = 'unsupportedParseFileType',
   invalidParseFile = 'invalidParseFile',
   officeConversionFailed = 'officeConversionFailed',
@@ -59,6 +61,14 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.pdfParseFailed,
     message: i18nT('file:pdf_parse_failed')
+  },
+  {
+    statusText: CommonErrEnum.pdfEncrypted,
+    message: i18nT('file:pdf_encrypted_error')
+  },
+  {
+    statusText: CommonErrEnum.pdfCorrupted,
+    message: i18nT('file:pdf_corrupted_error')
   },
   {
     statusText: CommonErrEnum.unsupportedParseFileType,

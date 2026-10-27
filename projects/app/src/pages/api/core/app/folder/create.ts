@@ -19,16 +19,13 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import {
   CreateAppFolderBodySchema,
-  CreateAppFolderResponseSchema,
-  type CreateAppFolderBodyType,
-  type CreateAppFolderResponseType
+  type CreateAppFolderBodyType
 } from '@fastgpt/global/openapi/core/app/folder/api';
 
-async function handler(
-  req: ApiRequestProps<CreateAppFolderBodyType>
-): Promise<CreateAppFolderResponseType> {
+async function handler(req: ApiRequestProps<CreateAppFolderBodyType>): Promise<void> {
   const {
     name,
     intro,
@@ -59,10 +56,18 @@ async function handler(
 
   // Create app
   await mongoSessionRun(async (session) => {
+    // parentId 是权威来源，兼容尚未完成回填的历史目录。
+    const ancestorIds = await getFolderAncestorIdsFromParentId({
+      parentId: parentId ? String(parentId) : null,
+      findFolder: (id) =>
+        MongoApp.findOne({ _id: id, teamId, type }).select('_id parentId').session(session).lean()
+    });
+
     const [app] = await MongoApp.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ancestorIds,
           avatar: FolderImgUrl,
           name,
           intro,
@@ -93,8 +98,6 @@ async function handler(
       }
     });
   })();
-
-  return CreateAppFolderResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

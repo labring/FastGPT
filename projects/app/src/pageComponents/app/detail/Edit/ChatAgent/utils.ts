@@ -19,10 +19,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import {
-  WorkflowStart,
-  userFilesInput
-} from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
@@ -42,9 +40,6 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-
-const getToolSelectionKey = (id?: string, source?: string) =>
-  source ? getToolIdentityKey(id, source) : id || '';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -439,6 +434,7 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
+/** 加载辅助生成的工具，按来源复用已有配置；旧引用未记录来源时按 system 匹配。 */
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
@@ -455,12 +451,16 @@ export const loadGeneratedTools = async ({
       newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
         const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
         const source = typeof toolRef === 'string' ? undefined : toolRef.source;
-        const identityKey = getToolSelectionKey(toolId, source);
+        const identityKey = getToolIdentityKey(toolId, source);
         // 已经存在的工具，直接返回
         const existTool = existsTools.find(
-          (tool) => getToolSelectionKey(tool.pluginId, tool.source) === identityKey
+          (tool) => getToolIdentityKey(tool.pluginId, tool.source) === identityKey
         );
         if (existTool) {
+          // 新提示词使用带来源的引用；复用旧配置时也要补齐来源，才能与运行时引用一致。
+          if (source === 'system' && !existTool.source) {
+            return { ...existTool, source };
+          }
           return existTool;
         }
 
@@ -486,7 +486,7 @@ export const loadGeneratedTools = async ({
         }
 
         const generatedTool = generatedSelectedTools.find(
-          (item) => getToolSelectionKey(item.pluginId, item.source) === identityKey
+          (item) => getToolIdentityKey(item.pluginId, item.source) === identityKey
         );
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 

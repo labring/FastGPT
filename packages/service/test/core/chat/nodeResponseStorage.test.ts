@@ -40,6 +40,37 @@ const makeResponse = (
 });
 
 describe('createChatItemResponseRows', () => {
+  it('strips synonymMappings alongside q/a in slim quotes and retrieval candidates', async () => {
+    const quote = {
+      id: 'quote',
+      datasetId: 'dataset',
+      collectionId: 'collection',
+      sourceName: 'source',
+      chunkIndex: 0,
+      score: [],
+      q: 'body',
+      synonymMappings: { alias: 'standard' }
+    };
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      model: { create }
+    });
+    await writer.record([
+      makeResponse({
+        id: 'search',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [quote],
+        retrievalResults: [quote]
+      })
+    ]);
+    const response = create.mock.calls[0][0][0].data;
+    expect(response.quoteList?.[0]).not.toHaveProperty('synonymMappings');
+    expect(response.retrievalResults?.[0]).not.toHaveProperty('synonymMappings');
+    expect(response.quoteList?.[0]).not.toHaveProperty('q');
+  });
+
   it('creates one row per input response and keeps childrenResponses inline', () => {
     const rows = createChatItemResponseRows({
       ...base,

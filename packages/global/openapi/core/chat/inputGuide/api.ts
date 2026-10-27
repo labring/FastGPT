@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PaginationSchema } from '../../../api';
+import { createPaginationSchema } from '../../../api';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
@@ -12,7 +12,7 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
  * Tags: ['Chat', 'InputGuide', 'Read']
  * ============================================================================ */
 
-export const ChatInputGuideListBodySchema = PaginationSchema.extend({
+export const ChatInputGuideListBodySchema = createPaginationSchema({
   appId: ObjectIdSchema.describe('应用 ID'),
   searchKey: z.string().max(200).optional().default('').meta({
     example: '如何使用',

@@ -7,9 +7,9 @@ import {
   authAgentSandboxProxy,
   authSandboxSession
 } from '@/service/core/sandbox/auth';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: vi.fn()
 }));
 

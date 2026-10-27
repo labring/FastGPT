@@ -39,7 +39,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard
-      minW={'300px'}
+      minW={'350px'}
       selected={selected}
       menuForbid={{
         debug: true,

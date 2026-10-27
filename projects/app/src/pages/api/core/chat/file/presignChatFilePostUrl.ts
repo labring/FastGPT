@@ -1,14 +1,13 @@
+import { getChatSourceConfig } from '@fastgpt/service/core/chat/config';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { chatAgentHelperFileSelectConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
 import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/upload';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
@@ -123,7 +122,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
 
   const fileSelectConfig = await (async () => {
     if (authRes.sourceType === ChatSourceTypeEnum.app) {
-      const app = await MongoApp.findById(authRes.sourceId).lean();
+      const app = authRes.app ?? (await MongoApp.findById(authRes.sourceId).lean());
       if (!app) return Promise.reject(AppErrEnum.unExist);
 
       if (app.type === AppTypeEnum.hidden) {
@@ -134,20 +133,19 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
         if (isHomeApp) return homeChatFileSelectConfig;
       }
 
-      const { chatConfig, nodes } = await getAppLatestVersion(authRes.sourceId, app);
+      const { chatConfig, nodes } = await getChatSourceConfig({
+        sourceType: authRes.sourceType,
+        sourceId: authRes.sourceId,
+        app
+      });
       return getPublishedFileSelectConfig({ chatConfig, nodes });
     }
 
-    if (authRes.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
-      return chatAgentHelperFileSelectConfig;
-    }
-
-    if (authRes.sourceType === ChatSourceTypeEnum.skillEdit) {
-      return undefined;
-    }
-
-    const exhaustiveCheck: never = authRes.sourceType;
-    throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+    const { chatConfig } = await getChatSourceConfig({
+      sourceType: authRes.sourceType,
+      sourceId: authRes.sourceId
+    });
+    return chatConfig.fileSelectConfig;
   })();
 
   return createAuthorizedChatFileUploadUrl({

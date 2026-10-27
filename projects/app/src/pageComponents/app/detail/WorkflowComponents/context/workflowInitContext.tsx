@@ -14,7 +14,8 @@ import React, {
   type SetStateAction,
   useCallback,
   useMemo,
-  useRef
+  useRef,
+  useState
 } from 'react';
 import {
   type Edge,
@@ -71,6 +72,12 @@ export type WorkflowDataContextType = {
   getNodeList: () => FlowNodeItemType[];
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
+  getEdges: () => Edge<any>[];
+  workflowDataRevision: number;
+  replaceWorkflowData: (data: {
+    nodes: Node<FlowNodeItemType, string | undefined>[];
+    edges: Edge<any>[];
+  }) => number;
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
 
@@ -105,6 +112,13 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   },
   edges: [],
   setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  getEdges: function (): Edge<any>[] {
+    throw new Error('Function not implemented.');
+  },
+  workflowDataRevision: 0,
+  replaceWorkflowData: function (): number {
     throw new Error('Function not implemented.');
   },
   onEdgesChange: function (changes: EdgeChange[]): void {
@@ -249,10 +263,12 @@ const WorkflowInitContextProvider = ({
 
   const getNodeList = useMemoizedFn(() => nodeList);
 
+  // 保持订阅粒度不变，但查询必须读取最新配置，尤其是不会改变 compareNodeList 的分支值。
+  const getNodesMap = useMemoizedFn(() => nodesMap);
   const getNodeById = useCallback(
     (nodeId: string | null | undefined, condition?: (node: FlowNodeItemType) => boolean) => {
       if (!nodeId) return undefined;
-      const node = nodesMap[nodeId];
+      const node = getNodesMap()[nodeId];
       if (node) {
         if (condition) {
           return condition(node) ? node : undefined;
@@ -262,7 +278,9 @@ const WorkflowInitContextProvider = ({
 
       return undefined;
     },
-    [compareNodeList]
+    // compareNodeList 变化时通知现有订阅者；其他配置通过稳定查询读取最新值。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [compareNodeList, getNodesMap]
   );
 
   const rawNodeFormat = useMemo(() => {
@@ -283,6 +301,26 @@ const WorkflowInitContextProvider = ({
 
   // Edges
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const getEdges = useMemoizedFn(() => edges);
+  const workflowDataRevisionRef = useRef(0);
+  const [workflowDataRevision, setWorkflowDataRevision] = useState(0);
+  const replaceWorkflowData = useCallback(
+    ({
+      nodes: nextNodes,
+      edges: nextEdges
+    }: {
+      nodes: Node<FlowNodeItemType, string | undefined>[];
+      edges: Edge<any>[];
+    }) => {
+      const nextRevision = workflowDataRevisionRef.current + 1;
+      workflowDataRevisionRef.current = nextRevision;
+      setNodes(nextNodes);
+      setEdges(nextEdges);
+      setWorkflowDataRevision(nextRevision);
+      return nextRevision;
+    },
+    [setEdges, setNodes]
+  );
 
   const toolNodesMap = useMemoEnhance(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};
@@ -358,6 +396,9 @@ const WorkflowInitContextProvider = ({
       getNodeList,
       edges,
       setEdges,
+      getEdges,
+      workflowDataRevision,
+      replaceWorkflowData,
       onEdgesChange,
       forbiddenSaveSnapshot,
       nodeAmount: nodeList.length,
@@ -379,6 +420,9 @@ const WorkflowInitContextProvider = ({
     getNodeList,
     edges,
     setEdges,
+    getEdges,
+    workflowDataRevision,
+    replaceWorkflowData,
     onEdgesChange,
     nodeList.length,
     childrenNodeIdListMap

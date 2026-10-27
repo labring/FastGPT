@@ -5,7 +5,7 @@ import type {
   AgentLoopRuntime
 } from '../../../../../ai/llm/agentLoop/interface';
 import { runAgentLoop } from '../../../../../ai/llm/agentLoop/interface';
-import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses';
+import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses/eventCollector';
 import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from './output/result';
 import { compactAgentLoopCorePlanSnapshots } from './output/assistantResponses';
 import type { AgentLoopCoreResult } from '../domain/result';
@@ -49,20 +49,19 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     metaEventNames: assistantResponses?.metaEventNames
   });
   let firstTokenTime: number | undefined;
-  const wrappedRuntime: AgentLoopRuntime<TChildrenResponse> = {
-    ...runtime,
-    emitEvent: (event) => {
-      if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
-        firstTokenTime = event.firstTokenTime;
-      }
-      assistantEventCollector.emitEvent(event);
-      runtime.emitEvent?.(event);
-    }
-  };
   const result = await runAgentLoop<TChildrenResponse>({
     provider,
     input,
-    runtime: wrappedRuntime
+    runtime: {
+      ...runtime,
+      emitEvent: (event) => {
+        if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
+          firstTokenTime = event.firstTokenTime;
+        }
+        assistantEventCollector.emitEvent(event);
+        runtime.emitEvent?.(event);
+      }
+    }
   });
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),

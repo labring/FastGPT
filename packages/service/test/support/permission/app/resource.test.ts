@@ -1,5 +1,8 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { AppResource } from '@fastgpt/global/core/app/type';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -36,16 +39,19 @@ import {
   filterAuthorizedAppResources
 } from '@fastgpt/service/support/permission/app/resource';
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  const teamId = '65f000000000000000000002';
+  mocks.getTmbInfoByTmbId.mockReset().mockResolvedValue({ teamId, permission: { isOwner: false } });
+  mocks.authAppByTmbId.mockReset().mockResolvedValue({ app: { teamId } });
+  mocks.authDatasetByTmbId.mockReset().mockResolvedValue({ dataset: { teamId } });
+  mocks.authSkillByTmbId.mockReset().mockResolvedValue({
+    skill: { teamId, source: AgentSkillSourceEnum.personal }
+  });
+});
+
 describe('checkAppResourceReadPermissions', () => {
   const validTmbId = '65f000000000000000000001';
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getTmbInfoByTmbId.mockResolvedValue({
-      teamId: '65f000000000000000000002',
-      permission: { isOwner: false }
-    });
-  });
 
   it('rejects non-ObjectId dataset resource with DatasetErrEnum.unExist in formal permission check', async () => {
     await expect(
@@ -71,10 +77,6 @@ describe('checkAppResourceReadPermissions', () => {
 describe('filterAuthorizedAppResources', () => {
   const validTmbId = '65f000000000000000000001';
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('returns empty array when resources array is empty without checking permissions', async () => {
     const result = await filterAuthorizedAppResources({
       resources: [],
@@ -96,9 +98,6 @@ describe('filterAuthorizedAppResources', () => {
   });
 
   it('returns all resources when member has read permissions for all items', async () => {
-    mocks.authAppByTmbId.mockResolvedValue(undefined);
-    mocks.authDatasetByTmbId.mockResolvedValue(undefined);
-
     const resources = [
       { type: 'agent' as const, id: '65f000000000000000000010' },
       { type: 'dataset' as const, id: '65f000000000000000000020' }
@@ -119,7 +118,6 @@ describe('filterAuthorizedAppResources', () => {
   });
 
   it('silently filters out unauthorized resources while retaining authorized ones', async () => {
-    mocks.authAppByTmbId.mockResolvedValue(undefined);
     mocks.authDatasetByTmbId.mockRejectedValue(new Error('Permission denied'));
 
     const resources = [
@@ -136,8 +134,6 @@ describe('filterAuthorizedAppResources', () => {
   });
 
   it('silently filters out non-ObjectId resources in migration filter while retaining valid authorized ones', async () => {
-    mocks.authDatasetByTmbId.mockResolvedValue(undefined);
-
     const resources = [
       { type: 'dataset' as const, id: 'dbconn' },
       { type: 'dataset' as const, id: '65f000000000000000000020' },
@@ -191,5 +187,76 @@ describe('filterAuthorizedAppResources', () => {
         tmbId: validTmbId
       })
     ).rejects.toThrow('MongoTimeoutError: query exceeded limit');
+  });
+});
+
+describe('root App resource scope', () => {
+  const tmbId = '65f000000000000000000001';
+  const teamId = '65f000000000000000000002';
+  const resourceId = '65f000000000000000000020';
+
+  it('preserves root access to same-team apps, tools, datasets and skills without cross-team access', async () => {
+    const resourceTypes: AppResource['type'][] = ['agent', 'tool', 'dataset', 'skill'];
+    const resources = resourceTypes.map((type) => ({
+      type,
+      id: resourceId
+    }));
+    await expect(
+      checkAppResourceReadPermissions({ resources, tmbId, isRoot: true })
+    ).resolves.toBeUndefined();
+    for (const auth of [mocks.authAppByTmbId, mocks.authDatasetByTmbId, mocks.authSkillByTmbId]) {
+      expect(auth).toHaveBeenCalledWith(expect.objectContaining({ tmbId, isRoot: true }));
+    }
+    expect(mocks.getTmbInfoByTmbId).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { type: 'agent' as const, error: AppErrEnum.unAuthApp },
+    { type: 'tool' as const, error: AppErrEnum.unAuthApp },
+    { type: 'dataset' as const, error: DatasetErrEnum.unAuthDataset },
+    { type: 'skill' as const, error: SkillErrEnum.unAuthSkill }
+  ])('rejects cross-team $type resources even for root', async ({ type, error }) => {
+    mocks.authAppByTmbId.mockResolvedValue({ app: { teamId: 'other-team' } });
+    mocks.authDatasetByTmbId.mockResolvedValue({ dataset: { teamId: 'other-team' } });
+    mocks.authSkillByTmbId.mockResolvedValue({
+      skill: { teamId: 'other-team', source: AgentSkillSourceEnum.personal }
+    });
+    const args = { resources: [{ type, id: resourceId }], tmbId, isRoot: true };
+    await expect(checkAppResourceReadPermissions(args)).rejects.toBe(error);
+  });
+
+  it('uses the authenticated target team instead of deriving the boundary from root membership', async () => {
+    const resources = [{ type: 'dataset' as const, id: resourceId }];
+    mocks.authDatasetByTmbId.mockResolvedValue({ dataset: { teamId: 'target-team' } });
+    await expect(
+      checkAppResourceReadPermissions({ resources, tmbId, teamId: 'target-team', isRoot: true })
+    ).resolves.toBeUndefined();
+    await expect(
+      checkAppResourceReadPermissions({ resources, tmbId, teamId, isRoot: true })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+  });
+
+  it('keeps global system skills readable without enabling cross-team access', async () => {
+    mocks.authSkillByTmbId.mockResolvedValue({ skill: { source: AgentSkillSourceEnum.system } });
+    await expect(
+      checkAppResourceReadPermissions({
+        resources: [{ type: 'skill', id: resourceId }],
+        tmbId,
+        isRoot: true
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('preserves ordinary member ACL checks', async () => {
+    mocks.authDatasetByTmbId.mockRejectedValue(DatasetErrEnum.unAuthDataset);
+    await expect(
+      checkAppResourceReadPermissions({
+        resources: [{ type: 'dataset', id: resourceId }],
+        tmbId
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    expect(mocks.authDatasetByTmbId).toHaveBeenCalledWith(
+      expect.objectContaining({ tmbId, isRoot: false })
+    );
   });
 });

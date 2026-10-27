@@ -1,6 +1,7 @@
 import updateHandler from '@/pages/api/core/app/update';
 import moveHandler from '@/pages/api/core/app/batch/move';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -269,6 +270,121 @@ describe('move app', () => {
       );
     }
   );
+
+  it('rebases folder ancestor paths on moves and rejects cross-tree folder moves', async () => {
+    const { owner } = await getFakeUsers(1);
+    const rootFolder = await MongoApp.create({
+      name: 'root-folder',
+      type: AppTypeEnum.folder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const movingFolder = await MongoApp.create({
+      name: 'moving-folder',
+      type: AppTypeEnum.folder,
+      parentId: rootFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      inheritPermission: false,
+      ancestorIds: [rootFolder._id]
+    });
+    const childFolder = await MongoApp.create({
+      name: 'child-folder',
+      type: AppTypeEnum.folder,
+      parentId: movingFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      ancestorIds: [rootFolder._id, movingFolder._id]
+    });
+    const leaf = await MongoApp.create({
+      name: 'leaf-app',
+      type: AppTypeEnum.workflow,
+      parentId: childFolder._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const toolFolder = await MongoApp.create({
+      name: 'tool-folder',
+      type: AppTypeEnum.toolFolder,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    const moved = await Call(updateHandler, {
+      auth: owner,
+      query: { appId: String(movingFolder._id) },
+      body: { parentId: null }
+    });
+    expect(moved.error).toBeUndefined();
+    expect(await MongoApp.findById(movingFolder._id).lean()).toMatchObject({
+      parentId: null,
+      ancestorIds: []
+    });
+    const updatedChildFolder = await MongoApp.findById(childFolder._id).lean();
+    expect(String(updatedChildFolder?.parentId)).toBe(String(movingFolder._id));
+    expect(updatedChildFolder?.ancestorIds?.map(String)).toEqual([String(movingFolder._id)]);
+    expect(await MongoApp.findById(leaf._id).lean()).not.toHaveProperty('ancestorIds');
+
+    const crossTreeMove = await Call(updateHandler, {
+      auth: owner,
+      query: { appId: String(movingFolder._id) },
+      body: { parentId: String(toolFolder._id) }
+    });
+    expect(crossTreeMove.error).toBe(CommonErrEnum.invalidParams);
+    expect(await MongoApp.findById(movingFolder._id).lean()).toMatchObject({
+      parentId: null,
+      ancestorIds: []
+    });
+  });
+
+  it('rebases inherited folder paths when a folder moves under another tree', async () => {
+    const { owner } = await getFakeUsers(1);
+    const teamId = String(owner.teamId);
+    const createFolder = (name: string) =>
+      createAppWithOwnerSnapshot({
+        teamId,
+        tmbId: String(owner.tmbId),
+        name,
+        type: AppTypeEnum.folder
+      });
+    const targetRoot = await createFolder('target-root');
+    const targetParent = await createFolder('target-parent');
+    await MongoApp.updateOne(
+      { _id: targetParent._id },
+      { $set: { parentId: targetRoot._id, ancestorIds: [targetRoot._id] } }
+    );
+    const sourceRoot = await createFolder('source-root');
+    const movingFolder = await createFolder('moving-folder');
+    await MongoApp.updateOne(
+      { _id: movingFolder._id },
+      { $set: { parentId: sourceRoot._id, ancestorIds: [sourceRoot._id] } }
+    );
+    const descendant = await createFolder('descendant-folder');
+    await MongoApp.updateOne(
+      { _id: descendant._id },
+      { $set: { parentId: movingFolder._id, ancestorIds: [sourceRoot._id, movingFolder._id] } }
+    );
+
+    const response = await Call(updateHandler, {
+      auth: owner,
+      query: { appId: String(movingFolder._id) },
+      body: { parentId: String(targetParent._id) }
+    });
+    expect(response.error).toBeUndefined();
+
+    const moved = await MongoApp.findById(movingFolder._id).lean();
+    const movedDescendant = await MongoApp.findById(descendant._id).lean();
+    expect(moved?.ancestorIds?.map(String)).toEqual([
+      String(targetRoot._id),
+      String(targetParent._id)
+    ]);
+    expect(movedDescendant?.ancestorIds?.map(String)).toEqual([
+      String(targetRoot._id),
+      String(targetParent._id),
+      String(movingFolder._id)
+    ]);
+    expect(String(movedDescendant?.parentId)).toBe(String(movingFolder._id));
+  });
 
   it('keeps independent apps isolated during batch move', async () => {
     const { owner, members } = await getFakeUsers(1);

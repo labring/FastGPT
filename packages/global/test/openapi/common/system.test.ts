@@ -22,6 +22,13 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
+  it.each([true, false])('preserves the Workflow Builder visibility setting: %s', (enabled) => {
+    const result = GetSystemInitDataResponseSchema.parse({
+      feConfigs: { show_workflow_builder: enabled }
+    });
+    expect(result.feConfigs?.show_workflow_builder).toBe(enabled);
+  });
+
   it('declares SSO capabilities without returning the stored root address', () => {
     const result = GetSystemInitDataResponseSchema.parse({
       feConfigs: {

@@ -4,11 +4,16 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { queryArrayParam } from '../../../../common/zod';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
-import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
+import { LinkedListResponseSchema, LinkedPaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
-import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
+import {
+  createOutLinkChatTargetInputSchema,
+  createOutLinkChatTargetQuerySchema,
+  createPaginatedChatTargetInputSchema,
+  transformChatAuthTargetInput
+} from '../api';
 
 const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.normal,
@@ -25,7 +30,7 @@ const QueryStringArraySchema = queryArrayParam(z.array(z.string().trim()).option
  * Description: 根据 dataId 获取对话中某条 AI 回复的详细响应数据
  * ============================================================================ */
 
-export const GetResDataQueryRawSchema = createOutLinkChatTargetInputSchema({
+export const GetResDataQueryRawSchema = createOutLinkChatTargetQuerySchema({
   chatId: z.string().optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
@@ -34,6 +39,14 @@ export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
 );
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
+
+/* ============================================================================
+ * API: 删除对话消息
+ * Route: DELETE /api/core/chat/record/delete
+ * Method: DELETE
+ * Description: 软删除指定消息；Ask/Preview 的待回答状态由剩余消息推导
+ * Tags: ['Chat', 'Delete']
+ * ============================================================================ */
 
 const DeleteChatRecordPropsSchema = {
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
@@ -99,7 +112,7 @@ const CollectionQuoteBodyPropsSchema = {
     description: '对话消息 dataId'
   }),
   collectionId: ObjectIdSchema.describe('集合 ID'),
-  pageSize: z.number().int().min(1).max(30).default(15).describe('每页条数，范围 [1, 30]'),
+  pageSize: z.number().int().min(1).max(30).default(20).describe('每页条数，默认 20，范围 [1, 30]'),
   anchor: z.number().optional().describe('当前锚点 chunkIndex'),
   initialId: z.string().optional().describe('初始定位数据 ID'),
   nextId: z.string().optional().describe('向后翻页的游标 ID'),
@@ -159,10 +172,8 @@ const GetRecordPropsSchema = {
     description: '是否包含已删除的记录'
   })
 };
-export const GetPaginationRecordsBodyRawSchema = createOutLinkChatTargetInputSchema({
-  ...PaginationSchema.shape,
-  ...GetRecordPropsSchema
-});
+export const GetPaginationRecordsBodyRawSchema =
+  createPaginatedChatTargetInputSchema(GetRecordPropsSchema);
 export const GetPaginationRecordsBodySchema = GetPaginationRecordsBodyRawSchema.transform(
   transformChatAuthTargetInput
 );

@@ -11,7 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { getHandleId, nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 
 // Get sort index from source node's output handle order
 export const getHandleIndex = (
@@ -25,7 +25,11 @@ export const getHandleIndex = (
 
   // userSelect: sort by option index
   if (flowNodeType === FlowNodeTypeEnum.userSelect) {
-    const options = inputs?.find((i) => i.key === NodeInputKeyEnum.userSelectOptions)?.value;
+    const userSelectInput = inputs?.find((i) => i.key === NodeInputKeyEnum.userSelectOptions);
+    if (userSelectInput && nodeInputIsReference(userSelectInput)) {
+      return 0;
+    }
+    const options = userSelectInput?.value;
     if (Array.isArray(options)) {
       const idx = options.findIndex((opt: any) => handleId.includes(opt.key));
       return idx >= 0 ? idx : 999;

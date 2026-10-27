@@ -127,7 +127,7 @@ describe('resolveChatCompletionEffectiveTmbId', () => {
     });
   });
 
-  it('accepts username and tmbId only when they point to the same member', async () => {
+  it('accepts username and tmbId that point to the same member', async () => {
     const owner = await getUser('completion-proxy-owner-both');
     const member = await getUser('completion-proxy-member-both', owner.teamId);
 
@@ -148,7 +148,7 @@ describe('resolveChatCompletionEffectiveTmbId', () => {
     });
   });
 
-  it('rejects username and tmbId that point to different members', async () => {
+  it('prioritizes tmbId when username points to a different member', async () => {
     const owner = await getUser('completion-proxy-owner-mismatch');
     const memberA = await getUser('completion-proxy-member-a-mismatch', owner.teamId);
     const memberB = await getUser('completion-proxy-member-b-mismatch', owner.teamId);
@@ -164,9 +164,51 @@ describe('resolveChatCompletionEffectiveTmbId', () => {
           tmbId: memberB.tmbId
         }
       })
-    ).rejects.toBe(ChatErrEnum.unAuthChat);
+    ).resolves.toEqual({
+      tmbId: memberB.tmbId,
+      isProxy: true
+    });
 
     expect(memberA.tmbId).not.toBe(memberB.tmbId);
+  });
+
+  it('ignores a nonexistent username when tmbId resolves to an active member', async () => {
+    const owner = await getUser('completion-proxy-owner-missing-username');
+    const member = await getUser('completion-proxy-member-missing-username', owner.teamId);
+
+    await expect(
+      resolveChatCompletionEffectiveTmbId({
+        authType: AuthUserTypeEnum.apikey,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        apiKeyAuthProxy: true,
+        authProxy: {
+          username: 'nonexistent-proxy-user',
+          tmbId: member.tmbId
+        }
+      })
+    ).resolves.toEqual({
+      tmbId: member.tmbId,
+      isProxy: true
+    });
+  });
+
+  it('does not fall back to username when the selected tmbId does not exist', async () => {
+    const username = 'completion-proxy-owner-missing-tmbid';
+    const owner = await getUser(username);
+
+    await expect(
+      resolveChatCompletionEffectiveTmbId({
+        authType: AuthUserTypeEnum.apikey,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        apiKeyAuthProxy: true,
+        authProxy: {
+          username,
+          tmbId: '68ad85a7463006c963799a05'
+        }
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
   });
 
   it('rejects members outside the API key team', async () => {
@@ -180,6 +222,7 @@ describe('resolveChatCompletionEffectiveTmbId', () => {
         tmbId: owner.tmbId,
         apiKeyAuthProxy: true,
         authProxy: {
+          username: 'completion-proxy-owner-cross-team',
           tmbId: outsider.tmbId
         }
       })
@@ -201,6 +244,7 @@ describe('resolveChatCompletionEffectiveTmbId', () => {
         tmbId: owner.tmbId,
         apiKeyAuthProxy: true,
         authProxy: {
+          username: 'completion-proxy-owner-forbidden',
           tmbId: forbidden.tmbId
         }
       })
@@ -443,6 +487,7 @@ describe('authChatCompletionHeaderRequest', () => {
         } as any,
         appId: String(app._id),
         authProxy: {
+          username: 'completion-header-owner-proxy-app-per',
           tmbId: member.tmbId
         }
       })

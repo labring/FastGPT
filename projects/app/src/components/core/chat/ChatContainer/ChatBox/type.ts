@@ -10,6 +10,7 @@ import type {
   ResponseTagItemType
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 
 export type UserInputFileItemType = {
   id: string;
@@ -37,6 +38,7 @@ export type ChatBoxInputType = {
   text?: string;
   files?: UserInputFileItemType[];
   interactive?: WorkflowInteractiveResponseType;
+  select?: UserChatSelectType;
   hideInUI?: boolean;
   /** 发送后是否清空输入框；默认不清空，只有主输入框确认发送等占用输入框内容的场景显式设为 true。 */
   clearInput?: boolean;
@@ -67,6 +69,7 @@ export type ChatGeneratingConflictRecovery = {
 export type ComponentRef = {
   restartChat: () => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
+  focusInput: () => void;
 };
 
 // Frontend type

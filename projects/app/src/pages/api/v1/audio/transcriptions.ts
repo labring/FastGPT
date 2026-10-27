@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import {
   assertMemberRateLimit,
   MemberRateLimitPolicy

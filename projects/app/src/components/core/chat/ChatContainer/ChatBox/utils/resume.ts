@@ -1,4 +1,4 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type {
@@ -9,7 +9,11 @@ import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  isAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
 
@@ -98,6 +102,24 @@ export const shouldCheckChatResumeStatus = ({
   chatBoxChatId === chatId;
 
 /**
+ * 一轮恢复完成后释放会话锁，使同一 chatId 的下一轮后台生成仍可自动 Resume。
+ * generating 状态下不能释放，否则普通重渲染会建立重复长连接。
+ */
+export const shouldReleaseResumeTarget = ({
+  chatGenerateStatus,
+  resumedChatTarget,
+  sourceKey,
+  chatId
+}: {
+  chatGenerateStatus?: ChatGenerateStatusEnum;
+  resumedChatTarget?: string;
+  sourceKey?: string;
+  chatId?: string;
+}) =>
+  chatGenerateStatus !== ChatGenerateStatusEnum.generating &&
+  Boolean(sourceKey && chatId && resumedChatTarget === `${sourceKey}:${chatId}`);
+
+/**
  * 判断恢复流中是否需要先补一个 AI placeholder。
  *
  * 恢复生成时，前端可能先拿到 SSE 增量事件，而历史记录中还没有本轮 AI 消息。
@@ -116,6 +138,7 @@ export const shouldCreateResumeAiPlaceholder = (event: string) => {
     SseResponseEventEnum.flowNodeResponse,
     SseResponseEventEnum.flowNodeStatus,
     AuxiliaryGenerationEventEnum.status,
+    AuxiliaryGenerationEventEnum.chatAgentConfig,
     SseResponseEventEnum.answer,
     SseResponseEventEnum.fastAnswer,
     SseResponseEventEnum.toolCall,
@@ -124,6 +147,7 @@ export const shouldCreateResumeAiPlaceholder = (event: string) => {
     SseResponseEventEnum.interactive,
     SseResponseEventEnum.plan,
     SseResponseEventEnum.planStatus,
+    SseResponseEventEnum.workflowBuilderVersion,
     SseResponseEventEnum.workflowDuration
   ]).has(event);
 };
@@ -155,7 +179,13 @@ export const hasMeaningfulAiOutput = (chat?: ChatSiteItemType) => {
     if (item.tools?.some((tool) => tool.params || tool.response)) return true;
     // 技能、计划和交互本身就是可见 UI 块，不要求额外文本。
     if (item.skills?.length) return true;
-    if (item.plan || item.interactive) return true;
+    if (
+      item.plan ||
+      item.interactive ||
+      item.workflowBuilderVersion ||
+      item.chatAgentBuilderVersion
+    )
+      return true;
     return false;
   });
 };
@@ -249,7 +279,7 @@ export const mergeResumeCompletedChatRecords = ({
 
     return {
       ...item,
-      value: mergeSubmittedInteractiveValues({
+      value: mergeSubmittedFormValues({
         completedValues: item.value,
         currentValues: currentValuesForInteractiveMerge
       }),
@@ -261,7 +291,8 @@ export const mergeResumeCompletedChatRecords = ({
 /**
  * 恢复流 replay 交互节点时，判断是否应 append 到 AI record.value。
  *
- * 核心约束：若 existing 中已有同一身份且已 submitted 的表单交互，
+ * 核心约束：同一 Ask/Preview 只保留一份问题；已 submitted 的同一表单也不重复追加。
+ * 若 existing 中已有同一身份且已 submitted 的表单交互，
  * 则跳过 incoming 的未提交副本，避免空表单覆盖已回填的文件/字段值。
  * 不同身份交互，或同身份但 existing 尚未 submitted（例如中间插入了确认文本），仍允许 append。
  */
@@ -282,11 +313,8 @@ export const shouldAppendResumeInteractive = ({
 
   if (!isSameInteractive) return true;
 
-  return !(
-    (existingFinalInteractive.type === 'userInput' ||
-      existingFinalInteractive.type === 'agentAsk') &&
-    existingFinalInteractive.params.submitted
-  );
+  if (isAskInteractive(existingFinalInteractive)) return false;
+  return !isSubmittedFormInteractive(existingFinalInteractive);
 };
 
 /** 判断两个交互是否为同一轮工作流交互（比较最内层 interactive，而非 child 包装层）。 */
@@ -299,6 +327,14 @@ const areSameInteractive = (
 
   if (finalA.type !== finalB.type) return false;
 
+  // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
+  if (isAgentAskInteractive(finalA) && isAgentAskInteractive(finalB)) {
+    return finalA.askId === finalB.askId;
+  }
+  if (finalA.type === 'workflowBuilderPreview' && finalB.type === 'workflowBuilderPreview') {
+    return finalA.previewId === finalB.previewId;
+  }
+
   // 新数据使用每次暂停生成的 interactiveId 区分同一节点的不同触发轮次。
   if (finalA.interactiveId || finalB.interactiveId) {
     return !!finalA.interactiveId && finalA.interactiveId === finalB.interactiveId;
@@ -310,12 +346,16 @@ const areSameInteractive = (
   );
 };
 
+/** 已提交交互不能被恢复流重放的未提交快照覆盖。 */
+const isSubmittedFormInteractive = (interactive: WorkflowInteractiveResponseType) =>
+  interactive.type === 'userInput' && !!interactive.params.submitted;
+
 /**
  * 将 current 侧已提交的表单交互写回 completed 侧同身份交互节点。
  * completed record 持久化后 `inputForm.value` 可能为空（尤其 fileSelect URL 数组），
  * 而恢复流 replay 期间已在 current record 中 hydrate 过，此处防止覆盖时丢失。
  */
-const mergeSubmittedInteractiveValues = ({
+const mergeSubmittedFormValues = ({
   completedValues,
   currentValues
 }: {
@@ -328,10 +368,7 @@ const mergeSubmittedInteractiveValues = ({
       if (!interactive) return false;
 
       const finalInteractive = extractDeepestInteractive(interactive);
-      return (
-        (finalInteractive.type === 'userInput' || finalInteractive.type === 'agentAsk') &&
-        !!finalInteractive.params.submitted
-      );
+      return isSubmittedFormInteractive(finalInteractive);
     });
 
   if (!currentSubmittedInteractives.length) return completedValues;
@@ -341,7 +378,7 @@ const mergeSubmittedInteractiveValues = ({
     if (!value.interactive) return value;
 
     const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type !== 'userInput' && finalInteractive.type !== 'agentAsk') {
+    if (finalInteractive.type !== 'userInput') {
       return value;
     }
 

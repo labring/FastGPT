@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   jsonRes: vi.fn()
 }));
 
-vi.mock('@/service/support/permission/auth/chat', () => ({
+vi.mock('@fastgpt/service/core/chat/auth', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
 vi.mock('@fastgpt/service/core/app/resource/service', () => ({

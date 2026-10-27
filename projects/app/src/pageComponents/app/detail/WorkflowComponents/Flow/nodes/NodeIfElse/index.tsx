@@ -4,8 +4,8 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type NodeProps, Position } from 'reactflow';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
   createIfElseBranchId,
   getIfElseBranchHandleKey
@@ -16,6 +16,7 @@ import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index
 import { MySourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import ListItem from './ListItem';
+import { useNodeHandleDrag } from '../render/Handle/useNodeHandleDrag';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
@@ -24,6 +25,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { onBeforeCapture, onDragEnd, draggingHandle } = useNodeHandleDrag(nodeId);
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
   const ifElseList = useMemo(
@@ -52,94 +54,100 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Flex flexDirection={'column'} cursor={'default'}>
-        <DndDrag<IfElseListItemType>
-          onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
-          dataList={ifElseList}
-          renderClone={(provided, snapshot, rubric) => (
-            <ListItem
-              provided={provided}
-              snapshot={snapshot}
-              conditionItem={ifElseList[rubric.source.index]}
-              conditionIndex={rubric.source.index}
-              ifElseList={ifElseList}
-              onUpdateIfElseList={onUpdateIfElseList}
-              nodeId={nodeId}
-            />
-          )}
-        >
-          {({ provided }) => (
-            <Box {...provided.droppableProps} ref={provided.innerRef}>
-              {ifElseList.map((conditionItem, conditionIndex) => (
-                <Draggable
-                  key={getIfElseBranchHandleKey(conditionItem)}
-                  draggableId={getIfElseBranchHandleKey(conditionItem)}
-                  index={conditionIndex}
-                >
-                  {(provided, snapshot) => (
-                    <ListItem
-                      provided={provided}
-                      snapshot={snapshot}
-                      conditionItem={conditionItem}
-                      conditionIndex={conditionIndex}
-                      ifElseList={ifElseList}
-                      onUpdateIfElseList={onUpdateIfElseList}
-                      nodeId={nodeId}
-                    />
-                  )}
-                </Draggable>
-              ))}
-            </Box>
-          )}
-        </DndDrag>
+    <>
+      <NodeCard selected={selected} minW={'686px'} maxW={'1000px'} {...data}>
+        <Flex flexDirection={'column'} cursor={'default'}>
+          <DndDrag<IfElseListItemType>
+            onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
+            dataList={ifElseList}
+            onBeforeCapture={onBeforeCapture}
+            onDragEnd={onDragEnd}
+            renderClone={(provided, snapshot, rubric) => (
+              <ListItem
+                provided={provided}
+                snapshot={snapshot}
+                conditionItem={ifElseList[rubric.source.index]}
+                conditionIndex={rubric.source.index}
+                ifElseList={ifElseList}
+                onUpdateIfElseList={onUpdateIfElseList}
+                nodeId={nodeId}
+              />
+            )}
+          >
+            {({ provided }) => (
+              <Box {...provided.droppableProps} ref={provided.innerRef}>
+                {ifElseList.map((conditionItem, conditionIndex) => (
+                  <Draggable
+                    key={getIfElseBranchHandleKey(conditionItem)}
+                    draggableId={getIfElseBranchHandleKey(conditionItem)}
+                    index={conditionIndex}
+                    isDragDisabled={ifElseList.length <= 1}
+                  >
+                    {(provided, snapshot) => (
+                      <ListItem
+                        provided={provided}
+                        snapshot={snapshot}
+                        conditionItem={conditionItem}
+                        conditionIndex={conditionIndex}
+                        ifElseList={ifElseList}
+                        onUpdateIfElseList={onUpdateIfElseList}
+                        nodeId={nodeId}
+                      />
+                    )}
+                  </Draggable>
+                ))}
+              </Box>
+            )}
+          </DndDrag>
 
-        <Container position={'relative'}>
-          <Flex alignItems={'center'}>
-            <Box color={'black'} fontSize={'md'} ml={2}>
-              {IfElseResultEnum.ELSE}
-            </Box>
-            <MySourceHandle
-              nodeId={nodeId}
-              handleId={elseHandleId}
-              position={Position.Right}
-              translate={[18, 0]}
-            />
-          </Flex>
-        </Container>
-      </Flex>
-      <Box py={3} px={4}>
-        <Button
-          variant={'whiteBase'}
-          w={'full'}
-          leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
-          onClick={() => {
-            const ifElseListInput = inputs.find(
-              (input) => input.key === NodeInputKeyEnum.ifElseList
-            );
-            if (!ifElseListInput) return;
+          <Container position={'relative'}>
+            <Flex alignItems={'center'}>
+              <Box color={'black'} fontSize={'md'} ml={2}>
+                {IfElseResultEnum.ELSE}
+              </Box>
+              <MySourceHandle
+                nodeId={nodeId}
+                handleId={elseHandleId}
+                position={Position.Right}
+                translate={[18, 0]}
+              />
+            </Flex>
+          </Container>
+        </Flex>
+        <Box py={3} px={4}>
+          <Button
+            variant={'whiteBase'}
+            w={'full'}
+            leftIcon={<MyIcon name={'common/addLight'} boxSize={4} mr={-1} />}
+            onClick={() => {
+              const ifElseListInput = inputs.find(
+                (input) => input.key === NodeInputKeyEnum.ifElseList
+              );
+              if (!ifElseListInput) return;
 
-            onUpdateIfElseList([
-              ...ifElseList,
-              {
-                branchId: createIfElseBranchId(),
-                condition: 'AND',
-                list: [
-                  {
-                    variable: undefined,
-                    condition: undefined,
-                    value: undefined,
-                    valueType: 'input'
-                  }
-                ]
-              }
-            ]);
-          }}
-        >
-          {t('common:core.module.input.Add Branch')}
-        </Button>
-      </Box>
-    </NodeCard>
+              onUpdateIfElseList([
+                ...ifElseList,
+                {
+                  branchId: createIfElseBranchId(),
+                  condition: 'AND',
+                  list: [
+                    {
+                      variable: undefined,
+                      condition: undefined,
+                      value: undefined,
+                      valueType: 'input'
+                    }
+                  ]
+                }
+              ]);
+            }}
+          >
+            {t('common:core.module.input.Add Branch')}
+          </Button>
+        </Box>
+      </NodeCard>
+      {draggingHandle}
+    </>
   );
 };
 export default React.memo(NodeIfElse);

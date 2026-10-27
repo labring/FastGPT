@@ -1,6 +1,5 @@
 import TTSSelect from '@/components/core/app/TTSSelect';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,6 +92,10 @@ vi.mock('@/components/core/app/AppConfigItem', () => ({
 }));
 vi.mock('@/components/core/app/Tip', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
+// 此处验证模型选择与状态，避免手动执行 effect 时引入 Tooltip 的 DOM 测量。
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children
+}));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Image/MyImage', () => ({ default: () => null }));
 vi.mock('@/components/Slider', () => ({ default: () => null }));

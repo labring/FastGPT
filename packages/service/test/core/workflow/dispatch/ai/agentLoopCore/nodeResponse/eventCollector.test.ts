@@ -100,7 +100,6 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         id: 'call_search',
         name: 'search'
       }),
-      rawResponse: 'raw',
       response: 'compressed',
       seconds: 0.5,
       toolResponseCompress: {
@@ -150,7 +149,6 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     collector.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'search unavailable',
       response: 'search unavailable',
       errorMessage: 'search unavailable',
       seconds: 0.4

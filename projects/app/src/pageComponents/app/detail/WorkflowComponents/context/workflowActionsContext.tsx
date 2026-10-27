@@ -38,7 +38,7 @@ type FlowNodeChangeProps = { nodeId: string } & (
       value: FlowNodeInputItemType;
     }
   | {
-      type: 'addInput'; // key: null, value: new input value
+      type: 'addInput' | 'ensureInput'; // ensureInput 仅在字段缺失时补齐，供自动初始化重复调用。
       value: FlowNodeInputItemType;
       index?: number;
     }
@@ -57,7 +57,7 @@ type FlowNodeChangeProps = { nodeId: string } & (
       value: FlowNodeOutputItemType;
     }
   | {
-      type: 'addOutput'; // key: null, value: new output value
+      type: 'addOutput' | 'ensureOutput'; // ensureOutput 保留已存在的输出，不覆盖配置或提示重复。
       value: FlowNodeOutputItemType;
       index?: number;
     }
@@ -149,6 +149,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   } = useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
 
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -256,6 +257,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         nodes,
         edges,
         modelData,
+        chatConfig,
         nodeId,
         t
       });
@@ -281,7 +283,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [appId, edges, getNodes, setNodes, t]
+    [appId, chatConfig, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -323,10 +325,10 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, chatConfig, t });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, chatConfig, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
@@ -437,7 +439,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [forbiddenSaveSnapshotRef, setNodes]
   );
 
-  // 使用结构共享优化的节点更改
+  /** 基于最新节点状态应用变更；自动补字段允许重复执行，手动新增仍校验 key 冲突。 */
   const onChangeNode = useCallback(
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];
@@ -497,13 +499,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
                         item.key === updateItem.key ? updateItem.value : item
                       )
               };
-            } else if (type === 'addInput') {
+            } else if (type === 'addInput' || type === 'ensureInput') {
               const hasInput = updateObj.inputs.some((input) => input.key === updateItem.value.key);
               if (hasInput) {
-                toast({
-                  status: 'warning',
-                  title: t('common:key_repetition')
-                });
+                // ReactFlow 的节点属性可能晚于画布状态同步，自动初始化须在写入时去重。
+                if (type === 'addInput') {
+                  toast({
+                    status: 'warning',
+                    title: t('common:key_repetition')
+                  });
+                }
               } else {
                 updateObj = {
                   ...updateObj,
@@ -530,15 +535,17 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
                   item.key === updateItem.key ? updateItem.value : item
                 )
               };
-            } else if (type === 'addOutput') {
+            } else if (type === 'addOutput' || type === 'ensureOutput') {
               const hasOutput = updateObj.outputs.some(
                 (output) => output.key === updateItem.value.key
               );
               if (hasOutput) {
-                toast({
-                  status: 'warning',
-                  title: t('common:key_repetition')
-                });
+                if (type === 'addOutput') {
+                  toast({
+                    status: 'warning',
+                    title: t('common:key_repetition')
+                  });
+                }
               } else {
                 if (updateItem.index !== undefined) {
                   const outputs = [...updateObj.outputs];

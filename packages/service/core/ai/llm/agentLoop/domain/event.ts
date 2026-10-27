@@ -74,13 +74,20 @@ export type AgentLoopEvent =
       argsDelta: string;
     }
   | {
+      /** 内部调用只公开活动信息，不携带参数、响应、错误正文或子工具数据。 */
+      type: 'tool_activity';
+      callId: string;
+      toolName: string;
+      status: 'running' | 'done';
+    }
+  | {
       type: 'tool_run_start';
       call: ChatCompletionMessageToolCall;
     }
   | {
       type: 'tool_run_end';
       call: ChatCompletionMessageToolCall;
-      rawResponse: string;
+      /** 实际给模型的完整结果；聊天持久化和 SSE 均使用此值，不再额外裁剪。 */
       response: string;
       /** 工具内部产生、需要随本轮 assistant 一起持久化的标准消息。 */
       assistantMessages?: ChatCompletionMessageParam[];

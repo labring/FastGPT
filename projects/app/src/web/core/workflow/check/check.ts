@@ -1,125 +1,219 @@
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
 import type {
   WorkflowCheckNodeIssueMap,
-  FlowNodeItemType
+  FlowNodeItemType,
+  WorkflowCheckIssue
 } from '@fastgpt/global/core/workflow/type/node';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { validateWorkflow } from '@fastgpt/workflow-core/validation';
+import { resolveWorkflowReferenceDocument } from '@fastgpt/workflow-core/reference/validation';
+import { checkWorkflowModels } from '@fastgpt/workflow-core/validation/model';
+import { collectWorkflowBindings } from '@fastgpt/workflow-core/binding/service';
+import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
+import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
 import type { Edge, Node } from 'reactflow';
 import type { TFunction } from 'next-i18next';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { createWorkflowCheckContext, checkWorkflowNodeConnections } from './graph';
-import { checkWorkflowNodeModelRules, checkWorkflowChatModelRules } from './model';
-import { checkWorkflowNodeResourceRules, checkWorkflowNodeInputRules } from './node';
+import { createWorkflowCheckDocument } from './document';
+import { formatWorkflowDiagnostic } from './diagnostic';
+import { checkWorkflowNodeResourceRules } from './resource';
 import { formatWorkflowRuleIssue } from './message';
 
-/** 扫描节点规则，图索引只构造一次；输出顺序与画布、既有校验顺序一致。 */
-export const checkWorkflowNodeIssues = ({
-  nodes,
-  edges,
-  modelData,
-  nodeId,
-  t
-}: {
+type WorkflowCheckInput = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge[];
   modelData?: WorkflowModelCheckData;
   nodeId?: string;
   t?: TFunction;
-}): WorkflowCheckNodeIssueMap => {
-  // 1. 构造单次校验复用的图索引与可达性集合。
-  const context = createWorkflowCheckContext({ nodes: nodes.map((node) => node.data), edges });
-  const issueMap: WorkflowCheckNodeIssueMap = {};
+  chatConfig?: AppChatConfigType;
+};
 
-  // 2. 按画布节点顺序汇总模型、资源、输入与连线规则，并在输出边界统一翻译。
-  for (const { data } of nodes) {
-    if (nodeId && data.nodeId !== nodeId) continue;
+/**
+ * 所有 Web 场景共用一次 Core 扫描；Web 只补资源状态和展示，不维护另一套输入、模型或图规则。
+ * 无节点归属的诊断单独保留，避免“已阻断但没有具体提示”；原始诊断原样返回供调用方排查。
+ * 客户端把失效引用视为未引用，输入、模型和资源检查共用有效值快照，不改写画布。
+ */
+const checkWorkflow = ({ nodes, edges, modelData, nodeId, t, chatConfig }: WorkflowCheckInput) => {
+  const projected = createWorkflowCheckDocument({ nodes, edges, chatConfig });
+  const document = resolveWorkflowReferenceDocument({
+    document: projected.document,
+    invalidReferencePolicy: 'asEmpty'
+  });
+  const diagnostics = [
+    ...projected.diagnostics,
+    // 快照已按 asEmpty 收敛；Core 直接校验有效值，不再次清理引用。
+    ...validateWorkflow(document, {
+      invalidReferencePolicy: 'error',
+      modelCheck: { modelData, templates: moduleTemplatesFlat }
+    })
+  ];
+  const nodeMap = new Map(nodes.map(({ data }) => [data.nodeId, data]));
+  const issueEntries = new Map<string, { issue: WorkflowCheckIssue; order: number }[]>();
+  const chatConfigIssues: WorkflowCheckIssue[] = [];
+  const workflowIssues: WorkflowCheckIssue[] = [];
 
-    const inputMap = new Map(data.inputs.map((input) => [input.key, input]));
-    const models = checkWorkflowNodeModelRules({ data, inputMap, modelData });
-    const issues = [
-      ...models.customIssues,
-      ...checkWorkflowNodeResourceRules({ data, inputMap, context }),
-      ...models.systemIssues,
-      ...checkWorkflowNodeInputRules({
-        data,
-        inputMap,
-        context,
-        modelIssues: [...models.customIssues, ...models.systemIssues]
-      }),
-      ...checkWorkflowNodeConnections({ data, context })
-    ];
-
-    if (issues.length) {
-      issueMap[data.nodeId] = issues.map((issue) =>
-        formatWorkflowRuleIssue({ issue, node: data, t })
-      );
+  /** 只做诊断定位：节点、schema 路径、连线两端分别归属；不在 Web 重跑任何图规则。 */
+  const getOwners = (diagnostic: WorkflowDiagnostic) => {
+    if (diagnostic.nodeId && nodeMap.has(diagnostic.nodeId)) return [diagnostic.nodeId];
+    if (diagnostic.path?.[0] === 'nodes' && typeof diagnostic.path[1] === 'number') {
+      const owner = nodes[diagnostic.path[1]]?.data.nodeId;
+      if (owner) return [owner];
+    }
+    const edge = diagnostic.params?.edge as
+      | {
+          source?: string | { nodeId?: string };
+          target?: string | { nodeId?: string };
+        }
+      | undefined;
+    if (!edge) return [];
+    return [
+      ...new Set(
+        [edge.source, edge.target].map((port) => (typeof port === 'string' ? port : port?.nodeId))
+      )
+    ].filter((id): id is string => !!id && nodeMap.has(id));
+  };
+  for (const diagnostic of diagnostics) {
+    const owners = getOwners(diagnostic);
+    if (owners.length === 0) {
+      const issue = formatWorkflowDiagnostic({ diagnostic, t });
+      (diagnostic.path?.[0] === 'chatConfig' ? chatConfigIssues : workflowIssues).push(issue);
+      continue;
+    }
+    const isModel =
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelRequired ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.modelUnavailable;
+    const isConnection =
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeIsolated ||
+      diagnostic.code === WorkflowDiagnosticCodeEnum.nodeNotReachable;
+    const order = isModel ? (diagnostic.params?.customSelector ? 0 : 2) : isConnection ? 4 : 3;
+    for (const owner of owners) {
+      if (nodeId && owner !== nodeId) continue;
+      const entries = issueEntries.get(owner) ?? [];
+      entries.push({
+        issue: formatWorkflowDiagnostic({ diagnostic, node: nodeMap.get(owner), t }),
+        order
+      });
+      issueEntries.set(owner, entries);
     }
   }
 
-  return issueMap;
+  const bindingsByNode = new Map<string, WorkflowBindingRequirement[]>();
+  for (const binding of collectWorkflowBindings(document)) {
+    const bindings = bindingsByNode.get(binding.nodeId) ?? [];
+    bindings.push(binding);
+    bindingsByNode.set(binding.nodeId, bindings);
+  }
+  for (const [index, { data }] of nodes.entries()) {
+    if (nodeId && nodeId !== data.nodeId) continue;
+    const entries = issueEntries.get(data.nodeId) ?? [];
+    entries.push(
+      ...checkWorkflowNodeResourceRules({
+        data: { ...data, inputs: document.nodes[index].inputs },
+        bindings: bindingsByNode.get(data.nodeId) ?? []
+      }).map((issue) => ({
+        issue: formatWorkflowRuleIssue({ issue, node: data, t }),
+        order: 1
+      }))
+    );
+    issueEntries.set(data.nodeId, entries);
+  }
+
+  /** 展示去重不丢原始诊断：连线的两端可各自定位，toast 再按具体文案去重。 */
+  const uniqueIssues = (issues: WorkflowCheckIssue[]) => {
+    const seen = new Set<string>();
+    return issues.filter((issue) => {
+      const key = JSON.stringify([issue.code, issue.inputKey, issue.level, issue.message]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const issueMap: WorkflowCheckNodeIssueMap = {};
+  for (const { data } of nodes) {
+    const entries = issueEntries.get(data.nodeId) ?? [];
+    const issues = uniqueIssues(
+      entries.sort((left, right) => left.order - right.order).map(({ issue }) => issue)
+    );
+    if (issues.length > 0) issueMap[data.nodeId] = issues;
+  }
+  return {
+    issueMap,
+    chatConfigIssues: uniqueIssues(chatConfigIssues),
+    workflowIssues: uniqueIssues(workflowIssues),
+    diagnostics
+  };
 };
 
-/** 校验聊天配置模型并在输出边界补全提示文案。 */
+/** 编辑提示和单节点刷新复用完整图上下文，结果只返回请求节点的问题，不影响保存。 */
+export const checkWorkflowNodeIssues = (input: WorkflowCheckInput): WorkflowCheckNodeIssueMap =>
+  checkWorkflow(input).issueMap;
+
+/** 独立聊天配置消费者复用 Core 模型检查；运行/发布主流程不会再额外调用本函数。 */
 export const checkWorkflowChatConfigModelIssues = ({
-  chatConfig,
+  chatConfig = {},
   modelData,
   t
 }: {
   chatConfig?: AppChatConfigType;
   modelData?: WorkflowModelCheckData;
   t?: TFunction;
-}) =>
-  checkWorkflowChatModelRules({ chatConfig, modelData }).map((issue) =>
-    formatWorkflowRuleIssue({ issue, t })
+}) => {
+  const { document } = createWorkflowCheckDocument({ nodes: [], edges: [], chatConfig });
+  return checkWorkflowModels({ document, modelData, templates: moduleTemplatesFlat }).map(
+    (diagnostic) => formatWorkflowDiagnostic({ diagnostic, t })
   );
+};
 
-/** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
+/** 按画布顺序定位 error 节点；warning 保留展示但不阻断。 */
 export const getWorkflowCheckErrorNodeIds = (
   nodeIssueMap: WorkflowCheckNodeIssueMap,
   nodeOrder?: string[]
 ) => {
-  const errorNodeIdSet = new Set(
-    Object.entries(nodeIssueMap)
-      .filter(([, issues]) => issues.some((issue) => issue.level === 'error'))
-      .map(([nodeId]) => nodeId)
+  const ids = new Set(
+    Object.keys(nodeIssueMap).filter((id) =>
+      nodeIssueMap[id].some((issue) => issue.level === 'error')
+    )
   );
-
-  if (nodeOrder) {
-    return nodeOrder.filter((nodeId) => errorNodeIdSet.has(nodeId));
-  }
-
-  return [...errorNodeIdSet];
+  return nodeOrder ? nodeOrder.filter((id) => ids.has(id)) : [...ids];
 };
 
-/** 运行/发布前全量扫描，并按画布节点顺序返回第一个 error 节点。 */
-export const checkWorkflowBeforeRunOrPublish = ({
-  nodes,
-  edges,
-  modelData,
-  t,
-  chatConfig
-}: {
-  nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge[];
-  modelData?: WorkflowModelCheckData;
-  t?: TFunction;
-  chatConfig?: AppChatConfigType;
-}) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
-  const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, modelData, t });
-
-  const nodeOrder = nodes.map((node) => node.data.nodeId);
-  const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
+/** 运行、聊天、发布的统一入口；Core 静态/模型 + Web 资源只各执行一次，所有错误共用一套展示结果。 */
+export const checkWorkflowBeforeRunOrPublish = (input: WorkflowCheckInput) => {
+  const result = checkWorkflow(input);
+  const errorNodeIds = getWorkflowCheckErrorNodeIds(
+    result.issueMap,
+    input.nodes.map(({ data }) => data.nodeId)
+  );
   const firstErrorNodeId = errorNodeIds[0];
-  const firstErrorIssue = firstErrorNodeId
-    ? issueMap[firstErrorNodeId]?.find((issue) => issue.level === 'error')
-    : chatConfigIssues.find((issue) => issue.level === 'error');
-
+  const allIssues = [
+    ...Object.values(result.issueMap).flat(),
+    ...result.chatConfigIssues,
+    ...result.workflowIssues
+  ];
+  const errors = allIssues.filter((issue) => issue.level === 'error');
   return {
-    issueMap,
-    hasError: errorNodeIds.length > 0 || chatConfigIssues.length > 0,
+    ...result,
+    hasError: errors.length > 0,
     firstErrorNodeId,
-    firstErrorIssue,
+    firstErrorIssue: firstErrorNodeId
+      ? result.issueMap[firstErrorNodeId].find((issue) => issue.level === 'error')
+      : errors[0],
     errorNodeIds,
-    chatConfigIssues
+    // 节点错误统一携带节点名；汇总去重后最多展示 3 条，节点诊断仍完整保留。
+    errorMessages: [
+      ...new Set(
+        errors.map((issue) => {
+          if (!issue.nodeName) return issue.message;
+          // 模型不可用的翻译文案已包含节点名，避免重复拼接。
+          if (input.t && issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
+            return issue.message;
+          return `「${issue.nodeName}」${issue.message}`;
+        })
+      )
+    ].slice(0, 3)
   };
 };

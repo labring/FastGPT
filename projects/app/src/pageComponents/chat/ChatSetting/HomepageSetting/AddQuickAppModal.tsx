@@ -54,7 +54,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
       searchKey: searchAppName,
       type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow]
     },
-    pageSize: 50,
+    pageSize: 20,
     itemHeight: 40,
     refreshDeps: [parentId, searchAppName],
     throttleWait: 500

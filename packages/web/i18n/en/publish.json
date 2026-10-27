@@ -31,7 +31,7 @@
   "qpm_is_empty": "QPM cannot be empty",
   "qpm_tips": "Maximum number of queries per minute per IP",
   "request_address": "Request URL",
-  "show_node": "real-time running status",
+  "show_node": "Real-time running status",
   "show_share_link_modal_title": "Get Started",
   "show_skill_reference": "Show skill citations",
   "show_skill_reference_tips": "View all cited Skills and their loading process",

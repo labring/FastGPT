@@ -24,6 +24,10 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import type {
+  ReplaceInvalidModelReferencesBody,
+  ReplaceInvalidModelReferencesResponse
+} from '@fastgpt/global/openapi/core/ai/model/invalidReferences';
 
 const coreModelPath = '/core/ai/model';
 
@@ -91,6 +95,12 @@ export const testModel = (data: TestModelQuery) => GET(`${coreModelPath}/test`, 
 
 /** 测试模型调用（草稿预览），强制显式传递 channelType */
 export const testDraftModel = (data: TestDraftModelBody) => POST(`${coreModelPath}/test`, data);
+
+/** 团队级同步扫描可能超过通用请求的 60 秒超时，由服务端完成后再返回。 */
+export const postReplaceInvalidModelReferences = (data: ReplaceInvalidModelReferencesBody) =>
+  POST<ReplaceInvalidModelReferencesResponse>(`${coreModelPath}/invalidReferences/replace`, data, {
+    timeout: 0
+  });
 
 /* ═══ 2. 平台管理员专属配置与备份 (/core/ai/model/*) ═══ */
 

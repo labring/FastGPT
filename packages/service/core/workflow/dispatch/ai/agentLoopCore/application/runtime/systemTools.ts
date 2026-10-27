@@ -1,7 +1,9 @@
-import type { AgentLoopSystemTools } from '../../../../../../ai/llm/agentLoop/interface';
+import type {
+  AgentLoopReadFileExecutor,
+  AgentLoopSystemTools
+} from '../../../../../../ai/llm/agentLoop/domain/tool';
 import type { SandboxClient } from '../../../../../../ai/sandbox/application/runtime/client';
-import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
-import type { AgentLoopReadFileExecutor } from '../../../../../../ai/llm/agentLoop/interface';
+import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
 
 export type CreateAgentLoopCoreSystemToolsParams = {
   planEnabled: boolean;
@@ -23,7 +25,7 @@ export type CreateAgentLoopCoreSystemToolsParams = {
  * 统一拼装 agent-loop systemTools。
  *
  * plan/ask 是控制类 system tool，由节点能力决定是否开启；
- * sandbox/readFile/datasetSearch 是普通工具类 system tool，只有调用方提供执行器时才注入。
+ * sandbox 在提供 client 时注入；readFile/datasetSearch 在启用并提供执行器时注入。
  */
 export const createAgentLoopCoreSystemTools = ({
   planEnabled,

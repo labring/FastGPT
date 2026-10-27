@@ -57,6 +57,17 @@ export const FastGPTTeamModeSchema = z.enum(['multi', 'single', 'sync']);
 export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
 export const FastGPTFeConfigsSchema = z.looseObject({
+  /**
+   * 能力投影，不是第二个服务端开关：唯一真相是 `DATASET_SYNONYM_ENABLED`（serviceEnv），
+   * 服务端逻辑直接读取 `serviceEnv.DATASET_SYNONYM_ENABLED`。该字段由宿主初始化时从同一变量
+   * 派生后供前端读取（本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
+   * 用于决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板。
+   * 必须声明：`getInitData` 用 `.strip()` 的客户端 Schema 收口，未声明字段会被丢弃。
+   */
+  datasetSynonymEnabled: z
+    .boolean()
+    .optional()
+    .meta({ description: '检索服务是否启用同义词映射能力' }),
   show_workorder: z.boolean().optional().meta({ description: '是否展示工单入口' }),
   isPlus: z
     .boolean()
@@ -185,6 +196,9 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启 Agent 代码沙箱执行环境' }),
+  show_workflow_builder: BoolSchema.optional().meta({
+    description: '是否展示工作流 AI 辅助构建入口'
+  }),
   show_agent_sandbox_free_tip: z
     .boolean()
     .optional()
@@ -402,6 +416,10 @@ export const SystemEnvSchema = z.looseObject({
 
   hnswEfSearch: NumSchema.default(100).meta({ description: 'HNSW 向量检索 efSearch 参数' }),
   hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
+  vectorRecallConcurrency: IntSchema.min(0).max(1000).default(0).meta({
+    description: '商业版所有向量库召回共享的并发上限，0 表示不限制，仅通过 Admin 配置',
+    example: 0
+  }),
   customPdfParse: CustomPdfParseSchema.optional(),
   langfuse: LangfuseConfigSchema.optional(),
   sso: z

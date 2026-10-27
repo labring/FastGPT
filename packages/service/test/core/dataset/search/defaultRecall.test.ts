@@ -536,6 +536,7 @@ describe('default recall dataset search', () => {
         lean: vi.fn().mockResolvedValue([
           {
             _id: 'data-a',
+            teamId: 'team-1',
             datasetId: 'dataset-1',
             collectionId: 'collection-1',
             updateTime: new Date('2026-01-01'),
@@ -546,6 +547,7 @@ describe('default recall dataset search', () => {
           },
           {
             _id: 'data-b',
+            teamId: 'team-1',
             datasetId: 'dataset-1',
             collectionId: 'collection-1',
             updateTime: new Date('2026-01-01'),
@@ -579,22 +581,29 @@ describe('default recall dataset search', () => {
       });
 
     const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
+    const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     afterEach(() => {
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
+      serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
     });
 
-    it('重排生效时产出重排前的召回快照，含被重排淘汰的候选', async () => {
+    it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      serviceEnv.DATASET_SYNONYM_ENABLED = true;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
       expect(result.usingReRank).toBe(true);
       expect(mockReRankRecall).toHaveBeenCalled();
-      // quoteList / searchRes 是重排后的结果，只剩 data-a
+      // quoteList / searchRes 是重排后的结果，只剩 data-a，且携带同义词装饰
       expect(result.searchRes.map((item) => item.id)).toEqual(['data-a']);
-      // 快照取自重排前的 textRecallResults，被重排淘汰的 data-b 仍在其中
+      expect(result.searchRes[0]?.synonymMappings).toEqual({});
+      // 快照取自重排前的 textRecallResults，被重排淘汰的 data-b 仍在其中，且不携带同义词装饰
       expect(result.retrievalResults?.map((item) => item.id).sort()).toEqual(['data-a', 'data-b']);
+      expect(result.retrievalResults?.every((item) => item.synonymMappings === undefined)).toBe(
+        true
+      );
     });
 
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {

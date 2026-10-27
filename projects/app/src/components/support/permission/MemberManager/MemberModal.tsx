@@ -66,7 +66,7 @@ function MemberModal({
   } = useOrg({ withPermission: false });
 
   const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
-    pageSize: 15,
+    pageSize: 20,
     params: {
       withPermission: true,
       withOrgs: true,

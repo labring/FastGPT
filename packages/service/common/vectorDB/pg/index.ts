@@ -7,6 +7,9 @@ import { getLogger, LogCategories } from '../../logger';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
+// 客户端等待必须长于服务端 statement_timeout（90 秒），避免 SQL 仍执行时释放并发额度。
+const RECALL_QUERY_TIMEOUT_MS = 120_000;
+
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
   init = async () => {
@@ -127,6 +130,7 @@ export class PgVectorCtrl implements VectorControllerType {
       where: [where]
     });
   };
+  /** 按团队、知识库和集合范围召回向量；团队条件与联合索引的首列保持一致。 */
   embRecall: VectorControllerType['embRecall'] = async (props) => {
     const { teamId, datasetIds, vector, limit, forbidCollectionIdList, filterCollectionIdList } =
       props;
@@ -160,21 +164,24 @@ export class PgVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
-    const results: any = await PgClient.query(
-      `BEGIN;
+    const sql = `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.max_scan_tuples = ${global.systemEnv?.hnswMaxScanTuples || 100000};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
           WITH relaxed_results AS MATERIALIZED (
             select id, collection_id, vector <#> '[${vector}]' AS score
               from ${DatasetVectorTableName}
-              where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              where team_id = '${String(teamId)}'
+                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
                 ${filterCollectionIdSql}
                 ${forbidCollectionSql}
               order by score limit ${limit}
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
-        COMMIT;`
-    );
+        COMMIT;`;
+    const results: any = await PgClient.query({
+      text: sql,
+      query_timeout: RECALL_QUERY_TIMEOUT_MS
+    });
     const rows = results?.[results.length - 2]?.rows as {
       id: string;
       collection_id: string;

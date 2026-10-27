@@ -48,7 +48,7 @@ const MyComponent = ({ items }: { items: Item[] }) => {
   );
 };
 
-// ✅ 用 useCallback/useMemo 稳定引用
+// ✅ 将 id 与稳定回调分开传入 Child，避免在 map 中重新包装回调
 const MyComponent = ({ items }: { items: Item[] }) => {
   const handleClick = useCallback((id: string) => {
     // 处理逻辑
@@ -61,7 +61,8 @@ const MyComponent = ({ items }: { items: Item[] }) => {
       {items.map(item => (
         <Child
           key={item.id}
-          onClick={() => handleClick(item.id)}
+          itemId={item.id}
+          onSelect={handleClick}
           options={options}
         />
       ))}
@@ -71,6 +72,8 @@ const MyComponent = ({ items }: { items: Item[] }) => {
 ```
 
 **判断标准**：只有当子组件是 `React.memo` 包裹的，或该引用是某个 `useEffect`/`useCallback` 的依赖项时，才需要稳定引用。普通非 memo 组件的 props 无需此优化。
+
+上例需要 Child 接收 `itemId` 和 `onSelect`，由 Child 内部处理点击。仅给父回调套 `useCallback`，然后仍在 `map` 中传入 `() => handleClick(item.id)`，并没有稳定传给子组件的函数引用。
 
 ---
 

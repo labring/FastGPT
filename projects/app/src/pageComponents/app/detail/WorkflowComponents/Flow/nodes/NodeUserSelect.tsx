@@ -16,6 +16,7 @@ import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/tem
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useNodeHandleDrag } from './render/Handle/useNodeHandleDrag';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -24,6 +25,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const { zoom } = useViewport();
+  const { onBeforeCapture, onDragEnd, draggingHandle } = useNodeHandleDrag(nodeId);
 
   const CustomComponent = useMemo(
     () => ({
@@ -35,6 +37,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box>
             <DraggableInputList<UserSelectOptionItemType>
               items={options}
+              onBeforeCapture={onBeforeCapture}
+              onDragFinish={onDragEnd}
               zoom={zoom}
               addText={t('common:core.module.Add_option')}
               onDragEnd={(list) => {
@@ -114,19 +118,22 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     }),
-    [nodeId, onChangeNode, onDelEdge, t, zoom]
+    [nodeId, onChangeNode, onDelEdge, onBeforeCapture, onDragEnd, t, zoom]
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
-      <Container>
-        <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
-      </Container>
-      <Container>
-        <IOTitle text={t('common:Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-    </NodeCard>
+    <>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
+        <Container>
+          <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
+        </Container>
+        <Container>
+          <IOTitle text={t('common:Output')} />
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+      </NodeCard>
+      {draggingHandle}
+    </>
   );
 };
 export default React.memo(NodeUserSelect);

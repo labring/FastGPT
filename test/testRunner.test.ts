@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveTestPlan } from '../scripts/test/run.mjs';
 
@@ -6,19 +8,47 @@ describe('resolveTestPlan', () => {
     const plan = resolveTestPlan();
 
     expect(plan).toHaveLength(2);
-    expect(plan[0]?.args).toContain('--concurrency=1');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/app');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/web');
+    expect(plan[0]?.args).toEqual(
+      expect.arrayContaining([
+        '--concurrency=1',
+        '--filter=@fastgpt/app',
+        '--filter=@fastgpt/web',
+        '--filter=@fastgpt/workflow-core',
+        '--filter=@fastgpt/workflow-cli'
+      ])
+    );
     expect(plan[1]?.args).toContain('vitest.config.mts');
   });
 
-  it('filters unit tests to one or more requested scopes', () => {
-    const plan = resolveTestPlan({ scopeValue: 'global,service' });
+  it.each([
+    {
+      scopeValue: 'global,service',
+      filters: ['--filter=@fastgpt/global', '--filter=@fastgpt/service']
+    },
+    {
+      scopeValue: 'workflow-core,workflow-cli',
+      filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/workflow-cli']
+    }
+  ])('filters unit tests to the requested $scopeValue scopes', ({ scopeValue, filters }) => {
+    const plan = resolveTestPlan({ scopeValue });
 
     expect(plan).toHaveLength(1);
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/global');
-    expect(plan[0]?.args).toContain('--filter=@fastgpt/service');
-    expect(plan[0]?.args).not.toContain('--filter=@fastgpt/app');
+    expect(plan[0]?.args.filter((argument: string) => argument.startsWith('--filter='))).toEqual(
+      filters
+    );
+  });
+
+  it('supports optional workflow package scopes used by the CI workflows', () => {
+    const workflowScopes = ['workflow-core', 'workflow-cli'];
+    const availableScopes = workflowScopes.filter((scope) =>
+      existsSync(resolve(process.cwd(), 'packages', scope, 'package.json'))
+    );
+    const plan = resolveTestPlan({ scopeValue: workflowScopes.join(',') });
+
+    expect(plan).toHaveLength(availableScopes.length > 0 ? 1 : 0);
+    availableScopes.forEach((scope) => {
+      expect(plan[0]?.args).toContain(`--filter=@fastgpt/${scope}`);
+    });
   });
 
   it('supports repo-only and workspace-only unit tests', () => {
