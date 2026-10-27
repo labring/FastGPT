@@ -465,6 +465,26 @@ describe('beforeUpdateAppFormat', () => {
       }
     ]);
   });
+
+  it('保存前移除详情接口生成的 pluginData.error 视图状态', async () => {
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        pluginData: {
+          error: 'tool_missing',
+          name: 'Kept plugin name'
+        },
+        inputs: [],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await beforeUpdateAppFormat({ nodes, teamId: 'team-1' });
+
+    expect(nodes[0].pluginData).toEqual({ name: 'Kept plugin name' });
+  });
 });
 
 describe('checkAppResourceReadPermissions', () => {

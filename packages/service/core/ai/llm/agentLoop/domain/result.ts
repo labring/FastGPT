@@ -29,6 +29,8 @@ export type AgentLoopResultBase = {
   firstTokenTime?: number;
   contextCheckpoint?: string;
   finishReason: CompletionFinishReason;
+  /** 是否因为达到 maxRunAgentTimes 而结束循环；用于运行摘要，不视为节点错误。 */
+  reachedMaxRunTimes?: boolean;
   usages: AgentLoopUsage[];
 };
 

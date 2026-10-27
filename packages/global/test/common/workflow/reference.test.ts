@@ -4,6 +4,7 @@ import {
   getWorkflowReferenceSourceValueTypes,
   getSelectedInputRenderType,
   nodeInputIsReference,
+  isFileUrlInputConfigured,
   isValidReferenceValueFormat,
   isValidReferenceValue,
   isValidArrayReferenceValue,
@@ -252,5 +253,57 @@ describe('areWorkflowValueTypesCompatible', () => {
     [WorkflowIOValueTypeEnum.arrayAny, WorkflowIOValueTypeEnum.string, true]
   ] as const)('checks %s input against %s source: %s', (expected, actual, compatible) => {
     expect(areWorkflowValueTypesCompatible({ expected, actual })).toBe(compatible);
+  });
+});
+
+describe('isFileUrlInputConfigured', () => {
+  it('returns false when the input is absent', () => {
+    expect(isFileUrlInputConfigured(undefined)).toBe(false);
+    expect(isFileUrlInputConfigured(null)).toBe(false);
+  });
+
+  it('treats agent generated file input as configured', () => {
+    expect(
+      isFileUrlInputConfigured({
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        value: []
+      })
+    ).toBe(true);
+  });
+
+  it('treats off file input as unconfigured even when a value exists', () => {
+    expect(
+      isFileUrlInputConfigured({
+        renderTypeList: [FlowNodeInputTypeEnum.off],
+        selectedType: FlowNodeInputTypeEnum.off,
+        value: [['node', 'files']]
+      })
+    ).toBe(false);
+  });
+
+  it('requires a non-empty reference or JSON value', () => {
+    const referenceInput = {
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor]
+    };
+
+    expect(isFileUrlInputConfigured({ ...referenceInput, value: ['node', 'files'] })).toBe(true);
+    expect(isFileUrlInputConfigured({ ...referenceInput, value: [['node', 'files']] })).toBe(true);
+    expect(isFileUrlInputConfigured({ ...referenceInput, value: [] })).toBe(false);
+    expect(isFileUrlInputConfigured({ ...referenceInput, value: undefined })).toBe(false);
+    expect(
+      isFileUrlInputConfigured({
+        ...referenceInput,
+        selectedType: FlowNodeInputTypeEnum.JSONEditor,
+        value: '["https://example.com/file.pdf"]'
+      })
+    ).toBe(true);
+    expect(
+      isFileUrlInputConfigured({
+        ...referenceInput,
+        selectedType: FlowNodeInputTypeEnum.JSONEditor,
+        value: '   '
+      })
+    ).toBe(false);
   });
 });

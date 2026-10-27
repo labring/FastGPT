@@ -15,6 +15,7 @@ import { IfElseNode } from '@fastgpt/global/core/workflow/template/system/ifElse
 import { ParallelRunNode } from '@fastgpt/global/core/workflow/template/system/parallelRun/parallelRun';
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
@@ -32,6 +33,7 @@ describe('workflow tool node templates', () => {
       [
         ClassifyQuestionModule,
         ToolCallNode,
+        AgentNode,
         TextEditorNode,
         ReadFilesNode,
         IfElseNode,
@@ -50,6 +52,8 @@ describe('workflow tool node templates', () => {
         [ClassifyQuestionModule, NodeInputKeyEnum.userChatInput],
         [ToolCallNode, NodeInputKeyEnum.fileUrlList],
         [ToolCallNode, NodeInputKeyEnum.userChatInput],
+        [AgentNode, NodeInputKeyEnum.fileUrlList],
+        [AgentNode, NodeInputKeyEnum.userChatInput],
         [ReadFilesNode, NodeInputKeyEnum.fileUrlList]
       ] as const
     ).forEach(([template, key]) => {
@@ -108,6 +112,11 @@ describe('workflow tool node templates', () => {
           NodeInputKeyEnum.fileUrlList,
           NodeInputKeyEnum.userChatInput
         ].includes(input.key as NodeInputKeyEnum)
+      ),
+      ...AgentNode.inputs.filter((input) =>
+        [NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput].includes(
+          input.key as NodeInputKeyEnum
+        )
       ),
       ...ReadFilesNode.inputs.filter((input) => input.key === NodeInputKeyEnum.fileUrlList),
       ...CustomFeedbackNode.inputs.filter((input) => input.key === NodeInputKeyEnum.textareaInput)

@@ -40,7 +40,10 @@ import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/regi
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import {
+  checkAppResourceReadPermissions,
+  filterAuthorizedAppResources
+} from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -55,8 +58,19 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, nodes, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    nodes,
+    edges,
+    chatConfig,
+    templateId,
+    utmParams,
+    allowUnauthorizedResources
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, userId, isRoot } = parentId
@@ -95,7 +109,8 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     userAvatar: tmb?.avatar,
     username: tmb?.user?.username,
     templateId,
-    isRoot
+    isRoot,
+    allowUnauthorizedResources
   });
 
   pushTrack.createApp({
@@ -140,7 +155,8 @@ export const onCreateApp = async ({
   userAvatar,
   templateId,
   isRoot,
-  session
+  session,
+  allowUnauthorizedResources = false
 }: {
   parentId?: ParentIdType;
   name?: string;
@@ -159,6 +175,8 @@ export const onCreateApp = async ({
   templateId?: string;
   isRoot?: boolean;
   session?: ClientSession;
+  /** 导入场景：无权限/不存在的资源不阻断创建，只从首版资源快照中过滤。 */
+  allowUnauthorizedResources?: boolean;
 }) => {
   // 配额属于新增资源的约束，放在共享入口，避免复制或转换新建绕过路由校验。
   await checkTeamAppTypeLimit({
@@ -200,18 +218,30 @@ export const onCreateApp = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
-  const resources = extractAppResources({
+  const extractedResources = extractAppResources({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig
   });
+  let resources = extractedResources;
   if (!AppFolderTypeList.includes(type!)) {
-    await checkAppResourceReadPermissions({
-      resources,
-      tmbId,
-      teamId,
-      isRoot,
-      modelHandle
-    });
+    if (allowUnauthorizedResources) {
+      // 导入场景与草稿保存同口径：节点保留快照，资源快照只收录当前操作者可读的部分。
+      resources = await filterAuthorizedAppResources({
+        resources: extractedResources,
+        tmbId,
+        teamId,
+        isRoot,
+        modelHandle
+      });
+    } else {
+      await checkAppResourceReadPermissions({
+        resources: extractedResources,
+        tmbId,
+        teamId,
+        isRoot,
+        modelHandle
+      });
+    }
   }
 
   const create = async (session: ClientSession) => {

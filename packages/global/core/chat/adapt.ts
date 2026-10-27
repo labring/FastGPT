@@ -403,6 +403,8 @@ export const chats2GPTMessages = ({
         const select = getUserChatSelect(next.value);
         return select ? formatUserChatSelect(select) : chatValue2RuntimePrompt(next.value).text;
       })();
+      // 同一个 AI item 内是否包含工具调用；用于识别嵌套 Agent ask 的 pending tool message。
+      const itemHasTools = item.value.some((value) => !!value.tools || !!value.tool);
 
       const appendAssistantToolCall = ({
         id,
@@ -528,11 +530,17 @@ export const chats2GPTMessages = ({
             hideInUI: value.hideInUI
           });
           if (appendedToolCall) {
+            /**
+             * 未回答的 ask 也必须补齐 tool message。
+             * 子 Agent 作为工具暂停时，用户答案还没写回历史，此时重建的上下文会留下
+             * 只有 assistant tool_calls、没有对应 tool message 的非法消息序列，provider 会直接拒绝请求。
+             * 空字符串要保持为空（不能走 tool response 的 'none' 归一化）。
+             */
             aiResults.push({
               dataId,
               role: ChatCompletionRequestMessageRoleEnum.Tool,
               tool_call_id: appendedToolCall.toolCall.id,
-              content: askResponse
+              content: askResponse || (itemHasTools ? 'Waiting for user answer.' : '')
             });
           }
         }

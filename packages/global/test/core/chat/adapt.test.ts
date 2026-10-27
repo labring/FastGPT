@@ -1872,6 +1872,80 @@ describe('chats2GPTMessages', () => {
     expect(result).toHaveLength(0);
   });
 
+  it('should pair a pending nested agentAsk tool call with a tool response', () => {
+    // 子 Agent 作为工具暂停时答案尚未写回历史，仍必须补齐 tool message，
+    // 否则恢复重建的上下文会出现 assistant tool_calls 悬空，provider 直接拒绝请求。
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            id: 'call_tool',
+            tools: [
+              {
+                id: 'call_tool',
+                toolName: 'Agent',
+                toolAvatar: '',
+                functionName: 'agent_tool',
+                params: '{"userChatInput":"hi"}',
+                response: 'none'
+              }
+            ]
+          },
+          {
+            agentAsk: {
+              id: 'call_ask',
+              askId: 'call_ask',
+              functionName: 'ask_user',
+              params: '{"questions":[]}'
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_tool',
+            type: 'function',
+            function: {
+              name: 'agent_tool',
+              arguments: '{"userChatInput":"hi"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_tool',
+        content: 'none'
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_ask',
+            type: 'function',
+            function: {
+              name: 'ask_user',
+              arguments: '{"questions":[]}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_ask',
+        content: 'Waiting for user answer.'
+      }
+    ]);
+  });
+
   it('should skip plan card when building GPT messages', () => {
     const messages: ChatItemMiniType[] = [
       {

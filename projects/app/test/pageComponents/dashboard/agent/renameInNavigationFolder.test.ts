@@ -85,9 +85,11 @@ vi.mock('@chakra-ui/react', async (importOriginal) => {
   const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
     ({ autoFocus: _autoFocus, ...props }, ref) => React.createElement('input', { ...props, ref })
   );
+  Input.displayName = 'Input';
   const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'textarea'>>(
     (_props, ref) => React.createElement('textarea', { ref })
   );
+  Textarea.displayName = 'Textarea';
   const Button = ({
     children,
     isLoading,

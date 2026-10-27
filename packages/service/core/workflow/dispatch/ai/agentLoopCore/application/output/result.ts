@@ -17,6 +17,7 @@ export type AgentLoopCoreOutputSummary<TChildrenResponse = unknown> = {
   completeMessages: AgentLoopCoreResult<TChildrenResponse>['completeMessages'];
   assistantResponses: AgentLoopCoreResult<TChildrenResponse>['assistantResponses'];
   finishReason: AgentLoopCoreResult<TChildrenResponse>['finishReason'];
+  reachedMaxRunTimes?: boolean;
   usages: ChatNodeUsageType[];
   inputTokens: number;
   outputTokens: number;
@@ -82,6 +83,7 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     completeMessages: result.completeMessages,
     assistantResponses: result.assistantResponses,
     finishReason: result.finishReason,
+    reachedMaxRunTimes: result.reachedMaxRunTimes,
     usages,
     inputTokens: usageSummary.inputTokens,
     outputTokens: usageSummary.outputTokens,

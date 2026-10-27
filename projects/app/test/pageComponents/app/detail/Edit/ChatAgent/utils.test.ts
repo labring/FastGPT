@@ -337,4 +337,34 @@ describe('agentForm2AppWorkflow model reference', () => {
     });
     expect(restored.selectedTools[0].metadataLocale).toBe('en');
   });
+
+  it('normalizes tools that only have id during form round-trip', () => {
+    const form = getDefaultAppForm();
+    form.selectedTools = [
+      {
+        id: 'legacy-tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: 'Legacy Tool',
+        avatar: '',
+        inputs: [],
+        outputs: []
+      }
+    ];
+
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+    const selectedToolsInput = agentNode?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    );
+    expect(selectedToolsInput?.value).toEqual([expect.objectContaining({ id: 'legacy-tool' })]);
+
+    const restored = appWorkflow2AgentForm({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+    expect(restored.selectedTools[0]).toMatchObject({
+      id: 'legacy-tool',
+      pluginId: 'legacy-tool'
+    });
+  });
 });

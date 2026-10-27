@@ -38,7 +38,8 @@ export const createToolCallToolProvider = async ({
   runtimeNodes,
   runtimeEdges,
   cacheToolFlowResponse,
-  onWorkflowRuntimeSummary
+  onWorkflowRuntimeSummary,
+  onWorkflowMemories
 }: {
   messages: DispatchToolModuleProps['messages'];
   toolNodes: DispatchToolModuleProps['toolNodes'];
@@ -52,6 +53,10 @@ export const createToolCallToolProvider = async ({
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
   cacheToolFlowResponse: CacheToolFlowResponse;
   onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
+  /** 收集子工作流 memory（如 Agent providerState），供父节点持久化后恢复交互。 */
+  onWorkflowMemories?: (
+    memories?: DispatchFlowResponse[DispatchNodeResponseKeyEnum.memories]
+  ) => void;
 }): Promise<ToolCallToolProvider> => {
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
     messages,
@@ -76,6 +81,9 @@ export const createToolCallToolProvider = async ({
         nodeResponseParentId: workflowProps.nodeResponseParentId
       });
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
+      // Agent 作为工具暂停 ask 时，providerState 存在子工作流 memory 中；
+      // 必须回传给父节点持久化，恢复交互时子 Agent 才能接回等待回答的 tool call。
+      onWorkflowMemories?.(result[DispatchNodeResponseKeyEnum.memories]);
 
       return {
         flowResponses: result.flatNodeResponses ?? [],

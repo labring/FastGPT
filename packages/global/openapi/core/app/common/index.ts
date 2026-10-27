@@ -3,7 +3,7 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   CopyAppBodySchema,
   CopyAppResponseSchema,
-  CreateAppBodySchema,
+  CreateAppRequestSchema,
   CreateAppResponseSchema,
   DeleteAppQuerySchema,
   DeleteAppResponseSchema,
@@ -102,7 +102,7 @@ export const AppCommonPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: CreateAppBodySchema
+            schema: CreateAppRequestSchema
           }
         }
       },

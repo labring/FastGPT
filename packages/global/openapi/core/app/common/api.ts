@@ -273,11 +273,32 @@ export const CreateAppBodySchema = z
     }
   });
 
+/**
+ * 创建接口请求追加字段。
+ *
+ * 仅创建路由使用，不放进 `CreateAppBodySchema`，避免 MCP/HTTP 工具创建等派生 Schema 继承导入标记。
+ */
+export const CreateAppRequestSchema = CreateAppBodySchema.extend({
+  allowUnauthorizedResources: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '导入场景：引用不存在或无读取权限的工具、技能、知识库时不阻断创建，仅把已授权资源写入首个版本快照；节点内快照保留，由详情接口标记为已删除或无权限。'
+  })
+}).meta({
+  example: {
+    name: '新应用',
+    type: AppTypeEnum.simple,
+    nodes: [],
+    edges: [],
+    parentId: '68ad85a7463006c963799a05'
+  }
+});
+
 export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,
-  CreateAppBodySchema
+  CreateAppRequestSchema
 );
-export type CreateAppBodyType = z.infer<typeof CreateAppBodySchema>;
+export type CreateAppBodyType = z.infer<typeof CreateAppRequestSchema>;
 
 export const CreateAppResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',

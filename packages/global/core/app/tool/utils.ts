@@ -123,6 +123,31 @@ const TeamPluginSourcePrefix = 'teamId:';
 export const getToolIdentityKey = (id?: string, source?: string) =>
   `${source || 'system'}:${id || ''}`;
 
+/**
+ * 统一工具的 id/pluginId。
+ * 存储数据可能只有 id（旧数据、ConfigToolModal 写回），预览节点也会给 id 随机值；
+ * 展示与匹配统一以 pluginId 为准，缺失时回退到 id。
+ */
+export const normalizeToolIdentity = <T extends { id?: string; pluginId?: string }>(tool: T): T => {
+  const id = tool.pluginId ?? tool.id;
+  if (!id) return tool;
+  return { ...tool, id, pluginId: id };
+};
+
+export const AGENT_PROMPT_TOOL_REFERENCE_REGEX = /\{\{@([^@{}]+)@\}\}/g;
+
+/** 提取 Agent 提示词中 {{@toolId@}} 形式的工具引用 ID，按出现顺序去重。 */
+export const getAgentPromptToolIds = (text?: string | null) => {
+  if (typeof text !== 'string' || !text) return [];
+
+  const ids = new Set<string>();
+  for (const match of text.matchAll(AGENT_PROMPT_TOOL_REFERENCE_REGEX)) {
+    const id = match[1]?.trim();
+    if (id) ids.add(id);
+  }
+  return [...ids];
+};
+
 /** 构造 plugin service 使用的团队隔离 source。 */
 export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
 

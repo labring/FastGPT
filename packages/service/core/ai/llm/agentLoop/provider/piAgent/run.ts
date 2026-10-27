@@ -877,6 +877,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       requestIds,
       contextCheckpoint: latestContextCheckpoint,
       finishReason,
+      reachedMaxRunTimes: true,
       usages: resultUsages
     };
   }

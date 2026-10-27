@@ -33,6 +33,7 @@ type ResponseType = {
   assistantResponses: AIChatItemValueItemType[];
   finish_reason: CompletionFinishReason;
   toolWorkflowInteractiveResponse?: InteractiveNodeResponseType;
+  memories?: Record<string, any>;
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
@@ -86,6 +87,12 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     getToolInfo,
     collectToolRunResponses: true
   });
+  /**
+   * 子工作流 memory 是 Agent 工具交互恢复的唯一状态来源。
+   * 这里按顶层节点结果收集，由 dispatchRunTools 回写到 WorkflowQueue 的 system_memories，
+   * 最终随 AI 消息持久化，供下一轮 ask 恢复读取。
+   */
+  const workflowMemories: Record<string, any> = {};
   const toolProvider = await createToolCallToolProvider({
     messages,
     toolNodes,
@@ -95,7 +102,10 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     runtimeNodes,
     runtimeEdges,
     cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
-    onWorkflowRuntimeSummary: mergeChildWorkflowSummary
+    onWorkflowRuntimeSummary: mergeChildWorkflowSummary,
+    onWorkflowMemories: (memories) => {
+      if (memories) Object.assign(workflowMemories, memories);
+    }
   });
   getProviderToolInfo = toolProvider.getToolInfo;
   const systemPrompt = toolProvider.finalMessages
@@ -192,6 +202,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     completeMessages: outputSummary.completeMessages,
     assistantResponses: outputSummary.assistantResponses,
     finish_reason: outputSummary.finishReason,
-    toolWorkflowInteractiveResponse: outputSummary.interactive
+    toolWorkflowInteractiveResponse: outputSummary.interactive,
+    ...(Object.keys(workflowMemories).length ? { memories: workflowMemories } : {})
   };
 };

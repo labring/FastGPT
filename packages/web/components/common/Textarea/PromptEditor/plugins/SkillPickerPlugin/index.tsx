@@ -1511,9 +1511,11 @@ export default function SkillPickerPlugin({
         menuAnchorRef.current = anchorElementRef.current;
         const shouldShow = skillOptions.length > 0 && isFocus;
 
+        // 菜单 portal 挂在 Lexical 锚点下，需显式定位才能让 zIndex 在 ReactFlow 节点等叠层中生效。
         return ReactDOM.createPortal(
           <Box
             ref={setMenuElement}
+            position={'relative'}
             visibility={shouldShow && isMenuPositioned ? 'visible' : 'hidden'}
             zIndex={99999}
             w={'max-content'}

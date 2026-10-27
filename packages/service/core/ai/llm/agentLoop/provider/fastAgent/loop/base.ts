@@ -124,6 +124,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   contextCheckpoint?: string;
 
   finish_reason: CompletionFinishReason | undefined;
+  reachedMaxRunTimes?: boolean;
 };
 
 /**
@@ -379,6 +380,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   // 只限制工具顺序和参数长度都连续相同的轮次，避免将正常的多工具任务误判为模型幻觉。
   let lastConsecutiveToolSignature: string | undefined;
   let consecutiveSameToolRequestTimes = 0;
+  let lastRunHadToolCalls = false;
+  let stoppedByTool = false;
   while (runTimes < maxRunAgentTimes) {
     let stopAgentLoop = false;
 
@@ -458,6 +461,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       onToolCall,
       onToolParam
     });
+    lastRunHadToolCalls = toolCalls.length > 0;
     const totalPoints = usage.usedUserOpenAIKey
       ? 0
       : formatModelChars2Points({
@@ -654,6 +658,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
           if (stopLoop) {
             stopAgentLoop = true;
+            stoppedByTool = true;
           }
 
           assistantMessages.push(toolMessage);
@@ -753,6 +758,15 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     completeMessages: requestMessages,
     assistantMessages,
     toolChildPause,
-    finish_reason
+    finish_reason,
+    // 只有因轮次耗尽、且最后一轮仍需继续调用工具时才算达到上限；
+    // 正常结束、暂停、停止或报错都不标记。
+    reachedMaxRunTimes:
+      runTimes >= maxRunAgentTimes &&
+      lastRunHadToolCalls &&
+      !toolChildPause &&
+      !stoppedByTool &&
+      !requestError &&
+      !isAborted?.()
   };
 };

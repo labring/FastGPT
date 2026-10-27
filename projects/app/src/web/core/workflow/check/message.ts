@@ -11,7 +11,13 @@ import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { resolvePluginDataErrorIssueCode } from './error';
 import type { WorkflowRuleIssue } from '@/web/core/workflow/type';
 
-type WorkflowCheckMessageParams = { inputName?: string; model?: string; nodeName?: string };
+type WorkflowCheckMessageParams = {
+  inputName?: string;
+  model?: string;
+  nodeName?: string;
+  /** Agent 内部资源（工具/技能/知识库）名称。 */
+  name?: string;
+};
 
 const fieldLabelKeys = {
   variable: i18nT('common:core.workflow.variable'),
@@ -74,6 +80,27 @@ const workflowCheckMessageKeys = {
   ),
   [WorkflowCheckIssueCodeEnum.resourceNoPermission]: i18nT(
     'common:core.workflow.check.resource_no_permission'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolInactive]: i18nT(
+    'common:core.workflow.check.agent_tool_inactive'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolWaitingConfig]: i18nT(
+    'common:core.workflow.check.agent_tool_waiting_config'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolMissing]: i18nT(
+    'common:core.workflow.check.agent_tool_missing'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentToolOffline]: i18nT(
+    'common:core.workflow.check.agent_tool_offline'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentSkillMissing]: i18nT(
+    'common:core.workflow.check.agent_skill_missing'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentDatasetMissing]: i18nT(
+    'common:core.workflow.check.agent_dataset_missing'
+  ),
+  [WorkflowCheckIssueCodeEnum.agentSkillSandboxRequired]: i18nT(
+    'common:core.workflow.check.agent_skill_sandbox_required'
   )
 } as const;
 
@@ -179,6 +206,20 @@ export const getWorkflowCheckIssueMessage = ({
       return t('common:core.workflow.check.resource_missing', params);
     case WorkflowCheckIssueCodeEnum.resourceNoPermission:
       return t('common:core.workflow.check.resource_no_permission', params);
+    case WorkflowCheckIssueCodeEnum.agentToolInactive:
+      return t('common:core.workflow.check.agent_tool_inactive', params);
+    case WorkflowCheckIssueCodeEnum.agentToolWaitingConfig:
+      return t('common:core.workflow.check.agent_tool_waiting_config', params);
+    case WorkflowCheckIssueCodeEnum.agentToolMissing:
+      return t('common:core.workflow.check.agent_tool_missing', params);
+    case WorkflowCheckIssueCodeEnum.agentToolOffline:
+      return t('common:core.workflow.check.agent_tool_offline', params);
+    case WorkflowCheckIssueCodeEnum.agentSkillMissing:
+      return t('common:core.workflow.check.agent_skill_missing', params);
+    case WorkflowCheckIssueCodeEnum.agentDatasetMissing:
+      return t('common:core.workflow.check.agent_dataset_missing', params);
+    case WorkflowCheckIssueCodeEnum.agentSkillSandboxRequired:
+      return t('common:core.workflow.check.agent_skill_sandbox_required', params);
   }
 };
 
@@ -269,7 +310,8 @@ export const formatWorkflowRuleIssue = ({
         params: {
           inputName,
           model: issue.model,
-          nodeName: node?.name
+          nodeName: node?.name,
+          name: issue.resourceName
         }
       })
   };

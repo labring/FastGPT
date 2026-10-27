@@ -33,6 +33,7 @@ import {
   serializeAgentTool
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
+import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
@@ -87,8 +88,29 @@ export const uiWorkflow2StoreWorkflow = ({
     ) {
       const serializedTools: any[] = [];
       for (const tool of selectedToolsInput.value as any[]) {
+        if (!tool || typeof tool !== 'object' || Array.isArray(tool)) continue;
+
+        // 导入/旧数据/失效占位工具是 canonical 紧凑配置（inputs 仅含 key/mode），
+        // 必须原样保留；走 serializeAgentTool 会从 input.value 重建 config，丢失已保存配置。
+        const hasFullInputDefinitions =
+          Array.isArray(tool.inputs) &&
+          tool.inputs.some((input: any) => Array.isArray(input?.renderTypeList));
+        const canonicalTool = AgentToolSchema.safeParse(tool);
+        if (!hasFullInputDefinitions && canonicalTool.success) {
+          serializedTools.push(canonicalTool.data);
+          continue;
+        }
+
         const parsed = SelectedToolItemTypeSchema.safeParse(tool);
-        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
+        if (parsed.success) {
+          serializedTools.push(serializeAgentTool({ tool: parsed.data }));
+          continue;
+        }
+
+        // 混合/历史形态：仍尽量保留 canonical 数据，避免静默丢工具。
+        if (canonicalTool.success) {
+          serializedTools.push(canonicalTool.data);
+        }
       }
       selectedToolsInput.value = serializedTools as any;
     }

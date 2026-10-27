@@ -166,7 +166,9 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         nodes: workflow.nodes,
         edges: workflow.edges || [],
         chatConfig: workflow.chatConfig,
-        utmParams: getUtmParams()
+        utmParams: getUtmParams(),
+        // JSON 导入来自其他系统，缺失的 skill/工具由详情接口标记为已删除，不阻断创建。
+        allowUnauthorizedResources: true
       });
     },
     {

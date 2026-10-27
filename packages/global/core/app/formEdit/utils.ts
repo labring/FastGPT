@@ -423,6 +423,9 @@ export const serializeAgentTool = ({
 
   return {
     id: tool.pluginId ?? tool.id,
+    // 保留展示快照：工具被删除/无权限时，详情和检查文案仍能显示原名称与头像。
+    ...(tool.name ? { name: tool.name } : {}),
+    ...(tool.avatar ? { avatar: tool.avatar } : {}),
     version: tool.version,
     ...(tool.metadataLocale !== undefined ? { metadataLocale: tool.metadataLocale } : {}),
     source: tool.source,

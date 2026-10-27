@@ -121,6 +121,13 @@ export enum WorkflowDiagnosticCodeEnum {
 
 /** 编辑器展示层的问题码，保留已有 UI 文案和资源状态标记的协议值。 */
 export enum WorkflowCheckIssueCodeEnum {
+  agentDatasetMissing = 'agent_dataset_missing',
+  agentSkillMissing = 'agent_skill_missing',
+  agentSkillSandboxRequired = 'agent_skill_sandbox_required',
+  agentToolInactive = 'agent_tool_inactive',
+  agentToolMissing = 'agent_tool_missing',
+  agentToolOffline = 'agent_tool_offline',
+  agentToolWaitingConfig = 'agent_tool_waiting_config',
   classifyQuestionEmpty = 'classify_question_empty',
   classifyQuestionValueEmpty = 'classify_question_value_empty',
   codeInputIncomplete = 'code_input_incomplete',

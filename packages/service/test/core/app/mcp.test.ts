@@ -619,9 +619,7 @@ describe('MCPClient', () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       // 模拟 MCP SDK 在收到不合规响应时抛出的 ZodError
-      const zodError = new Error(
-        'Invalid input: unrecognized_keys: "status", "info", "infocode"'
-      );
+      const zodError = new Error('Invalid input: unrecognized_keys: "status", "info", "infocode"');
       zodError.name = 'ZodError';
       client.connect = vi.fn().mockRejectedValue(zodError);
 

@@ -609,6 +609,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     llmTotalPoints: result.llmTotalPoints,
     finishReason: result.finish_reason,
     requestIds: result.requestIds,
-    contextCheckpoint: result.contextCheckpoint
+    contextCheckpoint: result.contextCheckpoint,
+    reachedMaxRunTimes: result.reachedMaxRunTimes
   };
 };
