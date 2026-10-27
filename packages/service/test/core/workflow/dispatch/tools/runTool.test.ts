@@ -10,6 +10,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
   authAppByTmbIdMock,
@@ -259,6 +260,14 @@ describe('dispatchRunTool runtime toolset auth', () => {
         totalPoints: expectedPoints
       }
     ]);
+    expect(pushTrack.runSystemTool).toHaveBeenCalledWith({
+      teamId: props.runningUserInfo.teamId,
+      tmbId: props.runningUserInfo.tmbId,
+      toolId: 'search',
+      result: 1,
+      usagePoint: expectedPoints,
+      msg: ''
+    });
   });
 
   it('should reject HTTP tool execution when running app tmb has no parent toolset permission', async () => {

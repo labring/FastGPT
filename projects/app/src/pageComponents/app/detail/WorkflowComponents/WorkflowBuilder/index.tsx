@@ -29,7 +29,7 @@ import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilder = () => {
-  const { t } = useTranslation('workflow');
+  const { t } = useTranslation(['workflow']);
   const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
@@ -131,7 +131,7 @@ const WorkflowBuilder = () => {
         });
         if (autoLayoutResult === 'failed') {
           // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
-          console.warn('[Workflow Builder] Auto layout failed, keeping applied workflow');
+          console.warn('Auto layout failed, keeping applied workflow');
         }
         const archivedVersion = await commitWorkflowBuilderVersion({
           appId,
@@ -175,10 +175,10 @@ const WorkflowBuilder = () => {
         if (isWorkflowBuilderVersionExpiredError(error)) {
           notifyVersionExpired();
         } else {
-          console.error('[Workflow Builder] Apply failed', error);
+          console.error('Apply failed', error);
           myToast({
             status: 'error',
-            title: t('workflow_builder_apply_failed'),
+            title: t('workflow:workflow_builder_apply_failed'),
             description: getErrText(error)
           });
         }

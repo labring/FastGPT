@@ -57,7 +57,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     body;
 
   // 凭证校验
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authApp({
         req,
         appId: parentId,
@@ -98,7 +98,6 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
 
   pushTrack.createApp({
     type,
-    uid: userId,
     teamId,
     tmbId,
     appId,

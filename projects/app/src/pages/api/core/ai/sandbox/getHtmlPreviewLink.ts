@@ -58,19 +58,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   }
 
   // 3. session 仅保存 sandbox 查询参数，provider endpoint 和内部口令由 proxy 按请求解析。
-  const url = await (async () => {
-    try {
-      return SandboxGetHtmlPreviewLinkResponseSchema.parse(
-        await createSandboxPreviewFileUrl({
-          context: sandboxQuery,
-          filePath: providerPath
-        })
-      );
-    } catch (error) {
-      if (error instanceof SandboxPreviewSessionLimitError) return null;
-      throw error;
-    }
-  })();
+  const url = await createSandboxPreviewFileUrl({
+    context: sandboxQuery,
+    filePath: providerPath
+  }).catch((error) => {
+    if (error instanceof SandboxPreviewSessionLimitError) return null;
+    throw error;
+  });
 
   if (url === null) {
     return jsonRes(res, {
@@ -80,7 +74,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   }
 
   return jsonRes(res, {
-    data: url
+    data: SandboxGetHtmlPreviewLinkResponseSchema.parse(url)
   });
 }
 
