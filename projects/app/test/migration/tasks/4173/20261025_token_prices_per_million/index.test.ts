@@ -10,6 +10,7 @@ import type {
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { migrateTokenPricesPerMillion } from '@/migration/tasks/4173/20261025_token_prices_per_million';
 
@@ -38,7 +39,7 @@ const base = {
 afterEach(() => vi.restoreAllMocks());
 
 describe('migrateTokenPricesPerMillion', () => {
-  it('reads system models once and saves all converted prices in one bulk write', async () => {
+  it.each([false, true])('migrates model prices (retry: %s)', async (retryTransaction) => {
     const cases = [
       {
         model: 'tiers',
@@ -146,13 +147,24 @@ describe('migrateTokenPricesPerMillion', () => {
       .toArray();
     const read = vi.spyOn(MongoAIModel.collection, 'find');
     const write = vi.spyOn(MongoAIModel.collection, 'bulkWrite');
+    if (retryTransaction) {
+      // 首次批量写入后使事务回滚，稳定覆盖真实事务重试时的完整批次重放。
+      vi.spyOn(MongoAIModelCatalog, 'updateOne').mockRejectedValueOnce(
+        new MongoTransactionConflictError(new Error('catalog write conflict'))
+      );
+    }
     const context = createContext();
     await expect(migrateTokenPricesPerMillion(context)).resolves.toEqual({
       migratedCount: cases.length
     });
     expect(read).toHaveBeenCalledTimes(1);
-    expect(write).toHaveBeenCalledTimes(1);
+    // 真实事务可重放回调；每次尝试都必须提交相同的完整批次，不能按模型拆分写入。
+    expect(write).toHaveBeenCalled();
+    if (retryTransaction) expect(write.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(write.mock.calls[0][0]).toHaveLength(cases.length);
+    for (const [operations] of write.mock.calls) {
+      expect(operations).toEqual(write.mock.calls[0][0]);
+    }
     for (const { model, legacy, expected } of cases) {
       expect(await MongoAIModel.collection.findOne({ model })).toMatchObject({
         ...legacy,
@@ -272,7 +284,7 @@ describe('migrateTokenPricesPerMillion', () => {
     await expect(migrateTokenPricesPerMillion(createContext())).resolves.toEqual({
       migratedCount: 0
     });
-    expect(write).toHaveBeenCalledOnce();
+    expect(write).toHaveBeenCalled();
     expect(await MongoAIModel.collection.findOne({ model: 'concurrent' })).toMatchObject({
       inputPrice: 1,
       pricing: { tiers: [] }
