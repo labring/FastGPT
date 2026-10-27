@@ -93,8 +93,8 @@ const pushCountTrack = ({
 };
 
 export const pushTrack = {
-  /** 后台就绪采集复用 tracks；落库失败不能使已完成的生成变成失败。 */
-  workflowBuilder: async (data: WorkflowBuilderTrackData & { teamId: string }) => {
+  /** 复用公共 tracks 存储业务事件；采集失败仅记录上下文，不影响业务执行。 */
+  workflowBuilder: async (data: WorkflowBuilderTrackData) => {
     try {
       await createTrack({ event: TrackEnum.workflowBuilder, data });
     } catch {

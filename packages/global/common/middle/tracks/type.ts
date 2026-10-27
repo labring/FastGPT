@@ -1,7 +1,9 @@
 import type { TrackEnum } from './constants';
 import { z } from 'zod';
 
+/** 完整的服务端采集参数；落库时 teamId 提取到顶层，其余字段存入 data。 */
 export const WorkflowBuilderTrackDataSchema = z.object({
+  teamId: z.string(),
   appId: z.string(),
   chatId: z.string(),
   action: z.enum([
