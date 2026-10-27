@@ -3,15 +3,22 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import {
   getWorkflowNodeModelInputs,
-  isWorkflowModelExpression
+  isWorkflowModelExpression,
+  isWorkflowSystemModelInput
 } from '@fastgpt/global/common/workflow/model';
-import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import {
   workflowDatasetParamModelSlots,
   workflowSystemModelSlots
 } from '@fastgpt/global/core/workflow/model/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -161,6 +168,14 @@ export const createInvalidReferenceReplacer = ({
     }
   };
 
+  /** 自定义模型选择器兼容旧版 model 名称，同时优先保留可识别的 modelId。 */
+  const getLLMSelectorReference = (value: unknown): Reference => {
+    if (typeof value === 'string' && !handle.findModelData({ modelId: value })) {
+      return { model: value };
+    }
+    return { modelId: value };
+  };
+
   const replaceConfigReference = ({
     config,
     modelIdKey,
@@ -212,10 +227,10 @@ export const createInvalidReferenceReplacer = ({
       const referenceNode = node.nodeId
         ? referenceNodeById.get(node.nodeId)
         : referenceNodes?.[nodeIndex];
+      const getReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
+        referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input;
       const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
-        nodeInputIsReference(
-          referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input
-        );
+        nodeInputIsReference(getReferenceInput(input));
 
       for (const slot of workflowSystemModelSlots) {
         const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
@@ -248,6 +263,41 @@ export const createInvalidReferenceReplacer = ({
           }
           changes[kind].replacedReferences++;
         }
+      }
+
+      const migratedNode = referenceNode ?? node;
+      for (const input of node.inputs) {
+        const migratedInput = getReferenceInput(input);
+        if (isWorkflowSystemModelInput({ node: migratedNode, input: migratedInput })) continue;
+        if (isReferenceInput(input)) {
+          if (migratedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
+            changes.llm.skippedReferences++;
+          }
+          continue;
+        }
+        if (getSelectedInputRenderType(migratedInput) !== FlowNodeInputTypeEnum.selectLLMModel) {
+          continue;
+        }
+
+        const modelValue = migratedInput.value ?? migratedInput.defaultValue;
+        const invalid = isInvalid({
+          reference: getLLMSelectorReference(modelValue),
+          type: ModelTypeEnum.llm
+        });
+        if (invalid === undefined) {
+          changes.llm.skippedReferences++;
+          continue;
+        }
+        if (!invalid) continue;
+
+        if (input.value !== undefined && input.value !== null) {
+          input.value = targets.llm.modelId;
+        } else if (input.defaultValue !== undefined && input.defaultValue !== null) {
+          input.defaultValue = targets.llm.modelId;
+        } else {
+          input.value = targets.llm.modelId;
+        }
+        changes.llm.replacedReferences++;
       }
 
       if ((node.flowNodeType as string) === legacySystemConfigNodeType) {
