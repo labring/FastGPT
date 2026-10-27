@@ -1,4 +1,5 @@
 import { checkCreateResourceParent } from '../../../common/parentFolder/depth';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { assertParentPlanAcyclic } from '../../../common/parentFolder/parentPlan';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
@@ -700,7 +701,8 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
 /**
  * 批量创建集合，统一标签解析、文档构造、文件 TTL 和 ACL 初始化。
  * 同一团队/知识库/标签组合只解析一次；父目录须已创建且类型合法，目录树由上层按层提交。
- * 统一校验新建目录深度，叶子资源不占目录层数；祖先读取在当前事务内复用。
+ * 普通创建使用配置深度；外部库目录和正文（apiFileId）使用 20 层上限，叶子不占目录层数。
+ * 祖先读取在当前事务内复用，深度策略不会改变父级类型、归属和环检测。
  * 单条与批量均使用此入口；集合、ACL 和文件状态共享事务，任一失败整体回滚。
  */
 export async function createCollections({
@@ -806,7 +808,10 @@ export async function createCollections({
     >();
     for (const doc of docs) {
       const isFolder = doc.type === DatasetCollectionTypeEnum.folder;
-      const key = JSON.stringify([doc.teamId, doc.datasetId, doc.parentId, isFolder]);
+      // apiFileId 是外部库的资源身份，普通创建 HTTP 入参不接收该字段。
+      // 导入、增量同步和已有文件重建均保留这一身份，统一采用外部树的遍历上限。
+      const maxDepth = doc.apiFileId ? defaultSubtreeMaxDepth : undefined;
+      const key = JSON.stringify([doc.teamId, doc.datasetId, doc.parentId, isFolder, maxDepth]);
       if (checkedParents.has(key)) continue;
       await checkCreateResourceParent({
         parentId: doc.parentId,
@@ -826,6 +831,7 @@ export async function createCollections({
           return parent;
         },
         isFolder,
+        maxDepth,
         isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
       });
       checkedParents.add(key);

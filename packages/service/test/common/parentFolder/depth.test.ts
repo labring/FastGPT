@@ -1,4 +1,5 @@
 import { serviceEnv } from '@fastgpt/service/env';
+import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 import { describe, expect, it } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
@@ -284,6 +285,38 @@ describe('folder depth checks', () => {
 });
 
 describe('checkCreateResourceParent', () => {
+  it('accepts a business-specific depth limit without changing the default creation policy', async () => {
+    const { queries } = createQueries(
+      Array.from({ length: defaultSubtreeMaxDepth + 1 }, (_, i) => ({
+        _id: `level-${i + 1}`,
+        parentId: i ? `level-${i}` : null,
+        teamId,
+        type: 'folder'
+      }))
+    );
+    const props = { ...queries, isFolderType: folderType, maxDepth: defaultSubtreeMaxDepth };
+    await expect(
+      checkCreateResourceParent({ ...props, parentId: 'level-19', isFolder: true })
+    ).resolves.toBeUndefined();
+    await expect(
+      checkCreateResourceParent({ ...props, parentId: 'level-20', isFolder: false })
+    ).resolves.toBeUndefined();
+    await expect(
+      checkCreateResourceParent({ ...props, parentId: 'level-20', isFolder: true })
+    ).rejects.toBe(CommonErrEnum.folderDepthLimit);
+    await expect(
+      checkCreateResourceParent({ ...props, parentId: 'level-21', isFolder: false })
+    ).rejects.toBe(CommonErrEnum.folderDepthLimit);
+    await expect(
+      checkCreateResourceParent({
+        ...queries,
+        isFolderType: folderType,
+        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH}`,
+        isFolder: true
+      })
+    ).rejects.toBe(CommonErrEnum.folderDepthLimit);
+  });
+
   it.each([false, true])(
     'rejects a leaf used as a direct or indirect parent (folder=%s)',
     async (isFolder) => {

@@ -156,20 +156,21 @@ const isInSubtree = async ({
 
 /**
  * 创建资源前校验父级链：所有父级必须是合法文件夹，不允许缺失或成环。
- * 文件夹占一层，叶子资源不增加目录层级；两类写入均不能落在超出配置上限的父链中。
- * 历史超深目录仅允许读取。调用方须先完成权限校验，并将查询绑定团队、知识库等业务范围。
+ * 文件夹占一层，叶子资源不增加目录层级；默认使用配置上限，外部库等业务可指定自身上限。
+ * 调用方须先完成权限校验，并将查询绑定团队、知识库等业务范围。
  */
 export const checkCreateResourceParent = async ({
   parentId,
   findResource,
   isFolderType,
-  isFolder
-}: CheckCreateFolderDepthProps & { isFolder: boolean }) => {
+  isFolder,
+  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
+}: CheckCreateFolderDepthProps & { isFolder: boolean; maxDepth?: number }) => {
   await getParentFolderDepth({
     parentId,
     findResource,
     isFolderType,
-    maxAllowedDepth: serviceEnv.MAX_FOLDER_DEPTH - (isFolder ? 1 : 0),
+    maxAllowedDepth: maxDepth - (isFolder ? 1 : 0),
     limitErr: CommonErrEnum.folderDepthLimit
   });
 };
