@@ -44,6 +44,7 @@ type Props = Omit<SelectProps, 'list'> & {
   vision?: boolean;
   excludeHidden?: boolean;
   appId?: string;
+  requireTtsVoice?: boolean;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -126,6 +127,7 @@ const AIModelSelector = ({
   vision,
   excludeHidden,
   appId,
+  requireTtsVoice,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
@@ -168,10 +170,13 @@ const AIModelSelector = ({
         modelList.filter(
           (model) =>
             model.type === modelType &&
+            (!requireTtsVoice ||
+              (model.type === ModelTypeEnum.tts &&
+                model.config.voices.some(({ value }) => value.trim().length > 0))) &&
             (allowedValues === undefined || isModelAllowedByValues(model, allowedValues))
         )
       ),
-    [allowedValues, modelList, modelType]
+    [allowedValues, modelList, modelType, requireTtsVoice]
   );
   const selection = useMemo(
     () =>
