@@ -37,6 +37,45 @@ const logDuration = ({
 };
 
 /**
+ * 测量同步的合并、权限解析和过滤等处理，沿用异步阶段的等级、摘要与失败标记。
+ * 保持同步返回和原始异常，不引入 await，避免把微任务排队时间计入处理耗时。
+ */
+export const withSyncDurationLog = <T>(
+  { logger, message, properties, summary }: DurationLogOptions<T>,
+  run: () => T
+): T => {
+  const startedAt = Date.now();
+
+  try {
+    const result = run();
+
+    logDuration({
+      logger,
+      message,
+      fields: {
+        ...properties,
+        ...summary?.(result),
+        durationMs: Date.now() - startedAt
+      }
+    });
+
+    return result;
+  } catch (error) {
+    logDuration({
+      logger,
+      message,
+      fields: {
+        ...properties,
+        durationMs: Date.now() - startedAt,
+        failed: true
+      }
+    });
+
+    throw error;
+  }
+};
+
+/**
  * 测量一次异步调用（通常是下游请求或数据库查询）的耗时并输出结构化日志。
  *
  * 用途：定位接口慢在哪个阶段。外层 HTTP 中间件已经记录整个请求耗时，这里只补齐

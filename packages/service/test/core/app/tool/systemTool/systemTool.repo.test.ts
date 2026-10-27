@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   SystemToolSecretMaskedValue,
   SystemToolSystemSecretStatusEnum
@@ -118,6 +119,17 @@ beforeEach(() => {
 });
 
 describe('SystemToolRepo.getSystemToolList', () => {
+  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+
+  beforeEach(() => {
+    vi.spyOn(logger, 'debug').mockImplementation(() => {});
+    vi.spyOn(logger, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('sorts by tag matched count before plugin order when tags are provided', async () => {
     mocks.listTools.mockResolvedValue([
       createPluginTool({ pluginId: 'low-order-single-match', name: 'Low order single match' }),
@@ -156,6 +168,40 @@ describe('SystemToolRepo.getSystemToolList', () => {
       'systemTool-low-order-single-match',
       'systemTool-second-order-single-match'
     ]);
+    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+      stage: 'tools.merge',
+      inputCount: 3,
+      configCount: 3,
+      outputCount: 3,
+      durationMs: expect.any(Number)
+    });
+    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+      stage: 'tools.sort',
+      toolCount: 3,
+      durationMs: expect.any(Number)
+    });
+  });
+
+  it('logs the additional workflow tool count when merging system tools', async () => {
+    mocks.listTools.mockResolvedValue([createPluginTool({ pluginId: 'normal', name: 'Normal' })]);
+    const workflowConfig = createToolConfig({ pluginId: 'workflow', pluginOrder: 0, tags: [] });
+    mocks.findSystemTools.mockResolvedValue([
+      {
+        ...workflowConfig,
+        customConfig: { ...workflowConfig.customConfig, associatedPluginId: 'app-1' }
+      }
+    ]);
+
+    const tools = await SystemToolRepo.getInstance().getSystemToolList({ sources: ['system'] });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-normal', 'systemTool-workflow']);
+    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+      stage: 'tools.merge',
+      inputCount: 1,
+      configCount: 1,
+      outputCount: 2,
+      durationMs: expect.any(Number)
+    });
   });
 
   it('keeps list plugin metadata unchanged across UI locales', async () => {
@@ -507,7 +553,10 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
     const repo = SystemToolRepo.getInstance();
     const english = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'en' });
-    const chinese = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'zh-CN' });
+    const chinese = await repo.getSystemToolDetail({
+      pluginId: 'systemTool-search',
+      lang: 'zh-CN'
+    });
 
     expect(english).toMatchObject({ name, intro, readmeUrls });
     expect(english.readmeUrl).toBe('https://example.com/legacy.md');
