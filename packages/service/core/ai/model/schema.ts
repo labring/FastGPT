@@ -47,7 +47,16 @@ const AIModelSchema = new Schema(
         {
           tierUnit: { type: String, enum: ['K'] },
           tiers: {
-            type: [{ _id: false, maxInputTokens: Number, inputPrice: Number, outputPrice: Number }],
+            type: [
+              {
+                _id: false,
+                maxInputTokens: Number,
+                inputPrice: Number,
+                outputPrice: Number,
+                cacheReadPrice: Number,
+                cacheCreationPrice: Number
+              }
+            ],
             default: undefined
           },
           unitPrice: Number,

@@ -55,3 +55,15 @@ STT 新增按每百万 Tokens 或每 60 秒计价，通过后续启动迁移为�
 单价（`inputPrice`、`outputPrice`、`unitPrice`）维持每百万 Tokens 计费不变，LLM 阶梯输入区间上限 `pricing.tiers[].maxInputTokens` 调整回 **K Tokens**（即 `inputTokens / 1000 <= maxInputTokens`），表格列头同步标明 `输入区间：K Tokens`、`输入价格/M Tokens`、`输出价格/M Tokens`。`pricing.tierUnit`（默认为 `'K'`）用于显式标识阶梯单位：保存非空阶梯与迁移均写入 `'K'`；运行时若缺少 `tierUnit`，不做区间匹配，直接使用第一档计费。
 
 `maxInputTokens` 约束为正整数（K Tokens），4.18.0 已将 STT 计价类型回填与 LLM 阶梯上限转换合并为多阶段独立后台迁移 `20261120_migrate_model_pricing`（模型价格迁移）：依次执行 `stt` 分批回填、`llmTiers` 单事务回填缺失 `tierUnit` 的记录（已有 `'K'` 跳过保证重跑幂等；无单位且含 `< 1` 上限按 M 乘以 1000 四舍五入为正整数 K 并写入 `tierUnit: 'K'`；无单位且均为 `>= 1` 或开放档仅回填 `tierUnit: 'K'`）与 `validation` 联合校验。
+
+## 缓存计费扩展
+
+百万单位及 `pricing` 结构已合入；缓存计费在 `pricing.tiers` 中增加可选的 `cacheReadPrice`、`cacheCreationPrice`，均为每百万 Tokens 的单价。未配置沿用该档输入价，显式 0 免费。只影响 LLM，不新增单位标记，不读取旧根字段，也不修改既有价格迁移或新增迁移任务。
+
+总输入包含两类缓存。已标记 K 单位的配置按总输入选档，缺少标记时用首档。费用为 `(普通输入 × 输入价 + 缓存读取 × 读取价 + 缓存创建 × 创建价 + 输出 × 输出价) / 1000000`。负数或非有限用量按 0 处理，缓存读取最多为总输入，缓存创建最多为剩余输入；团队模型仍免费。单次费用不舍入。
+
+OpenAI 兼容响应在请求聚合入口归一化供应商缓存字段并累计连续输出；Pi 的普通输入不含缓存，适配时补回缓存以形成总输入。锁定 SDK 的 pnpm 补丁补齐其 OpenAI 缓存解析，镜像安装上下文同步包含补丁。普通请求、两种 Agent、压缩、知识库检索、训练、辅助生成与评估逐层转发两类缓存数量。Pro 创建/追加/合并用量后按已有积分总额扣费，不再重新计价。
+
+使用记录与 API 保存 `cacheReadTokens`、`cacheCreationTokens`，缺省与显式 0 均保留。监控当前单价估算按两类缓存区分计算，累计费用只在显示时舍入；它不替代历史钱包扣费。价格摘要保持输入、输出两行，缓存只在输入 hover/focus 提示中显示；缺省或舍入为 0 的价格显示 `-`，全部档位都无有效缓存价时隐藏输入提示，列表行高保持 80px。
+
+验证复用局部纯计价、真实表单、API→MongoDB→运行时、HTTP/SSE/Pi SDK、Pro 钱包生命周期及三条训练路径测试，不增加重复的百万单位迁移测试。

@@ -1,3 +1,4 @@
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -73,10 +74,18 @@ describe('channel dashboard cache pricing over real HTTP', () => {
       expect(
         calculateModelPrice({
           config: {
-            tokenPriceUnit: 'M',
-            priceTiers: [
-              { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
-            ]
+            type: ModelTypeEnum.llm,
+            scope: ModelScopeEnum.system,
+            pricing: {
+              tiers: [
+                {
+                  inputPrice: 2000,
+                  outputPrice: 4000,
+                  cacheReadPrice: 200,
+                  cacheCreationPrice: 2500
+                }
+              ]
+            }
           },
           inputTokens: summary.input_tokens,
           outputTokens: summary.output_tokens,

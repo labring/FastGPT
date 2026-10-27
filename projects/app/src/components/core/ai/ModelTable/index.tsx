@@ -44,8 +44,7 @@ import ModelScopeCell from '../ModelScopeCell';
 import { useModelTableFormat } from '../hooks/useModelTableFormat';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
-// 四类价格各占一行，保留上下留白并与虚拟列表的行高保持一致。
-const modelRowHeight = 128;
+const modelRowHeight = 80;
 
 const ModelTable = ({
   permissionConfig = false,
