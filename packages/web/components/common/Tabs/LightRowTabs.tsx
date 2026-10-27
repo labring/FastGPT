@@ -107,7 +107,6 @@ const LightRowTabs = <ValueType = string,>({
     <Box
       ref={setScrollContainerRef}
       overflow={'auto'}
-      flexShrink={0}
       onScroll={(event) => {
         if (scrollPositionKey) {
           scrollPositionMap.set(scrollPositionKey, event.currentTarget.scrollLeft);
