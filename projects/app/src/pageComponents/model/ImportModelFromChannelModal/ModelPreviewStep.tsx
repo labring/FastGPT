@@ -123,7 +123,7 @@ const buildBlankModelData = ({
     providerModelSlug: row.providerModelSlug,
     modelType,
     modelData: draft?.modelData,
-    contextLength: draft?.contextLength,
+    contextLength: row.contextLength ?? draft?.contextLength,
     maxCompletionTokens: row.maxCompletionTokens,
     createModelData
   });
