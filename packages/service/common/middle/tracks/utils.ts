@@ -22,10 +22,7 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 const logger = getLogger(LogCategories.EVENT.TRACK);
 const dailyActiveDedupeCache = new DailyActiveDedupeCache({ logger });
 
-type AccountCancellationTrackData = {
-  uid?: string;
-  teamId?: string;
-  tmbId?: string;
+type AccountCancellationTrackData = PushTrackUserType & {
   userId: string;
   operatorUserId: string;
   operatorType: 'self' | 'system' | 'admin';
@@ -40,6 +37,7 @@ type AccountCancellationTrackData = {
   cronExecutionId?: string;
 };
 
+/** 提取埋点身份；账号事件只保留 uid，团队事件保留团队及成员，业务字段放入 data。 */
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
   logger.debug('Enqueue track event', {
@@ -51,9 +49,7 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
 
   return TrackModel.create({
     event,
-    uid,
-    teamId,
-    tmbId,
+    ...(uid !== undefined ? { uid } : { teamId, tmbId }),
     data: props
   });
 };
@@ -125,9 +121,7 @@ export const pushTrack = {
       data
     })?.then(() => {
       pushTrack.dailyUserActive({
-        uid: data.uid,
-        teamId: data.teamId,
-        tmbId: data.tmbId
+        uid: data.uid
       });
     });
   },

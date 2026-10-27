@@ -47,9 +47,7 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const dailyActiveData = {
-  uid: 'user-1',
-  teamId: 'team-1',
-  tmbId: 'member-1'
+  uid: 'user-1'
 };
 
 describe('pushTrack identity fields', () => {
@@ -86,7 +84,7 @@ describe('pushTrack identity fields', () => {
     ]);
     for (const [record] of mocks.trackCreate.mock.calls) {
       expect(record).toMatchObject(identity);
-      expect(record.uid).toBeUndefined();
+      expect(record).not.toHaveProperty('uid');
       expect(record.data).not.toHaveProperty('uid');
     }
   });
@@ -100,6 +98,10 @@ describe('pushTrack identity fields', () => {
     ]);
     for (const [record] of mocks.trackCreate.mock.calls) {
       expect(record).toMatchObject(dailyActiveData);
+      expect(record).not.toHaveProperty('teamId');
+      expect(record).not.toHaveProperty('tmbId');
+      expect(record.data).not.toHaveProperty('teamId');
+      expect(record.data).not.toHaveProperty('tmbId');
     }
   });
 
@@ -118,8 +120,6 @@ describe('pushTrack identity fields', () => {
     expect(mocks.trackCreate).toHaveBeenCalledExactlyOnceWith({
       event: TrackEnum.accountCancellationFinalizeSuccess,
       uid: 'user-1',
-      teamId: undefined,
-      tmbId: undefined,
       data
     });
   });
@@ -149,8 +149,6 @@ describe('pushTrack.dailyUserActive', () => {
     expect(mocks.trackCreate).toHaveBeenCalledWith({
       event: TrackEnum.dailyUserActive,
       uid: 'user-1',
-      teamId: 'team-1',
-      tmbId: 'member-1',
       data: {}
     });
   });
@@ -200,7 +198,6 @@ describe('pushTrack.workflowBuilder', () => {
     expect(mocks.trackCreate).toHaveBeenCalledWith({
       event: TrackEnum.workflowBuilderResultReady,
       teamId: 'team-1',
-      uid: undefined,
       tmbId: 'member-1',
       data: { appId: 'app-1', chatId: 'chat-1' }
     });

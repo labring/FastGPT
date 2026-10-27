@@ -26,13 +26,14 @@ export type WorkflowBuilderTrackData = z.infer<typeof WorkflowBuilderTrackDataSc
 export type PushTrackTeamType = {
   teamId: string;
   tmbId: string;
+  uid?: never;
 };
 
-/** 登录、日活事件保留全局用户身份和当前团队成员信息。 */
+/** 账号级事件只通过全局用户定位，与团队成员身份互斥。 */
 export type PushTrackUserType = {
   uid: string;
-  teamId: string;
-  tmbId: string;
+  teamId?: never;
+  tmbId?: never;
 };
 
 export type TrackSchemaType = {
