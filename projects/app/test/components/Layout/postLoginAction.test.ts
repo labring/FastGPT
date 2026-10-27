@@ -198,21 +198,21 @@ describe('post login action order', () => {
     expect(isMandatoryPostLoginAction('accountActivation')).toBe(true);
   });
 
-  it('marks account activation complete when the user dismisses the prompt', () => {
+  it('marks account activation complete and releases the lock once activation finishes', () => {
     const key = 'user-1:team-1';
     const state = startPostLoginAction({
       state: { key, completed: new Set() },
       key,
       action: 'accountActivation'
     });
-    const dismissed = finishPostLoginAction({
+    const finished = finishPostLoginAction({
       state,
       key,
       action: 'accountActivation'
     });
 
-    expect(dismissed.currentAction).toBeUndefined();
-    expect(dismissed.completed.has('accountActivation')).toBe(true);
+    expect(finished.currentAction).toBeUndefined();
+    expect(finished.completed.has('accountActivation')).toBe(true);
   });
 
   it('keeps the account activation behind the mandatory gate', () => {

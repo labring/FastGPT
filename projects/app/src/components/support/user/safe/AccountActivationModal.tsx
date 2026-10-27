@@ -11,7 +11,11 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { activateAccount } from '@/web/support/user/account/password/api';
 import PasswordForm, { type PasswordFormType } from './PasswordForm';
 
-/** 未激活账号设置新密码的前端引导；验证规则由共享密码表单负责，其他 API 不受此弹窗限制。 */
+/**
+ * 未激活账号设置新密码的前端引导；验证规则由共享密码表单负责，其他 API 不受此弹窗限制。
+ * 弹窗不可关闭：不传 onClose 以隐藏关闭按钮并屏蔽 ESC，同时禁用遮罩点击；
+ * 只有激活成功或其他标签页已完成激活时才会调用 onFinish 释放编排锁。
+ */
 const AccountActivationModal = ({ onFinish }: { onFinish: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -54,7 +58,7 @@ const AccountActivationModal = ({ onFinish }: { onFinish: () => void }) => {
   return (
     <MyModal
       isOpen
-      onClose={onFinish}
+      closeOnOverlayClick={false}
       isCentered
       w="400px"
       maxW={['calc(100vw - 32px)', '400px']}
