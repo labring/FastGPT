@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger/client';
+import { LogCategories } from '@fastgpt/service/common/logger/categories';
 import {
   SystemToolSecretMaskedValue,
   SystemToolSystemSecretStatusEnum
@@ -12,6 +13,12 @@ import {
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+
+// 复用全局 Logger mock 的输出端，桥接到计时器直接引用的 client 模块。
+vi.mock('@fastgpt/service/common/logger/client', async () => {
+  const { getLogger } = await import('@fastgpt/service/common/logger');
+  return { getLogger };
+});
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
@@ -119,7 +126,7 @@ beforeEach(() => {
 });
 
 describe('SystemToolRepo.getSystemToolList', () => {
-  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const logger = getLogger([...LogCategories.TRACE, 'system_tool.list.stage_finished']);
 
   beforeEach(() => {
     vi.spyOn(logger, 'debug').mockImplementation(() => {});

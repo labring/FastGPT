@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger } from '@fastgpt/service/common/logger/client';
+import { LogCategories } from '@fastgpt/service/common/logger/categories';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -8,6 +9,12 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+
+// 复用全局 Logger mock 的输出端，桥接到计时器直接引用的 client 模块。
+vi.mock('@fastgpt/service/common/logger/client', async () => {
+  const { getLogger } = await import('@fastgpt/service/common/logger');
+  return { getLogger };
+});
 
 const mocks = vi.hoisted(() => ({
   getUserDetail: vi.fn(),
@@ -85,7 +92,7 @@ const createTemplate = (
 });
 
 describe('listAuthorizedSystemToolTemplates', () => {
-  const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const logger = getLogger([...LogCategories.TRACE, 'system_tool.templates.stage_finished']);
 
   beforeEach(() => {
     vi.resetAllMocks();

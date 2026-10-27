@@ -12,7 +12,6 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { withTiming } from '@fastgpt/service/common/logger/timing';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import {
@@ -32,14 +31,12 @@ export type listBody = Record<string, never>;
 
 export type listResponse = GetTeamPluginListResponseType;
 
-const logger = getLogger(LogCategories.MODULE.PLUGIN.TEAM);
 const authToolListRequest = withTiming(
-  { logger, event: 'team_plugin.list.stage_finished', stage: 'auth' },
+  { event: 'team_plugin.list.stage_finished', stage: 'auth' },
   authUserPer
 );
 const getTimedUserDetail = withTiming(
   {
-    logger,
     event: 'team_plugin.list.stage_finished',
     stage: 'user.detail',
     properties: ({ tmbId }) => ({ tmbId })
@@ -113,7 +110,6 @@ async function getActiveDebugSource(tmbId: string) {
   }
   const getDebugSessionStatus = withTiming(
     {
-      logger,
       event: 'team_plugin.list.stage_finished',
       stage: 'plugin.debugSessionStatus',
       properties: ({ tmbId }) => ({ tmbId })

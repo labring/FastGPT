@@ -9,15 +9,13 @@ import {
   type GetSystemToolTemplatesBodyType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { withTiming } from '@fastgpt/service/common/logger/timing';
 import { listAuthorizedSystemToolTemplates } from '@fastgpt/service/core/app/tool/systemTool/capability';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
-const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 const authSystemToolRequest = withTiming(
-  { logger, event: 'system_tool.templates.stage_finished', stage: 'auth' },
+  { event: 'system_tool.templates.stage_finished', stage: 'auth' },
   authCert
 );
 

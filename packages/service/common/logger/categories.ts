@@ -5,6 +5,7 @@
  * - system: 应用层通用日志
  * - infra: 基础设施层 (数据库、缓存等)
  * - http: HTTP 请求/响应层
+ * - trace: 按事件分类的阶段耗时日志
  * - module: 业务模块层（参考 pages/api，省略 core/support 前缀）
  * - error: 错误日志层
  * - event: 事件日志层
@@ -18,6 +19,9 @@ export const LogCategories = {
     })
   }),
   NETWORK: ['system', 'network'],
+
+  // 阶段耗时日志，子分类由固定 event 标识组成。
+  TRACE: ['trace'],
 
   // 基础设施层
   INFRA: {
@@ -169,6 +173,7 @@ export const moduleCategories: readonly ModuleCategory[] = Object.keys(LogCatego
 // 导出类型以供 TypeScript 类型推断
 export type LogCategory =
   | typeof LogCategories.SYSTEM
+  | typeof LogCategories.TRACE
   | typeof LogCategories.SYSTEM.UPGRADE
   | (typeof LogCategories.SYSTEM.UPGRADE)[keyof typeof LogCategories.SYSTEM.UPGRADE]
   | (typeof LogCategories.INFRA)[keyof typeof LogCategories.INFRA]

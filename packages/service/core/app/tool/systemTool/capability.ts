@@ -28,13 +28,10 @@ import {
   type TeamPluginListItem
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
-import { getLogger, LogCategories } from '../../../../common/logger';
 import { withTiming } from '../../../../common/logger/timing';
 
-const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 const getTimedUserDetail = withTiming(
   {
-    logger,
     event: 'system_tool.templates.stage_finished',
     stage: 'user.detail',
     properties: ({ tmbId }) => ({ tmbId })
@@ -100,7 +97,6 @@ const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?:
   }
   const getDebugSessionStatus = withTiming(
     {
-      logger,
       event: 'system_tool.templates.stage_finished',
       stage: 'plugin.debugSessionStatus',
       properties: ({ tmbId }) => ({ tmbId })
@@ -185,7 +181,6 @@ const getSystemToolTemplateList = async ({
     }
     const filterChildren = withTiming(
       {
-        logger,
         event: 'system_tool.templates.stage_finished',
         stage: 'templates.filter',
         properties: (parent) => ({
@@ -242,7 +237,6 @@ const getSystemToolTemplateList = async ({
 
   const resolvePermissions = withTiming(
     {
-      logger,
       event: 'system_tool.templates.stage_finished',
       stage: 'templates.resolvePermissions',
       properties: ({ tools }) => ({
@@ -255,7 +249,6 @@ const getSystemToolTemplateList = async ({
   );
   const sortTemplates = withTiming(
     {
-      logger,
       event: 'system_tool.templates.stage_finished',
       stage: 'templates.sort',
       properties: (tools) => ({ teamId, toolCount: tools.length })
@@ -264,7 +257,6 @@ const getSystemToolTemplateList = async ({
   );
   const filterTemplates = withTiming(
     {
-      logger,
       event: 'system_tool.templates.stage_finished',
       stage: 'templates.filter',
       properties: (tools) => ({ teamId, inputCount: tools.length }),

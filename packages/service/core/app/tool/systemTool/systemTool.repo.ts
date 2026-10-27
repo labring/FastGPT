@@ -25,7 +25,6 @@ import type {
   ToolListItemType as SDKToolListItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
-import { getLogger, LogCategories } from '../../../../common/logger';
 import { withTiming } from '../../../../common/logger/timing';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
@@ -62,8 +61,6 @@ type SystemToolRuntimeType = {
   secretsVal?: Record<string, any>;
   permissions?: PluginPermissionEnumType[];
 };
-
-const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
@@ -359,7 +356,6 @@ export class SystemToolRepo {
 
     const listPluginTools = withTiming(
       {
-        logger,
         event: 'system_tool.list.stage_finished',
         stage: 'plugin.listTools',
         properties: ({ op, sources }) => ({ op, sources }),
@@ -369,7 +365,6 @@ export class SystemToolRepo {
     );
     const getSystemToolRecords = withTiming(
       {
-        logger,
         event: 'system_tool.list.stage_finished',
         stage: 'mongo.systemToolConfig',
         summary: (records) => ({ configCount: records.length })
@@ -378,7 +373,6 @@ export class SystemToolRepo {
     );
     const mergeSystemTools = withTiming(
       {
-        logger,
         event: 'system_tool.list.stage_finished',
         stage: 'tools.merge',
         properties: (tools, records) => ({
@@ -391,7 +385,6 @@ export class SystemToolRepo {
     );
     const sortSystemTools = withTiming(
       {
-        logger,
         event: 'system_tool.list.stage_finished',
         stage: 'tools.sort',
         properties: (tools) => ({ toolCount: tools.length })

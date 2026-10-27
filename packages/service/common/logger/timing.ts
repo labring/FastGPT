@@ -1,12 +1,9 @@
-type DurationLogger = {
-  debug: (message: string, properties?: Record<string, unknown>) => void;
-  warn: (message: string, properties?: Record<string, unknown>) => void;
-};
+import { getLogger } from './client';
+import { LogCategories } from './categories';
 
 type TimingResult<T> = T extends PromiseLike<unknown> ? Promise<Awaited<T>> : T;
 
 export type TimingOptions<Args extends unknown[], Result> = {
-  logger: DurationLogger;
   /** 稳定的事件标识，同时用于日志正文和结构化检索。 */
   event: string;
   /** 被计时的处理阶段，与 event 一起标识一次阶段日志。 */
@@ -18,14 +15,16 @@ export type TimingOptions<Args extends unknown[], Result> = {
 };
 
 /**
- * 在函数装配时注入计时，返回可以正常传参调用的函数；每次调用独立计时并沿用日志上下文。
+ * 在函数装配时注入计时，统一使用 trace.<event> 专用日志分类；调用方只声明事件和阶段。
+ * 返回可正常传参调用的函数，每次调用独立计时并沿用 requestId 等日志上下文。
  * 同步结果仍同步返回，Promise/thenable 等到完成后记录耗时；保留 this 和原始业务异常。
  * 阶段达到 1000ms 使用 warn，其余使用 debug，成功只记录摘要，失败补充 failed 标记。
  */
 export const withTiming = <Args extends unknown[], Result, This>(
-  { logger, event, stage, properties, summary }: TimingOptions<NoInfer<Args>, NoInfer<Result>>,
+  { event, stage, properties, summary }: TimingOptions<NoInfer<Args>, NoInfer<Result>>,
   run: (this: This, ...args: Args) => Result
 ) => {
+  const logger = getLogger([...LogCategories.TRACE, event]);
   return function (this: This, ...args: Args): TimingResult<Result> {
     const startedAt = Date.now();
     const callProperties = typeof properties === 'function' ? properties(...args) : properties;
@@ -33,9 +32,13 @@ export const withTiming = <Args extends unknown[], Result, This>(
     /** 每次调用独立持有开始时间和字段，避免并发调用相互覆盖。 */
     const logDuration = (fields: Record<string, unknown>) => {
       const durationMs = Date.now() - startedAt;
-      const log = durationMs >= 1000 ? logger.warn : logger.debug;
       // 固定标识由计时器持有，业务字段和结果摘要不能覆盖 event、stage 或实际耗时。
-      log.call(logger, event, { ...callProperties, ...fields, event, stage, durationMs });
+      const logProperties = { ...callProperties, ...fields, event, stage, durationMs };
+      if (durationMs >= 1000) {
+        logger.warn(event, logProperties);
+        return;
+      }
+      logger.debug(event, logProperties);
     };
     const onSuccess = (result: Awaited<Result>) => {
       logDuration(summary?.(result) ?? {});
