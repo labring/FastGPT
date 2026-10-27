@@ -55,9 +55,7 @@ const MANUAL_MODEL_STATUS_PROBE_LEASE_TTL_MS = 30_000;
 
 /** 记录当前正在执行的探测 Promise，用于同一进程防并发重入 */
 let modelStatusProbeInFlight: Promise<RunModelStatusProbeResponse> | undefined;
-const manualModelStatusProbeLease = new LeaseCache({
-  logger: getLogger(LogCategories.INFRA.REDIS)
-});
+const manualModelStatusProbeLease = new LeaseCache();
 
 /**
  * 读取数据库中存储的模型探测配置。

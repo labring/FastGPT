@@ -2,7 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   CreateAppFolderBodySchema,
-  CreateAppFolderResponseSchema,
   GetAppFolderPathQuerySchema,
   GetAppFolderPathResponseSchema
 } from './api';
@@ -23,12 +22,7 @@ export const AppFolderPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功创建应用文件夹',
-          content: {
-            'application/json': {
-              schema: CreateAppFolderResponseSchema
-            }
-          }
+          description: '成功创建应用文件夹'
         }
       }
     }

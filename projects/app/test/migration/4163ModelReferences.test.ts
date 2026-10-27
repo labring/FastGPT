@@ -127,9 +127,11 @@ describe('4163 dataset model reference migration', () => {
     expect(state.getFailedRecords()).toEqual([]);
   });
 
-  it('commits succeeded states through the runner for all four empty reference migrations', async () => {
+  it('commits succeeded states for the catalog prerequisite and all four empty reference migrations', async () => {
+    // 使用完整依赖链，先执行空源模型迁移，再验证四项引用回填的终态。
     const migrations = systemMigrations.filter((migration) =>
       [
+        '20260903_migrate_legacy_system_models',
         '20260903_backfill_model_permissions',
         '20260903_backfill_dataset_model_references',
         '20260903_backfill_evaluation_model_references',
@@ -142,9 +144,11 @@ describe('4163 dataset model reference migration', () => {
     });
     try {
       await runner.start();
+      await runner.waitForBlockingMigrations();
+      runner.startBackgroundMigrations();
       await runner.tick();
       const states = await getMigrationStates(migrations.map(({ id }) => id));
-      expect(states).toHaveLength(4);
+      expect(states).toHaveLength(5);
       for (const state of states) {
         expect(state.status).toBe(SystemMigrationStatusEnum.succeeded);
         expect(state.lastError).toBeUndefined();

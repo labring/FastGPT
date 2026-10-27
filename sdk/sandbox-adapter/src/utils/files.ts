@@ -1,4 +1,4 @@
-import type { FileWriteEntry } from '@/types';
+import type { FileWriteEntry } from '../types';
 
 /**
  * Check structurally if the given data is a ReadableStream.

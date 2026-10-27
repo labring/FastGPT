@@ -20,7 +20,10 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
 import { checkIsAgentUser } from '../../user/systemUser';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
@@ -126,7 +129,11 @@ export const authAppByTmbId = async ({
       })
     ]);
 
-    const Per = new AppPermission({ role: sumPer(folderPer, myPer), isOwner });
+    // 父级 owner 在子级只能是 manage；物化快照已含父级贡献，这里只兜底历史缺失快照。
+    const Per = new AppPermission({
+      role: sumPer(toInheritedPermissionValue(folderPer), myPer),
+      isOwner
+    });
 
     if (app.favourite || app.quick) {
       Per.addRole(ReadRoleVal);

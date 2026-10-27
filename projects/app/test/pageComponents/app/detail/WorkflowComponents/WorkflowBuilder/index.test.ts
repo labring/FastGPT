@@ -1,5 +1,8 @@
 import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WorkflowBuilder from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder';
@@ -7,11 +10,18 @@ import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chat
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import workflowFixture from '@fastgpt/workflow-core/test/fixtures/basic-ai/workflow.json';
+import workflowTranslations from '@fastgpt/web/i18n/zh-CN/workflow.json';
 
 const mocks = vi.hoisted(() => ({
   actions: undefined as WorkflowBuilderVersionActions | undefined,
@@ -20,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   load: vi.fn(),
   commit: vi.fn(),
   getModels: vi.fn(),
+  getToolPreview: vi.fn(),
   parseImport: vi.fn(),
   initData: vi.fn(),
   flowData2StoreData: vi.fn(),
@@ -33,7 +44,10 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn()
 }));
 
-vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('next-i18next', async () => {
+  const { Trans } = await import('react-i18next');
+  return { Trans, useTranslation: () => ({ t: (key: string) => key }) };
+});
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({ default: () => null }));
@@ -55,6 +69,7 @@ vi.mock('@/pageComponents/dashboard/agent/utils/appTemplateParse', () => ({
   parseWorkflowImportConfig: mocks.parseImport
 }));
 vi.mock('@/web/core/ai/model/modelData', () => ({ getModelList: mocks.getModels }));
+vi.mock('@/web/core/app/api/tool', () => ({ getClientToolPreviewNode: mocks.getToolPreview }));
 vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
   useUserModelStore: { getState: () => ({ defaultModelIds: {} }) }
 }));
@@ -95,7 +110,8 @@ vi.mock('@chakra-ui/react', async () => {
     Box: Container,
     Flex: Container,
     Portal: Container,
-    Text: Container,
+    Text: ({ children, as = 'span', fontWeight }: any) =>
+      createElement(as, { style: { fontWeight } }, children),
     Button: ({ children, onClick, isDisabled }: any) =>
       createElement('button', { onClick, disabled: isDisabled }, children),
     IconButton: Container
@@ -130,7 +146,7 @@ describe('WorkflowBuilder applyVersion', () => {
   const document = parseCompatibleWorkflowDocument(workflowFixture);
   const version: WorkflowBuilderVersion = {
     versionNo: 1,
-    name: 'AI version 1',
+    name: 'AI 生成版本 1',
     filename: 'version-1.json',
     checksum: `sha256:${'1'.repeat(64)}`,
     generatedAt: '2026-10-19T00:00:00.000Z',
@@ -215,8 +231,20 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(dom.window.document.querySelector('button')!.disabled).toBe(false);
     expect(mocks.toast).toHaveBeenLastCalledWith({
       status: 'success',
-      title: 'workflow_builder_applied'
+      title: expect.anything()
     });
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'zh-CN',
+      resources: { 'zh-CN': { workflow: workflowTranslations } }
+    });
+    const successTitle = dom.window.document.createElement('div');
+    successTitle.innerHTML = renderToStaticMarkup(
+      React.createElement(I18nextProvider, { i18n }, mocks.toast.mock.lastCall![0].title)
+    );
+    expect(successTitle.textContent).toBe('「AI 生成版本 1」 应用成功');
+    expect(successTitle.querySelector('strong')?.textContent).toBe('「AI 生成版本 1」');
+    expect(successTitle.querySelector('span')?.style.fontWeight).toBe('normal');
     const updateActivity = mocks.setActivity.mock.lastCall![0];
     const activity = { latestVersion: { version, responseChatItemId: 'response-2' } };
     expect(updateActivity(activity).latestVersion.version).toHaveProperty('appliedAt');
@@ -286,6 +314,42 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.commit).toHaveBeenCalledWith(
       expect.objectContaining({ document: archivedDocument, checksum: version.checksum })
     );
+  });
+
+  it('selects an available system secret only on the imported canvas and commits the unchanged archive', async () => {
+    const archivedDocument = structuredClone(document);
+    archivedDocument.nodes.push({
+      nodeId: 'search',
+      name: 'Search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      pluginId: 'search-tool',
+      version: '1.0.0',
+      inputs: [
+        {
+          key: NodeInputKeyEnum.systemInputConfig,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      outputs: []
+    });
+    mocks.load.mockResolvedValueOnce({ document: archivedDocument, checksum: version.checksum });
+    mocks.getToolPreview.mockResolvedValue({ hasSystemSecret: true });
+
+    await act(async () => {
+      await mocks.actions!.applyVersion(version, 'response-1');
+    });
+
+    expect(canvas.nodes.find((node) => node.nodeId === 'search')?.inputs[0].value).toEqual({
+      type: SystemToolSecretInputTypeEnum.system
+    });
+    expect(mocks.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        document: archivedDocument,
+        checksum: version.checksum
+      })
+    );
+    expect(mocks.commit.mock.lastCall![0].document.nodes.at(-1).inputs[0].value).toBeUndefined();
   });
 
   it('does not restore a snapshot when preparation fails before any canvas write', async () => {

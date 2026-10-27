@@ -58,10 +58,7 @@ export const runAuxiliaryGeneration = async <T>({
   });
   await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
 
-  res.once('close', () => {
-    stopping = true;
-  });
-
+  // 只有显式 stop 信号才中止模型；断开 SSE 仅代表客户端要从恢复镜像接管。
   const stopCheckTimer = setInterval(async () => {
     if (stopping) return;
     stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });

@@ -12,6 +12,7 @@ import {
 } from '@/web/core/chat/context/chatItemContext';
 import RenderPaymentPauseInteractive from './RenderPaymentPauseInteractive';
 import RenderPlan from './RenderPlan';
+import RenderChatAgentBuilderVersion from './RenderChatAgentBuilderVersion';
 import RenderPlanStatus from './RenderPlanStatus';
 import RenderProcessingCollapse from './RenderProcessingCollapse';
 import type { ProcessingPreviewTarget } from './RenderProcessingPreview';
@@ -21,8 +22,8 @@ import RenderText from './RenderText';
 import RenderTool from './RenderTool';
 import RenderUserFormInteractive from './RenderUserFormInteractive';
 import RenderUserSelectInteractive from './RenderUserSelectInteractive';
-import RenderWorkflowBuilderPreviewInteractive from './WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
 import RenderWorkflowBuilderVersion from './WorkflowBuilder/RenderWorkflowBuilderVersion';
+import RenderWorkflowBuilderPreview from './WorkflowBuilder/RenderWorkflowBuilderPreview';
 import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
 import { useMemoizedFn } from 'ahooks';
@@ -203,20 +204,27 @@ const AIResponseBox = ({
         />
       );
     }
-    if (interactive.type === 'workflowBuilderPreview') {
-      responseBlocks.push(
-        <RenderWorkflowBuilderPreviewInteractive
-          key="interactive"
-          interactive={interactive}
-          isLastChild={isLastChild}
-        />
-      );
-    }
     if (interactive.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
+    if (interactive.type === 'workflowBuilderPreview') {
+      responseBlocks.push(
+        <RenderWorkflowBuilderPreview key="interactive" interactive={interactive} />
+      );
+    }
+  }
+
+  if (value.chatAgentBuilderVersion) {
+    responseBlocks.push(
+      <RenderChatAgentBuilderVersion
+        key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
+        version={value.chatAgentBuilderVersion}
+        responseChatItemId={chatItemDataId}
+        isChatting={isChatting}
+      />
+    );
   }
 
   if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {

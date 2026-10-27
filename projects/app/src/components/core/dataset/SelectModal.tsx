@@ -78,9 +78,10 @@ export function useDatasetSelect() {
   } = useScrollPagination(getDatasetsV2, {
     params: {
       parentId,
-      searchKey
+      searchKey,
+      withAppCount: false
     },
-    pageSize: 50,
+    pageSize: 20,
     refreshDeps: [parentId, searchKey],
     throttleWait: 300
   });

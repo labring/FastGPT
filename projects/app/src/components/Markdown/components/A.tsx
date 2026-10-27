@@ -23,9 +23,9 @@ import Markdown from '..';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
 import { isSafeHref } from '@fastgpt/global/common/string/url';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 
-type MarkdownChatAuthData = ChatAuthTargetInput & {
+type MarkdownChatAuthData = ResolvedChatAuthTargetInput & {
   chatId: string;
   chatItemDataId: string;
 };

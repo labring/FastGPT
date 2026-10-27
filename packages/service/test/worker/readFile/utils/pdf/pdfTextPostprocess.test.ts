@@ -204,3 +204,36 @@ describe('pdfTextPostprocess', () => {
     expect(text.match(/操作/g)).toHaveLength(4);
   });
 });
+
+describe('pdfTextPostprocess 大规模输入溢出回归', () => {
+  // 修复前 Math.min/max(...spread) 在项数超过 V8 函数参数上限（约 11 万）时抛 RangeError，
+  // 导致整个 PDF 解析失败。这里用 12 万项确保覆盖。PDF.js 兜底路径无页数上限，跨页聚合的
+  // 重复页眉 group 规模随页数线性增长，恶意/极端 PDF 可达。
+
+  it('单页同 y 行项数超过函数参数上限时不抛', () => {
+    const itemCount = 120_000;
+    const page = {
+      height: 1000,
+      textItems: Array.from({ length: itemCount }, (_, index) =>
+        textItem({ text: `col${index}`, x: 80 + index, y: 100, width: 12 })
+      )
+    };
+
+    // 触发 extractPositionedPageLines 内 Math.min/max(...sortedItems.map()) 的溢出路径。
+    // 该路径含 O(n) 字符串拼接，12 万项约数秒，放宽超时到 60s。
+    const lines = extractPageLines(page);
+    expect(lines.length).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('跨页重复页眉页数超过函数参数上限时不抛', () => {
+    const pageCount = 120_000;
+    // 每页页顶放同一短页眉，满足 isRepeatedEdgeCandidate + getPageEdge('header')，
+    // 使 findRepeatedEdgeLines 的 group 聚合 pageCount 项，触发 Math.max(...positions) 溢出路径。
+    const pages = Array.from({ length: pageCount }, () => ({
+      height: 1000,
+      textItems: [textItem({ text: 'Header', x: 80, y: 10, width: 60, height: 12 })]
+    }));
+
+    expect(() => postprocessPdfPages(pages)).not.toThrow();
+  }, 60_000);
+});

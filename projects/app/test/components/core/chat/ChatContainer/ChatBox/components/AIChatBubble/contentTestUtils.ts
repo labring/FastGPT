@@ -58,6 +58,15 @@ vi.mock('@/components/core/chat/components/AIResponseBox', () => ({
         )
       );
     }
+    if (value.chatAgentBuilderVersion) {
+      elements.push(
+        React.createElement(
+          'button',
+          { key: 'config', 'data-content': 'config' },
+          'Apply configuration'
+        )
+      );
+    }
     if (showWorkflowBuilderVersion && value.workflowBuilderVersion) {
       elements.push(
         React.createElement(
@@ -143,8 +152,7 @@ export const confirmedPreview: AIChatItemValueItemType = {
         { value: 'confirm', label: 'Confirm', inputMode: 'none' },
         { value: 'revise', label: 'Revise', inputMode: 'text' },
         { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-      ],
-      answerValue: 'confirm'
+      ]
     }
   }
 };
@@ -159,7 +167,7 @@ export const versionValue: AIChatItemValueItemType = {
   }
 };
 
-/** 三个内容组件共用 DOM 生命周期与叶子展示替身，避免重复搭建浏览器环境。 */
+/** 内容与处理过程组件共用 DOM 生命周期和叶子展示替身，避免重复搭建浏览器环境。 */
 export const setupContentTest = () => {
   let root: Root;
   let container: HTMLDivElement;

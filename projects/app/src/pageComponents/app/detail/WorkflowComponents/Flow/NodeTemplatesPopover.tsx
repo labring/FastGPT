@@ -109,13 +109,6 @@ const NodeTemplatesPopover = () => {
           edges,
           connection: edge
         });
-        if (result.status === 'adapter-error') {
-          console.error(
-            '[Workflow Core Adapter] Failed to validate auto connection, falling back to Web behavior',
-            result.error
-          );
-          return true;
-        }
         return result.status === 'success';
       });
 

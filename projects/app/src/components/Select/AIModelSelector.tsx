@@ -44,6 +44,7 @@ type Props = Omit<SelectProps, 'list'> & {
   vision?: boolean;
   excludeHidden?: boolean;
   appId?: string;
+  requireTtsVoice?: boolean;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -126,6 +127,7 @@ const AIModelSelector = ({
   vision,
   excludeHidden,
   appId,
+  requireTtsVoice,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
@@ -168,10 +170,13 @@ const AIModelSelector = ({
         modelList.filter(
           (model) =>
             model.type === modelType &&
+            (!requireTtsVoice ||
+              (model.type === ModelTypeEnum.tts &&
+                model.config.voices.some(({ value }) => value.trim().length > 0))) &&
             (allowedValues === undefined || isModelAllowedByValues(model, allowedValues))
         )
       ),
-    [allowedValues, modelList, modelType]
+    [allowedValues, modelList, modelType, requireTtsVoice]
   );
   const selection = useMemo(
     () =>
@@ -293,15 +298,21 @@ const AIModelSelector = ({
             : []
       }
       placeholder={placeholder ?? t('common:not_model_config')}
-      changeOnEverySelect
       rowMinWidth="160px"
       onSelect={(values) => {
         if (canBeUnset && values[0] === UNSET_MODEL_VALUE) {
           onChange?.(UNSET_MODEL_VALUE);
           return;
         }
+
+        // 分组模式下点击左侧列只是切换提供商，第二列仍是上一次的模型：
+        // 此时回调会把「没变的模型」当成新选择，进而触发一次无意义的保存。
+        // 只有真正选中具体模型（叶子节点）才算变更。
         const value = grouped ? values[1] : values[0];
         if (value === undefined) return;
+        // 选择器默认会展开已选模型所在的提供商，重选同一个模型不应产生 update 请求
+        if (value === currentValue) return;
+
         const model = models.find((item) => item.modelId === value);
         if (model) setFromCatalog(model);
         onChange?.(value);

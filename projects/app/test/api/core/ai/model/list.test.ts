@@ -18,7 +18,7 @@ describe('GET /api/core/ai/model/list', () => {
           scope: ModelScopeEnum.system,
           isActive: true,
           requestAuth: 'private-secret',
-          priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
+          pricing: { tiers: [{ inputPrice: 1, outputPrice: 2 }] },
           config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
         },
         {
@@ -30,7 +30,7 @@ describe('GET /api/core/ai/model/list', () => {
           scope: ModelScopeEnum.team,
           isActive: true,
           tmbId: 'some-member-id',
-          priceTiers: [{ minInputTokens: 0, inputPrice: 10, outputPrice: 20 }],
+          pricing: { tiers: [{ inputPrice: 10, outputPrice: 20 }] },
           config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
         }
       ]
@@ -54,7 +54,7 @@ describe('GET /api/core/ai/model/list', () => {
           name: 'GPT Public',
           provider: 'openai',
           type: ModelTypeEnum.llm,
-          priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
+          pricing: { tiers: [{ inputPrice: 1, outputPrice: 2 }] },
           config: { maxContext: 128000 }
         }
       ],

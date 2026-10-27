@@ -51,6 +51,10 @@ export const getDraggableItemProps = (
 
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
+  /** 克隆替换原始拖拽项之前，保存依赖原始 DOM 的布局信息。 */
+  onBeforeCapture?: (capture: { draggableId: string }) => void;
+  /** 成功、取消或移出列表时均调用，供调用方释放拖拽状态。 */
+  onDragEnd?: () => void;
   renderClone?: DraggableChildrenFn;
   children: ({
     provided,
@@ -58,7 +62,7 @@ type Props<T = any> = {
   }: {
     provided: DroppableProvided;
     snapshot: DroppableStateSnapshot;
-  }) => ReactElement<HTMLElement, string>;
+  }) => ReactElement;
   dataList: T[];
   zoom?: number;
   renderInnerPlaceholder?: boolean;
@@ -68,6 +72,8 @@ function DndDrag<T>({
   children,
   renderClone,
   onDragEndCb,
+  onBeforeCapture,
+  onDragEnd,
   dataList,
   zoom = 1,
   renderInnerPlaceholder = true
@@ -79,11 +85,12 @@ function DndDrag<T>({
     setDraggingItemHeight(draggingNode?.getBoundingClientRect().height || 0);
   };
 
-  const onDragEnd = (result: DropResult) => {
+  const handleDragEnd = (result: DropResult) => {
+    setDraggingItemHeight(0);
+    onDragEnd?.();
     if (!result.destination) {
       return;
     }
-    setDraggingItemHeight(0);
 
     const startIndex = result.source.index;
     const endIndex = result.destination.index;
@@ -96,7 +103,11 @@ function DndDrag<T>({
   };
 
   return (
-    <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DragDropContext
+      onBeforeCapture={onBeforeCapture}
+      onDragStart={onDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <Droppable droppableId="droppable" renderClone={renderClone}>
         {(provided, snapshot) => (
           <>

@@ -1,4 +1,5 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { dispatchClassifyQuestion } from '@fastgpt/service/core/workflow/dispatch/ai/classifyQuestion';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { describe, expect, it, vi } from 'vitest';
@@ -53,4 +54,42 @@ describe('dispatchClassifyQuestion token summary', () => {
       ]);
     }
   );
+});
+
+describe('dispatchClassifyQuestion branch routing', () => {
+  it.each([
+    ['category-a', 'category-a'],
+    ['第二类', 'category-b'],
+    ['unknown result', 'category-fallback'],
+    ['', 'category-fallback']
+  ])('selects only the expected branch for model response %j', async (answerText, selectedKey) => {
+    const agents = [
+      { key: 'category-a', value: '第一类' },
+      { key: 'category-b', value: '第二类' },
+      { key: 'category-fallback', value: '其他' }
+    ];
+    requestMock.mockResolvedValueOnce({
+      answerText,
+      usage: { inputTokens: 11, outputTokens: 3, usedUserOpenAIKey: false }
+    });
+    const result = await dispatchClassifyQuestion({
+      runningAppInfo: { id: 'app' },
+      runningUserInfo: { teamId: 'team' },
+      node: { nodeId: 'classify', name: 'classify' },
+      histories: [],
+      externalProvider: {},
+      params: { userChatInput: 'question', agents },
+      nodeSummary: createNodeSummary(),
+      usagePush: vi.fn()
+    } as unknown as Parameters<typeof dispatchClassifyQuestion>[0]);
+
+    const selected = agents.find((agent) => agent.key === selectedKey)!;
+    expect(result.data?.[NodeOutputKeyEnum.cqResult]).toBe(selected.value);
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(selected.value);
+    expect(result[DispatchNodeResponseKeyEnum.skipHandleId]).toEqual(
+      agents
+        .filter((agent) => agent.key !== selectedKey)
+        .map((agent) => `classify-source-${agent.key}`)
+    );
+  });
 });

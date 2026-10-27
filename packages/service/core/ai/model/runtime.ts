@@ -1,11 +1,9 @@
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   AIModelDataSchema,
   AIModelDocumentDataSchema,
   type AIModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { defaultProvider } from '@fastgpt/global/core/ai/model/provider';
-import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/model/pricing';
 import { getModelProvider } from './provider/controller';
 
 /**
@@ -34,8 +32,5 @@ export const formatDbModelToRuntimeModel = (
     avatar: provider.avatar
   });
 
-  if (runtimeModel.type === ModelTypeEnum.llm) {
-    runtimeModel.priceTiers = getRuntimeResolvedPriceTiers(runtimeModel);
-  }
   return runtimeModel;
 };

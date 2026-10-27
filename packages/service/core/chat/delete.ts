@@ -4,6 +4,24 @@ import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
 import { assertChatAccess, type ChatAccessScope } from './auth';
+import type { ClientSession } from '../../common/mongo';
+/** 软删除指定消息；交互状态由剩余消息推导，删除和重试均不回写原问题。 */
+export const softDeleteChatItems = async (
+  {
+    sourceType,
+    sourceId,
+    chatId,
+    contentIds
+  }: ChatSourceParams & { chatId: string; contentIds: string[] },
+  session?: ClientSession
+) => {
+  if (contentIds.length === 0) return;
+  await MongoChatItem.updateMany(
+    { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: { $in: contentIds } },
+    { $set: { deleteTime: new Date() } },
+    { session }
+  );
+};
 
 export type DeleteChatResourcesBySourceParams = ChatSourceParams & {
   chatIds?: string[];

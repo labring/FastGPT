@@ -7,6 +7,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Portal,
   useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -57,6 +58,7 @@ const TagFilterDropdownSelect = ({
   searchable = false,
   popoverWidth = '140px',
   popoverMinWidth,
+  usePortal = false,
   onSelect
 }: {
   items: DropdownOptionItem[];
@@ -68,6 +70,7 @@ const TagFilterDropdownSelect = ({
   searchable?: boolean;
   popoverWidth?: string;
   popoverMinWidth?: string;
+  usePortal?: boolean;
   onSelect: (value: string) => void;
 }) => {
   const { t } = useTranslation();
@@ -87,6 +90,98 @@ const TagFilterDropdownSelect = ({
     }
     onOpen();
   };
+
+  const popoverContent = (
+    <PopoverContent
+      className="nowheel"
+      w={popoverWidth}
+      minW={popoverMinWidth}
+      p={'6px'}
+      bg={'white'}
+      borderRadius={'sm'}
+      border={'1px solid #fff'}
+      boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
+      _focusVisible={{ outline: 'none' }}
+      zIndex={1500}
+    >
+      <Flex direction={'column'} gap={searchable ? '4px' : '2px'}>
+        {searchable && (
+          <Input
+            h={'32px'}
+            px={2}
+            fontSize={'xs'}
+            borderRadius={'sm'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            placeholder={t('common:Search')}
+            _placeholder={{ color: 'myGray.500' }}
+            _focus={{
+              borderColor: 'primary.600',
+              boxShadow: 'focus'
+            }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+        <Flex
+          direction={'column'}
+          gap={searchable ? undefined : '2px'}
+          maxH={searchable ? '160px' : undefined}
+          overflowY={searchable ? 'auto' : undefined}
+        >
+          {filteredItems.length === 0 ? (
+            <EmptyTip py={0} text={t('common:no_select_data')} />
+          ) : (
+            filteredItems.map((item) => {
+              const selected = item.value === selectedValue;
+              return (
+                <Flex
+                  key={item.value}
+                  alignItems={'center'}
+                  gap={item.icon ? 2 : undefined}
+                  px={'4px'}
+                  py={'6px'}
+                  minH={'28px'}
+                  borderRadius={'xs'}
+                  cursor={'pointer'}
+                  fontSize={'xs'}
+                  fontWeight={'medium'}
+                  bg={selected ? (highlightSelected ? 'primary.50' : 'myGray.50') : 'transparent'}
+                  color={selected && highlightSelected ? 'primary.700' : 'myGray.600'}
+                  _hover={{ bg: selected && highlightSelected ? 'primary.50' : 'myGray.50' }}
+                  onClick={() => {
+                    onSelect(item.value);
+                    onClose();
+                  }}
+                >
+                  {item.icon && (
+                    <MyIcon
+                      name={item.icon}
+                      w={'16px'}
+                      h={'16px'}
+                      flexShrink={0}
+                      transform={item.iconFlip ? 'scaleX(-1)' : undefined}
+                    />
+                  )}
+                  <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                    <Box
+                      flex={1}
+                      minW={0}
+                      overflow={'hidden'}
+                      textOverflow={'ellipsis'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {item.label}
+                    </Box>
+                  </MyTooltip>
+                </Flex>
+              );
+            })
+          )}
+        </Flex>
+      </Flex>
+    </PopoverContent>
+  );
 
   return (
     <Box w={width} flexShrink={0}>
@@ -137,97 +232,7 @@ const TagFilterDropdownSelect = ({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          className="nowheel"
-          w={popoverWidth}
-          minW={popoverMinWidth}
-          p={'6px'}
-          bg={'white'}
-          borderRadius={'sm'}
-          border={'1px solid #fff'}
-          boxShadow={'0px 4px 5px rgba(19, 51, 107, 0.1), 0px 0px 0.5px rgba(19, 51, 107, 0.1)'}
-          _focusVisible={{ outline: 'none' }}
-          zIndex={1500}
-        >
-          <Flex direction={'column'} gap={searchable ? '4px' : '2px'}>
-            {searchable && (
-              <Input
-                h={'32px'}
-                px={2}
-                fontSize={'xs'}
-                borderRadius={'sm'}
-                border={'1px solid'}
-                borderColor={'myGray.200'}
-                placeholder={t('common:Search')}
-                _placeholder={{ color: 'myGray.500' }}
-                _focus={{
-                  borderColor: 'primary.600',
-                  boxShadow: 'focus'
-                }}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            )}
-            <Flex
-              direction={'column'}
-              gap={searchable ? undefined : '2px'}
-              maxH={searchable ? '160px' : undefined}
-              overflowY={searchable ? 'auto' : undefined}
-            >
-              {filteredItems.length === 0 ? (
-                <EmptyTip py={0} text={t('common:no_select_data')} />
-              ) : (
-                filteredItems.map((item) => {
-                  const selected = item.value === selectedValue;
-                  return (
-                    <Flex
-                      key={item.value}
-                      alignItems={'center'}
-                      gap={item.icon ? 2 : undefined}
-                      px={'4px'}
-                      py={'6px'}
-                      minH={'28px'}
-                      borderRadius={'xs'}
-                      cursor={'pointer'}
-                      fontSize={'xs'}
-                      fontWeight={'medium'}
-                      bg={
-                        selected ? (highlightSelected ? 'primary.50' : 'myGray.50') : 'transparent'
-                      }
-                      color={selected && highlightSelected ? 'primary.700' : 'myGray.600'}
-                      _hover={{ bg: selected && highlightSelected ? 'primary.50' : 'myGray.50' }}
-                      onClick={() => {
-                        onSelect(item.value);
-                        onClose();
-                      }}
-                    >
-                      {item.icon && (
-                        <MyIcon
-                          name={item.icon}
-                          w={'16px'}
-                          h={'16px'}
-                          flexShrink={0}
-                          transform={item.iconFlip ? 'scaleX(-1)' : undefined}
-                        />
-                      )}
-                      <MyTooltip label={item.label} showOnlyWhenOverflow shouldWrapChildren={false}>
-                        <Box
-                          flex={1}
-                          minW={0}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                          whiteSpace={'nowrap'}
-                        >
-                          {item.label}
-                        </Box>
-                      </MyTooltip>
-                    </Flex>
-                  );
-                })
-              )}
-            </Flex>
-          </Flex>
-        </PopoverContent>
+        {usePortal ? <Portal>{popoverContent}</Portal> : popoverContent}
       </Popover>
     </Box>
   );
@@ -239,10 +244,12 @@ const TagFilterDropdownSelect = ({
 export const TagFilterFieldSelect = ({
   condition,
   options,
+  usePortal,
   onChange
 }: {
   condition: DatasetTagFilterCondition;
   options: WorkflowTagFilterOption[];
+  usePortal?: boolean;
   onChange: (value: FieldSelectValue) => void;
 }) => {
   const { t } = useTranslation();
@@ -267,6 +274,7 @@ export const TagFilterFieldSelect = ({
       placeholder={t('workflow:tag_filter_select_tag')}
       searchable
       popoverWidth={'200px'}
+      usePortal={usePortal}
       onSelect={(value) => {
         const parsed = parseTagOptionKey(value);
         onChange({
@@ -286,9 +294,11 @@ export const TagFilterFieldSelect = ({
  */
 export const TagFilterAttrSelect = ({
   condition,
+  usePortal,
   onChange
 }: {
   condition: DatasetTagFilterCondition;
+  usePortal?: boolean;
   onChange: (value: FieldSelectValue) => void;
 }) => {
   const { t } = useTranslation();
@@ -315,6 +325,7 @@ export const TagFilterAttrSelect = ({
       placeholder={t('workflow:tag_filter_select_attr')}
       popoverWidth={'140px'}
       popoverMinWidth={'110px'}
+      usePortal={usePortal}
       onSelect={(value) => {
         if (value === DatasetTagFilterFieldEnum.createTime) {
           onChange({
@@ -340,10 +351,12 @@ export const TagFilterAttrSelect = ({
 export const TagFilterOpSelect = ({
   value,
   list,
+  usePortal,
   onChange
 }: {
   value?: string;
   list: TagFilterOperator[];
+  usePortal?: boolean;
   onChange: (value: string) => void;
 }) => {
   const { t } = useTranslation();
@@ -388,6 +401,7 @@ export const TagFilterOpSelect = ({
       highlightSelected={false}
       popoverWidth={'115px'}
       popoverMinWidth={'100px'}
+      usePortal={usePortal}
       onSelect={onChange}
     />
   );

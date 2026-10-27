@@ -7,16 +7,16 @@ App、Dataset、Skill 列表同时存在两类前端使用场景：
 1. Dashboard 主页面展示资源卡片，需要避免一次性拉取整个团队资源，并支持触底加载。
 2. 选择器和移动弹窗中的当前目录列表可以增量加载，目录层级通过面包屑切换，不再在当前列表内递归展开。
 
-本次采用 V1/V2 分工：
+App、Dataset 的 V1 列表接口已标记弃用，保留兼容；新增调用统一使用 V2。Skill 已统一使用 V2：
 
 | 场景 | App | Dataset | Skill |
 | --- | --- | --- | --- |
-| V1 兼容接口 | `/core/app/list` | `/core/dataset/list` | `/core/ai/skill/list` |
-| 数组兼容 wrapper | `getAllApps` | `getAllDatasets` | `getAllSkillList` |
+| V1 兼容接口（已弃用） | `/core/app/list` | `/core/dataset/list` | 已移除 |
+| 数组兼容 wrapper | `getAllApps` | `getAllDatasets` | 无 |
 | Dashboard 分页接口 | `/core/app/listV2` | `/core/dataset/listV2` | `/core/ai/skill/listV2` |
 | Dashboard 分页 wrapper | `getMyAppsV2` | `getDatasetsV2` | `getSkillListV2` |
 
-V1 的 response shape 和现有调用者保持兼容，V2 使用 `{ list, total }`。本次不把 V2 的第一页直接伪装成全量数组。
+App、Dataset V1 的 response shape 和现有调用者保持兼容，V2 使用 `{ list, total }`。不能把 V2 的第一页直接伪装成全量数组。
 
 ## 2. 请求 wrapper
 
@@ -62,10 +62,9 @@ Dashboard App Context
 
 文件：`projects/app/src/web/core/skill/api.ts`
 
-- `getSkillList(data)` 请求 `/core/ai/skill/list`。
-- `getSkillListV2(data)` 请求 `/core/ai/skill/listV2`。
-- `getAllSkillList(data)` 请求旧版 `getSkillList(data)`，取旧接口响应中的 `list` 返回给数组调用者。
-- `skillIds` 查询保持不分页，用于校验已关联 Skill 的完整状态。
+- `getSkillListV2(data)` 请求 `/core/ai/skill/listV2`，返回 `{ list, total }`。
+- 旧版路由、请求类型、前端封装和 OpenAPI 声明已移除。
+- `parentId` 仅属于分页分支；提供 `skillIds` 时优先按 ID 查询，Zod 解析时过滤目录和分页字段。`skillIds` 长度为 1–500，用于校验已关联 Skill 的完整状态。
 
 ## 3. Dashboard 分页页面
 
@@ -154,8 +153,20 @@ Dashboard App Context
 
 - `projects/app/src/pageComponents/app/detail/Edit/FormComponent/ToolSelector/hooks/useSkillSelectData.ts` 使用 `getSkillListV2` 和 `useScrollPagination`。
 - `SkillSelectModal.tsx` 使用 `ScrollData` 和 `useVirtualGridList`。
-- `projects/app/src/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager.tsx` 使用 `getAllSkillList` 建立 Skill 映射和目录加载结果。
+- `projects/app/src/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager.tsx` 使用 `getSkillListV2` 分页加载 Skill 和目录，并按已加载结果维护映射。
 - `projects/app/src/pageComponents/dashboard/skill/List.tsx` 的移动文件夹列表使用 `getSkillListV2`。
+
+### 3.4 权限变更后的局部同步
+
+- 协作者弹窗取消或直接关闭时不刷新；保存成功、删除协作者、转让所有者或恢复继承后后台同步。
+- 列表卡片中的 App（含 Tool）、Dataset、Skill 及其文件夹均按 ID 更新，分别通过 V2 的 `appIds`、`datasetIds`、`skillIds` 查询被编辑资源，不携带 `parentId` 或分页字段，保留当前搜索、类型、创建者等公共筛选条件。
+- `useScrollPagination.refreshItems` 按 ID 原位替换已加载条目，保留其他页、列表顺序、滚动容器和分页总数；ID 查询自身的 `total` 不作为列表总数。
+- Skill 和知识库的分页、IDs 查询均支持 `withAppCount`。管理列表及其 IDs 刷新显式开启，选择器关闭以跳过引用聚合；仅非文件夹资源的 Owner 返回数量。沿用原接口默认行为：Skill 未传时统计，知识库未传时不统计。
+- IDs 查询仅替换实际返回的条目；未返回的 ID 保留原缓存，列表总数和下一页 offset 不变。返回空列表时不更新缓存。
+- 侧栏修改当前文件夹权限后，同时重新读取文件夹详情并将当前 list 从 offset 0 重新分页，更新继承子项的权限、结果成员和总数。列表卡片中的文件夹权限修改仅按该文件夹 ID 同步，不触发全量刷新。
+- IDs 与 list 使用独立的请求状态。IDs 不取消 list，等待当前 list 完成后再查询；触底发生在 IDs 同步期间时也等待，不丢弃该次加载。连续保存合并待同步 ID，同一资源的新保存排在旧同步之后，按最多 500 个 ID 分批读取，整批成功后再提交。
+- IDs 请求失败保留旧快照；新筛选或组件卸载使旧响应失效。切换目录后旧保存才完成时，只等待新首屏并尝试更新当前缓存，找不到目标资源则不改变列表。
+- 创建、删除、移动等原有普通刷新继续重新分页加载，不改变其列表重建语义。
 
 ## 4. 已改为分页的选择列表
 
@@ -195,12 +206,9 @@ Workflow App 选择器采用面包屑加当前目录列表，保留单选和过�
 | --- | --- | --- |
 | `components/core/app/DatasetSelectModal.tsx` | 应用/工作流侧知识库选择、全选/取消全选 | 组件尚未适配 `listV2`；当前列表展示和全选操作都依赖旧接口返回的完整候选集 |
 
-### Skill 直接调用点
+### Skill
 
-| 文件 | 使用场景 | 保留原因 |
-| --- | --- | --- |
-| `hooks/useSkillManager.tsx` | ChatAgent Skill 管理 | 需要完整数组构建 Skill 映射 |
-| `packages/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin/index.tsx` | PromptEditor Skill 树 | 插件维护递归目录和键盘索引 |
+Skill 没有旧版全量数组接口调用。ChatAgent 通过 `getSkillListV2` 分页获取列表，PromptEditor 的 SkillPickerPlugin 通过 `loadPage` 和 `onFolderLoad` 加载当前目录及后续页。
 
 ## 6. 当前目录分页组件
 
@@ -241,7 +249,7 @@ server: SelectOneResourceServer
 
 - App V1 返回数组，App V2 返回 `{ list, total }`。
 - Dataset V1 返回数组，Dataset V2 返回 `{ list, total }`。
-- Skill V1 的旧响应仍由 `getAllSkillList` 转换为数组，Skill V2 供 Dashboard 分页使用。
+- Skill 只保留 V2，Dashboard 和选择器使用分页查询；需要按 ID 查询时可传 `skillIds`，即使混传 `parentId` 和分页参数，解析结果也只保留 ID 查询及公共筛选字段。
 - V2 在权限过滤后执行 `skip/limit`，并返回匹配总数。
 - V2 使用稳定排序，分页追加时不因同一更新时间产生重复或遗漏。
 
@@ -253,26 +261,26 @@ server: SelectOneResourceServer
 - 面包屑选择器和移动弹窗首次只请求当前目录一页，继续滚动能追加下一页，直到 `data.length >= total`。
 - 聊天标注知识库选择器使用 `listV2` 分页；应用/工作流侧 `components/core/app/DatasetSelectModal.tsx` 明确仍使用旧 `/core/dataset/list` 全量接口，暂不纳入分页验证范围。
 - 面包屑选择器切换目录会重新请求 `offset=0`，移动弹窗可选择根目录 `null`、禁用目录和当前资源。
-- PromptEditor Skill 树、Dataset 全选等仍按语义继续使用 V1 全量数组。
+- PromptEditor Skill 选择器按目录分页；Dataset 全选仍按语义使用 V1 全量数组。
 
 ### 测试文件
 
 - `projects/app/test/api/core/app/list.test.ts`
 - `projects/app/test/api/core/dataset/list.test.ts`
-- `projects/app/test/api/core/ai/skill/list.test.ts`
+- `projects/app/test/api/core/ai/skill/listV2.test.ts`
 
 建议执行：
 
 ```bash
 pnpm --dir projects/app test test/api/core/app/list.test.ts
 pnpm --dir projects/app test test/api/core/dataset/list.test.ts
-pnpm --dir projects/app test test/api/core/ai/skill/list.test.ts
+pnpm test projects/app/test/api/core/ai/skill/listV2.test.ts
 pnpm --dir projects/app typecheck
 ```
 
 ## 8. 实现约束
 
-需要保留递归树语义的调用方继续使用 V1 数组 wrapper；不能把 V2 第一页直接伪装成全量数组。当前目录分页组件的通用协议如下：
+App、Dataset 中需要保留全量数组语义的调用方继续使用对应 V1 wrapper；Skill 统一使用 V2。不能把 V2 第一页直接伪装成全量数组。当前目录分页组件的通用协议如下：
 
 ```ts
 type ResourcePage = {
@@ -290,4 +298,4 @@ type ResourceServer = (
 ) => Promise<ResourcePage>;
 ```
 
-`SelectOneResource` 已完成目录级分页、面包屑切换、选中态、禁用态、加载态和空列表处理；`MoveModal` 通过 `selectFolder` 复用该组件。需要递归树语义的调用方仍应使用 V1 数组 wrapper。
+`SelectOneResource` 已完成目录级分页、面包屑切换、选中态、禁用态、加载态和空列表处理；`MoveModal` 通过 `selectFolder` 复用该组件。

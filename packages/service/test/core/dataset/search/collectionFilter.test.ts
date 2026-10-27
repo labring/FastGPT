@@ -221,6 +221,41 @@ describe('filterCollectionByKeyValueTags', () => {
     );
   });
 
+  it('keeps negative conditions satisfied when a dataset never defined the tag', async () => {
+    // dataset-1 定义过 count 标签；dataset-2 从未使用该标签，二者都应满足 count != 10。
+    const collectionsByDataset: Record<string, any[]> = {
+      'dataset-1': [
+        { _id: 'd1-diff', tags: [{ tagId: 'tag-num', value: 20 }] },
+        { _id: 'd1-absent', tags: [] }
+      ],
+      'dataset-2': [{ _id: 'd2-untagged', tags: [] }]
+    };
+    tagFindMock.mockReturnValue({
+      lean: vi
+        .fn()
+        .mockResolvedValue([
+          { _id: 'tag-num', datasetId: 'dataset-1', tag: 'count', tagType: 'number' }
+        ])
+    });
+    collectionFindMock.mockImplementation((query?: any) => {
+      let result = collectionsByDataset[String(query?.datasetId)] ?? [];
+      if (query?._id?.$in) {
+        const ids = new Set(query._id.$in.map(String));
+        result = result.filter((collection) => ids.has(String(collection._id)));
+      }
+      return findResult(result);
+    });
+
+    await expect(
+      filterCollectionByKeyValueTags({
+        $and: [{ count: { $ne: 10 } }],
+        $or: [],
+        teamId: 'team-1',
+        datasetIds: ['dataset-1', 'dataset-2']
+      })
+    ).resolves.toEqual(['d1-diff', 'd1-absent', 'd2-untagged']);
+  });
+
   it('rejects missing tags and treats migration metadata as unrelated to structured filtering', async () => {
     await expect(filterTags({ $and: [{ missing: { $eq: 'A' } }] })).resolves.toEqual([]);
 

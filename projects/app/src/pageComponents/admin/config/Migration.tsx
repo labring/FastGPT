@@ -11,10 +11,7 @@ import {
   Spinner
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  SystemMigrationFailurePolicyEnum,
-  SystemMigrationStatusEnum
-} from '@fastgpt/global/migration/constants';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationListItem,
   SystemMigrationProgressListItem
@@ -228,6 +225,12 @@ const MigrationCard = ({
             >
               {t(visual.labelKey as any)}
             </Badge>
+            {migration.independent && (
+              <Badge colorScheme={'purple'}>{t('system_migration:mode_independent')}</Badge>
+            )}
+            {migration.blockStartup && (
+              <Badge colorScheme={'orange'}>{t('system_migration:mode_startup')}</Badge>
+            )}
           </Flex>
           <Box mt={2} fontSize={'sm'} color={'myGray.500'} lineHeight={1.7}>
             {t(migration.descriptionKey as any)}
@@ -262,24 +265,14 @@ const MigrationCard = ({
           mx={[4, 5]}
           mb={4}
           p={3}
-          bg={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.50'
-              : 'red.50'
-          }
+          bg={'yellow.50'}
           borderRadius={'lg'}
           fontSize={'sm'}
-          color={
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? 'yellow.700'
-              : 'red.700'
-          }
+          color={'yellow.700'}
         >
-          {t(
-            migration.onFailure === SystemMigrationFailurePolicyEnum.continue
-              ? i18nT('system_migration:failure_allows_following')
-              : i18nT('system_migration:failure_blocks_following')
-          )}
+          {migration.blockStartup
+            ? t('system_migration:failure_blocks_startup')
+            : t('system_migration:failure_allows_following')}
         </Box>
       )}
 
@@ -494,7 +487,7 @@ const SystemMigrationsPage = () => {
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
   }, [data?.migrations]);
-  // 仅倒序展示副本；注册表顺序和 Runner 的串行执行顺序仍保持不变。
+  // 仅倒序展示副本；普通队列按注册表顺序执行，独立任务不受展示顺序影响。
   const displayMigrations = useMemo(
     () => [...(data?.migrations ?? [])].reverse(),
     [data?.migrations]

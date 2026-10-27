@@ -34,6 +34,7 @@ import {
 } from '@/web/core/workflow/check/check';
 import { getToolErrorMessage } from '@/web/core/workflow/check/message';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
@@ -1010,37 +1011,105 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
-  it('reports a tool as inactive when its system input configuration is missing', () => {
-    const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall);
-    const inactiveToolNode = makeNode('inactive-tool', FlowNodeTypeEnum.tool, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.systemInputConfig,
-          label: 'System input config',
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          value: undefined
+  it.each([false, true])(
+    'blocks an inactive tool before running or publishing (mounted: %s)',
+    (isMounted) => {
+      const toolCallNode = makeNode('tool-call', FlowNodeTypeEnum.toolCall, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: 'Model',
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+            value: 'llm-id'
+          }
+        ]
+      });
+      const inactiveToolNode = makeNode('inactive-tool', FlowNodeTypeEnum.tool, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            label: 'System input config',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            value: undefined
+          }
+        ]
+      });
+
+      const graph = isMounted
+        ? {
+            nodes: [startNode, toolCallNode, inactiveToolNode],
+            edges: [
+              { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
+              {
+                id: 'e-tool-call-tool',
+                source: 'tool-call',
+                sourceHandle: NodeOutputKeyEnum.selectedTools,
+                target: 'inactive-tool',
+                targetHandle: NodeOutputKeyEnum.selectedTools,
+                type: EDGE_TYPE
+              }
+            ]
+          }
+        : {
+            nodes: [startNode, inactiveToolNode],
+            edges: [
+              { id: 'e-start-tool', source: 'start', target: 'inactive-tool', type: EDGE_TYPE }
+            ]
+          };
+      const result = checkWorkflowBeforeRunOrPublish(graph);
+
+      expect(result.hasError).toBe(true);
+      expect(result.firstErrorNodeId).toBe('inactive-tool');
+      expect(result.issueMap['inactive-tool']).toEqual([
+        expect.objectContaining({
+          code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
+          inputKey: NodeInputKeyEnum.systemInputConfig,
+          level: 'error'
+        })
+      ]);
+      expect(result.errorMessages).toEqual([
+        '「inactive-tool」common:core.workflow.check.tool_inactive'
+      ]);
+      expect(result.diagnostics).toEqual([]);
+    }
+  );
+
+  it.each([
+    { name: 'system secret', config: { value: { type: SystemToolSecretInputTypeEnum.system } } },
+    {
+      name: 'manual secret',
+      config: {
+        value: {
+          type: SystemToolSecretInputTypeEnum.manual,
+          value: { apiKey: { secret: 'encrypted' } }
         }
-      ]
+      }
+    },
+    {
+      name: 'configured default',
+      config: { defaultValue: { type: SystemToolSecretInputTypeEnum.system } }
+    },
+    { name: 'no secret required', config: undefined }
+  ])('allows a linear tool with $name', ({ config }) => {
+    const node = makeNode('tool', FlowNodeTypeEnum.tool, {
+      inputs: config
+        ? [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              ...config
+            }
+          ]
+        : []
+    });
+    const result = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, node],
+      edges: [{ id: 'e-start-tool', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    const result = checkWorkflowNodeIssues({
-      nodes: [startNode, toolCallNode, inactiveToolNode],
-      edges: [
-        { id: 'e-start-tool-call', source: 'start', target: 'tool-call', type: EDGE_TYPE },
-        {
-          id: 'e-tool-call-tool',
-          source: 'tool-call',
-          sourceHandle: NodeOutputKeyEnum.selectedTools,
-          target: 'inactive-tool',
-          targetHandle: NodeOutputKeyEnum.selectedTools,
-          type: EDGE_TYPE
-        }
-      ]
-    });
-
-    expect(result['inactive-tool']?.map((issue) => issue.code)).toContain(
-      WorkflowCheckIssueCodeEnum.toolWaitingConfig
-    );
+    expect(result.hasError).toBe(false);
+    expect(result.issueMap).toEqual({});
   });
 
   it('reports offline tools', () => {
@@ -2277,7 +2346,41 @@ describe('Core validation and Web extension contract', () => {
         message: '无权限访问该资源，请检查权限'
       })
     ]);
-    expect(result.errorMessages).toEqual(['无权限访问该资源，请检查权限']);
+    expect(result.errorMessages).toEqual(['「目标」无权限访问该资源，请检查权限']);
+  });
+
+  it('names each node with a missing required input and limits the summary to three messages', () => {
+    const graph = makeGraph([
+      {
+        key: 'source',
+        label: '热榜来源',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        valueType: WorkflowIOValueTypeEnum.string,
+        required: true
+      }
+    ]);
+    const target = graph.nodes[1];
+    for (let index = 2; index <= 4; index++) {
+      const nodeId = `target-${index}`;
+      graph.nodes.push({
+        ...target,
+        id: nodeId,
+        data: { ...target.data, nodeId, name: `目标${index}` }
+      });
+      graph.edges.push({ id: `edge-${index}`, source: 'start', target: nodeId });
+    }
+
+    const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
+
+    expect(result.errorMessages).toEqual([
+      '「目标」需填写必填项 热榜来源',
+      '「目标2」需填写必填项 热榜来源',
+      '「目标3」需填写必填项 热榜来源'
+    ]);
+    expect(result.errorNodeIds).toEqual(['target', 'target-2', 'target-3', 'target-4']);
+    expect(result.issueMap['target-4']).toEqual([
+      expect.objectContaining({ message: '需填写必填项 热榜来源' })
+    ]);
   });
 
   it('shows the concrete Core-only input type error and retains its original diagnostic', () => {
@@ -2293,7 +2396,7 @@ describe('Core validation and Web extension contract', () => {
     const result = checkWorkflowBeforeRunOrPublish({ ...graph, t });
     expect(result.hasError).toBe(true);
     expect(result.firstErrorNodeId).toBe('target');
-    expect(result.errorMessages).toEqual(['输入项 数量 的值类型错误，应为 number']);
+    expect(result.errorMessages).toEqual(['「目标」输入项 数量 的值类型错误，应为 number']);
     expect(result.diagnostics).toEqual([
       {
         code: WorkflowDiagnosticCodeEnum.inputValueTypeInvalid,
@@ -2407,6 +2510,7 @@ describe('Core validation and Web extension contract', () => {
         (issue) => issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable
       )?.message
     ).toBe('「目标」的「第二个模型」模型不可用');
+    expect(result.errorMessages).toContain('「目标」的「第二个模型」模型不可用');
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         code: WorkflowDiagnosticCodeEnum.modelUnavailable,

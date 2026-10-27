@@ -1,7 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -34,6 +33,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
+import { formatDatasetSearchToolResponse } from '../../../../dataset/toolResponse';
 import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
 import type { DispatchSubAppResponse } from '../../type';
 import { DatasetSearchToolSchema } from './utils';
@@ -60,19 +60,7 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
     return '未找到相关信息。';
   }
 
-  return JSON.stringify(
-    {
-      prompt: getDatasetSearchToolResponsePrompt(),
-      cites: searchResults.map((item) => ({
-        id: item.id,
-        sourceName: item.sourceName,
-        updateTime: item.updateTime,
-        content: `${item.q}\n${item.a || ''}`.trim()
-      }))
-    },
-    null,
-    2
-  );
+  return JSON.stringify(formatDatasetSearchToolResponse(searchResults), null, 2);
 };
 
 /**

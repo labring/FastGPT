@@ -19,7 +19,6 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -277,9 +276,7 @@ describe('pre-created data queue routing', () => {
     'stops the heartbeat when scheduling a missing-collection rebuild throws (synonym=%s)',
     async (synonymEnabled) => {
       const { task, collection } = await createContext({ mode: TrainingModeEnum.rebuildIndex });
-      const synonym = vi
-        .spyOn(synonymService, 'isDatasetSynonymEnabled')
-        .mockReturnValue(synonymEnabled);
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: synonymEnabled });
       await MongoDatasetCollection.deleteOne({ _id: collection._id });
       const enqueue = vi
         .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
@@ -294,7 +291,6 @@ describe('pre-created data queue routing', () => {
         expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
       } finally {
         enqueue.mockRestore();
-        synonym.mockRestore();
       }
     }
   );

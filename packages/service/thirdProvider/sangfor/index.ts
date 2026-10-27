@@ -31,9 +31,11 @@ export const useSangforParse = (extension: string): boolean => {
   return extensions.includes(normalizeExtension(extension));
 };
 
-/** 服务可返回的失败标识白名单 = 已注册的 6 个 statusText（不含任何厂商私有码）。 */
+/** 服务可返回的失败标识白名单（不含任何厂商私有码）。 */
 export const ACCEPTED_PARSE_STATUS_TEXTS = new Set<string>([
   CommonErrEnum.pdfParseFailed,
+  CommonErrEnum.pdfEncrypted,
+  CommonErrEnum.pdfCorrupted,
   CommonErrEnum.unsupportedParseFileType,
   CommonErrEnum.invalidParseFile,
   CommonErrEnum.officeConversionFailed,

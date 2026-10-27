@@ -1,7 +1,7 @@
 # --------- Build Stage -----------
 FROM golang:1.22-bookworm AS go-runtime
 
-FROM node:24-bookworm-slim AS builder
+FROM node:24.22.1-bookworm-slim AS builder
 WORKDIR /app
 
 ARG proxy
@@ -41,7 +41,7 @@ RUN cd /app/projects/code-sandbox && \
     SANDBOX_BUILD_NATIVE_JS=true SANDBOX_BUILD_NATIVE_PYTHON=true pnpm build
 
 # ===== Runner Stage =====
-FROM node:24-bookworm-slim AS runner
+FROM node:24.22.1-bookworm-slim AS runner
 WORKDIR /app/code-sandbox
 
 ARG proxy

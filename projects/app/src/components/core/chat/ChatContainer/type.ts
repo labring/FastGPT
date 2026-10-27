@@ -12,10 +12,8 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type {
-  AgentPlanAskResponse,
-  WorkflowBuilderVersion
-} from '@fastgpt/global/core/workflow/builder/type';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import type { ChatAgentBuilderVersion } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentBuilderVersion';
 
 type BaseGeneratingMessageProps = {
   responseValueId?: string;
@@ -40,6 +38,7 @@ type BaseGeneratingMessageProps = {
   workflowBuilderVersion?: WorkflowBuilderVersion;
 
   formData?: ChatAgentConfigFormDataType;
+  chatAgentBuilderVersion?: ChatAgentBuilderVersion;
 };
 
 type ToolStreamEvent =
@@ -65,7 +64,6 @@ export type StartChatFnProps = {
   messages: ChatCompletionMessageParam[];
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
-  agentPlanAskResponse?: AgentPlanAskResponse;
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;

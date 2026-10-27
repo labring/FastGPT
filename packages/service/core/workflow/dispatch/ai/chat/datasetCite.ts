@@ -3,7 +3,7 @@ import { getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { replaceVariable } from '../../../../../common/string/replaceVariable';
+import { serviceEnv } from '../../../../../env';
 import { filterSearchResultsByMaxChars } from '../../../utils';
 import type { ChatProps } from './type';
 
@@ -30,20 +30,33 @@ export const getDatasetCiteData = async ({
   version?: string;
   useDatasetQuote: boolean;
 }) => {
+  // 缺少可靠映射时省略标准内容模板的映射字段；不回退已保存的模板及其静态说明。
+  const strippedQuoteTemplate = quoteTemplate
+    .replace(/,?\s*"synonymMappings":\s*\{\{synonymMappings\}\}/, '')
+    .replace(/\s*<SynonymMappings>\s*\{\{synonymMappings\}\}\s*<\/SynonymMappings>/, '');
+
   const getValue = ({ item, index }: { item: SearchDataResponseItemType; index: number }) => {
-    return replaceVariable(quoteTemplate, {
+    const synonymMappings = serviceEnv.DATASET_SYNONYM_ENABLED ? item.synonymMappings : undefined;
+    const effectiveTemplate = synonymMappings === undefined ? strippedQuoteTemplate : quoteTemplate;
+    const variables: Record<string, string | number> = {
       id: item.id,
       q: item.q,
       a: item.a || '',
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),
-      index: index + 1
-    });
+      index: index + 1,
+      synonymMappings: JSON.stringify(synonymMappings ?? {})
+    };
+    return effectiveTemplate.replace(/\{\{([^}]+)\}\}/g, (placeholder, key: string) =>
+      Object.hasOwn(variables, key) ? String(variables[key]) : placeholder
+    );
   };
 
   // 按模型引用上限裁剪知识库引用，避免引用内容挤占对话上下文。
-  const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.config.quoteMaxToken);
+  const filterQuoteQA = useDatasetQuote
+    ? await filterSearchResultsByMaxChars(quoteQA, model.config.quoteMaxToken)
+    : [];
 
   const datasetQuoteText =
     filterQuoteQA.length > 0
@@ -60,17 +73,14 @@ export const getDatasetCiteData = async ({
 
   const replaceInputValue =
     useDatasetQuote && quoteRole === 'user'
-      ? replaceVariable(datasetQuotePromptTemplate, {
-          quote: datasetQuoteText,
-          question: userChatInput
-        })
+      ? datasetQuotePromptTemplate.replace(/\{\{(quote|question)\}\}/g, (_, key: string) =>
+          key === 'quote' ? datasetQuoteText : userChatInput
+        )
       : userChatInput;
 
   const systemPrompt =
     useDatasetQuote && quoteRole === 'system'
-      ? replaceVariable(datasetQuotePromptTemplate, {
-          quote: datasetQuoteText
-        })
+      ? datasetQuotePromptTemplate.replace(/\{\{quote\}\}/g, () => datasetQuoteText)
       : '';
 
   return {

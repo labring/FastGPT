@@ -132,6 +132,10 @@ const DatasetParamsModal = ({
       isCentered
       title={t('common:core.dataset.search.Dataset Search Params')}
       size={'md'}
+      bodyStyles={{
+        overflow: 'hidden',
+        px: 0
+      }}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
@@ -169,328 +173,332 @@ const DatasetParamsModal = ({
         </>
       }
     >
-      <LightRowTabs<SearchSettingTabEnum>
-        width={'100%'}
-        mb={3}
-        list={[
-          {
-            icon: 'common/setting',
-            label: t('common:core.dataset.search.search mode'),
-            value: SearchSettingTabEnum.searchMode
-          },
-          {
-            icon: 'core/dataset/searchfilter',
-            label: t('common:core.dataset.search.Filter'),
-            value: SearchSettingTabEnum.limit
-          },
-          {
-            label: t('common:core.module.template.Query extension'),
-            value: SearchSettingTabEnum.queryExtension,
-            icon: 'core/dataset/questionExtension'
-          },
-          ...(showTagFilter
-            ? [
+      <Box px={8} flexShrink={0}>
+        <LightRowTabs<SearchSettingTabEnum>
+          width={'100%'}
+          list={[
+            {
+              icon: 'common/setting',
+              label: t('common:core.dataset.search.search mode'),
+              value: SearchSettingTabEnum.searchMode
+            },
+            {
+              icon: 'core/dataset/searchfilter',
+              label: t('common:core.dataset.search.Filter'),
+              value: SearchSettingTabEnum.limit
+            },
+            {
+              label: t('common:core.module.template.Query extension'),
+              value: SearchSettingTabEnum.queryExtension,
+              icon: 'core/dataset/questionExtension'
+            },
+            ...(showTagFilter
+              ? [
+                  {
+                    icon: 'core/dataset/tag',
+                    label: t('workflow:tag_filter'),
+                    value: SearchSettingTabEnum.tagFilter
+                  }
+                ]
+              : [])
+          ]}
+          inlineStyles={{
+            borderBottomColor: 'myGray.200',
+            borderBottom: '1px solid'
+          }}
+          value={currentTabType}
+          onChange={setCurrentTabType}
+        />
+      </Box>
+      <Box flex={'1 1 auto'} minH={0} overflowY={'auto'} px={8} pt={3} pb={1}>
+        {currentTabType === SearchSettingTabEnum.searchMode && (
+          <Box pt={1}>
+            <LeftRadio<DatasetSearchModeEnum>
+              py={2.5}
+              gridGap={4}
+              list={[
                 {
-                  icon: 'core/dataset/tag',
-                  label: t('workflow:tag_filter'),
-                  value: SearchSettingTabEnum.tagFilter
+                  title: t('common:core.dataset.search.mode.embedding'),
+                  desc: t('common:core.dataset.search.mode.embedding desc'),
+                  value: DatasetSearchModeEnum.embedding
+                },
+                {
+                  title: t('common:core.dataset.search.mode.fullTextRecall'),
+                  desc: t('common:core.dataset.search.mode.fullTextRecall desc'),
+                  value: DatasetSearchModeEnum.fullTextRecall
+                },
+                {
+                  title: t('common:core.dataset.search.mode.mixedRecall'),
+                  desc: t('common:core.dataset.search.mode.mixedRecall desc'),
+                  value: DatasetSearchModeEnum.mixedRecall,
+                  children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
+                    <Box mt={3}>
+                      <HStack justifyContent={'space-between'}>
+                        <Flex alignItems={'center'}>
+                          <Box fontSize={'sm'} color={'myGray.900'}>
+                            {t('common:core.dataset.search.mode.embedding')}
+                          </Box>
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {embeddingWeightWatch}
+                          </Box>
+                        </Flex>
+                        <Flex alignItems={'center'}>
+                          <Box fontSize={'sm'} color={'myGray.900'}>
+                            {t('common:core.dataset.search.score.fullText')}
+                          </Box>
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {fullTextWeightWatch}
+                          </Box>
+                        </Flex>
+                      </HStack>
+                      <Slider
+                        defaultValue={embeddingWeightWatch}
+                        min={0.1}
+                        max={0.9}
+                        step={0.01}
+                        onChange={(e) => {
+                          setValue('embeddingWeight', Number(e.toFixed(2)));
+                        }}
+                      >
+                        <SliderTrack bg={'#F9518E'}>
+                          <SliderFilledTrack bg={'#3370FF'} />
+                        </SliderTrack>
+                        <SliderThumb boxShadow={'none'} bg={'none'}>
+                          <MyIcon transform={'translateY(10px)'} name={'sliderTag'} w={'1rem'} />
+                        </SliderThumb>
+                      </Slider>
+                    </Box>
+                  )
                 }
-              ]
-            : [])
-        ]}
-        inlineStyles={{
-          borderBottomColor: 'myGray.200',
-          borderBottom: '1px solid'
-        }}
-        value={currentTabType}
-        onChange={setCurrentTabType}
-      />
-      {currentTabType === SearchSettingTabEnum.searchMode && (
-        <Box mt={3}>
-          <LeftRadio<DatasetSearchModeEnum>
-            py={2.5}
-            gridGap={4}
-            list={[
-              {
-                title: t('common:core.dataset.search.mode.embedding'),
-                desc: t('common:core.dataset.search.mode.embedding desc'),
-                value: DatasetSearchModeEnum.embedding
-              },
-              {
-                title: t('common:core.dataset.search.mode.fullTextRecall'),
-                desc: t('common:core.dataset.search.mode.fullTextRecall desc'),
-                value: DatasetSearchModeEnum.fullTextRecall
-              },
-              {
-                title: t('common:core.dataset.search.mode.mixedRecall'),
-                desc: t('common:core.dataset.search.mode.mixedRecall desc'),
-                value: DatasetSearchModeEnum.mixedRecall,
-                children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
-                  <Box mt={3}>
-                    <HStack justifyContent={'space-between'}>
-                      <Flex alignItems={'center'}>
-                        <Box fontSize={'sm'} color={'myGray.900'}>
-                          {t('common:core.dataset.search.mode.embedding')}
-                        </Box>
-                        <Box fontSize={'xs'} color={'myGray.500'}>
-                          {embeddingWeightWatch}
-                        </Box>
-                      </Flex>
-                      <Flex alignItems={'center'}>
-                        <Box fontSize={'sm'} color={'myGray.900'}>
-                          {t('common:core.dataset.search.score.fullText')}
-                        </Box>
-                        <Box fontSize={'xs'} color={'myGray.500'}>
-                          {fullTextWeightWatch}
-                        </Box>
-                      </Flex>
-                    </HStack>
-                    <Slider
-                      defaultValue={embeddingWeightWatch}
-                      min={0.1}
-                      max={0.9}
-                      step={0.01}
-                      onChange={(e) => {
-                        setValue('embeddingWeight', Number(e.toFixed(2)));
-                      }}
-                    >
-                      <SliderTrack bg={'#F9518E'}>
-                        <SliderFilledTrack bg={'#3370FF'} />
-                      </SliderTrack>
-                      <SliderThumb boxShadow={'none'} bg={'none'}>
-                        <MyIcon transform={'translateY(10px)'} name={'sliderTag'} w={'1rem'} />
-                      </SliderThumb>
-                    </Slider>
+              ]}
+              value={searchModeWatch}
+              onChange={(e) => {
+                setValue('searchMode', e);
+              }}
+            />
+            {/* Rerank */}
+            <>
+              <HStack mt={6} justifyContent={'space-between'}>
+                <FormLabel>
+                  {t('common:core.dataset.search.ReRank')}
+                  <QuestionTip ml={0.5} label={t('common:core.dataset.search.ReRank desc')} />
+                </FormLabel>
+                {!showReRank ? (
+                  <Box color={'myGray.500'} fontSize={'sm'}>
+                    {t('common:core.ai.Not deploy rerank model')}
                   </Box>
-                )
-              }
-            ]}
-            value={searchModeWatch}
-            onChange={(e) => {
-              setValue('searchMode', e);
-            }}
-          />
-          {/* Rerank */}
-          <>
-            <HStack mt={6} justifyContent={'space-between'}>
-              <FormLabel>
-                {t('common:core.dataset.search.ReRank')}
-                <QuestionTip ml={0.5} label={t('common:core.dataset.search.ReRank desc')} />
-              </FormLabel>
-              {!showReRank ? (
-                <Box color={'myGray.500'} fontSize={'sm'}>
-                  {t('common:core.ai.Not deploy rerank model')}
-                </Box>
-              ) : (
-                <Switch
-                  {...register('usingReRank')}
-                  onChange={async (event) => {
-                    const enabled = event.target.checked;
-                    const wasEnabled = getValues('usingReRank');
-                    setValue('usingReRank', enabled, { shouldDirty: true });
-                    // 只在关闭→开启的用户操作中初始化，打开弹窗和目录更新均不改模型值。
-                    if (!enabled || wasEnabled) return;
-                    const currentModelId = getValues('rerankModelId');
-                    if (!isEmptyModelValue(currentModelId ?? rerankModel)) return;
-                    const model = await getModelDefault({ modelType: ModelTypeEnum.rerank });
-                    if (
-                      model &&
-                      getValues('usingReRank') &&
-                      getValues('rerankModelId') === currentModelId
-                    ) {
-                      setValue('rerankModelId', model.modelId, { shouldDirty: true });
-                    }
-                  }}
-                />
-              )}
-            </HStack>
-            {usingReRankWatch && (
-              <>
-                <HStack mt={3} justifyContent={'space-between'}>
-                  <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                    {t('common:rerank_weight')}
-                  </Box>
-                  <Box flex={'1 0 0'}>
-                    <InputSlider
-                      min={0.1}
-                      max={1}
-                      step={0.01}
-                      value={rerankWeightWatch}
-                      onChange={(val) => {
-                        setValue(
-                          NodeInputKeyEnum.datasetSearchRerankWeight,
-                          Number(val.toFixed(2))
-                        );
-                      }}
-                    />
-                  </Box>
-                </HStack>
-                <HStack mt={3}>
-                  <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                    {t('common:model.type.reRank')}
-                  </Box>
-                  <Box flex={'1 0 0'}>
-                    <SelectAiModel
-                      modelType={ModelTypeEnum.rerank}
-                      bg={'myGray.50'}
-                      h={'36px'}
-                      value={reRankModelIdWatch || rerankModel}
-                      onChange={(modelId) =>
-                        setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
+                ) : (
+                  <Switch
+                    {...register('usingReRank')}
+                    onChange={async (event) => {
+                      const enabled = event.target.checked;
+                      const wasEnabled = getValues('usingReRank');
+                      setValue('usingReRank', enabled, { shouldDirty: true });
+                      // 只在关闭→开启的用户操作中初始化，打开弹窗和目录更新均不改模型值。
+                      if (!enabled || wasEnabled) return;
+                      const currentModelId = getValues('rerankModelId');
+                      if (!isEmptyModelValue(currentModelId ?? rerankModel)) return;
+                      const model = await getModelDefault({ modelType: ModelTypeEnum.rerank });
+                      if (
+                        model &&
+                        getValues('usingReRank') &&
+                        getValues('rerankModelId') === currentModelId
+                      ) {
+                        setValue('rerankModelId', model.modelId, { shouldDirty: true });
                       }
+                    }}
+                  />
+                )}
+              </HStack>
+              {usingReRankWatch && (
+                <>
+                  <HStack mt={3} justifyContent={'space-between'}>
+                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                      {t('common:rerank_weight')}
+                    </Box>
+                    <Box flex={'1 0 0'}>
+                      <InputSlider
+                        min={0.1}
+                        max={1}
+                        step={0.01}
+                        value={rerankWeightWatch}
+                        onChange={(val) => {
+                          setValue(
+                            NodeInputKeyEnum.datasetSearchRerankWeight,
+                            Number(val.toFixed(2))
+                          );
+                        }}
+                      />
+                    </Box>
+                  </HStack>
+                  <HStack mt={3}>
+                    <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
+                      {t('common:model.type.reRank')}
+                    </Box>
+                    <Box flex={'1 0 0'}>
+                      <SelectAiModel
+                        modelType={ModelTypeEnum.rerank}
+                        bg={'myGray.50'}
+                        h={'36px'}
+                        value={reRankModelIdWatch || rerankModel}
+                        onChange={(modelId) =>
+                          setValue(NodeInputKeyEnum.datasetSearchRerankModelId, modelId)
+                        }
+                      />
+                    </Box>
+                  </HStack>
+                </>
+              )}
+            </>
+          </Box>
+        )}
+        {currentTabType === SearchSettingTabEnum.limit && (
+          <Box pt={5}>
+            {limit !== undefined && (
+              <Box display={['block', 'flex']}>
+                <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                  <FormLabel>{t('common:max_quote_tokens')}</FormLabel>
+                  <QuestionTip label={t('common:max_quote_tokens_tips')} />
+                </Flex>
+                <Box flex={'1 0 0'}>
+                  {maxTokens ? (
+                    <InputSlider
+                      min={100}
+                      max={maxTokens}
+                      step={maxTokenStep}
+                      value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
+                      onChange={(val) => {
+                        setValue(NodeInputKeyEnum.datasetMaxTokens, val);
+                        setRefresh(!refresh);
+                      }}
                     />
-                  </Box>
-                </HStack>
-              </>
+                  ) : (
+                    <MyNumberInput
+                      size={'sm'}
+                      min={100}
+                      max={1000000}
+                      step={100}
+                      register={register}
+                      name={NodeInputKeyEnum.datasetMaxTokens}
+                    />
+                  )}
+                </Box>
+              </Box>
             )}
-          </>
-        </Box>
-      )}
-      {currentTabType === SearchSettingTabEnum.limit && (
-        <Box pt={5}>
-          {limit !== undefined && (
-            <Box display={['block', 'flex']}>
+            <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
               <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-                <FormLabel>{t('common:max_quote_tokens')}</FormLabel>
-                <QuestionTip label={t('common:max_quote_tokens_tips')} />
+                <FormLabel>{t('common:min_similarity')}</FormLabel>
+                <QuestionTip label={t('common:min_similarity_tip')} />
               </Flex>
               <Box flex={'1 0 0'}>
-                {maxTokens ? (
+                {showSimilarity ? (
                   <InputSlider
-                    min={100}
-                    max={maxTokens}
-                    step={maxTokenStep}
-                    value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={getValues(NodeInputKeyEnum.datasetSimilarity) ?? 0.5}
                     onChange={(val) => {
-                      setValue(NodeInputKeyEnum.datasetMaxTokens, val);
+                      setValue(NodeInputKeyEnum.datasetSimilarity, val);
                       setRefresh(!refresh);
                     }}
                   />
                 ) : (
-                  <MyNumberInput
-                    size={'sm'}
-                    min={100}
-                    max={1000000}
-                    step={100}
-                    register={register}
-                    name={NodeInputKeyEnum.datasetMaxTokens}
-                  />
+                  <Box color={'myGray.500'} fontSize={'sm'}>
+                    {t('common:core.dataset.search.No support similarity')}
+                  </Box>
                 )}
               </Box>
             </Box>
-          )}
-          <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
-            <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-              <FormLabel>{t('common:min_similarity')}</FormLabel>
-              <QuestionTip label={t('common:min_similarity_tip')} />
-            </Flex>
-            <Box flex={'1 0 0'}>
-              {showSimilarity ? (
-                <InputSlider
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={getValues(NodeInputKeyEnum.datasetSimilarity) ?? 0.5}
-                  onChange={(val) => {
-                    setValue(NodeInputKeyEnum.datasetSimilarity, val);
-                    setRefresh(!refresh);
-                  }}
-                />
-              ) : (
-                <Box color={'myGray.500'} fontSize={'sm'}>
-                  {t('common:core.dataset.search.No support similarity')}
-                </Box>
-              )}
+          </Box>
+        )}
+        {currentTabType === SearchSettingTabEnum.queryExtension && (
+          <Box>
+            <Box fontSize={'xs'} color={'myGray.500'}>
+              {t('common:core.dataset.Query extension intro')}
             </Box>
-          </Box>
-        </Box>
-      )}
-      {currentTabType === SearchSettingTabEnum.queryExtension && (
-        <Box>
-          <Box transform={'translateY(-5px)'} fontSize={'xs'} color={'myGray.500'}>
-            {t('common:core.dataset.Query extension intro')}
-          </Box>
-          <Flex mt={3} alignItems={'center'}>
-            <FormLabel flex={'1 0 0'}>
-              {t('common:core.dataset.search.Using query extension')}
-            </FormLabel>
-            <Switch
-              {...register('datasetSearchUsingExtensionQuery')}
-              onChange={async (event) => {
-                const enabled = event.target.checked;
-                const wasEnabled = getValues('datasetSearchUsingExtensionQuery');
-                setValue('datasetSearchUsingExtensionQuery', enabled, { shouldDirty: true });
-                // 与重排、猜你想问一致：只在关→开时按默认模型、首项的顺序补齐。
-                if (!enabled || wasEnabled) return;
-                const currentModelId = getValues('datasetSearchExtensionModelId');
-                if (!isEmptyModelValue(currentModelId ?? datasetSearchExtensionModel)) return;
-                const model = await getModelDefault({ modelType: ModelTypeEnum.llm });
-                if (
-                  model &&
-                  getValues('datasetSearchUsingExtensionQuery') &&
-                  getValues('datasetSearchExtensionModelId') === currentModelId
-                ) {
-                  setValue('datasetSearchExtensionModelId', model.modelId, {
-                    shouldDirty: true
-                  });
-                }
-              }}
-            />
-          </Flex>
-          {datasetSearchUsingCfrForm === true && (
-            <>
-              <Flex mt={4} alignItems={'center'}>
-                <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
-                <Box flex={['1 0 0', '0 0 300px']}>
-                  <SelectAiModel
-                    modelType={ModelTypeEnum.llm}
-                    width={'100%'}
-                    value={
-                      queryExtensionModelId !== undefined
-                        ? queryExtensionModelId
-                        : datasetSearchExtensionModel
-                    }
-                    onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
-                  />
-                </Box>
-              </Flex>
-              <Box mt={3}>
-                <Flex alignItems={'center'}>
-                  <FormLabel>
-                    {t('common:core.app.edit.Query extension background prompt')}
-                  </FormLabel>
-                  <QuestionTip
-                    ml={1}
-                    label={t('common:core.app.edit.Query extension background tip')}
-                  ></QuestionTip>
+            <Flex mt={3} alignItems={'center'}>
+              <FormLabel flex={'1 0 0'}>
+                {t('common:core.dataset.search.Using query extension')}
+              </FormLabel>
+              <Switch
+                {...register('datasetSearchUsingExtensionQuery')}
+                onChange={async (event) => {
+                  const enabled = event.target.checked;
+                  const wasEnabled = getValues('datasetSearchUsingExtensionQuery');
+                  setValue('datasetSearchUsingExtensionQuery', enabled, { shouldDirty: true });
+                  // 与重排、猜你想问一致：只在关→开时按默认模型、首项的顺序补齐。
+                  if (!enabled || wasEnabled) return;
+                  const currentModelId = getValues('datasetSearchExtensionModelId');
+                  if (!isEmptyModelValue(currentModelId ?? datasetSearchExtensionModel)) return;
+                  const model = await getModelDefault({ modelType: ModelTypeEnum.llm });
+                  if (
+                    model &&
+                    getValues('datasetSearchUsingExtensionQuery') &&
+                    getValues('datasetSearchExtensionModelId') === currentModelId
+                  ) {
+                    setValue('datasetSearchExtensionModelId', model.modelId, {
+                      shouldDirty: true
+                    });
+                  }
+                }}
+              />
+            </Flex>
+            {datasetSearchUsingCfrForm === true && (
+              <>
+                <Flex mt={4} alignItems={'center'}>
+                  <FormLabel flex={['0 0 80px', '1 0 0']}>{t('common:core.ai.Model')}</FormLabel>
+                  <Box flex={['1 0 0', '0 0 300px']}>
+                    <SelectAiModel
+                      modelType={ModelTypeEnum.llm}
+                      width={'100%'}
+                      value={
+                        queryExtensionModelId !== undefined
+                          ? queryExtensionModelId
+                          : datasetSearchExtensionModel
+                      }
+                      onChange={(modelId) => setValue('datasetSearchExtensionModelId', modelId)}
+                    />
+                  </Box>
                 </Flex>
-                <Box mt={1}>
-                  <MyTextarea
-                    autoHeight
-                    minH={150}
-                    maxH={300}
-                    placeholder={t('common:core.module.QueryExtension.placeholder')}
-                    {...register('datasetSearchExtensionBg')}
-                  />
+                <Box mt={3}>
+                  <Flex alignItems={'center'}>
+                    <FormLabel>
+                      {t('common:core.app.edit.Query extension background prompt')}
+                    </FormLabel>
+                    <QuestionTip
+                      ml={1}
+                      label={t('common:core.app.edit.Query extension background tip')}
+                    ></QuestionTip>
+                  </Flex>
+                  <Box mt={1}>
+                    <MyTextarea
+                      autoHeight
+                      minH={150}
+                      maxH={300}
+                      placeholder={t('common:core.module.QueryExtension.placeholder')}
+                      {...register('datasetSearchExtensionBg')}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            </>
-          )}
-        </Box>
-      )}
-      {currentTabType === SearchSettingTabEnum.tagFilter && showTagFilter && (
-        <Box pt={1}>
-          {/* 仅 SimpleApp 与 ChatAgent 在弹窗内展示标签过滤；二者自接入起即为结构化格式，且不支持工作流转回简易应用，无旧版字符串历史数据 */}
-          <DatasetTagFilterRows
-            value={collectionFilterMatchWatch}
-            onChange={(value) => {
-              setValue('collectionFilterMatch', value, { shouldDirty: true });
-            }}
-            datasetIds={datasetIds}
-            referenceList={tagFilterReferenceList}
-          />
-        </Box>
-      )}
+              </>
+            )}
+          </Box>
+        )}
+        {currentTabType === SearchSettingTabEnum.tagFilter && showTagFilter && (
+          <Box pt={3}>
+            {/* 仅 SimpleApp 与 ChatAgent 在弹窗内展示标签过滤；二者自接入起即为结构化格式，且不支持工作流转回简易应用，无旧版字符串历史数据 */}
+            <DatasetTagFilterRows
+              usePortal
+              value={collectionFilterMatchWatch}
+              onChange={(value) => {
+                setValue('collectionFilterMatch', value, { shouldDirty: true });
+              }}
+              datasetIds={datasetIds}
+              referenceList={tagFilterReferenceList}
+            />
+          </Box>
+        )}
+      </Box>
     </MyModal>
   );
 };

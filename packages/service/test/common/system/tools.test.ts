@@ -58,6 +58,7 @@ describe('initFastGPTConfig', () => {
     expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
     expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
     expect(global.systemEnv.hnswEfSearch).toBe(100);
+    expect(global.systemEnv.vectorRecallConcurrency).toBe(0);
   });
 
   it('配置校验失败时不中断，仍可降级挂载全局状态', () => {
@@ -86,7 +87,7 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
   });
 
-  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
+  it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam', 'vectorRecallConcurrency'])(
     '加载入口拒绝非法 %s，保留此前的全局配置',
     (field) => {
       initFastGPTConfig({ feConfigs: {}, systemEnv: { agentSandboxMax: 7 } } as any);
@@ -110,6 +111,7 @@ describe('initFastGPTConfig', () => {
             datasetParseMaxProcess: 'not_a_number',
             agentSandboxMax: '12',
             agentSandboxMaxPerTeam: null,
+            vectorRecallConcurrency: '8',
             customSetting: 7
           }
         })
@@ -120,6 +122,7 @@ describe('initFastGPTConfig', () => {
       datasetParseMaxProcess: 'not_a_number',
       agentSandboxMax: 12,
       agentSandboxMaxPerTeam: undefined,
+      vectorRecallConcurrency: 8,
       customSetting: 7
     });
   });

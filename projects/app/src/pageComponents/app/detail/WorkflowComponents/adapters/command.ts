@@ -1,13 +1,10 @@
-import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   WorkflowCommandError,
   type WorkflowDiagnostic
 } from '@fastgpt/workflow-core/domain/diagnostic';
-import { assertExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
-import { decompileStoreEdge } from '@fastgpt/workflow-core/edge/compiler';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { planNodeRemoval } from '@fastgpt/workflow-core/node/removal';
 import { type WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { Connection, Edge, Node } from 'reactflow';
@@ -45,46 +42,25 @@ const executeWorkflowCoreAction = <T>({
   }
 };
 
-/** 在 Web 写入 ReactFlow edge 前，复用 Core 的复杂端口和作用域规则。 */
+/** 画布提交与 handle 显隐直接调用同一判定，不再因整图投影失败回退放行。 */
 export const validateConnectionWithCore = ({
   nodes,
   edges,
-  connection,
-  chatConfig
+  connection
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   connection: Connection;
-  chatConfig?: AppChatConfigType;
-}): WorkflowCoreAdapterResult<undefined> => {
-  if (
-    !connection.source ||
-    !connection.target ||
-    !connection.sourceHandle ||
-    !connection.targetHandle
-  ) {
-    return {
-      status: 'domain-error',
-      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported, severity: 'error' }]
-    };
-  }
-
-  return executeWorkflowCoreAction({
-    graph: { nodes, edges, chatConfig },
-    action: (document) => {
-      const storeEdge: StoreEdgeItemType = {
-        source: connection.source!,
-        sourceHandle: connection.sourceHandle!,
-        target: connection.target!,
-        targetHandle: connection.targetHandle!
-      };
-      assertExecutionConnection({
-        document,
-        edge: decompileStoreEdge(storeEdge, document)
-      });
-      return undefined;
-    }
+}): Exclude<WorkflowCoreAdapterResult<undefined>, { status: 'adapter-error' }> => {
+  const nodesById = new Map(nodes.map((node) => [node.id, node.data]));
+  const result = checkExecutionConnection({
+    connection,
+    edges,
+    getNodeById: (nodeId) => nodesById.get(nodeId)
   });
+  return result.allowed
+    ? { status: 'success', data: undefined }
+    : { status: 'domain-error', diagnostics: [result.reason] };
 };
 
 /** 复用 Core 的递归删除语义，供 ReactFlow 生成完整 remove change 集合。 */

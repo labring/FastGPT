@@ -214,6 +214,16 @@ export const auditLogMap = {
       newOwnerName: string;
     }
   },
+  // Resource permission
+  [AuditEventEnum.RESUME_INHERIT_PERMISSION]: {
+    content: i18nT('account_team:log_resume_inherit_permission'),
+    typeLabel: i18nT('account_team:resume_inherit_permission'),
+    params: {} as {
+      name?: string;
+      targetResource: string;
+      parentResource?: string;
+    }
+  },
   //APP
   [AuditEventEnum.CREATE_APP]: {
     content: i18nT('account_team:log_create_app'),
@@ -346,6 +356,46 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:update_dataset'),
     params: {} as { name?: string; datasetName: string; datasetType: string }
   },
+  /**
+   * 修改知识库配置：每个实际变化的配置项一条日志。
+   *
+   * `changeItem` 是「配置项 i18n key」，对象型配置再拼 `.字段路径`（如 `… · chunkSize`），
+   * 因此这里是 string 而不是枚举。
+   */
+  ['dataset.config.update']: {
+    content: i18nT('account_team:log_dataset_config_updated'),
+    typeLabel: i18nT('account_team:dataset_config_updated'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      changeItem: string;
+      oldValue: string;
+      newValue: string;
+    }
+  },
+  /** 创建知识库标签定义。 */
+  ['dataset.tag.create']: {
+    content: i18nT('account_team:log_dataset_tag_created'),
+    typeLabel: i18nT('account_team:dataset_tag_created'),
+    params: {} as { name?: string; datasetName: string; tagName: string }
+  },
+  /** 重命名知识库标签定义。 */
+  ['dataset.tag.rename']: {
+    content: i18nT('account_team:log_dataset_tag_renamed'),
+    typeLabel: i18nT('account_team:dataset_tag_renamed'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      oldName: string;
+      newName: string;
+    }
+  },
+  /** 删除知识库标签定义。 */
+  ['dataset.tag.delete']: {
+    content: i18nT('account_team:log_dataset_tag_deleted'),
+    typeLabel: i18nT('account_team:dataset_tag_deleted'),
+    params: {} as { name?: string; datasetName: string; tagName: string }
+  },
   [AuditEventEnum.DELETE_DATASET]: {
     content: i18nT('account_team:log_delete_dataset'),
     typeLabel: i18nT('account_team:delete_dataset'),
@@ -445,6 +495,56 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  //Training
+  ['dataset.training.retry']: {
+    content: i18nT('account_team:log_dataset_training_retry'),
+    typeLabel: i18nT('account_team:dataset_training_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+    }
+  },
+  ['dataset.collection.training.retry']: {
+    content: i18nT('account_team:log_dataset_collection_training_retry'),
+    typeLabel: i18nT('account_team:dataset_collection_training_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.training.task.retry']: {
+    content: i18nT('account_team:log_dataset_training_task_retry'),
+    typeLabel: i18nT('account_team:dataset_training_task_retry'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.training.record.delete']: {
+    content: i18nT('account_team:log_dataset_training_record_delete'),
+    typeLabel: i18nT('account_team:dataset_training_record_delete'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      collectionName: string;
+    }
+  },
+  ['dataset.index.rebuild']: {
+    content: i18nT('account_team:log_dataset_index_rebuild'),
+    typeLabel: i18nT('account_team:dataset_index_rebuild'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      /** 展示名，日志正文使用；目录查不到模型时退回模型 ID。 */
+      oldModelName: string;
+      newModelName: string;
+      /** 稳定模型 ID，正文不展示，仅供排查模型改名场景。 */
+      oldModelId: string;
+      newModelId: string;
     }
   },
   //Data
