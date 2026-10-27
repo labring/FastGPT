@@ -55,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     sangforFileParseConfig
   } = datasetParams;
 
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -197,8 +197,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     pushTrack.createDataset({
       type: DatasetTypeEnum.dataset,
       teamId,
-      tmbId,
-      uid: userId
+      tmbId
     });
 
     (async () => {

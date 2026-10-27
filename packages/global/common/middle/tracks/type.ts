@@ -1,26 +1,35 @@
-import type { TrackEnum } from './constants';
+import { TrackEnum } from './constants';
 import { z } from 'zod';
 
-/** 完整的服务端采集参数；落库时 teamId 提取到顶层，其余字段存入 data。 */
+/** 服务端链路事件只保存可信身份和事件类型，每次调用对应一条独立记录。 */
 export const WorkflowBuilderTrackDataSchema = z.object({
   teamId: z.string(),
+  tmbId: z.string(),
   appId: z.string(),
   chatId: z.string(),
-  action: z.enum([
-    'message_accepted',
-    'preview_generated',
-    'preview_confirm',
-    'preview_revise',
-    'preview_cancel',
-    'result_ready',
-    'apply_requested',
-    'apply_failed',
-    'apply_succeeded'
+  event: z.enum([
+    TrackEnum.workflowBuilderMessageAccepted,
+    TrackEnum.workflowBuilderPreviewGenerated,
+    TrackEnum.workflowBuilderPreviewConfirm,
+    TrackEnum.workflowBuilderPreviewRevise,
+    TrackEnum.workflowBuilderPreviewCancel,
+    TrackEnum.workflowBuilderResultReady,
+    TrackEnum.workflowBuilderBuildFailed,
+    TrackEnum.workflowBuilderApplyRequested,
+    TrackEnum.workflowBuilderApplyFailed,
+    TrackEnum.workflowBuilderApplySucceeded
   ])
 });
 export type WorkflowBuilderTrackData = z.infer<typeof WorkflowBuilderTrackDataSchema>;
 
-export type PushTrackCommonType = {
+/** 团队业务事件通过团队和成员定位。 */
+export type PushTrackTeamType = {
+  teamId: string;
+  tmbId: string;
+};
+
+/** 登录、日活事件保留全局用户身份和当前团队成员信息。 */
+export type PushTrackUserType = {
   uid: string;
   teamId: string;
   tmbId: string;
@@ -29,6 +38,7 @@ export type PushTrackCommonType = {
 export type TrackSchemaType = {
   event: TrackEnum;
   createTime: Date;
+  /** 仅账号级事件保存全局用户身份，例如登录、日活和账号注销。 */
   uid?: string;
   teamId?: string;
   tmbId?: string;

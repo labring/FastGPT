@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getWorkflowBuilderApplyErrorLog,
+  getWorkflowBuilderErrorLog,
   getWorkflowBuilderVersionDisplayState,
   isWorkflowBuilderVersionExpiredError
 } from '@fastgpt/global/core/workflow/builder/utils';
@@ -17,7 +17,7 @@ const version: WorkflowBuilderVersion = {
   generatedAt: '2026-08-12T10:00:00.000Z'
 };
 
-describe('getWorkflowBuilderApplyErrorLog', () => {
+describe('getWorkflowBuilderErrorLog', () => {
   it.each([
     [AppErrEnum.workflowBuilderVersionExpired, 'version_expired'],
     [AppErrEnum.workflowBuilderVersionNotFound, 'version_not_found'],
@@ -25,27 +25,29 @@ describe('getWorkflowBuilderApplyErrorLog', () => {
     ['Workflow Builder version has been superseded', 'version_superseded'],
     ['Workflow Builder version file is invalid', 'version_file_invalid'],
     ['Workflow Builder version has not been archived', 'version_not_archived'],
-    ['private workflow body', 'apply_error']
+    ['private workflow body', 'workflow_error'],
+    ['constructor', 'workflow_error'],
+    ['__proto__', 'workflow_error']
   ])('preserves controlled service reasons for %s', (message, reason) => {
-    expect(getWorkflowBuilderApplyErrorLog(new UserError(message))).toEqual({
+    expect(getWorkflowBuilderErrorLog(new UserError(message))).toEqual({
       reason,
       errorType: 'Error'
     });
   });
   it('keeps numeric error codes and expiration reason without serializing private contents', () => {
     expect(
-      getWorkflowBuilderApplyErrorLog({
+      getWorkflowBuilderErrorLog({
         response: {
           data: { code: 502005, message: 'private/s3/key', document: { secret: 'credential' } }
         }
       })
     ).toEqual({ reason: 'version_expired', errorType: 'Error', code: 502005 });
-    expect(getWorkflowBuilderApplyErrorLog(new TypeError('private content'))).toEqual({
-      reason: 'apply_error',
+    expect(getWorkflowBuilderErrorLog(new TypeError('private content'))).toEqual({
+      reason: 'workflow_error',
       errorType: 'TypeError'
     });
-    expect(getWorkflowBuilderApplyErrorLog({ code: 'private-key' })).toEqual({
-      reason: 'apply_error',
+    expect(getWorkflowBuilderErrorLog({ code: 'private-key' })).toEqual({
+      reason: 'workflow_error',
       errorType: 'Error'
     });
   });

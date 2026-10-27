@@ -56,6 +56,7 @@ export const LogCategories = {
       CODE_SANDBOX: ['workflow', 'code-sandbox']
     }),
     APP: Object.assign(['app'], {
+      WORKFLOW_BUILDER: ['app', 'workflow', 'builder'],
       EVALUATION: ['app', 'evaluation'],
       FOLDER: ['app', 'folder'],
       HTTP_TOOLS: ['app', 'http-tools'],

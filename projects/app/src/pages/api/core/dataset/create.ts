@@ -48,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -154,8 +154,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   pushTrack.createDataset({
     type,
     teamId,
-    tmbId,
-    uid: userId
+    tmbId
   });
 
   (async () => {

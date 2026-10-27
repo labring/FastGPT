@@ -31,4 +31,13 @@ defineIndex(TrackSchema, {
   }
 });
 
+// 全局点击按小时唯一，避免多个实例同时刷新时生成重复桶；不影响其他事件的逐条写入。
+defineIndex(TrackSchema, {
+  key: { event: 1, createTime: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { event: TrackEnum.workflowBuilderClick }
+  }
+});
+
 export const TrackModel = getMongoModel<TrackSchemaType>('tracks', TrackSchema);
