@@ -496,4 +496,20 @@ describe('buildPageMarkdown', () => {
     expect(markdown).toContain('line 0');
     expect(markdown.length).toBeGreaterThan(0);
   });
+
+  it('支持全标题页的 baseX 回退分支溢出', () => {
+    // 所有行字号 >= baseFontSize * TITLE_SIZE_RATIO 时 normalXs 为空，
+    // baseX 走 minNumber(contentRows.map(...xStart)) 回退分支；该分支同样需避免参数上限溢出。
+    const rowCount = 1_000_000;
+    const rows = Array.from({ length: rowCount }, (_, index) => ({
+      text: `title ${index}`,
+      xStart: index,
+      yPos: index,
+      fontSize: 16
+    }));
+
+    const markdown = buildPageMarkdown(rows, 10.5);
+    expect(markdown).toContain('# title 0');
+    expect(markdown.length).toBeGreaterThan(0);
+  });
 });
