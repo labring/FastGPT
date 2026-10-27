@@ -95,8 +95,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
         sendPrompt({
           ...formatChatValue2InputType(user.value),
           hideInUI: hideInUI || user.hideInUI,
-          history: refreshedHistory,
-          submissionSource: 'retry'
+          history: refreshedHistory
         });
       } catch (error) {
         toast({

@@ -22,18 +22,11 @@ import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
-import {
-  getWorkflowBuilderApplyErrorLog,
-  isWorkflowBuilderVersionExpiredError
-} from '@fastgpt/global/core/workflow/builder/utils';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { isWorkflowBuilderVersionExpiredError } from '@fastgpt/global/core/workflow/builder/utils';
 import { loadWorkflowBuilderVersion, commitWorkflowBuilderVersion } from './api';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
-import { WorkflowBuilderTrackingProvider } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/TrackingContext';
 
 const WorkflowBuilder = () => {
   const { t } = useTranslation('workflow');
@@ -91,26 +84,16 @@ const WorkflowBuilder = () => {
       if (applyingVersionRef.current) throw new Error('Workflow Builder version is being applied');
       applyingVersionRef.current = true;
       setIsApplyingVersion(true);
-      // 所有入口共用接受边界，禁用/并发拒绝不计尝试，也不计失败。
-      void webPushTrack.workflowBuilder({ appId, action: 'apply_click' });
       let previousWorkflow: ReturnType<typeof getCurrentWorkflow> | undefined;
       let hasAppliedWorkflow = false;
       let hasCommittedVersion = false;
-      let stage = 'precheck';
       try {
-        // 本地过期也经过同一个失败出口，避免卡片直接返回漏记或两层重复计数。
-        if (version.expiresAt && new Date(version.expiresAt).getTime() <= Date.now()) {
-          throw { code: ERROR_RESPONSE[AppErrEnum.workflowBuilderVersionExpired].code };
-        }
-        stage = 'load';
         const loaded = await loadWorkflowBuilderVersion({
           appId,
           chatId: builderChatId,
           responseChatItemId
         });
-        stage = 'parse';
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
-        stage = 'import';
         const modelList = await getModelList();
         const defaultModelIds = useUserModelStore.getState().defaultModelIds;
         const importedWorkflowConfig = await parseWorkflowImportConfig({
@@ -125,13 +108,11 @@ const WorkflowBuilder = () => {
           modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
-        stage = 'secrets';
         const workflowConfig = {
           ...importedWorkflowConfig,
           nodes: await prepareWorkflowBuilderToolSecrets({ nodes: importedWorkflowConfig.nodes })
         };
         // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
-        stage = 'canvas';
         previousWorkflow = getCurrentWorkflow();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
         const workflowDataRevision = await initData(workflowConfig);
@@ -144,20 +125,14 @@ const WorkflowBuilder = () => {
             chatConfig: appliedChatConfig
           })
         );
-        stage = 'layout';
         const autoLayoutResult = await requestAutoLayout({
           nodeIds: workflowConfig.nodes.map((node) => node.nodeId),
           workflowDataRevision
         });
         if (autoLayoutResult === 'failed') {
           // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
-          console.warn('[Workflow Builder] Auto layout failed, keeping applied workflow', {
-            appId,
-            chatId: builderChatId,
-            responseChatItemId
-          });
+          console.warn('[Workflow Builder] Auto layout failed, keeping applied workflow');
         }
-        stage = 'commit';
         const archivedVersion = await commitWorkflowBuilderVersion({
           appId,
           chatId: builderChatId,
@@ -167,7 +142,6 @@ const WorkflowBuilder = () => {
         });
         // 服务端提交才是“应用成功”的事务边界；此前的本地画布写入仍需在失败时回滚。
         hasCommittedVersion = true;
-        stage = 'post_apply';
         pushPastSnapshot({
           pastNodes: getNodes(),
           pastEdges: getEdges(),
@@ -198,29 +172,10 @@ const WorkflowBuilder = () => {
         });
         return archivedVersion;
       } catch (error) {
-        const context = {
-          appId,
-          chatId: builderChatId,
-          responseChatItemId,
-          stage,
-          hasCommittedVersion,
-          ...getWorkflowBuilderApplyErrorLog(error)
-        };
-        if (!hasCommittedVersion) {
-          void webPushTrack.workflowBuilder({ appId, action: 'apply_failed' });
-          const log = stage === 'precheck' ? console.warn : console.error;
-          log('[Workflow Builder] Apply failed', {
-            ...context,
-            ...(stage === 'commit' && context.code === undefined
-              ? { outcome: 'outcome_unknown' }
-              : {})
-          });
-        } else {
-          console.error('[Workflow Builder] Post-apply UI failed', context);
-        }
         if (isWorkflowBuilderVersionExpiredError(error)) {
           notifyVersionExpired();
         } else {
+          console.error('[Workflow Builder] Apply failed', error);
           myToast({
             status: 'error',
             title: t('workflow_builder_apply_failed'),
@@ -233,15 +188,8 @@ const WorkflowBuilder = () => {
             await initData(previousWorkflow);
             setAppDetail((current) => ({ ...current, chatConfig: previousChatConfig }));
           }
-        } catch (rollbackError) {
+        } catch {
           // 恢复失败不覆盖原始应用错误。
-          console.warn('[Workflow Builder] Rollback failed', {
-            appId,
-            chatId: builderChatId,
-            responseChatItemId,
-            stage: 'rollback',
-            ...getWorkflowBuilderApplyErrorLog(rollbackError)
-          });
         }
         throw error;
       } finally {
@@ -274,7 +222,7 @@ const WorkflowBuilder = () => {
   };
 
   return (
-    <WorkflowBuilderTrackingProvider key={appId} appId={appId}>
+    <>
       {showLatestBanner && latestTarget && (
         <Portal containerRef={workflowCanvasRef}>
           <Flex
@@ -446,7 +394,7 @@ const WorkflowBuilder = () => {
           )}
         </AppDetailPanelModal>
       </Portal>
-    </WorkflowBuilderTrackingProvider>
+    </>
   );
 };
 

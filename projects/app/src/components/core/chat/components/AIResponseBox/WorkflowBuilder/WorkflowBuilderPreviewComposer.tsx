@@ -1,8 +1,6 @@
 import type { AgentAskQuestion } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
-import React, { useCallback, useContext, useMemo, useState } from 'react';
-import { WorkflowBuilderTrackingContext } from './TrackingContext';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
+import React, { useCallback, useMemo, useState } from 'react';
 import AgentAskComposer, {
   type AgentAskAnswerDetail
 } from '../../../ChatContainer/ChatBox/Input/AgentAskComposer';
@@ -31,7 +29,6 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
   interactive: WorkflowBuilderPreviewInteractive;
 }) {
   const { continueInteractive } = useChatInstanceActions();
-  const tracking = useContext(WorkflowBuilderTrackingContext);
   const { actions } = interactive.params;
   const [submittedValue, setSubmittedValue] = useState('');
   const isSubmitted = !!submittedValue;
@@ -48,18 +45,6 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
 
       setSubmittedValue(result.action.value);
       continueInteractive({
-        onSend: () => {
-          if (!tracking) return;
-          const action = {
-            confirm: 'preview_confirm',
-            revise: 'preview_revise',
-            cancel: 'preview_cancel'
-          } as const;
-          void webPushTrack.workflowBuilder({
-            appId: tracking.appId,
-            action: action[result.action.value]
-          });
-        },
         select: {
           type: 'workflowBuilderPreview',
           questions: [
@@ -71,7 +56,7 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
         }
       });
     },
-    [actions, continueInteractive, customAction, interactive.params.title, tracking]
+    [actions, continueInteractive, customAction, interactive.params.title]
   );
 
   if (isSubmitted) {

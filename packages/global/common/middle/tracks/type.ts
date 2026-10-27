@@ -4,15 +4,15 @@ import { z } from 'zod';
 export const WorkflowBuilderTrackDataSchema = z.object({
   appId: z.string(),
   action: z.enum([
-    'entry_click',
-    'message_submit',
-    'preview_shown',
+    'message_accepted',
+    'preview_generated',
     'preview_confirm',
     'preview_revise',
     'preview_cancel',
     'result_ready',
-    'apply_click',
-    'apply_failed'
+    'apply_requested',
+    'apply_failed',
+    'apply_succeeded'
   ])
 });
 export type WorkflowBuilderTrackData = z.infer<typeof WorkflowBuilderTrackDataSchema>;

@@ -3,20 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
-import { WorkflowBuilderTrackingContext } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/TrackingContext';
 import type AgentAskComposer from '@/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer';
 import type { AgentAskAnswerDetail } from '@/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer';
 import { WorkflowBuilderPreviewComposer } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/WorkflowBuilderPreviewComposer';
 
-const mocks = vi.hoisted(() => ({
-  track: vi.fn(),
-  composer: vi.fn(),
-  continueInteractive: vi.fn()
-}));
+const mocks = vi.hoisted(() => ({ composer: vi.fn(), continueInteractive: vi.fn() }));
 
-vi.mock('@/web/common/middle/tracks/utils', () => ({
-  webPushTrack: { workflowBuilder: mocks.track }
-}));
 vi.mock('@/components/core/chat/ChatContainer/ChatBox/Input/AgentAskComposer', () => ({
   default: (props: React.ComponentProps<typeof AgentAskComposer>) => {
     mocks.composer(props);
@@ -69,13 +61,7 @@ describe('WorkflowBuilderPreviewComposer', () => {
     { detail: { kind: 'custom', value: '  增加审核分支  ' }, value: '增加审核分支' }
   ])('submits only the question and readable value: $value', async ({ detail, value }) => {
     await act(async () =>
-      root.render(
-        React.createElement(
-          WorkflowBuilderTrackingContext.Provider,
-          { value: { appId: 'app-1', registerPreview: () => {}, showPreview: () => {} } },
-          React.createElement(WorkflowBuilderPreviewComposer, { interactive })
-        )
-      )
+      root.render(React.createElement(WorkflowBuilderPreviewComposer, { interactive }))
     );
     const { onSubmit } = mocks.composer.mock.calls[0][0] as React.ComponentProps<
       typeof AgentAskComposer
@@ -83,19 +69,7 @@ describe('WorkflowBuilderPreviewComposer', () => {
 
     await act(async () => onSubmit([], [detail]));
 
-    expect(mocks.track).not.toHaveBeenCalled();
-    mocks.continueInteractive.mock.lastCall![0].onSend();
-    expect(mocks.track).toHaveBeenCalledWith({
-      appId: 'app-1',
-      action:
-        detail.kind === 'custom'
-          ? 'preview_revise'
-          : detail.kind === 'skip' || detail.value === 'cancel'
-            ? 'preview_cancel'
-            : 'preview_confirm'
-    });
     expect(mocks.continueInteractive).toHaveBeenCalledExactlyOnceWith({
-      onSend: expect.any(Function),
       select: {
         type: 'workflowBuilderPreview',
         questions: [{ question: interactive.params.title, value }]

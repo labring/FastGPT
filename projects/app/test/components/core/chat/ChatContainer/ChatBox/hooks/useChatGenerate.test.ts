@@ -508,7 +508,6 @@ describe('useChatGenerate.sendPrompt', () => {
       expect(retried?.value).toEqual(user.value);
       expect(retried?.dataId).not.toBe(user.dataId);
       expect(mocks.start).toHaveBeenCalledTimes(2);
-      expect(mocks.start.mock.calls[1][0].submissionSource).toBe('retry');
       expect(
         mocks.start.mock.calls[1][0].messages
           .filter((message: { role: string }) => message.role === 'user')
@@ -524,23 +523,6 @@ describe('useChatGenerate.sendPrompt', () => {
       }
     }
   );
-
-  it('notifies accepted submissions only and preserves the retry source locally', async () => {
-    await render();
-    const onSend = vi.fn();
-    await act(async () => generate.sendPrompt({ text: ' ', onSend }));
-    expect(onSend).not.toHaveBeenCalled();
-    await act(async () =>
-      generate.sendPrompt({ text: 'valid', onSend, submissionSource: 'retry' })
-    );
-    expect(onSend).toHaveBeenCalledOnce();
-    expect(mocks.start).toHaveBeenCalledWith(
-      expect.objectContaining({ submissionSource: 'retry' })
-    );
-    expect(onSend.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.start.mock.invocationCallOrder[0]
-    );
-  });
 
   it('keeps the original structured input when retry deletion fails', async () => {
     await render();

@@ -6,13 +6,9 @@ import WorkflowBuilderGuidePopover from './presentation/GuidePopover';
 import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowToolbarTooltip from './presentation/WorkflowToolbarTooltip';
 import styles from './workflowBuilderEntry.module.scss';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBuilderUIContext } from './context';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 const WorkflowBuilderEntry = () => {
   const { t } = useTranslation('workflow');
-  const appId = useContextSelector(WorkflowBuilderUIContext, (value) => value.appId);
   const {
     guideStep,
     openLeftPanel,
@@ -42,7 +38,6 @@ const WorkflowBuilderEntry = () => {
           </Box>
         }
         onClick={() => {
-          void webPushTrack.workflowBuilder({ appId, action: 'entry_click' });
           openLeftPanel('workflowBuilder');
           if (entryAccess === 'enabled') requestInputFocus();
         }}
