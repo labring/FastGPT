@@ -8,7 +8,8 @@ export enum AppErrEnum {
   invalidAppType = 'invalidAppType',
   canNotEditAdminPermission = 'canNotEditAdminPermission',
   workflowBuilderVersionExpired = 'workflowBuilderVersionExpired',
-  workflowBuilderVersionNotFound = 'workflowBuilderVersionNotFound'
+  workflowBuilderVersionNotFound = 'workflowBuilderVersionNotFound',
+  parentFolderTypeMismatch = 'parentFolderTypeMismatch'
 }
 const appErrList = [
   {
@@ -40,6 +41,10 @@ const appErrList = [
     statusText: AppErrEnum.workflowBuilderVersionNotFound,
     message: i18nT('workflow:workflow_builder_version_not_found_toast'),
     httpStatus: 404
+  },
+  {
+    statusText: AppErrEnum.parentFolderTypeMismatch,
+    message: i18nT('common:code_error.app_error.parent_folder_type_mismatch')
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

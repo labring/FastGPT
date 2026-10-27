@@ -1,6 +1,7 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   CollectionWithDatasetType,
   DatasetCollectionSchemaType
@@ -194,6 +195,17 @@ export const authDatasetCollectionMoves = async ({
           : authorizedDataset.permission.role;
     if (!new CollectionPermission({ role, isOwner }).checkPer(per)) {
       throw DatasetErrEnum.unAuthDatasetCollection;
+    }
+  }
+  // 获得父级写/管理权限并不代表它是目录；导入规划与普通移动均须保证目标类型。
+  const targetParentIds = [
+    ...creationParentIds,
+    ...moves.map(({ targetParentId }) => targetParentId)
+  ];
+  for (const parentId of targetParentIds) {
+    if (!parentId || newFolderIds.has(parentId)) continue;
+    if (collections.get(parentId)?.type !== DatasetCollectionTypeEnum.folder) {
+      throw CommonErrEnum.invalidParams;
     }
   }
   return { ...identity, dataset: authorizedDataset, collections };

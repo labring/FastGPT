@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import updateHandler from '@/pages/api/core/ai/skill/update';
 import moveHandler from '@/pages/api/core/ai/skill/batch/move';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -351,4 +352,22 @@ describe('move skill', () => {
       ])
     );
   });
+});
+
+it('rejects moving a leaf beneath another leaf without changing its parent', async () => {
+  const { owner } = await getFakeUsers(1);
+  const props = {
+    teamId: owner.teamId,
+    tmbId: owner.tmbId,
+    type: AgentSkillTypeEnum.skill,
+    source: AgentSkillSourceEnum.personal
+  };
+  const target = await MongoAgentSkills.create({ ...props, name: 'leaf-target' });
+  const source = await MongoAgentSkills.create({ ...props, name: 'source' });
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { skillId: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoAgentSkills.findById(source._id).lean())?.parentId).toBeNull();
 });
