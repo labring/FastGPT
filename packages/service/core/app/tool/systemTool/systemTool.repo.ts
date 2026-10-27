@@ -21,11 +21,12 @@ import {
 import type {
   PluginListParamsType,
   PluginPermissionEnumType,
-  ToolDetailType as SDKToolDetailType
+  ToolDetailType as SDKToolDetailType,
+  ToolListItemType as SDKToolListItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { withDurationLog, withSyncDurationLog } from '../../../../common/logger/timing';
+import { withTiming } from '../../../../common/logger/timing';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
 import {
@@ -316,90 +317,94 @@ export class SystemToolRepo {
     sources?: PluginListParamsType['sources'];
     lang?: `${LangEnum}`;
   }): Promise<SystemToolListItemType[]> => {
-    // 1. get all tools from plugin by sources
-    const filteredTags = tags ? filterPluginTags(tags) : undefined;
-    const tools = await withDurationLog(
+    /** 按当前语言请求插件列表，计时包装与语言上下文分别负责各自边界。 */
+    function loadPluginTools(params: PluginListParamsType) {
+      return withPluginClientLocale(lang, () => pluginClient.listTools(params));
+    }
+
+    /** 合并插件元数据与本地配置，并追加后台配置的工作流工具。 */
+    function mergeToolConfigs(
+      tools: SDKToolListItemType[],
+      DBPlugins: SystemPluginToolCollectionType[]
+    ) {
+      const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
+      const formattedTools = tools.map((tool) => {
+        const isTeamSource = isTeamPluginSource(tool.source);
+        const item = SystemToolCodec.attachToolConfig({
+          tool,
+          config: isTeamSource ? undefined : getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
+          source: tool.source
+        });
+
+        return {
+          ...item,
+          status: getVisiblePluginStatus({ status: item.status, source: tool.source })
+        };
+      });
+      const DBWorkflowPlugins =
+        !sources || sources.includes('system')
+          ? DBPlugins.filter((item) => item.customConfig?.associatedPluginId)
+          : [];
+
+      return [
+        ...formattedTools,
+        ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
+      ];
+    }
+
+    /** 保持标签匹配数量优先、插件顺序次之的现有排序规则。 */
+    function sortTools(tools: SystemToolListItemType[]) {
+      return tools.sort(createSystemToolSorter(tags));
+    }
+
+    const listPluginTools = withTiming(
       {
         logger,
         message: 'System tool list stage finished',
-        properties: { stage: 'plugin.listTools', op, sources },
+        properties: ({ op, sources }) => ({ stage: 'plugin.listTools', op, sources }),
         summary: (items) => ({ toolCount: items.length })
       },
-      () =>
-        withPluginClientLocale(lang, () =>
-          pluginClient.listTools({
-            op,
-            sources,
-            tags: filteredTags
-          })
-        )
+      loadPluginTools
     );
-
-    // 2. 加载数据库中的插件配置，将所有插件 normalize
-    const DBPlugins = await withDurationLog(
+    const getSystemToolRecords = withTiming(
       {
         logger,
         message: 'System tool list stage finished',
         properties: { stage: 'mongo.systemToolConfig' },
         summary: (records) => ({ configCount: records.length })
       },
-      () => this.getAllSystemToolRecords()
+      this.getAllSystemToolRecords
     );
-    // 3. 单独记录配置合并耗时，避免将归一化处理混入插件服务或 Mongo 查询耗时。
-    const concatTools = withSyncDurationLog(
+    const mergeSystemTools = withTiming(
       {
         logger,
         message: 'System tool list stage finished',
-        properties: {
+        properties: (tools, records) => ({
           stage: 'tools.merge',
           inputCount: tools.length,
-          configCount: DBPlugins.length
-        },
+          configCount: records.length
+        }),
         summary: (items) => ({ outputCount: items.length })
       },
-      () => {
-        const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
-        const formattedTools = tools.map((tool) => {
-          const isTeamSource = isTeamPluginSource(tool.source);
-          const item = SystemToolCodec.attachToolConfig({
-            tool,
-            config: isTeamSource
-              ? undefined
-              : getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
-            source: tool.source
-          });
-
-          return {
-            ...item,
-            status: getVisiblePluginStatus({
-              status: item.status,
-              source: tool.source
-            })
-          };
-        });
-
-        /** 工作流插件，admin 后台配的 */
-        const DBWorkflowPlugins =
-          !sources || sources.includes('system')
-            ? DBPlugins.filter((item) => item.customConfig?.associatedPluginId)
-            : [];
-
-        return [
-          ...formattedTools,
-          ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
-        ];
-      }
+      mergeToolConfigs
     );
-
-    // 4. 排序依赖工具数量和标签匹配次数，与配置合并分别计时。
-    return withSyncDurationLog(
+    const sortSystemTools = withTiming(
       {
         logger,
         message: 'System tool list stage finished',
-        properties: { stage: 'tools.sort', toolCount: concatTools.length }
+        properties: (tools) => ({ stage: 'tools.sort', toolCount: tools.length })
       },
-      () => concatTools.sort(createSystemToolSorter(tags))
+      sortTools
     );
+
+    // 1. 获取插件元数据和本地配置，保留原有请求顺序。
+    const filteredTags = tags ? filterPluginTags(tags) : undefined;
+    const tools = await listPluginTools({ op, sources, tags: filteredTags });
+    const DBPlugins = await getSystemToolRecords.call(this);
+
+    // 2. 合并和排序保持普通函数调用，阶段包装统一负责计时和错误日志。
+    const concatTools = mergeSystemTools(tools, DBPlugins);
+    return sortSystemTools(concatTools);
   };
 
   /** 获取单一插件的 Detail 信息 */

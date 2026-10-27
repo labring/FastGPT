@@ -10,24 +10,21 @@ import {
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { withDurationLog } from '@fastgpt/service/common/logger/timing';
+import { withTiming } from '@fastgpt/service/common/logger/timing';
 import { listAuthorizedSystemToolTemplates } from '@fastgpt/service/core/app/tool/systemTool/capability';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
 const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+const authSystemToolRequest = withTiming(
+  { logger, message: 'System tool templates stage finished', properties: { stage: 'auth' } },
+  authCert
+);
 
 export async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>
 ): Promise<NodeTemplateListItemType[]> {
-  const { teamId, tmbId, isRoot } = await withDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'auth' }
-    },
-    () => authCert({ req, authToken: true })
-  );
+  const { teamId, tmbId, isRoot } = await authSystemToolRequest({ req, authToken: true });
   const {
     body: { tags, parentId, searchKey, source }
   } = parseApiInput({
