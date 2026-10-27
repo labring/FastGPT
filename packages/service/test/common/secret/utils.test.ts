@@ -21,13 +21,11 @@ describe('encryptSecretValue', () => {
     expect(encryptSecretValue(undefined)).toBe(undefined);
   });
 
-  it('should encrypt an empty plain value into the canonical secret shape', () => {
+  it('should preserve an empty plain value as unconfigured', () => {
     const input = { value: '' };
     const result = encryptSecretValue(input);
 
-    expect(result).toHaveProperty('secret');
-    expect('value' in result).toBe(false);
-    expect(decryptSecret(result.secret)).toBe('');
+    expect(result).toEqual(input);
   });
 
   it('should encrypt when value field is present', () => {

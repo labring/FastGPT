@@ -14,6 +14,7 @@ import {
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -586,10 +587,13 @@ export const normalizeLegacyMcpHeaderSecret = (
   if (!headerSecret || typeof headerSecret !== 'object') return undefined;
   if (Object.keys(headerSecret).length === 0) return undefined;
 
-  const headerMap = StoreSecretValueTypeSchema.safeParse(headerSecret);
+  const migratedHeaderMap = Object.fromEntries(
+    Object.entries(headerSecret).map(([key, value]) => [key, migrateSecretValueToCurrent(value)])
+  );
+  const headerMap = StoreSecretValueTypeSchema.safeParse(migratedHeaderMap);
   if (headerMap.success && Object.keys(headerMap.data).length > 0) return headerMap.data;
 
-  const singleToken = SecretValueTypeSchema.safeParse(headerSecret);
+  const singleToken = SecretValueTypeSchema.safeParse(migrateSecretValueToCurrent(headerSecret));
   if (singleToken.success) {
     return { Authorization: singleToken.data };
   }

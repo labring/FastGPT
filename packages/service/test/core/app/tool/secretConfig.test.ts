@@ -30,4 +30,19 @@ describe('resolveToolInputValues', () => {
       })
     ).toThrow('must resolve to a scalar');
   });
+
+  it('parses persisted manual switch values as booleans', () => {
+    const result = resolveToolInputValues({
+      value: {
+        enabled: { value: 'false' },
+        disabled: { value: 'true' }
+      },
+      inputList: [
+        { key: 'enabled', label: 'Enabled', inputType: 'switch' },
+        { key: 'disabled', label: 'Disabled', inputType: 'switch' }
+      ]
+    });
+
+    expect(result).toEqual({ enabled: false, disabled: true });
+  });
 });

@@ -42,7 +42,12 @@ export const resolveToolInputValues = ({
         throw new Error(`System tool input ${key} must resolve to a scalar`);
       }
 
-      return [key, valueTypeFormat(resolvedValue, valueType)];
+      const valueForFormatting =
+        input.inputType === 'switch' && (resolvedValue === 'true' || resolvedValue === 'false')
+          ? resolvedValue === 'true'
+          : resolvedValue;
+
+      return [key, valueTypeFormat(valueForFormatting, valueType)];
     })
   );
 };

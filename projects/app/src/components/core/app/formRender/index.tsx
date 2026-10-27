@@ -104,6 +104,7 @@ const InputRender = (props: InputRenderProps) => {
         value={val}
         type="password"
         autoFocus={isPasswordEditing}
+        onFocus={() => setIsPasswordEditing(true)}
         onBlur={() => setIsPasswordEditing(false)}
         autoComplete="new-password"
         data-form-type="other"

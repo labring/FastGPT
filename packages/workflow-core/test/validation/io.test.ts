@@ -618,6 +618,11 @@ describe('validateNodeIO', () => {
           value: { value: '', secret: '' }
         }),
         makeInput({
+          key: 'emptyPlain',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { value: '' }
+        }),
+        makeInput({
           key: 'optional',
           renderTypeList: [FlowNodeInputTypeEnum.password],
           required: false,
@@ -645,6 +650,7 @@ describe('validateNodeIO', () => {
     const diagnostics = check(node);
     expect(diagnostics.map((item) => [item.inputKey, item.code])).toEqual([
       ['empty', WorkflowDiagnosticCodeEnum.requiredInputMissing],
+      ['emptyPlain', WorkflowDiagnosticCodeEnum.requiredInputMissing],
       ['malformed', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid],
       ['malformedEmpty', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid],
       ['malformedReference', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]

@@ -52,7 +52,8 @@ export const encryptSecretValue = (value: SecretValueType): SecretValueType => {
   if (hasSecretValueField(normalizedValue, 'ref')) return normalizedValue;
   if (hasSecretValueField(normalizedValue, 'value')) {
     const plainValue = getSecretPlainValue(normalizedValue);
-    if (plainValue === undefined) return value;
+    // 空明文表示未配置；加密后非空密文会绕过必填校验。
+    if (plainValue === undefined || plainValue === '') return value;
     return {
       secret: encryptSecret(plainValue)
     };
