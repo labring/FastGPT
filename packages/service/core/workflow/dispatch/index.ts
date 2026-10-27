@@ -88,6 +88,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
+import { WorkflowMemoryState } from './utils/memories';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
 
@@ -420,7 +421,7 @@ export class WorkflowQueue {
         nodeResponseId?: string;
       }
     | undefined;
-  system_memories: Record<string, any> = {}; // Workflow node memories
+  memoryState: WorkflowMemoryState;
   customFeedbackList: string[] = []; // Custom feedbacks collected from nodes
 
   // Debug
@@ -465,6 +466,7 @@ export class WorkflowQueue {
     this.maxConcurrency = maxConcurrency;
     this.resolve = resolve;
     this.workflowRuntimeSummary = workflowRuntimeSummary;
+    this.memoryState = data.memoryState ?? WorkflowMemoryState.fromHistories(data.histories);
     this.runtimeNodesMap = new Map(data.runtimeNodes.map((item) => [item.nodeId, item]));
     this.isDebugMode = data.mode === 'debug';
 
@@ -887,6 +889,7 @@ export class WorkflowQueue {
       const nodeSummary = createNodeSummary();
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
+        memoryState: this.memoryState,
         usagePush: this.usagePush.bind(this),
         nodeSummary,
         lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
@@ -1248,10 +1251,7 @@ export class WorkflowQueue {
       this.data.maxRunTimes -= runTimes;
 
       if (newMemories) {
-        this.system_memories = {
-          ...this.system_memories,
-          ...newMemories
-        };
+        this.memoryState.merge(newMemories);
       }
 
       if (workflowRuntimeSummary) {
@@ -1738,6 +1738,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
             }
 
+            const outputMemories = workflowQueue.memoryState.isForked
+              ? workflowQueue.memoryState.getDelta()
+              : workflowQueue.memoryState.toRecord();
+
             return {
               flowUsages: workflowQueue.chatNodeUsages,
               debugResponse: workflowQueue.getDebugResponse(),
@@ -1749,9 +1753,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               [DispatchNodeResponseKeyEnum.toolResponse]: workflowQueue.toolRunResponse,
               [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
               [DispatchNodeResponseKeyEnum.memories]:
-                Object.keys(workflowQueue.system_memories).length > 0
-                  ? workflowQueue.system_memories
-                  : undefined,
+                Object.keys(outputMemories).length > 0 ? outputMemories : undefined,
               [DispatchNodeResponseKeyEnum.customFeedbacks]:
                 workflowQueue.customFeedbackList.length > 0
                   ? workflowQueue.customFeedbackList

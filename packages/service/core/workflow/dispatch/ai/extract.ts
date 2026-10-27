@@ -23,12 +23,12 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
-import { getWorkflowSourceNodeKey } from '../utils/source';
+import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../utils/memories';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.contextExtractInput]: string;
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
@@ -65,13 +65,18 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     model
   });
   const chatHistories = getHistories(history, histories);
-
-  const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
-  // @ts-ignore
-  const lastMemory = chatHistories[chatHistories.length - 1]?.memories?.[memoryKey] as Record<
-    string,
-    any
-  >;
+  const memoryKey = getWorkflowNodeMemoryKey({
+    memoryState: props.memoryState,
+    runningAppInfo,
+    nodeId
+  });
+  const lastMemory = readWorkflowNodeMemory<Record<string, any>>({
+    memoryState: props.memoryState,
+    runningAppInfo,
+    nodeId,
+    history,
+    histories
+  });
 
   try {
     const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await completions({

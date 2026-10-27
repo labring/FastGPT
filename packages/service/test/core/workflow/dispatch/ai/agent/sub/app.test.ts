@@ -801,4 +801,61 @@ describe('agent sub app dispatchApp', () => {
       'internal default'
     );
   });
+
+  it('forks memoryState and merges child system_memories into parent memoryState', async () => {
+    const { WorkflowMemoryState } =
+      await import('@fastgpt/service/core/workflow/dispatch/utils/memories');
+    const parentMemoryState = WorkflowMemoryState.fromRecord({
+      'app:parent-app:agent1': { providerState: { step: 1 } }
+    }).fork('node:agent1');
+
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      const childKey = args.memoryState.getNodeMemoryKey({
+        runningAppInfo: args.runningAppInfo,
+        nodeId: 'extract1'
+      });
+      expect(childKey).toBe('node:agent1/app:child-app:extract1');
+      return {
+        assistantResponses: [{ text: { content: 'done' } }],
+        flowUsages: [],
+        system_memories: {
+          [childKey]: { memory: 'child-extracted' }
+        },
+        workflowRuntimeSummary: undefined
+      };
+    });
+
+    await dispatchApp({
+      app: {
+        id: 'child-app',
+        name: 'Child App'
+      },
+      memoryState: parentMemoryState,
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {},
+      userChatInput: 'hello',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0
+    } as any);
+
+    expect(parentMemoryState.getDelta()).toEqual({
+      'node:agent1/app:child-app:extract1': { memory: 'child-extracted' }
+    });
+  });
 });

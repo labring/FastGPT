@@ -18,6 +18,6 @@ export const getWorkflowSourceNodeKey = ({
   runningAppInfo,
   nodeId
 }: {
-  runningAppInfo: RunningAppInfo;
+  runningAppInfo: Pick<RunningAppInfo, 'sourceType' | 'sourceId'>;
   nodeId: string;
 }) => `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:${nodeId}`;

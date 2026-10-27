@@ -29,6 +29,7 @@ import {
   readCustomOutputSnapshot
 } from './service';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
+import { WorkflowMemoryState } from '../utils/memories';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -136,6 +137,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
+  const loopMemoryState = (
+    props.memoryState ?? WorkflowMemoryState.fromHistories(props.histories)
+  ).fork();
   while (true) {
     if (checkIsStopping()) {
       break;
@@ -182,6 +186,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     const iterationVariableState = props.variableState.clone();
+    const iterationMemoryState = loopMemoryState.fork();
     const iterationStateSnapshot = createContainerRunStateSnapshot({
       nodes: isolatedNodes,
       childrenNodeIdList,
@@ -190,6 +195,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const response = await runWorkflow({
       ...props,
       variableState: iterationVariableState,
+      memoryState: iterationMemoryState,
       lastInteractive: interactiveData?.childrenResponse,
       nodeResponseParentId: iterationResponseId,
       runtimeNodes: isolatedNodes,
@@ -266,6 +272,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;
+      loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
       // 交互暂停是可恢复 checkpoint，需要保留暂停前已完成节点的变量和外部 output 变更。
       await syncContainerRunState({
         sourceNodes: isolatedNodes,
@@ -295,6 +302,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
+    loopMemoryState.merge(response[DispatchNodeResponseKeyEnum.memories]);
     await syncContainerRunState({
       sourceNodes: isolatedNodes,
       targetNodes: runtimeNodes,
@@ -330,11 +338,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   };
 
   const errorText = loopFailure?.text;
+  const loopMemories = loopMemoryState.getDelta();
   const result = {
     data,
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
     ...(errorText !== undefined ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+    ...(Object.keys(loopMemories).length > 0
+      ? { [DispatchNodeResponseKeyEnum.memories]: loopMemories }
+      : {}),
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {
           type: 'loopRunInteractive' as const,

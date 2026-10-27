@@ -65,8 +65,10 @@ export const createToolCallToolProvider = async ({
     .map((toolNode) => toolNode.nodeId);
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
+      const callMemoryState = workflowProps.memoryState?.fork();
       const result = await runWorkflow({
         ...workflowProps,
+        ...(callMemoryState ? { memoryState: callMemoryState } : {}),
         // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
         // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
         ...(lastInteractive ? { lastInteractive } : {}),
@@ -76,6 +78,7 @@ export const createToolCallToolProvider = async ({
         // 工具调用自身不再生成 wrapper，子工作流节点直接挂到外层 ToolCall 节点。
         nodeResponseParentId: workflowProps.nodeResponseParentId
       });
+      workflowProps.memoryState?.merge(result[DispatchNodeResponseKeyEnum.memories]);
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
       return {

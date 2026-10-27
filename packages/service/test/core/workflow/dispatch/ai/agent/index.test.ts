@@ -949,7 +949,7 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock.mock.calls[0][0].input).not.toHaveProperty('providerState');
     expect(result.data.answerText).toBe('pi answer');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'agentLoopMemory-agent_node': undefined
+      'app:app_1:agent_node': undefined
     });
   });
 
@@ -1310,7 +1310,7 @@ describe('dispatchRunAgent user context', () => {
       })
     );
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'agentLoopMemory-agent_node': {
+      'app:app_1:agent_node': {
         providerState: {
           pendingMainContext: {
             activePlan: {

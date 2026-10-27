@@ -43,6 +43,7 @@ import {
   stripUserContentFileUrls
 } from './utils/prepare';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
+import { mergePersistedWorkflowMemories } from '../workflow/dispatch/utils/memories';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -992,10 +993,7 @@ export const updateInteractiveChat = async ({
     }
 
     if (aiContent.memories) {
-      chatItem.memories = {
-        ...chatItem.memories,
-        ...aiContent.memories
-      };
+      chatItem.memories = mergePersistedWorkflowMemories(chatItem.memories, aiContent.memories);
     }
 
     chatItem.durationSeconds = chatItem.durationSeconds

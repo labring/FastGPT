@@ -26,6 +26,7 @@ import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse } from '../../utils';
+import { WorkflowMemoryState } from '../../utils/memories';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -47,7 +48,7 @@ import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;
@@ -185,6 +186,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
+  const memoryState = props.memoryState ?? WorkflowMemoryState.fromHistories(histories);
+  const agentMemoryState = memoryState.fork(`node:${nodeId}`, {
+    history,
+    hasInteractiveResume: !!lastInteractive
+  });
+  const buildAgentMemories = (ownMemories?: Record<string, any>) => {
+    const merged = {
+      ...agentMemoryState.getDelta(),
+      ...ownMemories
+    };
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  };
   try {
     if (!isAppChat && sandboxRequested) {
       await assertSandboxAvailable(runningAppInfo.teamId);
@@ -280,6 +293,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
+        memoryState: agentMemoryState,
         modelData: agentModel,
         systemPrompt: formattedUserSystemPrompt,
         getSubAppInfo,
@@ -307,7 +321,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // FastAgent 只使用 ChatItem；Pi 暂时保留其原生 providerState。
     const restoredMemory =
       provider === 'piAgent'
-        ? readAgentLoopCoreProviderStateMemory({ histories: chatHistories, nodeId })
+        ? readAgentLoopCoreProviderStateMemory({
+            memoryState: props.memoryState,
+            history,
+            histories: chatHistories,
+            runningAppInfo,
+            nodeId
+          })
         : {};
     const activePlan = readAgentLoopCoreActivePlan({ histories });
     const { providerState: runtimeProviderState, isAskResume } =
@@ -353,13 +373,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const outputAssistantResponses = outputSummary.assistantResponses;
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
+      const interactiveMemories = buildAgentMemories(
+        provider === 'piAgent'
+          ? buildAgentLoopCorePausedMemories({
+              memoryState,
+              runningAppInfo,
+              nodeId,
+              providerState: outputSummary.providerState
+            })
+          : undefined
+      );
       return {
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        ...(provider === 'piAgent' && {
-          [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-            nodeId,
-            providerState: outputSummary.providerState
-          })
+        ...(interactiveMemories && {
+          [DispatchNodeResponseKeyEnum.memories]: interactiveMemories
         }),
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
@@ -373,13 +400,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
+    const doneMemories = buildAgentMemories(
+      provider === 'piAgent'
+        ? buildAgentLoopCoreDoneMemories({
+            memoryState,
+            runningAppInfo,
+            nodeId
+          })
+        : undefined
+    );
 
     const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(provider === 'piAgent' && {
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
+      ...(doneMemories && {
+        [DispatchNodeResponseKeyEnum.memories]: doneMemories
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
@@ -396,13 +432,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
+    const catchMemories = buildAgentMemories(
+      provider === 'piAgent'
+        ? buildAgentLoopCoreProviderStateMemories({
+            memoryState,
+            runningAppInfo,
+            nodeId,
+            memory: {}
+          })
+        : undefined
+    );
     return {
       ...getNodeErrResponse({ error }),
-      ...(provider === 'piAgent' && {
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
-          nodeId,
-          memory: {}
-        })
+      ...(catchMemories && {
+        [DispatchNodeResponseKeyEnum.memories]: catchMemories
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
     };

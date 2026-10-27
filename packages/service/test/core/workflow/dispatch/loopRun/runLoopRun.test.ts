@@ -1346,4 +1346,68 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(chatEntryPerCall[0]).toBe(true);
     expect(chatEntryPerCall[1]).toBe(false);
   });
+
+  it('每轮成功迭代将 system_memories 累积到下一轮，失败轮不提交，最终透出累积 delta', async () => {
+    let iter = 0;
+    const seenMemoriesPerIter: unknown[] = [];
+
+    runWorkflowMock.mockImplementation((args: any) => {
+      iter++;
+      const key = args.memoryState.getNodeMemoryKey({
+        runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+        nodeId: 'extract1'
+      });
+      seenMemoriesPerIter.push(
+        args.memoryState.readNodeMemory({
+          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+          nodeId: 'extract1'
+        })
+      );
+
+      if (iter === 1) {
+        return Promise.resolve(
+          makeDispatchFlowResponse({
+            [DispatchNodeResponseKeyEnum.memories]: {
+              [key]: { step: 1 }
+            },
+            nodeResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+          })
+        );
+      }
+
+      if (iter === 2) {
+        return Promise.resolve(
+          makeDispatchFlowResponse({
+            [DispatchNodeResponseKeyEnum.memories]: {
+              [key]: { step: 2 }
+            },
+            nodeResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+          })
+        );
+      }
+
+      // iter === 3 fails: its memory write must be discarded
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: {
+            [key]: { step: 999 }
+          },
+          nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
+        })
+      );
+    });
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b', 'c'],
+      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+
+    expect(seenMemoriesPerIter).toEqual([undefined, { step: 1 }, { step: 2 }]);
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'app:app_1:extract1': { step: 2 }
+    });
+  });
 });

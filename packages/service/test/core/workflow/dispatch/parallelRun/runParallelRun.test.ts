@@ -632,4 +632,91 @@ describe('dispatchParallelRun', () => {
     expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
     expect(parentVariableState.get('count')).toBe(2);
   });
+
+  it('并发任务各自 fork 独立 memoryState，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
+    const parentMemoryState = (
+      await import('@fastgpt/service/core/workflow/dispatch/utils/memories')
+    ).WorkflowMemoryState.fromRecord({
+      'app:app_1:extract1': { memory: 'baseline' }
+    });
+    const seenTaskMemories: any[] = [];
+
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      // 每个并发任务都只能看到父 baseline，看不到其他并发任务的未提交写入
+      seenTaskMemories.push(
+        args.memoryState.readNodeMemory({
+          runningAppInfo: { sourceType: 'app', sourceId: 'app_1' },
+          nodeId: 'extract1'
+        })
+      );
+
+      if (args.nodeResponseParentId.endsWith('_task_0_attempt_0')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'failed-attempt' },
+          'app:app_1:branch0': { memory: 'failed-branch0' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
+        });
+      }
+      if (args.nodeResponseParentId.endsWith('_task_0_attempt_1')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'task0-recovered' },
+          'app:app_1:branch0': { memory: 'task0-branch' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done-0'
+            })
+          ]
+        });
+      }
+      if (args.nodeResponseParentId.includes('_task_1')) {
+        args.memoryState.merge({
+          'app:app_1:extract1': { memory: 'task1-ok' },
+          'app:app_1:branch1': { memory: 'task1-branch' }
+        });
+        return makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done-1'
+            })
+          ]
+        });
+      }
+      args.memoryState.merge({
+        'app:app_1:extract1': { memory: 'task2-failed' },
+        'app:app_1:branch2': { memory: 'task2-branch' }
+      });
+      return makeDispatchFlowResponse({
+        [DispatchNodeResponseKeyEnum.memories]: args.memoryState.getDelta(),
+        nodeResponses: [makeResponseItem('failed-node', { error: 'failed' })]
+      });
+    });
+
+    const result: any = await dispatchParallelRun(
+      makeProps({
+        memoryState: parentMemoryState,
+        params: {
+          loopInputArray: ['a', 'b', 'c'],
+          [NodeInputKeyEnum.childrenNodeIdList]: [],
+          [NodeInputKeyEnum.parallelRunMaxConcurrency]: 3,
+          [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
+        }
+      })
+    );
+
+    expect(seenTaskMemories.every((item) => item?.memory === 'baseline')).toBe(true);
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'app:app_1:extract1': { memory: 'task1-ok' },
+      'app:app_1:branch0': { memory: 'task0-branch' },
+      'app:app_1:branch1': { memory: 'task1-branch' }
+    });
+  });
 });
