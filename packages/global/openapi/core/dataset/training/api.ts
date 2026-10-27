@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetCollectionTypeEnum, TrainingModeEnum } from '../../../../core/dataset/constants';
 import { DatasetItemSchema, DatasetTrainingSchema } from '../../../../core/dataset/type';
-import { PaginationSchema, PaginationResponseSchema } from '../../../api';
+import { createPaginationSchema, PaginationResponseSchema } from '../../../api';
+import { IntSchema } from '../../../../common/zod';
 
 /* ============================================================================
  * API: 更新训练数据（或重试所有错误数据）
@@ -158,7 +159,7 @@ export type GetTrainingDataDetailResponse = z.infer<typeof GetTrainingDataDetail
  * API: 获取训练错误列表（分页）
  * Route: POST /api/core/dataset/training/getTrainingError
  * ============================================================================ */
-export const GetTrainingErrorBodySchema = PaginationSchema.extend({
+export const GetTrainingErrorBodySchema = createPaginationSchema({
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'
@@ -197,9 +198,6 @@ export const GetTrainingErrorResponseSchema = PaginationResponseSchema(TrainingE
 export type GetTrainingErrorResponse = z.infer<typeof GetTrainingErrorResponseSchema>;
 
 export const DatasetTrainingErrorPaginationLimits = {
-  maxPageSize: 20,
-  maxOffset: 100000,
-  maxPageNum: 5000,
   defaultItemPageSize: 5,
   maxItemOffset: 100000,
   maxItemPageSize: 20
@@ -209,37 +207,7 @@ export const DatasetTrainingErrorPaginationLimits = {
  * API: 获取知识库训练错误列表（分页）
  * Route: POST /api/core/dataset/training/getDatasetTrainingError
  * ============================================================================ */
-export const GetDatasetTrainingErrorBodySchema = PaginationSchema.extend({
-  pageSize: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(DatasetTrainingErrorPaginationLimits.maxPageSize)
-    .optional()
-    .meta({
-      example: 10,
-      description: `每页集合数量，范围 [1, ${DatasetTrainingErrorPaginationLimits.maxPageSize}]`
-    }),
-  offset: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(DatasetTrainingErrorPaginationLimits.maxOffset)
-    .optional()
-    .meta({
-      example: 0,
-      description: `集合分页偏移量，范围 [0, ${DatasetTrainingErrorPaginationLimits.maxOffset}]`
-    }),
-  pageNum: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(DatasetTrainingErrorPaginationLimits.maxPageNum)
-    .optional()
-    .meta({
-      example: 1,
-      description: `集合分页页码，范围 [1, ${DatasetTrainingErrorPaginationLimits.maxPageNum}]`
-    }),
+export const GetDatasetTrainingErrorBodySchema = createPaginationSchema({
   datasetId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID'
@@ -248,20 +216,13 @@ export const GetDatasetTrainingErrorBodySchema = PaginationSchema.extend({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID。传入时只分页加载该集合内的异常 chunk'
   }),
-  itemOffset: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(DatasetTrainingErrorPaginationLimits.maxItemOffset)
+  itemOffset: IntSchema.max(DatasetTrainingErrorPaginationLimits.maxItemOffset)
     .optional()
     .meta({
       example: 5,
       description: `集合内异常 chunk 偏移量，用于加载更多，范围 [0, ${DatasetTrainingErrorPaginationLimits.maxItemOffset}]`
     }),
-  itemPageSize: z.coerce
-    .number()
-    .int()
-    .min(1)
+  itemPageSize: IntSchema.positive()
     .max(DatasetTrainingErrorPaginationLimits.maxItemPageSize)
     .optional()
     .meta({

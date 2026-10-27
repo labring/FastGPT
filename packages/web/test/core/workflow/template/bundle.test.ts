@@ -82,6 +82,7 @@ describe('createWorkflowTemplateBundle', () => {
         pluginId: 'weather',
         source: 'debug:member',
         flowNodeType: FlowNodeTypeEnum.tool,
+        hasSystemSecret: true,
         unique: false,
         name: 'Weather',
         inputs: systemTemplate.inputs.map((input) => ({
@@ -131,6 +132,8 @@ describe('createWorkflowTemplateBundle', () => {
       validatedInputDefaults: tool.validatedInputDefaults
     });
     expect(tool.template.inputs[0].label).toBe(systemTemplate.inputs[0].label);
+    expect(tool.template.hasSystemSecret).toBe(true);
+    expect(bundle.items.at(-1).template).not.toHaveProperty('hasSystemSecret');
     expect(bundle.items[0].template.name).toBe('流程开始');
     expect(systemTemplate.name).toBe('workflow:template.workflow_start');
   });

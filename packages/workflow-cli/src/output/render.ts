@@ -1,4 +1,6 @@
 import type { CliAuditEvent, CliFormat, CliResult } from '../type';
+import type { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import type { WorkflowDiagnostic } from '@fastgpt/workflow-core/domain/diagnostic';
 
 export const CLI_OUTPUT_SCHEMA_VERSION = 'fastgpt-workflow-cli-result/v1' as const;
 
@@ -19,7 +21,11 @@ export type CliErrorEnvelope = {
   ok: false;
   command: string;
   changed: false;
-  errors: Array<{ code: string; diagnostics?: unknown; params?: unknown }>;
+  errors: Array<{
+    code: WorkflowDiagnosticCodeEnum;
+    diagnostics?: WorkflowDiagnostic[];
+    params?: unknown;
+  }>;
 };
 
 export const createSuccessEnvelope = (command: string, result: CliResult): CliSuccessEnvelope => ({
@@ -60,8 +66,8 @@ export const renderError = ({
   format
 }: {
   command: string;
-  code: string;
-  diagnostics?: unknown;
+  code: WorkflowDiagnosticCodeEnum;
+  diagnostics?: WorkflowDiagnostic[];
   params?: unknown;
   format: CliFormat;
 }) => {

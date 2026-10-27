@@ -1,3 +1,8 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { StoreNodeItemTypeSchema } from '@fastgpt/global/core/workflow/type/node';
+import { IfElseNode } from '@fastgpt/global/core/workflow/template/system/ifElse';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowCommandError } from '../../src/domain/diagnostic';
 import { applyWorkflowCommand } from '../../src/command/apply';
 import { builtinTemplateProvider } from '../template/provider';
@@ -21,6 +26,49 @@ const createStartedDocument = async () =>
   ).document;
 
 describe('applyWorkflowCommand', () => {
+  it('removes only explicitly deleted branch ports while preserving edges with other diagnostics', async () => {
+    const branch = StoreNodeItemTypeSchema.parse({ ...IfElseNode, nodeId: 'branch' });
+    const input = branch.inputs.find((item) => item.key === NodeInputKeyEnum.ifElseList)!;
+    const keep = { branchId: 'keep', condition: 'AND', list: [{}] };
+    input.value = [keep, { ...keep, branchId: 'remove' }];
+    const document = createWorkflowDocument({
+      nodes: [
+        branch,
+        StoreNodeItemTypeSchema.parse({
+          ...AiChatModule,
+          nodeId: 'target',
+          parentNodeId: 'different-scope'
+        })
+      ]
+    });
+    document.executionEdges = ['keep', 'remove', 'historical-missing'].map((branchKey) => ({
+      source: { kind: 'branch', nodeId: 'branch', branchKey },
+      target: { kind: 'target', nodeId: 'target' }
+    }));
+    const before = structuredClone(document);
+    const result = await applyWorkflowCommand({
+      document,
+      command: {
+        type: 'input.set',
+        nodeId: 'branch',
+        inputKey: NodeInputKeyEnum.ifElseList,
+        value: [keep]
+      },
+      dependencies
+    });
+    expect(result.document.executionEdges.map((edge) => edge.source)).toEqual([
+      document.executionEdges[0].source,
+      document.executionEdges[2].source
+    ]);
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.branchEdgesRemoved,
+        params: { removedEdgeCount: 1 }
+      })
+    );
+    expect(document).toEqual(before);
+  });
+
   it('adds and connects a node without mutating the input document', async () => {
     const document = await createStartedDocument();
     const before = structuredClone(document);

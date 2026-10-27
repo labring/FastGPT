@@ -107,7 +107,7 @@ export async function getVectors({
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
 
-  const chunks = [];
+  const chunks: GetVectorInputItem[][] = [];
   for (let i = 0; i < inputs.length; i += chunkSize) {
     chunks.push(inputs.slice(i, i + chunkSize));
   }

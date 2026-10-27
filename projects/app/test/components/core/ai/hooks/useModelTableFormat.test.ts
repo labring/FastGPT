@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ChakraProvider } from '@chakra-ui/react';
+import { JSDOM } from 'jsdom';
 vi.mock('@/components/core/ai/PriceTiersLabel', () => ({ default: () => null }));
 import { formatModelTableList } from '@/components/core/ai/hooks/useModelTableFormat';
 
@@ -34,6 +38,50 @@ const props = {
 };
 
 describe('model table projection', () => {
+  it.each([
+    {
+      type: ModelTypeEnum.embedding,
+      pricing: { unitPrice: 1.234 },
+      price: 1.23,
+      unit: 'M Tokens'
+    },
+    {
+      type: ModelTypeEnum.rerank,
+      pricing: { unitPrice: 1.239 },
+      price: 1.24,
+      unit: 'M Tokens'
+    },
+    {
+      type: ModelTypeEnum.embedding,
+      pricing: { unitPrice: 0 },
+      price: 0,
+      unit: 'M Tokens'
+    },
+    {
+      type: ModelTypeEnum.tts,
+      pricing: { unitPrice: 0.125 },
+      price: 0.13,
+      unit: '1M common:unit.character'
+    },
+    {
+      type: ModelTypeEnum.stt,
+      pricing: { unitPrice: 0.125 },
+      price: 0.13,
+      unit: '60common:unit.seconds'
+    }
+  ])(
+    'formats $type prices with at most two decimals and the correct unit',
+    ({ price, unit, ...pricing }) => {
+      const [row] = formatModelTableList({ ...props, models: [{ ...models[0], ...pricing }] });
+      const dom = new JSDOM(
+        renderToStaticMarkup(React.createElement(ChakraProvider, null, row.priceLabel))
+      );
+      expect(dom.window.document.body.textContent).toContain(
+        `${price} common:support.wallet.subscription.point / ${unit}`
+      );
+      dom.window.close();
+    }
+  );
   it('preserves distinct rows with equal display names when public DTOs have no modelId', () => {
     const rows = formatModelTableList(props);
     expect(

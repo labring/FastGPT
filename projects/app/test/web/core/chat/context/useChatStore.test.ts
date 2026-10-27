@@ -42,7 +42,7 @@ describe('useChatStore', () => {
       appChatIdMap: {},
       sourceChatIdMap: {},
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 
@@ -344,7 +344,7 @@ describe('useChatStore', () => {
       chatId: '',
       lastChatId: '',
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.api);
@@ -381,7 +381,7 @@ describe('useChatStore', () => {
       appChatIdMap: {},
       sourceChatIdMap: {},
       lastPane: ChatSidebarPaneEnum.HOME,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 

@@ -17,10 +17,9 @@ import type {
   ChatGenerateStatusChangeHandler,
   ChatGeneratingConflictRecovery
 } from './type';
-import type { StartChatFnProps } from '../type';
+import type { generatingMessageProps, StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -29,7 +28,10 @@ import {
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview
 } from './utils/interactive';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  isAgentAskInteractive,
+  extractDeepestInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatInputWrapperStyle,
   ChatTypeEnum,
@@ -60,7 +62,7 @@ import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
 import { useChatFeedbackActions } from './hooks/useChatFeedbackActions';
 import ChatBoxModals from './components/ChatBoxModals';
-import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderPreviewInteractive';
+import { WorkflowBuilderPreviewComposer } from '../../components/AIResponseBox/WorkflowBuilder/WorkflowBuilderPreviewComposer';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -70,7 +72,7 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
-import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
@@ -87,8 +89,7 @@ const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLay
 const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayout'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
-type Props = OutLinkChatAuthProps &
-  ChatProviderProps &
+type Props = ChatProviderProps &
   BoxProps & {
     isReady: boolean;
     features?: ChatBoxFeatures;
@@ -100,6 +101,8 @@ type Props = OutLinkChatAuthProps &
         isNewChat?: boolean;
       }
     >;
+    /** 普通生成和刷新续流共用的业务事件回调，在聊天消息合并前调用。 */
+    onGeneratingMessage?: (message: generatingMessageProps) => void;
     onTriggerRefresh?: () => void;
     /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
@@ -129,8 +132,6 @@ export type ChatBoxFeatures = {
   footerRunDetailPosition?: 'default' | 'afterCopy';
   /** 工作流 AI 面板使用 Figma 的 132px 渐变描边输入框。 */
   workflowBuilderInput?: boolean;
-  /** 仅 Workflow Builder 将多轮 Agent 响应收进最外层处理过程。 */
-  workflowBuilderResponseCollapse?: boolean;
   /** 隐藏 Agent Ask 选项标题后的协议值，仅展示选项摘要。 */
   hideAgentAskOptionDescription?: boolean;
 };
@@ -153,7 +154,6 @@ const resolveChatBoxFeatures = (
   disableFooterHoverTranslate: features?.disableFooterHoverTranslate ?? false,
   footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default',
   workflowBuilderInput: features?.workflowBuilderInput ?? false,
-  workflowBuilderResponseCollapse: features?.workflowBuilderResponseCollapse ?? false,
   hideAgentAskOptionDescription: features?.hideAgentAskOptionDescription ?? false
 });
 
@@ -163,6 +163,7 @@ const ChatBox = ({
   active = true,
   disabledSendTip,
   onStartChat,
+  onGeneratingMessage,
   chatType,
   onTriggerRefresh,
   onMarkChatRead,
@@ -295,7 +296,7 @@ const ChatBox = ({
     }: {
       status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
-      targetChatTarget?: ChatAuthTargetInput;
+      targetChatTarget?: ResolvedChatAuthTargetInput;
       targetSourceKey?: string;
       targetChatId?: string;
       shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
@@ -380,6 +381,7 @@ const ChatBox = ({
 
   const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
+    onGeneratingMessage,
     isRoundPending,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,
@@ -452,7 +454,7 @@ const ChatBox = ({
 
     return {
       status: chatContent.status || ChatStatusEnum.loading,
-      name: t(chatContent.moduleName || ('' as any)) || t('common:Loading')
+      name: chatContent.moduleName ? t(chatContent.moduleName) : t('chat:ai_chat_loading')
     };
   }, [chatRecords, isChatting, t]);
 
@@ -813,7 +815,7 @@ const ChatBox = ({
                         workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                       />
                     </Box>
-                    {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                    {isAgentAskPending && isAgentAskInteractive(activeInteractive) && (
                       <Box
                         w={'100%'}
                         maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
@@ -825,9 +827,16 @@ const ChatBox = ({
                           showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
                           onSubmit={(answers) =>
                             sendPromptWithDisabledGuard({
-                              text: JSON.stringify({ answers }),
-                              interactive: lastInteractive,
-                              hideInUI: true
+                              select: {
+                                type: 'agentAsk',
+                                questions: activeInteractive.params.questions.map(
+                                  ({ question }, index) => ({
+                                    question,
+                                    value: answers[index] ?? ''
+                                  })
+                                )
+                              },
+                              interactive: lastInteractive
                             })
                           }
                         />
@@ -870,11 +879,7 @@ const ChatBoxContainer = (props: Props) => {
   const resolvedFeatures = resolveChatBoxFeatures(props.features);
 
   return (
-    <ChatProvider
-      {...props}
-      enableTTS={resolvedFeatures.tts}
-      collapseIntermediateAgentResponses={resolvedFeatures.workflowBuilderResponseCollapse}
-    >
+    <ChatProvider {...props} enableTTS={resolvedFeatures.tts}>
       <QuickReplyContextProvider enableQuickReplies={resolvedFeatures.quickReplies}>
         <ChatBox {...props} />
       </QuickReplyContextProvider>

@@ -33,6 +33,7 @@ import type {
 
 /**
  * 获取应用列表
+ * @deprecated 使用 getMyAppsV2，并按分页协议获取列表。
  */
 export const getMyApps = (data?: ListAppBodyType) =>
   POST<ListAppResponseType>('/core/app/list', data, {
@@ -45,7 +46,10 @@ export const getMyAppsV2 = (data?: ListAppV2BodyType, cancelToken?: AbortControl
     cancelToken
   });
 
-/** 获取当前筛选条件下的全部应用，供需要跨页遍历资源的选择器使用。 */
+/**
+ * 获取当前筛选条件下的全部应用，供需要跨页遍历资源的选择器使用。
+ * @deprecated 使用 getMyAppsV2，并按需加载后续页。
+ */
 export const getAllApps = (data?: ListAppBodyType) => getMyApps(data);
 
 /**

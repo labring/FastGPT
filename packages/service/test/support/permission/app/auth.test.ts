@@ -6,6 +6,8 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import {
   ManagePermissionVal,
+  OwnerPermissionVal,
+  OwnerRoleVal,
   ReadPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -96,6 +98,29 @@ describe('authAppByTmbId', () => {
       resourceId: 'parent-id',
       resourceType: 'app'
     });
+  });
+
+  it('does not inherit owner from the parent folder ACL', async () => {
+    setup();
+    mockAppQuery({
+      _id: appId,
+      teamId: 'team-a',
+      tmbId: 'app-owner',
+      type: AppTypeEnum.simple,
+      parentId: 'parent-id',
+      inheritPermission: true,
+      favourite: false,
+      quick: false
+    });
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authAppByTmbId({ tmbId: 'folder-owner', appId, per: OwnerPermissionVal })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+    await expect(
+      authAppByTmbId({ tmbId: 'folder-owner', appId, per: ManagePermissionVal })
+    ).resolves.toMatchObject({ app: { permission: { isOwner: false } } });
   });
 
   it('grants read access to favourite apps without an ACL row', async () => {

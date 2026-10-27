@@ -99,12 +99,9 @@ const ChatContextProvider = ({
     const paramsOutLinkAuthData =
       params.outLinkAuthData && typeof params.outLinkAuthData === 'object'
         ? params.outLinkAuthData
-        : {};
+        : undefined;
 
-    return {
-      ...outLinkAuthData,
-      ...paramsOutLinkAuthData
-    };
+    return paramsOutLinkAuthData ?? outLinkAuthData;
   }, [outLinkAuthData, params.outLinkAuthData]);
   const historySourceTarget = useMemo<ChatSourceTarget>(
     () =>

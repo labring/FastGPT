@@ -121,7 +121,7 @@ const pushChatLogInternal = async ({
       .join('\n');
     const answer = chatItemAi.value
       .map((item) => {
-        const text = [];
+        const text: (string | string[])[] = [];
         if (item.text?.content) {
           text.push(item.text?.content);
         }

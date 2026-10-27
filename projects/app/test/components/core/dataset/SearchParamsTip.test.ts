@@ -50,6 +50,10 @@ vi.mock('@chakra-ui/react', () => {
 });
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
+// 此处只验证模型状态展示，将 Tooltip 隔离为透明的 UI 容器。
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children
+}));
 
 describe('SearchParamsTip', () => {
   beforeEach(() => {
@@ -82,7 +86,7 @@ describe('SearchParamsTip', () => {
     expect(render('active')).toContain('common:model_loading_label');
     expect(render('active')).not.toContain('data-spinner');
     expect(render('active')).not.toContain('该模型已下架');
-    expect(render('active', false)).toContain('❌');
+    expect(render('active', false)).toContain('common:core.app.whisper.Close');
   });
   it('shows request failure without claiming the model was deleted', () => {
     mocks.error = true;

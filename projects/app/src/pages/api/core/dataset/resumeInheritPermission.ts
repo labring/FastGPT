@@ -16,19 +16,25 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
   const { datasetId } = parseApiInput({
     req,
     bodySchema: ResumeDatasetInheritPermissionBodySchema
   }).body;
-  const { dataset, teamId } = await authDataset({
+  const { dataset, teamId, tmbId } = await authDataset({
     datasetId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
+  const parentDataset = dataset.parentId
+    ? await MongoDataset.findById(dataset.parentId, 'name').lean()
+    : undefined;
+  const parentResourceName = parentDataset?.name;
   if (dataset.parentId) {
     await mongoSessionRun(async (session) => {
       // 恢复继承会重算 dataset 自身快照（旧独立快照 → merge(父级, 自身) 全量快照），
@@ -70,5 +76,17 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
       }
     );
   }
+
+  // 权限恢复成功后才写入事件
+  addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    resources: [{ datasetId: String(dataset._id) }],
+    params: {
+      targetResource: dataset.name,
+      ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
+    }
+  });
 }
 export default NextAPI(handler);

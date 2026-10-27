@@ -1,3 +1,4 @@
+import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { Call } from '@test/utils/request';
@@ -89,61 +90,100 @@ describe('admin settings model updateWithJson api', () => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
   });
 
-  it('keeps legacy prices across an export/import round trip while removing old fields on save', async () => {
-    const existingModel = await MongoAIModel.create({
+  it('keeps million-unit prices across an export/import round trip', async () => {
+    const { insertedId: modelId } = await MongoAIModel.collection.insertOne({
       ...buildStoredLlm('legacy-priced'),
-      inputPrice: 1,
-      outputPrice: 3
+      inputPrice: 0.001,
+      outputPrice: 0.003,
+      pricing: { tiers: [{ inputPrice: 1, outputPrice: 3 }] }
     });
     const root = await getRootUser();
     const exported = await Call<string>(getConfigJsonApi, { auth: root });
     const result = await callUpdateWithJson(exported.data);
     expect(result.code).toBe(200);
-    const saved = await MongoAIModel.findById(existingModel._id).lean();
-    expect(saved?.priceTiers).toMatchObject([{ inputPrice: 1, outputPrice: 3 }]);
-    expect(saved).not.toHaveProperty('inputPrice');
-    expect(saved).not.toHaveProperty('outputPrice');
+    const saved = await MongoAIModel.findById(modelId).lean();
+    expect(ModelPricingSchema.parse(saved?.pricing).tiers).toMatchObject([
+      { inputPrice: 1, outputPrice: 3 }
+    ]);
+    expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });
 
-  it('converts legacy imports like opening the editor and saves canonical free tiers without old fields', async () => {
+  it('imports new prices without rescaling and permits an explicitly free edit', async () => {
     const existingModel = await MongoAIModel.create(buildStoredLlm('import-priced'));
     const input = {
       ...buildLlmConfig({ modelId: String(existingModel._id) }),
-      inputPrice: 2,
-      outputPrice: 4
+      pricing: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
     };
     expect((await callUpdateWithJson(JSON.stringify([input]))).code).toBe(200);
-    expect((await MongoAIModel.findById(existingModel._id).lean())?.priceTiers).toMatchObject([
-      { inputPrice: 2, outputPrice: 4 }
-    ]);
-    // 和编辑器一样，先转换并移除旧字段；之后的新价格为空即表示免费。
-    const { inputPrice: _inputPrice, outputPrice: _outputPrice, ...newConfig } = input;
     expect(
-      (await callUpdateWithJson(JSON.stringify([{ ...newConfig, priceTiers: [] }]))).code
+      ModelPricingSchema.parse((await MongoAIModel.findById(existingModel._id).lean())?.pricing)
+        .tiers
+    ).toMatchObject([{ inputPrice: 2, outputPrice: 4 }]);
+    // 新阶梯为空表示免费，导入不恢复旧价格。
+    expect(
+      (await callUpdateWithJson(JSON.stringify([{ ...input, pricing: { tiers: [] } }]))).code
     ).toBe(200);
     const saved = await MongoAIModel.findById(existingModel._id).lean();
-    expect(saved?.priceTiers).toEqual([]);
+    expect(ModelPricingSchema.parse(saved?.pricing).tiers).toEqual([]);
     expect(saved).not.toHaveProperty('inputPrice');
     expect(saved).not.toHaveProperty('outputPrice');
   });
 
-  it('canonicalizes newly imported LLM prices without changing non-LLM pricing', async () => {
+  it('canonicalizes newly imported LLM prices and keeps embedding prices in M tokens', async () => {
     const result = await callUpdateWithJson(
       JSON.stringify([
-        { ...buildLlmConfig({ modelId: 'external-llm', model: 'new-llm' }), charsPointsPrice: 3 },
+        {
+          ...buildLlmConfig({ modelId: 'external-llm', model: 'new-llm' }),
+          pricing: { tiers: [{ inputPrice: 3, outputPrice: 3 }] }
+        },
         {
           ...buildEmbeddingConfig({ modelId: 'external-embedding', model: 'new-embedding' }),
-          charsPointsPrice: 4
+          pricing: { unitPrice: 4 }
         }
       ])
     );
     expect(result.code).toBe(200);
     const llm = await MongoAIModel.findOne({ model: 'new-llm' }).lean();
-    expect(llm?.priceTiers).toMatchObject([{ inputPrice: 3, outputPrice: 3 }]);
-    expect(llm).not.toHaveProperty('charsPointsPrice');
+    expect(ModelPricingSchema.parse(llm?.pricing).tiers).toMatchObject([
+      { inputPrice: 3, outputPrice: 3 }
+    ]);
+    expect(llm).not.toHaveProperty('pricing.unitPrice');
     expect(await MongoAIModel.findOne({ model: 'new-embedding' }).lean()).toMatchObject({
-      charsPointsPrice: 4
+      pricing: { unitPrice: 4 }
     });
+  });
+
+  it('round-trips million-unit token and TTS prices while keeping STT duration prices unchanged', async () => {
+    const entries = [
+      { type: ModelTypeEnum.embedding, config: { defaultToken: 500, maxToken: 3000, weight: 0 } },
+      { type: ModelTypeEnum.rerank, config: {} },
+      { type: ModelTypeEnum.tts, config: { voices: [{ label: 'Default', value: 'default' }] } },
+      { type: ModelTypeEnum.stt, config: {} }
+    ].map(({ type, config }) => ({
+      modelId: `external-${type}`,
+      model: `unit-${type}`,
+      name: type,
+      provider: 'OpenAI',
+      type,
+      scope: 'system',
+      isActive: true,
+      config,
+      pricing: { unitPrice: 0.125 }
+    }));
+    expect((await callUpdateWithJson(JSON.stringify(entries))).code).toBe(200);
+    const first = await MongoAIModel.find({}).lean();
+    for (const entry of entries) {
+      expect(first.find(({ model }) => model === entry.model)).toMatchObject({
+        pricing: { unitPrice: 0.13 }
+      });
+    }
+    const root = await getRootUser();
+    const exported = await Call<string>(getConfigJsonApi, { auth: root });
+    expect((await callUpdateWithJson(exported.data)).code).toBe(200);
+    const second = await MongoAIModel.find({}).lean();
+    expect(second.map(({ model, pricing }) => ({ model, pricing }))).toEqual(
+      first.map(({ model, pricing }) => ({ model, pricing }))
+    );
   });
 
   it('updates matching IDs, creates external models by model and deletes omitted records', async () => {
@@ -201,10 +241,8 @@ describe('admin settings model updateWithJson api', () => {
       requestUrl: 'https://old.example.com/v1',
       requestAuth: 'old-secret',
       testMode: true,
-      charsPointsPrice: 8,
-      inputPrice: 2,
-      outputPrice: 3,
-      priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }]
+
+      pricing: { tiers: [{ inputPrice: 1, outputPrice: 2 }] }
     });
 
     const res = await callUpdateWithJson(
@@ -216,10 +254,10 @@ describe('admin settings model updateWithJson api', () => {
     expect(updated).not.toHaveProperty('requestUrl');
     expect(updated).not.toHaveProperty('requestAuth');
     expect(updated).not.toHaveProperty('testMode');
-    expect(updated).not.toHaveProperty('charsPointsPrice');
+    expect(updated).not.toHaveProperty('pricing.unitPrice');
     expect(updated).not.toHaveProperty('inputPrice');
     expect(updated).not.toHaveProperty('outputPrice');
-    expect(updated?.priceTiers).toEqual([]);
+    expect(updated?.pricing).toEqual({});
   });
 
   it('requires model when modelId does not match a local model', async () => {
@@ -235,7 +273,7 @@ describe('admin settings model updateWithJson api', () => {
     const existing = await MongoAIModel.create({
       ...buildStoredLlm('test-llm'),
       requestAuth: 'stale-secret',
-      charsPointsPrice: 5
+      pricing: { unitPrice: 5 }
     });
     const res = await callUpdateWithJson(
       JSON.stringify([buildLlmConfig({ modelId: 'another-system-id' })])
@@ -244,9 +282,9 @@ describe('admin settings model updateWithJson api', () => {
     expect(res.code).toBe(200);
     const updated = await MongoAIModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updated?._id)).toBe(String(existing._id));
-    expect(updated?.config.maxContext).toBe(16000);
+    expect(updated?.config).toMatchObject({ maxContext: 16000 });
     expect(updated).not.toHaveProperty('requestAuth');
-    expect(updated).not.toHaveProperty('charsPointsPrice');
+    expect(updated).not.toHaveProperty('pricing.unitPrice');
   });
 
   it('rejects malformed JSON as an input parse error', async () => {

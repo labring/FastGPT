@@ -1,3 +1,4 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   FlowNodeInputTypeEnum,
@@ -32,9 +33,18 @@ export const checkWorkflowNodeResourceRules = ({
   const issues: WorkflowRuleIssue[] = [];
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {
-    issues.push({ code: 'tool_offline' });
+    issues.push({ code: WorkflowCheckIssueCodeEnum.toolOffline });
   } else if (data.pluginData?.error) {
     issues.push({ code: resolvePluginDataErrorIssueCode(data.pluginData.error) });
+  }
+
+  // 密钥激活是运行/发布前置条件，普通串联工具与 selectedTools 挂载工具都需要检查。
+  const systemInputConfig = inputs.get(NodeInputKeyEnum.systemInputConfig);
+  if (systemInputConfig && !isToolInputValueConfigured({ input: systemInputConfig })) {
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
+      inputKey: NodeInputKeyEnum.systemInputConfig
+    });
   }
 
   /**
@@ -48,7 +58,9 @@ export const checkWorkflowNodeResourceRules = ({
   }: {
     value: unknown;
     inputKey: string;
-    missingMessageCode: 'agent_skill_missing' | 'agent_dataset_missing';
+    missingMessageCode:
+      | WorkflowCheckIssueCodeEnum.agentSkillMissing
+      | WorkflowCheckIssueCodeEnum.agentDatasetMissing;
   }) => {
     if (!Array.isArray(value)) return;
 
@@ -57,13 +69,18 @@ export const checkWorkflowNodeResourceRules = ({
       const { error, name } = item as { error?: string; name?: string };
       if (!error) return;
 
-      if (error === 'resource_no_permission') {
+      if (error === WorkflowCheckIssueCodeEnum.resourceNoPermission) {
         if (
           !issues.some(
-            (issue) => issue.code === 'resource_no_permission' && issue.inputKey === inputKey
+            (issue) =>
+              issue.code === WorkflowCheckIssueCodeEnum.resourceNoPermission &&
+              issue.inputKey === inputKey
           )
         ) {
-          issues.push({ code: 'resource_no_permission', inputKey });
+          issues.push({
+            code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
+            inputKey
+          });
         }
         return;
       }
@@ -72,7 +89,7 @@ export const checkWorkflowNodeResourceRules = ({
       if (
         issues.some(
           (issue) =>
-            issue.code === 'resource_missing' &&
+            issue.code === WorkflowCheckIssueCodeEnum.resourceMissing &&
             issue.inputKey === inputKey &&
             issue.resourceName === resourceName
         )
@@ -81,7 +98,7 @@ export const checkWorkflowNodeResourceRules = ({
       }
 
       issues.push({
-        code: 'resource_missing',
+        code: WorkflowCheckIssueCodeEnum.resourceMissing,
         inputKey,
         ...(resourceName ? { resourceName, messageCode: missingMessageCode } : {})
       });
@@ -91,12 +108,12 @@ export const checkWorkflowNodeResourceRules = ({
   addResourceIssues({
     value: inputs.get(NodeInputKeyEnum.datasetSelectList)?.value,
     inputKey: NodeInputKeyEnum.datasetSelectList,
-    missingMessageCode: 'agent_dataset_missing'
+    missingMessageCode: WorkflowCheckIssueCodeEnum.agentDatasetMissing
   });
   addResourceIssues({
     value: inputs.get(NodeInputKeyEnum.skills)?.value,
     inputKey: NodeInputKeyEnum.skills,
-    missingMessageCode: 'agent_skill_missing'
+    missingMessageCode: WorkflowCheckIssueCodeEnum.agentSkillMissing
   });
 
   const datasetParams = inputs.get(NodeInputKeyEnum.datasetParams)?.value;
@@ -109,7 +126,7 @@ export const checkWorkflowNodeResourceRules = ({
     addResourceIssues({
       value: datasetParams.datasets,
       inputKey: NodeInputKeyEnum.datasetParams,
-      missingMessageCode: 'agent_dataset_missing'
+      missingMessageCode: WorkflowCheckIssueCodeEnum.agentDatasetMissing
     });
   }
 
@@ -177,9 +194,12 @@ export const checkWorkflowNodeResourceRules = ({
       const status = tool.status ?? tool.pluginData?.status;
       if (status === PluginStatusEnum.Offline) {
         addAgentIssue({
-          code: 'tool_offline',
+          code: WorkflowCheckIssueCodeEnum.toolOffline,
           inputKey: NodeInputKeyEnum.selectedTools,
-          ...withResourceMessage({ resourceName, messageCode: 'agent_tool_offline' })
+          ...withResourceMessage({
+            resourceName,
+            messageCode: WorkflowCheckIssueCodeEnum.agentToolOffline
+          })
         });
         return;
       }
@@ -189,17 +209,23 @@ export const checkWorkflowNodeResourceRules = ({
           code: issueCode,
           inputKey: NodeInputKeyEnum.selectedTools,
           // 不存在时提示资源名；无权限/加载失败保持通用文案，避免误导用户删除。
-          ...(issueCode === 'tool_missing'
-            ? withResourceMessage({ resourceName, messageCode: 'agent_tool_missing' })
+          ...(issueCode === WorkflowCheckIssueCodeEnum.toolMissing
+            ? withResourceMessage({
+                resourceName,
+                messageCode: WorkflowCheckIssueCodeEnum.agentToolMissing
+              })
             : {})
         });
         return;
       }
       if (tool.configStatus === 'invalid') {
         addAgentIssue({
-          code: 'tool_inactive',
+          code: WorkflowCheckIssueCodeEnum.toolInactive,
           inputKey: NodeInputKeyEnum.selectedTools,
-          ...withResourceMessage({ resourceName, messageCode: 'agent_tool_inactive' })
+          ...withResourceMessage({
+            resourceName,
+            messageCode: WorkflowCheckIssueCodeEnum.agentToolInactive
+          })
         });
         return;
       }
@@ -223,11 +249,15 @@ export const checkWorkflowNodeResourceRules = ({
         const isInactive =
           !!systemInputConfig && !isToolInputValueConfigured({ input: systemInputConfig });
         addAgentIssue({
-          code: isInactive ? 'tool_inactive' : 'tool_waiting_config',
+          code: isInactive
+            ? WorkflowCheckIssueCodeEnum.toolInactive
+            : WorkflowCheckIssueCodeEnum.toolWaitingConfig,
           inputKey: NodeInputKeyEnum.selectedTools,
           ...withResourceMessage({
             resourceName,
-            messageCode: isInactive ? 'agent_tool_inactive' : 'agent_tool_waiting_config'
+            messageCode: isInactive
+              ? WorkflowCheckIssueCodeEnum.agentToolInactive
+              : WorkflowCheckIssueCodeEnum.agentToolWaitingConfig
           })
         });
       }
@@ -255,31 +285,31 @@ export const checkWorkflowNodeResourceRules = ({
 
     if (selectedToolIds.has(SubAppIds.datasetSearch) && !hasDataset) {
       addAgentIssue({
-        code: 'tool_waiting_config',
+        code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
         inputKey: NodeInputKeyEnum.datasetSelectList,
         ...withResourceMessage({
           resourceName: getSelectedToolName(SubAppIds.datasetSearch),
-          messageCode: 'agent_tool_waiting_config'
+          messageCode: WorkflowCheckIssueCodeEnum.agentToolWaitingConfig
         })
       });
     }
     if (selectedToolIds.has(SubAppIds.readFiles) && !hasFileInput) {
       addAgentIssue({
-        code: 'tool_waiting_config',
+        code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
         inputKey: NodeInputKeyEnum.fileUrlList,
         ...withResourceMessage({
           resourceName: getSelectedToolName(SubAppIds.readFiles),
-          messageCode: 'agent_tool_waiting_config'
+          messageCode: WorkflowCheckIssueCodeEnum.agentToolWaitingConfig
         })
       });
     }
     if (selectedToolIds.has(AGENT_SANDBOX_TOOLSET_ID) && !useAgentSandbox) {
       addAgentIssue({
-        code: 'tool_waiting_config',
+        code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
         inputKey: NodeInputKeyEnum.useAgentSandbox,
         ...withResourceMessage({
           resourceName: getSelectedToolName(AGENT_SANDBOX_TOOLSET_ID),
-          messageCode: 'agent_tool_waiting_config'
+          messageCode: WorkflowCheckIssueCodeEnum.agentToolWaitingConfig
         })
       });
     }
@@ -293,9 +323,9 @@ export const checkWorkflowNodeResourceRules = ({
       !useAgentSandbox
     ) {
       addAgentIssue({
-        code: 'tool_waiting_config',
+        code: WorkflowCheckIssueCodeEnum.toolWaitingConfig,
         inputKey: NodeInputKeyEnum.skills,
-        messageCode: 'agent_skill_sandbox_required'
+        messageCode: WorkflowCheckIssueCodeEnum.agentSkillSandboxRequired
       });
     }
   }
@@ -310,7 +340,11 @@ export const checkWorkflowNodeResourceRules = ({
     const renderType = getSelectedInputRenderType(input);
     if (renderType === FlowNodeInputTypeEnum.hidden || renderType === FlowNodeInputTypeEnum.off)
       continue;
-    issues.push({ code: 'required_input_empty', inputKey: input.key, input });
+    issues.push({
+      code: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
+      inputKey: input.key,
+      input
+    });
   }
   return issues;
 };

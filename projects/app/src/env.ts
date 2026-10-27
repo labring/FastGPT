@@ -21,7 +21,7 @@ export const appEnv = createEnv({
     AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false),
     OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
 
-    MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
+    MARKETPLACE_URL: UrlSchema.default('https://v3.marketplace.fastgpt.cn'),
     DISABLE_MARKETPLACE: BoolSchema.default(false),
     PASSWORD_EXPIRED_MONTH: IntSchema.optional()
   },

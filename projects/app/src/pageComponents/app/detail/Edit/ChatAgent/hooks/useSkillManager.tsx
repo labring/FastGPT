@@ -43,7 +43,7 @@ import { hydrateAgentToolForEdit } from '@/web/core/app/agentTool';
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
 type SkillPickerPageParams = Parameters<SkillOptionPageLoader>[0];
-const SKILL_PICKER_PAGE_SIZE = 50;
+const SKILL_PICKER_PAGE_SIZE = 20;
 
 const getSkillId = (id?: string, source?: string) =>
   source ? getToolIdentityKey(id, source) : id || '';
@@ -314,9 +314,9 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: folderId,
+          withAppCount: false,
           offset,
-          pageSize,
-          withAppCount: false
+          pageSize
         },
         cancelToken
       );

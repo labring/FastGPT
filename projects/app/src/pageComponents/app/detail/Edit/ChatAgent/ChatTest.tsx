@@ -22,6 +22,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -179,7 +180,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const chatAgentHelperMetadata = useMemo(
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
-      selectedTools: appForm.selectedTools.map((tool) => tool.id),
+      selectedTools: appForm.selectedTools.map((tool) =>
+        tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id
+      ),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       selectedAgentSkills: appForm.selectedAgentSkills || [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
@@ -261,12 +264,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 InputLeftComponent={HelperModelSelectorInput}
                 onApply={async (formData) => {
                   // Filter internal tools
-                  const filteredToolIds = (formData.tools || []).filter(
-                    (toolId) => !(toolId in systemSubInfo)
+                  const filteredTools = (formData.tools || []).filter(
+                    (tool) => !((typeof tool === 'string' ? tool : tool.id) in systemSubInfo)
                   );
 
                   const newTools = await loadGeneratedTools({
-                    newToolIds: filteredToolIds,
+                    newToolIds: filteredTools,
                     existsTools: appForm.selectedTools,
                     fileSelectConfig: appForm.chatConfig.fileSelectConfig
                   });

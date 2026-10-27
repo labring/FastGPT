@@ -87,6 +87,7 @@ describe('UpdateConfigBodySchema', () => {
     expect(result.fastgpt.systemEnv).toEqual({
       agentSandboxMax: 12,
       agentSandboxMaxPerTeam: undefined,
+      vectorRecallConcurrency: 0,
       customSetting: 7
     });
     // 保存归一化后的配置必须能通过读取接口校验，避免保存成功后配置页打不开。
@@ -96,6 +97,34 @@ describe('UpdateConfigBodySchema', () => {
   it('uses an empty success response contract', () => {
     expect(UpdateConfigResponseSchema.parse(undefined)).toBeUndefined();
   });
+
+  it.each([
+    { input: undefined, expected: 0 },
+    { input: 0, expected: 0 },
+    { input: '8', expected: 8 },
+    { input: 1000, expected: 1000 }
+  ])('normalizes vector recall concurrency from Admin configuration %j', ({ input, expected }) => {
+    const body = {
+      fastgpt: { feConfigs: {}, systemEnv: { vectorRecallConcurrency: input } },
+      fastgptPro: {}
+    };
+    const result = UpdateConfigBodySchema.parse(body);
+
+    expect(result.fastgpt.systemEnv.vectorRecallConcurrency).toBe(expected);
+    expect(GetConfigResponseSchema.parse(result)).toMatchObject(result);
+  });
+
+  it.each([-1, 1.5, 1001, 'invalid'])(
+    'rejects invalid vector recall concurrency %j before saving Admin configuration',
+    (value) => {
+      expect(
+        UpdateConfigBodySchema.safeParse({
+          fastgpt: { feConfigs: {}, systemEnv: { vectorRecallConcurrency: value } },
+          fastgptPro: {}
+        }).success
+      ).toBe(false);
+    }
+  );
 
   it.each(['agentSandboxMax', 'agentSandboxMaxPerTeam'])(
     'rejects invalid quota values for %s at the update boundary',

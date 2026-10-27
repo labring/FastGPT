@@ -19,6 +19,7 @@ export default defineConfig({
     'node/removal': 'src/node/removal.ts',
     'reference/query': 'src/reference/query.ts',
     'reference/type': 'src/reference/type.ts',
+    'reference/validation': 'src/reference/validation.ts',
     'nesting/query': 'src/nesting/query.ts',
     'config/automationMeta': 'src/config/automationMeta.ts',
     'config/descriptor': 'src/config/descriptor.ts',

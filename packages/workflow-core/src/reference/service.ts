@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -13,10 +14,12 @@ import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema } from '../template/valueSchema';
+import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
 export type WorkflowReferenceValue = [string, string];
 
-const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
+/** 判断单个引用元组的结构；来源是否存在由引用校验统一判断。 */
+export const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
   Array.isArray(value) &&
   value.length === 2 &&
   typeof value[0] === 'string' &&
@@ -73,20 +76,20 @@ export const getInput = ({
   const node = document.nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_NOT_FOUND', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeNotFound, severity: 'error', nodeId }
     ]);
   }
   const input = node.inputs.find((item) => item.key === inputKey);
   if (!input) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_INPUT_NOT_FOUND', severity: 'error', nodeId, inputKey }
+      { code: WorkflowDiagnosticCodeEnum.inputNotFound, severity: 'error', nodeId, inputKey }
     ]);
   }
   const automationMeta = getInputAutomationMeta(node.flowNodeType, inputKey);
   const capability = getNodeInputCapability({ input, automationMeta });
   if (!capability.configurable) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_INPUT_NOT_CONFIGURABLE', severity: 'error', nodeId, inputKey }
+      { code: WorkflowDiagnosticCodeEnum.inputNotConfigurable, severity: 'error', nodeId, inputKey }
     ]);
   }
   return { input, inputModes: capability.inputModes };
@@ -137,7 +140,7 @@ export const assertInputMode = ({
   if (!inputModes.includes(mode)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_INPUT_MODE_NOT_ALLOWED',
+        code: WorkflowDiagnosticCodeEnum.inputModeNotAllowed,
         severity: 'error',
         nodeId,
         inputKey,
@@ -155,7 +158,7 @@ const setSelectedInputRenderType = (
   input.selectedType = selectedType;
 };
 
-/** 更新固定值并同步 Web 输入模式；普通对象只检查类型，显式声明 Schema 时再检查结构。 */
+/** 更新固定值并同步 Web 输入模式；按输入的实际协议检查，保留标签过滤等编辑器的原始存储结构。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -169,10 +172,21 @@ export const setInputValue = ({
 }) => {
   const { input, inputModes } = getInput({ document, nodeId, inputKey });
   assertInputMode({ inputKey, inputModes, nodeId, mode: 'literal' });
-  if (!valueMatchesType(value, input.valueType)) {
+  const currentSelectedType = getSelectedInputRenderType(input);
+  const literalType =
+    currentSelectedType &&
+    input.renderTypeList.includes(currentSelectedType) &&
+    isLiteralInputRenderType(currentSelectedType)
+      ? currentSelectedType
+      : input.renderTypeList.find(isLiteralInputRenderType)!;
+  const effectiveValue = getWorkflowInputValueForValidation({
+    input: { ...input, selectedType: literalType },
+    value
+  });
+  if (!valueMatchesType(effectiveValue, input.valueType)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_INPUT_VALUE_TYPE_INVALID',
+        code: WorkflowDiagnosticCodeEnum.inputValueTypeInvalid,
         severity: 'error',
         nodeId,
         inputKey,
@@ -185,16 +199,10 @@ export const setInputValue = ({
       document.nodes.find((item) => item.nodeId === nodeId)!.flowNodeType,
       inputKey
     )?.valueSchema ?? input.customJsonSchema;
-  if (valueSchema) assertValueSchema({ value, schema: valueSchema, nodeId, inputKey });
+  if (valueSchema)
+    assertValueSchema({ value: effectiveValue, schema: valueSchema, nodeId, inputKey });
 
   input.value = structuredClone(value);
-  const currentSelectedType = getSelectedInputRenderType(input);
-  const literalType =
-    currentSelectedType &&
-    input.renderTypeList.includes(currentSelectedType) &&
-    isLiteralInputRenderType(currentSelectedType)
-      ? currentSelectedType
-      : input.renderTypeList.find(isLiteralInputRenderType)!;
   setSelectedInputRenderType(input, literalType);
 };
 
@@ -220,7 +228,7 @@ export const setInputReference = ({
     if (!variable) {
       throw new WorkflowCommandError([
         {
-          code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND',
+          code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
           severity: 'error',
           nodeId,
           inputKey,
@@ -236,7 +244,7 @@ export const setInputReference = ({
     ) {
       throw new WorkflowCommandError([
         {
-          code: 'WORKFLOW_REFERENCE_TYPE_MISMATCH',
+          code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
           severity: 'error',
           nodeId,
           inputKey,
@@ -259,7 +267,7 @@ export const setInputReference = ({
   if (!sourceNode || !sourceOutput) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_REFERENCE_OUTPUT_NOT_FOUND',
+        code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
         severity: 'error',
         nodeId,
         inputKey,
@@ -274,7 +282,7 @@ export const setInputReference = ({
   if (!sourceIsVisible) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_REFERENCE_SOURCE_NOT_UPSTREAM',
+        code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
         severity: 'error',
         nodeId,
         inputKey,
@@ -299,7 +307,7 @@ export const setInputReference = ({
   ) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_REFERENCE_TYPE_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
         severity: 'error',
         nodeId,
         inputKey,
@@ -330,7 +338,12 @@ export const unsetInput = ({
   const { input } = getInput({ document, nodeId, inputKey });
   if (input.required === true) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_REQUIRED_INPUT_UNSET_FORBIDDEN', severity: 'error', nodeId, inputKey }
+      {
+        code: WorkflowDiagnosticCodeEnum.requiredInputUnsetForbidden,
+        severity: 'error',
+        nodeId,
+        inputKey
+      }
     ]);
   }
   input.value = undefined;

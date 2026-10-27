@@ -57,7 +57,7 @@ const scrollPaginationContentToTop = (target?: HTMLElement | null) => {
 export function usePagination<DataT, ResT = unknown>(
   api: (data: PaginationProps<DataT>) => Promise<PaginationResponse<ResT>>,
   {
-    defaultPageSize = 10,
+    defaultPageSize = 20,
     pageSizeOptions: defaultPageSizeOptions,
     params,
     type = 'button',

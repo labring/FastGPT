@@ -6,55 +6,54 @@ import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 
 /**
- * 在 Workflow AI 节点创建 SandboxClient 前收敛 App runtime 配置并发送准备状态。
+ * 编排 Workflow AI 节点的虚拟机准备流程，并推送准备、升级和就绪状态。
  *
- * App source 会先同步完成 provider/image 静默迁移；其他强依赖 source 只发送初始化状态，
- * 其权限和 runtime 生命周期仍由各节点自己的准备流程负责。
+ * 进入即报告准备状态，App source 先收敛 provider/image 配置，再由节点准备运行环境。
+ * prepareRuntime 必须覆盖节点需要的文件、Skill 和 entrypoint 初始化；成功后才报告就绪，
+ * 任何阶段失败都向上传递错误，不误报就绪。其他 source 的生命周期仍由节点负责。
  */
-export async function ensureWorkflowSandboxReadyForUse({
+export async function ensureWorkflowSandboxReadyForUse<T>({
   workflowStreamResponse,
   sourceType,
   sourceId,
   userId,
-  chatId
+  chatId,
+  prepareRuntime
 }: {
   workflowStreamResponse?: WorkflowResponseType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   chatId: string;
-}): Promise<void> {
-  const sandboxId = await (async () => {
-    if (sourceType === ChatSourceTypeEnum.app) {
-      const query = buildSandboxClientQueryFromChatSource({
-        sourceType,
-        sourceId,
-        userId,
-        chatId
-      });
+  prepareRuntime: () => Promise<T>;
+}): Promise<T> {
+  const sandboxId = getRunningSandboxId({ sourceType, sourceId, userId });
+  let reportedPhase: 'lazyInit' | 'upgrading' | 'ready' | undefined;
 
-      await ensureAppSandboxRuntimeReady({
-        query,
-        onUpgrade: () => {
-          workflowStreamResponse?.(
-            workflowSseEvent.sandboxStatus({
-              sandboxId: query.sandboxId,
-              phase: 'upgrading'
-            })
-          );
-        }
-      });
+  /** 合并连续重复状态，升级完成后允许恢复准备状态。 */
+  const reportSandboxPhase = (phase: 'lazyInit' | 'upgrading' | 'ready') => {
+    if (reportedPhase === phase) return;
+    reportedPhase = phase;
+    workflowStreamResponse?.(workflowSseEvent.sandboxStatus({ sandboxId, phase }));
+  };
 
-      return query.sandboxId;
-    }
+  // 配置收敛可能等待激活或升级，不能等它完成后才展示准备状态。
+  reportSandboxPhase('lazyInit');
+  if (sourceType === ChatSourceTypeEnum.app) {
+    const query = buildSandboxClientQueryFromChatSource({
+      sourceType,
+      sourceId,
+      userId,
+      chatId
+    });
+    await ensureAppSandboxRuntimeReady({
+      query,
+      onUpgrade: () => reportSandboxPhase('upgrading')
+    });
+    reportSandboxPhase('lazyInit');
+  }
 
-    return getRunningSandboxId({ sourceType, sourceId, userId });
-  })();
-
-  workflowStreamResponse?.(
-    workflowSseEvent.sandboxStatus({
-      sandboxId,
-      phase: 'lazyInit'
-    })
-  );
+  const runtime = await prepareRuntime();
+  reportSandboxPhase('ready');
+  return runtime;
 }

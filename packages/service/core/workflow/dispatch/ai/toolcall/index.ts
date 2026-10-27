@@ -18,14 +18,11 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import {
-  buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreChildInteractiveParams,
-  createAgentLoopCoreToolCallNodeResponse,
-  filterAgentLoopCoreToolResponseToPreview,
-  getAgentLoopCorePersistedTextOutput,
-  summarizeAgentLoopCoreToolRunFlowResponses
-} from '../agentLoopCore/interface';
+import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
+import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
+import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
+import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
+import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
@@ -36,6 +33,10 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
+/**
+ * 执行 ToolCall 节点，并返回可供后续模型恢复的完整聊天记录。
+ * assistantResponses 会直接落库，必须保留本轮模型使用的工具结果，不做额外的展示裁剪。
+ */
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
     node: { nodeId, isEntry, inputs },
@@ -124,46 +125,44 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
-    if (useSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse: props.workflowStreamResponse,
-        sourceType: runningAppInfo.sourceType,
-        sourceId: runningAppInfo.sourceId,
-        userId: props.uid,
-        chatId: props.chatId
-      });
-    }
-
     // 初始化沙盒
     const sandboxClient = useSandbox
-      ? await withAgentSandboxInitLease({
-          sandboxId: getRunningSandboxId({
-            sourceType: props.runningAppInfo.sourceType,
-            sourceId: props.runningAppInfo.sourceId,
-            userId: props.uid
-          }),
-          fn: async () => {
-            const runtime = await prepareSandboxToolRuntime({
-              sourceType: props.runningAppInfo.sourceType,
-              sourceId: props.runningAppInfo.sourceId,
-              userId: props.uid,
-              chatId: props.chatId,
-              readInputFile: (url) => readWorkflowFileBuffer({ url }),
-              files: currentInputFiles.map((file) => ({
-                path: file.sandboxPath!,
-                url: file.url
-              }))
-            });
-            const effectiveEntrypoint = sandboxEntrypoint?.trim();
-            if (effectiveEntrypoint) {
-              await runAgentSandboxEntrypoint({
-                sandbox: runtime.provider,
-                sandboxEntrypoint: effectiveEntrypoint,
-                workDirectory: getSandboxRuntimeProfile().workDirectory
-              });
-            }
-            return runtime;
-          }
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse: props.workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: props.uid,
+          chatId: props.chatId,
+          prepareRuntime: () =>
+            withAgentSandboxInitLease({
+              sandboxId: getRunningSandboxId({
+                sourceType: props.runningAppInfo.sourceType,
+                sourceId: props.runningAppInfo.sourceId,
+                userId: props.uid
+              }),
+              fn: async () => {
+                const runtime = await prepareSandboxToolRuntime({
+                  sourceType: props.runningAppInfo.sourceType,
+                  sourceId: props.runningAppInfo.sourceId,
+                  userId: props.uid,
+                  chatId: props.chatId,
+                  readInputFile: (url) => readWorkflowFileBuffer({ url }),
+                  files: currentInputFiles.map((file) => ({
+                    path: file.sandboxPath!,
+                    url: file.url
+                  }))
+                });
+                const effectiveEntrypoint = sandboxEntrypoint?.trim();
+                if (effectiveEntrypoint) {
+                  await runAgentSandboxEntrypoint({
+                    sandbox: runtime.provider,
+                    sandboxEntrypoint: effectiveEntrypoint,
+                    workDirectory: getSandboxRuntimeProfile().workDirectory
+                  });
+                }
+                return runtime;
+              }
+            })
         })
       : undefined;
 
@@ -216,7 +215,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
-    const previewAssistantResponses = filterAgentLoopCoreToolResponseToPreview(assistantResponses);
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
       totalPoints: modelTotalPoints,
       toolCallInputTokens,
@@ -240,7 +238,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           [DispatchNodeResponseKeyEnum.memories]: memories
         }),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-          ? previewAssistantResponses
+          ? assistantResponses
           : undefined
       };
     }
@@ -249,7 +247,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-          ? previewAssistantResponses
+          ? assistantResponses
           : undefined,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
         // Agent 工具暂停时保存子流程 memory，恢复时由子 Agent 读取 pending state。
@@ -258,7 +256,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       };
     }
 
-    const answerText = getAgentLoopCorePersistedTextOutput(previewAssistantResponses);
+    const answerText = getAgentLoopCorePersistedTextOutput(assistantResponses);
 
     return {
       data: {
@@ -267,7 +265,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.toolResponse]: answerText,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-        ? previewAssistantResponses
+        ? assistantResponses
         : undefined,
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.memories]: memories,

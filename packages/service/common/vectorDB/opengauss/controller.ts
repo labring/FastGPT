@@ -116,21 +116,26 @@ class OgClass {
       .join(',');
   }
 
-  async query<T extends QueryResultRow = any>(sql: string, values?: unknown[]) {
+  /** 召回允许单独延长客户端等待，确保服务端 statement_timeout 先结束 SQL。 */
+  async query<T extends QueryResultRow = any>(
+    sql: string | { text: string; query_timeout: number },
+    values?: unknown[]
+  ) {
     const og = await connectOg();
     const start = Date.now();
+    const sqlText = typeof sql === 'string' ? sql : sql.text;
     return og.query<T>(sql, values).then((res) => {
       const time = Date.now() - start;
 
       if (time > 1000) {
-        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        const safeSql = sqlText.replace(/'\[[^\]]*?\]'/g, "'[x]'");
         logger.warn('openGauss slow query detected', {
           level: 'slow-2',
           durationMs: time,
           sql: safeSql
         });
       } else if (time > 300) {
-        const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
+        const safeSql = sqlText.replace(/'\[[^\]]*?\]'/g, "'[x]'");
         logger.warn('openGauss slow query detected', {
           level: 'slow-1',
           durationMs: time,

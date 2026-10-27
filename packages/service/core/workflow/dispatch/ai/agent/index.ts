@@ -43,7 +43,7 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
@@ -207,32 +207,33 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       maxFileAmount: getWorkflowFileMaxAmount()
     });
 
-    if (effectiveUseAgentSandbox) {
-      await ensureWorkflowSandboxReadyForUse({
-        workflowStreamResponse,
+    // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
+    const prepareRuntime = () =>
+      ensureAgentSandboxRuntime({
         sourceType: runningAppInfo.sourceType,
         sourceId: runningAppInfo.sourceId,
         userId: uid,
-        chatId
+        chatId,
+        teamId: runningAppInfo.teamId,
+        tmbId: runningUserInfo.tmbId,
+        needSandboxRuntime: effectiveUseAgentSandbox,
+        sandboxEntrypoint: effectiveSandboxEntrypoint,
+        skillIds: effectiveSkillIds,
+        selectedSkills: effectiveSelectedSkills,
+        editSkillId,
+        prepareActions: agentSandboxPrepareActions,
+        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
       });
-    }
-
-    // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
-    const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
-      sourceType: runningAppInfo.sourceType,
-      sourceId: runningAppInfo.sourceId,
-      userId: uid,
-      chatId,
-      teamId: runningAppInfo.teamId,
-      tmbId: runningUserInfo.tmbId,
-      needSandboxRuntime: effectiveUseAgentSandbox,
-      sandboxEntrypoint: effectiveSandboxEntrypoint,
-      skillIds: effectiveSkillIds,
-      selectedSkills: effectiveSelectedSkills,
-      editSkillId,
-      prepareActions: agentSandboxPrepareActions,
-      currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
-    });
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
+      ? await ensureWorkflowSandboxReadyForUse({
+          workflowStreamResponse,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
+          userId: uid,
+          chatId,
+          prepareRuntime
+        })
+      : await prepareRuntime();
 
     // 获取请求上下文
     const { chatHistories, queryInput } = userContext;
@@ -352,23 +353,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 达到 Agent Loop 上限属于运行控制信息，不抛节点错误；写入运行摘要供调试详情读取。
     if (outputSummary.reachedMaxRunTimes) {
       props.nodeSummary.mergeNodeSummary({ hasAgentLoopLimitReached: true });
-    }
-
-    if (
-      outputSummary.status === 'interactive' &&
-      outputSummary.interactive?.type === 'agentPlanAskQuery'
-    ) {
-      // ask 暂停不产出最终 answer，只返回 interactive + memory。
-      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
-      // saveChat 会把该 askId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
-      return {
-        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-          nodeId,
-          providerState: outputSummary.providerState
-        }),
-        [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
-      };
     }
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {

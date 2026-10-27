@@ -357,6 +357,130 @@ describe('POST /api/core/app/list', () => {
     expect(response.data[0]?.permission.hasReadPer).toBe(true);
   });
 
+  it('lists only the first navigable folder path without granting folder read access', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [rootFolder, nestedFolder, readableApp, readableEmptyFolder, hiddenEmptyFolder] =
+      await MongoApp.create([
+        { name: 'Root', type: AppTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId },
+        {
+          name: 'Nested',
+          type: AppTypeEnum.folder,
+          parentId: null,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Readable child',
+          type: AppTypeEnum.workflow,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        {
+          name: 'Readable empty',
+          type: AppTypeEnum.folder,
+          teamId: owner.teamId,
+          tmbId: owner.tmbId
+        },
+        { name: 'Hidden empty', type: AppTypeEnum.folder, teamId: owner.teamId, tmbId: owner.tmbId }
+      ]);
+    await MongoApp.updateOne({ _id: nestedFolder._id }, { $set: { parentId: rootFolder._id } });
+    await MongoApp.updateOne({ _id: readableApp._id }, { $set: { parentId: nestedFolder._id } });
+    await MongoResourcePermission.create([
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId: owner.teamId,
+        resourceId: readableApp._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      },
+      {
+        resourceType: PerResourceTypeEnum.app,
+        teamId: owner.teamId,
+        resourceId: readableEmptyFolder._id,
+        tmbId: members[0].tmbId,
+        permission: ReadPermissionVal
+      }
+    ]);
+
+    const rootResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { pageSize: 1 } });
+    const secondRootPage = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { pageNum: 2, pageSize: 1 } });
+    expect(rootResponse.data.total).toBe(2);
+    expect(secondRootPage.data.total).toBe(2);
+    const rootItems = [...rootResponse.data.list, ...secondRootPage.data.list];
+    expect(rootItems.map(({ _id }) => String(_id))).toContain(String(rootFolder._id));
+    expect(rootItems.map(({ _id }) => String(_id))).toContain(String(readableEmptyFolder._id));
+    expect(rootItems.map(({ _id }) => String(_id))).not.toContain(String(hiddenEmptyFolder._id));
+    expect(
+      rootItems.find(({ _id }) => String(_id) === String(rootFolder._id))?.folderAccessMode
+    ).toBe('navigate');
+    expect(
+      rootItems.find(({ _id }) => String(_id) === String(readableEmptyFolder._id))?.folderAccessMode
+    ).toBe('read');
+
+    const emptyRootResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { parentId: '' } });
+    expect(emptyRootResponse.data.total).toBe(2);
+    expect(emptyRootResponse.data.list.map(({ _id }) => String(_id))).toContain(
+      String(rootFolder._id)
+    );
+
+    const nestedResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { parentId: String(rootFolder._id) } });
+    expect(nestedResponse.data.list).toMatchObject([
+      { _id: String(nestedFolder._id), folderAccessMode: 'navigate' }
+    ]);
+
+    const childResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: members[0], body: { parentId: String(nestedFolder._id) } });
+    expect(childResponse.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableApp._id)
+    ]);
+    expect(childResponse.data.list[0]).not.toHaveProperty('folderAccessMode');
+
+    const searchResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, {
+      auth: members[0],
+      body: { parentId: String(rootFolder._id), searchKey: 'Readable child' }
+    });
+    expect(searchResponse.data.total).toBe(1);
+    expect(searchResponse.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableApp._id)
+    ]);
+
+    const rootSearchResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, {
+      auth: members[0],
+      body: { searchKey: 'Readable child' }
+    });
+    expect(rootSearchResponse.data.total).toBe(1);
+    expect(rootSearchResponse.data.list.map(({ _id }) => String(_id))).toEqual([
+      String(readableApp._id)
+    ]);
+  });
+
   it('keeps the original array response', async () => {
     const user = await getUser(`app-list-${getNanoid(6)}`);
     const updateTimes = [

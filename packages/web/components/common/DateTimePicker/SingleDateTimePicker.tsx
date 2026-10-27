@@ -41,6 +41,7 @@ type SingleDateTimePickerProps = {
   isDisabled?: boolean;
   locale?: Locale;
   hideCalendarIcon?: boolean;
+  usePortal?: boolean;
 } & Omit<FlexProps, 'onChange' | 'value'>;
 
 /** 将时间戳或 Date 转为有效 Date；空值或非法日期返回 undefined。 */
@@ -68,6 +69,7 @@ export const SingleDateTimePicker = ({
   isDisabled,
   locale,
   hideCalendarIcon,
+  usePortal = true,
   ...triggerProps
 }: SingleDateTimePickerProps) => {
   const { t, i18n } = useTranslation();
@@ -110,6 +112,261 @@ export const SingleDateTimePicker = ({
     onChange?.(result.getTime());
     onClose();
   };
+
+  const popoverContent = (
+    <PopoverContent
+      className="nowheel"
+      w={'242px'}
+      p={0}
+      bg={'white'}
+      borderRadius={'12px'}
+      boxShadow={'0px 24px 48px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px rgba(19, 51, 107, 0.2)'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
+      _focusVisible={{ outline: 'none' }}
+      overflow={'hidden'}
+      zIndex={1500}
+    >
+      <Flex
+        h={'40px'}
+        pt={'12px'}
+        pb={'4px'}
+        px={'16px'}
+        alignItems={'center'}
+        justifyContent={'space-between'}
+        w={'100%'}
+      >
+        <Flex
+          as={'button'}
+          type={'button'}
+          w={'24px'}
+          h={'24px'}
+          borderRadius={'6px'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          cursor={'pointer'}
+          color={'myGray.600'}
+          _hover={{ bg: 'myGray.100' }}
+          onClick={() => setTempMonth((prev) => addMonths(prev, -1))}
+        >
+          <MyIcon
+            name={'core/chat/chevronRight'}
+            w={'16px'}
+            h={'16px'}
+            transform={'rotate(180deg)'}
+          />
+        </Flex>
+
+        <Box fontSize={'14px'} fontWeight={'500'} color={'#111824'} textAlign={'center'}>
+          {format(tempMonth, 'LLLL  yyyy', { locale: resolvedLocale })}
+        </Box>
+
+        <Flex
+          as={'button'}
+          type={'button'}
+          w={'24px'}
+          h={'24px'}
+          borderRadius={'6px'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          cursor={'pointer'}
+          color={'myGray.600'}
+          _hover={{ bg: 'myGray.100' }}
+          onClick={() => setTempMonth((prev) => addMonths(prev, 1))}
+        >
+          <MyIcon name={'core/chat/chevronRight'} w={'16px'} h={'16px'} />
+        </Flex>
+      </Flex>
+
+      <Box
+        userSelect={'none'}
+        sx={{
+          '.rdp-root': {
+            '--rdp-accent-color': '#3370FF',
+            '--rdp-accent-background-color': '#E1EAFF',
+            margin: 0,
+            width: '242px'
+          },
+          '.rdp-months': {
+            width: '100%'
+          },
+          '.rdp-month': {
+            width: '100%'
+          },
+          '.rdp-month_grid': {
+            width: '210px',
+            margin: '0 16px 8px 16px',
+            borderCollapse: 'separate',
+            borderSpacing: '0 4px'
+          },
+          '.rdp-weekdays': {
+            height: '30px'
+          },
+          '.rdp-weekday': {
+            width: '30px',
+            height: '28px',
+            fontSize: '12px',
+            fontWeight: '500',
+            color: '#111824',
+            textAlign: 'center',
+            padding: 0,
+            opacity: 1
+          },
+          '.rdp-weeks': {
+            paddingBottom: '8px'
+          },
+          '.rdp-week': {
+            height: '30px'
+          },
+          '.rdp-day': {
+            width: '30px',
+            height: '30px',
+            padding: 0,
+            textAlign: 'center'
+          },
+          '.rdp-day.rdp-outside, .rdp-day.rdp-hidden': {
+            visibility: 'hidden'
+          },
+          '.rdp-day_button': {
+            width: '30px',
+            height: '30px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            color: '#111824',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer'
+          },
+          '.rdp-day_button:hover:not(:disabled)': {
+            backgroundColor: '#E1EAFF'
+          },
+          '.rdp-selected .rdp-day_button, .rdp-day.rdp-selected .rdp-day_button': {
+            backgroundColor: '#3370FF !important',
+            color: 'white !important',
+            fontWeight: '500'
+          },
+          '.rdp-today:not(.rdp-selected) .rdp-day_button': {
+            backgroundColor: '#E1EAFF',
+            color: '#3370FF',
+            fontWeight: '500'
+          }
+        }}
+      >
+        <DayPicker
+          locale={resolvedLocale}
+          weekStartsOn={weekStartsOn}
+          mode={'single'}
+          month={tempMonth}
+          onMonthChange={setTempMonth}
+          selected={tempDate}
+          onSelect={(date) => {
+            if (date) applyDraftDate(date);
+          }}
+          components={{
+            Nav: () => <></>,
+            MonthCaption: () => <></>
+          }}
+          formatters={{
+            formatWeekdayName: (date) => format(date, 'EEEEEE', { locale: resolvedLocale })
+          }}
+        />
+      </Box>
+
+      <Box borderTop={'1px solid'} borderColor={'myGray.150'} px={'16px'} pt={'8px'} pb={'12px'}>
+        <HStack spacing={'4px'} w={'100%'}>
+          <Input
+            h={'32px'}
+            px={3}
+            fontSize={'xs'}
+            borderRadius={'6px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            color={'#24282C'}
+            bg={'white'}
+            value={dateInputText}
+            placeholder={'YYYY-MM-DD'}
+            onChange={(e) => {
+              const text = e.target.value;
+              setDateInputText(text);
+              const parsed = parseYmdInput(text);
+              if (parsed) {
+                setTempDate(parsed);
+                setTempMonth(parsed);
+              }
+            }}
+            _focus={{ borderColor: 'primary.600', boxShadow: 'focus' }}
+          />
+          <Input
+            type={'time'}
+            h={'32px'}
+            px={3}
+            fontSize={'xs'}
+            sx={{
+              '::-webkit-calendar-picker-indicator': {
+                display: 'none'
+              }
+            }}
+            borderRadius={'6px'}
+            border={'1px solid'}
+            borderColor={'myGray.200'}
+            color={'#24282C'}
+            bg={'white'}
+            value={timeInputText}
+            onChange={(e) => setTimeInputText(e.target.value)}
+            _focus={{ borderColor: 'primary.600', boxShadow: 'focus' }}
+          />
+        </HStack>
+      </Box>
+
+      <Flex
+        h={'52px'}
+        borderTop={'1px solid'}
+        borderColor={'myGray.150'}
+        px={'16px'}
+        pt={'8px'}
+        pb={'12px'}
+        alignItems={'center'}
+        justifyContent={'flex-end'}
+        gap={'8px'}
+      >
+        <Button
+          h={'32px'}
+          px={'14px'}
+          py={'8px'}
+          borderRadius={'6px'}
+          border={'1px solid'}
+          borderColor={'myGray.250'}
+          bg={'white'}
+          color={'myGray.600'}
+          fontSize={'12px'}
+          fontWeight={'medium'}
+          _hover={{ bg: 'myGray.50' }}
+          onClick={onClose}
+        >
+          {t('common:Cancel')}
+        </Button>
+        <Button
+          h={'32px'}
+          minW={'53px'}
+          px={'14px'}
+          py={'8px'}
+          borderRadius={'6px'}
+          bg={'primary.600'}
+          color={'white'}
+          fontSize={'12px'}
+          fontWeight={'medium'}
+          boxShadow={'0px 1px 2px rgba(19, 51, 107, 0.05)'}
+          _hover={{ bg: 'primary.700' }}
+          onClick={handleConfirm}
+        >
+          {t('common:Confirm')}
+        </Button>
+      </Flex>
+    </PopoverContent>
+  );
 
   return (
     <Popover
@@ -163,267 +420,7 @@ export const SingleDateTimePicker = ({
         </Flex>
       </PopoverTrigger>
 
-      <Portal>
-        <PopoverContent
-          w={'242px'}
-          p={0}
-          bg={'white'}
-          borderRadius={'12px'}
-          boxShadow={
-            '0px 24px 48px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px rgba(19, 51, 107, 0.2)'
-          }
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusVisible={{ outline: 'none' }}
-          overflow={'hidden'}
-          zIndex={1500}
-        >
-          <Flex
-            h={'40px'}
-            pt={'12px'}
-            pb={'4px'}
-            px={'16px'}
-            alignItems={'center'}
-            justifyContent={'space-between'}
-            w={'100%'}
-          >
-            <Flex
-              as={'button'}
-              type={'button'}
-              w={'24px'}
-              h={'24px'}
-              borderRadius={'6px'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              cursor={'pointer'}
-              color={'myGray.600'}
-              _hover={{ bg: 'myGray.100' }}
-              onClick={() => setTempMonth((prev) => addMonths(prev, -1))}
-            >
-              <MyIcon
-                name={'core/chat/chevronRight'}
-                w={'16px'}
-                h={'16px'}
-                transform={'rotate(180deg)'}
-              />
-            </Flex>
-
-            <Box fontSize={'14px'} fontWeight={'500'} color={'#111824'} textAlign={'center'}>
-              {format(tempMonth, 'LLLL  yyyy', { locale: resolvedLocale })}
-            </Box>
-
-            <Flex
-              as={'button'}
-              type={'button'}
-              w={'24px'}
-              h={'24px'}
-              borderRadius={'6px'}
-              alignItems={'center'}
-              justifyContent={'center'}
-              cursor={'pointer'}
-              color={'myGray.600'}
-              _hover={{ bg: 'myGray.100' }}
-              onClick={() => setTempMonth((prev) => addMonths(prev, 1))}
-            >
-              <MyIcon name={'core/chat/chevronRight'} w={'16px'} h={'16px'} />
-            </Flex>
-          </Flex>
-
-          <Box
-            userSelect={'none'}
-            sx={{
-              '.rdp-root': {
-                '--rdp-accent-color': '#3370FF',
-                '--rdp-accent-background-color': '#E1EAFF',
-                margin: 0,
-                width: '242px'
-              },
-              '.rdp-months': {
-                width: '100%'
-              },
-              '.rdp-month': {
-                width: '100%'
-              },
-              '.rdp-month_grid': {
-                width: '210px',
-                margin: '0 16px 8px 16px',
-                borderCollapse: 'separate',
-                borderSpacing: '0 4px'
-              },
-              '.rdp-weekdays': {
-                height: '30px'
-              },
-              '.rdp-weekday': {
-                width: '30px',
-                height: '28px',
-                fontSize: '12px',
-                fontWeight: '500',
-                color: '#111824',
-                textAlign: 'center',
-                padding: 0,
-                opacity: 1
-              },
-              '.rdp-weeks': {
-                paddingBottom: '8px'
-              },
-              '.rdp-week': {
-                height: '30px'
-              },
-              '.rdp-day': {
-                width: '30px',
-                height: '30px',
-                padding: 0,
-                textAlign: 'center'
-              },
-              '.rdp-day.rdp-outside, .rdp-day.rdp-hidden': {
-                visibility: 'hidden'
-              },
-              '.rdp-day_button': {
-                width: '30px',
-                height: '30px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: '#111824',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer'
-              },
-              '.rdp-day_button:hover:not(:disabled)': {
-                backgroundColor: '#E1EAFF'
-              },
-              '.rdp-selected .rdp-day_button, .rdp-day.rdp-selected .rdp-day_button': {
-                backgroundColor: '#3370FF !important',
-                color: 'white !important',
-                fontWeight: '500'
-              },
-              '.rdp-today:not(.rdp-selected) .rdp-day_button': {
-                backgroundColor: '#E1EAFF',
-                color: '#3370FF',
-                fontWeight: '500'
-              }
-            }}
-          >
-            <DayPicker
-              locale={resolvedLocale}
-              weekStartsOn={weekStartsOn}
-              mode={'single'}
-              month={tempMonth}
-              onMonthChange={setTempMonth}
-              selected={tempDate}
-              onSelect={(date) => {
-                if (date) applyDraftDate(date);
-              }}
-              components={{
-                Nav: () => <></>,
-                MonthCaption: () => <></>
-              }}
-              formatters={{
-                formatWeekdayName: (date) => format(date, 'EEEEEE', { locale: resolvedLocale })
-              }}
-            />
-          </Box>
-
-          <Box
-            borderTop={'1px solid'}
-            borderColor={'myGray.150'}
-            px={'16px'}
-            pt={'8px'}
-            pb={'12px'}
-          >
-            <HStack spacing={'4px'} w={'100%'}>
-              <Input
-                h={'32px'}
-                px={3}
-                fontSize={'xs'}
-                borderRadius={'6px'}
-                border={'1px solid'}
-                borderColor={'myGray.200'}
-                color={'#24282C'}
-                bg={'white'}
-                value={dateInputText}
-                placeholder={'YYYY-MM-DD'}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setDateInputText(text);
-                  const parsed = parseYmdInput(text);
-                  if (parsed) {
-                    setTempDate(parsed);
-                    setTempMonth(parsed);
-                  }
-                }}
-                _focus={{ borderColor: 'primary.600', boxShadow: 'focus' }}
-              />
-              <Input
-                type={'time'}
-                h={'32px'}
-                px={3}
-                fontSize={'xs'}
-                sx={{
-                  '::-webkit-calendar-picker-indicator': {
-                    display: 'none'
-                  }
-                }}
-                borderRadius={'6px'}
-                border={'1px solid'}
-                borderColor={'myGray.200'}
-                color={'#24282C'}
-                bg={'white'}
-                value={timeInputText}
-                onChange={(e) => setTimeInputText(e.target.value)}
-                _focus={{ borderColor: 'primary.600', boxShadow: 'focus' }}
-              />
-            </HStack>
-          </Box>
-
-          <Flex
-            h={'52px'}
-            borderTop={'1px solid'}
-            borderColor={'myGray.150'}
-            px={'16px'}
-            pt={'8px'}
-            pb={'12px'}
-            alignItems={'center'}
-            justifyContent={'flex-end'}
-            gap={'8px'}
-          >
-            <Button
-              h={'32px'}
-              px={'14px'}
-              py={'8px'}
-              borderRadius={'6px'}
-              border={'1px solid'}
-              borderColor={'myGray.250'}
-              bg={'white'}
-              color={'myGray.600'}
-              fontSize={'12px'}
-              fontWeight={'medium'}
-              _hover={{ bg: 'myGray.50' }}
-              onClick={onClose}
-            >
-              {t('common:Cancel')}
-            </Button>
-            <Button
-              h={'32px'}
-              minW={'53px'}
-              px={'14px'}
-              py={'8px'}
-              borderRadius={'6px'}
-              bg={'primary.600'}
-              color={'white'}
-              fontSize={'12px'}
-              fontWeight={'medium'}
-              boxShadow={'0px 1px 2px rgba(19, 51, 107, 0.05)'}
-              _hover={{ bg: 'primary.700' }}
-              onClick={handleConfirm}
-            >
-              {t('common:Confirm')}
-            </Button>
-          </Flex>
-        </PopoverContent>
-      </Portal>
+      {usePortal ? <Portal>{popoverContent}</Portal> : popoverContent}
     </Popover>
   );
 };

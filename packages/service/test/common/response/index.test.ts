@@ -159,7 +159,8 @@ describe('jsonRes HTTP status mapping', () => {
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
-    [AppErrEnum.workflowBuilderVersionExpired, 410]
+    [AppErrEnum.workflowBuilderVersionExpired, 410],
+    [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
     const res = createResponse();
 

@@ -2,7 +2,6 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   getLatestWorkflowBuilderChatId,
-  prewarmWorkflowBuilderRuntime,
   clearWorkflowBuilderChatHistory
 } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/api';
 
@@ -40,22 +39,6 @@ describe('getLatestWorkflowBuilderChatId', () => {
     mocks.getChatHistories.mockResolvedValueOnce({ list: [], total: 0 });
 
     await expect(getLatestWorkflowBuilderChatId('app-2')).resolves.toBeUndefined();
-  });
-});
-
-describe('prewarmWorkflowBuilderRuntime', () => {
-  it('打开 Builder 后调用稳定运行环境预热接口', async () => {
-    mocks.POST.mockResolvedValueOnce(undefined);
-
-    await prewarmWorkflowBuilderRuntime({
-      appId: '67f4c91c79a4d61b1f116b2a',
-      chatId: 'workflow-builder-chat'
-    });
-
-    expect(mocks.POST).toHaveBeenCalledWith('/proApi/core/workflow/builder/runtime/prewarm', {
-      appId: '67f4c91c79a4d61b1f116b2a',
-      chatId: 'workflow-builder-chat'
-    });
   });
 });
 

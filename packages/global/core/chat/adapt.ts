@@ -19,9 +19,8 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-import { formatAgentAskAnswers } from '../ai/agent/utils';
 import { normalizeToolResponseContent } from '../ai/llm/utils';
-import { extractDeepestInteractive } from '../workflow/runtime/utils';
+import { getUserChatSelect, formatUserChatSelect, userChatSelect2RuntimeText } from './input/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
 type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
@@ -262,12 +261,15 @@ export const chats2GPTMessages = ({
   messages,
   reserveId,
   reserveTool = false,
-  reserveReason = true
+  reserveReason = true,
+  reserveSelect = false
 }: {
   messages: ChatItemMiniType[];
   reserveId: boolean;
   reserveTool?: boolean;
   reserveReason?: boolean;
+  /** ChatBox 请求传输保留结构化输入；发送给模型时转换为文本或工具结果。 */
+  reserveSelect?: boolean;
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
   const sourceMessages = getCheckpointAwareMessages(messages);
@@ -329,7 +331,7 @@ export const chats2GPTMessages = ({
       }
     };
   };
-  sourceMessages.forEach((item) => {
+  sourceMessages.forEach((item, index) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -341,11 +343,21 @@ export const chats2GPTMessages = ({
         });
       }
     } else if (item.obj === ChatRoleEnum.Human) {
+      const previous = sourceMessages[index - 1];
+      const isAskReply =
+        !reserveSelect &&
+        reserveTool &&
+        previous?.obj === ChatRoleEnum.AI &&
+        previous.value.some((value) => !!value.agentAsk);
       const value = item.value
-        // Agent 追问的用户答案会通过当轮 pendingMainContext 恢复为 ask_agent 的 tool response。
-        // 带 askId 的历史用户消息只作为 UI 记录保存，不再重复塞进普通对话上下文。
-        .filter((item) => !item.askId)
+        // 问答正文作为紧邻 Ask 的 tool response 消费；文件仍保留为多模态输入。
+        .filter((value) => !isAskReply || !!value.file)
         .map((item) => {
+          const select = getUserChatSelect([item]);
+          if (select)
+            return reserveSelect
+              ? { type: 'select', select }
+              : { type: 'text', text: formatUserChatSelect(select) };
           if (item.text) {
             return {
               type: 'text',
@@ -384,29 +396,15 @@ export const chats2GPTMessages = ({
       }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
-      const agentAskAnswerMap = new Map<string, string>();
-      // agentAsk 的用户回答以交互记录形式存在，需要按 askId 恢复为 ask_agent tool response。
-      item.value.forEach((value) => {
-        const finalInteractive = value.interactive
-          ? extractDeepestInteractive(value.interactive)
-          : undefined;
-
-        // Legacy ask
-        if (finalInteractive?.type === 'agentPlanAskQuery' && finalInteractive.askId) {
-          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer || '未回答');
-        }
-
-        // New ask_user
-        if (finalInteractive?.type === 'agentAsk' && finalInteractive.params.submitted) {
-          agentAskAnswerMap.set(
-            finalInteractive.askId,
-            formatAgentAskAnswers({
-              questions: finalInteractive.params.questions,
-              answers: finalInteractive.params.questions.map((question) => question.answer)
-            })
-          );
-        }
-      });
+      // 仅消费紧接着的 user，遇到缺失或其他角色按错乱数据返回空结果，不跨消息查找。
+      const next = sourceMessages[index + 1];
+      const askResponse = (() => {
+        if (next?.obj !== ChatRoleEnum.Human) return '';
+        const select = getUserChatSelect(next.value);
+        return select ? formatUserChatSelect(select) : chatValue2RuntimePrompt(next.value).text;
+      })();
+      // 同一个 AI item 内是否包含工具调用；用于识别嵌套 Agent ask 的 pending tool message。
+      const itemHasTools = item.value.some((value) => !!value.tools || !!value.tool);
 
       const appendAssistantToolCall = ({
         id,
@@ -531,18 +529,18 @@ export const chats2GPTMessages = ({
             params: value.agentAsk.params,
             hideInUI: value.hideInUI
           });
-          const answer = value.agentAsk.askId
-            ? agentAskAnswerMap.get(value.agentAsk.askId)
-            : undefined;
           if (appendedToolCall) {
             /**
              * 未回答的 ask 也必须补齐 tool message。
              * 子 Agent 作为工具暂停时，用户答案还没写回历史，此时重建的上下文会留下
              * 只有 assistant tool_calls、没有对应 tool message 的非法消息序列，provider 会直接拒绝请求。
+             * 空字符串要保持为空（不能走 tool response 的 'none' 归一化）。
              */
-            appendToolMessage({
-              id: appendedToolCall.toolCall.id,
-              response: typeof answer === 'string' ? answer : 'Waiting for user answer.'
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Tool,
+              tool_call_id: appendedToolCall.toolCall.id,
+              content: askResponse || (itemHasTools ? 'Waiting for user answer.' : '')
             });
           }
         }
@@ -657,6 +655,8 @@ export const GPTMessages2Chats = ({
                   content: item.text
                 }
               });
+            } else if (item.type === 'select') {
+              value.push({ select: item.select });
             } else if (item.type === 'image_url') {
               value.push({
                 file: {
@@ -827,6 +827,9 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   value.forEach((item) => {
     if ('file' in item && item.file) {
       prompt.files.push(item.file);
+    } else if ('select' in item) {
+      const select = getUserChatSelect([item]);
+      if (select) prompt.text += userChatSelect2RuntimeText(select);
     } else if (item.text) {
       prompt.text += item.text.content;
     }

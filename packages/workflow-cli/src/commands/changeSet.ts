@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { option } from '../commandOptions';
 import z from 'zod';
 import {
@@ -94,7 +95,7 @@ const assertBaseChecksumUnchanged = async ({
   if (actualChecksum !== expectedChecksum) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_BASE_CHECKSUM_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.baseChecksumMismatch,
         severity: 'error',
         params: { expected: expectedChecksum, actual: actualChecksum }
       }
@@ -156,7 +157,7 @@ export const applyChangeSetPlan = async (
   if (recomputed.plan.targetChecksum !== suppliedPlan.targetChecksum) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_TARGET_CHECKSUM_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.targetChecksumMismatch,
         severity: 'error',
         params: {
           expected: suppliedPlan.targetChecksum,
@@ -168,7 +169,7 @@ export const applyChangeSetPlan = async (
   if (JSON.stringify(recomputed.plan) !== JSON.stringify(suppliedPlan)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_PLAN_CONTENT_MISMATCH',
+        code: WorkflowDiagnosticCodeEnum.planContentMismatch,
         severity: 'error',
         params: { targetChecksum: recomputed.plan.targetChecksum }
       }
@@ -185,7 +186,7 @@ export const applyChangeSetPlan = async (
       throw new CliArgumentError(
         '--confirm must equal the recomputed target checksum',
         { expected: targetChecksum, actual: input.confirm },
-        'CLI_CONFIRM_CHECKSUM_MISMATCH'
+        WorkflowDiagnosticCodeEnum.cliConfirmChecksumMismatch
       );
     }
     if (input.confirm === undefined) {
@@ -193,14 +194,14 @@ export const applyChangeSetPlan = async (
         throw new CliArgumentError(
           'Non-interactive apply requires --confirm with the target checksum',
           { targetChecksum },
-          'CLI_CONFIRM_REQUIRED'
+          WorkflowDiagnosticCodeEnum.cliConfirmRequired
         );
       }
       if (!(await context.requestConfirmation(targetChecksum))) {
         throw new CliArgumentError(
           'Workflow plan was not confirmed',
           { targetChecksum },
-          'CLI_CONFIRM_REJECTED'
+          WorkflowDiagnosticCodeEnum.cliConfirmRejected
         );
       }
     }

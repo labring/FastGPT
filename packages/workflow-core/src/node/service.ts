@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { planNodeRemoval } from './removal';
 import {
   FlowNodeInputTypeEnum,
@@ -17,7 +18,7 @@ const getNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_NOT_FOUND', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeNotFound, severity: 'error', nodeId }
     ]);
   }
   return node;
@@ -75,7 +76,7 @@ export const cloneNode = ({
   const source = getNode(document, sourceNodeId);
   if (document.nodes.some((item) => item.nodeId === nodeId)) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_ID_DUPLICATED', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeIdDuplicated, severity: 'error', nodeId }
     ]);
   }
   if (
@@ -88,13 +89,17 @@ export const cloneNode = ({
     isNestedChildSystemNodeType(source.flowNodeType)
   ) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_UNIQUE_NODE_CLONE_FORBIDDEN', severity: 'error', nodeId: sourceNodeId }
+      {
+        code: WorkflowDiagnosticCodeEnum.uniqueNodeCloneForbidden,
+        severity: 'error',
+        nodeId: sourceNodeId
+      }
     ]);
   }
   if (getNodeAutomationMeta(source.flowNodeType)?.availableForWorkflowBuilder === false) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_TEMPLATE_NOT_AVAILABLE_FOR_BUILDER',
+        code: WorkflowDiagnosticCodeEnum.templateNotAvailableForBuilder,
         severity: 'error',
         nodeId: sourceNodeId,
         params: { flowNodeType: source.flowNodeType }

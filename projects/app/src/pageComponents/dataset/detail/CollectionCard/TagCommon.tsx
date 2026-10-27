@@ -18,7 +18,8 @@ export type CollectionTagDisplayItem = string | { tag: string; value?: string | 
 export const OVERFLOW_CHIP_GAP_PX = 8;
 
 /**
- * 根据测量宽度计算可见 chip 数量。空间不够时至少留 1 个，其余用 +n。
+ * 根据测量宽度计算可见 chip 数量。
+ * 若多选且连第 1 个 chip 都无法完整放下，返回 0（仅渲染 +n）；只选 1 个时仍保留该项供截断省略。
  */
 const countVisibleOverflowChips = ({
   chipWidths,
@@ -50,7 +51,10 @@ const countVisibleOverflowChips = ({
     break;
   }
 
-  return visibleCount === 0 ? 1 : visibleCount;
+  if (visibleCount === 0) {
+    return chipWidths.length > 1 ? 0 : 1;
+  }
+  return visibleCount;
 };
 
 /** 列表/选项输入共用的 chip 溢出测量。itemKey 变化时重新量。 */

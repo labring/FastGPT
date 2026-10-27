@@ -259,7 +259,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'child result',
         response: 'child result',
         seconds: 0.1,
         assistantResponses: [
@@ -373,7 +372,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: childResult.response,
         response: childResult.response,
         seconds: 0.1,
         assistantMessages: childResult.assistantMessages,
@@ -465,7 +463,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'partial child output',
         response: 'partial child output',
         seconds: 0.1,
         assistantResponses: []
@@ -552,7 +549,6 @@ describe('runToolCall compression node responses', () => {
         options.runtime.emitEvent({
           type: 'tool_run_end',
           call,
-          rawResponse: response,
           response,
           seconds: 0.1
         });
@@ -568,6 +564,57 @@ describe('runToolCall compression node responses', () => {
       { id: 'call_second', response: 'second result' }
     ]);
   });
+
+  it.each(['unprocessed', 'locally simplified', 'LLM compressed'])(
+    'uses the complete %s tool result for chat persistence and SSE',
+    async (processing) => {
+      const response = `${processing}:${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const call = {
+        id: 'call_search',
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{}' }
+      };
+      runAgentLoopMock.mockImplementationOnce(async (options) => {
+        options.runtime.emitEvent({ type: 'tool_call', call });
+        options.runtime.emitEvent({
+          type: 'tool_run_end',
+          call,
+          response,
+          seconds: 0.1,
+          ...(processing === 'LLM compressed'
+            ? {
+                toolResponseCompress: {
+                  response,
+                  modelName: 'GPT-4',
+                  usage: { moduleName: 'account_usage:tool_response_compress', totalPoints: 0.1 },
+                  requestIds: ['req_tool_compress'],
+                  seconds: 0.1
+                }
+              }
+            : {})
+        });
+        return createLoopResult({ usages: [] });
+      });
+      const props = createProps({
+        toolNodes: [
+          { nodeId: 'search', name: 'Search', flowNodeType: FlowNodeTypeEnum.tool, inputs: [] }
+        ]
+      });
+
+      const result = await runToolCall(props);
+
+      expect(result.assistantResponses.flatMap((item) => item.tools ?? [])).toEqual([
+        expect.objectContaining({ id: call.id, response })
+      ]);
+      expect(props.workflowStreamResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'toolResponse',
+          id: call.id,
+          data: { tool: { id: call.id, toolName: '', toolAvatar: '', params: '', response } }
+        })
+      );
+    }
+  );
 
   it('records context and tool-response compression as separate ToolCall detail rows', async () => {
     const contextCompressUsage = {
@@ -607,7 +654,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'raw tool response',
         response: 'compressed tool response',
         seconds: 0.56,
         toolResponseCompress: {
@@ -771,7 +817,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'search result',
         response: 'search result',
         seconds: 0.1
       });
@@ -802,7 +847,6 @@ describe('runToolCall compression node responses', () => {
             arguments: '{"query":"FastGPT"}'
           }
         },
-        rawResponse: 'tool response',
         response: 'tool response',
         seconds: 0.1
       });
@@ -932,7 +976,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: 'raw tool response',
         response: 'raw tool response',
         seconds: 0.56,
         toolResponseCompress: {
@@ -1003,7 +1046,6 @@ describe('runToolCall compression node responses', () => {
             arguments: '{"command":"pwd"}'
           }
         },
-        rawResponse: 'sandbox output',
         response: 'sandbox output',
         usages: [],
         seconds: 0.5
@@ -1096,7 +1138,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: fileResult.response,
         response: fileResult.response,
         usages: fileResult.usages,
         seconds: 0.1,
@@ -1170,7 +1211,6 @@ describe('runToolCall compression node responses', () => {
       options.runtime.emitEvent({
         type: 'tool_run_end',
         call,
-        rawResponse: datasetResult.response,
         response: datasetResult.response,
         usages: datasetResult.usages,
         seconds: 0.2,
@@ -1274,7 +1314,6 @@ describe('runToolCall compression node responses', () => {
         options.runtime.emitEvent({
           type: 'tool_run_end',
           call,
-          rawResponse: 'Tool error: network failed',
           response: 'Tool error: network failed',
           errorMessage: 'Tool error: network failed',
           seconds: 0.56

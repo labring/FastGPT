@@ -1,3 +1,7 @@
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import type { Node, Edge } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -36,7 +40,7 @@ describe('createWorkflowCheckDocument', () => {
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       value: ['deleted', 'output']
     });
-    nodes[1].data.pluginData = { error: 'tool_missing' };
+    nodes[1].data.pluginData = { error: WorkflowCheckIssueCodeEnum.toolMissing };
     nodes[1].data.outputs.push({
       id: 'out',
       key: 'out',
@@ -47,7 +51,7 @@ describe('createWorkflowCheckDocument', () => {
     const { document, diagnostics } = createWorkflowCheckDocument({ nodes, edges: [] });
     expect(diagnostics).toEqual([]);
     expect(document.nodes[1].inputs[0].value).toEqual(['deleted', 'output']);
-    expect(document.nodes[1].pluginData?.error).toBe('tool_missing');
+    expect(document.nodes[1].pluginData?.error).toBe(WorkflowCheckIssueCodeEnum.toolMissing);
     expect(document.nodes[1].outputs[0]).not.toHaveProperty('invalidCondition');
     expect(JSON.stringify(nodes)).toBe(before);
     expect(nodes[1].data.outputs[0].invalidCondition).toBe(condition);
@@ -89,9 +93,9 @@ describe('createWorkflowCheckDocument', () => {
     const result = createWorkflowCheckDocument({ nodes: makeNodes(), edges });
     expect(result.document.executionEdges).toHaveLength(1);
     expect(result.diagnostics.map((issue) => issue.code)).toEqual([
-      'WORKFLOW_EDGE_HANDLE_UNSUPPORTED',
-      'WORKFLOW_NODE_NOT_FOUND',
-      'WORKFLOW_TOOL_EDGE_INVALID'
+      WorkflowDiagnosticCodeEnum.edgeHandleUnsupported,
+      WorkflowDiagnosticCodeEnum.nodeNotFound,
+      WorkflowDiagnosticCodeEnum.toolEdgeInvalid
     ]);
     expect(result.diagnostics[0].params?.edge).toMatchObject({
       source: 'start',
@@ -115,7 +119,7 @@ describe('createWorkflowCheckDocument', () => {
     });
     expect(diagnostics).toEqual([
       expect.objectContaining({
-        code: 'WORKFLOW_EDGE_INVALID',
+        code: WorkflowDiagnosticCodeEnum.edgeInvalid,
         params: expect.objectContaining({ reason: expect.stringContaining('startsWith') })
       })
     ]);

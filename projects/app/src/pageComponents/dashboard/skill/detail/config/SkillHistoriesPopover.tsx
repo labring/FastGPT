@@ -113,7 +113,7 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
     data: versionList,
     setData
   } = useScrollPagination(getSkillVersionList, {
-    pageSize: 10,
+    pageSize: 20,
     params: { skillId }
   });
 

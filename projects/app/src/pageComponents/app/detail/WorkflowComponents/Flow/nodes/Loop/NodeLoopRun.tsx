@@ -111,7 +111,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         if (!hasIndex) {
           onChangeNode({
             nodeId: startNode.nodeId,
-            type: 'addOutput',
+            type: 'ensureOutput',
             value: {
               id: NodeOutputKeyEnum.currentIndex,
               key: NodeOutputKeyEnum.currentIndex,
@@ -125,7 +125,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         if (!hasItem) {
           onChangeNode({
             nodeId: startNode.nodeId,
-            type: 'addOutput',
+            type: 'ensureOutput',
             value: {
               id: NodeOutputKeyEnum.currentItem,
               key: NodeOutputKeyEnum.currentItem,
@@ -154,7 +154,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         if (!hasIteration) {
           onChangeNode({
             nodeId: startNode.nodeId,
-            type: 'addOutput',
+            type: 'ensureOutput',
             value: {
               id: NodeOutputKeyEnum.currentIteration,
               key: NodeOutputKeyEnum.currentIteration,
@@ -205,7 +205,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       if (!existing) {
         onChangeNode({
           nodeId,
-          type: 'addOutput',
+          type: 'ensureOutput',
           value: {
             id: input.key,
             key: input.key,

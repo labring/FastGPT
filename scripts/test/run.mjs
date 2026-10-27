@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import process from 'node:process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,7 @@ const workspaceFilters = {
   'workflow-cli': '@fastgpt/workflow-cli'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
+const optionalWorkspaceScopes = new Set(['workflow-core', 'workflow-cli']);
 const supportedModes = ['unit', 'integration', 'sandbox', 'all'];
 
 const parseUnitScopes = (scopeValue) => {
@@ -99,7 +101,12 @@ export const resolveTestPlan = ({ args = [], modeValue, scopeValue } = {}) => {
   }
 
   const unitScopes = parseUnitScopes(mode === 'all' ? 'workspace' : scopeValue);
-  const selectedWorkspaces = unitScopes.filter((scope) => scope in workspaceFilters);
+  const selectedWorkspaces = unitScopes.filter(
+    (scope) =>
+      scope in workspaceFilters &&
+      (!optionalWorkspaceScopes.has(scope) ||
+        existsSync(resolve(process.cwd(), 'packages', scope, 'package.json')))
+  );
   const plan = [];
 
   if (selectedWorkspaces.length > 0) {

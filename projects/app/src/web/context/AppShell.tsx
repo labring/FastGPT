@@ -59,7 +59,13 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
   if (openAPIReferenceRoutes.includes(router.pathname)) {
     return (
       <>
-        {showHead && <NextHead title={title} desc={headDesc} icon={headIcon} />}
+        {showHead && (
+          <NextHead
+            title={`${title} ${router.pathname === '/apidoc/systemopenapi' ? 'OpenAPI' : 'DevAPI'}`}
+            desc={headDesc}
+            icon={headIcon}
+          />
+        )}
         {page}
       </>
     );

@@ -537,6 +537,12 @@ describe('dispatchRunAgent user context', () => {
     let sandboxReadyBeforeLoop = false;
     runAgentLoopMock.mockImplementationOnce(async () => {
       sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
+      expect(
+        props.workflowStreamResponse.mock.calls
+          .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+          .filter((event: { event: string }) => event.event === 'sandboxStatus')
+          .map((event: { data: { phase: string } }) => event.data.phase)
+      ).toEqual(['lazyInit', 'ready']);
       return {
         status: 'done',
         completeMessages: [],
@@ -667,8 +673,8 @@ describe('dispatchRunAgent user context', () => {
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
-    expect(sandboxStatusEvents).toEqual([
-      {
+    expect(sandboxStatusEvents).toEqual(
+      ['lazyInit', 'upgrading', 'lazyInit', 'ready'].map((phase) => ({
         event: 'sandboxStatus',
         data: {
           sandboxId: getRunningSandboxId({
@@ -676,21 +682,10 @@ describe('dispatchRunAgent user context', () => {
             sourceId: 'app_1',
             userId: 'user_1'
           }),
-          phase: 'upgrading'
+          phase
         }
-      },
-      {
-        event: 'sandboxStatus',
-        data: {
-          sandboxId: getRunningSandboxId({
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: 'app_1',
-            userId: 'user_1'
-          }),
-          phase: 'lazyInit'
-        }
-      }
-    ]);
+      }))
+    );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
     expect(result.error).toBeUndefined();
@@ -716,6 +711,12 @@ describe('dispatchRunAgent user context', () => {
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+    expect(
+      props.workflowStreamResponse.mock.calls
+        .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+        .filter((event: { event: string }) => event.event === 'sandboxStatus')
+        .map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit']);
     expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
@@ -1040,14 +1041,15 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
+  it('ignores legacy unwrapped Ask memory without crashing a new run', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'legacy-plan',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1096,25 +1098,9 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'fastAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: {
-            pendingMainContext: expect.objectContaining({
-              askToolCallId: 'call_ask',
-              activePlan: {
-                planId: 'legacy-plan',
-                name: 'Legacy plan',
-                description: 'Legacy description',
-                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
-              }
-            })
-          }
-        })
-      })
-    );
+    const input = runAgentLoopMock.mock.calls[0][0].input;
+    expect(input.providerState).toBeUndefined();
+    expect(input.userAnswer).toBeUndefined();
     expect(result.data.answerText).toBe('continued answer');
   });
 
@@ -1132,16 +1118,14 @@ describe('dispatchRunAgent user context', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           },
           {
             question: 'Second?',
             options: [
               { summary: 'C', value: 'C' },
               { summary: 'D', value: 'D' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -1191,10 +1175,11 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask_1',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {

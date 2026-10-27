@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   WorkflowCommandError,
   WorkflowValidationError
@@ -48,7 +49,8 @@ export const runCli = async ({
       stdout(renderHelp());
       return 0;
     }
-    if (argv.length === 1 && argv[0] === '--version') {
+    // 全局 --version 与 --help 一样不依赖命令，允许与 --format/--dir 等其它参数共存。
+    if (argv.includes('--version')) {
       stdout(CLI_VERSION);
       return 0;
     }
@@ -88,7 +90,10 @@ export const runCli = async ({
       if (error instanceof CliArgumentError || error instanceof ZodError) {
         return {
           exitCode: 2,
-          code: error instanceof CliArgumentError ? error.code : 'CLI_ARGUMENT_INVALID',
+          code:
+            error instanceof CliArgumentError
+              ? error.code
+              : WorkflowDiagnosticCodeEnum.cliArgumentInvalid,
           params: error instanceof CliArgumentError ? error.params : error.issues
         };
       }
@@ -98,7 +103,7 @@ export const runCli = async ({
       if (error instanceof WorkflowValidationError) {
         return { exitCode: 4, code: error.code, diagnostics: error.diagnostics };
       }
-      return { exitCode: 1, code: 'CLI_INTERNAL_ERROR' };
+      return { exitCode: 1, code: WorkflowDiagnosticCodeEnum.cliInternalError };
     })();
     stderr(
       renderError({
