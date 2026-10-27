@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { defaultProvider } from '@fastgpt/global/core/ai/model/provider';
+import { computedMaxToken } from '@fastgpt/service/core/ai/utils';
+import {
+  classifyChannelModels,
+  createBlankModelData as createChannelBlankModelData
+} from '@fastgpt/service/core/ai/model/importFromChannelUtils';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ApplyChangesBody,
@@ -249,15 +254,12 @@ describe('buildBlankChannelModelData', () => {
     ).toMatchObject({ provider: defaultProvider.id });
   });
 
-  it('keeps inferred LLM values and sets missing context limits to zero', () => {
+  it('keeps inferred LLM values and preserves the default response limit', () => {
     const modelData = buildBlankChannelModelData({
       providerModelSlug: 'upstream/model',
       modelType: ModelTypeEnum.llm,
       provider: ' provider ',
-      modelData: {
-        inputPrice: 0.2,
-        config: { maxContext: 16384 }
-      },
+      modelData: { config: { maxContext: 16384 } },
       createModelData
     });
 
@@ -265,9 +267,30 @@ describe('buildBlankChannelModelData', () => {
       model: 'upstream/model',
       name: 'upstream/model',
       provider: 'provider',
-      inputPrice: 0.2,
-      config: { maxContext: 16384, maxResponse: 0 }
+      config: { maxContext: 16384, maxResponse: 16000 }
     });
+  });
+
+  it('keeps a blank LLM response default through runtime token capping when upstream omits it', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/model',
+      context_length: 32000,
+      architecture: { output_modalities: ['text'] }
+    });
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
+      createModelData
+    });
+
+    if (modelData?.type !== ModelTypeEnum.llm) {
+      throw new Error('Expected an LLM model from the upstream text modality');
+    }
+
+    expect(modelData.config.maxResponse).toBe(16000);
+    expect(computedMaxToken({ maxToken: 2048, model: modelData })).toBe(2048);
   });
 
   it('defaults a blank LLM quote limit from its context length', () => {
@@ -467,6 +490,35 @@ describe('buildChannelImportOperation', () => {
         templateData: selectedTemplate
       })
     ).toMatchObject({ modelData: { config: { maxContext: 16384, maxResponse: 8192 } } });
+  });
+
+  it('preserves a template context limit through preview and apply when upstream omits it', () => {
+    const templateData = {
+      ...sourceModel,
+      model: 'remote/model',
+      config: { ...sourceModel.config, maxContext: 128000 }
+    };
+    const [row] = classifyChannelModels({
+      channelModels: [{ id: 'remote/model' }],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: [templateData]
+    });
+    const operation = buildChannelImportOperation({
+      providerModelSlug: row.providerModelSlug,
+      item: getChannelImportCandidate(row),
+      templateData,
+      contextLength: row.contextLength,
+      maxCompletionTokens: row.maxCompletionTokens
+    });
+
+    expect(row.contextLength).toBeUndefined();
+    expect(operation).toMatchObject({
+      action: 'create',
+      modelData: { model: 'remote/model', config: { maxContext: 128000 } }
+    });
   });
 
   it('creates blank candidates only when model data is available', () => {

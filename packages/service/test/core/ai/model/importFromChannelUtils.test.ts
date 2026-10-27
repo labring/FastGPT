@@ -60,6 +60,27 @@ describe('channel model import matching', () => {
     });
   });
 
+  it('preserves template limits when upstream context length is missing', () => {
+    const [preview] = classifyChannelModels({
+      channelModels: [{ id: 'openai/gpt-4o' }],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: [
+        createTemplate({
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+        })
+      ]
+    });
+
+    expect(preview.contextLength).toBeUndefined();
+    expect(preview.candidates[0]).toMatchObject({
+      category: 'template',
+      modelData: { config: { maxContext: 128000, maxResponse: 16000 } }
+    });
+  });
+
   it('assigns a local model to one best upstream row and routes the rest to templates', () => {
     const items = classifyChannelModels({
       channelModels: [{ id: 'gpt-4o' }, { id: 'vendor/gpt-4o' }],
