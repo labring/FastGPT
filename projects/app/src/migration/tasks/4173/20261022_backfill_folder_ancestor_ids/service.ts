@@ -17,7 +17,10 @@ type FolderMigrationDoc = {
 type MigrationOperation = {
   updateOne: {
     filter: { _id: Types.ObjectId };
-    update: { $set?: { ancestorIds: Types.ObjectId[] }; $unset?: { ancestorIds: '' } };
+    update: {
+      $set?: { ancestorIds?: Types.ObjectId[]; parentId?: null };
+      $unset?: { ancestorIds: '' };
+    };
   };
 };
 type MigrationCollection = {
@@ -110,7 +113,15 @@ export const readFolderMigrationDocsByIds = async ({
 };
 
 /**
- * 为单条文档规划确定性更新。目录关系无效时只记录失败、不修改该文档；
+ * 为单条文档规划确定性更新。
+ *
+ * 跨树引用（父级与自身不属于同一棵目录树）是历史脏数据，而不是可修复的数据错误：普通应用树
+ * 与工具树互相隔离，任何一方都不能成为对方的父级。这里只在“跨树边界”断开，不动其它关系：
+ * - 直接父级跨树：该记录失去父级，移到团队顶层（parentId、ancestorIds 一起清空）；
+ * - 更高层祖先跨树：保留同树部分的 parentId，路径在边界处截断。
+ * 不能把所有下游记录一起移到顶层，否则会连带拆散原本同树、正确的父子关系。
+ *
+ * 其余目录关系错误（父级不存在、跨团队、成环、超出深度）仍只记录失败、不修改该文档；
  * 数据库等运行故障继续抛出，使 Runner 保留最后一次已提交的断点。
  */
 const planDocument = async ({
@@ -138,6 +149,9 @@ const planDocument = async ({
   const ancestorIds: Types.ObjectId[] = [];
   const visited = new Set([String(doc._id)]);
   let parentId = doc.parentId ? String(doc.parentId) : null;
+  // 直接父级就跨树时才置位：此时自身失去父级，需连同 parentId 一起改写。
+  let detachToRoot = false;
+
   while (parentId) {
     if (!Types.ObjectId.isValid(parentId)) return { reason: 'parentId is not a valid ObjectId' };
     if (visited.has(parentId)) return { reason: 'folder parent cycle detected' };
@@ -153,11 +167,27 @@ const planDocument = async ({
     if (!parent) return { reason: 'parent document does not exist' };
     if (String(parent.teamId) !== String(doc.teamId))
       return { reason: 'parent belongs to another team' };
-    if (parent.type !== folderType)
-      return { reason: 'parent folder type does not match this tree' };
+    if (parent.type !== folderType) {
+      // 上溯到此即跨树。ancestorIds 为空说明断点就在直接父级，否则只是更高层祖先越界。
+      detachToRoot = ancestorIds.length === 0;
+      break;
+    }
 
     ancestorIds.push(parent._id);
     parentId = parent.parentId ? String(parent.parentId) : null;
+  }
+
+  // 直接父级跨树：清空 parentId 与路径，避免下一次校验重复命中同一错误。
+  if (detachToRoot) {
+    if (verifyOnly) return { reason: 'parent folder type does not match this tree' };
+    return {
+      operation: {
+        updateOne: {
+          filter: { _id: doc._id },
+          update: { $set: { parentId: null, ancestorIds: [] } }
+        }
+      }
+    };
   }
 
   ancestorIds.reverse();

@@ -1,7 +1,7 @@
 import updateHandler from '@/pages/api/core/app/update';
 import moveHandler from '@/pages/api/core/app/batch/move';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -330,7 +330,8 @@ describe('move app', () => {
       query: { appId: String(movingFolder._id) },
       body: { parentId: String(toolFolder._id) }
     });
-    expect(crossTreeMove.error).toBe(CommonErrEnum.invalidParams);
+    // 跨树移动被明确识别为父文件夹类型不匹配，而不是笼统的参数错误。
+    expect(crossTreeMove.error).toBe(AppErrEnum.parentFolderTypeMismatch);
     expect(await MongoApp.findById(movingFolder._id).lean()).toMatchObject({
       parentId: null,
       ancestorIds: []

@@ -143,6 +143,7 @@
   "code_error.app_error.invalid_app_type": "错误的应用类型",
   "code_error.app_error.invalid_owner": "非法的应用所有者",
   "code_error.app_error.not_exist": "应用不存在",
+  "code_error.app_error.parent_folder_type_mismatch": "父文件夹类型不匹配：普通应用只能放在应用文件夹中，工具只能放在工具文件夹中",
   "code_error.app_error.un_auth_app": "无权操作该应用",
   "code_error.chat_error.chat_generating": "当前对话正在生成中，请等待完成后再发起新的请求",
   "code_error.chat_error.un_auth": "没有权限操作此对话记录",

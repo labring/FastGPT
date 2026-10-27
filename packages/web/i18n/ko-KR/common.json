@@ -142,6 +142,7 @@
   "code_error.app_error.invalid_app_type": "유효하지 않은 앱 유형입니다",
   "code_error.app_error.invalid_owner": "권한이 없는 앱 소유자입니다",
   "code_error.app_error.not_exist": "앱이 존재하지 않습니다",
+  "code_error.app_error.parent_folder_type_mismatch": "상위 폴더 유형이 일치하지 않습니다. 앱은 앱 폴더에만, 도구는 도구 폴더에만 배치할 수 있습니다",
   "code_error.app_error.un_auth_app": "이 앱을 조작할 권한이 없습니다",
   "code_error.chat_error.chat_generating": "이 대화는 아직 생성 중입니다. 완료될 때까지 기다린 후 다시 요청해 주세요.",
   "code_error.chat_error.un_auth": "이 대화 기록을 조작할 권한이 없습니다",

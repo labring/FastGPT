@@ -1,12 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import {
-  AppFolderTypeList,
-  AppTypeEnum,
-  AppTypeList,
-  ToolTypeList
-} from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
@@ -47,6 +42,7 @@ import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamL
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -170,16 +166,8 @@ export const onCreateApp = async ({
         : 'app'
   });
 
-  if (parentId) {
-    const parentApp = await MongoApp.findById(parentId, 'type').lean();
-
-    if (ToolTypeList.includes(type) && parentApp?.type !== AppTypeEnum.toolFolder) {
-      return Promise.reject('tool type can only be created in tool folder');
-    }
-    if (AppTypeList.includes(type) && parentApp?.type !== AppTypeEnum.folder) {
-      return Promise.reject('agent type can only be created in agent folder');
-    }
-  }
+  // 普通应用与工具分属两棵目录树，父文件夹类型必须是同一棵树内的文件夹。
+  await validateParentFolderType({ parentId, childType: type });
 
   // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
   const normalizedWorkflow = migrateWorkflowToCurrent({

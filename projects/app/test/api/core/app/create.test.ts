@@ -174,4 +174,67 @@ describe('create api', () => {
     expect(rawApp).not.toHaveProperty('edges');
     expect(rawApp).not.toHaveProperty('chatConfig');
   });
+
+  it('rejects creating an app under a tool folder and a tool under an app folder', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+
+    const appFolder = await MongoApp.create({
+      name: 'app-folder',
+      type: AppTypeEnum.folder,
+      teamId: member.teamId,
+      tmbId: member.tmbId
+    });
+    const toolFolder = await MongoApp.create({
+      name: 'tool-folder',
+      type: AppTypeEnum.toolFolder,
+      teamId: member.teamId,
+      tmbId: member.tmbId
+    });
+
+    // 普通应用不能放进工具文件夹
+    const appIntoToolFolder = await Call<CreateAppBodyType, EmptyRequestParams, string>(
+      createapi.default,
+      {
+        auth: member,
+        body: {
+          nodes: [],
+          name: 'app-in-tool-folder',
+          type: AppTypeEnum.simple,
+          parentId: String(toolFolder._id)
+        }
+      }
+    );
+    expect(appIntoToolFolder.error).toBe(AppErrEnum.parentFolderTypeMismatch);
+
+    // 工具不能放进普通应用文件夹
+    const toolIntoAppFolder = await Call<CreateAppBodyType, EmptyRequestParams, string>(
+      createapi.default,
+      {
+        auth: member,
+        body: {
+          nodes: [],
+          name: 'tool-in-app-folder',
+          type: AppTypeEnum.workflowTool,
+          parentId: String(appFolder._id)
+        }
+      }
+    );
+    expect(toolIntoAppFolder.error).toBe(AppErrEnum.parentFolderTypeMismatch);
+
+    // 同树创建仍然正常
+    const validCreate = await Call<CreateAppBodyType, EmptyRequestParams, string>(
+      createapi.default,
+      {
+        auth: member,
+        body: {
+          nodes: [],
+          name: 'app-in-app-folder',
+          type: AppTypeEnum.simple,
+          parentId: String(appFolder._id)
+        }
+      }
+    );
+    expect(validCreate.error).toBeUndefined();
+  });
 });
