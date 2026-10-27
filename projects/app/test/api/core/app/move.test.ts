@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { serviceEnv } from '@fastgpt/service/env';
 import updateHandler from '@/pages/api/core/app/update';
 import moveHandler from '@/pages/api/core/app/batch/move';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -466,4 +468,73 @@ describe('move app', () => {
       ])
     );
   });
+});
+
+describe('configured move depth', () => {
+  it.each([AppTypeEnum.folder, AppTypeEnum.toolFolder])(
+    'enforces configured depth for %s moves',
+    async (folderType) => {
+      const { owner } = await getFakeUsers(1);
+      const scope = { teamId: owner.teamId, tmbId: owner.tmbId };
+      const targets: string[] = [];
+      for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH; i++) {
+        const folder = await MongoApp.create({
+          ...scope,
+          name: `target-${i}`,
+          type: folderType,
+          parentId: targets.at(-1) ?? null,
+          ancestorIds: [...targets]
+        });
+        targets.push(String(folder._id));
+      }
+      const oldParent = await MongoApp.create({ ...scope, name: 'old-parent', type: folderType });
+      const moving = await MongoApp.create({
+        ...scope,
+        name: 'moving',
+        type: folderType,
+        parentId: oldParent._id,
+        ancestorIds: [oldParent._id],
+        inheritPermission: false
+      });
+      const child = await MongoApp.create({
+        ...scope,
+        name: 'child',
+        type: folderType,
+        parentId: moving._id,
+        ancestorIds: [oldParent._id, moving._id],
+        inheritPermission: false
+      });
+      const snapshot = () =>
+        MongoApp.find({ _id: { $in: [moving._id, child._id] } })
+          .select('_id parentId ancestorIds')
+          .sort('_id')
+          .lean();
+      const before = await snapshot();
+      const move = (id: string, parentId: string | null) =>
+        Call(updateHandler, { auth: owner, query: { appId: String(id) }, body: { parentId } });
+      const denied = await move(String(moving._id), targets.at(-2)!);
+      expect(denied.error).toBe(CommonErrEnum.folderMoveDepthLimit);
+      expect(await snapshot()).toEqual(before);
+
+      const parentIds = targets.slice(0, -2);
+      const moved = await move(String(moving._id), parentIds.at(-1) ?? null);
+      expect(moved.code).toBe(200);
+      expect((await MongoApp.findById(moving._id).lean())?.ancestorIds.map(String)).toEqual(
+        parentIds
+      );
+      expect((await MongoApp.findById(child._id).lean())?.ancestorIds.map(String)).toEqual([
+        ...parentIds,
+        String(moving._id)
+      ]);
+      const leaf = await MongoApp.create({
+        ...scope,
+        name: 'leaf-at-limit',
+        type:
+          folderType === AppTypeEnum.toolFolder ? AppTypeEnum.workflowTool : AppTypeEnum.workflow,
+        inheritPermission: false
+      });
+      expect((await move(String(leaf._id), targets.at(-1)!)).code).toBe(200);
+      expect(String((await MongoApp.findById(leaf._id).lean())?.parentId)).toBe(targets.at(-1));
+    }
+  );
 });

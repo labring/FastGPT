@@ -1,3 +1,4 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import updateHandler from '@/pages/api/core/dataset/update';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
@@ -1230,4 +1231,70 @@ it('rejects moving a leaf beneath another leaf without changing its parent', asy
   });
   expect(res.error).toBe(CommonErrEnum.invalidParams);
   expect((await MongoDataset.findById(source._id).lean())?.parentId).toBeNull();
+});
+
+describe('configured move depth', () => {
+  it('enforces configured depth for Dataset moves', async () => {
+    const folderType = DatasetTypeEnum.folder;
+    const { owner } = await getFakeUsers(1);
+    const scope = { teamId: owner.teamId, tmbId: owner.tmbId };
+    const targets: string[] = [];
+    for (let i = 0; i < serviceEnv.MAX_FOLDER_DEPTH; i++) {
+      const folder = await MongoDataset.create({
+        ...scope,
+        name: `target-${i}`,
+        type: folderType,
+        parentId: targets.at(-1) ?? null,
+        ancestorIds: [...targets]
+      });
+      targets.push(String(folder._id));
+    }
+    const oldParent = await MongoDataset.create({ ...scope, name: 'old-parent', type: folderType });
+    const moving = await MongoDataset.create({
+      ...scope,
+      name: 'moving',
+      type: folderType,
+      parentId: oldParent._id,
+      ancestorIds: [oldParent._id],
+      inheritPermission: false
+    });
+    const child = await MongoDataset.create({
+      ...scope,
+      name: 'child',
+      type: folderType,
+      parentId: moving._id,
+      ancestorIds: [oldParent._id, moving._id],
+      inheritPermission: false
+    });
+    const snapshot = () =>
+      MongoDataset.find({ _id: { $in: [moving._id, child._id] } })
+        .select('_id parentId ancestorIds')
+        .sort('_id')
+        .lean();
+    const before = await snapshot();
+    const move = (id: string, parentId: string | null) =>
+      Call(updateHandler, { auth: owner, body: { id: String(id), parentId } });
+    const denied = await move(String(moving._id), targets.at(-2)!);
+    expect(denied.error).toBe(CommonErrEnum.folderMoveDepthLimit);
+    expect(await snapshot()).toEqual(before);
+
+    const parentIds = targets.slice(0, -2);
+    const moved = await move(String(moving._id), parentIds.at(-1) ?? null);
+    expect(moved.code).toBe(200);
+    expect((await MongoDataset.findById(moving._id).lean())?.ancestorIds.map(String)).toEqual(
+      parentIds
+    );
+    expect((await MongoDataset.findById(child._id).lean())?.ancestorIds.map(String)).toEqual([
+      ...parentIds,
+      String(moving._id)
+    ]);
+    const leaf = await MongoDataset.create({
+      ...scope,
+      name: 'leaf-at-limit',
+      type: DatasetTypeEnum.dataset,
+      inheritPermission: false
+    });
+    expect((await move(String(leaf._id), targets.at(-1)!)).code).toBe(200);
+    expect(String((await MongoDataset.findById(leaf._id).lean())?.parentId)).toBe(targets.at(-1));
+  });
 });

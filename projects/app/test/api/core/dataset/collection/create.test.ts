@@ -63,6 +63,23 @@ describe('create collection parent checks', () => {
       body: { ...props, name: 'leaf', type: DatasetCollectionTypeEnum.virtual }
     });
     expect(leaf.code).toBe(200);
+    const historical = await MongoDatasetCollection.create({
+      ...scope,
+      name: 'historical-deep-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      parentId: last.data
+    });
+    const deepLeaf = await Call(createHandler, {
+      auth: owner,
+      body: {
+        datasetId: scope.datasetId,
+        name: 'invalid-deep-leaf',
+        type: DatasetCollectionTypeEnum.virtual,
+        parentId: String(historical._id)
+      }
+    });
+    expect(deepLeaf.error).toBe(CommonErrEnum.folderDepthLimit);
+    expect(await MongoDatasetCollection.countDocuments({ name: 'invalid-deep-leaf' })).toBe(0);
   });
 
   it.each(['type', 'dataset'] as const)(

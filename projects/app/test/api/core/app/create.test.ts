@@ -293,6 +293,23 @@ describe('generic app creation folder depth', () => {
         }
       });
       expect(leaf.code).toBe(200);
+      const historical = await MongoApp.create({
+        name: 'historical-deep-folder',
+        type,
+        parentId: lastFolder.data,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      });
+      const deepLeaf = await Call(createapi.default, {
+        auth: owner,
+        body: {
+          name: 'invalid-deep-leaf',
+          type: type === AppTypeEnum.folder ? AppTypeEnum.simple : AppTypeEnum.workflowTool,
+          parentId: String(historical._id)
+        }
+      });
+      expect(deepLeaf.error).toBe(CommonErrEnum.folderDepthLimit);
+      expect(await MongoApp.countDocuments({ name: 'invalid-deep-leaf' })).toBe(0);
     }
   );
 });

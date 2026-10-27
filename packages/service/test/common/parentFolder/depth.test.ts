@@ -1,3 +1,4 @@
+import { serviceEnv } from '@fastgpt/service/env';
 import { describe, expect, it } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
@@ -334,17 +335,20 @@ describe('checkCreateResourceParent', () => {
     }
   );
 
-  it('allows leaves in historical deep folders but caps traversal independently', async () => {
-    const docs: TestFolderDoc[] = Array.from({ length: 21 }, (_, i) => ({
-      _id: `level-${i + 1}`,
-      parentId: i ? `level-${i}` : null,
-      teamId,
-      type: 'folder'
-    }));
+  it('allows leaves at the configured depth and rejects historical deeper parents', async () => {
+    const docs: TestFolderDoc[] = Array.from(
+      { length: serviceEnv.MAX_FOLDER_DEPTH + 1 },
+      (_, i) => ({
+        _id: `level-${i + 1}`,
+        parentId: i ? `level-${i}` : null,
+        teamId,
+        type: 'folder'
+      })
+    );
     const { model } = createModel(docs);
     await expect(
       checkCreateResourceParent({
-        parentId: 'level-20',
+        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH}`,
         teamId,
         model,
         isFolder: false,
@@ -353,12 +357,12 @@ describe('checkCreateResourceParent', () => {
     ).resolves.toBeUndefined();
     await expect(
       checkCreateResourceParent({
-        parentId: 'level-21',
+        parentId: `level-${serviceEnv.MAX_FOLDER_DEPTH + 1}`,
         teamId,
         model,
         isFolder: false,
         isFolderType: folderType
       })
-    ).rejects.toBe(CommonErrEnum.invalidParams);
+    ).rejects.toBe(CommonErrEnum.folderDepthLimit);
   });
 });

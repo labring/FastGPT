@@ -313,6 +313,24 @@ describe('generic dataset creation parent checks', () => {
       body: { name: 'leaf', intro: '', type: DatasetTypeEnum.dataset, parentId: last.data }
     });
     expect(leaf.code).toBe(200);
+    const historical = await MongoDataset.create({
+      name: 'historical-deep-folder',
+      type: DatasetTypeEnum.folder,
+      parentId: last.data,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const deepLeaf = await Call(createHandler, {
+      auth: owner,
+      body: {
+        name: 'invalid-deep-leaf',
+        intro: '',
+        type: DatasetTypeEnum.dataset,
+        parentId: String(historical._id)
+      }
+    });
+    expect(deepLeaf.error).toBe(CommonErrEnum.folderDepthLimit);
+    expect(await MongoDataset.countDocuments({ name: 'invalid-deep-leaf' })).toBe(0);
   });
 
   it.each([DatasetTypeEnum.folder, DatasetTypeEnum.dataset])(

@@ -1,7 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { serviceEnv } from '../../env';
-import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
 
 type FolderResourceDoc = {
   _id: unknown;
@@ -176,8 +175,8 @@ const isInSubtree = async ({
 
 /**
  * 创建资源前校验父级链：所有父级必须是同团队的合法文件夹，不允许缺失或成环。
- * 文件夹占一层，遵循新建深度策略；叶子资源不增加目录深度，允许放入历史深层目录，
- * 但仍受独立的遍历上限保护。调用方须先完成权限校验，并按需将 model 查询限定到同一知识库。
+ * 文件夹占一层，叶子资源不增加目录层级；两类写入均不能落在超出配置上限的父链中。
+ * 历史超深目录仅允许读取。调用方须先完成权限校验，并按需将查询限定到同一知识库。
  */
 export const checkCreateResourceParent = async ({
   parentId,
@@ -191,8 +190,8 @@ export const checkCreateResourceParent = async ({
     teamId,
     model,
     isFolderType,
-    maxAllowedDepth: isFolder ? serviceEnv.MAX_FOLDER_DEPTH - 1 : defaultSubtreeMaxDepth,
-    limitErr: isFolder ? CommonErrEnum.folderDepthLimit : CommonErrEnum.invalidParams
+    maxAllowedDepth: serviceEnv.MAX_FOLDER_DEPTH - (isFolder ? 1 : 0),
+    limitErr: CommonErrEnum.folderDepthLimit
   });
 };
 

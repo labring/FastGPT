@@ -22,7 +22,7 @@ import {
   getFolderAncestorIdsFromParentId,
   rewriteFolderSubtreeAncestorIds
 } from '@fastgpt/service/common/parentFolder/ancestorIds';
-import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
+import { serviceEnv } from '@fastgpt/service/env';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -113,6 +113,7 @@ export const moveApp = async ({
     const ancestorIds = isPathFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
+          maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
           findFolder: (id) =>
             MongoApp.findOne({ _id: id, teamId: app.teamId, type: app.type })
               .select('_id parentId')
@@ -125,8 +126,8 @@ export const moveApp = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: appId,
         rootAncestorIds: ancestorIds,
-        // 与 getFolderAncestorIdsFromParentId 保持同一上限：移动只需重写路径，不能再施加策略深度。
-        maxDepth: defaultSubtreeMaxDepth,
+        // 路径重写也按目标祖先加子树的绝对层级校验，不能沿用只读遍历上限。
+        maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
         findChildFolders: (parentIds) =>
           MongoApp.find({ teamId: app.teamId, parentId: { $in: parentIds }, type: app.type })
             .select('_id parentId')

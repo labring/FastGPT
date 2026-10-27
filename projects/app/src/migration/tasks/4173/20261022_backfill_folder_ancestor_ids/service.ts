@@ -155,9 +155,8 @@ const planDocument = async ({
   while (parentId) {
     if (!Types.ObjectId.isValid(parentId)) return { reason: 'parentId is not a valid ObjectId' };
     if (visited.has(parentId)) return { reason: 'folder parent cycle detected' };
-    // 这里只防失控遍历，不能复用 MAX_FOLDER_DEPTH：那是“新建文件夹”的策略上限，而历史数据存在
-    // 限制生效前就已超出的合法嵌套。两者语义不同，运行时写路径的 getFolderAncestorIdsFromParentId
-    // 同样用 defaultSubtreeMaxDepth，迁移要与它保持一致。
+    // 迁移保留限制生效前的历史嵌套，仅用遍历上限防止失控扫描。
+    // 普通创建和移动受 MAX_FOLDER_DEPTH 约束，不能据此将历史超深父链判为非法。
     if (ancestorIds.length >= defaultSubtreeMaxDepth - 1) {
       return { reason: 'folder hierarchy exceeds the traversal limit' };
     }
