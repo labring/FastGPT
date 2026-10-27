@@ -24,6 +24,7 @@ import workflowFixture from '@fastgpt/workflow-core/test/fixtures/basic-ai/workf
 import workflowTranslations from '@fastgpt/web/i18n/zh-CN/workflow.json';
 
 const mocks = vi.hoisted(() => ({
+  track: vi.fn(),
   actions: undefined as WorkflowBuilderVersionActions | undefined,
   latestVersion: undefined as WorkflowBuilderVersion | undefined,
   appDetail: {} as AppDetailType,
@@ -44,6 +45,9 @@ const mocks = vi.hoisted(() => ({
   toast: vi.fn()
 }));
 
+vi.mock('@/web/common/middle/tracks/utils', () => ({
+  webPushTrack: { workflowBuilder: mocks.track }
+}));
 vi.mock('next-i18next', async () => {
   const { Trans } = await import('react-i18next');
   return { Trans, useTranslation: () => ({ t: (key: string) => key }) };
@@ -206,6 +210,7 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.actions!.isApplying).toBe(true);
     expect(dom.window.document.querySelector('button')!.disabled).toBe(true);
     expect(mocks.load).toHaveBeenCalledOnce();
+    expect(mocks.track).toHaveBeenCalledExactlyOnceWith({ appId: 'app-1', action: 'apply_click' });
     expect(mocks.initData).toHaveBeenCalledOnce();
     expect(canvas.nodes).toHaveLength(document.nodes.length);
 
@@ -256,6 +261,69 @@ describe('WorkflowBuilder applyVersion', () => {
     };
     expect(updateActivity(newerActivity)).toBe(newerActivity);
   });
+
+  it('counts one accepted attempt and failure for local expiration, without requesting the API', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await act(async () => {
+      await expect(
+        mocks.actions!.applyVersion({ ...version, expiresAt: '2000-01-01' }, 'expired-response')
+      ).rejects.toMatchObject({ code: expect.any(Number) });
+    });
+    expect(mocks.track.mock.calls.map(([data]) => data)).toEqual([
+      { appId: 'app-1', action: 'apply_click' },
+      { appId: 'app-1', action: 'apply_failed' }
+    ]);
+    expect(mocks.load).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledWith(
+      '[Workflow Builder] Apply failed',
+      expect.objectContaining({ stage: 'precheck', reason: 'version_expired' })
+    );
+  });
+
+  it('does not count post-commit display failure as application failure', async () => {
+    mocks.pushPastSnapshot.mockImplementationOnce(() => {
+      throw new Error('display failed');
+    });
+    await act(async () => {
+      await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toThrow(
+        'display failed'
+      );
+    });
+    expect(mocks.track).toHaveBeenCalledExactlyOnceWith({ appId: 'app-1', action: 'apply_click' });
+    expect(mocks.initData).toHaveBeenCalledOnce();
+    expect(console.error).toHaveBeenCalledWith(
+      '[Workflow Builder] Post-apply UI failed',
+      expect.objectContaining({ hasCommittedVersion: true })
+    );
+  });
+
+  it('keeps a non-blocking layout failure out of application failure counts', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mocks.requestAutoLayout.mockResolvedValueOnce('failed');
+    await act(async () => {
+      await expect(mocks.actions!.applyVersion(version, 'response-1')).resolves.toHaveProperty(
+        'appliedAt'
+      );
+    });
+    expect(mocks.track).toHaveBeenCalledExactlyOnceWith({ appId: 'app-1', action: 'apply_click' });
+    expect(mocks.commit).toHaveBeenCalledOnce();
+  });
+
+  it.each(['load', 'parseImport', 'initData', 'commit'] as const)(
+    'counts one failure at %s and keeps error contents out of logs',
+    async (step) => {
+      const error = new Error('secret workflow body and s3/key');
+      mocks[step].mockRejectedValueOnce(error);
+      await act(async () => {
+        await expect(mocks.actions!.applyVersion(version, 'response-1')).rejects.toBe(error);
+      });
+      expect(mocks.track.mock.calls.map(([data]) => data.action)).toEqual([
+        'apply_click',
+        'apply_failed'
+      ]);
+      expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(error.message);
+    }
+  );
 
   it('keeps the lock until rollback finishes', async () => {
     const rollback = deferred<number>();

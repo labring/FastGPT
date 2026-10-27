@@ -42,12 +42,15 @@ export type ChatBoxInputType = {
   hideInUI?: boolean;
   /** 发送后是否清空输入框；默认不清空，只有主输入框确认发送等占用输入框内容的场景显式设为 true。 */
   clearInput?: boolean;
+  /** 输入和并发校验通过、实际发起请求时通知调用方，不随消息持久化。 */
+  onSend?: () => void;
 };
 
 export type SendPromptFnType = (
   e: ChatBoxInputType & {
     autoTTSResponse?: boolean;
     history?: ChatSiteItemType[];
+    submissionSource?: 'retry' | 'auto';
   }
 ) => void;
 

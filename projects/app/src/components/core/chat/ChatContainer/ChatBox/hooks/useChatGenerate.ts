@@ -668,7 +668,9 @@ export const useChatGenerate = ({
       select,
       autoTTSResponse = false,
       hideInUI = false,
-      clearInput = false
+      clearInput = false,
+      submissionSource,
+      onSend
     }) => {
       // 变量校验可能异步完成，发送快照必须在点击时固定，避免期间编辑的内容被清掉。
       const submission = clearInput ? captureSubmittedInput({ text, files }) : undefined;
@@ -836,7 +838,9 @@ export const useChatGenerate = ({
               reserveTool: true,
               reserveSelect: true
             });
+            onSend?.();
             const { responseText } = await onStartChat({
+              submissionSource,
               messages,
               responseChatItemId: responseChatId,
               interactive,

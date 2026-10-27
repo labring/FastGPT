@@ -609,6 +609,7 @@ const ChatBox = ({
       ) {
         sendPrompt({
           text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
+          submissionSource: 'auto',
           hideInUI: true,
           interactive: lastInteractive
         });

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getWorkflowBuilderApplyErrorLog,
   getWorkflowBuilderVersionDisplayState,
   isWorkflowBuilderVersionExpiredError
 } from '@fastgpt/global/core/workflow/builder/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const version: WorkflowBuilderVersion = {
   versionNo: 1,
@@ -14,6 +16,40 @@ const version: WorkflowBuilderVersion = {
   checksum: `sha256:${'0'.repeat(64)}`,
   generatedAt: '2026-08-12T10:00:00.000Z'
 };
+
+describe('getWorkflowBuilderApplyErrorLog', () => {
+  it.each([
+    [AppErrEnum.workflowBuilderVersionExpired, 'version_expired'],
+    [AppErrEnum.workflowBuilderVersionNotFound, 'version_not_found'],
+    ['Workflow Builder version checksum mismatch', 'checksum_mismatch'],
+    ['Workflow Builder version has been superseded', 'version_superseded'],
+    ['Workflow Builder version file is invalid', 'version_file_invalid'],
+    ['Workflow Builder version has not been archived', 'version_not_archived'],
+    ['private workflow body', 'apply_error']
+  ])('preserves controlled service reasons for %s', (message, reason) => {
+    expect(getWorkflowBuilderApplyErrorLog(new UserError(message))).toEqual({
+      reason,
+      errorType: 'Error'
+    });
+  });
+  it('keeps numeric error codes and expiration reason without serializing private contents', () => {
+    expect(
+      getWorkflowBuilderApplyErrorLog({
+        response: {
+          data: { code: 502005, message: 'private/s3/key', document: { secret: 'credential' } }
+        }
+      })
+    ).toEqual({ reason: 'version_expired', errorType: 'Error', code: 502005 });
+    expect(getWorkflowBuilderApplyErrorLog(new TypeError('private content'))).toEqual({
+      reason: 'apply_error',
+      errorType: 'TypeError'
+    });
+    expect(getWorkflowBuilderApplyErrorLog({ code: 'private-key' })).toEqual({
+      reason: 'apply_error',
+      errorType: 'Error'
+    });
+  });
+});
 
 describe('isWorkflowBuilderVersionExpiredError', () => {
   const expiredResponse = {

@@ -1,4 +1,7 @@
-import React, { useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { WorkflowBuilderTrackingContext } from '@/components/core/chat/components/AIResponseBox/WorkflowBuilder/TrackingContext';
 import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -68,6 +71,7 @@ const WorkflowBuilderChatContent = ({
   watchExternalChat: boolean;
 }) => {
   const { t } = useTranslation('workflow');
+  const tracking = useContext(WorkflowBuilderTrackingContext);
   const sourceKey = useMemo(() => getChatSourceKey(sourceTarget), [sourceTarget]);
   const setChatBoxData = useContextSelector(ChatItemContext, (value) => value.setChatBoxData);
   const chatBoxData = useContextSelector(ChatItemContext, (value) => value.chatBoxData);
@@ -250,7 +254,18 @@ const WorkflowBuilderChatContent = ({
   ]);
 
   const onStartChat = useMemoizedFn(
-    async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
+    async ({
+      messages,
+      responseChatItemId,
+      controller,
+      generatingMessage,
+      interactive,
+      submissionSource
+    }: StartChatFnProps) => {
+      // 普通输入、Ask/Preview回复及重发共用请求函数，不能将所有请求都当作需求消息。
+      if (!interactive && !submissionSource) {
+        void webPushTrack.workflowBuilder({ appId, action: 'message_submit' });
+      }
       const document = reactFlowStateToWorkflowDocument({
         nodes: getNodes(),
         edges,
@@ -267,7 +282,14 @@ const WorkflowBuilderChatContent = ({
           model: selectedModelId || undefined,
           workflowContext: { document, checksum }
         },
-        onMessage: generatingMessage,
+        onMessage: (message) => {
+          if (message.interactive) {
+            const preview = extractDeepestInteractive(message.interactive);
+            if (preview.type === 'workflowBuilderPreview')
+              tracking?.registerPreview(preview.previewId);
+          }
+          generatingMessage(message);
+        },
         abortCtrl: controller
       });
       return { responseText };

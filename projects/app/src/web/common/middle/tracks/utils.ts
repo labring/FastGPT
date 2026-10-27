@@ -2,6 +2,7 @@ import { POST } from '@/web/common/api/request';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { useSystemStore } from '../../system/useSystemStore';
 import type { WorkflowDemoTrackData } from './workflowDemoTrack';
+import type { WorkflowBuilderTrackData } from '@fastgpt/global/common/middle/tracks/type';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: any }) => {
   if (!useSystemStore.getState()?.feConfigs?.isPlus) return;
@@ -13,6 +14,14 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: any }) => {
 };
 
 export const webPushTrack = {
+  /** 辅助生成沿用公共鉴权和版本开关；采集失败不进入业务错误处理。 */
+  workflowBuilder: async (data: WorkflowBuilderTrackData) => {
+    try {
+      await createTrack({ event: TrackEnum.workflowBuilder, data });
+    } catch {
+      console.warn('[Workflow Builder] Track failed', { appId: data.appId, action: data.action });
+    }
+  },
   useAppTemplate: (data: { id: string; name: string }) => {
     return createTrack({
       event: TrackEnum.useAppTemplate,

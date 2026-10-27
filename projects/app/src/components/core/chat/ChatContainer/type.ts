@@ -61,6 +61,8 @@ export type generatingMessageProps =
     });
 
 export type StartChatFnProps = {
+  /** 仅用于本地识别重发/自动发送，不进入服务端请求。 */
+  submissionSource?: 'retry' | 'auto';
   messages: ChatCompletionMessageParam[];
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;

@@ -89,11 +89,6 @@ const RenderWorkflowBuilderVersion = ({
   const apply = () =>
     run(async () => {
       if (!actions) return;
-      if (displayVersion.expiresAt && new Date(displayVersion.expiresAt).getTime() <= Date.now()) {
-        markExpired();
-        return;
-      }
-
       try {
         setDisplayVersion(await actions.applyVersion(displayVersion, responseChatItemId));
         markApplied();

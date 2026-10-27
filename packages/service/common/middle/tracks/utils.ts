@@ -1,4 +1,7 @@
-import { type PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
+import {
+  type PushTrackCommonType,
+  type WorkflowBuilderTrackData
+} from '@fastgpt/global/common/middle/tracks/type';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
@@ -90,6 +93,18 @@ const pushCountTrack = ({
 };
 
 export const pushTrack = {
+  /** 后台就绪采集复用 tracks；落库失败不能使已完成的生成变成失败。 */
+  workflowBuilder: async (data: WorkflowBuilderTrackData & { teamId: string }) => {
+    try {
+      await createTrack({ event: TrackEnum.workflowBuilder, data });
+    } catch {
+      logger.error('Failed to record Workflow Builder track', {
+        teamId: data.teamId,
+        appId: data.appId,
+        action: data.action
+      });
+    }
+  },
   login: (data: PushTrackCommonType & { type: `${OAuthEnum}` | 'password' }) => {
     return createTrack({
       event: TrackEnum.login,

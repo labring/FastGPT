@@ -28,5 +28,6 @@ export enum TrackEnum {
 
   // web tracks
   clientError = 'clientError',
-  workflowDemoMode = 'workflowDemoMode'
+  workflowDemoMode = 'workflowDemoMode',
+  workflowBuilder = 'workflowBuilder'
 }
