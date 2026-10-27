@@ -19,6 +19,7 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   };
   workflowStreamResponse?: WorkflowResponseType;
   streamAnswer?: boolean;
+  streamContext?: boolean;
   streamReasoning?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   shouldStreamTool?: (name: string) => boolean;
@@ -46,6 +47,7 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
   node,
   workflowStreamResponse,
   streamAnswer = true,
+  streamContext = true,
   streamReasoning = true,
   getToolInfo,
   shouldStreamTool = () => true,
@@ -57,6 +59,7 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
   const eventStream = createAgentLoopCoreEventStream({
     workflowStreamResponse,
     streamAnswer,
+    streamContext,
     streamReasoning,
     getToolInfo
   });

@@ -30,8 +30,19 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { UserChatSelectType } from '@fastgpt/global/core/chat/input/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ChatAgentConfigFormDataSchema } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
-import type { generatingMessageProps } from '@/components/core/chat/ChatContainer/type';
-import type { streamResumeFetch } from '@/web/common/api/fetch';
+import type {
+  generatingMessageProps,
+  StartChatFnProps
+} from '@/components/core/chat/ChatContainer/type';
+import { handleEventSourceData, type streamResumeFetch } from '@/web/common/api/fetch';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type { AgentLoopEvent } from '@fastgpt/service/core/ai/llm/agentLoop/domain/event';
+import { createAgentLoopCoreEventStream } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream/createEventStream';
+import { createAgentLoopCoreEventDispatcher } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream/eventDispatcher';
+import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
+import { shouldFilterAiValue } from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble/utils';
+import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 const mocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -665,6 +676,225 @@ describe('useChatGenerate.sendPrompt', () => {
       })
     );
     expect(getActivity()).toEqual({ ...tool, response: '' });
+    await act(async () => request.resolve({ responseText: '' }));
+  });
+
+  it.each([
+    { mode: 'normal', reasoning: true },
+    { mode: 'normal', reasoning: false },
+    { mode: 'resume', reasoning: true },
+    { mode: 'resume', reasoning: false }
+  ] as const)(
+    '$mode 流在 reasoning=$reasoning 时按调用顺序展示，Plan 原位更新且历史上下文一致',
+    async ({ mode, reasoning }) => {
+      const collector = createAgentLoopCoreAssistantEventCollector();
+      const plan = {
+        planId: 'builder-plan',
+        name: '搭建工作流',
+        steps: [
+          { id: 'build', name: '搭建', status: 'in_progress' as const },
+          { id: 'validate', name: '校验', status: 'pending' as const }
+        ]
+      };
+      const nextPlan = {
+        ...plan,
+        steps: [
+          { ...plan.steps[0], status: 'done' as const },
+          { ...plan.steps[1], status: 'in_progress' as const }
+        ]
+      };
+      const call = {
+        id: 'query-draft',
+        type: 'function' as const,
+        function: { name: 'workflow_cli_query', arguments: '{"view":"draft"}' }
+      };
+      const firstMessage: ChatCompletionMessageParam = {
+        role: 'assistant',
+        content: '方案已确认，开始搭建。',
+        ...(reasoning ? { reasoning_content: '先搭建' } : {}),
+        tool_calls: [call]
+      };
+      const toolMessage: ChatCompletionMessageParam = {
+        role: 'tool',
+        tool_call_id: call.id,
+        content: 'draft ready'
+      };
+      const nextMessage: ChatCompletionMessageParam = {
+        role: 'assistant',
+        content: '草稿已就绪，开始校验。',
+        ...(reasoning ? { reasoning_content: '再校验' } : {})
+      };
+      const messages = [firstMessage, toolMessage, nextMessage];
+
+      /** 用真实 SSE 适配、解析和前端 hook 回放模型事件，避免只断言 ID 而漏掉可见顺序。 */
+      const replay = (onmessage: StartChatFnProps['generatingMessage']) => {
+        const dispatcher = createAgentLoopCoreEventDispatcher({
+          eventStream: createAgentLoopCoreEventStream({
+            getToolInfo: (name) => ({ name }),
+            workflowStreamResponse: (response) => {
+              const { id, event, data } = response as WorkflowTypedSseEvent;
+              handleEventSourceData({
+                event,
+                data: JSON.stringify({ ...data, ...(id ? { responseValueId: id } : {}) }),
+                onmessage,
+                enqueue: onmessage,
+                onerror: (error) => {
+                  throw error;
+                },
+                splitAnswerTextByCharacter: false
+              });
+            }
+          })
+        });
+        const emit = (event: AgentLoopEvent) => {
+          collector.emitEvent(event);
+          dispatcher.emitEvent(event);
+        };
+        emit({ type: 'model_context', messages: [] });
+        emit({ type: 'llm_request_start', requestIndex: 0, modelName: 'model' });
+        if (reasoning) emit({ type: 'reasoning_delta', text: firstMessage.reasoning_content! });
+        emit({ type: 'answer_delta', text: firstMessage.content as string });
+        emit({ type: 'model_context', messages: [firstMessage] });
+        emit({
+          type: 'llm_request_end',
+          requestIndex: 0,
+          requestId: 'request-1',
+          modelName: 'model',
+          answerText: firstMessage.content as string,
+          finishReason: 'tool_calls',
+          toolCalls: [call],
+          seconds: 1
+        });
+        emit({
+          type: 'plan_operation',
+          operation: 'set_plan',
+          success: true,
+          plan,
+          message: 'plan created'
+        });
+        emit({ type: 'tool_call', call });
+        emit({ type: 'model_context', messages: [toolMessage] });
+        emit({
+          type: 'tool_run_end',
+          call,
+          rawResponse: 'draft ready',
+          response: 'draft ready',
+          seconds: 1
+        });
+        emit({ type: 'llm_request_start', requestIndex: 1, modelName: 'model' });
+        if (reasoning) emit({ type: 'reasoning_delta', text: nextMessage.reasoning_content! });
+        emit({ type: 'answer_delta', text: nextMessage.content as string });
+        emit({ type: 'model_context', messages: [nextMessage] });
+        emit({
+          type: 'plan_operation',
+          operation: 'update_steps',
+          success: true,
+          plan: nextPlan,
+          message: 'plan updated'
+        });
+        emit({ type: 'model_context', messages: [] });
+      };
+      mocks.start.mockImplementation(async ({ generatingMessage }) => {
+        replay(generatingMessage);
+        return { responseText: '' };
+      });
+      mocks.resume.mockImplementation(async ({ onmessage }) => {
+        replay(onmessage);
+        return { responseText: '' };
+      });
+
+      await render({ resume: mode === 'resume' });
+      if (mode === 'normal') await send();
+
+      const ai = records.at(-1);
+      if (ai?.obj !== ChatRoleEnum.AI) throw new Error('Expected an AI response');
+      const visibleValues = ai.value.filter((value) => !shouldFilterAiValue(value));
+      expect(visibleValues).toEqual([
+        expect.objectContaining({
+          text: { content: firstMessage.content },
+          ...(reasoning ? { reasoning: { content: firstMessage.reasoning_content } } : {})
+        }),
+        expect.objectContaining({ plan: nextPlan }),
+        expect.objectContaining({ tools: [expect.objectContaining({ id: call.id })] }),
+        expect.objectContaining({
+          text: { content: nextMessage.content },
+          ...(reasoning ? { reasoning: { content: nextMessage.reasoning_content } } : {})
+        })
+      ]);
+      expect(visibleValues[0].id).not.toBe(visibleValues[3].id);
+      const savedValues = JSON.parse(JSON.stringify(collector.assistantResponses));
+      const getDisplayContents = (values: typeof ai.value) =>
+        values
+          .filter((value) => !shouldFilterAiValue(value))
+          .map(({ text, reasoning, plan, tools }) => ({ text, reasoning, plan, tools }));
+      expect(getDisplayContents(savedValues)).toEqual(getDisplayContents(visibleValues));
+      for (const value of [ai.value, savedValues]) {
+        expect(
+          chats2GPTMessages({
+            messages: [{ obj: ChatRoleEnum.AI, value }],
+            reserveId: false,
+            reserveTool: true
+          })
+        ).toEqual(messages);
+      }
+    }
+  );
+
+  it('keeps late typing as display-only and retains unrelated parallel workflow output', async () => {
+    const request = Promise.withResolvers<{ responseText: string }>();
+    mocks.start.mockReturnValueOnce(request.promise);
+    await render();
+    await send();
+    const modelMessage = {
+      role: 'assistant' as const,
+      content: 'actual model answer',
+      reasoning_content: 'actual reasoning'
+    };
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.modelContext,
+        modelContext: { id: 'agent-context', messages: [] }
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.modelContext,
+        modelContext: { id: 'agent-context', messages: [modelMessage] }
+      })
+    );
+    // 模型已结束，但前端打字队列还在补发正文；它不能再变成另一条模型消息。
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.answer,
+        responseValueId: 'answer',
+        modelContextId: 'agent-context',
+        text: 'actual model answer'
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.answer,
+        text: 'independent output'
+      })
+    );
+    await act(async () =>
+      generate.generatingMessage({
+        event: SseResponseEventEnum.modelContext,
+        modelContext: { id: 'agent-context', messages: [] }
+      })
+    );
+    const ai = records.at(-1);
+    expect(ai?.obj).toBe(ChatRoleEnum.AI);
+    const messages = chats2GPTMessages({
+      messages: ai ? [ai] : [],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(messages).toEqual([
+      modelMessage,
+      { dataId: undefined, role: 'assistant', content: 'independent output' }
+    ]);
+    expect(ai?.value.some((value) => value.text?.content === 'actual model answer')).toBe(true);
     await act(async () => request.resolve({ responseText: '' }));
   });
 

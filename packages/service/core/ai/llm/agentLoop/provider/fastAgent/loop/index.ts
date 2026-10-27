@@ -1,9 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
-} from '@fastgpt/global/core/ai/llm/type';
-import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
@@ -23,11 +19,13 @@ import type {
   AgentLoopRuntime,
   AgentLoopToolExecutionResult,
   FastAgentLoopInput,
-  FastAgentLoopResult,
-  PendingMainContext
+  FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
-import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  mergeModelMessages,
+  normalizeToolResponseContent
+} from '@fastgpt/global/core/ai/llm/utils';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -107,47 +105,6 @@ const buildInitialMessages = ({ input }: { input: FastAgentLoopInput }) => [
 ];
 
 /**
- * ask_user 暂停时保存恢复所需上下文。
- * 恢复后用户回答会作为同一个 ask tool_call 的 Tool message 追加，继续原消息链而不是开启新轮对话。
- */
-const buildAskPendingContext = ({
-  messages,
-  call,
-  assistantMessage,
-  activePlan
-}: {
-  messages: ChatCompletionMessageParam[];
-  call: ChatCompletionMessageToolCall;
-  assistantMessage?: ChatCompletionMessageParam;
-  activePlan?: AgentPlanType;
-}): PendingMainContext => {
-  const assistantFields =
-    assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
-      ? {
-          ...(('content' in assistantMessage && assistantMessage.content
-            ? { content: assistantMessage.content }
-            : {}) as Pick<typeof assistantMessage, 'content'>),
-          ...(assistantMessage.reasoning_content
-            ? { reasoning_content: assistantMessage.reasoning_content }
-            : {})
-        }
-      : {};
-
-  return {
-    messages: [
-      ...messages,
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        ...assistantFields,
-        tool_calls: [call]
-      }
-    ],
-    askToolCallId: call.id,
-    activePlan
-  };
-};
-
-/**
  * 单主 Agent Loop。
  * Main Agent 在同一条消息链中直接使用 runtime tools、ask_user、set_plan 和 update_plan；
  * answer/reasoning delta 和 plan 状态始终实时透传给前端。
@@ -170,29 +127,33 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     | {
         ask: AgentAskPayload;
         askId: string;
-        context: PendingMainContext;
       }
     | undefined;
 
   // ask_user 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
   // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
-  const messages =
+  const askResponse =
     input.pendingMainContext && input.userAnswer !== undefined
-      ? [
-          ...input.pendingMainContext.messages,
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: input.pendingMainContext.askToolCallId,
-            content: normalizeToolResponseContent(
-              formatAgentAskToolResponse({
-                messages: input.pendingMainContext.messages,
-                askToolCallId: input.pendingMainContext.askToolCallId,
-                answer: input.userAnswer
-              })
-            )
-          } as ChatCompletionMessageParam
-        ]
+      ? ({
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: input.pendingMainContext.askToolCallId,
+          content: normalizeToolResponseContent(
+            formatAgentAskToolResponse({
+              messages: input.pendingMainContext.messages,
+              askToolCallId: input.pendingMainContext.askToolCallId,
+              answer: input.userAnswer
+            })
+          )
+        } as ChatCompletionMessageParam)
+      : undefined;
+  const messages =
+    input.pendingMainContext && askResponse
+      ? mergeModelMessages(input.pendingMainContext.messages, [askResponse])
       : buildInitialMessages({ input });
+  emitAgentLoopEvent(runtime, { type: 'model_context', messages: [] });
+  if (askResponse) {
+    emitAgentLoopEvent(runtime, { type: 'model_context', messages: [askResponse] });
+  }
   // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
   // 历史 checkpoint 只负责给模型提供上下文，不再作为运行时状态的反序列化来源。
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
@@ -309,6 +270,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         error
       });
     },
+    onContextMessages: (messages) => {
+      emitAgentLoopEvent(runtime, { type: 'model_context', messages });
+    },
     onToolCall: ({ call }) => {
       if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
         emitAgentLoopEvent(runtime, {
@@ -364,7 +328,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         metadata
       });
     },
-    onRunTool: async ({ call, messages, assistantMessage }) => {
+    onRunTool: async ({ call, messages }) => {
       // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
       if (call.function.name === askToolName) {
         const parsed = parseAgentAskToolCall(call);
@@ -386,13 +350,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
         pendingAsk = {
           ask: parsed.ask,
-          askId: call.id,
-          context: buildAskPendingContext({
-            messages,
-            call,
-            assistantMessage,
-            activePlan
-          })
+          askId: call.id
         };
 
         return createToolResponse('Waiting for user answer.', {
@@ -535,7 +493,12 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         askId: pendingAsk.askId
       },
       activePlan,
-      pendingMainContext: pendingAsk.context,
+      // 暂停快照直接沿用真实 transcript，保留同轮其他调用及其成功/跳过结果。
+      pendingMainContext: {
+        messages: result.completeMessages,
+        askToolCallId: pendingAsk.askId,
+        activePlan
+      },
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,

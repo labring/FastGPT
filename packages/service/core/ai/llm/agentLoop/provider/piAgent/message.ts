@@ -142,8 +142,15 @@ export const convertChatMessagesToPiAgentMessages = ({
       const toolCalls = message.tool_calls ?? [];
       toolCalls.forEach((call) => toolNames.set(call.id, call.function.name));
       const content: AssistantMessage['content'] = [
-        ...(message.reasoning_content
-          ? [{ type: 'thinking' as const, thinking: message.reasoning_content }]
+        // pi 的 OpenAI adapter 依靠 signature 决定回传字段；仅保留 thinking 文本仍会在出站时丢失。
+        ...(model.reasoning && message.reasoning_content !== undefined
+          ? [
+              {
+                type: 'thinking' as const,
+                thinking: message.reasoning_content,
+                thinkingSignature: 'reasoning_content'
+              }
+            ]
           : []),
         ...(getContentText(message.content)
           ? [{ type: 'text' as const, text: getContentText(message.content) }]
@@ -226,7 +233,9 @@ export const convertPiAgentMessagesToChatMessages = (
         {
           role: 'assistant',
           content: answerText || null,
-          ...(reasoningText ? { reasoning_content: reasoningText } : {}),
+          ...(message.content.some((item) => item.type === 'thinking')
+            ? { reasoning_content: reasoningText }
+            : {}),
           ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {})
         }
       ];

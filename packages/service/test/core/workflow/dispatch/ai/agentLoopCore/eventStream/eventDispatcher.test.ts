@@ -389,7 +389,8 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       .filter((event) => event.event === SseResponseEventEnum.answer);
 
     expect(answerEvents).toHaveLength(2);
-    expect(answerEvents[0]).not.toHaveProperty('id');
+    expect(answerEvents[0].id).toMatch(/^answer-/);
+    expect(answerEvents[1].id).not.toBe(answerEvents[0].id);
     expect(answerEvents[1]).toEqual(
       expect.objectContaining({
         id: expect.stringMatching(/^answer-/),
@@ -398,7 +399,7 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     );
   });
 
-  it('keeps the same SSE answer value for a later model request without child assistant responses', () => {
+  it('keeps reasoning and answer together but starts a new value for each model request', () => {
     const workflowStreamResponse = vi.fn();
     const eventStream = createAgentLoopCoreEventStream({
       workflowStreamResponse,
@@ -411,21 +412,25 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       requestIndex: 0,
       modelName: 'GPT-4'
     });
+    dispatcher.emitEvent({ type: 'reasoning_delta', text: 'first reasoning' });
     dispatcher.emitEvent({ type: 'answer_delta', text: 'first answer' });
     dispatcher.emitEvent({
       type: 'llm_request_start',
       requestIndex: 1,
       modelName: 'GPT-4'
     });
+    dispatcher.emitEvent({ type: 'reasoning_delta', text: 'second reasoning' });
     dispatcher.emitEvent({ type: 'answer_delta', text: 'second answer' });
 
     const answerEvents = workflowStreamResponse.mock.calls
       .map(([event]) => event)
       .filter((event) => event.event === SseResponseEventEnum.answer);
 
-    expect(answerEvents).toHaveLength(2);
-    expect(answerEvents[0]).not.toHaveProperty('id');
-    expect(answerEvents[1]).not.toHaveProperty('id');
+    expect(answerEvents).toHaveLength(4);
+    expect(answerEvents[0].id).toMatch(/^answer-/);
+    expect(answerEvents[1].id).toBe(answerEvents[0].id);
+    expect(answerEvents[2].id).not.toBe(answerEvents[0].id);
+    expect(answerEvents[3].id).toBe(answerEvents[2].id);
   });
 
   it('passes context checkpoints to compression records when request ids are absent', () => {
@@ -502,4 +507,25 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       data: { plan }
     });
   });
+});
+
+it('gives independent Agent runs different streaming IDs without changing continuation display', () => {
+  const workflowStreamResponse = vi.fn();
+  for (const text of ['first', 'second']) {
+    const dispatcher = createAgentLoopCoreEventDispatcher({
+      eventStream: createAgentLoopCoreEventStream({
+        workflowStreamResponse,
+        getToolInfo: () => undefined
+      })
+    });
+    dispatcher.emitEvent({ type: 'model_context', messages: [] });
+    dispatcher.emitEvent({ type: 'llm_request_start', requestIndex: 1, modelName: 'model' });
+    dispatcher.emitEvent({ type: 'answer_delta', text });
+  }
+  const answers = workflowStreamResponse.mock.calls
+    .map(([event]) => event)
+    .filter((event) => event.event === SseResponseEventEnum.answer);
+  expect(answers).toHaveLength(2);
+  expect(answers[0].id).toBeTruthy();
+  expect(answers[1].id).not.toBe(answers[0].id);
 });

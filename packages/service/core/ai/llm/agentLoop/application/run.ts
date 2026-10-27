@@ -103,6 +103,10 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
 
   /** 配置目录过滤的文件读取等待完整参数，其他工具完整透传。 */
   const emitEvent = (event: AgentLoopEvent) => {
+    if (event.type === 'model_context') {
+      runtime.emitEvent?.({ ...event, messages: filterMessages(event.messages) });
+      return;
+    }
     if (!hasVisibilityPolicy) {
       runtime.emitEvent?.(event);
       return;
@@ -177,16 +181,14 @@ export const runAgentLoopApplication = async <TChildrenResponse = unknown>({
       if (visibleToolCalls.length > 0) return [{ ...message, tool_calls: visibleToolCalls }];
 
       const { tool_calls: _toolCalls, ...messageWithoutToolCalls } = message;
-      const hasOtherOutput =
-        message.content !== null && message.content !== undefined
-          ? true
-          : Boolean(
-              message.reasoning_content ||
-              message.interactive ||
-              message.audio ||
-              message.function_call ||
-              message.refusal
-            );
+      // 思考通过独立展示事件保留；移除全部工具后，不能留下仅含 reasoning 的协议消息。
+      const hasOtherOutput = Boolean(
+        message.content?.length ||
+        message.interactive ||
+        message.audio ||
+        message.function_call ||
+        message.refusal
+      );
       return hasOtherOutput ? [messageWithoutToolCalls] : [];
     });
   };

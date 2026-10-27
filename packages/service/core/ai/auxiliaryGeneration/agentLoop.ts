@@ -21,6 +21,8 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   streamWriter?: AuxiliaryGenerationStreamWriter;
   checkIsStopping?: () => boolean;
   usageSink?: (usages: ChatNodeUsageType[]) => void;
+  /** 业务侧可订阅标准事件维护运行详情；此层不解释详情的存储或展示。 */
+  emitEvent?: AgentLoopRuntime['emitEvent'];
   providerState?: unknown;
   userAnswer?: string;
   runtimeTools?: ChatCompletionTool[];
@@ -45,6 +47,7 @@ export async function runAuxiliaryGenerationAgentLoop({
   streamWriter,
   checkIsStopping,
   usageSink,
+  emitEvent,
   providerState,
   userAnswer,
   runtimeTools = [],
@@ -73,6 +76,7 @@ export async function runAuxiliaryGenerationAgentLoop({
         }),
       checkIsStopping,
       emitEvent: (event) => {
+        emitEvent?.(event);
         if (event.type === 'reasoning_delta') {
           streamWriter?.({
             event: AuxiliaryGenerationEventEnum.answer,

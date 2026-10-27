@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { createAssistantMessageEventStream, type AssistantMessage } from '@mariozechner/pi-ai';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { runAgentLoopCore } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/run';
 
 const {
   agentPromptMock,
@@ -14,6 +18,7 @@ const {
   agentTransformContextRepeatCount,
   agentResponseText,
   agentToolToExecute,
+  realAgentStreamFn,
   runSandboxToolsMock,
   compressRequestMessagesMock
 } = vi.hoisted(() => ({
@@ -39,6 +44,9 @@ const {
         }
       | undefined
   },
+  realAgentStreamFn: {
+    value: undefined as import('@mariozechner/pi-agent-core').StreamFn | undefined
+  },
   runSandboxToolsMock: vi.fn(),
   compressRequestMessagesMock: vi.fn()
 }));
@@ -60,106 +68,128 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', async (importOr
   };
 });
 
-vi.mock('@mariozechner/pi-agent-core', () => ({
-  Agent: vi.fn().mockImplementation(function (args) {
-    agentConstructorArgs.push(args);
-    const subscribers: Array<(event: any) => void> = [];
-    const state = {
-      messages: [
-        {
-          role: 'assistant',
-          content: 'saved pi message'
-        }
-      ],
-      errorMessage: ''
-    };
-
-    return {
-      state,
-      prompt: async (prompt: any) => {
-        await agentPromptMock(prompt);
-        try {
-          for (let index = 0; index < agentPayloadRepeatCount.value; index++) {
-            agentPayloadResults.push(
-              args.onPayload?.(
-                {
-                  messages: [],
-                  model: 'gpt-5',
-                  stream: true
-                },
-                { name: 'GPT-5' }
-              )
-            );
-
-            if (agentFailAfterPayload.value) {
-              state.errorMessage = agentFailAfterPayload.value;
-              return;
-            }
-
-            if (index < agentPayloadRepeatCount.value - 1) {
-              subscribers.forEach((subscriber) => {
-                subscriber({
-                  type: 'message_end',
-                  message: {
-                    role: 'assistant',
-                    content: [],
-                    usage: { input: 3, output: 2 },
-                    stopReason: 'toolUse'
-                  }
-                });
-              });
-            }
+vi.mock('@mariozechner/pi-agent-core', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@mariozechner/pi-agent-core')>();
+  return {
+    Agent: vi.fn().mockImplementation(function (args) {
+      if (realAgentStreamFn.value) {
+        return new original.Agent({ ...args, streamFn: realAgentStreamFn.value });
+      }
+      agentConstructorArgs.push(args);
+      const subscribers: Array<(event: any) => void> = [];
+      const state = {
+        messages: [
+          {
+            role: 'assistant',
+            content: 'saved pi message'
           }
-        } catch (error) {
-          state.errorMessage = error instanceof Error ? error.message : String(error);
-          return;
-        }
+        ],
+        errorMessage: ''
+      };
 
-        if (agentRunTransformContext.value) {
-          const promptMessages = (() => {
-            if (Array.isArray(prompt)) return prompt;
-            if (typeof prompt !== 'string') return [prompt];
-            return [
-              {
-                role: 'user',
-                content: prompt,
-                timestamp: 1
+      return {
+        state,
+        prompt: async (prompt: any) => {
+          await agentPromptMock(prompt);
+          try {
+            for (let index = 0; index < agentPayloadRepeatCount.value; index++) {
+              agentPayloadResults.push(
+                args.onPayload?.(
+                  {
+                    messages: [],
+                    model: 'gpt-5',
+                    stream: true
+                  },
+                  { name: 'GPT-5' }
+                )
+              );
+
+              if (agentFailAfterPayload.value) {
+                state.errorMessage = agentFailAfterPayload.value;
+                return;
               }
-            ];
-          })();
-          const activeContextMessages = [...args.initialState.messages, ...promptMessages];
-          for (let index = 0; index < agentTransformContextRepeatCount.value; index++) {
-            // pi-agent-core 只消费 transform 返回值，不会自动覆盖 agent.state.messages。
-            await args.transformContext?.(activeContextMessages);
-          }
-        }
-        if (agentToolToExecute.value) {
-          const pendingTool = agentToolToExecute.value;
-          subscribers.forEach((subscriber) => {
-            subscriber({
-              type: 'message_update',
-              assistantMessageEvent: {
-                type: 'toolcall_start',
-                contentIndex: 0,
-                partial: {
-                  content: [
-                    {
-                      type: 'toolCall',
-                      id: pendingTool.callId,
-                      name: pendingTool.name,
-                      arguments: {}
+
+              if (index < agentPayloadRepeatCount.value - 1) {
+                subscribers.forEach((subscriber) => {
+                  subscriber({
+                    type: 'message_end',
+                    message: {
+                      role: 'assistant',
+                      content: [],
+                      usage: { input: 3, output: 2 },
+                      stopReason: 'toolUse'
                     }
-                  ]
-                }
+                  });
+                });
               }
+            }
+          } catch (error) {
+            state.errorMessage = error instanceof Error ? error.message : String(error);
+            return;
+          }
+
+          if (agentRunTransformContext.value) {
+            const promptMessages = (() => {
+              if (Array.isArray(prompt)) return prompt;
+              if (typeof prompt !== 'string') return [prompt];
+              return [
+                {
+                  role: 'user',
+                  content: prompt,
+                  timestamp: 1
+                }
+              ];
+            })();
+            const activeContextMessages = [...args.initialState.messages, ...promptMessages];
+            for (let index = 0; index < agentTransformContextRepeatCount.value; index++) {
+              // pi-agent-core 只消费 transform 返回值，不会自动覆盖 agent.state.messages。
+              await args.transformContext?.(activeContextMessages);
+            }
+          }
+          if (agentToolToExecute.value) {
+            const pendingTool = agentToolToExecute.value;
+            subscribers.forEach((subscriber) => {
+              subscriber({
+                type: 'message_update',
+                assistantMessageEvent: {
+                  type: 'toolcall_start',
+                  contentIndex: 0,
+                  partial: {
+                    content: [
+                      {
+                        type: 'toolCall',
+                        id: pendingTool.callId,
+                        name: pendingTool.name,
+                        arguments: {}
+                      }
+                    ]
+                  }
+                }
+              });
+              subscriber({
+                type: 'message_update',
+                assistantMessageEvent: {
+                  type: 'toolcall_delta',
+                  contentIndex: 0,
+                  delta: JSON.stringify(pendingTool.args),
+                  partial: {
+                    content: [
+                      {
+                        type: 'toolCall',
+                        id: pendingTool.callId,
+                        name: pendingTool.name,
+                        arguments: pendingTool.args
+                      }
+                    ]
+                  }
+                }
+              });
             });
-            subscriber({
-              type: 'message_update',
-              assistantMessageEvent: {
-                type: 'toolcall_delta',
-                contentIndex: 0,
-                delta: JSON.stringify(pendingTool.args),
-                partial: {
+            subscribers.forEach((subscriber) => {
+              subscriber({
+                type: 'message_end',
+                message: {
+                  role: 'assistant',
                   content: [
                     {
                       type: 'toolCall',
@@ -167,8 +197,27 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
                       name: pendingTool.name,
                       arguments: pendingTool.args
                     }
-                  ]
+                  ],
+                  usage: {
+                    input: 3,
+                    output: 2
+                  },
+                  stopReason: 'toolUse'
                 }
+              });
+            });
+            const tool = args.initialState.tools.find(
+              (item: any) => item.name === pendingTool.name
+            );
+            await tool.execute(pendingTool.callId, pendingTool.args);
+            return;
+          }
+          subscribers.forEach((subscriber) => {
+            subscriber({
+              type: 'message_update',
+              assistantMessageEvent: {
+                type: 'text_delta',
+                delta: agentResponseText.value
               }
             });
           });
@@ -177,59 +226,26 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               type: 'message_end',
               message: {
                 role: 'assistant',
-                content: [
-                  {
-                    type: 'toolCall',
-                    id: pendingTool.callId,
-                    name: pendingTool.name,
-                    arguments: pendingTool.args
-                  }
-                ],
+                content: [{ type: 'text', text: agentResponseText.value }],
                 usage: {
                   input: 3,
                   output: 2
                 },
-                stopReason: 'toolUse'
+                stopReason: 'stop'
               }
             });
           });
-          const tool = args.initialState.tools.find((item: any) => item.name === pendingTool.name);
-          await tool.execute(pendingTool.callId, pendingTool.args);
-          return;
-        }
-        subscribers.forEach((subscriber) => {
-          subscriber({
-            type: 'message_update',
-            assistantMessageEvent: {
-              type: 'text_delta',
-              delta: agentResponseText.value
-            }
-          });
-        });
-        subscribers.forEach((subscriber) => {
-          subscriber({
-            type: 'message_end',
-            message: {
-              role: 'assistant',
-              content: [{ type: 'text', text: agentResponseText.value }],
-              usage: {
-                input: 3,
-                output: 2
-              },
-              stopReason: 'stop'
-            }
-          });
-        });
-      },
-      continue: agentContinueMock,
-      subscribe: (handler: (event: any) => void) => {
-        agentSubscribeMock(handler);
-        subscribers.push(handler);
-      },
-      abort: agentAbortMock
-    };
-  })
-}));
+        },
+        continue: agentContinueMock,
+        subscribe: (handler: (event: any) => void) => {
+          agentSubscribeMock(handler);
+          subscribers.push(handler);
+        },
+        abort: agentAbortMock
+      };
+    })
+  };
+});
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: vi.fn(() => ({
@@ -284,7 +300,97 @@ describe('runPiAgentLoop', () => {
     agentTransformContextRepeatCount.value = 1;
     agentResponseText.value = 'pi answer';
     agentToolToExecute.value = undefined;
+    realAgentStreamFn.value = undefined;
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
+  });
+
+  it.each([
+    { name: 'invalid arguments', toolName: 'number_tool', n: 'bad', executes: false },
+    { name: 'unknown tool', toolName: 'missing_tool', n: 1, executes: false },
+    { name: 'executor result', toolName: 'number_tool', n: 1, executes: true }
+  ])('persists exactly one real SDK tool result for $name', async ({ toolName, n, executes }) => {
+    const requests: import('@mariozechner/pi-ai').Context[] = [];
+    realAgentStreamFn.value = (model, context) => {
+      requests.push({ ...context, messages: structuredClone(context.messages) });
+      const first = requests.length === 1;
+      const message: AssistantMessage = {
+        role: 'assistant',
+        content: first
+          ? [{ type: 'toolCall', id: 'sdk-call', name: toolName, arguments: { n } }]
+          : [{ type: 'text', text: 'Finished' }],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage: {
+          input: 1,
+          output: 1,
+          cacheRead: 0,
+          cacheWrite: 0,
+          totalTokens: 2,
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+        },
+        stopReason: first ? 'toolUse' : 'stop',
+        timestamp: Date.now()
+      };
+      const stream = createAssistantMessageEventStream();
+      stream.push({ type: 'done', reason: message.stopReason, message });
+      return stream;
+    };
+    const executeTool = vi.fn(async () => ({
+      response: 'Tool succeeded',
+      assistantMessages: [],
+      usages: []
+    }));
+    const result = await runAgentLoopCore({
+      provider: 'piAgent',
+      input: { messages: [{ role: 'user', content: 'Use the number tool' }] },
+      runtime: {
+        llmParams: { model: modelData, stream: true },
+        toolCatalog: {
+          runtimeTools: [
+            {
+              type: 'function',
+              function: {
+                name: 'number_tool',
+                description: 'Read a number',
+                parameters: {
+                  type: 'object',
+                  properties: { n: { type: 'number' } },
+                  required: ['n']
+                }
+              }
+            }
+          ]
+        },
+        executeTool
+      }
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe('done');
+    expect(executeTool).toHaveBeenCalledTimes(executes ? 1 : 0);
+    const sdkResult = requests[1].messages.find((message) => message.role === 'toolResult');
+    expect(sdkResult?.role).toBe('toolResult');
+    if (sdkResult?.role !== 'toolResult') throw new Error('SDK tool result is missing');
+    expect(sdkResult.isError).toBe(!executes);
+    const content = sdkResult.content
+      .map((item) => (item.type === 'text' ? item.text : ''))
+      .join('');
+    const restored = chats2GPTMessages({
+      messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses }],
+      reserveId: false,
+      reserveTool: true,
+      reserveReason: true
+    });
+    for (const messages of [result.completeMessages, result.assistantMessages, restored]) {
+      expect(messages.filter((message) => message.role === 'tool')).toEqual([
+        expect.objectContaining({ role: 'tool', tool_call_id: 'sdk-call', content })
+      ]);
+      const callIndex = messages.findIndex(
+        (message) =>
+          message.role === 'assistant' && message.tool_calls?.some((call) => call.id === 'sdk-call')
+      );
+      expect(messages[callIndex + 1]).toMatchObject({ role: 'tool', tool_call_id: 'sdk-call' });
+    }
   });
 
   it('runs pi-agent-core through the provider contract and returns provider state', async () => {
@@ -344,8 +450,10 @@ describe('runPiAgentLoop', () => {
       }
     });
     expect(events.map((event) => event.type)).toEqual([
+      'model_context',
       'llm_request_start',
       'answer_delta',
+      'model_context',
       'llm_request_end'
     ]);
     expect(events.at(-1)).toMatchObject({
@@ -462,7 +570,10 @@ describe('runPiAgentLoop', () => {
       }),
       expect.objectContaining({
         role: 'assistant',
-        content: [{ type: 'text', text: 'previous answer' }]
+        content: [
+          { type: 'thinking', thinking: '', thinkingSignature: 'reasoning_content' },
+          { type: 'text', text: 'previous answer' }
+        ]
       })
     ]);
   });
@@ -525,6 +636,12 @@ describe('runPiAgentLoop', () => {
       })
     ]);
     expect(result.contextCheckpoint).toBe('<context_checkpoint>summary</context_checkpoint>');
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: 'user',
+        content: '<context_checkpoint>summary</context_checkpoint>'
+      })
+    );
     expect(result.providerState).toMatchObject({
       piMessages: [
         expect.objectContaining({
@@ -648,7 +765,11 @@ describe('runPiAgentLoop', () => {
     });
 
     expect(result.status).toBe('error');
-    expect(events.map((event) => event.type)).toEqual(['llm_request_start', 'llm_request_end']);
+    expect(events.map((event) => event.type)).toEqual([
+      'model_context',
+      'llm_request_start',
+      'llm_request_end'
+    ]);
     expect(events.at(-1)).toMatchObject({
       finishReason: 'error',
       error: 'network unavailable'
@@ -1659,7 +1780,8 @@ describe('runPiAgentLoop', () => {
           expect.objectContaining({
             role: 'assistant',
             tool_calls: [expect.objectContaining({ id: 'call_ask_pause' })]
-          })
+          }),
+          { role: 'tool', tool_call_id: 'call_ask_pause', content: 'Waiting for user answer.' }
         ]
       }
     });

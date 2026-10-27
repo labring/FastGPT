@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
+  ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   CompletionFinishReason,
   CompletionUsage
@@ -28,6 +29,14 @@ import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
 import * as recordController from '@fastgpt/service/core/ai/record/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { streamOpenAICompletions } from '@mariozechner/pi-ai/openai-completions';
+import {
+  isAssistantMessage,
+  convertChatMessagesToPiAgentMessages
+} from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/message';
+import { buildPiModel } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/modelBridge';
+import { mergePiAgentPayload } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/payload';
 
 const teamId = '507f1f77bcf86cd799439011';
 const message = 'Run the contract test search.';
@@ -91,11 +100,17 @@ type Round = {
   malformedTail?: boolean;
   disconnect?: Promise<void>;
 };
-type Request = { stream?: boolean; model?: string; tools?: unknown[]; messages?: unknown[] };
+type Request = {
+  stream?: boolean;
+  model?: string;
+  tools?: unknown[];
+  messages?: ChatCompletionMessageParam[];
+};
 let server: Server;
 let baseUrl: string;
 let rounds: Round[];
 let received: Request[];
+let requireReasoning: boolean;
 let saveRecord: MockInstance<typeof recordController.saveLLMRequestRecord>;
 
 /** 等待本例真实的异步写入，避免固定轮询时限和清库操作与后台 Mongo 写入竞争。 */
@@ -106,11 +121,30 @@ beforeEach(async () => {
   saveRecord = vi.spyOn(recordController, 'saveLLMRequestRecord');
   rounds = [];
   received = [];
+  requireReasoning = false;
   server = createServer(async (req, res) => {
     let rawBody = '';
     for await (const bytes of req) rawBody += bytes.toString();
     const request: Request = JSON.parse(rawBody);
     received.push(request);
+    // 模拟严格的 thinking 协议校验：空字符串合法，字段缺失直接拒绝。
+    if (
+      requireReasoning &&
+      request.messages?.some(
+        (message) => message.role === 'assistant' && typeof message.reasoning_content !== 'string'
+      )
+    ) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: {
+            message: 'The `reasoning_content` in the thinking mode must be passed back to the API.',
+            type: 'invalid_request_error'
+          }
+        })
+      );
+      return;
+    }
     const round = rounds.shift();
     if (!round) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -124,7 +158,7 @@ beforeEach(async () => {
     const output = {
       role: 'assistant',
       content: round.text ?? null,
-      ...(round.reasoning && { reasoning_content: round.reasoning }),
+      ...(round.reasoning !== undefined && { reasoning_content: round.reasoning }),
       ...(round.toolCalls !== undefined && { tool_calls: round.toolCalls })
     };
     const metadata = { id: 'chatcmpl-local', created: 1, model: model.model };
@@ -241,6 +275,168 @@ const body = (stream: boolean) => ({
 });
 
 describe('createLLMResponse HTTP/SSE contract', () => {
+  it.each([true, false])(
+    'resumes legacy history missing empty reasoning against strict validation: stream=%s',
+    async (stream) => {
+      requireReasoning = true;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Search' },
+        { role: 'assistant', content: 'Plan', reasoning_content: 'Keep original thought.' },
+        { role: 'assistant', tool_calls: [call('search')] },
+        { role: 'tool', tool_call_id: 'call_simulated', content: 'Found' },
+        { role: 'assistant', content: 'Done' },
+        { role: 'user', content: 'Continue' }
+      ];
+      const snapshot = structuredClone(messages);
+      const rejected = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body(stream), model: model.model, messages })
+      });
+      expect(rejected.status).toBe(400);
+      expect(await rejected.json()).toMatchObject({ error: { type: 'invalid_request_error' } });
+
+      rounds.push({ text: 'Resumed', finish: 'stop' });
+      const result = await createLLMResponse({
+        teamId,
+        maxRetries: 0,
+        body: { ...body(stream), messages }
+      });
+      expect(result.answerText).toBe('Resumed');
+      expect(messages).toEqual(snapshot);
+      const assistants = received[1].messages?.filter((item) => item.role === 'assistant');
+      expect(assistants?.map((item) => item.reasoning_content)).toEqual([
+        'Keep original thought.',
+        '',
+        ''
+      ]);
+    }
+  );
+
+  it('round-trips nonempty and empty reasoning through the real pi SDK request serializer', async () => {
+    requireReasoning = true;
+    const piModel = buildPiModel(model, false, { key: 'local-test-key', baseUrl });
+    const history: ChatCompletionMessageParam[] = [
+      {
+        role: 'assistant',
+        content: 'Plan',
+        reasoning_content: 'Original thinking\nwith exact whitespace.'
+      },
+      { role: 'assistant', content: 'Done', reasoning_content: '' }
+    ];
+    const messages = convertChatMessagesToPiAgentMessages({
+      model: piModel,
+      messages: history
+    }).filter(isAssistantMessage);
+    rounds.push({ text: 'Next turn', finish: 'stop' });
+    const result = await streamOpenAICompletions(
+      piModel,
+      { messages },
+      {
+        apiKey: 'local-test-key',
+        onPayload: (payload) =>
+          mergePiAgentPayload({
+            payload,
+            runtime: {
+              teamId,
+              llmParams: { model },
+              toolCatalog: { runtimeTools: [] },
+              executeTool: async () => ({ response: '', assistantMessages: [], usages: [] })
+            }
+          })
+      }
+    ).result();
+    expect(result.stopReason).toBe('stop');
+    expect(received).toHaveLength(1);
+    expect(received[0].messages).toEqual(history);
+  });
+
+  it.each([true, false])(
+    'preserves empty reasoning through consecutive tool calls and persisted history: stream=%s',
+    async (stream) => {
+      requireReasoning = true;
+      const calls = ['first', 'second'].map((id) => ({ ...call('search'), id }));
+      rounds.push(
+        { toolCalls: [calls[0]], reasoning: '' },
+        { toolCalls: [calls[1]] },
+        { text: 'Done', reasoning: '', finish: 'stop' },
+        { text: 'Next turn', finish: 'stop' }
+      );
+      const result = await runAgentLoop({
+        teamId,
+        body: body(stream),
+        maxRunAgentTimes: 4,
+        isAborted: () => false,
+        onRunTool: async () => ({ response: 'Found', assistantMessages: [], usages: [] }),
+        onRunInteractiveTool: async () => ({ response: '', assistantMessages: [], usages: [] })
+      });
+      expect(result.error).toBeUndefined();
+      expect(received).toHaveLength(3);
+      for (const request of received.slice(1)) {
+        const assistants = request.messages?.filter((item) => item.role === 'assistant');
+        expect(assistants?.length).toBeGreaterThan(0);
+        for (const assistant of assistants ?? []) {
+          expect(assistant.reasoning_content).toBe('');
+          for (const tool of assistant.tool_calls ?? []) {
+            expect(
+              request.messages?.filter(
+                (item) => item.role === 'tool' && item.tool_call_id === tool.id
+              )
+            ).toHaveLength(1);
+          }
+        }
+      }
+
+      // 真正经过 JSON 持久化边界和历史恢复，确保下一次用户提问不会再次丢失空字段。
+      const persisted = JSON.parse(
+        JSON.stringify(
+          GPTMessages2Chats({
+            messages: result.completeMessages,
+            reserveModelMessages: true
+          })
+        )
+      );
+      await createLLMResponse({
+        teamId,
+        body: {
+          ...body(stream),
+          messages: [
+            ...chats2GPTMessages({ messages: persisted, reserveId: false, reserveTool: true }),
+            { role: 'user', content: 'Continue' }
+          ]
+        }
+      });
+      const restoredAssistants = received[3].messages?.filter((item) => item.role === 'assistant');
+      expect(restoredAssistants).toHaveLength(3);
+      expect(restoredAssistants?.every((item) => item.reasoning_content === '')).toBe(true);
+      const record = await readRecord(result.requestIds[1]);
+      expect(
+        record.body.messages.find((item: ChatCompletionMessageParam) => item.role === 'assistant')
+      ).toHaveProperty('reasoning_content', '');
+    }
+  );
+
+  it.each([true, false])(
+    'preserves empty reasoning in length continuations: stream=%s',
+    async (stream) => {
+      requireReasoning = true;
+      rounds.push(
+        { text: 'Partial', reasoning: '', finish: 'length' },
+        { text: ' answer', finish: 'stop' }
+      );
+      const result = await createLLMResponse({ teamId, body: body(stream), maxContinuations: 2 });
+      expect(received).toHaveLength(2);
+      expect(received[1].messages?.find((item) => item.role === 'assistant')).toHaveProperty(
+        'reasoning_content',
+        ''
+      );
+      expect(result.assistantMessage).toMatchObject({
+        content: 'Partial answer',
+        reasoning_content: ''
+      });
+    }
+  );
+
   const scenarios: Array<Round & { label: string; valid?: boolean }> = [
     { label: 'tool_calls omitted' },
     { label: 'explicit empty tool_calls', toolCalls: [] },
@@ -346,10 +542,12 @@ describe('createLLMResponse HTTP/SSE contract', () => {
         maxContinuations: 2,
         body: body(stream)
       });
-      expect(received).toHaveLength(2);
-      expect(result.usage).toMatchObject({ inputTokens: 34, outputTokens: 8 });
+      expect(received).toHaveLength(priorTool ? 1 : 2);
+      expect(result.usage).toMatchObject(
+        priorTool ? { inputTokens: 17, outputTokens: 4 } : { inputTokens: 34, outputTokens: 8 }
+      );
       expect(result.responseEmptyTip).toBeUndefined();
-      expect(result.finish_reason).toBe('tool_calls');
+      expect(result.finish_reason).toBe(priorTool ? 'length' : 'tool_calls');
       if (priorTool) {
         expect(result.error).toBeUndefined();
         expect(result.toolCalls).toHaveLength(1);

@@ -49,6 +49,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
   config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
+  config.feConfigs.showAuxiliaryGenerationRunDetail =
+    serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
   config.feConfigs.show_agent_sandbox_free_tip =
     serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP || !!config.feConfigs.agentSandboxFree;
   config.feConfigs.limit = {

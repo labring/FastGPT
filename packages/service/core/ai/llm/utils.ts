@@ -16,7 +16,6 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 import {
   ACTIVE_PLAN_END_TAG,
@@ -24,8 +23,6 @@ import {
   CONTEXT_CHECKPOINT_END_TAG,
   CONTEXT_CHECKPOINT_START_TAG
 } from './compress/constants';
-
-const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 /**
  * 判断消息是否属于系统级提示。
@@ -554,6 +551,7 @@ export const loadRequestMessages = async ({
   /**
    * 格式化 assistant 消息的结构字段。
    * reasoning_content 只在模型声明支持时保留，避免传给不支持 reasoning 字段的供应商。
+   * 旧记录会省略空思考；在出站边界规范为显式空字符串，非空原文保持不变。
    */
   const formatAssistantItem = (
     item: ChatCompletionAssistantMessageParam & {
@@ -563,11 +561,12 @@ export const loadRequestMessages = async ({
   ) => {
     return {
       role: item.role,
-      content: item.content || undefined,
-      reasoning_content: supportReason ? item.reasoning_content || undefined : undefined,
+      content: item.content,
+      reasoning_content: supportReason ? (item.reasoning_content ?? '') : undefined,
       function_call: item.function_call || undefined,
       name: item.name || undefined,
       refusal: item.refusal || undefined,
+      audio: item.audio,
       tool_calls: item.tool_calls || undefined
     };
   };
@@ -603,8 +602,8 @@ export const loadRequestMessages = async ({
   }
 
   /**
-   * 合并相邻同角色消息，减少发送给供应商的消息数量。
-   * assistant 的工具调用不能合并，否则会破坏 tool call 和 tool response 的对应关系。
+   * 兼容合并相邻 system/user 消息，不修改调用方持有的消息对象。
+   * 每条 assistant 都是独立模型回复，必须保留其正文、思考和工具调用的原始边界。
    */
   const mergeMessages = ((messages: ChatCompletionMessageParam[]): ChatCompletionMessageParam[] => {
     return messages.reduce((mergedMessages: ChatCompletionMessageParam[], currentMessage) => {
@@ -626,7 +625,10 @@ export const loadRequestMessages = async ({
         )
           ? currentMessage.content
           : [{ type: 'text', text: currentMessage.content || '' }];
-        lastMessage.content = [...lastContent, ...currentContent];
+        mergedMessages[mergedMessages.length - 1] = {
+          ...lastMessage,
+          content: [...lastContent, ...currentContent]
+        };
       } // Handle user messages
       else if (
         lastMessage.role === ChatCompletionRequestMessageRoleEnum.User &&
@@ -638,36 +640,10 @@ export const loadRequestMessages = async ({
         const currentContent: ChatCompletionContentPart[] = Array.isArray(currentMessage.content)
           ? currentMessage.content
           : [{ type: 'text', text: currentMessage.content }];
-        lastMessage.content = [...lastContent, ...currentContent];
-      } else if (
-        lastMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-        currentMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant
-      ) {
-        // Content 不为空的对象，或者是交互节点
-        if (
-          (typeof lastMessage.content === 'string' ||
-            Array.isArray(lastMessage.content) ||
-            lastMessage.interactive) &&
-          (typeof currentMessage.content === 'string' ||
-            Array.isArray(currentMessage.content) ||
-            currentMessage.interactive)
-        ) {
-          const lastContent: (ChatCompletionContentPartText | ChatCompletionContentPartRefusal)[] =
-            Array.isArray(lastMessage.content)
-              ? lastMessage.content
-              : [{ type: 'text', text: lastMessage.content || '' }];
-          const currentContent: (
-            | ChatCompletionContentPartText
-            | ChatCompletionContentPartRefusal
-          )[] = Array.isArray(currentMessage.content)
-            ? currentMessage.content
-            : [{ type: 'text', text: currentMessage.content || '' }];
-
-          lastMessage.content = [...lastContent, ...currentContent];
-        } else {
-          // 有其中一个没有 content，说明不是连续的文本输出
-          mergedMessages.push(currentMessage);
-        }
+        mergedMessages[mergedMessages.length - 1] = {
+          ...lastMessage,
+          content: [...lastContent, ...currentContent]
+        };
       } else {
         mergedMessages.push(currentMessage);
       }
@@ -715,11 +691,16 @@ export const loadRequestMessages = async ({
                 : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.tool_calls || item.function_call) {
+          if (item.tool_calls?.length || item.function_call || item.refusal || item.audio) {
             return formatAssistantItem(item, supportReason);
           }
 
           const parseContent = parseAssistantContent(item.content);
+          // 旧展示裁剪或思考截断可能只剩 reasoning；它是回复的附属字段，不能独立发给模型。
+          if (item.reasoning_content !== undefined) {
+            if (!parseContent) return;
+            if (supportReason) return formatAssistantItem(item, supportReason);
+          }
 
           // 如果内容为空，且前后不再是 assistant，需要补充成 null，避免丢失 user-assistant 的交互
           const formatContent = (() => {

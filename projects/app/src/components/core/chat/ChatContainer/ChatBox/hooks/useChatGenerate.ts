@@ -16,7 +16,7 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, updateChatModelContext } from '@fastgpt/global/core/chat/adapt';
 import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
@@ -197,6 +197,8 @@ export const useChatGenerate = ({
         event,
         text = '',
         reasoningText,
+        modelContext,
+        modelContextId,
         status,
         name,
         tool,
@@ -223,6 +225,14 @@ export const useChatGenerate = ({
       return histories.map((item, index) => {
         if (index !== histories.length - 1) return item;
         if (item.obj !== ChatRoleEnum.AI) return item;
+
+        if (event === SseResponseEventEnum.modelContext && modelContext) {
+          // SSE 卡片已携带归属；其他并行节点的普通输出不能被当前 Agent 覆盖。
+          return {
+            ...item,
+            value: updateChatModelContext(item.value, modelContext, { projectDisplay: false })
+          };
+        }
 
         if (autoTTSResponse) {
           splitText2Audio(formatChatValue2InputType(item.value).text || '');
@@ -327,6 +337,9 @@ export const useChatGenerate = ({
             const latestIndex = item.value.length - 1;
             const latestValue = item.value[latestIndex];
 
+            // 普通节点正文与 Agent 展示投影不能互相追加，否则会丢失或重复上下文。
+            if (Boolean(modelContextId) !== (latestValue?.modelMessages !== undefined)) return -1;
+
             // reason 流只能续写“纯 reasoning”占位；否则说明上一段回答已成型，需要新起一段。
             if (
               reasoningText &&
@@ -355,7 +368,7 @@ export const useChatGenerate = ({
             ...item,
             value: [
               ...item.value.slice(0, answerUpdateIndex),
-              nextValue,
+              { ...nextValue, ...(modelContextId ? { modelMessages: [] } : {}) },
               ...item.value.slice(answerUpdateIndex + 1)
             ]
           });
@@ -371,6 +384,7 @@ export const useChatGenerate = ({
               return replaceUpdateValue(answerUpdateValue);
             } else {
               const val: AIChatItemValueItemType = {
+                ...(modelContextId ? { modelMessages: [] } : {}),
                 id: responseValueId,
                 reasoning: {
                   content: reasoningText
@@ -393,6 +407,7 @@ export const useChatGenerate = ({
               return replaceUpdateValue(answerUpdateValue);
             } else {
               const newValue: AIChatItemValueItemType = {
+                ...(modelContextId ? { modelMessages: [] } : {}),
                 id: responseValueId,
                 text: {
                   content: text
@@ -408,6 +423,7 @@ export const useChatGenerate = ({
 
         if (event === SseResponseEventEnum.toolCall && tool) {
           const val: AIChatItemValueItemType = {
+            ...(modelContextId ? { modelMessages: [] } : {}),
             id: responseValueId || tool.id,
             tools: [tool]
           };

@@ -1,7 +1,11 @@
 import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { AIChatItemValueItemType, ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ChatItemDBSchemaType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AuxiliaryGenerationChatFileType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
@@ -32,6 +36,8 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
 
 export type AuxiliaryGenerationProcessorResponse = {
   aiResponse: AIChatItemValueItemType[];
+  /** 可选的运行详情，由业务调用方写入统一详情存储，不参与模型上下文。 */
+  nodeResponses?: ChatHistoryItemResType[];
   memories?: Record<string, any>;
   usage: {
     modelId: string;

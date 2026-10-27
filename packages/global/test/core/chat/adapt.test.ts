@@ -9,6 +9,7 @@ import {
   runtimePrompt2ChatsValue,
   getSystemPrompt_ChatItemType,
   mergeAssistantFieldMessages,
+  updateChatModelContext,
   normalizeAIChatValue
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -3648,5 +3649,297 @@ describe('structured user answers', () => {
       '## 输入方式？\n\n回答：upload',
       '## 补充？\n\n回答：review'
     ]);
+  });
+});
+
+describe('model protocol context', () => {
+  const call = (id: string) => ({
+    id,
+    type: 'function' as const,
+    function: { name: 'query', arguments: '{}' }
+  });
+  const assistant: ChatCompletionMessageParam = {
+    role: 'assistant',
+    reasoning_content: 'original thinking',
+    content: null,
+    tool_calls: [call('a'), call('b')]
+  };
+  const tools: ChatCompletionMessageParam[] = [
+    { role: 'tool', tool_call_id: 'a', content: 'A' },
+    { role: 'tool', tool_call_id: 'b', content: 'B' }
+  ];
+  const restore = (value: Extract<ChatItemMiniType, { obj: ChatRoleEnum.AI }>['value']) =>
+    chats2GPTMessages({
+      messages: [{ obj: ChatRoleEnum.AI, value }],
+      reserveId: false,
+      reserveTool: true
+    });
+
+  it('restores the original thinking and parallel calls instead of the individual display cards', () => {
+    let values = updateChatModelContext([], { id: 'run', messages: [] });
+    values.push(
+      { reasoning: { content: 'display thinking' } },
+      {
+        tools: [
+          {
+            id: 'a',
+            toolName: '',
+            toolAvatar: '',
+            functionName: 'query',
+            params: '{}',
+            response: 'display A'
+          }
+        ]
+      }
+    );
+    values = updateChatModelContext(values, { id: 'run', messages: [assistant, ...tools] });
+    expect(restore(JSON.parse(JSON.stringify(values)))).toEqual([assistant, ...tools]);
+    expect(values[1].reasoning?.content).toBe('display thinking');
+    expect(values[1].modelMessages).toEqual([]);
+  });
+
+  it('preserves separate assistant turns, even without tools or intervening display text', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      assistant,
+      ...tools,
+      { role: 'assistant', reasoning_content: 'next turn', tool_calls: [call('c')] },
+      { role: 'tool', tool_call_id: 'c', content: 'C' },
+      { role: 'assistant', content: 'first' },
+      { role: 'assistant', content: 'second' }
+    ];
+    expect(restore(updateChatModelContext([], { id: 'run', messages }))).toEqual(messages);
+  });
+
+  it('updates an interrupted tool in its original position across persisted runs', () => {
+    const initial = updateChatModelContext([], { id: 'initial', messages: [assistant, ...tools] });
+    const resumed = updateChatModelContext([], {
+      id: 'resume',
+      messages: [
+        { role: 'tool', tool_call_id: 'a', content: 'confirmed' },
+        { role: 'assistant', content: 'continue' }
+      ]
+    });
+    expect(restore([...initial, ...resumed])).toEqual([
+      assistant,
+      { role: 'tool', tool_call_id: 'a', content: 'confirmed' },
+      tools[1],
+      { role: 'assistant', content: 'continue' }
+    ]);
+  });
+
+  it('uses the latest parent checkpoint without restoring child contexts or old inputs', () => {
+    let values = updateChatModelContext([], { id: 'parent', messages: [assistant, ...tools] });
+    values.push(
+      ...updateChatModelContext([], {
+        id: 'child',
+        messages: [{ role: 'assistant', content: 'child only' }],
+        contextCheckpoint: 'child summary'
+      })
+    );
+    values = updateChatModelContext(values, {
+      id: 'parent',
+      messages: [],
+      contextCheckpoint: 'parent summary'
+    });
+    values = updateChatModelContext(values, {
+      id: 'parent',
+      messages: [{ role: 'assistant', content: 'after summary' }]
+    });
+    const messages = chats2GPTMessages({
+      messages: [
+        { obj: ChatRoleEnum.System, value: [{ text: { content: 'system' } }] },
+        { obj: ChatRoleEnum.Human, value: [{ text: { content: 'old user' } }] },
+        { obj: ChatRoleEnum.AI, value: values }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(messages).toEqual([
+      { role: 'system', content: 'system', dataId: undefined, hideInUI: undefined },
+      { role: 'user', content: 'parent summary', dataId: undefined, hideInUI: true },
+      { role: 'assistant', content: 'after summary' }
+    ]);
+  });
+
+  it('keeps independent Agent runs and legacy text in the same workflow', () => {
+    const values = [{ text: { content: 'legacy prefix' } }];
+    const first = updateChatModelContext(values, {
+      id: 'one',
+      messages: [{ role: 'assistant', content: 'one' }]
+    });
+    const second = updateChatModelContext(first, {
+      id: 'two',
+      messages: [{ role: 'assistant', content: 'two' }]
+    });
+    expect(restore(second)).toEqual([
+      { dataId: undefined, role: 'assistant', content: 'legacy prefix' },
+      { role: 'assistant', content: 'one' },
+      { role: 'assistant', content: 'two' }
+    ]);
+  });
+
+  it('honors reasoning/tool flags and uses the current chat ID when requested', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { ...assistant, dataId: 'old' },
+      ...tools,
+      {
+        role: 'assistant',
+        content: 'answer',
+        reasoning_content: 'reason',
+        dataId: 'old',
+        audio: { id: 'audio' }
+      },
+      { role: 'function', name: 'legacy', content: 'result' },
+      { role: 'assistant', function_call: { name: 'legacy', arguments: '{}' } },
+      { role: 'assistant', refusal: 'refused' }
+    ];
+    const result = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          dataId: 'current',
+          value: updateChatModelContext([], { id: 'run', messages })
+        }
+      ],
+      reserveId: true,
+      reserveTool: false,
+      reserveReason: false
+    });
+    expect(result).toEqual([
+      { role: 'assistant', content: 'answer', audio: { id: 'audio' }, dataId: 'current' },
+      { role: 'assistant', refusal: 'refused', dataId: 'current' }
+    ]);
+  });
+
+  it('does not merge display-only text with legacy text during chat normalization', () => {
+    const values = [
+      { modelMessages: [], text: { content: 'projection' } },
+      { text: { content: 'legacy' } }
+    ];
+    expect(normalizeAIChatValue(values)).toEqual(values);
+    expect(restore(values)).toEqual([{ dataId: undefined, role: 'assistant', content: 'legacy' }]);
+  });
+});
+
+describe('model context boundary regressions', () => {
+  it('does not suppress unrelated concurrent output when the SSE consumer updates a container', () => {
+    const initial = updateChatModelContext(
+      [],
+      { id: 'agent', messages: [] },
+      { projectDisplay: false }
+    );
+    initial.push({ text: { content: 'parallel workflow answer' } });
+    const updated = updateChatModelContext(
+      initial,
+      { id: 'agent', messages: [{ role: 'assistant', content: 'agent answer' }] },
+      { projectDisplay: false }
+    );
+    expect(updated[1]).toEqual(initial[1]);
+    expect(initial[0].modelMessages).toEqual([]);
+  });
+});
+
+it('fills an original Ask result from the next user answer without rebuilding the assistant batch', () => {
+  const calls = ['ask_user', 'query'].map((name) => ({
+    id: name,
+    type: 'function' as const,
+    function: { name, arguments: '{}' }
+  }));
+  const assistant: ChatCompletionMessageParam = {
+    role: 'assistant',
+    reasoning_content: 'one thought',
+    tool_calls: calls
+  };
+  const result = chats2GPTMessages({
+    messages: [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelMessages: [
+              assistant,
+              { role: 'tool', tool_call_id: 'ask_user', content: 'Waiting' },
+              { role: 'tool', tool_call_id: 'query', content: 'not executed' }
+            ]
+          },
+          {
+            modelMessages: [],
+            agentAsk: { id: 'ask_user', askId: 'ask_user', functionName: 'ask_user', params: '{}' }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'confirmed' } }] }
+    ],
+    reserveId: false,
+    reserveTool: true
+  });
+  expect(result).toEqual([
+    assistant,
+    { role: 'tool', tool_call_id: 'ask_user', content: 'confirmed' },
+    { role: 'tool', tool_call_id: 'query', content: 'not executed' }
+  ]);
+});
+
+describe('protocol input preservation', () => {
+  it('round-trips original assistant boundaries and tool payloads across the API conversion', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'user', content: 'start', dataId: 'user' },
+      { role: 'assistant', content: 'one', reasoning_content: 'first' },
+      { role: 'assistant', content: 'two', reasoning_content: 'second' },
+      {
+        role: 'assistant',
+        content: null,
+        reasoning_content: 'tools',
+        tool_calls: ['a', 'b'].map((id) => ({
+          id,
+          type: 'function' as const,
+          function: { name: 'query', arguments: '{}' }
+        }))
+      },
+      { role: 'tool', tool_call_id: 'a', content: [{ type: 'text', text: 'A' }] },
+      { role: 'tool', tool_call_id: 'b', content: 'B' }
+    ];
+    const chats = GPTMessages2Chats({ messages, reserveModelMessages: true });
+    const restored = chats2GPTMessages({
+      messages: JSON.parse(JSON.stringify(chats)),
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(restored.map(({ dataId, hideInUI, ...message }) => message)).toEqual(
+      messages.map(({ dataId, ...message }) => message)
+    );
+    expect(chats[1].value.some((value) => value.text?.content === 'onetwo')).toBe(true);
+  });
+  it('preserves assistant fields without a text display and honors reasoning exclusion', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'assistant', audio: { id: 'audio' }, reasoning_content: 'hidden' },
+      { role: 'user', content: 'next' },
+      { role: 'assistant', refusal: 'refused', dataId: 'other' }
+    ];
+    const chats = GPTMessages2Chats({ messages, reserveModelMessages: true, reserveReason: false });
+    expect(chats[0].value).toEqual([
+      { modelMessages: [{ role: 'assistant', audio: { id: 'audio' } }], hideInUI: true }
+    ]);
+    expect(
+      chats2GPTMessages({ messages: chats, reserveId: false, reserveTool: true }).map(
+        ({ dataId, hideInUI, ...message }) => message
+      )
+    ).toEqual([
+      { role: 'assistant', audio: { id: 'audio' } },
+      { role: 'user', content: 'next' },
+      { role: 'assistant', refusal: 'refused' }
+    ]);
+  });
+  it('keeps different assistant chat IDs distinct and maintains legacy display conversion when tools are excluded', () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'assistant', content: 'one', dataId: 'one' },
+      { role: 'assistant', content: 'two', dataId: 'two' }
+    ];
+    expect(
+      GPTMessages2Chats({ messages, reserveModelMessages: true }).map((chat) => chat.dataId)
+    ).toEqual(['one', 'two']);
+    expect(GPTMessages2Chats({ messages, reserveModelMessages: true, reserveTool: false })).toEqual(
+      GPTMessages2Chats({ messages, reserveTool: false })
+    );
   });
 });

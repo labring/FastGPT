@@ -154,7 +154,7 @@ export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSche
  * API: 分页获取对话
  * Route: POST /api/core/chat/record/getPaginationRecords
  * Method: POST
- * Description: 分页获取指定会话的对话，支持多种鉴权模式
+ * Description: 分页获取指定会话的对话，支持多种鉴权模式；隐藏运行状态时不返回模型协议上下文
  * ============================================================================ */
 
 const GetRecordPropsSchema = {
@@ -190,7 +190,7 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * API: 获取对话（v2）
  * Route: POST /api/core/chat/record/getRecords_v2
  * Method: POST
- * Description: 获取对话（v2）
+ * Description: 获取对话（v2）；隐藏运行状态时不返回模型协议上下文
  * ============================================================================ */
 export const GetRecordsV2BodyRawSchema = createOutLinkChatTargetInputSchema({
   ...LinkedPaginationSchema().shape,

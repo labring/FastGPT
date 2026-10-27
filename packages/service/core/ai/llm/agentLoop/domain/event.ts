@@ -38,6 +38,11 @@ type AgentLoopPlanOperationEvent = {
 
 export type AgentLoopEvent =
   | {
+      /** 模型上下文的实际写入增量；空数组初始化或结束展示投影，不包含历史输入。 */
+      type: 'model_context';
+      messages: ChatCompletionMessageParam[];
+    }
+  | {
       type: 'llm_request_start';
       requestIndex: number;
       modelName: string;

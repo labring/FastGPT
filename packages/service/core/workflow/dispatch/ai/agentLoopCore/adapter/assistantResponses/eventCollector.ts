@@ -8,6 +8,9 @@ import {
   type AgentLoopCoreAssistantMetaEventNames
 } from './fromEvents';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { updateChatModelContext } from '@fastgpt/global/core/chat/adapt';
+import type { ChatModelContext } from '@fastgpt/global/core/chat/type';
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   assistantResponses?: AIChatItemValueItemType[];
@@ -61,6 +64,14 @@ export const createAgentLoopCoreAssistantEventCollector = ({
   let currentAssistantTextIndex: number | undefined;
   let answerDeltaText = '';
   let reasoningDeltaText = '';
+  const modelContextId = `context-${getNanoid(12)}`;
+  let hasModelContext = false;
+
+  /** 同一容器保存模型增量，卡片只作为投影；维持 eventTarget 的数组引用。 */
+  const updateModelContext = (context: Omit<ChatModelContext, 'id'>) => {
+    const values = updateChatModelContext(assistantResponses, { id: modelContextId, ...context });
+    assistantResponses.splice(0, assistantResponses.length, ...values);
+  };
 
   const ensureCurrentAssistantTextValue = () => {
     if (
@@ -232,7 +243,22 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
     const responseIndex = findToolResponseIndex(callId);
     const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
-    assistantResponses.splice(insertIndex, 0, ...values);
+    const childValues = hasModelContext
+      ? values.map((value) => {
+          // 子流程的计划、Ask 和压缩点属于子运行；父运行只接收其展示与真实工具结果。
+          const {
+            plan: _plan,
+            planStatus: _planStatus,
+            agentPlanUpdate: _update,
+            agentAsk: _ask,
+            contextCheckpoint: _checkpoint,
+            modelMessages: _messages,
+            ...display
+          } = value;
+          return { ...display, modelMessages: [] };
+        })
+      : values;
+    assistantResponses.splice(insertIndex, 0, ...childValues);
     currentAssistantTextIndex = undefined;
   };
 
@@ -278,6 +304,10 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
+      case 'model_context':
+        hasModelContext = true;
+        updateModelContext({ messages: event.messages });
+        return;
       case 'answer_delta':
         appendAnswerDelta(event.text);
         return;
@@ -325,6 +355,9 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         if (checkpointKey && storedCheckpointKeys.has(checkpointKey)) return;
         if (checkpointKey) storedCheckpointKeys.add(checkpointKey);
         appendMetaAssistantResponse(event);
+        if (hasModelContext && event.contextCheckpoint) {
+          updateModelContext({ messages: [], contextCheckpoint: event.contextCheckpoint });
+        }
         return;
       }
       case 'tool_call': {
@@ -410,6 +443,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
   return {
     assistantResponses,
-    emitEvent
+    emitEvent,
+    hasModelContext: () => hasModelContext
   };
 };

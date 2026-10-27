@@ -5,6 +5,7 @@ import {
 import type { AgentLoopCoreEventStream } from './type';
 import type { createAgentLoopCoreToolRunResponseCollector } from '../nodeResponse';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type ToolRunCollector = ReturnType<typeof createAgentLoopCoreToolRunResponseCollector>;
 
@@ -37,10 +38,23 @@ export const createAgentLoopCoreEventDispatcher = ({
   >();
   const completedToolCallIds = new Set<string>();
   const announcedActivityIds = new Set<string>();
+  const modelContextId = `context-${getNanoid(12)}`;
+  let hasModelContext = false;
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
+      case 'model_context':
+        hasModelContext = true;
+        eventStream.streamModelContext?.({ id: modelContextId, messages: event.messages });
+        return;
       case 'after_message_compress': {
+        if (hasModelContext && event.contextCheckpoint) {
+          eventStream.streamModelContext?.({
+            id: modelContextId,
+            messages: [],
+            contextCheckpoint: event.contextCheckpoint
+          });
+        }
         const [usage] = normalizeAgentLoopUsages(event.usages);
         if (!usage) return;
         toolRunCollector?.appendContextCompressNodeResponse({
@@ -59,6 +73,8 @@ export const createAgentLoopCoreEventDispatcher = ({
         eventStream.streamAnswer(event.text);
         return;
       case 'llm_request_start':
+        // 每次模型调用单独追加展示，避免工具或 Plan 之后的回复回写到更早的正文。
+        eventStream.startNewAnswerBlock();
         eventStream.streamFlowNodeStatus({
           status: 'running',
           name: event.modelName

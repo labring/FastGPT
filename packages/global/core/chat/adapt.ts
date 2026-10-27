@@ -1,6 +1,7 @@
 import type {
   AIChatItemValueItemType,
   ChatItemMiniType,
+  ChatModelContext,
   ChatItemValueItemType,
   RuntimeUserPromptType,
   SystemChatItemValueItemType,
@@ -19,7 +20,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-import { normalizeToolResponseContent } from '../ai/llm/utils';
+import { mergeModelMessages, normalizeToolResponseContent } from '../ai/llm/utils';
 import { getUserChatSelect, formatUserChatSelect, userChatSelect2RuntimeText } from './input/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
@@ -70,6 +71,46 @@ export const simpleUserContentPart = (content: ChatCompletionContentPart[]) => {
     return content[0].text;
   }
   return content;
+};
+
+/**
+ * 在现有聊天记录内维护模型上下文，后续卡片均为展示投影。
+ * 父 Agent 更新时覆盖子流程的上下文投影，防止子消息或子 checkpoint 串入父上下文。
+ * checkpoint 替换容器内旧消息；普通更新只追加本轮增量，不重复保存历史输入。
+ */
+export const updateChatModelContext = (
+  values: AIChatItemValueItemType[],
+  context: ChatModelContext,
+  { projectDisplay = true }: { projectDisplay?: boolean } = {}
+): AIChatItemValueItemType[] => {
+  const index = values.findIndex(
+    (value) => value.id === context.id && value.modelMessages !== undefined
+  );
+  if (index < 0) {
+    return [
+      ...values,
+      {
+        id: context.id,
+        hideInUI: true,
+        modelMessages: context.messages,
+        ...(context.contextCheckpoint ? { contextCheckpoint: context.contextCheckpoint } : {})
+      }
+    ];
+  }
+
+  return values.map((value, valueIndex) => {
+    if (valueIndex < index) return value;
+    if (valueIndex === index) {
+      return {
+        ...value,
+        modelMessages: context.contextCheckpoint
+          ? context.messages
+          : mergeModelMessages(value.modelMessages || [], context.messages),
+        ...(context.contextCheckpoint ? { contextCheckpoint: context.contextCheckpoint } : {})
+      };
+    }
+    return projectDisplay ? { ...value, modelMessages: [], contextCheckpoint: undefined } : value;
+  });
 };
 
 // 获取最后一个压缩检查点的位置。检查点会替代它之前的普通上下文。
@@ -195,6 +236,7 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
 
 const isPureTextAiValue = (item: AIChatItemValueItemType) =>
   !!item.text &&
+  item.modelMessages === undefined &&
   !item.id &&
   !item.askId &&
   !item.reasoning &&
@@ -255,7 +297,7 @@ export const normalizeAIChatValue = (values: AIChatItemValueItemType[]) => {
  * - reserveTool=false 时只保留自然语言上下文，不把历史工具调用带入分类/普通对话。
  * - reserveReason=false 时去掉 reasoning_content，适用于问题分类等不需要思考过程的节点。
  * - reserveId=true 时保留 dataId，供需要按轮次追踪的调用方使用。
- * - 输出前会调用 mergeAssistantFieldMessages，保证 reasoning 不以独立 assistant message 出现。
+ * - 新记录直接恢复模型协议消息；仅旧展示分段经过 mergeAssistantFieldMessages 兼容合并。
  */
 export const chats2GPTMessages = ({
   messages,
@@ -331,6 +373,7 @@ export const chats2GPTMessages = ({
       }
     };
   };
+
   sourceMessages.forEach((item, index) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
@@ -476,6 +519,59 @@ export const chats2GPTMessages = ({
       };
 
       item.value.forEach((value) => {
+        if (value.modelMessages !== undefined) {
+          flushPendingRuntimeToolResponses();
+          results.push(...mergeAssistantFieldMessages(aiResults));
+          aiResults.length = 0;
+
+          if (value.contextCheckpoint) {
+            results.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: value.contextCheckpoint,
+              hideInUI: true
+            });
+          }
+
+          const modelMessages = value.modelMessages.flatMap<ChatCompletionMessageParam>(
+            (message) => {
+              if (!reserveTool && (message.role === 'tool' || message.role === 'function'))
+                return [];
+              const { dataId: _dataId, reasoning_content, ...rest } = message;
+              const restoredMessage = {
+                ...rest,
+                ...(reserveId ? { dataId } : {}),
+                ...(reserveReason && reasoning_content !== undefined ? { reasoning_content } : {})
+              };
+              if (restoredMessage.role === 'assistant' && !reserveTool) {
+                const {
+                  tool_calls: _tools,
+                  function_call: _function,
+                  ...withoutTools
+                } = restoredMessage;
+                if (!withoutTools.content && !withoutTools.audio && !withoutTools.refusal) {
+                  return [];
+                }
+                return [withoutTools];
+              }
+              return [restoredMessage];
+            }
+          );
+          // 模型消息已具有真实回复边界，不再经过展示字段的相邻合并规则。
+          results = mergeModelMessages(results, modelMessages);
+          // 用户回答是新的真实输入，只回填原 Ask 调用的结果，不从卡片重建 assistant。
+          if (reserveTool && value.agentAsk && next?.obj === ChatRoleEnum.Human) {
+            results = mergeModelMessages(results, [
+              {
+                role: ChatCompletionRequestMessageRoleEnum.Tool,
+                tool_call_id: value.agentAsk.id,
+                content: askResponse
+              }
+            ]);
+          }
+          return;
+        }
+
         const tools = value.tools ? value.tools : value.tool ? [value.tool] : undefined;
         const hasTools = Array.isArray(tools) && tools.length > 0;
         const startsNewAssistantPayload =
@@ -588,13 +684,61 @@ export const GPTMessages2Chats = ({
   messages,
   reserveTool = true,
   reserveReason = true,
+  reserveModelMessages = false,
   getToolInfo
 }: {
   messages: ChatCompletionMessageParam[];
   reserveTool?: boolean;
   reserveReason?: boolean;
+  /** 协议入站/持久化使用无损上下文；纯展示转换保留旧结构。 */
+  reserveModelMessages?: boolean;
   getToolInfo?: (name: string) => { name: string; avatar?: string } | undefined;
 }): ChatItemMiniType[] => {
+  if (reserveModelMessages && reserveTool) {
+    // 先按原始角色边界分组，保留组内每条 assistant 和 tool 的原始结构。
+    // 展示仍复用旧转换，模型恢复直接使用源消息，避免归一化时再次合并回复。
+    const groups: { ai: boolean; dataId?: string; messages: ChatCompletionMessageParam[] }[] = [];
+    for (const message of messages) {
+      const ai = GPT2Chat[message.role] === ChatRoleEnum.AI;
+      const previous = groups.at(-1);
+      if (
+        ai &&
+        previous?.ai &&
+        (message.role !== 'assistant' || previous.dataId === message.dataId)
+      ) {
+        previous.messages.push(message);
+      } else {
+        groups.push({ ai, dataId: message.dataId, messages: [message] });
+      }
+    }
+    return groups.flatMap<ChatItemMiniType>((group) => {
+      const chats = GPTMessages2Chats({
+        messages: group.messages,
+        reserveTool,
+        reserveReason,
+        getToolInfo
+      });
+      if (!group.ai) return chats;
+      const modelMessages = reserveReason
+        ? group.messages
+        : group.messages.map(({ reasoning_content: _reasoning, ...message }) => message);
+      if (!chats.length) {
+        return [
+          { obj: ChatRoleEnum.AI, dataId: group.dataId, value: [{ modelMessages, hideInUI: true }] }
+        ];
+      }
+      return chats.map((chat) => {
+        if (chat.obj !== ChatRoleEnum.AI) return chat;
+        return {
+          ...chat,
+          value: chat.value.map((value, index) => ({
+            ...value,
+            modelMessages: index === 0 ? modelMessages : []
+          }))
+        };
+      });
+    });
+  }
   const normalizedMessages = mergeAssistantFieldMessages(messages);
   const chatMessages = normalizedMessages
     .map((item) => {

@@ -11,10 +11,31 @@ import {
 const model = {
   api: 'openai-completions',
   provider: 'openai',
+  reasoning: true,
   id: 'gpt-5'
 } as any;
 
 describe('piAgent message conversion', () => {
+  it('omits historical thinking when switching to a model without reasoning support', () => {
+    const [message] = convertChatMessagesToPiAgentMessages({
+      model: { ...model, reasoning: false },
+      messages: [{ role: 'assistant', content: 'Done', reasoning_content: 'Earlier reasoning' }]
+    });
+    expect(message).toMatchObject({ content: [{ type: 'text', text: 'Done' }] });
+  });
+
+  it('round-trips an explicitly empty reasoning field without losing its protocol signature', () => {
+    const messages = [{ role: 'assistant' as const, content: 'Done', reasoning_content: '' }];
+    const converted = convertChatMessagesToPiAgentMessages({ model, messages });
+    expect(converted[0]).toMatchObject({
+      content: [
+        { type: 'thinking', thinking: '', thinkingSignature: 'reasoning_content' },
+        { type: 'text', text: 'Done' }
+      ]
+    });
+    expect(convertPiAgentMessagesToChatMessages(converted)).toEqual(messages);
+  });
+
   it('converts standard history while preserving reasoning and tool relationships', () => {
     const result = convertChatMessagesToPiAgentMessages({
       model,
@@ -58,7 +79,11 @@ describe('piAgent message conversion', () => {
       expect.objectContaining({
         role: 'assistant',
         content: [
-          { type: 'thinking', thinking: 'Need current information.' },
+          {
+            type: 'thinking',
+            thinking: 'Need current information.',
+            thinkingSignature: 'reasoning_content'
+          },
           { type: 'text', text: 'I will search.' },
           {
             type: 'toolCall',

@@ -19,6 +19,7 @@ import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
+  isToolCall?: boolean;
   node: {
     nodeId: string;
     flowNodeType: FlowNodeTypeEnum;
@@ -114,6 +115,7 @@ export const createWorkflowAgentLoopRuntime = ({
       environment: {
         node: context.node,
         workflowStreamResponse,
+        streamContext: !context.isToolCall,
         streamReasoning: context.params.aiChatReasoning !== false,
         shouldStreamTool: () => true,
         nodeResponses: artifacts.nodeResponses,

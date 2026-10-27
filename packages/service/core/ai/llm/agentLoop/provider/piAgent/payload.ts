@@ -54,8 +54,20 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
         })
       : undefined;
 
+  // pi SDK 会过滤空 thinking block。思考模型的空字段在协议中仍有意义，出站时补回；
+  // 非空思考由 message adapter 的 thinkingSignature 无损回传，不能在这里重建或改写。
+  const messages =
+    modelData.config.reasoning && 'messages' in payload && Array.isArray(payload.messages)
+      ? payload.messages.map((message) =>
+          message.role === 'assistant'
+            ? { ...message, reasoning_content: message.reasoning_content ?? '' }
+            : message
+        )
+      : undefined;
+
   return {
     ...payload,
+    ...(messages ? { messages } : {}),
     ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
     ...(typeof temperature === 'number' ? { temperature } : {}),
     ...(supportParams.topP && typeof runtime.llmParams.topP === 'number'

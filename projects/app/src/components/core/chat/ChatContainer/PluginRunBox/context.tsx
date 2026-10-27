@@ -10,7 +10,7 @@ import type { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
 import type { ChatBoxInputFormType } from '../ChatBox/type';
-import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, updateChatModelContext } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@/components/core/chat/ChatContainer/PluginRunBox/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -63,10 +63,27 @@ const PluginRunContextProvider = ({
   }, []);
 
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool, nodeResponse, variables }: generatingMessageProps) => {
+    ({
+      event,
+      text = '',
+      status,
+      name,
+      tool,
+      nodeResponse,
+      variables,
+      modelContext,
+      modelContextId
+    }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
+
+          if (event === SseResponseEventEnum.modelContext && modelContext) {
+            return {
+              ...item,
+              value: updateChatModelContext(item.value, modelContext, { projectDisplay: false })
+            };
+          }
 
           const lastValue: AIChatItemValueItemType = JSON.parse(
             JSON.stringify(item.value[item.value.length - 1])
@@ -87,8 +104,12 @@ const PluginRunContextProvider = ({
             (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
             text
           ) {
-            if (!lastValue || !lastValue.text) {
+            if (
+              !lastValue?.text ||
+              Boolean(modelContextId) !== (lastValue.modelMessages !== undefined)
+            ) {
               const newValue: AIChatItemValueItemType = {
+                ...(modelContextId ? { modelMessages: [] } : {}),
                 text: {
                   content: text
                 }
@@ -99,6 +120,7 @@ const PluginRunContextProvider = ({
               };
             } else {
               lastValue.text.content += text;
+              if (modelContextId) lastValue.modelMessages = [];
               return {
                 ...item,
                 value: item.value.slice(0, -1).concat(lastValue)
@@ -106,6 +128,7 @@ const PluginRunContextProvider = ({
             }
           } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
+              ...(modelContextId ? { modelMessages: [] } : {}),
               tools: [tool]
             };
             return {

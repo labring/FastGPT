@@ -1060,6 +1060,108 @@ describe('loadRequestMessages function tests', () => {
   });
 
   describe('Assistant message processing', () => {
+    it.each([1, 3])(
+      'preserves text, reasoning and %i parallel calls across repeated message loading',
+      async (toolCount) => {
+        const calls = Array.from({ length: toolCount }, (_, index) => ({
+          id: `call_${index}`,
+          type: 'function' as const,
+          function: { name: 'query', arguments: JSON.stringify({ index }) }
+        }));
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Build a workflow' },
+          {
+            role: 'assistant',
+            content: 'Read references first.',
+            reasoning_content: 'Read skills.'
+          },
+          {
+            role: 'assistant',
+            content: 'Inspect the workflow.',
+            reasoning_content: 'Query the current configuration.',
+            tool_calls: calls
+          },
+          ...calls.map((call) => ({
+            role: 'tool' as const,
+            tool_call_id: call.id,
+            content: JSON.stringify({ ok: true, id: call.id })
+          }))
+        ];
+        const original = structuredClone(messages);
+
+        for (let round = 0; round < 3; round++) {
+          expect(await loadRequestMessages({ messages, supportReason: true })).toEqual(original);
+          expect(messages).toEqual(original);
+        }
+      }
+    );
+
+    it.each([undefined, null, '', []])(
+      'omits reasoning-only display remnants with content %j from model requests',
+      async (content) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'assistant', content: 'First reply', reasoning_content: 'First thought' },
+          { role: 'assistant', content, reasoning_content: 'A separate thought' },
+          { role: 'assistant', content: 'Next reply', reasoning_content: 'Next thought' }
+        ];
+
+        expect(await loadRequestMessages({ messages, supportReason: true })).toEqual([
+          messages[0],
+          messages[2]
+        ]);
+      }
+    );
+
+    it.each([true, false])(
+      'normalizes legacy missing reasoning without mutating history: supportReason=%s',
+      async (supportReason) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'assistant', content: 'Plan', reasoning_content: 'Original thought' },
+          { role: 'assistant', content: 'Done' },
+          {
+            role: 'assistant',
+            content: '',
+            tool_calls: [
+              {
+                id: 'read',
+                type: 'function',
+                function: { name: 'read', arguments: '{}' }
+              }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'read', content: 'Found' }
+        ];
+        const snapshot = structuredClone(messages);
+        const result = JSON.parse(
+          JSON.stringify(await loadRequestMessages({ messages, supportReason }))
+        );
+        expect(messages).toEqual(snapshot);
+        if (supportReason) {
+          expect(
+            result.slice(0, 3).map((item: ChatCompletionMessageParam) => item.reasoning_content)
+          ).toEqual(['Original thought', '', '']);
+        } else {
+          for (const item of result) expect(item).not.toHaveProperty('reasoning_content');
+        }
+        expect(result[2].tool_calls).toEqual(
+          messages[2].role === 'assistant' ? messages[2].tool_calls : undefined
+        );
+        expect(result[3]).toEqual(messages[3]);
+      }
+    );
+
+    it.each([false, true])(
+      'omits reasoning-only remnants with an empty tool_calls array: supportReason=%s',
+      async (supportReason) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Continue building' },
+          { role: 'assistant', content: null, reasoning_content: 'Read skills.', tool_calls: [] }
+        ];
+
+        expect(await loadRequestMessages({ messages, supportReason })).toEqual([messages[0]]);
+      }
+    );
+
     it('should process assistant message with string content', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
@@ -1135,13 +1237,31 @@ describe('loadRequestMessages function tests', () => {
 
       const result = await loadRequestMessages({ messages });
 
-      // Adjacent assistant messages get merged, empty content in middle gets filtered during merge
-      expect(result).toHaveLength(2);
-      expect(result[1].content).toBe('First\n\nLast');
+      expect(result).toHaveLength(3);
+      expect(result[1].content).toBe('First');
+      expect(result[2].content).toBe('Last');
     });
   });
 
   describe('Message merging behavior', () => {
+    it.each(['system', 'user'] as const)(
+      'should merge adjacent %s messages without mutating or duplicating input across requests',
+      async (role) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role, content: 'First' },
+          { role, content: 'Second' },
+          { role: 'assistant', content: 'Response' }
+        ];
+        const snapshot = structuredClone(messages);
+        const firstResult = await loadRequestMessages({ messages });
+
+        for (let round = 0; round < 3; round++) {
+          expect(await loadRequestMessages({ messages })).toEqual(firstResult);
+          expect(messages).toEqual(snapshot);
+        }
+      }
+    );
+
     it('should merge consecutive system messages', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System 1' },
@@ -1173,7 +1293,7 @@ describe('loadRequestMessages function tests', () => {
       expect(result[0].content).toBeDefined();
     });
 
-    it('should merge consecutive assistant messages with content', async () => {
+    it('should preserve independent consecutive assistant messages with content', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
         { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Part 1' },
@@ -1182,9 +1302,10 @@ describe('loadRequestMessages function tests', () => {
 
       const result = await loadRequestMessages({ messages });
 
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
       expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
-      expect(result[1].content).toBe('Part 1\nPart 2');
+      expect(result[1].content).toBe('Part 1');
+      expect(result[2].content).toBe('Part 2');
     });
 
     it('should not merge assistant messages when one has tool calls', async () => {
@@ -1310,7 +1431,7 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should preserve private upload URLs when MULTIPLE_DATA_TO_BASE64 is disabled', async () => {
-      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      multimediaEnv.MULTIPLE_DATA_TO_BASE64 = false;
       const imageUrl = 'http://localhost:9000/fastgpt-private/chat/image.png?X-Amz-Signature=test';
       const messages: ChatCompletionMessageParam[] = [
         {

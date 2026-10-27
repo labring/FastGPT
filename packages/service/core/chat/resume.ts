@@ -8,7 +8,10 @@ import {
 } from '@fastgpt/dal/redis/caches';
 import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  SseResponseEventEnum,
+  StreamResumeUnavailableReasonEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -233,28 +236,35 @@ const isTerminalRedisStreamFields = (fields: RedisStreamFields) => {
 
 const writeRedisStreamFields = ({
   res,
-  fields
+  fields,
+  showNodeStatus
 }: {
   res: NodeHttpResponse;
   fields: RedisStreamFields;
+  showNodeStatus: boolean;
 }) => {
   if (isResponseClosed(res)) return;
 
-  if (fields.raw !== undefined) {
-    res.write(fields.raw);
-    return;
+  let chunk =
+    fields.raw ?? `${fields.event ? `event: ${fields.event}\n` : ''}data: ${fields.data ?? ''}\n\n`;
+  if (!showNodeStatus) {
+    // Workflow writer 每次缓存完整 SSE 事件。重放仍按当前权限过滤，兼容修复前的缓存。
+    const event = fields.event ?? chunk.match(/^event: (.+)$/m)?.[1];
+    if (event === SseResponseEventEnum.modelContext) return;
+    if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+      chunk = chunk.replace(/^data: (\{.*\})$/m, (_line, data: string) => {
+        const { modelContextId: _contextId, ...display } = JSON.parse(data);
+        return `data: ${JSON.stringify(display)}`;
+      });
+    }
   }
 
-  let chunk = '';
-  if (fields.event) {
-    chunk += `event: ${fields.event}\n`;
-  }
-  chunk += `data: ${fields.data ?? ''}\n\n`;
   res.write(chunk);
 };
 
 type ResumeBaseParams = StreamResumeRedisKeysParams & {
   res: NodeHttpResponse;
+  showNodeStatus?: boolean;
 };
 
 /**
@@ -264,6 +274,7 @@ type ResumeBaseParams = StreamResumeRedisKeysParams & {
  */
 export const catchUpAllHistoryItems = async ({
   res,
+  showNodeStatus = true,
   maxReplayLength = 50,
   ...params
 }: ResumeBaseParams & { maxReplayLength?: number }) => {
@@ -288,7 +299,8 @@ export const catchUpAllHistoryItems = async ({
 
       writeRedisStreamFields({
         res,
-        fields
+        fields,
+        showNodeStatus
       });
 
       if (isResponseClosed(res)) {
@@ -307,6 +319,7 @@ export const catchUpAllHistoryItems = async ({
 
 export const _resume = async ({
   res,
+  showNodeStatus = true,
   cursor: initialCursor,
   ...params
 }: ResumeBaseParams & { cursor?: string }) => {
@@ -343,7 +356,8 @@ export const _resume = async ({
 
           writeRedisStreamFields({
             res,
-            fields
+            fields,
+            showNodeStatus
           });
 
           if (isTerminalRedisStreamFields(fields) || isResponseClosed(res)) {

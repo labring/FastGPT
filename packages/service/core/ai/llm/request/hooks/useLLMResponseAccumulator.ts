@@ -24,7 +24,9 @@ const createEmptyUsage = (): LLMAccumulatedUsage => ({
  * - 累加多轮 usage。
  * - 为下一轮补偿请求构造“继续输出”的上下文。
  */
-export const useLLMResponseAccumulator = () => {
+export const useLLMResponseAccumulator = ({
+  supportReason = false
+}: { supportReason?: boolean } = {}) => {
   let answerText = '';
   let reasoningText = '';
   let toolCalls: ChatCompletionMessageToolCall[] | undefined;
@@ -33,6 +35,17 @@ export const useLLMResponseAccumulator = () => {
   let isStreamResponse = false;
   let hasResponseType = false;
   const usage = createEmptyUsage();
+
+  /**
+   * 统一构造模型协议消息，供工具续轮、历史持久化和长度续写复用。
+   * 思考模型可以直接调用工具而不输出思考文本；此时空字符串仍是协议字段，不能按 truthy 丢弃。
+   */
+  const getAssistantMessage = (): ChatCompletionMessageParam => ({
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    ...(answerText && { content: answerText }),
+    ...((supportReason || reasoningText) && { reasoning_content: reasoningText }),
+    ...(toolCalls?.length && { tool_calls: toolCalls })
+  });
 
   return {
     /**
@@ -79,10 +92,12 @@ export const useLLMResponseAccumulator = () => {
     },
 
     /**
-     * 只有模型明确因为长度截断且没有错误时才继续请求。
+     * 只有已产生正文、因长度截断且没有错误时才继续请求。
+     * 工具调用必须先由上层执行并追加结果，不能直接跟随“继续输出”的 user 消息。
+     * 尚未产生正文的思考也不能独立构成下一轮 assistant 消息。
      */
     shouldContinue() {
-      return finishReason === 'length' && !error;
+      return finishReason === 'length' && !error && !toolCalls?.length && !!answerText;
     },
 
     /**
@@ -95,12 +110,7 @@ export const useLLMResponseAccumulator = () => {
     }): ChatCompletionMessageParam[] {
       return [
         ...baseMessages,
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-          ...(answerText && { content: answerText }),
-          ...(reasoningText && { reasoning_content: reasoningText }),
-          ...(toolCalls?.length && { tool_calls: toolCalls })
-        },
+        getAssistantMessage(),
         {
           role: ChatCompletionRequestMessageRoleEnum.User as 'user',
           content: '[继续输出]'
@@ -113,6 +123,7 @@ export const useLLMResponseAccumulator = () => {
      */
     getResponse() {
       return {
+        assistantMessage: getAssistantMessage(),
         answerText,
         reasoningText,
         toolCalls,

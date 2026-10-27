@@ -3,11 +3,9 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
 import { createLLMRequestId, sanitizeLLMRequestRecordPayload } from '../../record/controller';
@@ -73,10 +71,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     ...body,
     messages: rewriteMessages
   });
-  const accumulator = useLLMResponseAccumulator();
-  const initialRequestMessages = mergeAssistantFieldMessages(
-    requestBody.messages as ChatCompletionMessageParam[]
-  ) as ChatCompletionMessageParam[];
+  const accumulator = useLLMResponseAccumulator({ supportReason: model.config.reasoning });
+  // 这里已是模型协议消息；旧展示分段的兼容合并只允许在聊天历史恢复层执行。
+  const initialRequestMessages = requestBody.messages as ChatCompletionMessageParam[];
   let currentMessages: ChatCompletionMessageParam[] = [...initialRequestMessages];
   let continuationCount = 0;
   let aiRequestMeta: AIApiRequestMeta = {
@@ -138,11 +135,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
       if (accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
-        currentMessages = mergeAssistantFieldMessages(
-          accumulator.buildContinuationMessages({
-            baseMessages: requestBody.messages as ChatCompletionMessageParam[]
-          })
-        ) as ChatCompletionMessageParam[];
+        currentMessages = accumulator.buildContinuationMessages({
+          baseMessages: requestBody.messages as ChatCompletionMessageParam[]
+        });
 
         logger.debug(`Continue LLM response due to length limit`, {
           continuationCount,
@@ -155,6 +150,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     const {
+      assistantMessage,
       answerText,
       reasoningText,
       toolCalls,
@@ -171,13 +167,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       hasResponse: !!answerText || !!reasoningText || !!toolCalls?.length,
       error
     });
-
-    const assistantMessage: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-      ...(answerText && { content: answerText }),
-      ...(reasoningText && { reasoning_content: reasoningText }),
-      ...(toolCalls?.length && { tool_calls: toolCalls })
-    };
 
     // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
     // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）

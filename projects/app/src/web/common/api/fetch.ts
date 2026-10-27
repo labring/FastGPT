@@ -118,6 +118,7 @@ export const shouldSendStreamResumeHeader = (url: string) =>
 
 type CommonResponseType = {
   responseValueId?: string;
+  modelContextId?: string;
 };
 type AnswerQueueItem = CommonResponseType & {
   event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
@@ -175,6 +176,7 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
     if (typeof parsed !== 'object') throw new Error('Invalid JSON');
 
     const { responseValueId, ...obj } = parsed;
+    const modelProjection = obj.modelContextId ? { modelContextId: obj.modelContextId } : {};
 
     switch (event) {
       case SseResponseEventEnum.toolCall:
@@ -188,6 +190,10 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
+      case SseResponseEventEnum.modelContext: {
+        onmessage({ responseValueId, event, modelContext: obj.modelContext });
+        break;
+      }
       case SseResponseEventEnum.workflowBuilderVersion: {
         onmessage({ responseValueId, event, workflowBuilderVersion: obj.version });
         break;
@@ -196,17 +202,17 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.answer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
         if (reasoningText) {
-          enqueue({ responseValueId, event, reasoningText });
+          enqueue({ responseValueId, event, reasoningText, ...modelProjection });
         }
 
         const content = obj.choices?.[0]?.delta?.content || '';
 
         if (splitAnswerTextByCharacter) {
           for (const item of content) {
-            enqueue({ responseValueId, event, text: item });
+            enqueue({ responseValueId, event, text: item, ...modelProjection });
           }
         } else {
-          enqueue({ responseValueId, event, text: content });
+          enqueue({ responseValueId, event, text: content, ...modelProjection });
         }
 
         break;
@@ -215,11 +221,11 @@ export function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.fastAnswer: {
         const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
         if (reasoningText) {
-          enqueue({ responseValueId, event, reasoningText });
+          enqueue({ responseValueId, event, reasoningText, ...modelProjection });
         }
 
         const text = obj.choices?.[0]?.delta?.content || '';
-        enqueue({ responseValueId, event, text });
+        enqueue({ responseValueId, event, text, ...modelProjection });
 
         break;
       }

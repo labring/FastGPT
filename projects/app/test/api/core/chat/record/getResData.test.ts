@@ -100,6 +100,41 @@ describe('getResData handler', () => {
     });
   });
 
+  it.each([
+    ChatSourceTypeEnum.skillEdit,
+    ChatSourceTypeEnum.chatAgentHelper,
+    ChatSourceTypeEnum.workflowBuilder
+  ])('按 %s 来源鉴权并读取辅助生成运行详情', async (sourceType) => {
+    mockChatItem({ obj: ChatRoleEnum.AI });
+    mocks.authChatTargetCrud.mockResolvedValue({ sourceType, sourceId: appId });
+    const target =
+      sourceType === ChatSourceTypeEnum.skillEdit ? { skillId: appId } : { sourceType, appId };
+
+    await expect(
+      handler({ query: { ...target, chatId, dataId } } as ApiRequestProps)
+    ).resolves.toEqual([{ id: 'persisted-root' }]);
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceType, sourceId: appId, chatId })
+    );
+    expect(mocks.findChatItem).toHaveBeenCalledWith(
+      {
+        sourceType,
+        appId,
+        chatId,
+        dataId,
+        obj: ChatRoleEnum.AI
+      },
+      'dataId obj responseData'
+    );
+    expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
+      sourceType,
+      sourceId: appId,
+      chatId,
+      chatItemDataId: dataId,
+      fallbackResponseData: undefined
+    });
+  });
+
   it('reads persisted response rows when new chat item has no inline responseData', async () => {
     mockChatItem({
       obj: ChatRoleEnum.AI

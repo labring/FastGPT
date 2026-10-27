@@ -48,7 +48,8 @@ vi.mock('@fastgpt/service/core/ai/record/controller', async (importOriginal) => 
   saveLLMRequestRecord: vi.fn()
 }));
 
-vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
+vi.mock('@fastgpt/global/core/ai/llm/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/core/ai/llm/utils')>()),
   removeDatasetCiteText: vi.fn((text: string) => text),
   normalizeToolResponseContent: vi.fn((content: unknown) =>
     typeof content === 'string' ? content : JSON.stringify(content)
@@ -67,7 +68,8 @@ vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/service/core/ai/utils', () => ({
+vi.mock('@fastgpt/service/core/ai/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/utils')>()),
   computedMaxToken: vi.fn(({ maxToken }: { maxToken?: number }) => maxToken || 4096),
   computedTemperature: vi.fn(({ temperature }: { temperature: number }) => temperature),
   parseLLMStreamResponse: vi.fn(),
@@ -83,6 +85,12 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { runAgentLoopApplication } from '@fastgpt/service/core/ai/llm/agentLoop/application/run';
+import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
+import { resolveSandboxRuntimePath } from '@fastgpt/service/core/ai/sandbox/utils';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 
 import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
@@ -178,6 +186,202 @@ describe('createLLMResponse', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('persisted tool protocol at the SDK boundary', () => {
+    it.each([false, true])(
+      'keeps internal-read display filtering, persisted context and the final SDK request valid: stream=%s',
+      async (stream) => {
+        const actual = await vi.importActual<typeof import('@fastgpt/service/core/ai/llm/utils')>(
+          '@fastgpt/service/core/ai/llm/utils'
+        );
+        mockLoadRequestMessages.mockImplementation(actual.loadRequestMessages);
+        const aiUtils = await vi.importActual<typeof import('@fastgpt/service/core/ai/utils')>(
+          '@fastgpt/service/core/ai/utils'
+        );
+        mockParseLLMStreamResponse.mockImplementation(aiUtils.parseLLMStreamResponse);
+        const internalCall: ChatCompletionMessageToolCall = {
+          id: 'read-skill',
+          type: 'function',
+          function: {
+            name: 'sandbox_read_file',
+            arguments: '{"path":"/root/.fastgpt/skills/workflow-builder/SKILL.md"}'
+          }
+        };
+        const publicCall: ChatCompletionMessageToolCall = {
+          id: 'query',
+          type: 'function',
+          function: { name: 'query', arguments: '{}' }
+        };
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'assistant', reasoning_content: 'Read skills.', tool_calls: [internalCall] },
+          { role: 'tool', tool_call_id: internalCall.id, content: 'Internal Skill content' },
+          { role: 'assistant', reasoning_content: 'Inspect settings.', tool_calls: [publicCall] },
+          { role: 'tool', tool_call_id: publicCall.id, content: 'Current settings' }
+        ];
+        const snapshot = structuredClone(messages);
+        const collector = createAgentLoopCoreAssistantEventCollector();
+        const result = await runAgentLoopApplication({
+          input: { messages: [] },
+          runtime: {
+            teamId: 'team_1',
+            llmParams: { model: createMockModelData() },
+            toolCatalog: { runtimeTools: [] },
+            executeTool: async () => ({ response: '', assistantMessages: [], usages: [] }),
+            systemTools: {
+              sandbox: {
+                enabled: true,
+                internalReadDirectories: ['/root/.fastgpt'],
+                client: {
+                  resolveRuntimePath: (path, options) =>
+                    resolveSandboxRuntimePath(
+                      path,
+                      { workspaceRoot: '/workspace', sessionWorkDirectory: '/workspace' },
+                      options
+                    )
+                } as SandboxClient
+              }
+            },
+            emitEvent: collector.emitEvent
+          },
+          provider: {
+            name: 'fastAgent',
+            run: async ({ runtime }) => {
+              runtime.emitEvent?.({ type: 'model_context', messages: [] });
+              runtime.emitEvent?.({ type: 'reasoning_delta', text: 'Read skills.' });
+              for (const message of messages) {
+                runtime.emitEvent?.({ type: 'model_context', messages: [message] });
+              }
+              return {
+                status: 'done',
+                completeMessages: messages,
+                assistantMessages: messages,
+                requestIds: [],
+                finishReason: 'stop',
+                usages: []
+              };
+            }
+          }
+        });
+        expect(result.completeMessages).toEqual(messages.slice(2));
+        expect(
+          collector.assistantResponses.some((value) => value.reasoning?.content === 'Read skills.')
+        ).toBe(true);
+        const restored = chats2GPTMessages({
+          messages: JSON.parse(
+            JSON.stringify([
+              { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Build a workflow' } }] },
+              { obj: ChatRoleEnum.AI, value: collector.assistantResponses }
+            ])
+          ),
+          reserveId: false,
+          reserveTool: true
+        });
+        const create = vi.fn(async (body) => {
+          expect(JSON.parse(JSON.stringify(body.messages))).toEqual([
+            { role: 'user', content: 'Build a workflow' },
+            ...messages.slice(2)
+          ]);
+          for (const message of body.messages) {
+            if (message.role === 'assistant') {
+              expect(Boolean(message.content || message.tool_calls?.length)).toBe(true);
+            }
+          }
+          if (stream)
+            return createMockStreamResponse([
+              {
+                choices: [{ delta: { role: 'assistant', content: 'Ready' }, finish_reason: null }]
+              },
+              { choices: [{ delta: {}, finish_reason: 'stop' }] }
+            ]);
+          return {
+            choices: [{ message: { role: 'assistant', content: 'Ready' }, finish_reason: 'stop' }]
+          };
+        });
+        mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+        await createLLMResponse({
+          body: {
+            model: createMockModelData({ config: { reasoning: true } }),
+            messages: restored,
+            stream
+          }
+        });
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(messages).toEqual(snapshot);
+      }
+    );
+
+    it.each([1, 3])(
+      'preserves %i parallel calls and original assistant boundaries through real message loading',
+      async (toolCount) => {
+        const actual = await vi.importActual<typeof import('@fastgpt/service/core/ai/llm/utils')>(
+          '@fastgpt/service/core/ai/llm/utils'
+        );
+        mockLoadRequestMessages.mockImplementation(actual.loadRequestMessages);
+        const calls: ChatCompletionMessageToolCall[] = Array.from(
+          { length: toolCount },
+          (_, index) => ({
+            id: `query_${index}`,
+            type: 'function',
+            function: { name: 'query', arguments: JSON.stringify({ index }) }
+          })
+        );
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Build a workflow' },
+          {
+            role: 'assistant',
+            content: 'Read references.\n\n',
+            reasoning_content: 'First thought.'
+          },
+          {
+            role: 'assistant',
+            content: 'Inspect configuration.',
+            reasoning_content: 'Query app settings.',
+            tool_calls: calls
+          },
+          ...calls.map((call) => ({
+            role: 'tool' as const,
+            tool_call_id: call.id,
+            content: JSON.stringify({ ok: true })
+          }))
+        ];
+        const chats = JSON.parse(
+          JSON.stringify(GPTMessages2Chats({ messages, reserveModelMessages: true }))
+        );
+        const restored = chats2GPTMessages({
+          messages: chats,
+          reserveId: false,
+          reserveTool: true
+        });
+        const snapshot = structuredClone(restored);
+        const create = vi.fn(async (body) => {
+          // 检查真正传给 SDK 的消息，不能用 mock 跳过请求转换。
+          expect(JSON.parse(JSON.stringify(body.messages))).toEqual(messages);
+          return {
+            choices: [{ message: { role: 'assistant', content: 'Ready' }, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+          };
+        });
+        mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+
+        for (let round = 0; round < 3; round++) {
+          const result = await createLLMResponse({
+            body: {
+              model: createMockModelData({ config: { reasoning: true } }),
+              messages: restored,
+              tools: [
+                { type: 'function', function: { name: 'query', parameters: { type: 'object' } } }
+              ],
+              toolCallMode: 'toolChoice',
+              stream: false
+            }
+          });
+          expect(result.error).toBeUndefined();
+          expect(restored).toEqual(snapshot);
+        }
+        expect(create).toHaveBeenCalledTimes(3);
+      }
+    );
   });
 
   describe('User key routing', () => {
@@ -473,7 +677,7 @@ describe('createLLMResponse', () => {
       }
     );
 
-    it('should normalize split assistant fields before sending request', async () => {
+    it('should preserve independent assistant messages before sending request', async () => {
       const mockResponse = {
         choices: [
           {
@@ -517,6 +721,7 @@ describe('createLLMResponse', () => {
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'make a plan' },
             {
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: 'I will make a plan.',
               reasoning_content: 'Need to create a plan.'
             },
             {
@@ -550,7 +755,11 @@ describe('createLLMResponse', () => {
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'make a plan' },
         {
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          reasoning_content: 'Need to create a plan.',
+          content: 'I will make a plan.',
+          reasoning_content: 'Need to create a plan.'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
           tool_calls: [toolCall]
         },
         {
@@ -2031,8 +2240,79 @@ describe('createLLMResponse', () => {
   });
 
   describe('Message continuation (length limit)', () => {
+    it('does not send a reasoning-only assistant message after a truncated thinking response', async () => {
+      const create = vi.fn().mockResolvedValue({
+        choices: [
+          {
+            message: { role: 'assistant', content: null, reasoning_content: 'Still thinking' },
+            finish_reason: 'length'
+          }
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+      });
+      mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+
+      const result = await createLLMResponse({
+        maxContinuations: 3,
+        body: {
+          model: createMockModelData({ config: { reasoning: true } }),
+          messages: [{ role: 'user', content: 'Build a workflow' }],
+          stream: false
+        }
+      });
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        answerText: '',
+        reasoningText: 'Still thinking',
+        finish_reason: 'length'
+      });
+    });
+
+    it('should return tool calls on length without sending a request before tool execution', async () => {
+      const toolCalls: ChatCompletionMessageToolCall[] = [
+        { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":1}' } }
+      ];
+      const create = vi.fn().mockResolvedValue({
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Searching',
+              reasoning_content: 'Inspect first',
+              tool_calls: toolCalls
+            },
+            finish_reason: 'length'
+          }
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+      });
+      mockGetAIApi.mockReturnValue(createMockAIApiResult({ chat: { completions: { create } } }));
+
+      const result = await createLLMResponse({
+        maxContinuations: 3,
+        body: {
+          model: createMockModelData(),
+          messages: [{ role: 'user', content: 'Search.' }],
+          tools: [
+            { type: 'function', function: { name: 'search', parameters: { type: 'object' } } }
+          ],
+          stream: false
+        }
+      });
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        answerText: 'Searching',
+        reasoningText: 'Inspect first',
+        toolCalls,
+        finish_reason: 'length',
+        usage: { inputTokens: 10, outputTokens: 2 }
+      });
+    });
+
     it.each(
-      (['text', 'reasoning', 'tool'] as const).flatMap((previousOutput) =>
+      (['text', 'text with reasoning'] as const).flatMap((previousOutput) =>
         (['stop', 'tool_calls'] as const).map((finishReason) => ({
           previousOutput,
           finishReason
@@ -2044,17 +2324,14 @@ describe('createLLMResponse', () => {
         const logError = vi
           .spyOn(getLogger(LogCategories.MODULE.AI.LLM), 'error')
           .mockImplementation(() => {});
-        const previousToolCalls: ChatCompletionMessageToolCall[] = [
-          { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"q":1}' } }
-        ];
         const create = vi.fn().mockResolvedValueOnce({
           choices: [
             {
               message: {
                 role: 'assistant',
-                content: previousOutput === 'text' ? 'prior answer' : null,
-                reasoning_content: previousOutput === 'reasoning' ? 'prior thought' : undefined,
-                tool_calls: previousOutput === 'tool' ? previousToolCalls : undefined
+                content: 'prior answer',
+                reasoning_content:
+                  previousOutput === 'text with reasoning' ? 'prior thought' : undefined
               },
               finish_reason: 'length'
             }
@@ -2086,13 +2363,15 @@ describe('createLLMResponse', () => {
         });
 
         expect(create).toHaveBeenCalledTimes(2);
-        expect(result.answerText).toBe(previousOutput === 'text' ? 'prior answer' : '');
-        expect(result.reasoningText).toBe(previousOutput === 'reasoning' ? 'prior thought' : '');
-        expect(result.toolCalls ?? []).toEqual(previousOutput === 'tool' ? previousToolCalls : []);
+        expect(result.answerText).toBe('prior answer');
+        expect(result.reasoningText).toBe(
+          previousOutput === 'text with reasoning' ? 'prior thought' : ''
+        );
+        expect(result.toolCalls ?? []).toEqual([]);
         expect(result.responseEmptyTip).toBeUndefined();
         expect(result.usage).toMatchObject({ inputTokens: 20, outputTokens: 4 });
 
-        if (finishReason === 'tool_calls' && previousOutput !== 'tool') {
+        if (finishReason === 'tool_calls') {
           expect(result.finish_reason).toBe('tool_calls');
           expect(result.error).toBeInstanceOf(Error);
           expect(result.error.message).toBe(
@@ -2348,7 +2627,7 @@ describe('createLLMResponse', () => {
       expect(result.completeMessages).toEqual(rewritten);
     });
 
-    it('should return normalized requestMessages on API error', async () => {
+    it('should return independent requestMessages on API error', async () => {
       const mockAI = {
         chat: {
           completions: {
@@ -2375,6 +2654,7 @@ describe('createLLMResponse', () => {
             { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' },
             {
               role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: 'I will search.',
               reasoning_content: 'Need search.'
             },
             {
@@ -2391,7 +2671,11 @@ describe('createLLMResponse', () => {
         { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' },
         {
           role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          reasoning_content: 'Need search.',
+          content: 'I will search.',
+          reasoning_content: 'Need search.'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
           tool_calls: [toolCall]
         }
       ]);

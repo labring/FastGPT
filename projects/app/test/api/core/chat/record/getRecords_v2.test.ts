@@ -1,4 +1,5 @@
 import handler from '@/pages/api/core/chat/record/getRecords_v2';
+import paginationHandler from '@/pages/api/core/chat/record/getPaginationRecords';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -15,6 +16,9 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -129,6 +133,74 @@ describe('getRecords_v2 skill edit target', () => {
       dataId: keepId
     });
   });
+
+  it.each([
+    { showRunningStatus: false, appType: AppTypeEnum.simple },
+    { showRunningStatus: true, appType: AppTypeEnum.simple },
+    { showRunningStatus: false, appType: AppTypeEnum.workflowTool }
+  ])(
+    'filters shared model context in both record APIs: %j',
+    async ({ showRunningStatus, appType }) => {
+      const app = await MongoApp.create({
+        name: 'Shared context',
+        type: appType,
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        modules: []
+      });
+      const shareId = getNanoid();
+      const outLinkUid = 'visitor';
+      await MongoOutLink.create({
+        shareId,
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        appId: app._id,
+        type: PublishChannelEnum.share,
+        name: 'Shared context',
+        allowAnonymous: true,
+        showRunningStatus
+      });
+      await MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: app._id,
+        chatId,
+        source: ChatSourceEnum.share,
+        shareId,
+        outLinkUid
+      });
+      const value: AIChatItemValueItemType[] = [
+        {
+          id: 'context',
+          hideInUI: true,
+          contextCheckpoint: 'private summary',
+          modelMessages: [{ role: 'tool', tool_call_id: 'call', content: 'private result' }]
+        },
+        { modelMessages: [], text: { content: 'visible answer' } }
+      ];
+      const saved = await MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: app._id,
+        chatId,
+        dataId: 'reply',
+        obj: ChatRoleEnum.AI,
+        value
+      });
+      for (const api of [handler, paginationHandler]) {
+        const result = await Call(api, {
+          body: { chatId, pageSize: 10, outLinkAuthData: { shareId, outLinkUid } }
+        });
+        expect(result.code).toBe(200);
+        expect(JSON.stringify(result.data).includes('private')).toBe(showRunningStatus);
+        expect(JSON.stringify(result.data).includes('modelMessages')).toBe(showRunningStatus);
+        expect(JSON.stringify(result.data)).toContain('visible answer');
+      }
+      expect((await MongoChatItem.findById(saved._id).lean())?.value).toEqual(value);
+    }
+  );
 
   it('should support linked pagination for skill edit records', async () => {
     const items = [];

@@ -147,6 +147,33 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect(result.assistantMessages).toBe(messages);
   });
 
+  it('filters private calls and results from canonical model context events as a pair', async () => {
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'assistant', reasoning_content: 'think', tool_calls: [internalCall, publicCall] },
+      { role: 'tool', tool_call_id: 'internal', content: 'private content' },
+      { role: 'tool', tool_call_id: 'public', content: 'public content' }
+    ];
+    const { forwarded, result } = await run({
+      messages,
+      events: [
+        { type: 'model_context', messages: [] },
+        ...messages.map(
+          (message): AgentLoopEvent => ({ type: 'model_context', messages: [message] })
+        )
+      ]
+    });
+    expect(forwarded).toEqual([
+      { type: 'model_context', messages: [] },
+      {
+        type: 'model_context',
+        messages: [{ role: 'assistant', reasoning_content: 'think', tool_calls: [publicCall] }]
+      },
+      { type: 'model_context', messages: [] },
+      { type: 'model_context', messages: [messages[2]] }
+    ]);
+    expect(result.providerState).toEqual({ messages });
+  });
+
   it('preserves unrelated events and tools outside the configured system tools', async () => {
     const call = {
       ...internalCall,
@@ -399,8 +426,8 @@ describe('runAgentLoopApplication tool visibility', () => {
 
   it.each([
     { output: { content: 'Visible answer' }, visible: true },
-    { output: { content: '' }, visible: true },
-    { output: { reasoning_content: 'Visible reasoning' }, visible: true },
+    { output: { content: '' }, visible: false },
+    { output: { reasoning_content: 'Visible reasoning' }, visible: false },
     {
       output: {
         interactive: {

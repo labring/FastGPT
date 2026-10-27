@@ -13,6 +13,17 @@ const createToolCall = (id: string, name: string, args = ''): ChatCompletionMess
 });
 
 describe('useLLMResponseAccumulator', () => {
+  it.each([false, true])(
+    'normalizes empty reasoning only for reasoning models: supportReason=%s',
+    (supportReason) => {
+      const accumulator = useLLMResponseAccumulator({ supportReason });
+      accumulator.appendResponse({ answerText: 'Done', reasoningText: '', finish_reason: 'stop' });
+      const message = JSON.parse(JSON.stringify(accumulator.getResponse().assistantMessage));
+      if (supportReason) expect(message).toHaveProperty('reasoning_content', '');
+      else expect(message).not.toHaveProperty('reasoning_content');
+    }
+  );
+
   it('should keep the first response type and accumulate text, tool calls, usage', () => {
     const accumulator = useLLMResponseAccumulator();
 
@@ -70,8 +81,7 @@ describe('useLLMResponseAccumulator', () => {
     accumulator.appendResponse({
       answerText: 'partial',
       reasoningText: 'reasoning',
-      finish_reason: 'length',
-      toolCalls: [createToolCall('call_1', 'search', '{"q":"x"}')]
+      finish_reason: 'length'
     });
 
     expect(accumulator.shouldContinue()).toBe(true);
@@ -80,14 +90,43 @@ describe('useLLMResponseAccumulator', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'partial',
-        reasoning_content: 'reasoning',
-        tool_calls: [createToolCall('call_1', 'search', '{"q":"x"}')]
+        reasoning_content: 'reasoning'
       },
       {
         role: ChatCompletionRequestMessageRoleEnum.User,
         content: '[继续输出]'
       }
     ]);
+  });
+
+  it('should return truncated tool calls to the caller without requesting a continuation', () => {
+    const accumulator = useLLMResponseAccumulator();
+    const toolCalls = [createToolCall('call_1', 'search', '{"q":"x"}')];
+    accumulator.appendResponse({
+      answerText: 'Searching',
+      reasoningText: 'Inspect first',
+      finish_reason: 'length',
+      toolCalls
+    });
+
+    expect(accumulator.shouldContinue()).toBe(false);
+    expect(accumulator.getResponse()).toMatchObject({ finish_reason: 'length', toolCalls });
+  });
+
+  it('should preserve truncated reasoning for display without generating an invalid continuation', () => {
+    const accumulator = useLLMResponseAccumulator();
+    accumulator.appendResponse({
+      answerText: '',
+      reasoningText: 'Still thinking',
+      finish_reason: 'length'
+    });
+
+    expect(accumulator.shouldContinue()).toBe(false);
+    expect(accumulator.getResponse()).toMatchObject({
+      answerText: '',
+      reasoningText: 'Still thinking',
+      finish_reason: 'length'
+    });
   });
 
   it('should preserve earlier valid tools when the last round has no tools', () => {

@@ -148,6 +148,18 @@ describe('getInitData anonymous configuration filtering', () => {
     });
   });
 
+  it.each([false, true])('下发辅助生成运行详情开关 %s，命中配置缓存时也返回', async (enabled) => {
+    global.feConfigs.showAuxiliaryGenerationRunDetail = enabled;
+
+    for (const bufferId of [undefined, 'config-1']) {
+      const { data } = await Call(handler, { auth, headers: {}, query: { bufferId } });
+      expect(data.feConfigs.showAuxiliaryGenerationRunDetail).toBe(enabled);
+    }
+
+    const { data } = await Call(handler, { headers: {} });
+    expect(data.feConfigs).not.toHaveProperty('showAuxiliaryGenerationRunDetail');
+  });
+
   it('preserves the authenticated cache-hit response', async () => {
     const { data } = await Call(handler, { auth, headers: {}, query: { bufferId: 'config-1' } });
 

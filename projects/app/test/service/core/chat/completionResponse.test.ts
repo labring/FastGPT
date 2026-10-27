@@ -19,6 +19,22 @@ describe('getChatItemValueType', () => {
 });
 
 describe('formatCompletionResponseContent', () => {
+  it.each([true, false])(
+    'keeps protocol context out of non-stream responses: legacy=%s',
+    (includeLegacyType) => {
+      const responseContent: AIChatItemValueItemType[] = [
+        {
+          hideInUI: true,
+          modelMessages: [{ role: 'tool', tool_call_id: 'call', content: 'private result' }]
+        },
+        { text: { content: 'visible answer' }, modelMessages: [] }
+      ];
+      expect(
+        formatCompletionResponseContent({ responseContent, detail: true, includeLegacyType })
+      ).toEqual({ content: 'visible answer' });
+      expect(responseContent[0].modelMessages).toHaveLength(1);
+    }
+  );
   it('keeps plain single text response OpenAI compatible', () => {
     const result = formatCompletionResponseContent({
       detail: true,

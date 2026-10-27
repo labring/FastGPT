@@ -25,6 +25,7 @@ import { BoolSchema, NumSchema } from '../../common/zod';
 import { WorkflowBuilderVersionSchema } from '../workflow/builder/type';
 import { ChatAgentBuilderVersionSchema } from '../ai/auxiliaryGeneration/chatAgentBuilderVersion';
 import { UserChatSelectSchema } from './input/type';
+import { ChatCompletionMessageParamSchema } from '../ai/llm/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -231,6 +232,9 @@ export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSc
 
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
+  modelMessages: z.array(ChatCompletionMessageParamSchema).optional().meta({
+    description: '模型协议上下文；空数组表示该 value 仅用于展示，不再反向生成模型消息'
+  }),
   askId: z.string().nullish(),
   text: z
     .object({
@@ -258,6 +262,15 @@ export const AIChatItemValueSchema = z.object({
 });
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;
+
+export const ChatModelContextSchema = z.object({
+  id: z.string().meta({ description: '本次 Agent 运行的上下文容器 ID' }),
+  messages: z
+    .array(ChatCompletionMessageParamSchema)
+    .meta({ description: '新增或更新的模型协议消息' }),
+  contextCheckpoint: ContextCheckpointValueSchema.optional()
+});
+export type ChatModelContext = z.infer<typeof ChatModelContextSchema>;
 
 export const AIChatItemSchema = z.object({
   obj: z.literal(ChatRoleEnum.AI),

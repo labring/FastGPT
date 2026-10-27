@@ -8,6 +8,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
+  mergeModelMessages,
   normalizeToolResponseContent,
   removeDatasetCiteText
 } from '@fastgpt/global/core/ai/llm/utils';
@@ -108,6 +109,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const controlToolNames = new Set([askUserToolName, setPlanToolName, updatePlanToolName]);
   const emittedToolCallIds = new Set<string>();
   const emittedToolParamIds = new Set<string>();
+  const recordedToolResultIds = new Set<string>();
 
   /** 统一工具调用入口，兼容流式事件、非流式 message_end 和直接执行三种路径。 */
   const emitOrdinaryToolCall = (call: ChatCompletionMessageToolCall) => {
@@ -169,23 +171,23 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   /** 将工具结果写入标准 transcript；恢复交互时覆盖旧占位 response，避免同 id 重复。 */
   const recordToolResult = ({
-    call,
+    toolCallId,
     response,
     childAssistantMessages = [],
     appendToAssistantMessages = true
   }: {
-    call: ChatCompletionMessageToolCall;
+    toolCallId: string;
     response: string;
     childAssistantMessages?: ChatCompletionMessageParam[];
     appendToAssistantMessages?: boolean;
   }) => {
     const toolMessage: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Tool,
-      tool_call_id: call.id,
+      tool_call_id: toolCallId,
       content: response
     };
     const existingToolIndex = completeMessages.findIndex(
-      (message) => message.role === 'tool' && message.tool_call_id === call.id
+      (message) => message.role === 'tool' && message.tool_call_id === toolCallId
     );
     if (existingToolIndex >= 0) {
       completeMessages[existingToolIndex] = toolMessage;
@@ -193,9 +195,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages.push(toolMessage);
     }
     completeMessages.push(...childAssistantMessages);
+    recordedToolResultIds.add(toolCallId);
     if (appendToAssistantMessages) {
       assistantMessages.push(toolMessage, ...childAssistantMessages);
     }
+    runtime.emitEvent?.({
+      type: 'model_context',
+      messages: [toolMessage, ...childAssistantMessages]
+    });
   };
   const abortCurrentRunRef: {
     current?: () => void;
@@ -211,28 +218,33 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     !input.childrenInteractiveParams && !!pendingMainContext && input.userAnswer !== undefined;
   const shouldResumeAsk = shouldResumeStandardAsk;
   const askResumeId = pendingMainContext?.askToolCallId;
-  const standardAskResumeMessages =
+  const standardAskResponse =
     shouldResumeStandardAsk && askResumeId
-      ? [
-          ...pendingMainContext!.messages,
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: askResumeId,
-            content: normalizeToolResponseContent(
-              formatAgentAskToolResponse({
-                messages: pendingMainContext!.messages,
-                askToolCallId: askResumeId,
-                answer: input.userAnswer ?? ''
-              })
-            )
-          } as ChatCompletionMessageParam
-        ]
+      ? ({
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: askResumeId,
+          content: normalizeToolResponseContent(
+            formatAgentAskToolResponse({
+              messages: pendingMainContext!.messages,
+              askToolCallId: askResumeId,
+              answer: input.userAnswer ?? ''
+            })
+          )
+        } as ChatCompletionMessageParam)
+      : undefined;
+  const standardAskResumeMessages =
+    standardAskResponse && pendingMainContext
+      ? mergeModelMessages(pendingMainContext.messages, [standardAskResponse])
       : undefined;
   // ask resume follows the FastAgent contract: the new user input is represented by
   // the matching tool response, not as another user message in the LLM context.
   const completeMessages: ChatCompletionMessageParam[] = [
     ...(standardAskResumeMessages ?? input.messages)
   ];
+  runtime.emitEvent?.({ type: 'model_context', messages: [] });
+  if (standardAskResponse) {
+    runtime.emitEvent?.({ type: 'model_context', messages: [standardAskResponse] });
+  }
   const shouldRestoreRawState = !!input.childrenInteractiveParams;
   let initialPiMessages = normalizePiAgentMessages({
     messages:
@@ -328,7 +340,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       activePlan
     };
     recordToolResult({
-      call,
+      toolCallId: call.id,
       response: normalizedResponse,
       childAssistantMessages: result.assistantMessages
     });
@@ -396,7 +408,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     onToolCall: emitOrdinaryToolExecution,
     onToolResult: ({ call, response, assistantMessages }) => {
       recordToolResult({
-        call,
+        toolCallId: call.id,
         response,
         childAssistantMessages: assistantMessages
       });
@@ -492,6 +504,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         // pi-agent-core 不会持久化 transformContext 的返回值，需要同步当前请求和 Agent 状态。
         messages.splice(0, messages.length, ...compressedPiMessages);
         agent.state.messages = compressedPiMessages;
+        // 工具执行、暂停快照和对外 transcript 必须与模型实际使用的压缩上下文一致。
+        completeMessages.splice(0, completeMessages.length, ...result.messages);
         latestContextCheckpoint = result.contextCheckpoint;
         return messages;
       } catch {
@@ -503,6 +517,19 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   abortCurrentRunRef.current = () => agent.abort();
 
   agent.subscribe((event: AgentEvent) => {
+    if (event.type === 'message_end' && event.message.role === 'toolResult') {
+      // SDK 在参数校验或工具查找失败时不会进入 executor，仍必须保存它实际生成的结果。
+      // executor 已记录的结果可能带压缩和子消息，不能被 SDK 的原始结果覆盖或重复追加。
+      if (!recordedToolResultIds.has(event.message.toolCallId)) {
+        recordToolResult({
+          toolCallId: event.message.toolCallId,
+          response: event.message.content
+            .map((item) => (item.type === 'text' ? item.text : ''))
+            .join('')
+        });
+      }
+      return;
+    }
     if (event.type === 'tool_execution_start') {
       emitOrdinaryToolExecution({
         id: event.toolCallId,
@@ -593,7 +620,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const standardAssistantMessage: ChatCompletionMessageParam = {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: removeDatasetCiteText(messageData.answerText, retainDatasetCite) || null,
-        ...(messageData.reasoningText
+        ...(modelData.config.reasoning || messageData.reasoningText
           ? {
               reasoning_content: removeDatasetCiteText(messageData.reasoningText, retainDatasetCite)
             }
@@ -617,6 +644,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       } else {
         assistantMessages.push(standardAssistantMessage);
       }
+      runtime.emitEvent?.({ type: 'model_context', messages: [standardAssistantMessage] });
 
       const requestInputTokens = event.message.usage?.input || 0;
       const requestOutputTokens = event.message.usage?.output || 0;
@@ -765,9 +793,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const pendingMainContextForAsk =
     pendingAsk && resolvedPendingAskId
       ? {
-          messages: completeMessages.filter(
-            (message) => !(message.role === 'tool' && message.tool_call_id === resolvedPendingAskId)
-          ),
+          messages: completeMessages,
           askToolCallId: resolvedPendingAskId,
           activePlan
         }

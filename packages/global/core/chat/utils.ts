@@ -32,6 +32,18 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
   history.value.some((value) => Boolean(value.contextCheckpoint));
 
 /**
+ * 移除响应中的模型协议容器及展示投影标记，不修改服务端持久化上下文。
+ * 客户端拿不到容器时，正文必须恢复为普通展示值，避免下一轮转换时被当成纯投影丢弃。
+ */
+export const removeAIResponseModelContext = (values: AIChatItemValueItemType[]) =>
+  values.flatMap((value) => {
+    if (value.modelMessages === undefined) return [value];
+    if (value.hideInUI) return [];
+    const { modelMessages: _messages, contextCheckpoint: _checkpoint, ...display } = value;
+    return [display];
+  });
+
+/**
  * 判定当前节点响应是否属于工具调用或工具执行详情。
  *
  * 工具执行的返回结果（无论成功或业务报错）都会作为工具输出提交给上层大模型继续推理，

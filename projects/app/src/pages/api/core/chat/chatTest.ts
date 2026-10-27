@@ -84,7 +84,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { variables = {} } = chatTestProps;
   const source = ChatSourceEnum.test;
   const originIp = getIpFromRequest(req);
-  const chatMessages = GPTMessages2Chats({ messages });
+  const chatMessages = GPTMessages2Chats({ reserveModelMessages: true, messages });
   // console.log(JSON.stringify(chatMessages, null, 2), '====', chatMessages.length);
 
   try {

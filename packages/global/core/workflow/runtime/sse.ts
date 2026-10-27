@@ -9,13 +9,17 @@ import type { WorkflowInteractiveResponseType } from '../template/system/interac
 import type { WorkflowBuilderVersion } from '../builder/type';
 import { SseResponseEventEnum } from './constants';
 import { textAdaptGptResponse } from './utils';
+import type { ChatModelContext } from '../../chat/type';
 
-export type WorkflowAnswerChunk = ReturnType<typeof textAdaptGptResponse>;
+export type WorkflowAnswerChunk = ReturnType<typeof textAdaptGptResponse> & {
+  modelContextId?: string;
+};
 
 export type WorkflowToolDeltaType = Pick<ToolModuleResponseItemType, 'id'> &
   Partial<Omit<ToolModuleResponseItemType, 'id'>>;
 
 export type WorkflowSsePayloadMap = {
+  [SseResponseEventEnum.modelContext]: { modelContext: ChatModelContext };
   [SseResponseEventEnum.error]: Record<string, any>;
   [SseResponseEventEnum.workflowDuration]: { durationSeconds: number };
   [SseResponseEventEnum.chatTitle]: { title: string };
@@ -26,7 +30,7 @@ export type WorkflowSsePayloadMap = {
     name: string;
   };
   [SseResponseEventEnum.flowNodeResponse]: ChatHistoryItemResType;
-  [SseResponseEventEnum.toolCall]: { tool: ToolModuleResponseItemType };
+  [SseResponseEventEnum.toolCall]: { tool: ToolModuleResponseItemType; modelContextId?: string };
   [SseResponseEventEnum.toolParams]: { tool: WorkflowToolDeltaType };
   [SseResponseEventEnum.toolResponse]: { tool: WorkflowToolDeltaType };
   [SseResponseEventEnum.flowResponses]: Record<string, any>;

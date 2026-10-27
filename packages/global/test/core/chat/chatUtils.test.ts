@@ -19,11 +19,39 @@ import {
   getFlatAppResponses,
   checkInteractiveResponseStatus,
   removeAIResponseCite,
+  removeAIResponseModelContext,
   hasContextCheckpoint,
   isToolExecutionResponse,
   findFailedResponseNode
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+
+describe('removeAIResponseModelContext', () => {
+  it('removes private context without mutating stored messages or losing visible reply history', () => {
+    const values: AIChatItemValueItemType[] = [
+      {
+        id: 'context',
+        hideInUI: true,
+        contextCheckpoint: 'private summary',
+        modelMessages: [{ role: 'tool', tool_call_id: 'call', content: 'private result' }]
+      },
+      { modelMessages: [], text: { content: 'visible answer' } },
+      { text: { content: 'legacy answer' } }
+    ];
+    const original = structuredClone(values);
+    const display = removeAIResponseModelContext(values);
+    expect(values).toEqual(original);
+    expect(display).toEqual([
+      { text: { content: 'visible answer' } },
+      { text: { content: 'legacy answer' } }
+    ]);
+    expect(JSON.stringify(display)).not.toContain('private');
+    expect(
+      chats2GPTMessages({ messages: [{ obj: ChatRoleEnum.AI, value: display }], reserveId: false })
+    ).toEqual([{ role: 'assistant', content: 'visible answerlegacy answer' }]);
+  });
+});
 
 describe('concatHistories', () => {
   it('should concat two history arrays', () => {

@@ -2,7 +2,7 @@
 
 状态：已实现
 
-最后核对：2026-08-03
+最后核对：2026-10-23
 
 ## 适用范围
 
@@ -117,3 +117,23 @@ agent_runtime_stopping:<sourceType>:<sourceId>:<chatId>
 - 业务事件由 processor 显式写入，不扩展通用 stream 层去理解业务配置。
 - 公共生命周期需求放在本模块；单场景数据组装保留在调用方业务目录。
 - source 标识统一使用 `sourceType/sourceId`，不能恢复 App-only 的 `appId` 入口。
+
+## 运行详情展示
+
+`AUXILIARY_GENERATION_SHOW_RUN_DETAIL` 统一控制 Skill 编辑助手、Chat Agent Helper 和 Workflow Builder 运行结束后的「运行详情」入口，默认 `false`，设置为 `true` 后展示。环境变量配置在主应用服务，重启后刷新页面生效。
+
+服务端通过 `feConfigs.showAuxiliaryGenerationRunDetail` 下发开关，三个入口沿用 ChatBox 现有的结束状态判断与详情弹窗。开关仅控制展示，不影响生成中的思考、工具卡片、计费、上下文保存与恢复，也不作为接口访问权限。
+
+Skill 和 Workflow Builder 复用已有详情记录；Chat Agent Helper 从标准 Agent Loop 事件复用 Agent V2 详情收集器，并由业务保存层写入统一的独立详情表。详情记录与展示开关无关，旧 Helper 会话没有已保存的详情时仍显示空态，不根据聊天内容猜补运行记录。
+
+## 模型协议上下文的保存与恢复
+
+模型消息是恢复依据，思考区、正文和工具卡片是展示投影。`ChatItem.value` 内的隐藏容器通过 `modelMessages` 保存当前 Agent 运行实际写入的协议消息增量，保留每条 assistant 的正文、思考和完整 tool_calls；工具响应按原调用关系保存。已有展示 value 使用 `modelMessages: []` 表示不再反向构造模型上下文。不存在该字段的旧记录沿用原兼容转换，无法确定的旧分组不猜测合并。
+
+- fastAgent 与 piAgent 从真实 transcript 写入点发送 model_context 事件，覆盖完成、暂停、错误和停止。只保存新消息，不在每轮重复保存历史输入。
+- Ask 快照直接保存实际 transcript；用户回答原位替换相同工具结果，保留同轮其他调用和未执行结果。child interactive 也按原 tool_call_id 续跑。
+- 压缩 checkpoint 替换当前容器中已被总结的消息，恢复时保留 system 和最新 checkpoint，避免旧上下文重复加入。
+- SSE 同步模型消息与展示归属，打字队列延迟到达的文字仍是展示投影。独立并行节点的普通输出不被其他 Agent 覆盖；子工具只流出展示，父模型的上下文由父运行保存。
+- 正文展示 ID 按每次模型调用分配，同一次调用内的思考与正文共用展示块；下一次调用的回复按事件顺序追加。Plan 原位更新，模型上下文容器跨调用复用，协议增量或压缩事件不改变正文展示边界。
+- 模型消息事件沿用内部工具可见性过滤；节点 answer/output 预览去除协议容器，保持原业务输出形态。
+- 验收重点是内存续跑与保存恢复后的关键协议结构一致，覆盖多工具加思考、Ask/方案确认恢复、父子调用、压缩、停止及旧记录。

@@ -194,6 +194,50 @@ describe('getWorkflowResponseWrite', () => {
     expect(callData.responseValueId).toBe('rid');
   });
 
+  it.each([
+    { detail: true, showNodeStatus: false, allowed: false },
+    { detail: false, showNodeStatus: true, allowed: false },
+    { detail: true, showNodeStatus: true, allowed: true }
+  ])(
+    'filters model context before writing and mirroring: %j',
+    ({ detail, showNodeStatus, allowed }) => {
+      vi.mocked(responseWrite).mockClear();
+      const enqueueRaw = vi.fn();
+      const write = getWorkflowResponseWrite({
+        res: mockRes(),
+        detail,
+        showNodeStatus,
+        streamResponse: true,
+        streamResumeMirror: { enqueueRaw }
+      });
+      write({
+        event: SseResponseEventEnum.modelContext,
+        data: {
+          modelContext: {
+            id: 'context',
+            messages: [{ role: 'tool', tool_call_id: 'call', content: 'private tool result' }]
+          }
+        }
+      });
+      expect(enqueueRaw).toHaveBeenCalledTimes(allowed ? 1 : 0);
+      expect(responseWrite).toHaveBeenCalledTimes(allowed ? 1 : 0);
+
+      for (const event of [SseResponseEventEnum.answer, SseResponseEventEnum.fastAnswer] as const) {
+        write({
+          event,
+          data: {
+            ...workflowSseEvent.answerDelta('visible answer').data,
+            modelContextId: 'context'
+          }
+        });
+        const payload = JSON.parse(vi.mocked(responseWrite).mock.calls.at(-1)![0].data as string);
+        expect(payload.choices[0].delta.content).toBe('visible answer');
+        expect(payload.modelContextId).toBe(allowed ? 'context' : undefined);
+        expect(enqueueRaw.mock.calls.at(-1)![0].includes('modelContextId')).toBe(allowed);
+      }
+    }
+  );
+
   it('should not include event in data when detail is false', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();

@@ -107,9 +107,16 @@ export const getWorkflowResponseWrite = ({
       [SseResponseEventEnum.flowNodeStatus]: 1,
       [SseResponseEventEnum.toolCall]: 1,
       [SseResponseEventEnum.toolParams]: 1,
-      [SseResponseEventEnum.toolResponse]: 1
+      [SseResponseEventEnum.toolResponse]: 1,
+      [SseResponseEventEnum.modelContext]: 1
     };
     if (!showNodeStatus && statusEvent[event]) return;
+
+    // 隐藏上下文时同步移除正文投影标记，否则客户端会丢弃下一轮的可见回答。
+    if ((!detail || !showNodeStatus) && 'modelContextId' in data) {
+      const { modelContextId: _contextId, ...display } = data;
+      data = display;
+    }
 
     writeStreamChunk({
       event: detail || event === SseResponseEventEnum.chatTitle ? event : undefined,

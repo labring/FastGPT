@@ -12,6 +12,7 @@ export enum SseResponseEventEnum {
   toolCall = 'toolCall', // tool start
   toolParams = 'toolParams', // tool params return
   toolResponse = 'toolResponse', // tool response return
+  modelContext = 'modelContext', // authoritative model context, independent of UI cards
 
   flowResponses = 'flowResponses', // sse response request
   updateVariables = 'updateVariables',

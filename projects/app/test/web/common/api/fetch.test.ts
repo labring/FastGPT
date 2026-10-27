@@ -24,6 +24,43 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 
 describe('handleEventSourceData', () => {
+  it('preserves model context and projection ownership through live and replayed typing events', () => {
+    const onmessage = vi.fn();
+    const enqueue = vi.fn();
+    const onerror = vi.fn();
+    const modelContext = {
+      id: 'context',
+      messages: [{ role: 'assistant', content: 'answer', reasoning_content: 'think' }]
+    };
+    handleEventSourceData({
+      event: SseResponseEventEnum.modelContext,
+      data: JSON.stringify({ modelContext }),
+      onmessage,
+      enqueue,
+      onerror
+    });
+    expect(onmessage).toHaveBeenCalledWith({
+      responseValueId: undefined,
+      event: SseResponseEventEnum.modelContext,
+      modelContext
+    });
+    handleEventSourceData({
+      event: SseResponseEventEnum.answer,
+      data: JSON.stringify({
+        modelContextId: 'context',
+        choices: [{ delta: { content: 'answer', reasoning_content: 'think' } }]
+      }),
+      onmessage,
+      enqueue,
+      onerror,
+      splitAnswerTextByCharacter: false
+    });
+    expect(enqueue.mock.calls.map(([value]) => value.modelContextId)).toEqual([
+      'context',
+      'context'
+    ]);
+    expect(onerror).not.toHaveBeenCalled();
+  });
   it('passes a generated configuration archive reference through normal and replayed events', () => {
     const chatAgentBuilderVersion = {
       s3Key: 'chat/helper/config.json',

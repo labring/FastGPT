@@ -4,7 +4,10 @@ import {
 } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
@@ -44,6 +47,9 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 }));
 
 import { runAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base';
+import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
+import { chats2GPTMessages, normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const modelData = {
   modelId: '68ad85a7463006c963799a05',
@@ -93,6 +99,186 @@ const calculatorTool: ChatCompletionTool = {
 };
 
 describe('runAgentLoop with mocked createLLMResponse', () => {
+  it('resumes a legacy child snapshot without a placeholder tool result', async () => {
+    const assistant = {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      reasoning_content: 'thinking',
+      tool_calls: [
+        { id: 'legacy', type: 'function' as const, function: { name: 'query', arguments: '{}' } }
+      ]
+    };
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ({ body }) => {
+        expect(body.messages).toEqual([
+          assistant,
+          { role: 'tool', tool_call_id: 'legacy', content: 'confirmed' }
+        ]);
+        return text({ content: 'resumed' });
+      }
+    ]);
+    const interactive = vi.fn(async () => ({
+      response: 'confirmed',
+      assistantMessages: [],
+      usages: []
+    }));
+    const result = await runAgentLoop({
+      teamId: 'team',
+      model: modelData,
+      maxRunAgentTimes: 1,
+      body: { model: modelData, messages: [], tools: [] },
+      isAborted: () => false,
+      childrenInteractiveParams: {
+        childrenResponse: { type: 'preview' },
+        toolParams: { toolCallId: 'legacy', memoryRequestMessages: [assistant] }
+      },
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: interactive
+    });
+    expect(interactive).toHaveBeenCalledWith(
+      expect.objectContaining({ call: assistant.tool_calls[0], messages: [assistant] })
+    );
+    expect(result.assistantMessages[0]).toEqual({
+      role: 'tool',
+      tool_call_id: 'legacy',
+      content: 'confirmed'
+    });
+  });
+
+  it('keeps an interactive resume valid when its original assistant tool call is missing', async () => {
+    const contextMessages: ChatCompletionMessageParam[][] = [];
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ({ body }) => {
+        expect(body.messages).toEqual([
+          expect.objectContaining({
+            role: 'assistant',
+            content: expect.stringContaining('original tool call could not be restored')
+          })
+        ]);
+        return text({ content: 'resumed' });
+      }
+    ]);
+
+    const result = await runAgentLoop({
+      teamId: 'team',
+      model: modelData,
+      maxRunAgentTimes: 1,
+      body: { model: modelData, messages: [], tools: [] },
+      isAborted: () => false,
+      childrenInteractiveParams: {
+        childrenResponse: { type: 'preview' },
+        toolParams: { toolCallId: 'missing-interactive-call' }
+      },
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: async () => ({
+        response: 'confirmed',
+        assistantMessages: [],
+        usages: []
+      }),
+      onContextMessages: (messages) => contextMessages.push(messages)
+    });
+
+    expect(result.completeMessages.some((message) => message.role === 'tool')).toBe(false);
+    expect(contextMessages).toEqual([
+      [
+        expect.objectContaining({
+          role: 'assistant',
+          content: expect.stringContaining('Result: confirmed')
+        })
+      ],
+      [expect.objectContaining({ role: 'assistant', content: 'resumed' })]
+    ]);
+  });
+
+  it('round-trips thinking and multiple tools through persistence and child-interactive resume', async () => {
+    const calls = [
+      { id: 'query_a', type: 'function' as const, function: { name: 'query', arguments: '{}' } },
+      { id: 'preview_b', type: 'function' as const, function: { name: 'preview', arguments: '{}' } }
+    ];
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        requestId: 'parallel',
+        reasoningText: 'original reasoning',
+        toolCalls: calls
+      }
+    ]);
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({ type: 'model_context', messages: [] });
+    const onContextMessages = (
+      messages: import('@fastgpt/global/core/ai/llm/type').ChatCompletionMessageParam[]
+    ) => collector.emitEvent({ type: 'model_context', messages });
+    const first = await runAgentLoop({
+      teamId: 'team',
+      model: modelData,
+      maxRunAgentTimes: 1,
+      body: {
+        model: modelData,
+        messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'build' }],
+        tools: [searchTool]
+      },
+      isAborted: () => false,
+      onRunTool: async ({ call }) => ({
+        response: call.id === 'preview_b' ? 'waiting' : 'A',
+        assistantMessages: [],
+        usages: [],
+        ...(call.id === 'preview_b' ? { interactive: { type: 'preview' } } : {})
+      }),
+      onRunInteractiveTool: vi.fn(),
+      onContextMessages,
+      onReasoning: ({ text }) => collector.emitEvent({ type: 'reasoning_delta', text }),
+      onToolCall: ({ call }) => collector.emitEvent({ type: 'tool_call', call }),
+      onToolRunEnd: (event) => collector.emitEvent({ type: 'tool_run_end', ...event })
+    });
+    collector.emitEvent({ type: 'model_context', messages: [] });
+    const saved = JSON.parse(JSON.stringify(normalizeAIChatValue(collector.assistantResponses)));
+    const restored = chats2GPTMessages({
+      messages: [{ obj: ChatRoleEnum.AI, value: saved }],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(restored).toEqual(first.assistantMessages);
+    expect(restored[0]).toEqual(
+      expect.objectContaining({ reasoning_content: 'original reasoning', tool_calls: calls })
+    );
+    const resumedCollector = createAgentLoopCoreAssistantEventCollector();
+    resumedCollector.emitEvent({ type: 'model_context', messages: [] });
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ({ body }) => {
+        expect(body.messages).toEqual([
+          restored[0],
+          restored[1],
+          { role: 'tool', tool_call_id: 'preview_b', content: 'confirmed' }
+        ]);
+        return text({ content: 'built', reasoning: 'continue same task' });
+      }
+    ]);
+    const second = await runAgentLoop({
+      teamId: 'team',
+      model: modelData,
+      maxRunAgentTimes: 1,
+      body: { model: modelData, messages: restored, tools: [] },
+      childrenInteractiveParams: {
+        toolParams: { toolCallId: 'preview_b' },
+        childrenResponse: { type: 'preview' }
+      },
+      isAborted: () => false,
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: async () => ({
+        response: 'confirmed',
+        assistantMessages: [],
+        usages: []
+      }),
+      onContextMessages: (messages) =>
+        resumedCollector.emitEvent({ type: 'model_context', messages })
+    });
+    const afterResume = chats2GPTMessages({
+      messages: [
+        { obj: ChatRoleEnum.AI, value: [...saved, ...resumedCollector.assistantResponses] }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(afterResume).toEqual(second.completeMessages);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     countGptMessagesTokensMock.mockResolvedValue(100);
@@ -1287,6 +1473,65 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       content: 'handled and stop'
     });
   });
+
+  it.each([
+    { mode: 'pause', batchSize: 1 },
+    { mode: 'stop', batchSize: 1 },
+    { mode: 'abort', batchSize: 1 },
+    { mode: 'pause', batchSize: 2 }
+  ])(
+    'closes skipped calls after $mode with batch size $batchSize without executing them',
+    async ({ mode, batchSize }) => {
+      const calls = [0, 1, 2].map((index) => ({
+        id: `call_${index}`,
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{}' }
+      }));
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        {
+          requestId: 'pause-batch',
+          finishReason: 'tool_calls',
+          toolCalls: calls,
+          inputTokens: 100,
+          outputTokens: 20
+        }
+      ]);
+      let aborted = false;
+      const onToolRunEnd = vi.fn();
+      const onRunTool = vi.fn(async () => {
+        if (mode === 'abort') aborted = true;
+        return {
+          response: 'Waiting',
+          assistantMessages: [],
+          usages: [],
+          stop: mode === 'stop',
+          ...(mode === 'pause' ? { interactive: { type: 'testPause' } } : {})
+        };
+      });
+      const result = await runAgentLoop({
+        maxRunAgentTimes: 5,
+        batchToolSize: batchSize,
+        body: {
+          model: modelData,
+          stream: true,
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'Build' }],
+          tools: [searchTool]
+        },
+        isAborted: () => aborted,
+        onRunTool,
+        onRunInteractiveTool: vi.fn(),
+        onToolRunEnd
+      });
+      expect(onRunTool).toHaveBeenCalledTimes(batchSize);
+      const responses = result.completeMessages.filter((message) => message.role === 'tool');
+      expect(responses.map((message) => message.tool_call_id)).toEqual(
+        calls.map((call) => call.id)
+      );
+      expect(responses.at(-1)?.content).toContain('not executed');
+      expect(onToolRunEnd).toHaveBeenCalledTimes(3);
+      expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('treats tool handler exceptions as tool responses and continues', async () => {
     const onToolRunEnd = vi.fn();

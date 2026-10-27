@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { mergePiAgentPayload } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/payload';
 
 const createModel = (overrides: Record<string, unknown> = {}) =>
@@ -31,6 +32,36 @@ const createRuntime = (model: unknown, llmParams: Record<string, unknown> = {}) 
   }) as any;
 
 describe('mergePiAgentPayload', () => {
+  it.each([true, false])(
+    'preserves SDK reasoning and normalizes empty assistant fields only when supported: reasoning=%s',
+    (reasoning) => {
+      const payload: { messages: ChatCompletionMessageParam[] } = {
+        messages: [
+          { role: 'user', content: 'Inspect' },
+          { role: 'assistant', content: 'Plan', reasoning_content: 'Original thought' },
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              { id: 'call_search', type: 'function', function: { name: 'search', arguments: '{}' } }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'call_search', content: 'Found' },
+          { role: 'assistant', content: 'Done', reasoning_content: '' }
+        ]
+      };
+      const snapshot = structuredClone(payload);
+      const configuredModel = createModel();
+      configuredModel.config.reasoning = reasoning;
+      const expectedMessages = structuredClone(payload.messages);
+      if (reasoning) expectedMessages[2] = { ...expectedMessages[2], reasoning_content: '' };
+      expect(mergePiAgentPayload({ payload, runtime: createRuntime(configuredModel) })).toEqual({
+        messages: expectedMessages
+      });
+      expect(payload).toEqual(snapshot);
+    }
+  );
+
   it('maps supported model parameters and parses json5 response schemas', () => {
     const result = mergePiAgentPayload({
       payload: {

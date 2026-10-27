@@ -82,6 +82,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     node: workflowProps.node,
     workflowStreamResponse,
     streamAnswer: isResponseAnswerText,
+    streamContext: !workflowProps.isToolCall,
     streamReasoning: aiChatReasoning,
     getToolInfo,
     collectToolRunResponses: true

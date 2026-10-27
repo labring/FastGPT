@@ -603,7 +603,10 @@ describe('runFastAgentMainLoop', () => {
       }
     ]);
     expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
-    expect(result.pendingMainContext?.messages.at(-1)).toEqual({
+    expect(result.pendingMainContext?.messages).toEqual(result.completeMessages);
+    expect(
+      result.pendingMainContext?.messages.findLast((message) => message.role === 'assistant')
+    ).toEqual({
       role: 'assistant',
       reasoning_content: 'Need to ask before planning can continue.',
       tool_calls: [
@@ -689,11 +692,39 @@ describe('runFastAgentMainLoop', () => {
         askId: 'call_ask_first'
       })
     );
+    expect(result.pendingMainContext?.messages).toEqual(result.completeMessages);
+    const originalAssistant = result.pendingMainContext?.messages.findLast(
+      (message) => message.role === 'assistant'
+    );
+    expect(
+      originalAssistant?.role === 'assistant'
+        ? originalAssistant.tool_calls?.map((call) => call.id)
+        : []
+    ).toEqual(['call_ask_first', 'call_search_after_ask']);
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ({ body }) => {
+        const assistant = body.messages.findLast((message) => message.role === 'assistant');
+        expect(assistant).toEqual(originalAssistant);
+        expect(body.messages.filter((message) => message.role === 'tool')).toHaveLength(2);
+        expect(
+          body.messages.find(
+            (message) => message.role === 'tool' && message.tool_call_id === 'call_ask_first'
+          )?.content
+        ).not.toBe('Waiting for user answer.');
+        return text({ content: 'continued' });
+      }
+    ]);
+    const resumed = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool }),
+      input: { messages: [], pendingMainContext: result.pendingMainContext, userAnswer: 'Continue' }
+    });
+    expect(resumed.status).toBe('done');
     expect(executeTool).not.toHaveBeenCalled();
-    expect(result.assistantMessages).not.toContainEqual(
+    expect(result.assistantMessages).toContainEqual(
       expect.objectContaining({
         role: 'tool',
-        tool_call_id: 'call_search_after_ask'
+        tool_call_id: 'call_search_after_ask',
+        content: expect.stringContaining('not executed')
       })
     );
   });

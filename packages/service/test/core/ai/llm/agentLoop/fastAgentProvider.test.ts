@@ -45,6 +45,9 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 
 import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { runFastAgentLoop } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent';
+import { runAgentLoopCore } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/run';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const tool = (name: string): ChatCompletionTool => ({
   type: 'function',
@@ -100,6 +103,77 @@ describe('runFastAgentLoop', () => {
     compressToolResponseMock.mockImplementation(async ({ response }) => ({
       compressed: response
     }));
+  });
+
+  it.each([false, true])(
+    'restores visible text after a stream error without unfinished tools (tools: %s)',
+    async (withTool) => {
+      mockCreateLLMResponseQueue(createLLMResponseMock, [
+        {
+          ...(withTool
+            ? toolCall({ name: 'search', args: '{', content: 'Partial useful answer' })
+            : text({ content: 'Partial useful answer' })),
+          reasoningText: '',
+          error: new Error('stream interrupted'),
+          finishReason: 'error'
+        }
+      ]);
+      const runtime = createRuntime();
+      const result = await runAgentLoopCore({
+        provider: 'fastAgent',
+        input: { messages: [{ role: 'user', content: 'Explain it' }] },
+        runtime
+      });
+      expect(result.status).toBe('error');
+      expect(runtime.executeTool).not.toHaveBeenCalled();
+      expect(
+        result.assistantResponses.some((value) =>
+          value.text?.content.includes('Partial useful answer')
+        )
+      ).toBe(true);
+      const restored = chats2GPTMessages({
+        messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses }],
+        reserveId: false,
+        reserveTool: true,
+        reserveReason: true
+      });
+      for (const messages of [result.assistantMessages, restored]) {
+        expect(messages).toEqual([
+          {
+            role: 'assistant',
+            content: 'Partial useful answer',
+            reasoning_content: ''
+          }
+        ]);
+      }
+      expect(result.completeMessages.at(-1)).toEqual(restored[0]);
+    }
+  );
+
+  it('does not restore reasoning-only output or unexecuted calls after a stream error', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        ...toolCall({ name: 'search', args: '{', reasoning: 'Partial reasoning' }),
+        error: new Error('stream interrupted'),
+        finishReason: 'error'
+      }
+    ]);
+    const runtime = createRuntime();
+    const result = await runAgentLoopCore({
+      provider: 'fastAgent',
+      input: { messages: [{ role: 'user', content: 'Search' }] },
+      runtime
+    });
+    expect(result.status).toBe('error');
+    expect(runtime.executeTool).not.toHaveBeenCalled();
+    expect(result.assistantMessages).toEqual([]);
+    expect(
+      chats2GPTMessages({
+        messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses }],
+        reserveId: false,
+        reserveTool: true
+      })
+    ).toEqual([]);
   });
 
   it('uses the final input systemPrompt without injecting provider defaults', async () => {

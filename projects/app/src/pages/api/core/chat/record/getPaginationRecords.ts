@@ -12,6 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
+  removeAIResponseModelContext,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -95,6 +96,9 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   );
 
   histories.forEach((item) => {
+    if (item.obj === ChatRoleEnum.AI && authRes.showRunningStatus === false) {
+      item.value = removeAIResponseModelContext(item.value);
+    }
     // Remove important information
     if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
       if (item.obj === ChatRoleEnum.AI) {

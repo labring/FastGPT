@@ -864,9 +864,7 @@ export const updateInteractiveChat = async ({
           return [{ ...itemWithoutPlan, plan: incomingPlan }];
         }
 
-        const hasRemainingValue = Object.entries(itemWithoutPlan).some(
-          ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
-        );
+        const hasRemainingValue = hasRemainingSemanticValue(itemWithoutPlan);
         return hasRemainingValue ? [itemWithoutPlan] : [];
       });
       return true;
@@ -875,7 +873,13 @@ export const updateInteractiveChat = async ({
     const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
       Object.entries(item).some(([key, itemValue]) => {
         // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
-        if (key === 'id' || key === 'tools') return false;
+        if (key === 'id') return false;
+        if (
+          (key === 'tools' || key === 'modelMessages') &&
+          Array.isArray(itemValue) &&
+          itemValue.length === 0
+        )
+          return false;
         return itemValue !== undefined && itemValue !== null;
       });
 
@@ -885,9 +889,7 @@ export const updateInteractiveChat = async ({
         const restItem = Object.fromEntries(
           Object.entries(item).filter(([key]) => key !== 'plan')
         ) as AIChatItemValueItemType;
-        const hasRemainingValue = Object.values(restItem).some(
-          (itemValue) => itemValue !== undefined && itemValue !== null
-        );
+        const hasRemainingValue = hasRemainingSemanticValue(restItem);
 
         if (!hasRemainingValue) return [];
         item = restItem;

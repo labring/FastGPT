@@ -1,5 +1,6 @@
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { describe, expect, it } from 'vitest';
-import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { mergeModelMessages, removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 
 describe('removeDatasetCiteText', () => {
   describe('when retainDatasetCite is true', () => {
@@ -91,5 +92,59 @@ describe('removeDatasetCiteText', () => {
       const text = '[507f1f77bcf86cd79943901g] invalid';
       expect(removeDatasetCiteText(text, false)).toBe('[507f1f77bcf86cd79943901g] invalid');
     });
+  });
+});
+
+describe('mergeModelMessages', () => {
+  const assistant: ChatCompletionMessageParam = {
+    role: 'assistant',
+    reasoning_content: 'thinking',
+    tool_calls: ['a', 'b'].map((id) => ({
+      id,
+      type: 'function' as const,
+      function: { name: 'query', arguments: '{}' }
+    }))
+  };
+  const tools: ChatCompletionMessageParam[] = [
+    { role: 'tool', tool_call_id: 'a', content: 'A' },
+    { role: 'tool', tool_call_id: 'b', content: 'B' }
+  ];
+  it('orders an assistant received after its tool outputs and replaces a repeated result without mutation', () => {
+    const input = [tools[1], tools[0]];
+    const result = mergeModelMessages(input, [
+      assistant,
+      { role: 'tool', tool_call_id: 'a', content: 'updated' }
+    ]);
+    expect(result).toEqual([
+      assistant,
+      tools[1],
+      { role: 'tool', tool_call_id: 'a', content: 'updated' }
+    ]);
+    expect(input).toEqual([tools[1], tools[0]]);
+  });
+
+  it('keeps a reused tool ID in separate model turns', () => {
+    const call = {
+      id: 'same',
+      type: 'function' as const,
+      function: { name: 'query', arguments: '{}' }
+    };
+    const first: ChatCompletionMessageParam = {
+      role: 'assistant',
+      tool_calls: [call],
+      reasoning_content: 'one'
+    };
+    const second: ChatCompletionMessageParam = {
+      role: 'assistant',
+      tool_calls: [call],
+      reasoning_content: 'two'
+    };
+    const messages: ChatCompletionMessageParam[] = [
+      first,
+      { role: 'tool', tool_call_id: 'same', content: 'one' },
+      second,
+      { role: 'tool', tool_call_id: 'same', content: 'two' }
+    ];
+    expect(mergeModelMessages([], messages)).toEqual(messages);
   });
 });

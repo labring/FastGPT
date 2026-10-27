@@ -159,7 +159,7 @@ export async function runSkillDebugChat({
     }
     logger.debug('Edit debug sandbox found', { skillId, sandboxId: sandboxInstance.sandboxId });
 
-    const chatMessages = GPTMessages2Chats({ messages });
+    const chatMessages = GPTMessages2Chats({ reserveModelMessages: true, messages });
     const userQuestion = chatMessages.pop() as UserChatItemType;
     if (!userQuestion) {
       throw new UserError('User question is empty');

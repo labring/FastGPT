@@ -16,6 +16,7 @@ const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
 export const createAgentLoopCoreEventStream = ({
   workflowStreamResponse,
   streamAnswer = true,
+  streamContext = true,
   streamReasoning = true,
   getToolInfo
 }: CreateAgentLoopCoreEventStreamParams): AgentLoopCoreEventStream => {
@@ -24,6 +25,7 @@ export const createAgentLoopCoreEventStream = ({
   let responseIdIndex = 0;
   let pendingResponseId: string | undefined;
   let activeResponseId: string | undefined;
+  let modelContextId: string | undefined;
 
   const startNewAnswerBlock = () => {
     pendingResponseId = `${responseIdPrefix}-${++responseIdIndex}`;
@@ -37,15 +39,25 @@ export const createAgentLoopCoreEventStream = ({
     return activeResponseId;
   };
 
+  const streamModelContext: NonNullable<AgentLoopCoreEventStream['streamModelContext']> = (
+    modelContext
+  ) => {
+    modelContextId = modelContext.id;
+    // 上下文容器可跨多次模型调用复用，正文展示边界由 llm_request_start 独立维护。
+    if (!streamAnswer || !streamContext) return;
+    workflowStreamResponse?.({
+      event: SseResponseEventEnum.modelContext,
+      data: { modelContext }
+    });
+  };
+
   const streamReasoningText = (text: string) => {
     if (!streamReasoning) return;
     const responseId = getAnswerResponseId();
     workflowStreamResponse?.({
       ...(responseId ? { id: responseId } : {}),
       event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        reasoning_content: text
-      })
+      data: { ...textAdaptGptResponse({ reasoning_content: text }), modelContextId }
     });
   };
 
@@ -55,9 +67,7 @@ export const createAgentLoopCoreEventStream = ({
     workflowStreamResponse?.({
       ...(responseId ? { id: responseId } : {}),
       event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text
-      })
+      data: { ...textAdaptGptResponse({ text }), modelContextId }
     });
   };
 
@@ -71,6 +81,7 @@ export const createAgentLoopCoreEventStream = ({
       id: call.id,
       event: SseResponseEventEnum.toolCall,
       data: {
+        modelContextId,
         tool: {
           id: call.id,
           toolName: toolInfo.name,
@@ -160,6 +171,7 @@ export const createAgentLoopCoreEventStream = ({
   };
 
   return {
+    streamModelContext,
     startNewAnswerBlock,
     streamReasoning: streamReasoningText,
     streamAnswer: streamAnswerText,

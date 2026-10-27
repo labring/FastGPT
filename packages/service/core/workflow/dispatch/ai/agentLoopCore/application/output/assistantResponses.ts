@@ -70,6 +70,9 @@ export const appendAgentLoopCoreFinalAssistantResponse = ({
   if (finalText === persistedText || persistedText.endsWith(finalText)) return;
 
   assistantResponses.push({
+    ...(assistantResponses.some((value) => value.modelMessages !== undefined)
+      ? { modelMessages: [] }
+      : {}),
     ...(reasoningText
       ? {
           reasoning: {

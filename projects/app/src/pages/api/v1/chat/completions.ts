@@ -193,6 +193,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const workflowFileLimits = await getWorkflowFileLimits({ teamId });
 
     const chatMessages = GPTMessages2Chats({
+      reserveModelMessages: true,
       messages: await normalizeCompletionMessages({
         messages,
         sourceType: ChatSourceTypeEnum.app,

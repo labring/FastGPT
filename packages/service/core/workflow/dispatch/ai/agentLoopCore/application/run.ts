@@ -63,6 +63,12 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
       }
     }
   });
+  if (assistantEventCollector.hasModelContext()) {
+    // 最后一次协议消息之后仍可能有失败卡片、子流程或暂停状态，统一收敛为展示投影。
+    const event = { type: 'model_context' as const, messages: [] };
+    assistantEventCollector.emitEvent(event);
+    runtime.emitEvent?.(event);
+  }
   const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),
     ...eventAssistantResponses

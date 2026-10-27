@@ -1,6 +1,7 @@
 import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { removeAIResponseModelContext } from '@fastgpt/global/core/chat/utils';
 
 /* ===== 兼容性代码 ===== */
 export enum ChatItemValueTypeEnum {
@@ -63,6 +64,8 @@ export const formatCompletionResponseContent = ({
   detail: boolean;
   includeLegacyType: boolean;
 }): CompletionResponseContent => {
+  // 非流式 content 是公开展示结果，协议容器不能改变响应形态或暴露隐藏工具上下文。
+  responseContent = removeAIResponseModelContext(responseContent);
   const MAX_COMPLETION_INTERACTIVE_EXTRACT_DEPTH = 20;
 
   const getChildInteractiveResponse = (

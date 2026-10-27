@@ -22,7 +22,10 @@ import type {
 } from './type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  mergeModelMessages,
+  normalizeToolResponseContent
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
@@ -104,6 +107,8 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   onToolRunStart?: (e: { call: ChatCompletionMessageToolCall }) => void;
   onStreaming?: (e: { text: string }) => void;
   onReasoning?: (e: { text: string }) => void;
+  /** 只报告真实写入模型上下文的消息，独立于工具卡片和运行详情。 */
+  onContextMessages?: (messages: ChatCompletionMessageParam[]) => void;
 };
 
 type RunAgentResponse<TChildrenResponse = unknown> = {
@@ -216,7 +221,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onLLMRequestEnd,
 
   onReasoning,
-  onStreaming
+  onStreaming,
+  onContextMessages
 }: RunAgentCallProps<TChildrenResponse>): Promise<RunAgentResponse<TChildrenResponse>> => {
   const modelData = model;
 
@@ -253,6 +259,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
    */
   const appendRequestMessages = async (...newMessages: ChatCompletionMessageParam[]) => {
     requestMessages.push(...newMessages);
+    onContextMessages?.(newMessages);
     if (requestMessagesTokenCount !== undefined && newMessages.length > 0) {
       requestMessagesTokenCount += await countGptMessagesTokens({
         messages: newMessages
@@ -271,14 +278,26 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   // 处理 tool 里的交互
   if (childrenInteractiveParams) {
     const toolStartTime = Date.now();
-    const resumedToolCall = requestMessages
+    const legacyMessages = childrenInteractiveParams.toolParams.memoryRequestMessages;
+    // 部分旧快照只有工具占位结果，缺少原调用时使用当前完整聊天上下文。
+    const resumeMessages = legacyMessages?.some(
+      (message) =>
+        message.role === 'assistant' &&
+        message.tool_calls?.some(
+          (call) => call.id === childrenInteractiveParams.toolParams.toolCallId
+        )
+    )
+      ? legacyMessages
+      : requestMessages;
+    const resumedToolCall = resumeMessages
       .flatMap((message) =>
         message.role === ChatCompletionRequestMessageRoleEnum.Assistant
           ? message.tool_calls || []
           : []
       )
-      .find((call) => call.id === childrenInteractiveParams.toolParams.toolCallId) ||
-      // 兼容缺少 assistant tool_call 的旧交互快照；callId 仍能用于回填原工具卡片。
+      .find((call) => call.id === childrenInteractiveParams.toolParams.toolCallId);
+    const interactiveToolCall = resumedToolCall ??
+      // 执行器仍需要 call 结构；该占位调用只用于恢复回调，不会写入模型 transcript。
       {
         id: childrenInteractiveParams.toolParams.toolCallId,
         type: 'function' as const,
@@ -301,8 +320,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       try {
         return await onRunInteractiveTool({
           ...childrenInteractiveParams,
-          call: resumedToolCall,
-          messages: requestMessages
+          call: interactiveToolCall,
+          messages: resumeMessages
         });
       } catch (error) {
         interactiveToolErrorMessage = `Tool error: ${getErrText(error)}`;
@@ -316,7 +335,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     })();
 
     onToolRunEnd?.({
-      call: resumedToolCall,
+      call: interactiveToolCall,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
       assistantResponses: toolAssistantResponses,
@@ -329,25 +348,26 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 将 requestMessages 复原成上一轮中断时的内容，并附上 tool response。
     // 新版 workflow interactive 不再持久化完整 messages 快照，调用方会从 chat history 重建；
     // 旧历史若仍带 memoryRequestMessages，则继续按旧快照恢复。
-    const resumeMessages = childrenInteractiveParams.toolParams.memoryRequestMessages?.length
-      ? childrenInteractiveParams.toolParams.memoryRequestMessages
-      : requestMessages;
-    requestMessages = resumeMessages.map((item) =>
-      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
-        ? {
-            ...item,
-            content: normalizeToolResponseContent(response)
-          }
-        : item
-    );
+    const normalizedResponse = normalizeToolResponseContent(response);
+    const resumedToolMessage: ChatCompletionMessageParam = resumedToolCall
+      ? {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: childrenInteractiveParams.toolParams.toolCallId,
+          content: normalizedResponse
+        }
+      : {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: [
+            `Interactive operation ${childrenInteractiveParams.toolParams.toolCallId} completed, but its original tool call could not be restored.`,
+            'Treat the operation result as context and verify current state before repeating a state-changing action.',
+            `Result: ${normalizedResponse}`
+          ].join('\n')
+        };
+    requestMessages = mergeModelMessages(resumeMessages, [resumedToolMessage]);
+    onContextMessages?.([resumedToolMessage]);
 
-    // child interactive 的 tool_call 在上一轮已经产生；恢复后需要把 tool response
-    // 放进本轮 transcript，外层才能回填旧工具卡并保证后续 history 重建使用真实结果。
-    assistantMessages.push({
-      role: ChatCompletionRequestMessageRoleEnum.Tool,
-      tool_call_id: childrenInteractiveParams.toolParams.toolCallId,
-      content: response
-    });
+    // 原调用存在时按协议恢复 tool response；历史缺少调用时写成普通上下文，避免制造孤立 tool。
+    assistantMessages.push(resumedToolMessage);
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
@@ -497,6 +517,20 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       llmTotalPoints += totalPoints;
 
       if (requestError) {
+        // 流式失败前的正文已展示给用户，必须进入下一轮上下文；未完成的工具调用不能恢复。
+        if (answer) {
+          const partialAssistantMessage: ChatCompletionMessageParam = {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: answer,
+            ...(modelData.config.reasoning ||
+            reasoning ||
+            llmAssistantMessage?.reasoning_content !== undefined
+              ? { reasoning_content: llmAssistantMessage?.reasoning_content ?? reasoning ?? '' }
+              : {})
+          };
+          assistantMessages.push(partialAssistantMessage);
+          await appendRequestMessages(partialAssistantMessage);
+        }
         break;
       }
       if (answer) {
@@ -710,6 +744,30 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         if (toolChildPause || stopAgentLoop || isAborted?.()) {
           break;
         }
+      }
+      // 暂停后不执行剩余调用，但每个已发出的 tool_call 都必须有结果。
+      // 同时写回事件和消息，保证刷新重建及 child interactive 恢复都不会留下孤立调用。
+      for (const tool of toolCalls.slice(toolIndex)) {
+        const response =
+          'Tool was not executed because the run paused or stopped. Re-evaluate this operation after resuming.';
+        onToolRunEnd?.({
+          call: tool,
+          response,
+          assistantMessages: [],
+          seconds: 0,
+          usages: []
+        });
+        await appendToolRunResults([
+          {
+            tool,
+            toolMessage: {
+              role: ChatCompletionRequestMessageRoleEnum.Tool,
+              tool_call_id: tool.id,
+              content: response
+            },
+            toolAssistantMessages: []
+          }
+        ]);
       }
     }
 

@@ -9,6 +9,7 @@ import {
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
+import { chats2GPTMessages, updateChatModelContext } from '@fastgpt/global/core/chat/adapt';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { serviceEnv } from '@fastgpt/service/env';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -1511,191 +1512,258 @@ describe('pushChatRecords', () => {
       }
     );
 
-    it('should merge child interactive tool response and plan snapshot into existing values', async () => {
-      await MongoChatItem.create({
-        chatId: 'test-chat-id',
-        teamId: testTeamId,
-        tmbId: testTmbId,
-        sourceType: ChatSourceTypeEnum.app,
-        appId: testAppId,
-        obj: ChatRoleEnum.AI,
-        dataId: 'tool-child-data-id',
-        value: [
-          {
-            id: 'call_select_1',
-            tools: [
-              {
-                id: 'call_select_1',
-                toolName: '收集问题',
-                toolAvatar: 'core/workflow/template/userSelect',
-                functionName: 'select_tool',
-                params: '{"reason":"need selection"}',
-                response: 'none'
-              }
-            ]
-          },
-          {
-            plan: {
-              planId: 'plan_1',
-              name: 'Interactive plan',
-              description: null,
-              steps: [
+    it.each([false, true])(
+      'should merge child interactive tool response and plan snapshot (model context=%s)',
+      async (useModelContext) => {
+        await MongoChatItem.create({
+          chatId: 'test-chat-id',
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          obj: ChatRoleEnum.AI,
+          dataId: 'tool-child-data-id',
+          value: [
+            {
+              id: 'call_select_1',
+              tools: [
                 {
-                  id: 'step_1',
-                  name: 'Wait for selection',
-                  status: 'in_progress'
+                  id: 'call_select_1',
+                  toolName: '收集问题',
+                  toolAvatar: 'core/workflow/template/userSelect',
+                  functionName: 'select_tool',
+                  params: '{"reason":"need selection"}',
+                  response: 'none'
                 }
               ]
-            }
-          },
-          {
-            interactive: {
-              type: 'toolChildrenInteractive',
-              params: {
-                childrenResponse: {
-                  type: 'userSelect',
-                  params: {
-                    description: '请选择',
-                    userSelectOptions: [
-                      { key: 'A', value: 'Option A' },
-                      { key: 'B', value: 'Option B' }
-                    ]
+            },
+            {
+              plan: {
+                planId: 'plan_1',
+                name: 'Interactive plan',
+                description: null,
+                steps: [
+                  {
+                    id: 'step_1',
+                    name: 'Wait for selection',
+                    status: 'in_progress'
+                  }
+                ]
+              }
+            },
+            {
+              interactive: {
+                type: 'toolChildrenInteractive',
+                params: {
+                  childrenResponse: {
+                    type: 'userSelect',
+                    params: {
+                      description: '请选择',
+                      userSelectOptions: [
+                        { key: 'A', value: 'Option A' },
+                        { key: 'B', value: 'Option B' }
+                      ]
+                    },
+                    entryNodeIds: [],
+                    memoryEdges: [],
+                    nodeOutputs: []
                   },
-                  entryNodeIds: [],
-                  memoryEdges: [],
-                  nodeOutputs: []
-                },
-                toolParams: {
-                  toolCallId: 'call_select_1'
+                  toolParams: {
+                    toolCallId: 'call_select_1'
+                  }
                 }
               }
             }
-          }
-        ]
-      });
+          ]
+        });
 
-      const props = createMockProps(
-        {
-          userContent: {
-            obj: ChatRoleEnum.Human,
-            value: [
+        if (useModelContext) {
+          const stored = await MongoChatItem.findOne({ dataId: 'tool-child-data-id' });
+          if (!stored || stored.obj !== ChatRoleEnum.AI) throw new Error('Missing fixture');
+          const initial = updateChatModelContext([], {
+            id: 'initial-context',
+            messages: [
               {
-                text: { content: 'A' }
-              }
-            ]
-          },
-          aiContent: {
-            obj: ChatRoleEnum.AI,
-            value: [
-              {
-                id: 'call_select_1',
-                tools: [
+                role: 'assistant',
+                reasoning_content: 'original reasoning',
+                tool_calls: [
                   {
                     id: 'call_select_1',
-                    toolName: '',
-                    toolAvatar: '',
-                    functionName: '',
-                    params: '',
-                    response: 'A'
+                    type: 'function',
+                    function: { name: 'select_tool', arguments: '{"reason":"need selection"}' }
                   }
                 ]
               },
-              {
-                plan: null
-              },
-              {
-                id: 'call_plan_done',
-                agentPlanUpdate: {
-                  id: 'call_plan_done',
-                  functionName: 'update_plan',
-                  params: '{"action":"update_steps"}',
-                  response: 'completed'
-                }
-              },
-              {
-                text: {
-                  content: '已继续执行'
-                }
-              }
-            ],
-            responseData: []
-          }
-        },
-        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
-      );
+              { role: 'tool', tool_call_id: 'call_select_1', content: 'none' }
+            ]
+          });
+          stored.value = [
+            ...initial,
+            ...stored.value.map((value) => ({ ...value, modelMessages: [] }))
+          ];
+          stored.markModified('value');
+          await stored.save();
+        }
 
-      const interactive = {
-        type: 'toolChildrenInteractive' as const,
-        params: {
-          childrenResponse: {
-            type: 'userSelect' as const,
-            params: {
-              description: '请选择',
-              userSelectOptions: [
-                { key: 'A', value: 'Option A' },
-                { key: 'B', value: 'Option B' }
+        const props = createMockProps(
+          {
+            userContent: {
+              obj: ChatRoleEnum.Human,
+              value: [
+                {
+                  text: { content: 'A' }
+                }
               ]
             },
-            entryNodeIds: [],
-            memoryEdges: [],
-            nodeOutputs: []
+            aiContent: {
+              obj: ChatRoleEnum.AI,
+              value: [
+                {
+                  id: 'call_select_1',
+                  tools: [
+                    {
+                      id: 'call_select_1',
+                      toolName: '',
+                      toolAvatar: '',
+                      functionName: '',
+                      params: '',
+                      response: 'A'
+                    }
+                  ]
+                },
+                {
+                  plan: null
+                },
+                {
+                  id: 'call_plan_done',
+                  agentPlanUpdate: {
+                    id: 'call_plan_done',
+                    functionName: 'update_plan',
+                    params: '{"action":"update_steps"}',
+                    response: 'completed'
+                  }
+                },
+                {
+                  text: {
+                    content: '已继续执行'
+                  }
+                }
+              ],
+              responseData: []
+            }
           },
-          toolParams: {
-            toolCallId: 'call_select_1'
-          }
-        },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
-      };
+          { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+        );
 
-      await updateInteractiveChat({ interactive, ...props });
+        const interactive = {
+          type: 'toolChildrenInteractive' as const,
+          params: {
+            childrenResponse: {
+              type: 'userSelect' as const,
+              params: {
+                description: '请选择',
+                userSelectOptions: [
+                  { key: 'A', value: 'Option A' },
+                  { key: 'B', value: 'Option B' }
+                ]
+              },
+              entryNodeIds: [],
+              memoryEdges: [],
+              nodeOutputs: []
+            },
+            toolParams: {
+              toolCallId: 'call_select_1'
+            }
+          },
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: []
+        };
 
-      const chatItem = await MongoChatItem.findOne({
-        appId: testAppId,
-        chatId: props.chatId,
-        obj: ChatRoleEnum.AI,
-        dataId: 'tool-child-data-id'
-      });
+        if (useModelContext) {
+          props.aiContent.value = [
+            ...updateChatModelContext([], {
+              id: 'resume-context',
+              messages: [
+                { role: 'tool', tool_call_id: 'call_select_1', content: 'A' },
+                { role: 'assistant', content: '已继续执行' }
+              ]
+            }),
+            ...props.aiContent.value.map((value) => ({ ...value, modelMessages: [] }))
+          ];
+        }
+        await updateInteractiveChat({ interactive, ...props });
 
-      if (chatItem?.obj !== ChatRoleEnum.AI) {
-        throw new Error('chatItem does not have AI value');
+        const chatItem = await MongoChatItem.findOne({
+          appId: testAppId,
+          chatId: props.chatId,
+          obj: ChatRoleEnum.AI,
+          dataId: 'tool-child-data-id'
+        });
+
+        if (chatItem?.obj !== ChatRoleEnum.AI) {
+          throw new Error('chatItem does not have AI value');
+        }
+
+        if (useModelContext) {
+          const restored = chats2GPTMessages({
+            messages: [chatItem.toObject()],
+            reserveId: false,
+            reserveTool: true
+          });
+          expect(restored).toEqual([
+            {
+              role: 'assistant',
+              reasoning_content: 'original reasoning',
+              tool_calls: [
+                {
+                  id: 'call_select_1',
+                  type: 'function',
+                  function: { name: 'select_tool', arguments: '{"reason":"need selection"}' }
+                }
+              ]
+            },
+            { role: 'tool', tool_call_id: 'call_select_1', content: 'A' },
+            { role: 'assistant', content: '已继续执行' }
+          ]);
+        }
+        const displayValues = chatItem.value.filter((value) => !value.hideInUI);
+
+        expect(displayValues[0].tools?.[0]).toEqual(
+          expect.objectContaining({
+            id: 'call_select_1',
+            toolName: '收集问题',
+            functionName: 'select_tool',
+            response: 'A'
+          })
+        );
+        expect(displayValues).toHaveLength(5);
+        expect(
+          displayValues.filter((item) => item.tools?.[0]?.id === 'call_select_1')
+        ).toHaveLength(1);
+        expect(
+          displayValues.some(
+            (item) =>
+              item.id === 'call_select_1' &&
+              !item.tools?.length &&
+              !item.text &&
+              !item.plan &&
+              !item.interactive
+          )
+        ).toBe(false);
+        expect(displayValues.find((item) => 'plan' in item)?.plan).toBeNull();
+        const completedPlanUpdate = displayValues.find(
+          (item) => item.agentPlanUpdate?.id === 'call_plan_done'
+        )?.agentPlanUpdate;
+        expect(completedPlanUpdate).toEqual(
+          expect.objectContaining({
+            id: 'call_plan_done',
+            response: 'completed'
+          })
+        );
+        expect(displayValues[4].text?.content).toBe('已继续执行');
       }
-
-      expect(chatItem.value[0].tools?.[0]).toEqual(
-        expect.objectContaining({
-          id: 'call_select_1',
-          toolName: '收集问题',
-          functionName: 'select_tool',
-          response: 'A'
-        })
-      );
-      expect(chatItem.value).toHaveLength(5);
-      expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
-        1
-      );
-      expect(
-        chatItem.value.some(
-          (item) =>
-            item.id === 'call_select_1' &&
-            !item.tools?.length &&
-            !item.text &&
-            !item.plan &&
-            !item.interactive
-        )
-      ).toBe(false);
-      expect(chatItem.value.find((item) => 'plan' in item)?.plan).toBeNull();
-      const completedPlanUpdate = chatItem.value.find(
-        (item) => item.agentPlanUpdate?.id === 'call_plan_done'
-      )?.agentPlanUpdate;
-      expect(completedPlanUpdate).toEqual(
-        expect.objectContaining({
-          id: 'call_plan_done',
-          response: 'completed'
-        })
-      );
-      expect(chatItem.value[4].text?.content).toBe('已继续执行');
-    });
+    );
 
     it('should remove paymentPause interactive value', async () => {
       // Create an AI chat item with paymentPause interactive

@@ -231,7 +231,7 @@ export type CompletionsResponseType = z.infer<typeof CompletionsResponseSchema>;
 export const ChatWorkflowSseResponseSchema = z.string().meta({
   example: 'event: answer\ndata: {"choices":[...]}\n\n',
   description:
-    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive 等事件，最后以 [DONE] 结束'
+    '工作流 SSE 事件流；根据接口版本和 detail 配置返回 answer、flowNodeResponse、interactive、modelContext（模型上下文同步）等事件；隐藏运行状态时不返回 modelContext 及正文的 modelContextId，最后以 [DONE] 结束'
 });
 export type ChatWorkflowSseResponseType = z.infer<typeof ChatWorkflowSseResponseSchema>;
 

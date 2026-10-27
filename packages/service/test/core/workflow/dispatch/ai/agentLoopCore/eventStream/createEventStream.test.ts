@@ -183,3 +183,34 @@ describe('createAgentLoopCoreEventStream', () => {
     expect(workflowStreamResponse.mock.calls[0][0].data.tool.response).toBe(response);
   });
 });
+
+describe('model context stream boundaries', () => {
+  it.each([true, false])(
+    'marks presentation even when child model context streaming is %s',
+    (streamContext) => {
+      const workflowStreamResponse = vi.fn();
+      const stream = createAgentLoopCoreEventStream({
+        workflowStreamResponse,
+        streamContext,
+        getToolInfo: () => ({ name: 'Query', avatar: '' })
+      });
+      const modelContext = {
+        id: 'context',
+        messages: [{ role: 'assistant' as const, content: 'answer' }]
+      };
+      stream.streamModelContext?.(modelContext);
+      stream.streamReasoning('thinking');
+      stream.streamAnswer('answer');
+      stream.streamToolCall(createCall());
+      const events = workflowStreamResponse.mock.calls.map(([event]) => event);
+      expect(
+        events.filter((event) => event.event === SseResponseEventEnum.modelContext)
+      ).toHaveLength(streamContext ? 1 : 0);
+      expect(
+        events
+          .filter((event) => event.event !== SseResponseEventEnum.modelContext)
+          .every((event) => event.data.modelContextId === 'context')
+      ).toBe(true);
+    }
+  );
+});

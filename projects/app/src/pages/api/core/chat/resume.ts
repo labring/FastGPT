@@ -6,7 +6,8 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { removeAIResponseModelContext } from '@fastgpt/global/core/chat/utils';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -132,6 +133,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI && authRes.showRunningStatus === false) {
+        item.value = removeAIResponseModelContext(item.value);
+      }
+    });
 
     const list = transformPreviewHistories(histories, showCite).map((item) => ({
       ...item,
@@ -234,6 +240,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const cursor = await catchUpAllHistoryItems({
     res,
+    showNodeStatus: authRes.showRunningStatus,
     teamId,
     sourceType,
     sourceId: resolvedSourceId,
@@ -241,7 +248,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
-  await _resume({ res, teamId, sourceType, sourceId: resolvedSourceId, chatId, cursor });
+  await _resume({
+    res,
+    teamId,
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatId,
+    cursor,
+    showNodeStatus: authRes.showRunningStatus
+  });
 
   res.end();
 }

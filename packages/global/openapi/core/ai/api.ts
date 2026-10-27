@@ -114,7 +114,7 @@ export type ResumeStreamRuntimeParams = z.infer<typeof ResumeStreamParamsSchema>
 export const StreamResumeCompletedRecordsSchema = z.object({
   list: z.array(z.any()).meta({
     items: OpenObjectOpenApiMeta,
-    description: '最新已落库的聊天记录'
+    description: '最新已落库的聊天记录；隐藏运行状态时不返回模型协议上下文'
   }),
   total: z.number().int().nonnegative().meta({
     example: 2,

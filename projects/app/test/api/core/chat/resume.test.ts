@@ -321,6 +321,78 @@ describe('stream resume api', () => {
     expect(res.writableEnded).toBe(true);
   });
 
+  it.each([true, false])(
+    'respects current context visibility in cached and live events: %s',
+    async (showRunningStatus) => {
+      const auth = await vi.mocked(authChatTargetCrud).getMockImplementation()!({} as never);
+      vi.mocked(authChatTargetCrud).mockResolvedValue({ ...auth, showRunningStatus });
+      vi.mocked(MongoChat.findOne).mockReturnValue(
+        createFindOneResult({ chatGenerateStatus: ChatGenerateStatusEnum.generating })
+      );
+      const context =
+        'event: modelContext\ndata: {"modelContext":{"id":"context","messages":[{"role":"tool","tool_call_id":"call","content":"private result"}]}}\n\n';
+      const answer =
+        'event: answer\ndata: {"choices":[{"delta":{"content":"visible answer"}}],"modelContextId":"context"}\n\n';
+      setupRedisStreamMock({
+        historyItems: [createStreamEntry('1-0', context), createStreamEntry('2-0', answer)],
+        liveResponses: [
+          [
+            [
+              rawKeyOfStream,
+              [
+                createStreamEntry('3-0', context),
+                createStreamEntry('4-0', answer),
+                createStreamEntry('5-0', 'event: done\ndata: [DONE]\n\n')
+              ]
+            ]
+          ]
+        ]
+      });
+      const { chunks } = await invokeStreamingHandler(
+        { appId, chatId },
+        { headers: { accept: 'text/event-stream' } }
+      );
+      expect(chunks.join('').includes('private result')).toBe(showRunningStatus);
+      expect(chunks.join('').includes('modelContextId')).toBe(showRunningStatus);
+      expect(chunks.filter((chunk) => chunk.includes('visible answer'))).toHaveLength(2);
+      expect(chunks.at(-1)).toBe('event: done\ndata: [DONE]\n\n');
+    }
+  );
+
+  it.each([true, false])(
+    'respects context visibility in completed records: %s',
+    async (showRunningStatus) => {
+      const auth = await vi.mocked(authChatTargetCrud).getMockImplementation()!({} as never);
+      vi.mocked(authChatTargetCrud).mockResolvedValue({ ...auth, showRunningStatus });
+      vi.mocked(MongoChat.findOne).mockReturnValue(
+        createFindOneResult({ chatGenerateStatus: ChatGenerateStatusEnum.done })
+      );
+      vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as never);
+      vi.mocked(getChatItems).mockResolvedValue({
+        histories: [
+          {
+            dataId: 'reply',
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                hideInUI: true,
+                modelMessages: [{ role: 'tool', tool_call_id: 'call', content: 'private result' }]
+              },
+              { modelMessages: [], text: { content: 'visible answer' } }
+            ]
+          }
+        ],
+        total: 1,
+        hasMorePrev: false,
+        hasMoreNext: false
+      } as never);
+      const result = await Call(handler, { query: { appId, chatId } });
+      expect(JSON.stringify(result.data).includes('private result')).toBe(showRunningStatus);
+      expect(JSON.stringify(result.data).includes('modelMessages')).toBe(showRunningStatus);
+      expect(JSON.stringify(result.data)).toContain('visible answer');
+    }
+  );
+
   it('should mark completed chat as read and skip stream recovery', async () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
