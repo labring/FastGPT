@@ -1,10 +1,18 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
-import { Types } from '@fastgpt/service/common/mongo';
+import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import {
+  syncChildrenPermission,
+  syncCollaborators
+} from '@fastgpt/service/support/permission/inheritPermission';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
+import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 
 export type FolderMigrationStage = 'apps' | 'datasets';
 type FolderMigrationDoc = {
@@ -13,6 +21,7 @@ type FolderMigrationDoc = {
   type?: string | null;
   parentId?: Types.ObjectId | string | null;
   ancestorIds?: unknown;
+  inheritPermission?: boolean;
 };
 type MigrationOperation = {
   updateOne: {
@@ -39,7 +48,7 @@ type MigrationCollection = {
   countDocuments: (filter: Record<string, unknown>) => Promise<number>;
   bulkWrite: (
     operations: MigrationOperation[],
-    options?: { session?: unknown; ordered?: boolean }
+    options?: { session?: ClientSession; ordered?: boolean }
   ) => Promise<unknown>;
 };
 
@@ -93,10 +102,12 @@ export const readFolderMigrationBatch = async ({
 /** 重试时优先读取失败记录，使已修复的数据能够从错误快照中移除。 */
 export const readFolderMigrationDocsByIds = async ({
   stage,
-  ids
+  ids,
+  session
 }: {
   stage: FolderMigrationStage;
   ids: string[];
+  session?: ClientSession;
 }) => {
   const objectIds = ids
     .filter((id) => Types.ObjectId.isValid(id))
@@ -105,7 +116,17 @@ export const readFolderMigrationDocsByIds = async ({
   return getCollection(stage)
     .find(
       { _id: { $in: objectIds } },
-      { projection: { _id: 1, teamId: 1, type: 1, parentId: 1, ancestorIds: 1 } }
+      {
+        projection: {
+          _id: 1,
+          teamId: 1,
+          type: 1,
+          parentId: 1,
+          ancestorIds: 1,
+          inheritPermission: 1
+        },
+        session
+      }
     )
     .sort({ _id: 1 })
     .limit(objectIds.length)
@@ -127,12 +148,14 @@ export const readFolderMigrationDocsByIds = async ({
 const planDocument = async ({
   stage,
   doc,
-  verifyOnly
+  verifyOnly,
+  session
 }: {
   stage: FolderMigrationStage;
   doc: FolderMigrationDoc;
   verifyOnly: boolean;
-}): Promise<{ operation?: MigrationOperation; reason?: string }> => {
+  session: ClientSession;
+}): Promise<{ operation?: MigrationOperation; reason?: string; detachToRoot?: true }> => {
   const collection = getCollection(stage);
   const folderType = getFolderType(stage, doc.type);
 
@@ -164,7 +187,7 @@ const planDocument = async ({
 
     const parent = await collection.findOne(
       { _id: new Types.ObjectId(parentId) },
-      { projection: { _id: 1, teamId: 1, type: 1, parentId: 1 } }
+      { projection: { _id: 1, teamId: 1, type: 1, parentId: 1 }, session }
     );
     if (!parent) return { reason: 'parent document does not exist' };
     if (String(parent.teamId) !== String(doc.teamId))
@@ -183,6 +206,7 @@ const planDocument = async ({
   if (detachToRoot) {
     if (verifyOnly) return { reason: 'parent folder type does not match this tree' };
     return {
+      detachToRoot: true,
       operation: {
         updateOne: {
           filter: { _id: doc._id },
@@ -211,30 +235,105 @@ const planDocument = async ({
   };
 };
 
-/** 规划并应用批次更新，仅返回坏数据 ID 和可安全持久化的简短失败原因。 */
+/**
+ * 在同一事务中重读批次、规划路径并同步目录与 ACL；外部批次只用于确定扫描 ID。
+ * 写冲突重试时重新读取和规划，避免旧快照覆盖用户移动；任一写入失败则整批回滚。
+ * 仅返回坏数据 ID 和可安全持久化的简短失败原因，断点由调用方在提交后推进。
+ */
 export const migrateFolderMigrationBatch = async ({
   stage,
   docs,
   verifyOnly = false
 }: {
   stage: FolderMigrationStage;
-  docs: FolderMigrationDoc[];
+  docs: Pick<FolderMigrationDoc, '_id'>[];
   verifyOnly?: boolean;
 }): Promise<{ errors: Array<{ id: string; reason: string }>; changedCount: number }> => {
-  const operations: MigrationOperation[] = [];
-  const errors: Array<{ id: string; reason: string }> = [];
+  if (docs.length === 0) return { errors: [], changedCount: 0 };
 
-  for (const doc of docs) {
-    const plan = await planDocument({ stage, doc, verifyOnly });
-    if (plan.reason) errors.push({ id: String(doc._id), reason: plan.reason });
-    if (plan.operation) operations.push(plan.operation);
-  }
-
-  if (!verifyOnly && operations.length > 0) {
-    await mongoSessionRun(async (session) => {
-      await getCollection(stage).bulkWrite(operations, { session, ordered: false });
+  return mongoSessionRun(async (session) => {
+    // 1. 不使用扫描阶段保存的父链；事务重试也必须从当前快照重新计算。
+    const currentDocs = await readFolderMigrationDocsByIds({
+      stage,
+      ids: docs.map((doc) => String(doc._id)),
+      session
     });
-  }
+    const operations: MigrationOperation[] = [];
+    const errors: Array<{ id: string; reason: string }> = [];
+    let detachedCount = 0;
 
-  return { errors, changedCount: operations.length };
+    /** 脱离旧父级时剥离继承权限，保留自身授权；独立分支沿用正常移动语义。 */
+    const syncDetachedFolderPermissions = async (doc: FolderMigrationDoc) => {
+      if (!shouldInheritResourcePermission(doc.inheritPermission)) return;
+
+      const resourceType = stage === 'apps' ? PerResourceTypeEnum.app : PerResourceTypeEnum.dataset;
+      const resource = {
+        _id: String(doc._id),
+        teamId: String(doc.teamId),
+        type: String(doc.type),
+        parentId: doc.parentId ? String(doc.parentId) : null,
+        inheritPermission: doc.inheritPermission
+      };
+      const oldResourceCollaborators = await getResourceOwnedClbs({
+        teamId: resource.teamId,
+        resourceId: resource._id,
+        resourceType,
+        session
+      });
+      const oldParentCollaborators = await getResourceOwnedClbs({
+        teamId: resource.teamId,
+        resourceId: resource.parentId,
+        resourceType,
+        session
+      });
+      const newResourceCollaborators = await syncCollaborators({
+        teamId: resource.teamId,
+        resourceId: resource._id,
+        resourceType,
+        oldParentCollaborators,
+        collaborators: [],
+        session
+      });
+
+      // Collection 依赖后代 Dataset 的旧 ACL，必须在传播 Dataset 新快照前同步。
+      if (stage === 'datasets') {
+        await syncDatasetToCollections({
+          teamId: resource.teamId,
+          datasetId: resource._id,
+          oldEffectiveClbs: oldResourceCollaborators,
+          newEffectiveClbs: newResourceCollaborators,
+          session
+        });
+      }
+      await syncChildrenPermission({
+        resource,
+        resourceModel: stage === 'apps' ? MongoApp : MongoDataset,
+        resourceType,
+        oldParentCollaborators: oldResourceCollaborators,
+        newParentCollaborators: newResourceCollaborators,
+        session
+      });
+    };
+
+    // 2. 先断开跨树关系再传播权限，避免跨树环仍能沿子树回到自身。
+    for (const doc of currentDocs) {
+      const plan = await planDocument({ stage, doc, verifyOnly, session });
+      if (plan.reason) errors.push({ id: String(doc._id), reason: plan.reason });
+      if (!plan.operation) continue;
+      if (plan.detachToRoot) {
+        await getCollection(stage).bulkWrite([plan.operation], { session });
+        await syncDetachedFolderPermissions(doc);
+        detachedCount++;
+      } else {
+        operations.push(plan.operation);
+      }
+    }
+
+    // 3. 其余路径回填与父级、ACL 写入共用事务，不允许提交半批结果。
+    if (operations.length > 0) {
+      await getCollection(stage).bulkWrite(operations, { session, ordered: false });
+    }
+
+    return { errors, changedCount: operations.length + detachedCount };
+  });
 };
