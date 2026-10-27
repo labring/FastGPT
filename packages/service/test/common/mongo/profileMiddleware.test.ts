@@ -98,36 +98,47 @@ describe('Mongo profile middleware', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it('resolves the collection name from model-level create hooks', () => {
-    const { schema, model } = createModel();
-    const [successHook] = getPostHooks(schema, 'create');
-    const next = vi.fn();
+  it('resolves the collection name from model-level create hooks', async () => {
+    const { model } = createModel();
 
-    (model as any)._startTime = Date.now() - 2;
-    successHook.fn.call(model, [], next);
+    await model.create([{ name: `create-${randomUUID()}` }]);
 
-    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledWith({
-      collectionName: model.collection.name,
-      durationMs: expect.any(Number)
-    });
-    expect(next).toHaveBeenCalledWith();
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionName: model.collection.name,
+        durationMs: expect.any(Number)
+      })
+    );
   });
 
-  it('records save:error failures without swallowing the error', () => {
-    const { schema, model } = createModel();
-    const document = new model({ name: 'save' });
-    const [errorHook] = getPostHooks(schema, 'save:error');
-    const error = new Error('save failed');
-    const next = vi.fn();
+  it('records concurrent insertMany calls separately', async () => {
+    const { model } = createModel();
 
-    (document as any)._startTime = Date.now() - 4;
-    errorHook.fn.call(document, error, document, next);
+    await Promise.all([
+      model.insertMany([{ name: `a-${randomUUID()}` }]),
+      model.insertMany([{ name: `b-${randomUUID()}` }])
+    ]);
 
-    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledWith({
-      collectionName: model.collection.name,
-      durationMs: expect.any(Number)
-    });
-    expect(next).toHaveBeenCalledWith(error);
+    // Model middleware 的 this 是共享构造函数，两次并发都必须各记一次。
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(2);
+  });
+
+  it('records concurrent failed insertMany calls separately', async () => {
+    const { model } = createModel();
+    const insertSpy = vi
+      .spyOn(model.collection, 'insertMany')
+      .mockRejectedValue(new Error('insertMany failed'));
+
+    await expect(
+      Promise.all([
+        model.insertMany([{ name: 'a' }]).catch((error) => error),
+        model.insertMany([{ name: 'b' }]).catch((error) => error)
+      ])
+    ).resolves.toHaveLength(2);
+
+    insertSpy.mockRestore();
+
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(2);
   });
 
   it('does not record when profiling is disabled', () => {
@@ -182,7 +193,6 @@ describe('Mongo profile middleware', () => {
 
     insertSpy.mockRestore();
 
-    // save 失败会同时触发 save:error 与 save 的错误 middleware，收尾必须幂等。
     expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(1);
   });
 

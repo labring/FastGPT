@@ -101,17 +101,26 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
   ];
 
   /**
-   * 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。
+   * 取本次操作在 pre hook 记录的起始时间。
    *
-   * 同一次操作可能触发多个收尾 hook（例如 save 失败会先走 `save:error`，
-   * 再由外层 save wrapper 执行 `save` 的错误 middleware），这里按上下文做幂等，
-   * 避免重复累计 Mongo 次数、耗时与集合热度，也避免重复输出慢查询告警。
+   * Model 级 middleware（如 insertMany）的 `this` 是所有调用共享的构造函数，
+   * 不能把计时状态直接挂在上面，否则并发调用会互相覆盖、漏计；这里为 Model
+   * 使用先进先出的起点队列，其余上下文（Query / Document）每次操作都是独立对象，
+   * 直接读 `_startTime` 即可。
    */
-  const finishOperation = (context: any) => {
-    if (!context._startTime || context._profileFinished) return;
-    context._profileFinished = true;
+  const takeOperationStartTime = (context: any): number | undefined => {
+    if (typeof context === 'function') {
+      return context._profileStartQueue?.shift();
+    }
+    return context._startTime;
+  };
 
-    const duration = Date.now() - context._startTime;
+  /** 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。 */
+  const finishOperation = (context: any) => {
+    const startedAt = takeOperationStartTime(context);
+    if (startedAt === undefined) return;
+
+    const duration = Date.now() - startedAt;
     const getLogData = () => {
       const collectionName = getCollectionName(context);
       const op = (() => {
@@ -152,8 +161,11 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
   operations.forEach((op: any) => {
     schema.pre(op, function (this: any, next) {
-      this._startTime = Date.now();
-      this._profileFinished = false;
+      if (typeof this === 'function') {
+        (this._profileStartQueue ??= []).push(Date.now());
+      } else {
+        this._startTime = Date.now();
+      }
       this._query = this.getQuery ? this.getQuery() : null;
 
       next();
@@ -168,12 +180,6 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
       finishOperation(this);
       next(error);
     });
-  });
-
-  // save 的错误由 Mongoose 单独通过 save:error 触发；当前 typings 未声明该 hook 名。
-  schema.post('save:error' as any, function (this: any, error: any, result: any, next: any) {
-    finishOperation(this);
-    next(error);
   });
 
   // Register the result transform once per Schema instead of once per timing operation.
