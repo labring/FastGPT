@@ -140,6 +140,31 @@ describe('withRequestProfile', () => {
     expect(payload.ok).toBe(false);
     expect(payload.error).toContain('boom');
   });
+
+  it('允许业务代码标记已处理的失败，并保留第一个错误', async () => {
+    await profiling.withRequestProfile({ kind: 'chat' }, async () => {
+      profiling.markProfileError(new Error('auth failed'));
+      profiling.markProfileError(new Error('cleanup failed'));
+    });
+
+    const payload = getLastPayload();
+    expect(payload.ok).toBe(false);
+    expect(payload.error).toContain('auth failed');
+  });
+
+  it('允许只标记失败状态而不附带错误文本', async () => {
+    await profiling.withRequestProfile({ kind: 'chat' }, async () => {
+      profiling.markProfileError();
+    });
+
+    const payload = getLastPayload();
+    expect(payload.ok).toBe(false);
+    expect(payload.error).toBeUndefined();
+  });
+
+  it('没有 profile 上下文时标记失败是空操作', () => {
+    expect(() => profiling.markProfileError('ignored')).not.toThrow();
+  });
 });
 
 describe('profileStage', () => {

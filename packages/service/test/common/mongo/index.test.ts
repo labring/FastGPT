@@ -21,8 +21,8 @@ describe('Mongo common middleware', () => {
     getMongoModel<TestMongoRecord>(`MongoMiddlewareSecond${randomUUID()}`, schema);
 
     expect(getFindHooks(schema, '_pres')).toHaveLength(1);
-    // One slow-query post hook plus one ObjectId conversion post hook.
-    expect(getFindHooks(schema, '_posts')).toHaveLength(2);
+    // Success/error timing hooks plus one ObjectId conversion post hook.
+    expect(getFindHooks(schema, '_posts')).toHaveLength(3);
   });
 
   it('converts ObjectIds in lean query results through middleware', async () => {

@@ -43,6 +43,24 @@ export const connectionLogMongo = (() => {
 
 const installedSchemas = new WeakSet<mongoose.Schema>();
 
+/** 从 Query、Aggregate、Document 或 Model middleware 上下文解析集合名。 */
+const getCollectionName = (context: any) => {
+  try {
+    if (typeof context?.model?.collection?.name === 'string') return context.model.collection.name;
+    if (typeof context?._model?.collection?.name === 'string')
+      return context._model.collection.name;
+    if (typeof context?.$model === 'function') return context.$model()?.collection?.name;
+    // Query 的 collection 是函数，函数的 name 不是集合名，只接受真实 collection 对象。
+    if (context?.collection && typeof context.collection === 'object') {
+      return context.collection.name;
+    }
+    if (typeof context?.model === 'function') return context.model()?.collection?.name;
+    return context?.constructor?.collection?.name;
+  } catch {
+    return;
+  }
+};
+
 /**
  * Converts top-level BSON ObjectId values in a query result to strings.
  *
@@ -82,6 +100,49 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     'insertMany'
   ];
 
+  /** 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。 */
+  const finishOperation = (context: any) => {
+    if (!context._startTime) return;
+
+    const duration = Date.now() - context._startTime;
+    const getLogData = () => {
+      const collectionName = getCollectionName(context);
+      const op = (() => {
+        if (context.op) return context.op;
+        if (context._pipeline) {
+          return 'aggregate';
+        }
+        if (context.constructor?.name === 'model') {
+          return 'save/create';
+        }
+        return context.constructor?.name || 'unknown';
+      })();
+      return {
+        duration,
+        collectionName,
+        op,
+        ...(context._query && { query: context._query }),
+        ...(context._pipeline && { pipeline: context._pipeline }),
+        ...(context._update && { update: context._update }),
+        ...(context._delete && { delete: context._delete })
+      };
+    };
+
+    if (duration > 2000) {
+      logger.warn('MongoDB slow query (>2s)', getLogData());
+    } else if (duration > 500) {
+      logger.warn('MongoDB slow query (>500ms)', getLogData());
+    }
+
+    // 只有请求处于分段采集上下文时才统计，普通请求不受影响。
+    if (isProfiling()) {
+      recordMongoOperation({
+        collectionName: getCollectionName(context),
+        durationMs: duration
+      });
+    }
+  };
+
   operations.forEach((op: any) => {
     schema.pre(op, function (this: any, next) {
       this._startTime = Date.now();
@@ -91,48 +152,20 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     });
 
     schema.post(op, function (this: any, result: any, next) {
-      if (this._startTime) {
-        const duration = Date.now() - this._startTime;
-
-        const getLogData = () => {
-          const collectionName = this.model?.collection?.name || this._model?.collection?.name;
-          const op = (() => {
-            if (this.op) return this.op;
-            if (this._pipeline) {
-              return 'aggregate';
-            }
-            if (this.constructor?.name === 'model') {
-              return 'save/create';
-            }
-            return this.constructor?.name || 'unknown';
-          })();
-          return {
-            duration,
-            collectionName,
-            op,
-            ...(this._query && { query: this._query }),
-            ...(this._pipeline && { pipeline: this._pipeline }),
-            ...(this._update && { update: this._update }),
-            ...(this._delete && { delete: this._delete })
-          };
-        };
-
-        if (duration > 2000) {
-          logger.warn('MongoDB slow query (>2s)', getLogData());
-        } else if (duration > 500) {
-          logger.warn('MongoDB slow query (>500ms)', getLogData());
-        }
-
-        // 只有请求处于分段采集上下文时才统计，普通请求不受影响。
-        if (isProfiling()) {
-          recordMongoOperation({
-            collectionName: this.model?.collection?.name || this._model?.collection?.name,
-            durationMs: duration
-          });
-        }
-      }
+      finishOperation(this);
       next();
     });
+
+    schema.post(op, function (this: any, error: any, result: any, next: any) {
+      finishOperation(this);
+      next(error);
+    });
+  });
+
+  // save 的错误由 Mongoose 单独通过 save:error 触发；当前 typings 未声明该 hook 名。
+  schema.post('save:error' as any, function (this: any, error: any, result: any, next: any) {
+    finishOperation(this);
+    next(error);
   });
 
   // Register the result transform once per Schema instead of once per timing operation.

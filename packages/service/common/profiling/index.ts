@@ -41,6 +41,13 @@ let inflightCount = 0;
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
+const markStateError = (state: ProfileState, error?: unknown) => {
+  state.ok = false;
+  if (error === undefined) return;
+
+  state.error ??= getErrText(error).slice(0, MAX_ERROR_LENGTH);
+};
+
 /**
  * 采集开关。
  *
@@ -59,6 +66,16 @@ const shouldProfile = () => {
 
 /** 供其它模块低成本判断是否处于采集上下文，避免无谓的属性读取与字符串拼接。 */
 export const isProfiling = () => storage.getStore() !== undefined;
+
+/**
+ * 标记当前 profile 为失败，用于业务代码已经把异常转换成响应、不再继续抛出错误的场景。
+ *
+ * 多次调用时保留第一个错误信息，避免响应收尾阶段的次要错误覆盖真正的业务失败原因。
+ */
+export const markProfileError = (error?: unknown) => {
+  const state = storage.getStore();
+  if (state) markStateError(state, error);
+};
 
 /**
  * 在本次调用上下文内累加一个阶段的耗时。
@@ -219,7 +236,8 @@ const emit = async (state: ProfileState) => {
     state.stages.forEach((stat, name) => {
       profileInstruments.stageDuration.record(round(stat.ms), {
         kind: state.kind,
-        stage: name
+        stage: name,
+        status
       });
     });
   } catch (error) {
@@ -262,8 +280,7 @@ export const withRequestProfile = async <T>(
   try {
     return await storage.run(state, fn);
   } catch (error) {
-    state.ok = false;
-    state.error = getErrText(error).slice(0, MAX_ERROR_LENGTH);
+    markStateError(state, error);
     throw error;
   } finally {
     inflightCount -= 1;
