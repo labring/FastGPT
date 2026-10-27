@@ -17,10 +17,6 @@ import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/pl
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { MongoTeamInstalledPlugin } from './schema/teamInstalledPluginSchema';
 import { SystemToolRepo } from '../app/tool/systemTool/systemTool.repo';
-import { getLogger, LogCategories } from '../../common/logger';
-import { withDurationLog } from '../../common/logger/timing';
-
-const logger = getLogger(LogCategories.MODULE.PLUGIN.TEAM);
 
 export type TeamPluginPolicyRecord = TeamInstalledPluginSchemaType;
 
@@ -62,16 +58,7 @@ export const getTeamPluginPolicyStatus = (policy?: TeamInstalledPluginSchemaType
 };
 
 export const getTeamPluginPolicyMap = async (teamId: string) => {
-  const policies = await withDurationLog(
-    {
-      logger,
-      message: 'Team plugin list stage finished',
-      properties: { stage: 'mongo.teamPluginPolicy', teamId },
-      summary: (records) => ({ policyCount: records.length })
-    },
-    async () => MongoTeamInstalledPlugin.find({ teamId }).lean()
-  );
-
+  const policies = await MongoTeamInstalledPlugin.find({ teamId }).lean();
   return new Map(policies.map((policy) => [policy.pluginId, policy]));
 };
 

@@ -27,10 +27,6 @@ import {
   resolveTeamPluginList
 } from '../../../plugin/teamPluginPolicy';
 import { SystemToolRepo } from './systemTool.repo';
-import { getLogger, LogCategories } from '../../../../common/logger';
-import { withDurationLog, withSyncDurationLog } from '../../../../common/logger/timing';
-
-const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
 export type AuthorizedSystemToolListItem = NodeTemplateListItemType & { source: string };
 
@@ -84,16 +80,7 @@ const filterTemplateBySearchKey = ({
 };
 
 const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?: string }) => {
-  const status = await withDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'plugin.debugSessionStatus', tmbId }
-    },
-    // 调试通道未开通属于预期分支，与慢请求排查无关，继续用 catch 归为“无调试来源”。
-    () => pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined)
-  );
-
+  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
   if (
     status?.enabled &&
     (status.status === 'enabled' || status.status === 'connected') &&
@@ -140,44 +127,27 @@ const getSystemToolTemplateList = async ({
       lang,
       source: parentSource ?? 'system'
     });
+    if (!isSelectableToolStatus(parent.status)) return [];
 
-    // 工具集展开复用过滤阶段，parentId 区分子工具与顶层列表的耗时。
-    return withSyncDurationLog(
-      {
-        logger,
-        message: 'System tool templates stage finished',
-        properties: {
-          stage: 'templates.filter',
-          teamId,
-          parentId,
-          inputCount: parent.children?.length ?? 0
-        },
-        summary: (items) => ({ outputCount: items.length })
-      },
-      () => {
-        if (!isSelectableToolStatus(parent.status)) return [];
-
-        return (
-          parent.children
-            ?.filter((child) => isSelectableToolStatus(child.status))
-            .map<AuthorizedSystemToolListItem>((child) => ({
-              ...parent,
-              templateType: FlowNodeTemplateTypeEnum.tools,
-              isTool: true,
-              flowNodeType: FlowNodeTypeEnum.tool,
-              name: child.name,
-              intro: child.description,
-              id: `${parentId}/${child.id}`,
-              source: isTeamPluginSource(source) ? source : parent.source,
-              avatar: child.icon ?? parent.avatar,
-              currentCost: child.currentCost,
-              systemKeyCost: child.systemKeyCost,
-              hasTokenFee: parent.hasTokenFee,
-              status: child.status
-            }))
-            .filter((template) => filterTemplateBySearchKey({ template, searchRegex, lang })) ?? []
-        );
-      }
+    return (
+      parent.children
+        ?.filter((child) => isSelectableToolStatus(child.status))
+        .map<AuthorizedSystemToolListItem>((child) => ({
+          ...parent,
+          templateType: FlowNodeTemplateTypeEnum.tools,
+          isTool: true,
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: child.name,
+          intro: child.description,
+          id: `${parentId}/${child.id}`,
+          source: isTeamPluginSource(source) ? source : parent.source,
+          avatar: child.icon ?? parent.avatar,
+          currentCost: child.currentCost,
+          systemKeyCost: child.systemKeyCost,
+          hasTokenFee: parent.hasTokenFee,
+          status: child.status
+        }))
+        .filter((template) => filterTemplateBySearchKey({ template, searchRegex, lang })) ?? []
     );
   }
 
@@ -192,68 +162,36 @@ const getSystemToolTemplateList = async ({
     getTeamPluginPolicyMap(teamId)
   ]);
 
-  // 将来源/安装策略解析与后续可见性、搜索过滤分开，便于按数量和耗时定位瓶颈。
-  const authorizedTools = withSyncDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'templates.resolvePermissions', teamId, inputCount: tools.length },
-      summary: (items) => ({ outputCount: items.length })
-    },
-    () => resolveTeamPluginList({ teamId, tools, policyMap, canManage: false })
-  );
-  const sortedTools = withSyncDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'templates.sort', teamId, toolCount: authorizedTools.length }
-    },
-    () =>
-      authorizedTools.sort(
-        (a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source))
-      )
-  );
-
-  return withSyncDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'templates.filter', teamId, inputCount: sortedTools.length },
-      summary: (items) => ({ outputCount: items.length })
-    },
-    () =>
-      sortedTools
-        .filter((item) => {
-          if (!isSelectableToolStatus(item.status)) return false;
-          if (isRoot) return true;
-          return !item.hideTags?.some((tag) => userTags.includes(tag));
-        })
-        .map<AuthorizedSystemToolListItem>((tool) => ({
-          ...tool,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          isTool: true,
-          flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-          source: tool.source,
-          name: tool.name,
-          intro: tool.intro,
-          instructions: tool.userGuide ?? '',
-          tags: tool.tags
-        }))
-        .filter((template) => filterTemplateBySearchKey({ template, searchRegex, lang }))
-  );
+  return resolveTeamPluginList({
+    teamId,
+    tools,
+    policyMap,
+    canManage: false
+  })
+    .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
+    .filter((item) => {
+      if (!isSelectableToolStatus(item.status)) return false;
+      if (isRoot) return true;
+      return !item.hideTags?.some((tag) => userTags.includes(tag));
+    })
+    .map<AuthorizedSystemToolListItem>((tool) => ({
+      ...tool,
+      templateType: FlowNodeTemplateTypeEnum.tools,
+      isTool: true,
+      flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      source: tool.source,
+      name: tool.name,
+      intro: tool.intro,
+      instructions: tool.userGuide ?? '',
+      tags: tool.tags
+    }))
+    .filter((template) => filterTemplateBySearchKey({ template, searchRegex, lang }));
 };
 
 export const listAuthorizedSystemToolTemplates = async (
   params: SystemToolTemplateListParams
 ): Promise<AuthorizedSystemToolListItem[]> => {
-  const userDetail = await withDurationLog(
-    {
-      logger,
-      message: 'System tool templates stage finished',
-      properties: { stage: 'user.detail', tmbId: params.tmbId }
-    },
-    () => getUserDetail({ tmbId: params.tmbId })
-  );
+  const userDetail = await getUserDetail({ tmbId: params.tmbId });
   return getSystemToolTemplateList({
     ...params,
     userTags: userDetail.tags ?? []

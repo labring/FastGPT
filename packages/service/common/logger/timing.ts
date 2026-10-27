@@ -1,118 +1,72 @@
-type DurationLogger = {
-  debug: (message: string, properties?: Record<string, unknown>) => void;
-  warn: (message: string, properties?: Record<string, unknown>) => void;
-};
+import { getLogger } from './client';
+import { LogCategories } from './categories';
 
-export type DurationLogOptions<T> = {
-  logger: DurationLogger;
-  /** 稳定、可检索的消息，同一模块的阶段差异通过 properties.stage 区分 */
-  message: string;
-  /** 调用前就已知的字段，例如 stage、teamId、来源列表 */
-  properties?: Record<string, unknown>;
-  /** 调用完成后补充的字段，例如结果数量；不要把完整结果本身写进日志 */
-  summary?: (result: T) => Record<string, unknown>;
-};
+type TimingResult<T> = T extends PromiseLike<unknown> ? Promise<Awaited<T>> : T;
 
-/**
- * 慢阶段阈值。超过该耗时的阶段用 warn 输出，默认配置下会同时进入 console 与 OTEL，
- * 便于线上直接按 durationMs 检索慢请求；正常耗时只留 debug，避免列表类接口刷日志。
- */
-const SLOW_DURATION_MS = 1000;
-
-const logDuration = ({
-  logger,
-  message,
-  fields
-}: {
-  logger: DurationLogger;
-  message: string;
-  fields: Record<string, unknown> & { durationMs: number };
-}) => {
-  if (fields.durationMs >= SLOW_DURATION_MS) {
-    logger.warn(message, fields);
-    return;
-  }
-
-  logger.debug(message, fields);
+export type TimingOptions<Args extends unknown[], Result> = {
+  /** 稳定的事件标识，同时用于日志正文和结构化检索。 */
+  event: string;
+  /** 被计时的处理阶段，与 event 一起标识一次阶段日志。 */
+  stage: string;
+  /** 固定字段或按本次调用入参生成的摘要；不要记录完整业务参数。 */
+  properties?: Record<string, unknown> | ((...args: Args) => Record<string, unknown>);
+  /** 成功后补充数量等摘要，异步函数传入的是兑现后的结果。 */
+  summary?: (result: Awaited<Result>) => Record<string, unknown>;
 };
 
 /**
- * 测量同步的合并、权限解析和过滤等处理，沿用异步阶段的等级、摘要与失败标记。
- * 保持同步返回和原始异常，不引入 await，避免把微任务排队时间计入处理耗时。
+ * 在函数装配时注入计时，统一使用 trace.<event> 专用日志分类；调用方只声明事件和阶段。
+ * 返回可正常传参调用的函数，每次调用独立计时并沿用 requestId 等日志上下文。
+ * 同步结果仍同步返回，Promise/thenable 等到完成后记录耗时；保留 this 和原始业务异常。
+ * 阶段达到 1000ms 使用 warn，其余使用 debug，成功只记录摘要，失败补充 failed 标记。
  */
-export const withSyncDurationLog = <T>(
-  { logger, message, properties, summary }: DurationLogOptions<T>,
-  run: () => T
-): T => {
-  const startedAt = Date.now();
+export const withTiming = <Args extends unknown[], Result, This>(
+  { event, stage, properties, summary }: TimingOptions<NoInfer<Args>, NoInfer<Result>>,
+  run: (this: This, ...args: Args) => Result
+) => {
+  const logger = getLogger([...LogCategories.TRACE, event]);
+  return function (this: This, ...args: Args): TimingResult<Result> {
+    const startedAt = Date.now();
+    const callProperties = typeof properties === 'function' ? properties(...args) : properties;
 
-  try {
-    const result = run();
-
-    logDuration({
-      logger,
-      message,
-      fields: {
-        ...properties,
-        ...summary?.(result),
-        durationMs: Date.now() - startedAt
+    /** 每次调用独立持有开始时间和字段，避免并发调用相互覆盖。 */
+    const logDuration = (fields: Record<string, unknown>) => {
+      const durationMs = Date.now() - startedAt;
+      // 固定标识由计时器持有，业务字段和结果摘要不能覆盖 event、stage 或实际耗时。
+      const logProperties = { ...callProperties, ...fields, event, stage, durationMs };
+      if (durationMs >= 1000) {
+        logger.warn(event, logProperties);
+        return;
       }
-    });
+      logger.debug(event, logProperties);
+    };
+    const onSuccess = (result: Awaited<Result>) => {
+      logDuration(summary?.(result) ?? {});
+      return result;
+    };
+    const onFailure = (error: unknown): never => {
+      logDuration({ failed: true });
+      throw error;
+    };
 
-    return result;
-  } catch (error) {
-    logDuration({
-      logger,
-      message,
-      fields: {
-        ...properties,
-        durationMs: Date.now() - startedAt,
-        failed: true
+    try {
+      const result = run.apply(this, args);
+      // Mongo Query 等 thenable 也属于异步调用，不能在拿到对象时就结束计时。
+      const isPromiseLike =
+        result !== null &&
+        (typeof result === 'object' || typeof result === 'function') &&
+        'then' in result &&
+        typeof result.then === 'function';
+      if (isPromiseLike) {
+        return Promise.resolve<Result>(result)
+          .then(onSuccess)
+          .catch(onFailure) as TimingResult<Result>;
       }
-    });
 
-    throw error;
-  }
-};
-
-/**
- * 测量一次异步调用（通常是下游请求或数据库查询）的耗时并输出结构化日志。
- *
- * 用途：定位接口慢在哪个阶段。外层 HTTP 中间件已经记录整个请求耗时，这里只补齐
- * 逐个阶段的耗时和规模，便于区分「插件服务慢」「数据库慢」「鉴权慢」。
- * 失败分支同样记录耗时：下游超时表现为慢请求加报错，丢掉耗时会漏掉关键线索。
- */
-export const withDurationLog = async <T>(
-  { logger, message, properties, summary }: DurationLogOptions<T>,
-  run: () => Promise<T>
-): Promise<T> => {
-  const startedAt = Date.now();
-
-  try {
-    const result = await run();
-
-    logDuration({
-      logger,
-      message,
-      fields: {
-        ...properties,
-        ...summary?.(result),
-        durationMs: Date.now() - startedAt
-      }
-    });
-
-    return result;
-  } catch (error) {
-    logDuration({
-      logger,
-      message,
-      fields: {
-        ...properties,
-        durationMs: Date.now() - startedAt,
-        failed: true
-      }
-    });
-
-    throw error;
-  }
+      // 运行时分支已经区分同步和异步；条件返回类型在泛型实现内部需要显式收窄。
+      return onSuccess(result as Awaited<Result>) as TimingResult<Result>;
+    } catch (error) {
+      return onFailure(error);
+    }
+  };
 };
