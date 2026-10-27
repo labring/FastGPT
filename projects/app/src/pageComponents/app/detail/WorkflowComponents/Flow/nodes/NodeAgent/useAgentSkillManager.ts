@@ -196,7 +196,14 @@ export const useAgentSkillManager = ({
     [latestSelectedAgentSkills, latestSkillsInput, nodeId, onChangeNode]
   );
 
-  const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
+  const {
+    skillOption,
+    selectedSkills,
+    configuringToolId,
+    onClickSkill,
+    onRemoveSkill,
+    SkillModal
+  } = useSkillManager({
     selectedTools,
     selectedAgentSkills,
     onAddAgentSkill: skillsInput ? onAddAgentSkill : undefined,
@@ -250,6 +257,7 @@ export const useAgentSkillManager = ({
     selectedSkills,
     selectedAgentSkills,
     canUploadFile,
+    configuringToolId,
     onClickSkill,
     onConfigTool,
     onRemoveSkill,

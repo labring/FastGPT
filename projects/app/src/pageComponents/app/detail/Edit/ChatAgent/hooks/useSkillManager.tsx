@@ -7,7 +7,7 @@ import type {
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   getToolConfigStatus,
   validateToolConfiguration
@@ -38,6 +38,7 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey, normalizeToolIdentity } from '@fastgpt/global/core/app/tool/utils';
+import { hydrateAgentToolForEdit } from '@/web/core/app/agentTool';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
@@ -56,6 +57,17 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   };
   return subAppTypeMap[flowNodeType];
 };
+
+/** 紧凑/canonical 工具只有 inputs[key].mode，没有完整控件定义。 */
+const hasFullToolInputDefinitions = (tool: SelectedToolItemType) =>
+  Array.isArray(tool.inputs) &&
+  tool.inputs.every((input) =>
+    Array.isArray((input as { renderTypeList?: unknown })?.renderTypeList)
+  );
+
+/** 可直接打开配置弹窗的完整工具；零输入工具也应直接打开，不能误判为紧凑配置。 */
+const hasCompleteToolDefinition = (tool: SelectedToolItemType) =>
+  isSubApp(tool.flowNodeType) && hasFullToolInputDefinitions(tool) && Array.isArray(tool.outputs);
 
 const toSkillLabelItem = (
   tool: SelectedToolItemType,
@@ -615,6 +627,9 @@ export const useSkillManager = ({
         if ((tool.pluginId ?? tool.id) === SubAppIds.datasetSearch) {
           return hasSelectedDataset ? 'configured' : 'waitingForConfig';
         }
+        if (!hasFullToolInputDefinitions(tool)) {
+          return undefined;
+        }
         return getToolConfigStatus({ tool }).status;
       })();
 
@@ -686,8 +701,10 @@ export const useSkillManager = ({
   ]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
+  const [configuringToolId, setConfiguringToolId] = useState<string>();
+  const loadingConfigToolIds = useRef(new Set<string>());
   const onClickSkill = useCallback(
-    (id: string) => {
+    async (id: string): Promise<SelectedToolItemType | undefined> => {
       if (selectedAgentSkills.some((skill) => skill.skillId === id)) {
         return;
       }
@@ -702,11 +719,48 @@ export const useSkillManager = ({
       );
       if (!tool) return;
 
-      if (isSubApp(tool.flowNodeType)) {
-        setConfigTool(normalizeToolIdentity(tool));
+      if (hasCompleteToolDefinition(tool)) {
+        const normalizedTool = normalizeToolIdentity(tool);
+        setConfigTool(normalizedTool);
+        return normalizedTool;
+      }
+
+      // 导入/旧数据的紧凑工具只有 canonical 配置，点击配置时按需加载完整定义，
+      // 并按保存的 inputs[key].mode / config 恢复编辑态。
+      if (loadingConfigToolIds.current.has(id)) return;
+      loadingConfigToolIds.current.add(id);
+      setConfiguringToolId(id);
+      try {
+        const hydratedTool = await hydrateAgentToolForEdit({
+          tool,
+          lang: i18n.language
+        });
+        // 等待期间工具可能已被删除/替换，确认它仍在最新 selectedTools 中再打开弹窗。
+        const latestTool = lastSelectedTools.current?.find(
+          (item) => getSkillId(item.pluginId ?? item.id, item.source) === id
+        );
+        if (!latestTool || !isSubApp(hydratedTool.flowNodeType)) return;
+        setConfigTool(hydratedTool);
+        return hydratedTool;
+      } catch {
+        toast({
+          status: 'warning',
+          title: t('common:core.workflow.check.tool_load_failed')
+        });
+      } finally {
+        loadingConfigToolIds.current.delete(id);
+        setConfiguringToolId((current) => (current === id ? undefined : current));
       }
     },
-    [onClickDatasetSearch, selectedAgentSkills, selectedTools]
+    [
+      i18n.language,
+      lastSelectedTools,
+      onClickDatasetSearch,
+      selectedAgentSkills,
+      selectedTools,
+      t,
+      toast
+    ]
   );
   const onRemoveSkill = useCallback(() => {}, []);
 
@@ -734,6 +788,7 @@ export const useSkillManager = ({
   return {
     skillOption,
     selectedSkills,
+    configuringToolId,
     onClickSkill,
     onRemoveSkill,
     SkillModal

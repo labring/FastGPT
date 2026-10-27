@@ -14,13 +14,14 @@ type Props = {
   tool: SelectedToolItemType;
   onConfig?: (tool: SelectedToolItemType) => void;
   onDelete?: (tool: SelectedToolItemType) => void;
+  configLoading?: boolean;
 };
 
 /**
  * Agent 工具卡片。
  * 统一展示工具的错误态（已删除/无权限/已停用）与待配置态，Agent V2 与工作流 Agent 节点复用。
  */
-const SelectedToolCard = ({ tool, onConfig, onDelete }: Props) => {
+const SelectedToolCard = ({ tool, onConfig, onDelete, configLoading }: Props) => {
   const { t } = useTranslation();
   const { status, errorMessage, hasToolError, isWaitingForConfig, isDebugTool } =
     getSelectedToolCardState({ tool, t });
@@ -98,6 +99,7 @@ const SelectedToolCard = ({ tool, onConfig, onDelete }: Props) => {
               className="hoverStyle"
               display={'none'}
               icon="common/setting"
+              isLoading={configLoading}
               tip={t('app:tool_param_config')}
               onClick={(e) => {
                 e.stopPropagation();

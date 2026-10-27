@@ -33,7 +33,7 @@ import { useWorkflowQuoteLimit } from '../../hooks/useWorkflowQuoteLimit';
 
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { useAgentSkillManager } from './useAgentSkillManager';
-import { restoreDatasetParams } from './utils';
+import { getAgentToolConfigId, restoreDatasetParams } from './utils';
 
 import DatasetCard from '@/components/core/app/DatasetCard';
 import SelectedToolCard from '@/components/core/app/SelectedToolCard';
@@ -419,6 +419,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     selectedSkills,
     selectedAgentSkills,
     canUploadFile,
+    configuringToolId,
     onClickSkill,
     onConfigTool,
     onRemoveSkill,
@@ -655,6 +656,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   <SelectedToolCard
                     key={getToolIdentityKey(item.pluginId || item.id, item.source)}
                     tool={item}
+                    configLoading={configuringToolId === getAgentToolConfigId(item)}
                     onConfig={onConfigTool}
                     onDelete={(tool) => onDeleteTool(tool.pluginId ?? tool.id, tool.source)}
                   />
