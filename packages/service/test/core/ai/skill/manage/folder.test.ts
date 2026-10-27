@@ -16,6 +16,16 @@ const fixture = () => ({
 });
 
 describe('createSkillFolder', () => {
+  it('scopes the injected parent lookup to the resource team', async () => {
+    const local = fixture();
+    const foreign = fixture();
+    const parent = await createSkillFolder({ ...foreign, name: 'foreign-folder' });
+    await expect(
+      createSkillFolder({ ...local, name: 'invalid-child', parentId: String(parent._id) })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
+    expect(await MongoAgentSkills.countDocuments({ teamId: local.teamId })).toBe(0);
+  });
+
   it('uses the caller transaction when the parent has just been created', async () => {
     const scope = fixture();
     const { mongoSessionRun } = await vi.importActual<

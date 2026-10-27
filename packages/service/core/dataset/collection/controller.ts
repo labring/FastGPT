@@ -802,7 +802,7 @@ export async function createCollections({
     // 同批文件夹常共享祖先；缓存事务内的只读查询，避免沿每条父链重复往返数据库。
     const parentCache = new Map<
       string,
-      Promise<Pick<DatasetCollectionSchemaType, '_id' | 'parentId' | 'teamId' | 'type'> | null>
+      Promise<Pick<DatasetCollectionSchemaType, '_id' | 'parentId' | 'type'> | null>
     >();
     for (const doc of docs) {
       const isFolder = doc.type === DatasetCollectionTypeEnum.folder;
@@ -810,25 +810,20 @@ export async function createCollections({
       if (checkedParents.has(key)) continue;
       await checkCreateResourceParent({
         parentId: doc.parentId,
-        teamId: doc.teamId,
-        model: {
-          findById: (id, select) => ({
-            lean: () => {
-              const key = JSON.stringify([doc.teamId, doc.datasetId, id]);
-              const cached = parentCache.get(key);
-              if (cached) return cached;
-              const parent = Promise.resolve(
-                MongoDatasetCollection.findOne(
-                  { _id: id, teamId: doc.teamId, datasetId: doc.datasetId },
-                  select
-                )
-                  .session(s)
-                  .lean()
-              );
-              parentCache.set(key, parent);
-              return parent;
-            }
-          })
+        findResource: (id) => {
+          const key = JSON.stringify([doc.teamId, doc.datasetId, id]);
+          const cached = parentCache.get(key);
+          if (cached) return cached;
+          const parent = Promise.resolve(
+            MongoDatasetCollection.findOne(
+              { _id: id, teamId: doc.teamId, datasetId: doc.datasetId },
+              '_id parentId type'
+            )
+              .session(s)
+              .lean()
+          );
+          parentCache.set(key, parent);
+          return parent;
         },
         isFolder,
         isFolderType: (type) => type === DatasetCollectionTypeEnum.folder

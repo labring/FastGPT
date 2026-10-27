@@ -101,8 +101,10 @@ export const moveDataset = async ({
   await checkMoveFolderDepth({
     resourceId: id,
     targetParentId: parentId,
-    teamId: dataset.teamId,
-    model: MongoDataset,
+    findResource: (id) =>
+      MongoDataset.findOne({ _id: id, teamId: dataset.teamId }, '_id parentId type').lean(),
+    findChildren: (parentId) =>
+      MongoDataset.find({ parentId, teamId: dataset.teamId }, '_id type').lean(),
     isFolderType: (type) => type === DatasetTypeEnum.folder
   });
 

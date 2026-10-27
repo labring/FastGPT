@@ -18,10 +18,10 @@ export async function createSkill(data: CreateSkillData, session?: ClientSession
   const { skillId, ...createData } = data;
   await checkCreateResourceParent({
     parentId: createData.parentId,
-    teamId: createData.teamId,
-    model: {
-      findById: (id, select) => MongoAgentSkills.findById(id, select).session(session ?? null)
-    },
+    findResource: (id) =>
+      MongoAgentSkills.findOne({ _id: id, teamId: createData.teamId }, '_id parentId type')
+        .session(session ?? null)
+        .lean(),
     isFolder: false,
     isFolderType: (type) => type === AgentSkillTypeEnum.folder
   });

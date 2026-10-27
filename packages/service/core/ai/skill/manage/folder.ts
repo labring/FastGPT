@@ -139,10 +139,10 @@ export async function createSkillFolder(
 
   await checkCreateResourceParent({
     parentId,
-    teamId,
-    model: {
-      findById: (id, select) => MongoAgentSkills.findById(id, select).session(session ?? null)
-    },
+    findResource: (id) =>
+      MongoAgentSkills.findOne({ _id: id, teamId: teamId, deleteTime: null }, '_id parentId type')
+        .session(session ?? null)
+        .lean(),
     isFolder: true,
     isFolderType: (type) => type === AgentSkillTypeEnum.folder
   });

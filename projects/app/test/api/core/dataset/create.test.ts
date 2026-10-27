@@ -15,7 +15,7 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
+import { getFakeUsers, getUser } from '@test/datas/users';
 import type { parseHeaderCertRet } from '@test/mocks/request';
 import { Call } from '@test/utils/request';
 import { describe, it, expect } from 'vitest';
@@ -283,6 +283,35 @@ describe('create dataset inheritPermission', () => {
 });
 
 describe('generic dataset creation parent checks', () => {
+  it('rejects a foreign-team ancestor behind an authorized parent folder', async () => {
+    const { owner } = await getFakeUsers(1);
+    const foreign = await getUser('foreign-team-owner');
+    const ancestor = await MongoDataset.create({
+      name: 'foreign-ancestor',
+      type: DatasetTypeEnum.folder,
+      teamId: foreign.teamId,
+      tmbId: foreign.tmbId
+    });
+    const parent = await MongoDataset.create({
+      name: 'local-parent',
+      type: DatasetTypeEnum.folder,
+      parentId: ancestor._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const result = await Call(createHandler, {
+      auth: owner,
+      body: {
+        name: 'invalid-child',
+        intro: '',
+        type: DatasetTypeEnum.dataset,
+        parentId: String(parent._id)
+      }
+    });
+    expect(result.error).toBe(CommonErrEnum.invalidParams);
+    expect(await MongoDataset.countDocuments({ name: 'invalid-child' })).toBe(0);
+  });
+
   it('enforces folder depth at the boundary and permits a dataset in the deepest folder', async () => {
     const { owner } = await getFakeUsers(1);
     const ids: string[] = [];

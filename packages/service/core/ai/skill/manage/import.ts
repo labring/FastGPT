@@ -42,8 +42,7 @@ export async function importSkill({
 }: ImportSkillParams): Promise<string> {
   await checkCreateResourceParent({
     parentId,
-    teamId,
-    model: MongoAgentSkills,
+    findResource: (id) => MongoAgentSkills.findOne({ _id: id, teamId }, '_id parentId type').lean(),
     isFolder: false,
     isFolderType: (type) => type === AgentSkillTypeEnum.folder
   });

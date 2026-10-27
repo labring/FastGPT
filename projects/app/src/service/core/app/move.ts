@@ -103,8 +103,9 @@ export const moveApp = async ({
   await checkMoveFolderDepth({
     resourceId: appId,
     targetParentId: parentId,
-    teamId: app.teamId,
-    model: MongoApp,
+    findResource: (id) =>
+      MongoApp.findOne({ _id: id, teamId: app.teamId }, '_id parentId type').lean(),
+    findChildren: (parentId) => MongoApp.find({ parentId, teamId: app.teamId }, '_id type').lean(),
     isFolderType
   });
 

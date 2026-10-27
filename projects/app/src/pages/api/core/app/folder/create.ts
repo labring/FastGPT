@@ -58,8 +58,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBodyType>): Promise<v
 
   await checkCreateFolderDepth({
     parentId,
-    teamId,
-    model: MongoApp,
+    findResource: (id) => MongoApp.findOne({ _id: id, teamId }, '_id parentId type').lean(),
     isFolderType: (parentType) => parentType === type
   });
 

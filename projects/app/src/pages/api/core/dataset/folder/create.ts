@@ -49,8 +49,7 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<v
 
   await checkCreateFolderDepth({
     parentId,
-    teamId,
-    model: MongoDataset,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
     isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
   });
 

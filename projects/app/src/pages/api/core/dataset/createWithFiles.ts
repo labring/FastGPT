@@ -72,8 +72,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
 
   await checkCreateResourceParent({
     parentId,
-    teamId,
-    model: MongoDataset,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
     isFolder: false,
     isFolderType: (type) => type === DatasetTypeEnum.folder
   });

@@ -175,8 +175,10 @@ export const onCreateApp = async ({
   const folderTree = getAppFolderTree(type);
   await checkCreateResourceParent({
     parentId,
-    teamId,
-    model: { findById: (id, select) => MongoApp.findById(id, select).session(session ?? null) },
+    findResource: (id) =>
+      MongoApp.findOne({ _id: id, teamId }, '_id parentId type')
+        .session(session ?? null)
+        .lean(),
     isFolder: AppFolderTypeList.includes(type),
     isFolderType: (parentType) =>
       AppFolderTypeList.includes(parentType as AppTypeEnum) &&
