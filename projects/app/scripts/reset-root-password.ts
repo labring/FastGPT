@@ -5,10 +5,8 @@ import { pathToFileURL } from 'node:url';
 
 export { createRootPasswordUpdate, resolveRootPasswordArgument } from './reset-root-password-utils';
 
-const DEFAULT_ROOT_PASSWORD = '123456';
-
-/** 重置 root 密码并要求账号在登录后通过账号激活流程自行设置密码。 */
-export const resetRootPassword = async (password: string = DEFAULT_ROOT_PASSWORD) => {
+/** 重置 root 密码；不再自动将状态置为 inactive，不影响已激活账号。 */
+export const resetRootPassword = async (password: string) => {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('缺少 MONGODB_URI 环境变量');
   if (!password) throw new Error('root 密码不能为空');
@@ -29,7 +27,7 @@ export const resetRootPassword = async (password: string = DEFAULT_ROOT_PASSWORD
   }
 };
 
-/** 仅接受一个可选密码参数；省略时使用兼容安装流程的默认密码。 */
+/** 必须接受一个密码参数；不再支持省略或默认密码。 */
 const main = async () => {
   if (process.env.RESET_ROOT_PASSWORD_SELFTEST === '1') {
     process.stdout.write('reset-root-password ready\n');
@@ -38,7 +36,7 @@ const main = async () => {
 
   const password = resolveRootPasswordArgument(process.argv.slice(2));
   await resetRootPassword(password);
-  process.stdout.write('root 密码已重置，请登录后完成账号激活\n');
+  process.stdout.write('root 密码已重置\n');
 };
 
 const isEntryPoint =
