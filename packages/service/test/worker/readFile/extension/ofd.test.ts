@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import JSZip from 'jszip';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { readOfdFile, detectBaseFontSize } from '@fastgpt/service/worker/readFile/extension/ofd';
+import {
+  readOfdFile,
+  detectBaseFontSize,
+  analyzeTextItems,
+  buildPageMarkdown
+} from '@fastgpt/service/worker/readFile/extension/ofd';
 
 const OFD_NS = 'http://www.ofdservices.org/VisDoc';
 
@@ -455,5 +460,40 @@ describe('detectBaseFontSize', () => {
 
     // 修复前 Math.min(...rows.map(...)) 超过 V8 参数上限时会抛 RangeError。
     expect(detectBaseFontSize([rows])).toBe(10.5);
+  });
+});
+
+describe('analyzeTextItems', () => {
+  it('支持超过函数参数上限的同 y 行数', () => {
+    // 同一 y 坐标下的项数也可能超过 V8 函数参数上限，修复前 Math.min/max(...lineItems.map()) 会抛 RangeError。
+    const itemCount = 1_000_000;
+    const items = Array.from({ length: itemCount }, (_, index) => ({
+      text: 'a',
+      x: index,
+      y: 0,
+      size: 10.5
+    }));
+
+    const rows = analyzeTextItems(items);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].xStart).toBe(0);
+    expect(rows[0].fontSize).toBe(10.5);
+  });
+});
+
+describe('buildPageMarkdown', () => {
+  it('支持超过函数参数上限的单页行数', () => {
+    // 单页行数可能超过 V8 函数参数上限（病态高密度页），修复前 Math.min/max(...contentRows.map()) 会抛 RangeError。
+    const rowCount = 1_000_000;
+    const rows = Array.from({ length: rowCount }, (_, index) => ({
+      text: `line ${index}`,
+      xStart: 0,
+      yPos: index,
+      fontSize: 10.5
+    }));
+
+    const markdown = buildPageMarkdown(rows, 10.5);
+    expect(markdown).toContain('line 0');
+    expect(markdown.length).toBeGreaterThan(0);
   });
 });

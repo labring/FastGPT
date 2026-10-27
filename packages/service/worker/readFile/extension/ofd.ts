@@ -104,7 +104,7 @@ const parsePageContentTextItems = (doc: Document): ParsedTextItem[] => {
   return items;
 };
 
-const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
+export const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
   const yGroups = new Map<number, ParsedTextItem[]>();
   textItems.forEach((item) => {
     const yKey = Number(item.y.toFixed(1));
@@ -128,9 +128,10 @@ const analyzeTextItems = (textItems: ParsedTextItem[]): LayoutRow[] => {
           .map((item) => item.text)
           .join('')
           .trim(),
-        xStart: Math.min(...lineItems.map((item) => item.x)),
+        // 同一 y 组的项数也可能超过函数参数上限，沿用 reduce 求最值避免 RangeError。
+        xStart: minNumber(lineItems.map((item) => item.x)),
         yPos,
-        fontSize: Math.max(...lineItems.map((item) => item.size))
+        fontSize: maxNumber(lineItems.map((item) => item.size))
       };
     });
 };
@@ -207,7 +208,7 @@ const median = (values: number[]) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
+export const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
   const contentRows = rows.filter((row) => row.text);
   if (!contentRows.length) return '';
 
@@ -216,11 +217,12 @@ const buildPageMarkdown = (rows: LayoutRow[], baseFontSize: number) => {
     .map((row) => row.xStart);
   const baseX = normalXs.length
     ? median(normalXs)
-    : Math.min(...contentRows.map((row) => row.xStart));
+    : minNumber(contentRows.map((row) => row.xStart));
 
+  // 单页行数可能超过函数参数上限（病态高密度页），沿用 reduce 求最值避免 RangeError。
   const pageYRange: [number, number] = [
-    Math.min(...contentRows.map((row) => row.yPos)),
-    Math.max(...contentRows.map((row) => row.yPos))
+    minNumber(contentRows.map((row) => row.yPos)),
+    maxNumber(contentRows.map((row) => row.yPos))
   ];
 
   const parts: string[] = [];
