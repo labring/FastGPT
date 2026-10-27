@@ -100,9 +100,16 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     'insertMany'
   ];
 
-  /** 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。 */
+  /**
+   * 成功和失败 post hook 共用同一套耗时、慢查询与 profile 统计。
+   *
+   * 同一次操作可能触发多个收尾 hook（例如 save 失败会先走 `save:error`，
+   * 再由外层 save wrapper 执行 `save` 的错误 middleware），这里按上下文做幂等，
+   * 避免重复累计 Mongo 次数、耗时与集合热度，也避免重复输出慢查询告警。
+   */
   const finishOperation = (context: any) => {
-    if (!context._startTime) return;
+    if (!context._startTime || context._profileFinished) return;
+    context._profileFinished = true;
 
     const duration = Date.now() - context._startTime;
     const getLogData = () => {
@@ -146,6 +153,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
   operations.forEach((op: any) => {
     schema.pre(op, function (this: any, next) {
       this._startTime = Date.now();
+      this._profileFinished = false;
       this._query = this.getQuery ? this.getQuery() : null;
 
       next();

@@ -164,6 +164,28 @@ describe('Mongo profile middleware', () => {
     );
   });
 
+  it('records a real successful save exactly once', async () => {
+    const { model } = createModel();
+
+    await model.create({ name: `ok-${randomUUID()}` });
+
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(1);
+  });
+
+  it('records a real failed save exactly once', async () => {
+    const { model } = createModel();
+    const insertSpy = vi
+      .spyOn(model.collection, 'insertOne')
+      .mockRejectedValue(new Error('insert failed'));
+
+    await expect(model.create({ name: 'failed-save' })).rejects.toThrow();
+
+    insertSpy.mockRestore();
+
+    // save 失败会同时触发 save:error 与 save 的错误 middleware，收尾必须幂等。
+    expect(profilingMocks.recordMongoOperation).toHaveBeenCalledTimes(1);
+  });
+
   it('records a real failed query with its collection name', async () => {
     const { model } = createModel();
 
