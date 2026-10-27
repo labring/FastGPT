@@ -69,8 +69,9 @@ export const getTeamPluginPolicyMap = async (teamId: string) => {
   const getPolicies = withTiming(
     {
       logger,
-      message: 'Team plugin list stage finished',
-      properties: (teamId) => ({ stage: 'mongo.teamPluginPolicy', teamId }),
+      event: 'team_plugin.list.stage_finished',
+      stage: 'mongo.teamPluginPolicy',
+      properties: (teamId) => ({ teamId }),
       summary: (records) => ({ policyCount: records.length })
     },
     loadPolicies

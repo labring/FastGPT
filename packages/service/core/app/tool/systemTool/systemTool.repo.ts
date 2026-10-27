@@ -360,8 +360,9 @@ export class SystemToolRepo {
     const listPluginTools = withTiming(
       {
         logger,
-        message: 'System tool list stage finished',
-        properties: ({ op, sources }) => ({ stage: 'plugin.listTools', op, sources }),
+        event: 'system_tool.list.stage_finished',
+        stage: 'plugin.listTools',
+        properties: ({ op, sources }) => ({ op, sources }),
         summary: (items) => ({ toolCount: items.length })
       },
       loadPluginTools
@@ -369,8 +370,8 @@ export class SystemToolRepo {
     const getSystemToolRecords = withTiming(
       {
         logger,
-        message: 'System tool list stage finished',
-        properties: { stage: 'mongo.systemToolConfig' },
+        event: 'system_tool.list.stage_finished',
+        stage: 'mongo.systemToolConfig',
         summary: (records) => ({ configCount: records.length })
       },
       this.getAllSystemToolRecords
@@ -378,9 +379,9 @@ export class SystemToolRepo {
     const mergeSystemTools = withTiming(
       {
         logger,
-        message: 'System tool list stage finished',
+        event: 'system_tool.list.stage_finished',
+        stage: 'tools.merge',
         properties: (tools, records) => ({
-          stage: 'tools.merge',
           inputCount: tools.length,
           configCount: records.length
         }),
@@ -391,8 +392,9 @@ export class SystemToolRepo {
     const sortSystemTools = withTiming(
       {
         logger,
-        message: 'System tool list stage finished',
-        properties: (tools) => ({ stage: 'tools.sort', toolCount: tools.length })
+        event: 'system_tool.list.stage_finished',
+        stage: 'tools.sort',
+        properties: (tools) => ({ toolCount: tools.length })
       },
       sortTools
     );

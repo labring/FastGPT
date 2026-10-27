@@ -35,8 +35,9 @@ const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 const getTimedUserDetail = withTiming(
   {
     logger,
-    message: 'System tool templates stage finished',
-    properties: ({ tmbId }) => ({ stage: 'user.detail', tmbId })
+    event: 'system_tool.templates.stage_finished',
+    stage: 'user.detail',
+    properties: ({ tmbId }) => ({ tmbId })
   },
   getUserDetail
 );
@@ -100,8 +101,9 @@ const getActiveDebugSource = async ({ tmbId, source }: { tmbId: string; source?:
   const getDebugSessionStatus = withTiming(
     {
       logger,
-      message: 'System tool templates stage finished',
-      properties: ({ tmbId }) => ({ stage: 'plugin.debugSessionStatus', tmbId })
+      event: 'system_tool.templates.stage_finished',
+      stage: 'plugin.debugSessionStatus',
+      properties: ({ tmbId }) => ({ tmbId })
     },
     loadDebugSession
   );
@@ -184,9 +186,9 @@ const getSystemToolTemplateList = async ({
     const filterChildren = withTiming(
       {
         logger,
-        message: 'System tool templates stage finished',
+        event: 'system_tool.templates.stage_finished',
+        stage: 'templates.filter',
         properties: (parent) => ({
-          stage: 'templates.filter',
           teamId,
           parentId,
           inputCount: parent.children?.length ?? 0
@@ -241,9 +243,9 @@ const getSystemToolTemplateList = async ({
   const resolvePermissions = withTiming(
     {
       logger,
-      message: 'System tool templates stage finished',
+      event: 'system_tool.templates.stage_finished',
+      stage: 'templates.resolvePermissions',
       properties: ({ tools }) => ({
-        stage: 'templates.resolvePermissions',
         teamId,
         inputCount: tools.length
       }),
@@ -254,16 +256,18 @@ const getSystemToolTemplateList = async ({
   const sortTemplates = withTiming(
     {
       logger,
-      message: 'System tool templates stage finished',
-      properties: (tools) => ({ stage: 'templates.sort', teamId, toolCount: tools.length })
+      event: 'system_tool.templates.stage_finished',
+      stage: 'templates.sort',
+      properties: (tools) => ({ teamId, toolCount: tools.length })
     },
     sortBySource
   );
   const filterTemplates = withTiming(
     {
       logger,
-      message: 'System tool templates stage finished',
-      properties: (tools) => ({ stage: 'templates.filter', teamId, inputCount: tools.length }),
+      event: 'system_tool.templates.stage_finished',
+      stage: 'templates.filter',
+      properties: (tools) => ({ teamId, inputCount: tools.length }),
       summary: (items) => ({ outputCount: items.length })
     },
     filterSelectableTemplates

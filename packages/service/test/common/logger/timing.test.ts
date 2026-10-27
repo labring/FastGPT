@@ -17,6 +17,31 @@ describe('withTiming', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps event, stage and duration owned by the timer when metadata conflicts', () => {
+    const logger = createLogger();
+    function read() {
+      return 0;
+    }
+    const run = withTiming(
+      {
+        logger,
+        event: 'test.stage_finished',
+        stage: 'tools.merge',
+        properties: { event: 'other_event', stage: 'other_stage', durationMs: 9000 },
+        summary: () => ({ event: 'summary_event', stage: 'summary_stage', durationMs: 8000 })
+      },
+      read
+    );
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(1040);
+
+    expect(run()).toBe(0);
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+      event: 'test.stage_finished',
+      stage: 'tools.merge',
+      durationMs: 40
+    });
+  });
+
   it('wraps once and preserves sync result identity, arguments and this', () => {
     const logger = createLogger();
     const owner = { tools: ['a', 'b'] };
@@ -28,8 +53,9 @@ describe('withTiming', () => {
     const list = withTiming(
       {
         logger,
-        message: 'Stage finished',
-        properties: (source, limit) => ({ stage: 'tools.merge', source, inputCount: limit }),
+        event: 'test.stage_finished',
+        stage: 'tools.merge',
+        properties: (source, limit) => ({ source, inputCount: limit }),
         summary: (tools) => ({ outputCount: tools.length })
       },
       listTools
@@ -42,7 +68,8 @@ describe('withTiming', () => {
     expectTypeOf(result).toEqualTypeOf<string[]>();
     expect(result).toBe(owner.tools);
     expect(now).toHaveBeenCalledTimes(2);
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+      event: 'test.stage_finished',
       stage: 'tools.merge',
       source: 'system',
       inputCount: 2,
@@ -58,12 +85,16 @@ describe('withTiming', () => {
   ] as const)('logs %ims at %s with no required metadata or result', (durationMs, level) => {
     const logger = createLogger();
     function noop() {}
-    const run = withTiming({ logger, message: 'Stage finished' }, noop);
+    const run = withTiming({ logger, event: 'test.stage_finished', stage: 'test' }, noop);
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(durationMs);
 
     expect(run()).toBeUndefined();
 
-    expect(logger[level]).toHaveBeenCalledExactlyOnceWith('Stage finished', { durationMs });
+    expect(logger[level]).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+      event: 'test.stage_finished',
+      stage: 'test',
+      durationMs
+    });
     expect(logger[level === 'debug' ? 'warn' : 'debug']).not.toHaveBeenCalled();
   });
 
@@ -74,11 +105,15 @@ describe('withTiming', () => {
       function read() {
         return value;
       }
-      const run = withTiming({ logger, message: 'Stage finished' }, read);
+      const run = withTiming({ logger, event: 'test.stage_finished', stage: 'test' }, read);
       vi.spyOn(Date, 'now').mockReturnValue(1000);
 
       expect(run()).toBe(value);
-      expect(logger.debug).toHaveBeenCalledExactlyOnceWith('Stage finished', { durationMs: 0 });
+      expect(logger.debug).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+        event: 'test.stage_finished',
+        stage: 'test',
+        durationMs: 0
+      });
     }
   );
 
@@ -93,10 +128,7 @@ describe('withTiming', () => {
       function fail(): never {
         throw error;
       }
-      const run = withTiming(
-        { logger, message: 'Stage finished', properties: { stage: 'tools.filter' } },
-        fail
-      );
+      const run = withTiming({ logger, event: 'test.stage_finished', stage: 'tools.filter' }, fail);
       vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(durationMs);
       let caught: unknown;
 
@@ -107,7 +139,8 @@ describe('withTiming', () => {
       }
 
       expect(caught).toBe(error);
-      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+        event: 'test.stage_finished',
         stage: 'tools.filter',
         durationMs,
         failed: true
@@ -127,8 +160,9 @@ describe('withTiming', () => {
     const list = withTiming(
       {
         logger,
-        message: 'Stage finished',
-        properties: (source) => ({ stage: 'plugin.listTools', source }),
+        event: 'test.stage_finished',
+        stage: 'plugin.listTools',
+        properties: (source) => ({ source }),
         summary: (items) => ({ toolCount: items.length })
       },
       load
@@ -142,7 +176,8 @@ describe('withTiming', () => {
     pending.resolve(tools);
 
     await expect(result).resolves.toBe(tools);
-    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+    expect(logger.debug).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+      event: 'test.stage_finished',
       stage: 'plugin.listTools',
       source: 'system',
       toolCount: 2,
@@ -161,12 +196,14 @@ describe('withTiming', () => {
       async function load(): Promise<never> {
         throw error;
       }
-      const run = withTiming({ logger, message: 'Stage finished' }, load);
+      const run = withTiming({ logger, event: 'test.stage_finished', stage: 'test' }, load);
       vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(durationMs);
 
       await expect(run()).rejects.toBe(error);
 
-      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+      expect(logger[level]).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+        event: 'test.stage_finished',
+        stage: 'test',
         durationMs,
         failed: true
       });
@@ -186,7 +223,12 @@ describe('withTiming', () => {
       return query;
     }
     const run = withTiming(
-      { logger, message: 'Stage finished', summary: (items) => ({ toolCount: items.length }) },
+      {
+        logger,
+        event: 'test.stage_finished',
+        stage: 'test',
+        summary: (items) => ({ toolCount: items.length })
+      },
       load
     );
     vi.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(1000);
@@ -196,7 +238,9 @@ describe('withTiming', () => {
     expectTypeOf(result).toEqualTypeOf<Promise<string[]>>();
     expect(result).toBeInstanceOf(Promise);
     await expect(result).resolves.toBe(tools);
-    expect(logger.warn).toHaveBeenCalledExactlyOnceWith('Stage finished', {
+    expect(logger.warn).toHaveBeenCalledExactlyOnceWith('test.stage_finished', {
+      event: 'test.stage_finished',
+      stage: 'test',
       toolCount: 1,
       durationMs: 1000
     });
@@ -210,7 +254,7 @@ describe('withTiming', () => {
       return id === 'first' ? first.promise : second.promise;
     }
     const run = withTiming(
-      { logger, message: 'Stage finished', properties: (id) => ({ id }) },
+      { logger, event: 'test.stage_finished', stage: 'test', properties: (id) => ({ id }) },
       load
     );
     const now = vi.spyOn(Date, 'now').mockReturnValue(1000);
@@ -226,8 +270,14 @@ describe('withTiming', () => {
     await expect(secondResult).resolves.toBe('b');
 
     expect(logger.debug.mock.calls).toEqual([
-      ['Stage finished', { id: 'first', durationMs: 400 }],
-      ['Stage finished', { id: 'second', durationMs: 800 }]
+      [
+        'test.stage_finished',
+        { event: 'test.stage_finished', stage: 'test', id: 'first', durationMs: 400 }
+      ],
+      [
+        'test.stage_finished',
+        { event: 'test.stage_finished', stage: 'test', id: 'second', durationMs: 800 }
+      ]
     ]);
   });
 });

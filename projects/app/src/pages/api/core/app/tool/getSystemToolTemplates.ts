@@ -17,7 +17,7 @@ export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
 const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 const authSystemToolRequest = withTiming(
-  { logger, message: 'System tool templates stage finished', properties: { stage: 'auth' } },
+  { logger, event: 'system_tool.templates.stage_finished', stage: 'auth' },
   authCert
 );
 

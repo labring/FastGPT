@@ -168,14 +168,16 @@ describe('SystemToolRepo.getSystemToolList', () => {
       'systemTool-low-order-single-match',
       'systemTool-second-order-single-match'
     ]);
-    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.list.stage_finished', {
+      event: 'system_tool.list.stage_finished',
       stage: 'tools.merge',
       inputCount: 3,
       configCount: 3,
       outputCount: 3,
       durationMs: expect.any(Number)
     });
-    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.list.stage_finished', {
+      event: 'system_tool.list.stage_finished',
       stage: 'tools.sort',
       toolCount: 3,
       durationMs: expect.any(Number)
@@ -195,7 +197,8 @@ describe('SystemToolRepo.getSystemToolList', () => {
     const tools = await SystemToolRepo.getInstance().getSystemToolList({ sources: ['system'] });
 
     expect(tools.map((tool) => tool.id)).toEqual(['systemTool-normal', 'systemTool-workflow']);
-    expect(logger.debug).toHaveBeenCalledWith('System tool list stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.list.stage_finished', {
+      event: 'system_tool.list.stage_finished',
       stage: 'tools.merge',
       inputCount: 1,
       configCount: 1,

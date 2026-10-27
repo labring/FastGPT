@@ -34,14 +34,15 @@ export type listResponse = GetTeamPluginListResponseType;
 
 const logger = getLogger(LogCategories.MODULE.PLUGIN.TEAM);
 const authToolListRequest = withTiming(
-  { logger, message: 'Team plugin list stage finished', properties: { stage: 'auth' } },
+  { logger, event: 'team_plugin.list.stage_finished', stage: 'auth' },
   authUserPer
 );
 const getTimedUserDetail = withTiming(
   {
     logger,
-    message: 'Team plugin list stage finished',
-    properties: ({ tmbId }) => ({ stage: 'user.detail', tmbId })
+    event: 'team_plugin.list.stage_finished',
+    stage: 'user.detail',
+    properties: ({ tmbId }) => ({ tmbId })
   },
   getUserDetail
 );
@@ -113,8 +114,9 @@ async function getActiveDebugSource(tmbId: string) {
   const getDebugSessionStatus = withTiming(
     {
       logger,
-      message: 'Team plugin list stage finished',
-      properties: ({ tmbId }) => ({ stage: 'plugin.debugSessionStatus', tmbId })
+      event: 'team_plugin.list.stage_finished',
+      stage: 'plugin.debugSessionStatus',
+      properties: ({ tmbId }) => ({ tmbId })
     },
     loadDebugSession
   );

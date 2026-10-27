@@ -138,20 +138,23 @@ describe('listAuthorizedSystemToolTemplates', () => {
     });
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
     expect(mocks.getClientToolPreviewNode).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
+      event: 'system_tool.templates.stage_finished',
       stage: 'templates.resolvePermissions',
       teamId: context.teamId,
       inputCount: 11,
       outputCount: 8,
       durationMs: expect.any(Number)
     });
-    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
+      event: 'system_tool.templates.stage_finished',
       stage: 'templates.sort',
       teamId: context.teamId,
       toolCount: 8,
       durationMs: expect.any(Number)
     });
-    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
+      event: 'system_tool.templates.stage_finished',
       stage: 'templates.filter',
       teamId: context.teamId,
       inputCount: 8,
@@ -181,7 +184,8 @@ describe('listAuthorizedSystemToolTemplates', () => {
     });
 
     expect(tools.map((tool) => tool.id)).toEqual(['systemTool-debug-match', 'systemTool-match']);
-    expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+    expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
+      event: 'system_tool.templates.stage_finished',
       stage: 'templates.filter',
       teamId: context.teamId,
       inputCount: 3,
@@ -215,7 +219,8 @@ describe('listAuthorizedSystemToolTemplates', () => {
       });
 
       expect(tools.map((tool) => tool.id)).toEqual(expectedIds);
-      expect(logger.debug).toHaveBeenCalledWith('System tool templates stage finished', {
+      expect(logger.debug).toHaveBeenCalledWith('system_tool.templates.stage_finished', {
+        event: 'system_tool.templates.stage_finished',
         stage: 'templates.filter',
         teamId: context.teamId,
         parentId: 'systemTool-set',

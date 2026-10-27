@@ -7,8 +7,10 @@ type TimingResult<T> = T extends PromiseLike<unknown> ? Promise<Awaited<T>> : T;
 
 export type TimingOptions<Args extends unknown[], Result> = {
   logger: DurationLogger;
-  /** 稳定消息，阶段通过 properties.stage 区分。 */
-  message: string;
+  /** 稳定的事件标识，同时用于日志正文和结构化检索。 */
+  event: string;
+  /** 被计时的处理阶段，与 event 一起标识一次阶段日志。 */
+  stage: string;
   /** 固定字段或按本次调用入参生成的摘要；不要记录完整业务参数。 */
   properties?: Record<string, unknown> | ((...args: Args) => Record<string, unknown>);
   /** 成功后补充数量等摘要，异步函数传入的是兑现后的结果。 */
@@ -21,7 +23,7 @@ export type TimingOptions<Args extends unknown[], Result> = {
  * 阶段达到 1000ms 使用 warn，其余使用 debug，成功只记录摘要，失败补充 failed 标记。
  */
 export const withTiming = <Args extends unknown[], Result, This>(
-  { logger, message, properties, summary }: TimingOptions<NoInfer<Args>, NoInfer<Result>>,
+  { logger, event, stage, properties, summary }: TimingOptions<NoInfer<Args>, NoInfer<Result>>,
   run: (this: This, ...args: Args) => Result
 ) => {
   return function (this: This, ...args: Args): TimingResult<Result> {
@@ -32,7 +34,8 @@ export const withTiming = <Args extends unknown[], Result, This>(
     const logDuration = (fields: Record<string, unknown>) => {
       const durationMs = Date.now() - startedAt;
       const log = durationMs >= 1000 ? logger.warn : logger.debug;
-      log.call(logger, message, { ...callProperties, ...fields, durationMs });
+      // 固定标识由计时器持有，业务字段和结果摘要不能覆盖 event、stage 或实际耗时。
+      log.call(logger, event, { ...callProperties, ...fields, event, stage, durationMs });
     };
     const onSuccess = (result: Awaited<Result>) => {
       logDuration(summary?.(result) ?? {});
