@@ -217,9 +217,11 @@ const emit = async (state: ProfileState) => {
   // 埋点自身失败不能影响业务；这里只记录一条告警后放弃本次上报。
   try {
     // 转义花括号后直接拼进消息，避免日志框架把 JSON 当成占位符，也避免给字符串加引号，
-    // 保证输出是单行、可直接 grep / jq 的原始 JSON。
+    // 消息里保留一份转义后的 JSON，保证 console 输出单行、可直接 grep / jq；
+    // 同时把字段作为结构化属性传给日志后端，便于按 kind / totalMs 等条件检索。
+    // `verbose: false` 用于阻止 logger 代理追加 `: {*}` 占位符，避免控制台重复输出。
     const payloadText = JSON.stringify(payload).replaceAll('{', '{{').replaceAll('}', '}}');
-    logger.info(`Request profile ${payloadText}`);
+    logger.info(`Request profile ${payloadText}`, { verbose: false, ...payload });
   } catch (error) {
     logger.warn('Failed to write request profile log', { error });
   }
