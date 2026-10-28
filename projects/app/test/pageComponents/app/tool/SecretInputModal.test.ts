@@ -50,25 +50,6 @@ vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
   };
 });
 
-vi.mock(
-  '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference',
-  async () => {
-    const React = await import('react');
-    return {
-      ReferSelector: ({ onSelect }: any) =>
-        React.createElement(
-          'button',
-          {
-            type: 'button',
-            'data-testid': 'select-reference',
-            onClick: () => onSelect(['node', 'token'])
-          },
-          'Select reference'
-        )
-    };
-  }
-);
-
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({ useRequest: () => ({ data: [] }) }));
 
 const referenceList: SecretReferenceList = [
@@ -170,8 +151,17 @@ describe('SecretInputModal helpers', () => {
       await act(async () => {
         root.render(
           createElement(SecretInputForm, {
-            nodeId: 'node',
             referenceList,
+            renderReference: ({ onSelect }) =>
+              createElement(
+                'button',
+                {
+                  type: 'button',
+                  'data-testid': 'select-reference',
+                  onClick: () => onSelect(['node', 'token'])
+                },
+                'Select reference'
+              ),
             inputConfig: {
               inputList: [{ key: 'token', label: 'Token', inputType: 'secret', required: true }]
             } as any,
