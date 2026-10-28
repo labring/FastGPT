@@ -27,7 +27,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lan
   if (!i18n.languages.includes(lang)) return new Response('Unknown language', { status: 404 });
 
   const files = (await fg('./content/**/*.mdx'))
-    .filter((file) => file.endsWith('.en.mdx') === (lang === 'en'))
+    .filter(
+      (file) =>
+        file.endsWith('.en.mdx') === (lang === 'en') &&
+        !/\/toc(?:\.en)?\.mdx$/.test(file)
+    )
     .sort();
 
   const scan = files.map(async (file: string) => {

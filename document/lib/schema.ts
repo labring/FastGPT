@@ -1,5 +1,6 @@
-import type { Article, BreadcrumbList, WithContext } from 'schema-dts';
+import type { BreadcrumbList, TechArticle, WithContext } from 'schema-dts';
 
+/** Build a TechArticle JSON-LD object with a host-aligned publisher logo URL. */
 export function generateArticleSchema(params: {
   title: string;
   description: string;
@@ -7,12 +8,13 @@ export function generateArticleSchema(params: {
   datePublished?: Date;
   dateModified?: Date;
   lang: string;
-}): WithContext<Article> {
+}): WithContext<TechArticle> {
   const { title, description, url, datePublished, dateModified, lang } = params;
+  const origin = new URL(url).origin;
 
   return {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'TechArticle',
     headline: title,
     description,
     url,
@@ -29,7 +31,7 @@ export function generateArticleSchema(params: {
       name: 'FastGPT',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://doc.fastgpt.io/logo.svg'
+        url: `${origin}/favicon/favicon.svg`
       }
     }
   };

@@ -76,7 +76,7 @@ export const MarketplaceToolBaseSchema = z.object({
     description: '插件源码仓库地址'
   }),
   tutorialUrl: z.string().optional().meta({
-    example: 'https://doc.fastgpt.io/docs/plugin',
+    example: 'https://doc.fastgpt.io/en/plugin/intro',
     description: '插件教程地址'
   }),
   readmeUrl: z.string().optional().meta({

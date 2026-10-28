@@ -7,11 +7,13 @@ import { type NextRequest, NextResponse } from 'next/server';
 // Old links like /docs/foo are first stripped to /foo, then matched here.
 const exactMap: Record<string, string> = {
   '': defaultHomePath,
+  '/': defaultHomePath,
   '/intro': defaultHomePath,
 
   // Version / home.
   '/commercial/intro': '/guide/version/commercial',
   '/introduction': defaultHomePath,
+  '/introduction/community': defaultHomePath,
   '/introduction/shopping_cart/intro': '/guide/version/commercial',
   '/introduction/cloud': '/guide/version/cloud/intro',
   '/protocol/terms': '/guide/version/cloud/terms',
@@ -20,13 +22,23 @@ const exactMap: Record<string, string> = {
   // Self-host.
   '/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   '/upgrading': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   // Pre-rename misspellings of the upgrade page keep resolving.
   '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading/4-15/4150': '/self-host/upgrading/4-15/41500',
   '/introduction/development/docker': '/self-host/deploy/docker',
   '/introduction/development/sealos': '/self-host/deploy/sealos',
   '/introduction/development/intro': '/self-host/dev',
   '/introduction/development/object-storage': '/self-host/config/object-storage',
+  '/introduction/development/configuration': '/self-host/config/env',
+  '/self-host/configuration': '/self-host/config/env',
+  '/self-host/config/json': '/self-host/config/env',
+  '/self-host/config/model/ai-proxy': '/self-host/config/model/intro',
+  '/self-host/config/model/one-api': '/self-host/config/model/intro',
+  '/self-host/config/model/ppio': '/self-host/config/model/intro',
+  '/self-host/design/design_plugin': '/plugin/intro',
+  '/self-host/faq': '/self-host/troubleshooting/faq',
 
   // General config / getting started.
   '/introduction/guide/course/quick-start': '/guide/getting-started/quick-start',
@@ -34,6 +46,9 @@ const exactMap: Record<string, string> = {
   '/introduction/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
   '/introduction/guide/course/fileinput': '/guide/build/general/fileInput',
   '/introduction/guide/course/fileInput': '/guide/build/general/fileInput',
+  '/introduction/guide/course/welcomeText': '/guide/build/general/welcomeText',
+  '/introduction/guide/course/voiceInput': '/guide/build/general/voiceInput',
+  '/introduction/guide/course/collection_tags': '/guide/dataset/collection_tags',
 
   // Knowledge base third-party pages moved under dataset/third-party.
   '/introduction/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
@@ -50,23 +65,45 @@ const exactMap: Record<string, string> = {
   // Dashboard pages that moved to different build sub-sections.
   '/introduction/guide/dashboard/evaluation': '/guide/build/evaluation',
   '/introduction/guide/dashboard/intro': '/guide/build/workflow/intro',
+  '/introduction/guide/dashboard/basic-mode': '/guide/build/chat-agent',
+  '/introduction/guide/dashboard/gapier': '/guide/build/tools/http_tools',
   '/introduction/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
   '/introduction/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/build/workflow/nodes/sandbox': '/guide/build/workflow/nodes/sandbox-v2',
+  '/guide/build/workflow/nodes/laf': '/guide/build/workflow/nodes/sandbox-v2',
   '/guide/build/tools/system-plugins/dev_system_tool': '/plugin/system-tool-development',
+  '/guide/build/tools/system-plugins/bing_search_plugin': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/doc2x_plugin_guide': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/google_search_plugin_guide': '/plugin/team-installation',
+  '/guide/build/tools/system-plugins/searxng_plugin_guide': '/plugin/team-installation',
 
   // Workspace.
   '/introduction/commercial': '/guide/version/commercial',
+  '/introduction/guide/team_permissions/customDomain': '/guide/workspace/customDomain',
+  '/guide/workspace/team/customDomain': '/guide/workspace/customDomain',
+
+  // Historical FAQ subpages.
+  '/faq/app': '/guide/build/faq',
+  '/faq/dataset': '/guide/dataset/faq',
+  '/faq/external_channel_integration': '/guide/build/publish',
+  '/faq/other': '/guide/version/cloud/faq',
+  '/faq/points_consumption': '/guide/version/cloud/faq',
+  '/faq/docker': '/self-host/troubleshooting/faq',
+  '/faq/error': '/self-host/troubleshooting/faq',
+  '/faq/privateDeploy': '/self-host/troubleshooting/faq',
 
   // Navbar redirects.
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
   '/openapi': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
+  '/plugin': '/plugin/intro',
   '/faq': '/faq/chat'
 };
 
 // Prefix redirects for groups that kept the same slug after moving.
 const prefixMap: Record<string, string> = {
+  '/introduction/FAQ': '/faq',
   '/FAQ': '/faq',
   '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
@@ -84,6 +121,8 @@ const prefixMap: Record<string, string> = {
   '/introduction/guide/admin': '/guide/admin',
 
   '/introduction/development/openapi': '/openapi',
+  '/introduction/development/modelConfig': '/self-host/config/model',
+  '/self-host/modelConfig': '/self-host/config/model',
   '/introduction/development': '/self-host',
   '/introduction/version': '/guide/version',
   '/introduction/cloud': '/guide/version/cloud',
@@ -100,6 +139,21 @@ function normalizePath(path: string) {
 
 function applyRedirectMaps(path: string): string | null {
   if (path in exactMap) return exactMap[path];
+  if (path === '/use-cases/app-cases' || path.startsWith('/use-cases/app-cases/')) {
+    return '/guide/getting-started/examples';
+  }
+  if (
+    path === '/introduction/development/proxy' ||
+    path.startsWith('/introduction/development/proxy/') ||
+    path === '/self-host/proxy' ||
+    path.startsWith('/self-host/proxy/')
+  ) {
+    return '/self-host/deploy/docker';
+  }
+  const outdatedUpgradeMatch = path.match(/^\/self-host\/upgrading\/(4(?:[0-9]|1[01])\d*)$/);
+  if (outdatedUpgradeMatch) {
+    return `/self-host/upgrading/outdated/${outdatedUpgradeMatch[1]}`;
+  }
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
     if (path === oldPrefix || path.startsWith(`${oldPrefix}/`)) {
       return newPrefix + path.slice(oldPrefix.length);

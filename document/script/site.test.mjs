@@ -27,6 +27,7 @@ for (const locale of ['zh-CN', 'en']) {
     const files = [...body.matchAll(/^file: (.+)$/gm)].map((match) => match[1]);
     assert.ok(files.length >= 257, 'Every documentation topic is exported');
     assert.ok(files.every((file) => file.endsWith('.en.mdx') === (locale === 'en')));
+    assert.ok(files.every((file) => !/\/toc(?:\.en)?\.mdx$/.test(file)));
     assert.match(response.headers.get('content-type'), /text\/plain/);
   });
 }
@@ -58,6 +59,10 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     for (const [alternate, alternateHost] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.io']]) {
       assert.ok(html.includes(`<link rel="alternate" hrefLang="${alternate}" href="https://${alternateHost}/${alternate}/openapi/intro"`));
     }
+    assert.ok(html.includes('<link rel="alternate" hrefLang="x-default" href="https://doc.fastgpt.io/en/openapi/intro"'));
+    assert.ok(html.includes('"@type":"TechArticle"'));
+    assert.ok(html.includes(`https://${host}/favicon/favicon.svg`));
+    assert.ok(html.includes('/og-image.png'));
     const filename = locale === 'en' ? 'intro.en.mdx' : 'intro.mdx';
     assert.ok(html.includes(`https://github.com/labring/FastGPT/blob/main/document/content/openapi/${filename}`));
   });
@@ -87,7 +92,13 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
 test('legacy prefix redirects match path segments and retain encoded query values', async () => {
   for (const [legacy, target] of [
     ['/en/docs/introduction/development/openapi/chat', '/en/openapi/chat'],
-    ['/zh-CN/FAQ', '/zh-CN/faq/chat']
+    ['/zh-CN/FAQ', '/zh-CN/faq/chat'],
+    ['/en/plugin', '/en/plugin/intro'],
+    ['/zh-CN/faq/app', '/zh-CN/guide/build/faq'],
+    ['/zh-CN/self-host/config/json', '/zh-CN/self-host/config/env'],
+    ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
+    ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
+    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started/examples']
   ]) {
     const query = '?source=bookmark&value=a%2Fb%20c';
     const response = await fetch(`${origin}${legacy}${query}`, { redirect: 'manual' });

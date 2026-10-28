@@ -7,13 +7,13 @@ description: Preserved handwritten parameters from before the generated-referenc
 This archive preserves historical handwritten reference material. Some fields, endpoints, and model names belong to older releases. Follow the [current integration guide](/en/openapi/chat) and your deployment’s generated contract for current work.
 
 
-# How to Get AppId
+## How to Get AppId
 
 You can find the AppId in your app details URL.
 
 ![](/imgs/optimized/appid.png.webp)
 
-# Start a Session
+## Start a Session
 
 - Authenticate with an API Key. When calling `chat/completions` , passing `appId` in the request body is recommended.
 - For OpenAI SDK compatibility, `Authorization: Bearer <apiKey>-<appId>` is also supported. The suffix is only a transport compatibility format and is not stored.
@@ -614,7 +614,7 @@ Event values:
 </Tab>
 </Tabs>
 
-# Chat CRUD
+## Chat CRUD
 
 - The following APIs can be called with any `API Key` .
 - 4.8.12 and above

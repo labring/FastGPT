@@ -10,16 +10,29 @@ const files = fs.readdirSync(root, { recursive: true })
   .filter((name) => /\.mdx$|(?:^|\/)meta(?:\.en)?\.json$/.test(name))
   .map((name) => {
     const raw = fs.readFileSync(path.join(root, name), 'utf8');
-    return { type: name.endsWith('.mdx') ? 'page' : 'meta', path: name,
-      data: name.endsWith('.mdx') ? matter(raw).data : JSON.parse(raw) };
+    if (name.endsWith('.mdx')) {
+      const { data, content } = matter(raw);
+      const bodyWithoutFences = content.replace(/```[\s\S]*?```/g, '');
+      assert.ok(!/^#\s+/m.test(bodyWithoutFences), `In-body H1 heading in ${name}`);
+      if (!/^toc(?:\.en)?\.mdx$/.test(name)) {
+        const minDescLength = name.endsWith('.en.mdx') ? 40 : 20;
+        assert.ok(
+          String(data.description ?? '').trim().length >= minDescLength,
+          `Description below ${minDescLength} characters in ${name}`
+        );
+      }
+      return { type: 'page', path: name, data };
+    }
+    return { type: 'meta', path: name, data: JSON.parse(raw) };
   });
 const source = loader({ baseUrl: '/', i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'], hideLocale: 'never' }, source: { files } });
-const compatibilityLandings = new Set(['guide/index.mdx', 'openapi/index.mdx', 'plugin/index.mdx', 'faq/index.mdx', 'toc.mdx']);
+const compatibilityLandings = new Set(['toc.mdx']);
 for (const locale of ['zh-CN', 'en']) {
   const tree = source.pageTree[locale];
   assert.equal(tree.children.length, 3, 'Three reader entrances');
   const counts = new Map();
   const owners = new Map();
+  const titles = new Map();
   // Fumadocs uses the nearest root for the sidebar and adjacent-page navigation.
   const visit = (node, parentRoot) => {
     const sectionRoot = node.root ? node : parentRoot;
@@ -35,6 +48,9 @@ for (const locale of ['zh-CN', 'en']) {
   for (const page of source.getPages(locale)) {
     if (compatibilityLandings.has(page.path.replace(/\.en\.mdx$/, '.mdx'))) continue;
     assert.equal(counts.get(page.url), 1, `Each substantive page appears once: ${page.url}`);
+    const previousUrl = titles.get(page.data.title);
+    assert.equal(previousUrl, undefined, `Duplicate ${locale} title "${page.data.title}": ${previousUrl} and ${page.url}`);
+    titles.set(page.data.title, page.url);
   }
   for (const topic of ['intro', 'quick-start', 'system-tool-development', 'model-presets', 'debugging-and-publishing', 'package-reference']) {
     assert.equal(owners.get(`/${locale}/plugin/${topic}`), tree.children[1], `Plugin author topic belongs to Developers: ${topic}`);

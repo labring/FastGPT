@@ -21,10 +21,10 @@ FastGPT は AI Agent 構築プラットフォームであり、すぐに使え�
   <a href="https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
     <img height="21" src="https://img.shields.io/badge/オンライン利用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/guide/getting-started">
+  <a href="https://doc.fastgpt.io/en/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/ドキュメント-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/self-host/dev">
+  <a href="https://doc.fastgpt.io/en/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/ローカル開発-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-プロジェクトとリンク">
@@ -47,7 +47,7 @@ docker compose up -d
 
 完全に起動した後、`http://localhost:3000` で FastGPT にアクセスできます。デフォルトのアカウントは `root`、パスワードは `1234` です。
 
-問題が発生した場合は、[Docker デプロイの完全チュートリアル](https://doc.fastgpt.io/self-host/deploy/docker)をご覧ください。
+問題が発生した場合は、[Docker デプロイの完全チュートリアル](https://doc.fastgpt.io/en/self-host/deploy/docker)をご覧ください。
 
 ## 🛸 利用方法
 
@@ -55,10 +55,10 @@ docker compose up -d
   プライベートデプロイが不要な場合は、クラウドサービスを直接ご利用いただけます：[fastgpt.io](https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
 
 - **コミュニティセルフホスト版**  
-  [Docker](https://doc.fastgpt.io/self-host/deploy/docker) で素早くデプロイするか、[Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) でワンクリックデプロイが可能です。
+  [Docker](https://doc.fastgpt.io/en/self-host/deploy/docker) で素早くデプロイするか、[Sealos Cloud](https://doc.fastgpt.io/en/self-host/deploy/sealos) でワンクリックデプロイが可能です。
 
 - **商用版**  
-  より完全な機能や深いサービスサポートが必要な場合は、[商用版](https://doc.fastgpt.io/guide/version/commercial)をお選びいただけます。完全なソフトウェアの提供に加え、シナリオに応じた導入ガイダンスも提供しています。[商用相談](https://fastgpt.cn/en/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation)からお問い合わせください。
+  より完全な機能や深いサービスサポートが必要な場合は、[商用版](https://doc.fastgpt.io/en/guide/version/commercial)をお選びいただけます。完全なソフトウェアの提供に加え、シナリオに応じた導入ガイダンスも提供しています。[商用相談](https://fastgpt.cn/en/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation)からお問い合わせください。
 
 ## 💡 コア機能
 
@@ -109,7 +109,7 @@ docker compose up -d
 
 ## 💪 プロジェクトとリンク
 
-- [クイックスタート ローカル開発](https://doc.fastgpt.io/self-host/dev/)
+- [クイックスタート ローカル開発](https://doc.fastgpt.io/en/self-host/dev)
 - [OpenAPI ドキュメント](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: モデル集約ロードバランシングサービス](https://github.com/labring/aiproxy)
@@ -196,4 +196,4 @@ Feishu グループに参加：
 1. バックエンドサービスとしての商用利用は許可されていますが、SaaS サービスの提供は許可されていません。
 2. 商用ライセンスなしの商用サービスは、関連する著作権情報を保持する必要があります。
 3. 詳細は [FastGPT Open Source License](./LICENSE) をご覧ください。
-4. お問い合わせ：Dennis@sealos.io、[商用版の価格を見る](https://doc.fastgpt.io/guide/version/commercial)
+4. お問い合わせ：Dennis@sealos.io、[商用版の価格を見る](https://doc.fastgpt.io/en/guide/version/commercial)

@@ -143,6 +143,9 @@ export async function generateMetadata(props: {
 
   const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
+  const filePath = `content/${page.data._file.path}`;
+  const lastModified =
+    (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
 
   // 构建多语言 alternates
   const languages: Record<string, string> = {};
@@ -152,6 +155,9 @@ export async function generateMetadata(props: {
       languages[locale] = `${getFastGPTDocsOriginForLocale(locale === 'en' ? 'en' : 'zh-CN')}${localePage.url}`;
     }
   });
+  if (languages.en) {
+    languages['x-default'] = languages.en;
+  }
 
   return {
     title: page.data.title,
@@ -169,7 +175,22 @@ export async function generateMetadata(props: {
       type: 'article',
       publishedTime: page.data.releaseTime
         ? new Date(`${page.data.releaseTime}T00:00:00.000+08:00`).toISOString()
-        : undefined
+        : undefined,
+      modifiedTime: lastModified ? new Date(lastModified).toISOString() : undefined,
+      images: [
+        {
+          url: '/og-image.png',
+          width: 1200,
+          height: 630,
+          alt: page.data.title
+        }
+      ]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${page.data.title} | FastGPT`,
+      description: page.data.description,
+      images: ['/og-image.png']
     }
   };
 }

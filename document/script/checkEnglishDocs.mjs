@@ -40,11 +40,6 @@ function parsePage(raw) {
           prose.push(attribute.value);
         }
         if (attribute.name === 'href') links.push(attribute.value);
-        if (node.name === 'Redirect' && attribute.name === 'to') {
-          links.push(
-            attribute.value.startsWith('/en/') ? attribute.value : `/en${attribute.value}`
-          );
-        }
       }
     }
     for (const child of node.children ?? []) visit(child);

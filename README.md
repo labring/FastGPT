@@ -21,10 +21,10 @@ FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、�
   <a href="https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_badge">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/guide/getting-started">
+  <a href="https://doc.fastgpt.cn/zh-CN/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/self-host/dev">
+  <a href="https://doc.fastgpt.cn/zh-CN/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
@@ -47,7 +47,7 @@ docker compose up -d
 
 完全启动后，可通过 `http://localhost:3000` 访问 FastGPT，默认账号为 `root`，密码为 `1234`。
 
-如果你遇到问题，可以[查看完整 Docker 部署教程](https://doc.fastgpt.io/self-host/deploy/docker)
+如果你遇到问题，可以[查看完整 Docker 部署教程](https://doc.fastgpt.cn/zh-CN/self-host/deploy/docker)
 
 ## 🛸 使用方式
 
@@ -55,10 +55,10 @@ docker compose up -d
   如果你不需要私有化部署，可以直接使用我们提供的云服务版本，地址为：[fastgpt.io](https://fastgpt.io/?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=cloud_service_link)
 
 - **社区自托管版本**  
-  可以使用[Docker](https://doc.fastgpt.io/self-host/deploy/docker)快速部署，也可以使用[Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) 来一键部署FastGPT。
+  可以使用[Docker](https://doc.fastgpt.cn/zh-CN/self-host/deploy/docker)快速部署，也可以使用[Sealos Cloud](https://doc.fastgpt.cn/zh-CN/self-host/deploy/sealos) 来一键部署FastGPT。
 
 - **商业版**  
-  如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.io/guide/version/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fastgpt.cn/zh/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation)
+  如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.cn/zh-CN/guide/version/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fastgpt.cn/zh/contact?source=github&utm_source=github&utm_medium=referral&utm_campaign=github_home&utm_content=commercial_consultation)
 
 ## 💡 核心功能
 
@@ -108,7 +108,7 @@ docker compose up -d
 
 ## 💪 我们的项目 & 链接
 
-- [快速开始本地开发](https://doc.fastgpt.io/self-host/dev/)
+- [快速开始本地开发](https://doc.fastgpt.cn/zh-CN/self-host/dev)
 - [OpenAPI 文档](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: 模型聚合负载均衡服务](https://github.com/labring/aiproxy)
@@ -195,4 +195,4 @@ docker compose up -d
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
 2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
 3. 完整请查看 [FastGPT Open Source License](./LICENSE)
-4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.io/guide/version/commercial)
+4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.cn/zh-CN/guide/version/commercial)

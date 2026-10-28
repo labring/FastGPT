@@ -108,7 +108,7 @@ const Share = ({
               </Box>
               {feConfigs?.docUrl && (
                 <Link
-                  href={getDocPath('/openapi/share')}
+                  href={getDocPath('/guide/build/publish/link')}
                   target={'_blank'}
                   ml={2}
                   color={'primary.500'}
@@ -417,7 +417,7 @@ function EditLinkModal({
                 />
               </Flex>
               <Link
-                href={getDocPath('/openapi/share')}
+                href={getDocPath('/guide/build/publish/link')}
                 target={'_blank'}
                 fontSize={'xs'}
                 color={'myGray.500'}

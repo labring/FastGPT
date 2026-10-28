@@ -1,35 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getFastGPTHomeOrigin, getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 
 export const dynamic = 'force-static';
 
+/** Allow search and AI retrieval crawlers across documentation pages while restricting internal API routes. */
 export function GET() {
-  const homeDomain = getFastGPTHomeOrigin();
   const domain = getFastGPTDocsOrigin();
-  const isCN = homeDomain.includes('.cn');
-
-  let content: string;
-
-  if (isCN) {
-    content = `User-Agent: Googlebot
-Disallow: /
-
-User-Agent: *
+  const content = `User-Agent: *
 Allow: /
-
-Host: ${domain}
-Sitemap: ${domain}/sitemap.xml
-`;
-  } else {
-    content = `User-Agent: bingbot
-Disallow: /
-
-User-Agent: *
-Allow: /
+Disallow: /api/
 
 Sitemap: ${domain}/sitemap.xml
 `;
-  }
 
   return new NextResponse(content, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' }
