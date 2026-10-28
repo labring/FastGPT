@@ -8,11 +8,14 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import {
   CHAT_TITLE_GENERATION_TIMEOUT_MS,
   CHAT_TITLE_SEND_WAIT_TIMEOUT_MS,
+  canWriteGeneratedTitle,
   createGeneratedChatTitleSender,
-  syncGeneratedChatTitleFromUserContent
+  syncGeneratedChatTitleFromUserContent,
+  writeGeneratedChatTitle
 } from '@fastgpt/service/core/chat/title';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -169,6 +172,109 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(chat?.title).toBe('');
     expect(result).toBeUndefined();
   });
+
+  it.each([
+    { update: { title: 'Manual Title', customTitle: 'Manual Title' }, stream: true },
+    { update: { title: '', customTitle: 'Manual Title' }, stream: true },
+    { update: { title: 'Newer Title', customTitle: '' }, stream: true },
+    { update: { title: 'Manual Title', customTitle: 'Manual Title' }, stream: false },
+    { update: { title: '', customTitle: 'Manual Title' }, stream: false },
+    { update: { title: 'Newer Title', customTitle: '' }, stream: false }
+  ])(
+    'preserves a title updated during generation (stream=$stream, update=$update)',
+    async ({ update, stream }) => {
+      await createChat();
+      const match = { appId: base.appId, chatId: base.chatId };
+      const previousChat = await MongoChat.findOne(match).lean();
+      let resolveTitle!: (value: { answerText: string }) => void;
+      let onStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        onStarted = resolve;
+      });
+      createLLMResponseMock.mockImplementationOnce(() => {
+        onStarted();
+        return new Promise((resolve) => {
+          resolveTitle = resolve;
+        });
+      });
+
+      const titleGeneration = syncGeneratedChatTitleFromUserContent({
+        ...base,
+        shouldGenerateTitle: canWriteGeneratedTitle(previousChat),
+        userContent: textContent('Old question')
+      });
+      const writeChatTitle = vi.fn();
+      const sender = createGeneratedChatTitleSender({
+        titleGeneration,
+        stream,
+        detail: true,
+        writeChatTitle
+      });
+      const sent = sender.start();
+      await started;
+      await MongoChat.updateOne(match, { $set: update });
+      resolveTitle({ answerText: 'Late Old Title' });
+
+      const result = await titleGeneration;
+      await sent;
+      expect(await MongoChat.findOne(match).lean()).toMatchObject(update);
+      expect(result).toBeUndefined();
+      expect(writeChatTitle).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps the title snapshot captured before generation is scheduled', async () => {
+    await createChat({ title: 'Newer Title' });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      previousTitleState: { title: '', customTitle: '' },
+      userContent: textContent('Old question')
+    });
+
+    expect(await readStoredTitle()).toBe('Newer Title');
+    expect(result).toBeUndefined();
+  });
+
+  it.each([ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder])(
+    'preserves concurrent renames through preChatRound for %s',
+    async (sourceType) => {
+      const chat = await createChat({ sourceType });
+      let resolveTitle!: (value: { answerText: string }) => void;
+      let onStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        onStarted = resolve;
+      });
+      createLLMResponseMock.mockImplementationOnce(() => {
+        onStarted();
+        return new Promise((resolve) => {
+          resolveTitle = resolve;
+        });
+      });
+
+      const prepared = await preChatRound({
+        ...base,
+        sourceType,
+        source: ChatSourceEnum.online,
+        userContent: textContent('Old question'),
+        responseChatItemId: 'pending-title-round'
+      });
+      await started;
+      await MongoChat.updateOne(
+        { _id: chat._id },
+        {
+          $set: { title: 'Manual Title', customTitle: 'Manual Title' }
+        }
+      );
+      resolveTitle({ answerText: 'Late Old Title' });
+
+      expect(await prepared.titleGeneration).toBeUndefined();
+      expect(await MongoChat.findById(chat._id).lean()).toMatchObject({
+        title: 'Manual Title',
+        customTitle: 'Manual Title'
+      });
+    }
+  );
 
   it('uses local question text fallback when title model is unavailable', async () => {
     getDefaultChatTitleModelDataMock.mockReturnValue(undefined);
@@ -590,6 +696,82 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
         timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS
       })
     );
+  });
+});
+
+describe('writeGeneratedChatTitle', () => {
+  it.each([
+    { title: '', customTitle: '' },
+    { title: null, customTitle: null },
+    { title: '  上传文件  ', customTitle: '$manual' },
+    { title: '$previous', customTitle: '' }
+  ])(
+    'compares the original stored title state: $title / $customTitle',
+    async (previousTitleState) => {
+      const chat = await createChat();
+      // 绕过当前 Schema 的 trim setter，模拟历史原始值。
+      await MongoChat.collection.updateOne({ _id: chat._id }, { $set: previousTitleState });
+
+      const result = await writeGeneratedChatTitle({
+        ...base,
+        title: 'Generated Title',
+        previousTitleState
+      });
+
+      expect(result).toBe('Generated Title');
+      expect(await readStoredTitle()).toBe('Generated Title');
+      expect((await MongoChat.findById(chat._id).lean())?.customTitle).toBe(
+        previousTitleState.customTitle
+      );
+    }
+  );
+
+  it('supports missing historical title fields and does not return an unchanged title', async () => {
+    const chat = await createChat();
+    await MongoChat.collection.updateOne(
+      { _id: chat._id },
+      { $unset: { title: '', customTitle: '' } }
+    );
+
+    expect(
+      await writeGeneratedChatTitle({ ...base, title: 'Generated Title', previousTitleState: {} })
+    ).toBe('Generated Title');
+    expect(
+      await writeGeneratedChatTitle({
+        ...base,
+        title: 'Generated Title',
+        previousTitleState: { title: 'Generated Title' }
+      })
+    ).toBeUndefined();
+  });
+
+  it('preserves source isolation when chats share a physical appId and chatId', async () => {
+    const appChat = await createChat();
+    const helperChat = await createChat({ sourceType: ChatSourceTypeEnum.chatAgentHelper });
+
+    await writeGeneratedChatTitle({
+      ...base,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper,
+      title: 'Helper Title',
+      previousTitleState: { title: '', customTitle: '' }
+    });
+
+    expect((await MongoChat.findById(appChat._id).lean())?.title).toBe('');
+    expect((await MongoChat.findById(helperChat._id).lean())?.title).toBe('Helper Title');
+  });
+
+  it('continues to match historical App chats without sourceType', async () => {
+    const chat = await createChat();
+    await MongoChat.collection.updateOne({ _id: chat._id }, { $unset: { sourceType: '' } });
+
+    expect(
+      await writeGeneratedChatTitle({
+        ...base,
+        title: 'Generated Title',
+        previousTitleState: { title: '', customTitle: '' }
+      })
+    ).toBe('Generated Title');
+    expect(await readStoredTitle()).toBe('Generated Title');
   });
 });
 

@@ -16,7 +16,9 @@ import {
   canWriteGeneratedTitle,
   invalidGeneratedTitleValues,
   normalizeGeneratedTitle,
-  syncGeneratedChatTitleFromUserContent
+  syncGeneratedChatTitleFromUserContent,
+  writeGeneratedChatTitle,
+  type ChatTitleState
 } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 
@@ -64,6 +66,7 @@ export type PrepareChatRoundParams = ChatSourceParams & {
 
 export type PrepareChatRoundResult = {
   shouldGenerateTitle: boolean;
+  titleState?: ChatTitleState;
 };
 
 export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'responseChatItemId'> & {
@@ -152,6 +155,7 @@ export const prepareChatRound = async (
   };
 
   let shouldGenerateTitle = false;
+  let titleState: ChatTitleState | undefined;
 
   await mongoSessionRun(async (session) => {
     const previousChat = await MongoChat.findOneAndUpdate(
@@ -191,6 +195,10 @@ export const prepareChatRound = async (
       .lean();
 
     shouldGenerateTitle = canWriteGeneratedTitle(previousChat);
+    // 首次 upsert 返回 null，但新记录的两个标题字段均使用 Schema 默认空字符串。
+    titleState = previousChat
+      ? { title: previousChat.title, customTitle: previousChat.customTitle }
+      : { title: '', customTitle: '' };
 
     await MongoChatItem.create(
       [
@@ -214,7 +222,8 @@ export const prepareChatRound = async (
   });
 
   return {
-    shouldGenerateTitle
+    shouldGenerateTitle,
+    titleState
   };
 };
 
@@ -301,7 +310,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     });
 
     const titleGeneration = (() => {
-      if (!preparedChatRound.shouldGenerateTitle) return;
+      const { shouldGenerateTitle, titleState } = preparedChatRound;
+      if (!shouldGenerateTitle || !titleState) return;
 
       if (params.fixedTitle) {
         const fixedTitle = params.fixedTitle;
@@ -309,14 +319,13 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
           const title = normalizeGeneratedTitle(fixedTitle);
           if (!title || invalidGeneratedTitleValues.includes(title)) return;
 
-          await MongoChat.updateOne(
-            {
-              ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
-              chatId
-            },
-            { $set: { title } }
-          );
-          return title;
+          return writeGeneratedChatTitle({
+            sourceType: params.sourceType,
+            sourceId: params.sourceId,
+            chatId,
+            title,
+            previousTitleState: titleState
+          });
         })();
       }
 
@@ -327,6 +336,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
         teamId: params.teamId,
         userContent: params.userContent,
         shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
+        previousTitleState: titleState,
         locale: params.locale
       });
     })();

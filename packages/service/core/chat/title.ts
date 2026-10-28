@@ -8,6 +8,7 @@ import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime
 import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../common/logger';
+import type { ClientSession } from '../../common/mongo';
 import { createLLMResponse } from '../ai/llm/request';
 import { getSystemModelHandle } from '../ai/model/catalog/service';
 
@@ -156,6 +157,55 @@ export const canWriteGeneratedTitle = (
   return overwritableTitleValues.has(title);
 };
 
+export type ChatTitleState = {
+  title?: string | null;
+  customTitle?: string | null;
+};
+
+/**
+ * 仅在标题状态仍与生成前的快照一致时写入标题。
+ * 未命中或标题未变化时不返回标题，避免调用方向 SSE 发送迟到或重复的结果。
+ */
+export const writeGeneratedChatTitle = async (
+  {
+    sourceType,
+    sourceId,
+    chatId,
+    title,
+    previousTitleState
+  }: ChatSourceParams & {
+    chatId: string;
+    title: string;
+    previousTitleState: ChatTitleState;
+  },
+  session?: ClientSession
+): Promise<string | undefined> => {
+  const result = await MongoChat.updateOne(
+    {
+      ...buildChatSourceQuery({ sourceType, sourceId }),
+      chatId,
+      // 用原始值做原子比较，避免 Mongoose 的 trim setter 改写旧标题查询值。
+      // null 同时兼容历史记录中缺失的字段；$literal 保留以 $ 开头的标题。
+      $expr: {
+        $and: [
+          { $eq: [{ $ifNull: ['$title', null] }, { $literal: previousTitleState.title ?? null }] },
+          {
+            $eq: [
+              { $ifNull: ['$customTitle', null] },
+              { $literal: previousTitleState.customTitle ?? null }
+            ]
+          }
+        ]
+      }
+    },
+    { $set: { title } },
+    { session }
+  );
+
+  if (result.matchedCount === 0 || result.modifiedCount === 0) return;
+  return title;
+};
+
 /**
  * 调用默认标题生成模型（chatTitleLLM）根据用户问题提炼会话标题。
  *
@@ -245,6 +295,8 @@ export type GeneratedChatTitleParams = {
   teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
+  /** prepare 阶段的标题快照；独立调用时在生成前读取。 */
+  previousTitleState?: ChatTitleState;
   /** 固定文案的目标语言；缺失时回退 zh-CN，见 `getFixedChatTitle`。 */
   locale?: localeType;
 } & ChatSourceParams;
@@ -256,12 +308,24 @@ export const syncGeneratedChatTitleFromUserContent = async ({
   teamId,
   userContent,
   shouldGenerateTitle = true,
+  previousTitleState,
   locale
 }: GeneratedChatTitleParams): Promise<string | undefined> => {
   try {
     // Skill Edit 调试会话不需要模型生成标题，也不写入固定标题，避免调试链路产生额外模型调用。
     if (sourceType === ChatSourceTypeEnum.skillEdit) return;
     if (!shouldGenerateTitle) return;
+
+    // 使用调用方的原始快照，覆盖 prepare 完成到模型请求启动之间的并发修改。
+    const titleState =
+      previousTitleState ??
+      (await MongoChat.findOne({
+        ...buildChatSourceQuery({ sourceType, sourceId }),
+        chatId
+      })
+        .select('title customTitle')
+        .lean());
+    if (!titleState) return;
 
     const questionText = chatValue2RuntimePrompt(userContent.value).text.trim();
     const nextTitle = await (async () => {
@@ -280,24 +344,13 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     })();
     if (!nextTitle) return;
 
-    // 更新
-    const result = await MongoChat.updateOne(
-      {
-        ...buildChatSourceQuery({ sourceType, sourceId }),
-        chatId
-      },
-      {
-        $set: {
-          title: nextTitle
-        }
-      }
-    );
-
-    // 未命中说明已有 customTitle 或有效标题；命中但未修改说明库里已经是同一个固定文案
-    // （例如连续多轮只发文件），两种情况都不向客户端重复下发 chatTitle 事件。
-    if (result.matchedCount === 0 || result.modifiedCount === 0) return;
-
-    return nextTitle;
+    return await writeGeneratedChatTitle({
+      sourceType,
+      sourceId,
+      chatId,
+      title: nextTitle,
+      previousTitleState: titleState
+    });
   } catch (error) {
     logger.warn('Failed to generate chat title', { sourceType, sourceId, chatId, error });
   }

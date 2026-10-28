@@ -529,6 +529,7 @@ describe('prepare chat round', () => {
     });
 
     expect(result.shouldGenerateTitle).toBe(true);
+    expect(result.titleState).toEqual({ title: '', customTitle: '' });
     expect(params.userContent.dataId).toBeDefined();
     expect(params.userContent.dataId).toBe(responseChatItemId);
 
@@ -581,6 +582,56 @@ describe('prepare chat round', () => {
 
     expect(result.shouldGenerateTitle).toBe(false);
   });
+
+  it('captures the original title state when preparing an existing chat', async () => {
+    const params = createPrepareParams(
+      {},
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+    await MongoChat.create({
+      appId: testAppId,
+      chatId: params.chatId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      sourceType: params.sourceType,
+      source: params.source,
+      title: '上传文件',
+      customTitle: ''
+    });
+
+    const result = await prepareChatRound(params);
+
+    expect(result.titleState).toEqual({ title: '上传文件', customTitle: '' });
+    expect(result.shouldGenerateTitle).toBe(true);
+  });
+
+  it.each([
+    { previousTitle: '', fixedTitle: '"Plugin Run"', expected: 'Plugin Run' },
+    { previousTitle: '上传文件', fixedTitle: '上传文件', expected: undefined }
+  ])(
+    'writes a fixed title once using the prepared state: $fixedTitle',
+    async ({ previousTitle, fixedTitle, expected }) => {
+      const params = createPreChatRoundParams(
+        { fixedTitle },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: params.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: params.sourceType,
+        source: params.source,
+        title: previousTitle
+      });
+
+      const result = await preChatRound(params);
+
+      expect(await result.titleGeneration).toBe(expected);
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean();
+      expect(chat?.title).toBe(expected ?? previousTitle);
+    }
+  );
 
   it('should skip direct prepare for no-record chat id', async () => {
     const params = createPrepareParams(
