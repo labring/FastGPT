@@ -37,16 +37,17 @@ const ImportModelFromChannelModal = ({
 
   return (
     <>
-      <SelectChannelStep
-        isOpen={flow.step === 'select'}
-        channels={channels}
-        onSubmit={(channelId) => setFlow({ step: 'preview', channelId })}
-        onClose={onClose}
-      />
-      {flow.channelId !== '' && (
+      {flow.step === 'select' && (
+        <SelectChannelStep
+          isOpen
+          channels={channels}
+          onSubmit={(channelId) => setFlow({ step: 'preview', channelId })}
+          onClose={onClose}
+        />
+      )}
+      {flow.step === 'preview' && flow.channelId !== '' && (
         <ModelPreviewStep
-          key={flow.channelId}
-          isOpen={flow.step === 'preview'}
+          isOpen
           channelId={flow.channelId}
           channel={channel}
           installedModels={installedModels}

@@ -20,6 +20,119 @@ type ResultsState = {
   hasStartedImport: boolean;
 };
 
+/** 在 Modal 内容挂载后再测量表格容器，避免 Portal 延迟挂载导致首次列表窗口为空。 */
+const ImportResultsTable = ({
+  rows,
+  rowResults,
+  t
+}: {
+  rows: ChannelImportPlan['rows'];
+  rowResults: Map<string, RowResult>;
+  t: ReturnType<typeof useSafeTranslation>['t'];
+}) => {
+  const { containerRef, virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } =
+    useStaticVirtualList({ data: rows, itemHeight: 56, overscan: 8 });
+  const getCategoryLabel = (category: (typeof rows)[number]['category']) => {
+    switch (category) {
+      case 'associated':
+        return t('config_model:channel_import_category_associated');
+      case 'existing':
+        return t('config_model:channel_import_category_existing');
+      case 'template':
+        return t('config_model:channel_import_category_template');
+      case 'blank':
+        return t('config_model:channel_import_category_blank');
+    }
+  };
+
+  return (
+    <FixedTableLayout
+      scrollMode="virtual"
+      bodyRef={containerRef}
+      rootProps={{ flex: '1 1 0', minH: 0, minW: 0, px: 0 }}
+      bodyProps={{
+        flex: '1 1 0',
+        minH: 0,
+        minW: 0,
+        overflowX: 'auto',
+        overflowY: 'auto'
+      }}
+      renderHeader={({ headerTableWidth }) => (
+        <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
+          <colgroup>
+            <col style={{ width: '260px' }} />
+            <col style={{ width: '180px' }} />
+            <col style={{ width: '320px' }} />
+          </colgroup>
+          <Thead>
+            <Tr>
+              <Th fontSize="xs">{t('config_model:channel_import_model')}</Th>
+              <Th fontSize="xs">{t('config_model:channel_import_action')}</Th>
+              <Th fontSize="xs">{t('config_model:channel_import_result')}</Th>
+            </Tr>
+          </Thead>
+        </Table>
+      )}
+      renderBody={({ headerTableWidth }) => (
+        <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
+          <colgroup>
+            <col style={{ width: '260px' }} />
+            <col style={{ width: '180px' }} />
+            <col style={{ width: '320px' }} />
+          </colgroup>
+          <Tbody>
+            {topPlaceholderHeight > 0 && (
+              <Tr h={topPlaceholderHeight + 'px'} aria-hidden>
+                <Td colSpan={3} h={topPlaceholderHeight + 'px'} p={0} border={0} />
+              </Tr>
+            )}
+            {virtualDataList.map(({ data: row }) => {
+              const result = rowResults.get(row.providerModelSlug);
+
+              return (
+                <Tr key={row.providerModelSlug} h="56px">
+                  <Td fontSize="sm">
+                    <Box noOfLines={1}>{row.providerModelSlug}</Box>
+                  </Td>
+                  <Td>
+                    <MyTag type="borderFill" colorSchema="gray">
+                      {getCategoryLabel(row.category)}
+                    </MyTag>
+                  </Td>
+                  <Td fontSize="sm">
+                    <Tooltip label={result?.error} isDisabled={!result?.error}>
+                      <Box
+                        color={result?.status === 'failed' ? 'red.500' : 'myGray.700'}
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                      >
+                        {result?.status === 'success'
+                          ? t('config_model:channel_import_result_success')
+                          : result?.status === 'skipped'
+                            ? t('config_model:channel_import_result_skipped')
+                            : result?.status === 'failed'
+                              ? t('config_model:channel_import_result_failed')
+                              : t('config_model:channel_import_result_pending')}
+                        {result?.error && `：${result.error}`}
+                      </Box>
+                    </Tooltip>
+                  </Td>
+                </Tr>
+              );
+            })}
+            {bottomPlaceholderHeight > 0 && (
+              <Tr h={bottomPlaceholderHeight + 'px'} aria-hidden>
+                <Td colSpan={3} h={bottomPlaceholderHeight + 'px'} p={0} border={0} />
+              </Tr>
+            )}
+          </Tbody>
+        </Table>
+      )}
+    />
+  );
+};
+
 const ImportResultsStep = ({
   channelId,
   channel,
@@ -44,8 +157,6 @@ const ImportResultsStep = ({
   const importStartedRef = useRef(false);
   const updateState = (recipe: (draft: Draft<ResultsState>) => void) =>
     setState((current) => produce(current, recipe));
-  const { containerRef, virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } =
-    useStaticVirtualList({ data: plan.rows, itemHeight: 56, overscan: 8 });
 
   const pendingRows = plan.rows.filter((row) => !state.rowResults.has(row.providerModelSlug));
 
@@ -95,7 +206,13 @@ const ImportResultsStep = ({
                   }
             );
           }
-          if (response.results.some((result) => result.status !== 'failed')) {
+          if (
+            response.results.some(
+              (result) =>
+                result.status !== 'failed' ||
+                (result.action === 'create' && result.modelId !== undefined)
+            )
+          ) {
             await onSuccess().catch(() => {});
           }
         } catch (error) {
@@ -117,19 +234,6 @@ const ImportResultsStep = ({
       updateState((draft) => {
         draft.submitting = false;
       });
-    }
-  };
-
-  const getCategoryLabel = (category: (typeof plan.rows)[number]['category']) => {
-    switch (category) {
-      case 'associated':
-        return t('config_model:channel_import_category_associated');
-      case 'existing':
-        return t('config_model:channel_import_category_existing');
-      case 'template':
-        return t('config_model:channel_import_category_template');
-      case 'blank':
-        return t('config_model:channel_import_category_blank');
     }
   };
 
@@ -171,90 +275,7 @@ const ImportResultsStep = ({
             <EmptyTip />
           </Flex>
         ) : (
-          <FixedTableLayout
-            scrollMode="virtual"
-            bodyRef={containerRef}
-            rootProps={{ flex: '1 1 0', minH: 0, minW: 0, px: 0 }}
-            bodyProps={{
-              flex: '1 1 0',
-              minH: 0,
-              minW: 0,
-              overflowX: 'auto',
-              overflowY: 'auto'
-            }}
-            renderHeader={({ headerTableWidth }) => (
-              <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
-                <colgroup>
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '180px' }} />
-                  <col style={{ width: '320px' }} />
-                </colgroup>
-                <Thead>
-                  <Tr>
-                    <Th fontSize="xs">{t('config_model:channel_import_model')}</Th>
-                    <Th fontSize="xs">{t('config_model:channel_import_action')}</Th>
-                    <Th fontSize="xs">{t('config_model:channel_import_result')}</Th>
-                  </Tr>
-                </Thead>
-              </Table>
-            )}
-            renderBody={({ headerTableWidth }) => (
-              <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
-                <colgroup>
-                  <col style={{ width: '260px' }} />
-                  <col style={{ width: '180px' }} />
-                  <col style={{ width: '320px' }} />
-                </colgroup>
-                <Tbody>
-                  {topPlaceholderHeight > 0 && (
-                    <Tr h={topPlaceholderHeight + 'px'} aria-hidden>
-                      <Td colSpan={3} h={topPlaceholderHeight + 'px'} p={0} border={0} />
-                    </Tr>
-                  )}
-                  {virtualDataList.map(({ data: row }) => {
-                    const result = state.rowResults.get(row.providerModelSlug);
-
-                    return (
-                      <Tr key={row.providerModelSlug} h="56px">
-                        <Td fontSize="sm">
-                          <Box noOfLines={1}>{row.providerModelSlug}</Box>
-                        </Td>
-                        <Td>
-                          <MyTag type="borderFill" colorSchema="gray">
-                            {getCategoryLabel(row.category)}
-                          </MyTag>
-                        </Td>
-                        <Td fontSize="sm">
-                          <Tooltip label={result?.error} isDisabled={!result?.error}>
-                            <Box
-                              color={result?.status === 'failed' ? 'red.500' : 'myGray.700'}
-                              overflow="hidden"
-                              textOverflow="ellipsis"
-                              whiteSpace="nowrap"
-                            >
-                              {result?.status === 'success'
-                                ? t('config_model:channel_import_result_success')
-                                : result?.status === 'skipped'
-                                  ? t('config_model:channel_import_result_skipped')
-                                  : result?.status === 'failed'
-                                    ? t('config_model:channel_import_result_failed')
-                                    : t('config_model:channel_import_result_pending')}
-                              {result?.error && `：${result.error}`}
-                            </Box>
-                          </Tooltip>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                  {bottomPlaceholderHeight > 0 && (
-                    <Tr h={bottomPlaceholderHeight + 'px'} aria-hidden>
-                      <Td colSpan={3} h={bottomPlaceholderHeight + 'px'} p={0} border={0} />
-                    </Tr>
-                  )}
-                </Tbody>
-              </Table>
-            )}
-          />
+          <ImportResultsTable rows={plan.rows} rowResults={state.rowResults} t={t} />
         )}
       </Flex>
     </StepModal>
