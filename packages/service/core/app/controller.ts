@@ -3,6 +3,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -81,13 +83,25 @@ export const beforeUpdateAppFormat = async ({
       mcpToolSet.headerSecret = storeToolSetSecret(mcpToolSet.headerSecret);
     }
     const httpToolSet = node.toolConfig?.httpToolSet;
-    if (httpToolSet && 'baseUrl' in httpToolSet) {
-      if (httpToolSet.headerSecret != null) {
-        httpToolSet.headerSecret = storeToolSetSecret(httpToolSet.headerSecret);
+    if (httpToolSet && !('toolId' in httpToolSet)) {
+      const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
+      if (headerSecret.success) {
+        Object.assign(httpToolSet, { headerSecret: storeToolSetSecret(headerSecret.data) });
       }
-      httpToolSet.toolList.forEach((tool) => {
-        if (tool.headerSecret != null) tool.headerSecret = storeToolSetSecret(tool.headerSecret);
-      });
+
+      const runtimeToolSet = HttpToolSetRuntimeConfigSchema.safeParse(httpToolSet);
+      if (runtimeToolSet.success) {
+        const toolList = runtimeToolSet.data.toolList.map((tool, index) => {
+          if (tool.headerSecret === undefined || tool.headerSecret === null) {
+            return httpToolSet.toolList[index];
+          }
+          return {
+            ...httpToolSet.toolList[index],
+            headerSecret: storeToolSetSecret(tool.headerSecret)
+          };
+        });
+        Object.assign(httpToolSet, { toolList });
+      }
     }
 
     const isDatasetNode =

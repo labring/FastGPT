@@ -27,6 +27,21 @@ export const McpToolSetRuntimeConfigSchema = z.object({
 });
 export type McpToolSetRuntimeConfigType = z.infer<typeof McpToolSetRuntimeConfigSchema>;
 
+export const McpToolSetNodeConfigSchema = z
+  .object({
+    url: z.string().meta({
+      description: 'MCP 服务地址'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+      description: 'MCP 服务请求头密钥配置'
+    }),
+    toolList: z.array(ToolSetToolSummarySchema.strict()).meta({
+      description: 'MCP 工具名称与描述摘要'
+    })
+  })
+  .strict();
+export type McpToolSetNodeConfigType = z.infer<typeof McpToolSetNodeConfigSchema>;
+
 export const HttpToolSetRuntimeConfigSchema = z.object({
   toolList: z.array(HttpToolConfigTypeSchema).meta({
     description: 'HTTP 工具集包含的工具列表'
@@ -45,6 +60,27 @@ export const HttpToolSetRuntimeConfigSchema = z.object({
   })
 });
 export type HttpToolSetRuntimeConfigType = z.infer<typeof HttpToolSetRuntimeConfigSchema>;
+
+export const HttpToolSetNodeConfigSchema = z
+  .object({
+    toolList: z.array(ToolSetToolSummarySchema.strict()).meta({
+      description: 'HTTP 工具名称与描述摘要'
+    }),
+    apiSchemaUrl: z.string().optional().meta({
+      description: 'HTTP 工具集 OpenAPI 文档地址'
+    }),
+    baseUrl: z.string().optional().meta({
+      description: 'HTTP 工具集请求基础地址'
+    }),
+    customHeaders: z.string().optional().meta({
+      description: 'HTTP 工具集公共请求头 JSON 字符串'
+    }),
+    headerSecret: StoreSecretValueTypeSchema.nullish().meta({
+      description: 'HTTP 工具集请求头密钥配置'
+    })
+  })
+  .strict();
+export type HttpToolSetNodeConfigType = z.infer<typeof HttpToolSetNodeConfigSchema>;
 
 export const HttpToolRuntimeConfigSchema = HttpToolConfigTypeSchema.extend({
   baseUrl: z.string().optional().meta({
@@ -160,19 +196,27 @@ const NodeToolConfigCommonSchema = z.object({
     })
 });
 
-/** 工作流节点只接受当前完整配置或外部引用摘要；历史快照由 migration boundary 归一。 */
+/** 通用节点读取兼容 App 根完整配置；工作流持久化入参在 OpenAPI 边界限制为摘要。 */
 export const NodeToolConfigTypeSchema = NodeToolConfigCommonSchema.extend({
   mcpToolSet: z
-    .union([McpToolSetRuntimeConfigSchema.strict(), ToolSetPreviewReferenceSchema])
+    .union([
+      McpToolSetNodeConfigSchema,
+      McpToolSetRuntimeConfigSchema.strict(),
+      ToolSetPreviewReferenceSchema
+    ])
     .optional()
     .meta({
-      description: '当前 MCP 节点内完整配置或外部引用摘要'
+      description: 'MCP 节点摘要、工具集 App 完整配置或外部引用摘要'
     }),
   httpToolSet: z
-    .union([HttpToolSetRuntimeConfigSchema.strict(), ToolSetPreviewReferenceSchema])
+    .union([
+      HttpToolSetNodeConfigSchema,
+      HttpToolSetRuntimeConfigSchema.strict(),
+      ToolSetPreviewReferenceSchema
+    ])
     .optional()
     .meta({
-      description: '当前 HTTP 节点内完整配置或外部引用摘要'
+      description: 'HTTP 节点摘要、工具集 App 完整配置或外部引用摘要'
     })
 });
 export type NodeToolConfigType = z.infer<typeof NodeToolConfigTypeSchema>;

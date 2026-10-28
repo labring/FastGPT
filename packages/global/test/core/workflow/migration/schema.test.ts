@@ -81,7 +81,7 @@ describe('legacy ToolSet migration', () => {
     }
   );
 
-  it('keeps a node-local HTTP toolset inline and strips editor-only fields', () => {
+  it('keeps node-local HTTP source config and tool summaries', () => {
     const result = migrateWorkflowToCurrent({
       nodes: [
         {
@@ -92,16 +92,8 @@ describe('legacy ToolSet migration', () => {
           outputs: [],
           toolConfig: {
             httpToolSet: {
-              baseUrl: 'https://api.example.com',
-              toolList: [
-                {
-                  name: 'search',
-                  description: 'Search',
-                  path: '/search',
-                  method: 'GET',
-                  runtimeOnly: true
-                }
-              ]
+              apiSchemaUrl: 'https://api.example.com/openapi.json',
+              toolList: [{ name: 'search', description: 'Search' }]
             }
           }
         }
@@ -110,9 +102,40 @@ describe('legacy ToolSet migration', () => {
     });
 
     expect(result.nodes[0].toolConfig?.httpToolSet).toEqual({
-      baseUrl: 'https://api.example.com',
-      toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+      apiSchemaUrl: 'https://api.example.com/openapi.json',
+      toolList: [{ name: 'search', description: 'Search' }]
     });
+  });
+
+  it('rejects the unpublished node-local full tool schema format', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'inline-tool-set',
+            flowNodeType: 'toolSet',
+            name: 'Inline ToolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              httpToolSet: {
+                apiSchemaStr: '{"openapi":"3.0.0"}',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    path: '/search',
+                    method: 'GET',
+                    inputSchema: { type: 'object' }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
   });
 
   it('rejects a toolset configuring both protocols', () => {

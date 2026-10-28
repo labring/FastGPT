@@ -6,16 +6,14 @@ import {
 import { FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import {
   HttpToolRuntimeConfigSchema,
-  HttpToolSetRuntimeConfigSchema,
+  HttpToolSetNodeConfigSchema,
   McpToolRuntimeConfigSchema,
-  McpToolSetRuntimeConfigSchema,
+  McpToolSetNodeConfigSchema,
   NodeToolConfigTypeSchema,
   StoreNodeItemTypeSchema,
   ToolDataSchema,
   ToolSetPreviewReferenceSchema
 } from '../../../core/workflow/type/node';
-import { HttpToolConfigTypeSchema } from '../../../core/app/tool/httpTool/type';
-import { McpToolConfigSchema } from '../../../core/app/tool/mcpTool/type';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
 export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.omit({
@@ -202,14 +200,6 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     description: '应用工作流节点配置'
   });
 
-// 节点内工具集保存完整子工具配置；外部工具集只保留引用及展示摘要。
-const PersistedMcpToolSetRuntimeConfigSchema = McpToolSetRuntimeConfigSchema.extend({
-  toolList: z.array(McpToolConfigSchema.strict())
-}).strict();
-const PersistedHttpToolSetRuntimeConfigSchema = HttpToolSetRuntimeConfigSchema.extend({
-  toolList: z.array(HttpToolConfigTypeSchema.strict())
-}).strict();
-
 const OpenAPIPersistedNodeToolConfigTypeSchema = OpenAPINodeToolConfigTypeSchema.extend({
   mcpTool: OpenAPIToolRefSchema.strict().optional().meta({
     description: '节点引用的 MCP 单工具配置'
@@ -217,17 +207,14 @@ const OpenAPIPersistedNodeToolConfigTypeSchema = OpenAPINodeToolConfigTypeSchema
   httpTool: OpenAPIToolRefSchema.strict().optional().meta({
     description: '节点引用的 HTTP 单工具配置'
   }),
-  mcpToolSet: z
-    .union([ToolSetPreviewReferenceSchema, PersistedMcpToolSetRuntimeConfigSchema])
-    .optional()
-    .meta({
-      description: '节点引用的 MCP 工具集或节点内运行时配置'
-    }),
+  mcpToolSet: z.union([ToolSetPreviewReferenceSchema, McpToolSetNodeConfigSchema]).optional().meta({
+    description: '节点引用的 MCP 工具集或节点内摘要配置'
+  }),
   httpToolSet: z
-    .union([ToolSetPreviewReferenceSchema, PersistedHttpToolSetRuntimeConfigSchema])
+    .union([ToolSetPreviewReferenceSchema, HttpToolSetNodeConfigSchema])
     .optional()
     .meta({
-      description: '节点引用的 HTTP 工具集或节点内运行时配置'
+      description: '节点引用的 HTTP 工具集或节点内摘要配置'
     })
 });
 
@@ -270,8 +257,8 @@ const validatePersistedToolSetReference = ({
     const reference = ToolSetPreviewReferenceSchema.safeParse(toolSet);
     const isInlineConfig =
       key === 'mcpToolSet'
-        ? PersistedMcpToolSetRuntimeConfigSchema.safeParse(toolSet).success
-        : PersistedHttpToolSetRuntimeConfigSchema.safeParse(toolSet).success;
+        ? McpToolSetNodeConfigSchema.safeParse(toolSet).success
+        : HttpToolSetNodeConfigSchema.safeParse(toolSet).success;
     const isValid = pluginId ? reference.success : isInlineConfig;
 
     if (!isValid) {

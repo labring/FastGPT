@@ -954,8 +954,9 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
     expect(JSON.stringify(nodes)).not.toContain(secret);
   });
 
-  it('removes historical child auth from inline HTTP tool-set detail responses', async () => {
-    const secret = 'legacy-inline-child-secret';
+  it('preserves and encrypts per-tool auth on complete HTTP tool-set detail responses', async () => {
+    const secret = 'stored-http-tool-secret';
+    const encryptedSecret = 'encrypted-http-tool-secret';
     const httpToolSet = {
       baseUrl: 'https://api.example.com',
       toolList: [
@@ -964,6 +965,13 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
           description: 'Search',
           path: '/search',
           method: 'GET',
+          headerSecret: { Authorization: { value: '', secret: encryptedSecret } }
+        },
+        {
+          name: 'create',
+          description: 'Create',
+          path: '/create',
+          method: 'POST',
           headerSecret: { Authorization: { value: secret, secret: '' } }
         }
       ]
@@ -985,7 +993,12 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
       isRoot: false
     });
 
-    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[0]).not.toHaveProperty('headerSecret');
+    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[0]).toMatchObject({
+      headerSecret: { Authorization: { value: '', secret: encryptedSecret } }
+    });
+    expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[1]).toMatchObject({
+      headerSecret: { Authorization: { value: '', secret: expect.any(String) } }
+    });
     expect(JSON.stringify(nodes)).not.toContain(secret);
   });
 });
