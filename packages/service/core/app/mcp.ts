@@ -710,16 +710,14 @@ export class MCPClient {
           const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
             streamableError
           )}; SSE: ${getErrorMessage(sseError)}`;
-          // 外部 MCP 服务网络不可达、协议不匹配或返回客户端错误时，均归为用户配置/外部服务错误。
-          const isUserConfigFailure =
-            isMcpExternalFailure(sseError) || isMcpExternalFailure(streamableError);
-
-          if (isUserConfigFailure) {
+          // HTTP 探测未命中只触发协议回退，最终分类仅取决于 SSE 异常，避免探测 4xx 掩盖内部故障。
+          if (isMcpExternalFailure(sseError)) {
             throw new UserError(message, undefined, { type: 'config', cause: sseError });
           }
 
           logger.info('SSE error', sseError);
-          throw new Error(message, { cause: sseError });
+          // 保留最终异常，避免上层重新分类时把正常 HTTP 探测的文案当成失败原因。
+          throw sseError;
         }
       }
     });

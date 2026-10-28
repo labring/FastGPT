@@ -67,26 +67,24 @@ describe('getWorkflowStepStatus', () => {
     ).toBe('user_error');
   });
 
-  it('recognizes the node response error marker', () => {
+  it('treats a display-only error as failure without inferring its classification', () => {
     expect(
       getWorkflowStepStatus(
         createResult({
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            error: 'Invalid MCP configuration',
-            errorType: 'config'
+            error: 'Invalid MCP configuration'
           }
         })
       )
-    ).toBe('user_error');
+    ).toBe('error');
   });
 
-  it('keeps a system error when a stale node response carries a user error marker', () => {
+  it('classifies the current raw system error independently of the displayed text', () => {
     expect(
       getWorkflowStepStatus(
         createResult({
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            error: 'Invalid MCP configuration',
-            errorType: 'config'
+            error: 'Invalid MCP configuration'
           },
           error: {
             errorText: 'database unavailable'

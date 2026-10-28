@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -75,6 +77,20 @@ describe('dispatchHttp468Request empty keys', () => {
     isInternalAddressMock.mockResolvedValue(false);
   });
 
+  it('passes the successful response and selected JSON fields through data to downstream', async () => {
+    const body = { zero: 0, flag: false, nested: { value: 'ok' } };
+    axiosMock.mockResolvedValueOnce({ data: body });
+    const props = buildProps(ContentTypes.json);
+    props.node.outputs = ['zero', 'flag', 'nested'].map((key) => ({ key }));
+    const result = await dispatchHttp468Request(props);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.httpRequest468,
+      result,
+      expectedData: { [NodeOutputKeyEnum.httpRawResponse]: body, ...body }
+    });
+    expect(Object.hasOwn(result, 'error')).toBe(false);
+  });
+
   it.each(
     [ContentTypes.formData, ContentTypes.xWwwFormUrlencoded].flatMap((httpContentType) =>
       [true, false].map((hasType) => ({ httpContentType, hasType }))
@@ -132,6 +148,11 @@ describe('dispatchHttp468Request error body', () => {
     });
 
     const result = await rejectWith(axiosError);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.httpRequest468,
+      result,
+      expectedData: result.data ?? {}
+    });
     expect(result.error).toBe(axiosError);
     const errorText = result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText;
 

@@ -798,7 +798,9 @@ export class WorkflowQueue {
           if (runningNodePromises.size > 0) {
             // 当上一个节点运行结束时，立即运行下一轮
             await Promise.race(runningNodePromises).catch((error) => {
-              logger.error('Workflow race error', { chatId: this.data.chatId, error });
+              if (error instanceof Error && !isUserConfigError(error)) {
+                logger.error('Workflow race error', { chatId: this.data.chatId, error });
+              }
             });
           } else {
             // 理论上不应出现此情况，防御性退回到让出进程
@@ -846,7 +848,9 @@ export class WorkflowQueue {
     if (skipItem) {
       this.skipNodeQueue.delete(skipItem.node.nodeId);
       await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).catch((error) => {
-        logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
+        if (error instanceof Error && !isUserConfigError(error)) {
+          logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
+        }
       });
     }
   }
@@ -911,7 +915,6 @@ export class WorkflowQueue {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (Object.hasOwn(result, 'error')) {
-              const isUserConfigFailure = isUserConfigError(result.error);
               const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
               // 节点可直接返回原始异常；统一补齐错误输出，供 catch 分支按原 key 引用。
               const errText =
@@ -933,8 +936,7 @@ export class WorkflowQueue {
                   data: errorData,
                   [DispatchNodeResponseKeyEnum.nodeResponse]: {
                     ...nodeResponseBase,
-                    error: errText,
-                    ...(isUserConfigFailure && { errorType: 'config' as const })
+                    error: errText
                   },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
@@ -983,7 +985,6 @@ export class WorkflowQueue {
             };
           } catch (error) {
             const errorText = getErrText(error);
-            const isUserConfigFailure = isUserConfigError(error);
             // Skip all edges and return error
             let skipHandleId = targetEdges.map((item) => item.sourceHandle);
             if (node.catchError) {
@@ -995,7 +996,6 @@ export class WorkflowQueue {
               data: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
-                ...(isUserConfigFailure && { errorType: 'config' as const }),
                 ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
@@ -1035,10 +1035,8 @@ export class WorkflowQueue {
         formatCurrentNodeResponse?.errorText ??
         formatCurrentNodeResponse?.error ??
         (hasDispatchError ? getErrText(dispatchRes.error) : undefined);
-      // 有原始异常时以它为准，详情标记仅兼容只贡献 nodeResponse 的内部调用。
-      const isUserConfigFailure = hasDispatchError
-        ? isUserConfigError(dispatchRes.error)
-        : formatCurrentNodeResponse?.errorType === 'config';
+      // 仅本轮原始异常参与分类；展示文本不用于重建用户错误身份。
+      const isUserConfigFailure = hasDispatchError && isUserConfigError(dispatchRes.error);
       if (
         currentNodeError !== undefined &&
         !(hasDispatchError && node.catchError) &&
@@ -1046,24 +1044,20 @@ export class WorkflowQueue {
         !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse))
       ) {
         nodeSummary.mergeNodeSummary({
-          hasError: true,
-          hasUserConfigError: isUserConfigFailure,
-          errorText: getErrText(currentNodeError)
+          errorText: getErrText(currentNodeError),
+          // 展示文本不能重建成原始异常，否则父容器会把它当作新的 Error 再次上报。
+          ...(hasDispatchError ? { error: dispatchRes.error } : {})
         });
-        // 只保留一个代表异常；同一轮混合失败时系统错误优先，原始对象不进入 summary。
-        if (
-          !this.runtimeFailure ||
+      }
+      // 容器可汇总子任务的原始异常，而不改变节点自身成功/部分成功的分支输出。
+      // 该对象只向本轮父流程传递，不进入持久化摘要或 checkpoint。
+      if (
+        Object.hasOwn(nodeSummary, 'error') &&
+        (!this.runtimeFailure ||
           isUserConfigError(this.runtimeFailure.error) ||
-          !isUserConfigFailure
-        ) {
-          this.runtimeFailure = {
-            error: hasDispatchError
-              ? dispatchRes.error
-              : isUserConfigFailure
-                ? new UserError(getErrText(currentNodeError), undefined, { type: 'config' })
-                : new Error(getErrText(currentNodeError))
-          };
-        }
+          !isUserConfigError(nodeSummary.error))
+      ) {
+        this.runtimeFailure = { error: nodeSummary.error };
       }
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
@@ -1119,11 +1113,13 @@ export class WorkflowQueue {
             message: String(currentNodeError)
           });
         }
-        if (!isUserConfigFailure) {
-          logger.warn('Workflow node returned error', { error: currentNodeError });
-        }
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
+      }
+
+      // 统一日志只读取节点返回的原始 Error；responseData 的文本仅用于展示和流程控制。
+      if (hasDispatchError && dispatchRes.error instanceof Error && !isUserConfigFailure) {
+        logger.warn('Workflow node returned error', { error: dispatchRes.error });
       }
 
       if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
@@ -1350,8 +1346,7 @@ export class WorkflowQueue {
 
       // Assign the output value to the next node
       node.outputs.forEach((outputItem) => {
-        if (concatData[outputItem.key] === undefined) return;
-        /* update output value */
+        // 每次完成执行都以本次 data 为准；缺失输出清为 undefined，避免循环/恢复读取旧值。
         outputItem.value = concatData[outputItem.key];
       });
 
@@ -1606,6 +1601,7 @@ export class WorkflowQueue {
     };
   }
 }
+/** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   // 每个 workflow 层拥有独立 summary；底层 sink/writer 可以由 parent/child 共享。
   const workflowRuntimeSummary = createWorkflowRuntimeSummary();
@@ -1792,9 +1788,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
-  ).finally(() => {
-    if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
-      data.workflowDispatchDeep = previousWorkflowDispatchDeep;
-    }
-  });
+  )
+    .catch((error) => {
+      if (error instanceof Error && !isUserConfigError(error)) {
+        logger.error('Workflow run failed', { error });
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
+        data.workflowDispatchDeep = previousWorkflowDispatchDeep;
+      }
+    });
 };

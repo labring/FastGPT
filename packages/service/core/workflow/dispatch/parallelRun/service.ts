@@ -3,7 +3,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { collectResponseFeedbacks, injectNestedStartInputs } from '../utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
-import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -115,7 +115,6 @@ export type ParallelTaskResult =
       success: false;
       index: number;
       error?: string;
-      errorType?: 'config';
       response?: DispatchFlowResponse;
       totalPoints: number;
       runningTime?: number;
@@ -160,9 +159,6 @@ export const parseTaskResponse = (params: {
         workflowRuntimeSummary.errorText,
         i18nT('workflow:parallel_task_not_reach_end')
       ),
-      ...(workflowRuntimeSummary.hasUserConfigError && {
-        errorType: 'config' as const
-      }),
       response,
       totalPoints: 0
     };
@@ -181,7 +177,6 @@ export const parseTaskError = (index: number, err: unknown): ParallelTaskResult 
     success: false,
     index,
     error: getErrText(err),
-    ...(isUserConfigError(err) && { errorType: 'config' as const }),
     totalPoints: 0
   };
 };
@@ -244,7 +239,6 @@ const buildParallelTaskWrapper = ({
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,
     error: result.success ? undefined : result.error,
-    ...(!result.success && result.errorType && { errorType: result.errorType }),
     childResponseCount: runtimeSummary?.childResponseCount
   };
 };

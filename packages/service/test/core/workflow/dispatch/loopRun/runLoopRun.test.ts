@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -25,9 +27,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 }));
 
 // Shrink max iterations so overflow tests run fast.
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: { WORKFLOW_MAX_LOOP_TIMES: 5 }
-}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return { ...actual, serviceEnv: { ...actual.serviceEnv, WORKFLOW_MAX_LOOP_TIMES: 5 } };
+});
 
 // Import after mocks so runLoopRun pulls the mocked modules.
 import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
@@ -267,6 +270,11 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     } as any;
 
     const result: any = await dispatchLoopRun(props);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.loopRun,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(3);
     expect(props.nodeSummary).toMatchObject({
@@ -562,6 +570,11 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     } as any;
 
     const result: any = await dispatchLoopRun(props);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.loopRun,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(2);
     const history = result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunHistory;
@@ -619,6 +632,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     );
 
     const result: any = await dispatchLoopRun(props);
+
     expect(iter).toBe(3);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunIterations).toBe(3);
   });
@@ -664,7 +678,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('111');
   });
 
-  it('preserves the user config error marker from a failed child workflow', async () => {
+  it('preserves the original exception from the current child workflow', async () => {
     const error = new UserError('Invalid MCP URL', undefined, { type: 'config' });
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
@@ -672,8 +686,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
         workflowRuntimeSummary: {
           ...createWorkflowRuntimeSummary(),
-          hasError: true,
-          hasUserConfigError: true,
+          errorCount: 1,
           errorText: 'Invalid MCP URL'
         }
       })
@@ -695,15 +708,14 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     });
   });
 
-  it('publishes the user config type on the failed iteration wrapper', async () => {
+  it('publishes only display text on the failed iteration wrapper', async () => {
     const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
         workflowRuntimeSummary: {
           ...createWorkflowRuntimeSummary(),
-          hasError: true,
-          hasUserConfigError: true,
+          errorCount: 1,
           errorText: 'Invalid MCP URL'
         }
       })
@@ -722,21 +734,18 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(publishedResponses).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          error: 'Invalid MCP URL',
-          errorType: 'config'
+          error: 'Invalid MCP URL'
         })
       ])
     );
   });
 
-  it('does not reuse a user config marker for a later system failure', async () => {
+  it('does not reconstruct an Error instance from display-only child failure', async () => {
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'database unavailable' })],
         workflowRuntimeSummary: {
           ...createWorkflowRuntimeSummary(),
-          hasError: true,
-          hasUserConfigError: false,
           errorText: 'database unavailable',
           errorCount: 2
         }
@@ -750,10 +759,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       })
     );
 
-    expect(result.error).toMatchObject({
-      message: 'database unavailable'
-    });
-    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error).toBe('database unavailable');
+    expect(result.data?.system_error_text).toBe('database unavailable');
   });
 
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
@@ -828,6 +835,46 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.childResponseCount).toBe(2);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
   });
+
+  it.each([false, true])(
+    'resume error state is independent from pre-interrupt errors: current failure=%s',
+    async (failsNow) => {
+      const error = new Error('current system failure');
+      runWorkflowMock.mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          ...(failsNow ? { error } : {}),
+          nodeResponses: [makeResponseItem('chatNode', failsNow ? { error: error.message } : {})]
+        })
+      );
+      const props = makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      });
+      props.lastInteractive = {
+        type: 'loopRunInteractive',
+        params: {
+          loopHistory: [],
+          iteration: 1,
+          childrenResponse: { entryNodeIds: ['chatNode'] },
+          pendingIterationSummary: {
+            ...createWorkflowRuntimeSummary(),
+            finishedNodeIds: ['startNode'],
+            errorText: 'previous round failure',
+            errorCount: 1,
+            llmInputTokens: 10
+          }
+        }
+      };
+      const result = await dispatchLoopRun(props);
+      const history = result.responseData?.loopRunHistory;
+      expect(history?.[0].success).toBe(!failsNow);
+      expect(history?.[0].error).toBe(failsNow ? error.message : undefined);
+      expect(Object.hasOwn(result, 'error')).toBe(failsNow);
+      if (failsNow) expect(result.error).toBe(error);
+      expect(result.data?.system_error_text).toBe(failsNow ? error.message : undefined);
+    }
+  );
 
   it('lastInteractive 恢复 → 从中断轮次续跑, 保留已累积 loopHistory', async () => {
     // Resume at iteration 2 (0-based index 1). Prior history has 1 success entry.

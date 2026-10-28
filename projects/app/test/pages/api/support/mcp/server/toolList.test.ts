@@ -339,7 +339,6 @@ describe('callMcpServerTool', () => {
       workflowRuntimeSummary: {
         responseIds: ['plugin-output-response-id'],
         finishedNodeIds: [],
-        hasError: false,
         hasLoopRunBreak: false,
         hasToolStop: false,
         hasNestedEnd: false,

@@ -1,4 +1,4 @@
-import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
@@ -694,7 +694,6 @@ export const getNodeErrResponse = <TError extends Record<string, any> = Record<s
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
   const errorText = displayErrorText ?? getErrText(error);
-  const isUserConfigFailure = isUserConfigError(error);
 
   return {
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
@@ -708,7 +707,6 @@ export const getNodeErrResponse = <TError extends Record<string, any> = Record<s
     } & TError,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       errorText,
-      ...(isUserConfigFailure ? { errorType: 'config' as const } : {}),
       ...(typeof responseData === 'object' ? responseData : {})
     },
     [DispatchNodeResponseKeyEnum.toolResponse]: {

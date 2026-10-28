@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchChatCompletion } from '@fastgpt/service/core/workflow/dispatch/ai/chat/dispatchChatCompletion';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -120,6 +122,11 @@ describe('dispatchChatCompletion token summary', () => {
         nodeSummary,
         usagePush
       } as any);
+      await expectNodeDataToReachDownstream({
+        nodeType: TransferNodeType.chatNode,
+        result,
+        expectedData: result.data ?? {}
+      });
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
         inputTokens: 13,
         outputTokens: 4

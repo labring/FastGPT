@@ -135,7 +135,10 @@ export type SystemVariablesType = {
 };
 
 /** 当前节点 callback 可向 queue 贡献的运行摘要增量。 */
-export type NodeSummary = Partial<WorkflowRuntimeSummaryFields>;
+export type NodeSummary = Partial<WorkflowRuntimeSummaryFields> & {
+  /** 本轮容器内的原始异常，仅供当前 Queue 汇总；不写入详情、运行摘要或 checkpoint。 */
+  error?: unknown;
+};
 
 /** 当前节点执行单元的摘要及其统一增量合并入口。 */
 export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputTokens'> & {
@@ -147,7 +150,7 @@ export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutp
 /**
  * 节点运行结果：data 统一承载成功输出和错误分支输出，error 只保留原始异常。
  * 仅失败时返回 error 字段；通过字段是否存在区分失败，兼容 throw undefined 等非 Error 异常。
- * 原始异常仅在请求运行期传递，详情、SSE 和恢复数据使用 nodeResponse 的文本与分类。
+ * 原始异常仅在请求运行期传递，详情、SSE 和恢复数据只保存展示文本。
  */
 export type DispatchNodeResultType<T = Record<string, unknown>> = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;

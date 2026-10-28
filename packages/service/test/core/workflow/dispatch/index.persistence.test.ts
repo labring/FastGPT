@@ -858,7 +858,6 @@ describe('runWorkflow node response persistence', () => {
       });
 
       expect(result.workflowRuntimeSummary).toMatchObject({
-        hasError: false,
         errorCount: 0
       });
       expect(result.workflowRuntimeSummary.errorText).toBeUndefined();

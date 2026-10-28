@@ -1,3 +1,5 @@
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -119,6 +121,10 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           });
 
           const result = parseTaskResponse({ index, response });
+          // 任务失败不改变并行节点的输出分支；原始异常仅汇总给本轮父流程，供其直接分类。
+          if (!result.success && Object.hasOwn(response, 'error')) {
+            props.nodeSummary.mergeNodeSummary({ error: response.error });
+          }
           if (result.success) {
             await syncContainerRunState({
               sourceNodes: taskRuntimeNodes,
@@ -156,6 +162,15 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             totalPoints: accumulatedPoints
           };
         } catch (err) {
+          // 任务自身的准备/状态同步异常在本任务结束前记录，不与其他层日志做去重。
+          if (err instanceof Error && !isUserConfigError(err)) {
+            getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH).warn('Parallel task failed', {
+              error: err,
+              nodeName: node.name,
+              taskIndex: index
+            });
+          }
+          props.nodeSummary.mergeNodeSummary({ error: err });
           const attemptResult = {
             ...parseTaskError(index, err),
             taskResponseId,

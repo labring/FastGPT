@@ -1,3 +1,6 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -20,7 +23,8 @@ import {
 
 const runWorkflowMock = vi.fn();
 
-vi.mock('@fastgpt/global/common/system/utils', () => ({
+vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   batchRun: async (list: any[], handler: (item: any, index: number) => Promise<any>) =>
     Promise.all(list.map((item, index) => handler(item, index)))
 }));
@@ -29,14 +33,20 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    WORKFLOW_MAX_LOOP_TIMES: 10,
-    WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
-  }
-}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      WORKFLOW_MAX_LOOP_TIMES: 10,
+      WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
+    }
+  };
+});
 
 import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -128,6 +138,60 @@ const makeProps = (override: Record<string, any> = {}) => {
 };
 
 describe('dispatchParallelRun', () => {
+  it.each([false, true])(
+    'reports task-local exceptions before returning, config=%s',
+    async (isConfigError) => {
+      const error = isConfigError
+        ? new UserError('invalid task input', undefined, { type: 'config' })
+        : new Error('task state clone failed');
+      const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+      warn.mockClear();
+      const props = makeProps();
+      props.params.loopInputArray = ['a', 'b'];
+      props.variableState.clone.mockImplementation(() => {
+        throw error;
+      });
+      try {
+        await dispatchParallelRun(props);
+        expect(warn).toHaveBeenCalledTimes(isConfigError ? 0 : 2);
+        expect(props.nodeSummary.error).toBe(error);
+        expect(runWorkflowMock).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
+
+  it.each([false, true])(
+    'keeps a failed task raw exception in the current collector only: fails=%s',
+    async (fails) => {
+      const error = new UserError('Invalid key', undefined, { type: 'config' });
+      runWorkflowMock.mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          error,
+          nodeResponses: [
+            makeResponseItem(
+              fails ? 'chatNode' : 'nestedEnd',
+              fails
+                ? { error: error.message }
+                : { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: 'done' }
+            )
+          ]
+        })
+      );
+      const props = makeProps();
+      const result = await dispatchParallelRun(props);
+      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(fails);
+      if (fails) expect(props.nodeSummary.error).toBe(error);
+      expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
+        fails ? ParallelRunStatusEnum.failed : ParallelRunStatusEnum.success
+      );
+      expect(result.responseData).not.toHaveProperty('errorType');
+      expect(result.responseData).not.toHaveProperty('error');
+    }
+  );
+
   beforeEach(() => {
     runWorkflowMock.mockReset();
   });
@@ -157,6 +221,11 @@ describe('dispatchParallelRun', () => {
       nodeResponseParentId: 'parallel-parent-response'
     });
     const result: any = await dispatchParallelRun(props);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.parallelRun,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);
@@ -215,7 +284,7 @@ describe('dispatchParallelRun', () => {
         makeDispatchFlowResponse({
           workflowRuntimeSummary: {
             ...createWorkflowRuntimeSummary(),
-            hasError: true,
+            errorCount: 1,
             llmInputTokens: 11,
             llmOutputTokens: 2
           },
@@ -281,7 +350,7 @@ describe('dispatchParallelRun', () => {
     expect(props.nodeSummary).toMatchObject({
       llmInputTokens: 34,
       llmOutputTokens: 7,
-      hasError: false,
+      errorCount: 0,
       hasNestedEnd: false
     });
   });

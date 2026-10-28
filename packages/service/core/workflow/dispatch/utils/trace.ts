@@ -54,12 +54,9 @@ export const getWorkflowStepStatus = (
   const nodeResponse = result.result[DispatchNodeResponseKeyEnum.nodeResponse];
   const topLevelError = result.result.error;
 
-  // 顶层错误存在时以它为准，防止遗留的用户配置标记掩盖后续系统故障。
+  // 分类仅读取本轮原始异常，历史详情不参与本轮日志或指标的降噪判断。
   if (Object.hasOwn(result.result, 'error')) {
     return isUserConfigError(topLevelError) ? 'user_error' : 'error';
-  }
-  if (nodeResponse?.errorType === 'config') {
-    return 'user_error';
   }
 
   return nodeResponse?.error !== undefined || nodeResponse?.errorText !== undefined

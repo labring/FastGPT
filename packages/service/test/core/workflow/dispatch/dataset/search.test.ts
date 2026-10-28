@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -241,6 +243,11 @@ describe('dispatchDatasetSearch', () => {
       },
       nodeSummary
     );
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.datasetSearchNode,
+      result,
+      expectedData: result.data ?? {}
+    });
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
@@ -741,6 +748,11 @@ describe('dispatchDatasetSearch', () => {
     const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
     loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
     const result = await runSearch();
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.datasetSearchNode,
+      result,
+      expectedData: result.data ?? {}
+    });
     expect(result.error).toBe(error);
     expect(result).toMatchObject({
       data: { [NodeOutputKeyEnum.errorText]: error.message },

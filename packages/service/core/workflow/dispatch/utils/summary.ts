@@ -1,4 +1,4 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
@@ -10,25 +10,6 @@ import type { NodeSummary, NodeSummaryCollector } from '../../types/runtime';
 const concreteChildParentIds = new WeakMap<WorkflowRuntimeSummaryType, Set<string>>();
 
 /**
- * 合并未捕获错误分类。
- *
- * 系统错误优先级高于用户配置错误：只要同一运行链路出现过系统错误，
- * 最终错误就不能再标记为用户配置错误。
- */
-const mergeErrorClassification = (
-  target: { hasError?: boolean; hasUserConfigError?: boolean },
-  source: { hasError?: boolean; hasUserConfigError?: boolean }
-) => {
-  if (!source.hasError) return;
-
-  const hadError = !!target.hasError;
-  target.hasError = true;
-  target.hasUserConfigError = hadError
-    ? !!target.hasUserConfigError && !!source.hasUserConfigError
-    : !!source.hasUserConfigError;
-};
-
-/**
  * 创建 runtime nodeResponse 的轻量汇总对象。
  *
  * 该 summary 用于在当前 workflow dispatch 过程中保存运行信号，避免把完整
@@ -38,8 +19,6 @@ export const createWorkflowRuntimeSummary = (): WorkflowRuntimeSummaryType => {
   const summary: WorkflowRuntimeSummaryType = {
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
-    hasUserConfigError: false,
     errorCount: 0,
     hasLoopRunBreak: false,
     hasToolStop: false,
@@ -68,8 +47,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
     llmOutputTokens: 0,
     responseIds: [],
     finishedNodeIds: [],
-    hasError: false,
-    hasUserConfigError: false,
     errorCount: 0,
     citeCollectionIds: [],
     hasLoopRunBreak: false,
@@ -81,10 +58,15 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
-      mergeErrorClassification(summary, {
-        hasError: !!source.hasError,
-        hasUserConfigError: !!source.hasUserConfigError
-      });
+      // 原始异常只留在本次 collector，系统故障优先；安全摘要的白名单不会输出该对象。
+      if (
+        Object.hasOwn(source, 'error') &&
+        (!Object.hasOwn(summary, 'error') ||
+          isUserConfigError(summary.error) ||
+          !isUserConfigError(source.error))
+      ) {
+        summary.error = source.error;
+      }
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -114,8 +96,6 @@ export const getNodeSummaryData = (summary: NodeSummary): NodeSummary => ({
   ...(summary.llmOutputTokens ? { llmOutputTokens: summary.llmOutputTokens } : {}),
   ...(summary.responseIds?.length ? { responseIds: [...summary.responseIds] } : {}),
   ...(summary.finishedNodeIds?.length ? { finishedNodeIds: [...summary.finishedNodeIds] } : {}),
-  ...(summary.hasError ? { hasError: true } : {}),
-  ...(summary.hasError && summary.hasUserConfigError ? { hasUserConfigError: true } : {}),
   ...(summary.errorText ? { errorText: summary.errorText } : {}),
   ...(summary.errorCount ? { errorCount: summary.errorCount } : {}),
   ...(summary.citeCollectionIds?.length
@@ -151,8 +131,7 @@ export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary 
   if (!summary) return undefined;
 
   const controlSummary = { ...summary };
-  delete controlSummary.hasError;
-  delete controlSummary.hasUserConfigError;
+  delete controlSummary.error;
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
 
@@ -280,14 +259,10 @@ export const summarizeRuntimeNodeResponses = (
     if (
       !response.errorCaptured &&
       !isToolExecutionResponse(response) &&
-      (response.error || response.errorText)
+      (response.error !== undefined || response.errorText !== undefined)
     ) {
-      mergeErrorClassification(summary, {
-        hasError: true,
-        hasUserConfigError: response.errorType === 'config'
-      });
       summary.errorCount += 1;
-      summary.errorText = getErrText(response.error || response.errorText);
+      summary.errorText = getErrText(response.error ?? response.errorText);
     }
     if (response.moduleType === FlowNodeTypeEnum.loopRunBreak) {
       summary.hasLoopRunBreak = true;
@@ -370,7 +345,6 @@ export const mergeWorkflowRuntimeSummary = ({
 
       merged.responseIds.push(...(summary.responseIds ?? []));
       merged.finishedNodeIds.push(...(summary.finishedNodeIds ?? []));
-      mergeErrorClassification(merged, summary);
       if (summary.errorText) {
         merged.errorText = summary.errorText;
       }
@@ -399,10 +373,6 @@ export const mergeWorkflowRuntimeSummary = ({
   if (nodeSummary) {
     merged.responseIds.push(...(nodeSummary.responseIds ?? []));
     merged.finishedNodeIds.push(...(nodeSummary.finishedNodeIds ?? []));
-    mergeErrorClassification(merged, {
-      hasError: !!nodeSummary.hasError,
-      hasUserConfigError: !!nodeSummary.hasUserConfigError
-    });
     if (nodeSummary.errorText) {
       merged.errorText = nodeSummary.errorText;
     }

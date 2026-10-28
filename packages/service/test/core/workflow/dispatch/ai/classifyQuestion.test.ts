@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { dispatchClassifyQuestion } from '@fastgpt/service/core/workflow/dispatch/ai/classifyQuestion';
@@ -44,6 +46,11 @@ describe('dispatchClassifyQuestion token summary', () => {
         nodeSummary,
         usagePush
       } as any);
+      await expectNodeDataToReachDownstream({
+        nodeType: TransferNodeType.classifyQuestion,
+        result,
+        expectedData: result.data ?? {}
+      });
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
         inputTokens: 11,
         outputTokens: 3

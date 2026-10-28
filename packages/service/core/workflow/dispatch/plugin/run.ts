@@ -43,7 +43,6 @@ import { createSystemToolResourceContext } from '../../resource/context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
-import { UserError } from '@fastgpt/global/common/error/utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -335,11 +334,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+      error: (runtimeSummary.errorCount ?? 0) > 0 || !pluginOutput || !!pluginOutputError
     });
     const ownUsagePoints = getAppToolOwnUsage({
       plugin: workflowTool,
-      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+      error: (runtimeSummary.errorCount ?? 0) > 0 || !pluginOutput || !!pluginOutputError
     });
     props.nodeSummary.mergeNodeSummary({
       ...(shouldStoreChildNodeResponses
@@ -378,12 +377,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         ? {
             error: Object.hasOwn(childWorkflowResponse, 'error')
               ? childWorkflowResponse.error
-              : runtimeSummary.hasUserConfigError
-                ? new UserError(pluginOutputError, undefined, {
-                    type: 'config',
-                    cause: pluginOutput?.error
-                  })
-                : pluginOutput?.error
+              : pluginOutput?.error
           }
         : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储

@@ -334,14 +334,13 @@ describe('parallelRun/service', () => {
       }
     });
 
-    it('透传子流程的用户配置错误分类', () => {
+    it('从子流程摘要提取失败展示文本', () => {
       const response = makeDispatchFlowResponse({
         nodeResponses: [
           {
             id: 'llm',
             moduleType: FlowNodeTypeEnum.chatNode,
-            errorText: 'Invalid API key',
-            errorType: 'config'
+            errorText: 'Invalid API key'
           } as any
         ]
       });
@@ -350,8 +349,7 @@ describe('parallelRun/service', () => {
 
       expect(result).toMatchObject({
         success: false,
-        error: 'Invalid API key',
-        errorType: 'config'
+        error: 'Invalid API key'
       });
     });
   });
@@ -387,7 +385,7 @@ describe('parallelRun/service', () => {
       }
     });
 
-    it('保留用户配置错误分类', () => {
+    it('将用户异常转换为展示文本，不复制分类', () => {
       const result = parseTaskError(
         3,
         new UserError('Invalid MCP URL', undefined, { type: 'config' })
@@ -395,8 +393,7 @@ describe('parallelRun/service', () => {
 
       expect(result).toMatchObject({
         success: false,
-        error: 'Invalid MCP URL',
-        errorType: 'config'
+        error: 'Invalid MCP URL'
       });
     });
   });
@@ -524,28 +521,13 @@ describe('parallelRun/service', () => {
       expect(responseDetails[0].childrenResponses).toBeUndefined();
     });
 
-    it('失败任务 wrapper 透传用户配置错误分类', () => {
-      const { responseDetails } = agg([
-        {
-          ...failResult1,
-          errorType: 'config'
-        }
-      ]);
-
-      expect(responseDetails[0]).toMatchObject({
-        error: 'task failed',
-        errorType: 'config'
-      });
-    });
-
-    it('用户配置错误经过 parse、wrapper 和 summary 后仍保持分类', () => {
+    it('失败文本经过 parse、wrapper 和 summary 后保持可见', () => {
       const response = makeDispatchFlowResponse({
         nodeResponses: [
           {
             id: 'llm',
             moduleType: FlowNodeTypeEnum.chatNode,
-            errorText: 'Invalid API key',
-            errorType: 'config'
+            errorText: 'Invalid API key'
           } as any
         ]
       });
@@ -554,8 +536,7 @@ describe('parallelRun/service', () => {
       const summary = summarizeRuntimeNodeResponses(undefined, responseDetails);
 
       expect(summary).toMatchObject({
-        hasError: true,
-        hasUserConfigError: true,
+        errorCount: 1,
         errorText: 'Invalid API key'
       });
     });

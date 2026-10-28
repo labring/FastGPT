@@ -665,6 +665,9 @@ describe('MCPClient', () => {
     it('should fallback to SSE when server rejects Streamable HTTP with a 4xx', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      const warnLog = vi.spyOn(logger, 'warn');
       // StreamableHTTP rejected with 405 (server speaks legacy SSE), SSE succeeds
       client.connect = vi
         .fn()
@@ -674,6 +677,8 @@ describe('MCPClient', () => {
       const result = await (mcpClient as any).getConnection();
       expect(client.connect).toHaveBeenCalledTimes(2);
       expect(result).toBe(client);
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).not.toHaveBeenCalled();
     });
 
     it('should pass custom headers once to the SSE fallback transport', async () => {
@@ -790,6 +795,33 @@ describe('MCPClient', () => {
       });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
+
+    it.each(['Not Found', 'fetch failed during protocol probe'])(
+      'keeps the final internal SSE failure observable after an HTTP probe returns %s',
+      async (probeMessage) => {
+        const mcpClient = new MCPClient(config);
+        const client = getPrivateClient(mcpClient);
+        const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+        const warnLog = vi.spyOn(logger, 'warn');
+        const internalError = new TypeError(
+          'Cannot read properties of undefined (reading capabilities)'
+        );
+        client.connect = vi
+          .fn()
+          .mockRejectedValueOnce(new StreamableHTTPError(404, probeMessage))
+          .mockRejectedValueOnce(internalError);
+
+        const request = mcpClient.toolCall({ toolName: 'test', params: {} });
+        await expect(request).rejects.toBe(internalError);
+        await expect(request).rejects.not.toMatchObject({ name: 'UserError', type: 'config' });
+        expect(client.connect).toHaveBeenCalledTimes(2);
+        expect(warnLog).toHaveBeenCalledWith(
+          'MCP client tool call failed',
+          expect.objectContaining({ error: internalError })
+        );
+        expect(warnLog).not.toHaveBeenCalledWith('MCP client user config error', expect.anything());
+      }
+    );
 
     it('should return client on StreamableHTTP success', async () => {
       const mcpClient = new MCPClient(config);

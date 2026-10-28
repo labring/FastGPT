@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   NodeOutputKeyEnum,
@@ -166,6 +168,11 @@ describe('dispatchContentExtract', () => {
       );
       const before = structuredClone(props.params.extractKeys);
       const result = await dispatchContentExtract(props);
+      await expectNodeDataToReachDownstream({
+        nodeType: TransferNodeType.contentExtract,
+        result,
+        expectedData: result.data ?? {}
+      });
 
       expect(result.data).toMatchObject({ success: true, status: expected });
       expect(result.data).not.toHaveProperty('extra');

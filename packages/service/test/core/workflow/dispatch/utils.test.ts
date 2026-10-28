@@ -20,7 +20,8 @@ import {
   createWorkflowRuntimeSummary,
   mergeWorkflowRuntimeSummary,
   runtimeSummaryToNodeSummary,
-  stripNodeSummaryErrorFields
+  stripNodeSummaryErrorFields,
+  getNodeSummaryData
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -1907,17 +1908,17 @@ describe('getNodeErrResponse', () => {
     });
   });
 
-  it('should mark user config errors for workflow-level log suppression', () => {
+  it('keeps classification on the raw exception and excludes it from display details', () => {
     const error = new UserError('Invalid MCP URL', undefined, { type: 'config' });
     const result = getNodeErrResponse({ error });
 
     expect(result.error).toBe(error);
     expect(result.data).toEqual({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
-      errorText: 'Invalid MCP URL',
-      errorType: 'config'
+      errorText: 'Invalid MCP URL'
     });
     expect(isUserConfigError(result.error)).toBe(true);
+    expect(result.responseData).not.toHaveProperty('errorType');
   });
 
   it('should include responseData in nodeResponse', () => {
@@ -1984,7 +1985,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'workflow failed'
     });
@@ -2002,26 +2002,23 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'child workflow failed'
     });
   });
 
-  it('keeps only an all-user-config error set as user_error', () => {
+  it('summarizes failure display text without persisting classification', () => {
     const userConfigOnly = summarizeRuntimeNodeResponses(undefined, [
       {
         id: 'config-error',
         nodeId: 'tool-node',
         moduleType: FlowNodeTypeEnum.toolCall,
-        errorText: 'Invalid MCP URL',
-        errorType: 'config'
+        errorText: 'Invalid MCP URL'
       }
     ] as ChatHistoryItemResType[]);
 
     expect(userConfigOnly).toMatchObject({
-      hasError: true,
-      hasUserConfigError: true,
+      errorCount: 1,
       errorText: 'Invalid MCP URL'
     });
 
@@ -2035,8 +2032,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(withSystemError).toMatchObject({
-      hasError: true,
-      hasUserConfigError: false,
       errorText: 'database unavailable',
       errorCount: 2
     });
@@ -2060,7 +2055,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'Rate limit'
     });
@@ -2078,7 +2072,6 @@ describe('summarizeRuntimeNodeResponses', () => {
     ] as ChatHistoryItemResType[]);
 
     expect(summary).toMatchObject({
-      hasError: true,
       errorCount: 1,
       errorText: 'Plugin failed'
     });
@@ -2323,8 +2316,7 @@ describe('stripNodeSummaryErrorFields', () => {
         llmOutputTokens: 4,
         totalPoints: 2,
         citeCollectionIds: ['collection-1'],
-        hasError: true,
-        hasUserConfigError: true,
+        error: new UserError('tool failure', undefined, { type: 'config' }),
         errorCount: 1,
         errorText: 'tool failed'
       })
@@ -2376,8 +2368,7 @@ describe('mergeWorkflowRuntimeSummary', () => {
       llmOutputTokens: 3,
       responseIds: ['child'],
       finishedNodeIds: ['end'],
-      hasError: true,
-      hasUserConfigError: true,
+      errorCount: 1,
       errorText: 'failed',
       hasLoopRunBreak: true,
       hasToolStop: true,
@@ -2417,74 +2408,41 @@ describe('mergeWorkflowRuntimeSummary', () => {
     expect(display.llmInputTokens).toBe(900);
     expect(display.llmOutputTokens).toBe(100);
   });
-
-  it('lets a system error override an earlier user config error', () => {
-    const merged = mergeWorkflowRuntimeSummary({
-      currentSummary: {
-        ...createWorkflowRuntimeSummary(),
-        hasError: true,
-        hasUserConfigError: true,
-        errorText: 'Invalid MCP URL',
-        errorCount: 1
-      },
-      nodeSummary: {
-        hasError: true,
-        hasUserConfigError: false,
-        errorText: 'database unavailable',
-        errorCount: 1
-      }
-    });
-
-    expect(merged).toMatchObject({
-      hasError: true,
-      hasUserConfigError: false,
-      errorText: 'database unavailable',
-      errorCount: 2
-    });
-  });
-
-  it('keeps user config classification when all uncaptured errors are user errors', () => {
-    const merged = mergeWorkflowRuntimeSummary({
-      currentSummary: {
-        ...createWorkflowRuntimeSummary(),
-        hasError: true,
-        hasUserConfigError: true,
-        errorText: 'Invalid MCP URL',
-        errorCount: 1
-      },
-      nodeSummary: {
-        hasError: true,
-        hasUserConfigError: true,
-        errorText: 'Invalid API key',
-        errorCount: 1
-      }
-    });
-
-    expect(merged).toMatchObject({
-      hasError: true,
-      hasUserConfigError: true,
-      errorText: 'Invalid API key',
-      errorCount: 2
-    });
-  });
 });
 
 describe('createNodeSummary', () => {
+  const configError = new UserError('invalid key', undefined, { type: 'config' });
+  const systemError = new Error('database unavailable');
+  it.each([
+    { errors: [configError, systemError], expectedError: systemError },
+    { errors: [systemError, configError], expectedError: systemError },
+    { errors: [undefined], expectedError: undefined }
+  ])(
+    'keeps the current raw exception in memory with system failure priority: %j',
+    ({ errors, expectedError }) => {
+      const summary = createNodeSummary();
+      errors.forEach((error) => summary.mergeNodeSummary({ error }));
+      expect(Object.hasOwn(summary, 'error')).toBe(true);
+      expect(summary.error).toBe(expectedError);
+      expect(getNodeSummaryData(summary)).not.toHaveProperty('error');
+      expect(mergeWorkflowRuntimeSummary({ nodeSummary: summary })).not.toHaveProperty('error');
+      expect(Object.hasOwn(createNodeSummary(), 'error')).toBe(false);
+    }
+  );
+
   it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();
     summary.mergeNodeSummary({
       llmInputTokens: 5,
       llmOutputTokens: 2,
-      hasError: true,
-      hasUserConfigError: true
+      errorCount: 1
     });
     summary.mergeNodeSummary({ llmInputTokens: 3 });
     summary.mergeNodeSummary({});
     expect(summary).toMatchObject({
       llmInputTokens: 8,
       llmOutputTokens: 2,
-      hasError: true,
-      hasUserConfigError: true
+      errorCount: 1
     });
     expect(createNodeSummary()).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
   });
@@ -2499,15 +2457,13 @@ describe('runtimeSummaryToNodeSummary', () => {
         ...createWorkflowRuntimeSummary(),
         llmInputTokens: 13,
         llmOutputTokens: 7,
-        hasError: true,
-        hasUserConfigError: true,
+        errorCount: 1,
         errorText: 'failed'
       })
     ).toEqual({
       llmInputTokens: 13,
       llmOutputTokens: 7,
-      hasError: true,
-      hasUserConfigError: true,
+      errorCount: 1,
       errorText: 'failed'
     });
   });

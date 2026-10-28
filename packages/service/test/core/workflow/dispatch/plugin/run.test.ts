@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   FlowNodeInputTypeEnum,
@@ -268,6 +270,11 @@ describe('dispatchRunPlugin', () => {
       runtimeEdges: [],
       nodeSummary: createNodeSummary()
     } as any);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.pluginModule,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
     expect(result.error).toBe('upstream unavailable');
@@ -388,6 +395,11 @@ describe('dispatchRunPlugin', () => {
       runtimeEdges: [],
       nodeSummary
     } as any);
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.pluginModule,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];

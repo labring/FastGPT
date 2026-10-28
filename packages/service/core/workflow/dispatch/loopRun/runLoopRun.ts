@@ -1,5 +1,5 @@
 import { cloneDeep } from 'lodash-es';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -16,7 +16,11 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
 import type { DispatchFlowResponse } from '../type';
 import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
-import { getWorkflowRuntimeSummary, mergeWorkflowRuntimeSummary } from '../utils/summary';
+import {
+  getWorkflowRuntimeSummary,
+  mergeWorkflowRuntimeSummary,
+  stripNodeSummaryErrorFields
+} from '../utils/summary';
 import {
   hasLoopRunBreakChild,
   injectLoopRunStart,
@@ -112,7 +116,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const currentSummary = getWorkflowRuntimeSummary(response);
     const fullSummary = isResumeIteration
       ? mergeWorkflowRuntimeSummary({
-          currentSummary: pendingIterationSummary,
+          // 恢复只累计历史统计和完成节点；本轮错误状态从当前 child workflow 重新计算。
+          nodeSummary: stripNodeSummaryErrorFields(pendingIterationSummary),
           workflowRuntimeSummary: currentSummary
         })
       : currentSummary;
@@ -230,7 +235,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     // Wrap this iteration as a virtual task node so the whole-response tree
     // shows a per-iteration layer through sink. Parent loopRun only keeps
     // summary stats and business history.
-    const pushIterationDetail = async (opts: { error?: string; errorType?: 'config' }) => {
+    const pushIterationDetail = async (opts: { error?: string }) => {
       const wrapper = {
         id: iterationResponseId,
         nodeId: iterationResponseId,
@@ -241,7 +246,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
-        errorType: opts.errorType,
         childResponseCount: iterationChildResponseCount
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
@@ -275,20 +279,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    if (iterationSummary.hasError) {
+    if ((iterationSummary.errorCount ?? 0) > 0) {
       const errText = getErrText(iterationSummary.errorText);
       loopFailure = Object.hasOwn(response, 'error')
         ? { error: response.error }
         : {
-            // 恢复摘要或旧调用方没有原始异常时，在当前容器边界生成带分类的失败原因。
-            error: iterationSummary.hasUserConfigError
-              ? new UserError(errText, undefined, { type: 'config' })
-              : new Error(errText)
+            // 旧调用方只有展示文本时保留失败分支，不将其重建成需要统一上报的 Error。
+            error: errText
           };
-      await pushIterationDetail({
-        error: errText,
-        ...(iterationSummary.hasUserConfigError && { errorType: 'config' as const })
-      });
+      await pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
         customOutputs,

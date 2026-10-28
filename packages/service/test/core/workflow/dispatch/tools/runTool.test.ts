@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -106,7 +108,8 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
+vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/context')>()),
   getWorkflowContext: vi.fn(() => workflowContextMock),
   getWorkflowResourceContext: vi.fn(() => undefined)
 }));
@@ -187,6 +190,11 @@ describe('dispatchRunTool runtime toolset auth', () => {
         mcpTool: { toolId: 'invalid-id' }
       })
     );
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.tool,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(result.error).toMatchObject({
       message: 'Invalid MCP tool id: invalid-id',
@@ -242,6 +250,11 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
 
       const result = await dispatchRunTool(props);
+      await expectNodeDataToReachDownstream({
+        nodeType: TransferNodeType.tool,
+        result,
+        expectedData: result.data ?? {}
+      });
       expect(result.error).toBeUndefined();
       const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
       expect(execute).toHaveBeenCalledOnce();

@@ -1,7 +1,7 @@
 import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
@@ -194,8 +194,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       firstTokenTime: event.firstTokenTime,
       ...(event.error
         ? {
-            errorText: getErrText(event.error),
-            ...(isUserConfigError(event.error) && { errorType: 'config' as const })
+            errorText: getErrText(event.error)
           }
         : {})
     });

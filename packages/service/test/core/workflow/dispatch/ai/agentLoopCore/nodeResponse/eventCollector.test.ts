@@ -78,7 +78,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
   });
 
-  it('preserves user config classification on failed LLM responses', () => {
+  it('stores only display text for failed LLM responses', () => {
     const { collector, nodeResponses } = createCollector();
 
     collector.emitEvent({
@@ -94,10 +94,11 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
 
     expect(nodeResponses).toEqual([
       expect.objectContaining({
-        errorText: 'Invalid API key',
-        errorType: 'config'
+        errorText: 'Invalid API key'
       })
     ]);
+    expect(nodeResponses[0]).not.toHaveProperty('errorType');
+    expect(nodeResponses[0]).not.toHaveProperty('error');
   });
 
   it('records tool responses and compression as separate flat rows', () => {

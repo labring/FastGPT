@@ -1,3 +1,5 @@
+import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
@@ -526,6 +528,11 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await resultPromise!;
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.agent,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(result.error).toBeUndefined();
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
@@ -812,6 +819,11 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await resultPromise!;
+    await expectNodeDataToReachDownstream({
+      nodeType: TransferNodeType.agent,
+      result,
+      expectedData: result.data ?? {}
+    });
 
     expect(result.error).toMatchObject({
       message: 'Invalid API key',
