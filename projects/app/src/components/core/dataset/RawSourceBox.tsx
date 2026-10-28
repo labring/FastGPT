@@ -1,3 +1,4 @@
+import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 import React, { useMemo } from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -25,6 +26,7 @@ const RawSourceBox = ({
   collectionId,
   appId,
   skillId,
+  sourceType,
   chatId,
   chatItemDataId,
   outLinkAuthData,
@@ -41,11 +43,9 @@ const RawSourceBox = ({
   );
   const read = getCollectionSourceAndOpen({
     collectionId,
-    appId,
-    skillId,
+    ...getChatAuthTargetInput({ appId, skillId, sourceType, outLinkAuthData }),
     chatId,
-    chatItemDataId,
-    outLinkAuthData
+    chatItemDataId
   });
   const displaySourceName = rawSourceName || t('common:unknow_source');
 

@@ -72,7 +72,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
       parentType: templateType === TemplateTypeEnum.myTools && parentId ? parentType : undefined,
       excludeAppId: appId
     },
-    pageSize: 50,
+    pageSize: 20,
     disabled: !isTeamTemplate,
     refreshDeps: [isTeamTemplate, templateType, parentId, searchKey, appId]
   });

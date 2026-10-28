@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import updateHandler from '@/pages/api/core/ai/skill/update';
 import moveHandler from '@/pages/api/core/ai/skill/batch/move';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -197,49 +198,80 @@ describe('move skill', () => {
     );
   });
 
-  it('keeps an independent skill isolated when moved back to root', async () => {
-    const { owner } = await getFakeUsers(1);
-    const teamId = String(owner.teamId);
+  it.each([null, ''])(
+    'keeps an independent skill isolated when moved back to root (%s) and enforces team create permission',
+    async (rootParentId) => {
+      const { owner, members } = await getFakeUsers(1);
+      const member = members[0];
+      const teamId = String(owner.teamId);
 
-    const folder = await createSkillWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'folder',
-      type: AgentSkillTypeEnum.folder
-    });
-    const skill = await createSkillWithOwnerSnapshot({
-      teamId,
-      tmbId: String(owner.tmbId),
-      name: 'independent-skill',
-      type: AgentSkillTypeEnum.skill
-    });
-    await MongoAgentSkills.updateOne(
-      { _id: skill._id },
-      { parentId: String(folder._id), inheritPermission: false }
-    );
-
-    const res = await Call(updateHandler, {
-      auth: owner,
-      body: { skillId: String(skill._id), parentId: null }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.code).toBe(200);
-
-    const updated = await MongoAgentSkills.findById(skill._id).lean();
-    expect(updated?.parentId ?? null).toBeNull();
-    expect(updated?.inheritPermission).toBe(false);
-
-    await expect(
-      getResourceOwnedClbs({
+      const folder = await createSkillWithOwnerSnapshot({
         teamId,
-        resourceId: String(skill._id),
-        resourceType: PerResourceTypeEnum.agentSkill
-      }).then(toPermissionRows)
-    ).resolves.toEqual(
-      toPermissionRows([{ tmbId: String(owner.tmbId), permission: OwnerRoleVal }])
-    );
-  });
+        tmbId: String(owner.tmbId),
+        name: 'folder',
+        type: AgentSkillTypeEnum.folder
+      });
+      await setSkillCollaborators({
+        skillId: String(folder._id),
+        teamId,
+        type: folder.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: OwnerRoleVal }
+        ]
+      });
+      const skill = await createSkillWithOwnerSnapshot({
+        teamId,
+        tmbId: String(owner.tmbId),
+        name: 'independent-skill',
+        type: AgentSkillTypeEnum.skill
+      });
+      await setSkillCollaborators({
+        skillId: String(skill._id),
+        teamId,
+        type: skill.type,
+        collaborators: [
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ]
+      });
+      await MongoAgentSkills.updateOne(
+        { _id: skill._id },
+        { parentId: String(folder._id), inheritPermission: false }
+      );
+
+      const denied = await Call(updateHandler, {
+        auth: member,
+        body: { skillId: String(skill._id), parentId: rootParentId }
+      });
+      expect(denied.code).not.toBe(200);
+
+      const res = await Call(updateHandler, {
+        auth: owner,
+        body: { skillId: String(skill._id), parentId: rootParentId }
+      });
+
+      expect(res.error).toBeUndefined();
+      expect(res.code).toBe(200);
+
+      const updated = await MongoAgentSkills.findById(skill._id).lean();
+      expect(updated?.parentId ?? null).toBeNull();
+      expect(updated?.inheritPermission).toBe(false);
+
+      await expect(
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: String(skill._id),
+          resourceType: PerResourceTypeEnum.agentSkill
+        }).then(toPermissionRows)
+      ).resolves.toEqual(
+        toPermissionRows([
+          { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+          { tmbId: String(member.tmbId), permission: ReadRoleVal }
+        ])
+      );
+    }
+  );
 
   it('keeps independent skills isolated during batch move', async () => {
     const { owner, members } = await getFakeUsers(1);
@@ -320,4 +352,22 @@ describe('move skill', () => {
       ])
     );
   });
+});
+
+it('rejects moving a leaf beneath another leaf without changing its parent', async () => {
+  const { owner } = await getFakeUsers(1);
+  const props = {
+    teamId: owner.teamId,
+    tmbId: owner.tmbId,
+    type: AgentSkillTypeEnum.skill,
+    source: AgentSkillSourceEnum.personal
+  };
+  const target = await MongoAgentSkills.create({ ...props, name: 'leaf-target' });
+  const source = await MongoAgentSkills.create({ ...props, name: 'source' });
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { skillId: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoAgentSkills.findById(source._id).lean())?.parentId).toBeNull();
 });

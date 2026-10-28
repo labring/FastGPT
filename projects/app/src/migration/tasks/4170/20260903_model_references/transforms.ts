@@ -4,11 +4,9 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getSelectedInputRenderType,
-  isWorkflowSystemModelInput,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
+import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import type { ModelCatalog } from './modelCatalog';
 import type { ModelRequirement, ReferenceTransformResult } from './types';
 
@@ -134,6 +132,17 @@ export const migrateWorkflowNodes = ({
 }): { nodes: unknown; changed: boolean; errors: string[] } => {
   if (!Array.isArray(nodes)) return { nodes, changed: false, errors: [] };
 
+  // 已发布迁移仍识别当时的模型槽位；退役功能不再进入运行期目录和校验。
+  const legacyDeepSearch = {
+    legacyKey: 'datasetDeepSearchModel',
+    modelIdKey: 'datasetDeepSearchModelId',
+    featureKey: 'datasetDeepSearch'
+  } as const;
+  const migrationModelKeyMappings = [
+    ...workflowModelKeyMappings,
+    [legacyDeepSearch.legacyKey, legacyDeepSearch.modelIdKey]
+  ] as const;
+
   let changed = false;
   const errors: string[] = [];
   const isFeatureEnabled = ({
@@ -150,8 +159,8 @@ export const migrateWorkflowNodes = ({
       if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
         return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
       }
-      if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
-        return NodeInputKeyEnum.datasetDeepSearch;
+      if (legacyKey === legacyDeepSearch.legacyKey) {
+        return legacyDeepSearch.featureKey;
       }
     })();
     if (!featureKey) return true;
@@ -164,14 +173,19 @@ export const migrateWorkflowNodes = ({
     const inputs = [...(node as any).inputs];
     let nodeChanged = false;
 
-    for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
+    for (const [legacyKey, modelIdKey] of migrationModelKeyMappings) {
       const legacyInput = inputs.find((input) => input?.key === legacyKey);
       const modelIdInputIndex = inputs.findIndex((input) => input?.key === modelIdKey);
       const modelIdInput = inputs[modelIdInputIndex];
       const systemModelInput = modelIdInput ?? legacyInput;
+      const isLegacyDeepSearchInput =
+        legacyKey === legacyDeepSearch.legacyKey &&
+        (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
+          node.flowNodeType === FlowNodeTypeEnum.agent);
       if (
         !systemModelInput ||
-        !isWorkflowSystemModelInput({ node: node as any, input: systemModelInput })
+        (!isLegacyDeepSearchInput &&
+          !isWorkflowSystemModelInput({ node: node as any, input: systemModelInput }))
       ) {
         continue;
       }

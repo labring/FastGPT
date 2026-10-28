@@ -8,16 +8,14 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { getFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const fieldInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
   const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount } = useFileUploadLimits();
 
   const [urlInput, setUrlInput] = useState('');
   const values = useMemo(() => {
@@ -30,8 +28,7 @@ const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const maxSelectFiles = getFileAmountLimit({
     moduleMaxFileAmount: fieldInput?.maxFiles,
     defaultModuleMaxFileAmount: 5,
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs.uploadFileMaxAmount
+    systemMaxFileAmount: maxUploadFileCount
   });
   const isMaxSelected = values.length >= maxSelectFiles;
 

@@ -15,7 +15,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getSelectedInputRenderType,
   nodeInputIsReference
-} from '@fastgpt/global/core/workflow/utils';
+} from '@fastgpt/global/common/workflow/reference';
 import {
   normalizeFlowNodeInputType,
   serializeAgentTool
@@ -100,6 +100,9 @@ export const uiWorkflow2StoreWorkflow = ({
       showStatus: item.data.showStatus,
       position: item.position,
       version: item.data.version,
+      versionLabel: item.data.versionLabel,
+      isLatestVersion: item.data.isLatestVersion,
+      metadataLocale: item.data.metadataLocale,
       inputs,
       outputs: item.data.outputs.map(({ invalidCondition: _, invalid: __, ...output }) => output),
       pluginId: item.data.pluginId,

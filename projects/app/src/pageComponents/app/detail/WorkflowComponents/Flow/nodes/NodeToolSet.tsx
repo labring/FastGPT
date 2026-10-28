@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
@@ -6,9 +7,11 @@ import IOTitle from '../components/IOTitle';
 import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
 import { useTranslation } from 'next-i18next';
 import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeToolSet = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
+  const { inputs = [] } = useNode<WorkflowNodeData>(data.nodeId, (node) => node?.data) ?? {};
   const toolList = getNodeToolSetList(data);
   const nodeActions = useNodeActions(data.nodeId);
   const onSaveDescription = useCallback(
@@ -39,12 +42,14 @@ const NodeToolSet = ({ data, selected }: CanvasNodeProps) => {
   );
 
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         <ToolSetList
           toolList={toolList}
           onSaveDescription={onSaveDescription}
-          title={<IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} />}
+          title={
+            <IOTitle text={t('app:MCP_tools_list')} nodeId={data.nodeId} inputs={inputs} />
+          }
         />
       </Container>
     </NodeCard>

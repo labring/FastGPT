@@ -174,10 +174,7 @@ export type ConfigFormType = {
       systemTitle: string;
       customApiDomain: string;
       customSharePageDomain: string;
-      uploadFileMaxAmount: number;
-      uploadFileMaxSize: number;
       botIframeUrl: string;
-      ip_whitelist?: string;
       customDomain?: {
         enable?: boolean;
         domain?: {
@@ -200,8 +197,11 @@ export type ConfigFormType = {
       vlmMaxProcess: number;
       hnswEfSearch: number;
       hnswMaxScanTuples: number;
+      vectorRecallConcurrency: FastGPTConfigFileType['systemEnv']['vectorRecallConcurrency'];
       customPdfParse?: customPdfParseType;
       fileUrlWhitelist?: string[];
+      ip_whitelist?: string;
+      sso?: FastGPTConfigFileType['systemEnv']['sso'];
       workflowHttpNode?: {
         ignoreHttpsCertificate?: boolean;
       };
@@ -240,12 +240,11 @@ export type ConfigFormType = {
     sso?: {
       title?: string;
       icon?: string;
-      url?: string;
       autoLogin?: boolean;
       /**
        * 开启后，SSO 命名空间下的账号（username 形如 `<租户>-<账号>`）不再允许使用平台密码：
        * 登录、找回密码、管理端改密都会被服务端拒绝，登录页首屏改为登录方式选择页。
-       * 仅在配置了 sso.url 时生效。
+       * 仅在配置了 systemEnv.sso.url 时生效。
        */
       disablePasswordForSsoUsers?: boolean;
     };

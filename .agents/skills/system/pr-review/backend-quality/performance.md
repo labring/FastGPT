@@ -125,15 +125,18 @@ const datasets = await db.datasets
 
 在没有索引的字段上进行 `find`/`findOne` 会触发全表扫描，随数据量线性增长。
 
-**检查方法**：查看查询条件中的字段，对照 Model 定义确认是否有对应索引。
+**检查方法**：结合查询频率、过滤与排序、已有复合索引前缀检查索引覆盖；不能只因某字段没有独立索引就认定会全表扫描。当前索引和明确废弃的历史索引均通过 `defineIndex` 声明。
 
 ```typescript
 // 检查 Model 定义是否有索引
+import { defineIndex } from '@fastgpt/service/common/mongo/schemaIndexes';
+
 const DatasetSchema = new Schema({
-  teamId: { type: String, required: true, index: true },  // ✅ 有索引
-  name: { type: String },                                  // ❌ 无索引但被频繁查询？
+  teamId: { type: String, required: true },
+  name: { type: String }
 });
+defineIndex(DatasetSchema, { key: { teamId: 1, name: 1 } });
 
 // 高频查询条件
-db.datasets.find({ teamId, name });  // name 无索引 → 需要添加
+db.datasets.find({ teamId, name });  // 检查该查询与已有索引及数据分布是否匹配
 ```

@@ -4,6 +4,9 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
+import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import { getDataId } from '@fastgpt/service/support/tmpData/verification';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
@@ -17,6 +20,8 @@ import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoAccountCancellation } from '@fastgpt/service/support/user/account/cancellation/schema';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+
 const saveLoginCode = (username: string, code = '123456') =>
   MongoTmpData.updateOne(
     { dataId: getDataId({ scene: 'login', type: 'password', key: username }) },
@@ -29,7 +34,7 @@ const saveLoginCode = (username: string, code = '123456') =>
   );
 
 describe('loginByPassword API', () => {
-  const originalSystemConfig = global.systemConfig;
+  const originalFeConfigs = global.feConfigs;
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
@@ -68,7 +73,7 @@ describe('loginByPassword API', () => {
   });
 
   afterEach(() => {
-    global.systemConfig = originalSystemConfig;
+    global.feConfigs = originalFeConfigs;
   });
 
   it('should login successfully with valid credentials', async () => {
@@ -84,6 +89,7 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
     expect(res.data.user).toBeDefined();
+    expect(res.data.user.status).toBe(UserStatusEnum.active);
     expect(res.data.user.team).toBeDefined();
     expect(res.data.user.team.teamId).toBe(String(testTeam._id));
     expect(res.data.user.team.tmbId).toBe(String(testTmb._id));
@@ -99,9 +105,7 @@ describe('loginByPassword API', () => {
     expect(setCookie).toHaveBeenCalled();
     expect(pushTrack.login).toHaveBeenCalledWith({
       type: 'password',
-      uid: testUser._id,
-      teamId: String(testTeam._id),
-      tmbId: String(testTmb._id)
+      uid: testUser._id
     });
     expect(addAuditLog).toHaveBeenCalled();
   });
@@ -182,6 +186,29 @@ describe('loginByPassword API', () => {
     expect(res.error).toBe('Invalid account!');
   });
 
+  it('allows an inactive user to log in and reach the account activation prompt', async () => {
+    // 独立账号避免消耗其他用例共用的账号级登录限流配额。
+    const username = 'inactiveuser';
+    await MongoUser.findByIdAndUpdate(testUser._id, {
+      username,
+      status: UserStatusEnum.inactive
+    });
+    await saveLoginCode(username);
+
+    const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
+      body: {
+        username,
+        password: 'testpassword',
+        code: '123456',
+        language: 'zh-CN'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.user.status).toBe(UserStatusEnum.inactive);
+    expect(res.data.token).toBeDefined();
+  });
+
   it('should allow a pending cancellation user to recover a login session', async () => {
     await MongoUser.findByIdAndUpdate(testUser._id, { $unset: { lastLoginTmbId: 1 } });
     await MongoAccountCancellation.create({
@@ -205,7 +232,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should create and use a personal team when multi-team login has no usable team', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'multi-orphan-user',
       password: 'testpassword',
@@ -229,10 +256,16 @@ describe('loginByPassword API', () => {
     await expect(
       MongoTeamMember.countDocuments({ userId: loginUser._id, status: 'active' })
     ).resolves.toBe(1);
+    await expect(
+      MongoMemberGroupModel.countDocuments({
+        teamId: res.data.user.team.teamId,
+        name: DefaultGroupName
+      })
+    ).resolves.toBe(1);
   });
 
   it('should keep the user lock until a fallback login consumes its verification material', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'concurrent-orphan-user',
       password: 'testpassword',
@@ -250,20 +283,23 @@ describe('loginByPassword API', () => {
     });
     const originalDeleteOne = MongoTmpData.deleteOne.bind(MongoTmpData);
     let blockedFirstConsume = false;
-    const deleteOneSpy = vi
-      .spyOn(MongoTmpData, 'deleteOne')
-      .mockImplementation(async (...args: any[]) => {
-        if (
-          !blockedFirstConsume &&
-          args[0]?.dataId ===
-            getDataId({ scene: 'login', type: 'password', key: loginUser.username })
-        ) {
-          blockedFirstConsume = true;
+    const deleteOneSpy = vi.spyOn(MongoTmpData, 'deleteOne').mockImplementation((...args) => {
+      const query = originalDeleteOne(...args);
+      if (
+        !blockedFirstConsume &&
+        query.getFilter().dataId ===
+          getDataId({ scene: 'login', type: 'password', key: loginUser.username })
+      ) {
+        blockedFirstConsume = true;
+        const execute = query.exec.bind(query);
+        query.exec = async () => {
           firstConsumeReached();
           await consumeGate;
-        }
-        return originalDeleteOne(...args);
-      });
+          return execute();
+        };
+      }
+      return query;
+    });
 
     try {
       const firstLogin = Call<LoginByPasswordBodyType, Record<string, never>, any>(
@@ -292,18 +328,68 @@ describe('loginByPassword API', () => {
       );
 
       expect(secondLogin.code).not.toBe(200);
-      await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(1);
+      // 验证材料消费前事务尚未提交，其他请求不应看到兜底创建的团队。
+      await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(0);
 
       releaseFirstConsume();
       await expect(firstLogin).resolves.toMatchObject({ code: 200 });
+      await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(1);
     } finally {
       releaseFirstConsume();
       deleteOneSpy.mockRestore();
     }
   });
 
+  it('should roll back fallback team creation and profile updates when verification consumption fails', async () => {
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
+    const loginUser = await MongoUser.create({
+      username: 'rollback-orphan-user',
+      password: 'testpassword',
+      status: UserStatusEnum.active
+    });
+    await saveLoginCode(loginUser.username);
+
+    // 在业务写入完成后制造材料消费失败，验证团队与登录数据仍属于同一事务。
+    const consumeError = new Error('verification consumption failed');
+    const deleteOneSpy = vi.spyOn(MongoTmpData, 'deleteOne').mockImplementationOnce(() => {
+      throw consumeError;
+    });
+
+    try {
+      const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(
+        loginApi.default,
+        {
+          body: {
+            username: loginUser.username,
+            password: 'testpassword',
+            code: '123456',
+            language: 'en'
+          }
+        }
+      );
+
+      expect(res.code).toBe(500);
+      expect(res.error).toBe(consumeError);
+      await expect(MongoTeam.countDocuments({ ownerId: loginUser._id })).resolves.toBe(0);
+      await expect(MongoTeamMember.countDocuments({ userId: loginUser._id })).resolves.toBe(0);
+      await expect(MongoMemberGroupModel.countDocuments({})).resolves.toBe(0);
+      await expect(MongoOrgModel.countDocuments({})).resolves.toBe(0);
+      const userAfterFailedLogin = await MongoUser.findById(loginUser._id).lean();
+      expect(userAfterFailedLogin?.language).toBe(loginUser.language);
+      expect(userAfterFailedLogin?.lastLoginTmbId).toBeUndefined();
+      await expect(
+        MongoTmpData.findOne({
+          dataId: getDataId({ scene: 'login', type: 'password', key: loginUser.username })
+        }).lean()
+      ).resolves.toMatchObject({ data: { preLoginCode: '123456' } });
+      expect(setCookie).not.toHaveBeenCalled();
+    } finally {
+      deleteOneSpy.mockRestore();
+    }
+  });
+
   it('should not create a team for a pending cancellation user without a usable team', async () => {
-    global.systemConfig = { teamMode: 'multi' };
+    global.feConfigs = { ...global.feConfigs, teamMode: 'multi' };
     const loginUser = await MongoUser.create({
       username: 'pending-orphan-user',
       password: 'testpassword',
@@ -330,7 +416,7 @@ describe('loginByPassword API', () => {
   });
 
   it('should keep single-team login failure when the user has no usable team', async () => {
-    global.systemConfig = { teamMode: 'single' };
+    global.feConfigs = { ...global.feConfigs, teamMode: 'single' };
     const loginUser = await MongoUser.create({
       username: 'single-orphan-user',
       password: 'testpassword',
@@ -495,13 +581,18 @@ describe('loginByPassword API', () => {
   // ===== Security: NoSQL injection prevention (GHSA-jxvr-h2vx-p73r) =====
 
   describe('SSO password policy', () => {
-    const originalFeConfigs = global.feConfigs;
+    let originalFeConfigs: typeof global.feConfigs;
+    let originalSystemEnv: typeof global.systemEnv;
+    beforeEach(() => {
+      originalFeConfigs = global.feConfigs;
+      originalSystemEnv = global.systemEnv;
+    });
 
     const enableSsoPasswordPolicy = () => {
+      global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.example.com' } };
       global.feConfigs = {
         ...global.feConfigs,
         sso: {
-          url: 'https://sso.example.com',
           disablePasswordForSsoUsers: true
         }
       };
@@ -509,6 +600,7 @@ describe('loginByPassword API', () => {
 
     afterEach(() => {
       global.feConfigs = originalFeConfigs;
+      global.systemEnv = originalSystemEnv;
     });
 
     // disablePasswordForSsoUsers 开启后，受限 SSO 账号即便持有历史密码，

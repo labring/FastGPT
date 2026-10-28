@@ -22,10 +22,8 @@ import {
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import {
-  getDatasetSynonymTransformContext,
-  isDatasetSynonymEnabled
-} from '@fastgpt/service/core/dataset/synonym/entity';
+import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
+import { serviceEnv } from '@fastgpt/service/env';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -705,7 +703,7 @@ export class DatasetDataIndexOperation {
       return Promise.reject('Dataset data index text is too long');
     }
 
-    const synonymEnabled = isDatasetSynonymEnabled();
+    const synonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     const currentData = synonymEnabled ? await MongoDatasetData.findById(data.id) : undefined;
     if (synonymEnabled && !currentData) {
       return Promise.reject('Dataset data not found');

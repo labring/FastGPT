@@ -26,6 +26,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   hydrateWorkflowEditor,
   type StoreWorkflow
@@ -136,7 +137,7 @@ type WorkflowSessionValue = {
   focusIssueNode: (nodeId?: string) => void;
 
   initRuntime: (content: CanonicalWorkflowData) => void;
-  loadDocument: (content: CanonicalWorkflowData) => void;
+  loadDocument: (content: CanonicalWorkflowData) => ReturnType<WorkflowRuntimePort['dispatch']>;
   sessionActions: WorkflowSessionActions;
   persistence: WorkflowPersistenceActions;
   historyState: WorkflowHistoryActions;
@@ -392,6 +393,32 @@ export const WorkflowSessionProvider = ({
     setIssueFocusNodeId(nodeId);
     return true;
   });
+  const bumpView = useMemoizedFn(() => {
+    setViewTick((tick) => tick + 1);
+  });
+  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
+    if (updateIssueFocusNode(nodeId)) {
+      bumpView();
+    }
+  });
+  /** 首屏延后聚焦首个错误；孤立的起始节点只保留气泡，避免空白流程初次进入被强制拉红。 */
+  const focusInitialIssue = useMemoizedFn((current: WorkflowRuntimePort) => {
+    window.setTimeout(() => {
+      if (runtimeRef.current !== current || current.isDisposed()) return;
+      const firstErrorNode = current
+        .getWorkflow()
+        .nodes.find((node) => node.issues.some((issue) => issue.level === 'error'));
+      if (!firstErrorNode) return;
+
+      const errorIssues = firstErrorNode.issues.filter((issue) => issue.level === 'error');
+      const isEntryNode =
+        firstErrorNode.flowNodeType === FlowNodeTypeEnum.workflowStart ||
+        firstErrorNode.flowNodeType === FlowNodeTypeEnum.pluginInput;
+      const isIsolatedEntryOnly =
+        isEntryNode && errorIssues.every((issue) => issue.code === 'isolated_node');
+      if (!isIsolatedEntryOnly) focusIssueNode(firstErrorNode.nodeId);
+    }, 300);
+  });
   // 订阅回调里回写页面状态，用 ref 避免 chatConfig 变化导致重新订阅。
   const onChatConfigChangeRef = useRef(onChatConfigChange);
   const translationRef = useRef(t);
@@ -410,10 +437,6 @@ export const WorkflowSessionProvider = ({
       sandbox: { configured: !!showSandbox, planSupported: enableSandbox }
     })
   );
-
-  const bumpView = useMemoizedFn(() => {
-    setViewTick((tick) => tick + 1);
-  });
 
   const setVersions = useMemoizedFn((next: WorkflowVersionEntry[]) => {
     versionsRef.current = next;
@@ -494,9 +517,11 @@ export const WorkflowSessionProvider = ({
         live: true
       }
     ]);
+    focusInitialIssue(nextInitialRuntime);
   }, [
     attachRuntime,
     bumpView,
+    focusInitialIssue,
     initialRuntime,
     initialRuntimeActive,
     resetSessionState,
@@ -522,12 +547,6 @@ export const WorkflowSessionProvider = ({
    * 传入 nodeId 时更新焦点序号，画布在尺寸进入 Dimension Index 后负责定位；传 undefined 只清除
    * 标红，用于节点被点击或取消选中的场景，此时不应移动视口。
    */
-  const focusIssueNode = useMemoizedFn((nodeId?: string) => {
-    if (updateIssueFocusNode(nodeId)) {
-      bumpView();
-    }
-  });
-
   const serializeWorkflow = useMemoizedFn(() =>
     serializeWorkflowData({
       runtimeRef,
@@ -606,6 +625,7 @@ export const WorkflowSessionProvider = ({
         live: true
       }
     ]);
+    focusInitialIssue(nextRuntime);
   });
 
   /** 导入等重载路径：保留 Runtime 实例与历史（导入可撤销），整文档替换并清视图数据。 */
@@ -613,14 +633,15 @@ export const WorkflowSessionProvider = ({
     const current = runtimeRef.current;
     if (!current || current.isDisposed()) {
       initRuntime(content);
-      return;
+      return { ok: true } as const;
     }
     const res = current.dispatch({ type: 'replaceDocument', document: content });
-    if (!res.ok) return;
+    if (!res.ok) return res;
     overlaysRef.current = {};
     updateIssueFocusNode(undefined);
     pendingSaveRevision.current = undefined;
     bumpView();
+    return res;
   });
 
   /** 版本切换只移动当前版本标记，不产生新的“My Edit”记录。 */

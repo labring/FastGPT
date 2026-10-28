@@ -1,9 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Box, Flex, Button, IconButton, type ButtonProps, Input, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
 import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas/canvasTypes';
@@ -12,8 +11,14 @@ import {
   useWorkflowCanvasRendererValue,
   useWorkflowCanvasValue
 } from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
+import WorkflowToolbarTooltip from '../../WorkflowComponents/WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 
-const SearchButton = (props: ButtonProps) => {
+type SearchButtonProps = ButtonProps & {
+  inToolbar?: boolean;
+  portalContainerRef?: React.RefObject<HTMLElement | null>;
+};
+
+const SearchButton = ({ inToolbar = false, portalContainerRef, ...props }: SearchButtonProps) => {
   const { t } = useTranslation();
   // 命中节点读文档一次性算，不建订阅；高亮标记是画布视图数据，写进 host overlay 由投影合并。
   const getWorkflow = useWorkflowSnapshotGetter();
@@ -25,14 +30,26 @@ const SearchButton = (props: ButtonProps) => {
   const [keyword, setKeyword] = useState<string>();
   const [searchIndex, setSearchIndex] = useState<number>(0);
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
+  const isSearchOpen = keyword !== undefined;
+  const searchInputRef = useRef<HTMLInputElement>(null);
   // 上一轮写过标记的节点：只提交增量，避免每次按键都让全画布 overlay 变更并重投影。
   const markedNodeIdsRef = useRef<string[]>([]);
   const fittedSearchTargetRef = useRef<string>();
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    const frame = requestAnimationFrame(() =>
+      searchInputRef.current?.focus({ preventScroll: true })
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [isSearchOpen]);
 
   useKeyPress(['ctrl.f', 'meta.f'], (e) => {
     e.preventDefault();
     e.stopPropagation();
     setKeyword('');
+    searchInputRef.current?.focus({ preventScroll: true });
   });
   useKeyPress(['esc'], (e) => {
     e.preventDefault();
@@ -121,34 +138,35 @@ const SearchButton = (props: ButtonProps) => {
     setSearchedNodeCount(0);
   }, []);
 
-  if (keyword === undefined) {
+  const trigger = (
+    <WorkflowToolbarTooltip label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}>
+      <IconButton
+        icon={<MyIcon name="core/app/workflowToolbarSearch" boxSize={'18px'} color={'#485264'} />}
+        w={8}
+        minW={8}
+        h={8}
+        p={'7px'}
+        borderRadius={'6px'}
+        aria-label={t('workflow:please_enter_node_name')}
+        variant="unstyled"
+        bg={isSearchOpen ? 'myGray.50' : 'transparent'}
+        _hover={{ bg: 'myGray.50' }}
+        onClick={isSearchOpen ? clearSearch : () => setKeyword('')}
+        {...props}
+      />
+    </WorkflowToolbarTooltip>
+  );
+
+  if (!isSearchOpen) {
+    if (inToolbar) return trigger;
     return (
-      <Box position={'absolute'} top={'180px'} left={6} zIndex={1}>
-        <MyTooltip
-          shouldWrapChildren={false}
-          label={isMac ? t('workflow:find_tip_mac') : t('workflow:find_tip')}
-        >
-          <IconButton
-            icon={<MyIcon name="core/app/workflowToolbarSearch" boxSize={5} color={'myGray.400'} />}
-            w={9}
-            minW={9}
-            h={9}
-            p={1.5}
-            borderRadius={'50%'}
-            aria-label={''}
-            variant="whitePrimary"
-            _hover={{ bg: 'myGray.50' }}
-            border={'none'}
-            boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
-            onClick={() => setKeyword('')}
-            {...props}
-          />
-        </MyTooltip>
+      <Box position={'absolute'} top={'176px'} left={6} zIndex={1}>
+        {trigger}
       </Box>
     );
   }
 
-  return (
+  const searchPanel = (
     <Flex
       position="absolute"
       top={20}
@@ -157,7 +175,7 @@ const SearchButton = (props: ButtonProps) => {
       pl={5}
       pr={4}
       py={4}
-      zIndex={1}
+      zIndex={330}
       borderRadius={'lg'}
       bg={'white'}
       alignItems={'center'}
@@ -169,6 +187,7 @@ const SearchButton = (props: ButtonProps) => {
       w={'100%'}
     >
       <Input
+        ref={searchInputRef}
         flex="1 0 0"
         h={8}
         border={'none'}
@@ -180,7 +199,6 @@ const SearchButton = (props: ButtonProps) => {
         fontSize={'16px'}
         value={keyword}
         placeholder={t('workflow:please_enter_node_name')}
-        autoFocus
         onFocus={onSearch}
         onChange={(e) => setKeyword(e.target.value)}
         onKeyDown={(e) => {
@@ -231,6 +249,15 @@ const SearchButton = (props: ButtonProps) => {
         <MyIcon name="common/closeLight" w="1.2rem" />
       </Flex>
     </Flex>
+  );
+
+  return inToolbar && portalContainerRef ? (
+    <>
+      {trigger}
+      <Portal containerRef={portalContainerRef}>{searchPanel}</Portal>
+    </>
+  ) : (
+    searchPanel
   );
 };
 

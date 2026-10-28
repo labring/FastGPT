@@ -1,4 +1,3 @@
-import { authDatasetCreateModels } from '@/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
@@ -30,11 +29,13 @@ import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -54,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     sangforFileParseConfig
   } = datasetParams;
 
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -69,28 +70,36 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         per: TeamDatasetCreatePermissionVal
       });
 
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelData =
-    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
-    modelHandle.getDefaultModelData('embedding');
-  const agentModelData =
-    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
-    modelHandle.getDefaultModelData('llm');
-  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
-  const explicitVlm = vlmModelId !== undefined;
-  const rawVlmModelData =
-    vlmModelId === undefined
-      ? modelHandle.getDefaultModelData('datasetImageLLM')
-      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
-
-  const vlmModelData = await authDatasetCreateModels({
-    actor: { teamId, tmbId, isRoot },
-    handle: modelHandle,
-    vectorModel: vectorModelData,
-    agentModel: agentModelData,
-    vlmModel: rawVlmModelData,
-    explicitVlm
+  await checkCreateResourceParent({
+    parentId,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
+    isFolder: false,
+    isFolderType: (type) => type === DatasetTypeEnum.folder
   });
+
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
+  const vectorModelData =
+    modelHandle.getModelData(
+      { modelId: vectorModelId },
+      { type: 'embedding', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('embedding', { authorizedIds });
+  const agentModelData =
+    modelHandle.getModelData(
+      { modelId: agentModelId },
+      { type: 'llm', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('llm', { authorizedIds });
+  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认（无权限默认 VLM 自动降级为 undefined）。
+  const vlmModelData =
+    vlmModelId === undefined
+      ? modelHandle.getDefaultModelData('datasetImageLLM', { authorizedIds })
+      : modelHandle.getModelData(
+          { modelId: vlmModelId },
+          { type: 'llm', vision: true, optional: true, authorizedIds }
+        );
 
   // check limit
   await checkTeamDatasetLimit(teamId);
@@ -188,8 +197,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     pushTrack.createDataset({
       type: DatasetTypeEnum.dataset,
       teamId,
-      tmbId,
-      uid: userId
+      tmbId
     });
 
     (async () => {

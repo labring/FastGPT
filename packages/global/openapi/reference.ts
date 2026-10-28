@@ -1,7 +1,4 @@
-import {
-  FASTGPT_WEB_REQUEST_HEADER,
-  FASTGPT_WEB_REQUEST_VALUE
-} from '../common/system/constants';
+import { FASTGPT_WEB_REQUEST_HEADER, FASTGPT_WEB_REQUEST_VALUE } from '../common/system/constants';
 
 const scalarApiReferenceCss = `
 .light-mode {
@@ -14,6 +11,64 @@ const scalarApiReferenceCss = `
   --fastgpt-api-sidebar-title-color: #FEFEFE;
   --fastgpt-api-sidebar-active-color: #C3C5C6;
   --fastgpt-api-sidebar-item-color: #929495;
+}
+
+/* Scalar 默认把具体值藏在悬浮层中；统一在字段信息行直接显示，并保留点击复制。 */
+.scalar-app .property-default {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.scalar-app .property-default::before {
+  display: none;
+}
+
+.scalar-app .property-default-label span {
+  border-bottom: 0;
+}
+
+.scalar-app .property-default-value-list {
+  position: static;
+  display: flex;
+  transform: none;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  max-width: 24ch;
+}
+
+.scalar-app .property-default-value {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--scalar-color-2);
+}
+
+.scalar-app .property-default-value svg {
+  display: none;
+}
+
+/* 只限制可选值内容区域，标题留在滚动区域外。 */
+.scalar-app .property-enum-values {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.scalar-app .property-enum-values > li:has(.enum-toggle-button) {
+  display: none;
+}
+
+/* Query union 的 form/explode 分组没有实际的 query 字段，直接从格式选择器开始展示。 */
+.scalar-app .property-heading:has([id$='.query.query']) {
+  display: none;
 }
 
 .scalar-app
@@ -126,6 +181,56 @@ const scalarApiReferenceCss = `
 
 `;
 
+/**
+ * 展开 Scalar 延迟渲染的完整枚举，以及每个接口唯一的响应。
+ * 只在控件首次出现时设置默认状态，保留用户手动收起响应的选择；销毁时停止监听。
+ */
+const createDefaultExpansionPlugin = () => {
+  let observer: MutationObserver | undefined;
+  const expandedButtons = new WeakSet<HTMLButtonElement>();
+  const enumSelector = '.scalar-app .property-enum-values .enum-toggle-button';
+  // 响应列表使用 aria-label，参数列表使用 aria-labelledby；只统计同一个列表的直接子项。
+  const responseSelector =
+    '.scalar-app ul[aria-label] > .parameter-item:only-child > button.parameter-item-trigger[aria-expanded]';
+  const selector = `${enumSelector}, ${responseSelector}`;
+
+  const expandDefaults = (node: Node) => {
+    if (!(node instanceof Element)) return;
+    const buttons = node.matches(selector) ? [node] : node.querySelectorAll(selector);
+
+    for (const button of buttons) {
+      if (!(button instanceof HTMLButtonElement)) continue;
+      if (expandedButtons.has(button)) continue;
+
+      // 同一批 DOM 变更可能重复包含按钮；先登记，避免 Vue 提交展开状态前再次点击。
+      expandedButtons.add(button);
+      if (button.matches(enumSelector) && button.querySelector('.rotate-45')) continue;
+      if (button.matches(responseSelector) && button.getAttribute('aria-expanded') !== 'false') {
+        continue;
+      }
+      button.click();
+    }
+  };
+
+  return {
+    name: 'fastgpt-default-expansion',
+    extensions: [],
+    hooks: {
+      onInit: () => {
+        if (typeof document === 'undefined' || !document.body) return;
+        observer?.disconnect();
+        observer = new MutationObserver((records) => {
+          records.forEach((record) => record.addedNodes.forEach(expandDefaults));
+        });
+        // Scalar 在挂载前调用 onInit，监听 body 才能覆盖首次插入的文档根节点。
+        observer.observe(document.body, { childList: true, subtree: true });
+        expandDefaults(document.body);
+      },
+      onDestroy: () => observer?.disconnect()
+    }
+  };
+};
+
 export const getScalarOpenApiReferenceConfig = (
   url: string,
   options?: {
@@ -135,11 +240,27 @@ export const getScalarOpenApiReferenceConfig = (
 ) =>
   ({
     customCss: scalarApiReferenceCss,
+    plugins: Array.of(createDefaultExpansionPlugin),
     defaultOpenAllTags: options?.defaultOpenAllTags,
+    // 保留 schema 声明顺序，避免字母排序或必填优先拆散分页、鉴权和时间范围字段。
+    orderSchemaPropertiesBy: 'preserve',
+    orderRequiredPropertiesFirst: false,
     hideDarkModeToggle: false,
     hideClientButton: true,
     localization: {
-      locale: 'zh-CN'
+      locale: 'zh-CN',
+      translations: {
+        common: {
+          values: '可选值'
+        },
+        operation: {
+          queryParameters: 'Query'
+        },
+        schema: {
+          anyOf: '选择一种格式',
+          default: '默认值：'
+        }
+      }
     },
     onRequestBuilt: ({ request }: { request: Request }) => {
       const url = new URL(request.url);

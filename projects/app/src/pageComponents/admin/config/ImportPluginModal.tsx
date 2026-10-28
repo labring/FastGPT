@@ -7,7 +7,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { confirmPkgPluginUpload, uploadPkgPlugin } from '@/web/core/plugin/admin/api';
 import { confirmTeamPkgPluginUpload, uploadTeamPkgPlugin } from '@/web/core/plugin/team/api';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
@@ -124,9 +124,9 @@ const ImportPluginModal = ({
         status: isDuplicated ? 'duplicate' : 'success',
         toolId,
         name: nameSuffix ? `${sourceName} / ${nameSuffix}` : file.name,
-        toolName: parseI18nString(parseResult.name || '', i18n.language),
+        toolName: selectPluginText(parseResult.name, i18n.language),
         icon: parseResult.icon || '',
-        toolIntro: parseI18nString(parseResult.description || '', i18n.language) || '',
+        toolIntro: selectPluginText(parseResult.description, i18n.language),
         toolTags:
           parseResult.tags?.map((tag) => {
             const currentTag = allTags.find((item) => item.tagId === tag);
@@ -246,7 +246,7 @@ const ImportPluginModal = ({
             !!parseResult.name;
           const nameSuffix =
             shouldAppendNameSuffix && parseResult.name
-              ? parseI18nString(parseResult.name, i18n.language) || parseResult.pluginId
+              ? selectPluginText(parseResult.name, i18n.language) || parseResult.pluginId
               : undefined;
 
           return sourceFile
@@ -255,13 +255,12 @@ const ImportPluginModal = ({
                 file: files[0].file,
                 rowId: buildUploadRowId(files[0].rowId),
                 icon: parseResult.icon || files[0].icon,
-                name:
-                  parseI18nString(parseResult.name || '', i18n.language) || parseResult.pluginId,
+                name: selectPluginText(parseResult.name, i18n.language) || parseResult.pluginId,
                 size: files[0].size,
                 status: isPluginDuplicated(tools, parseResult.pluginId) ? 'duplicate' : 'success',
                 toolId: `${AppToolSourceEnum.systemTool}-${parseResult.pluginId}`,
-                toolName: parseI18nString(parseResult.name || '', i18n.language),
-                toolIntro: parseI18nString(parseResult.description || '', i18n.language) || '',
+                toolName: selectPluginText(parseResult.name, i18n.language),
+                toolIntro: selectPluginText(parseResult.description, i18n.language),
                 toolTags:
                   parseResult.tags?.map((tag) => {
                     const currentTag = allTags.find((item) => item.tagId === tag);

@@ -45,12 +45,14 @@ const VirtualizedMenuOptions = ({
   list,
   virtualListHeight,
   canSearch,
+  showSelectAll,
   searchValue,
   renderItem
 }: {
   list: SelectProps<any>['list'];
   virtualListHeight: number;
   canSearch: boolean;
+  showSelectAll: boolean;
   searchValue: string;
   renderItem: (
     item: SelectProps<any>['list'][number],
@@ -74,7 +76,7 @@ const VirtualizedMenuOptions = ({
     <Box
       ref={containerRef}
       h={`min(${Math.min(list.length * 40, virtualListHeight)}px, calc(40vh - ${
-        canSearch ? 44 : 12
+        (canSearch ? 36 : 0) + (showSelectAll ? 32 : 0) + 12
       }px))`}
       overflowY={'auto'}
     >
@@ -125,6 +127,7 @@ export type SelectProps<T = any> = {
   value: T[];
   isSelectAll?: boolean;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
+  showSelectAll?: boolean;
 
   placeholder?: string;
   /** true 展示全部已选标签并自动换行；false 单行展示并以 +N 收起溢出项。 */
@@ -196,6 +199,7 @@ type MultipleSelectMenuProps = {
   onclickItem: (val: any) => void;
   onSelectAll: () => void;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
+  showSelectAll: boolean;
   ScrollData?: SelectProps<any>['ScrollData'];
   canSearch: boolean;
   searchValue: string;
@@ -222,6 +226,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
   onclickItem,
   onSelectAll,
   setIsSelectAll,
+  showSelectAll,
   ScrollData,
   canSearch,
   searchValue,
@@ -239,12 +244,14 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
   const { t } = useTranslation();
   const triggerOnClick = triggerProps.onClick;
   const triggerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [menuWidth, setMenuWidth] = useState<number>();
   const visibleList = useMemo(
     () => (canSearch && shouldFilterLocal ? filterSelectOptionsBySearch(list, searchValue) : list),
     [canSearch, list, searchValue, shouldFilterLocal]
   );
   const shouldUseVirtualList = virtualScroll && !ScrollData;
+  const hasSelectAll = showSelectAll || !!setIsSelectAll;
   const { isMounted, mount, onAnimationComplete } = useMenuListPresence(isOpen);
   const menuListAnimationProps = { onAnimationComplete } as {
     onAnimationComplete: () => void;
@@ -301,7 +308,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
 
   const renderListItem = useCallback(
     (item: (typeof list)[number], index: number, virtual = false) => {
-      const isSelected = isAllSelected || formatValue.includes(item.value);
+      const isSelected = !isAllSelected && formatValue.includes(item.value);
       return (
         <MenuItem
           key={index}
@@ -311,8 +318,8 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
             onclickItem(item.value);
           }}
           whiteSpace={'pre-wrap'}
-          fontSize={'sm'}
           gap={2}
+          color={'myGray.600'}
           {...menuItemStyles}
           {...(virtual
             ? {
@@ -323,11 +330,23 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
                 _notLast: { mb: 0 }
               }
             : {})}
-          color={isSelected ? 'primary.600' : 'myGray.900'}
         >
-          <Checkbox isChecked={isSelected} />
-          {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-          <Box flex={'1 0 0'}>{item.label}</Box>
+          <Checkbox
+            isChecked={isSelected}
+            tabIndex={-1}
+            aria-hidden
+            pointerEvents={'none'}
+            size={'sm'}
+            flexShrink={0}
+            icon={<MyIcon name={'common/check'} w={'12px'} />}
+            sx={{ '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 } }}
+          />
+          {item.icon && (
+            <MyAvatar src={item.icon} w={'16px'} h={'16px'} borderRadius={'0'} flexShrink={0} />
+          )}
+          <Box flex={'1 0 0'} minW={0}>
+            {item.label}
+          </Box>
         </MenuItem>
       );
     },
@@ -367,37 +386,42 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
       motionProps={{ initial: 'exit' }}
       {...menuListAnimationProps}
     >
-      {canSearch && (
-        <Box mb={1}>
-          <FilterSearchInput
-            value={searchValue}
-            placeholder={searchPlaceholder ?? t('common:Search')}
-            onChange={setSearchValue}
-          />
-        </Box>
-      )}
-
-      {setIsSelectAll && (
-        <>
-          <MenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onSelectAll();
-            }}
-            whiteSpace={'pre-wrap'}
-            fontSize={'sm'}
-            gap={2}
-            mb={1}
-            {...menuItemStyles}
-            color={isAllSelected ? 'primary.600' : 'myGray.900'}
-          >
-            <Checkbox isChecked={isAllSelected} />
-            <Box flex={'1 0 0'}>{t('common:All')}</Box>
-          </MenuItem>
-
-          <MyDivider my={1} />
-        </>
+      {(hasSelectAll || canSearch) && (
+        <Flex direction={'column'} gap={'4px'} mb={1}>
+          {hasSelectAll && (
+            <MenuItem
+              alignItems={'center'}
+              px={1}
+              py={'6px'}
+              cursor={'pointer'}
+              borderRadius={'xs'}
+              bg={isAllSelected ? 'myGray.05' : 'transparent'}
+              color={isAllSelected ? 'primary.700' : 'myGray.600'}
+              fontSize={'xs'}
+              lineHeight={'16px'}
+              fontWeight={'medium'}
+              _hover={{ bg: 'myGray.05' }}
+              _focus={{ bg: 'myGray.05' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onSelectAll();
+              }}
+            >
+              {t('common:All')}
+            </MenuItem>
+          )}
+          {canSearch ? (
+            <FilterSearchInput
+              ref={searchInputRef}
+              value={searchValue}
+              placeholder={searchPlaceholder ?? t('common:Search')}
+              onChange={setSearchValue}
+            />
+          ) : (
+            hasSelectAll && visibleList.length > 0 && <Box h={'1px'} bg={'myGray.200'} />
+          )}
+        </Flex>
       )}
 
       {ScrollData ? (
@@ -409,6 +433,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
           list={visibleList}
           virtualListHeight={virtualListHeight}
           canSearch={canSearch}
+          showSelectAll={hasSelectAll}
           searchValue={searchValue}
           renderItem={renderListItem}
         />
@@ -446,7 +471,8 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
 
   return isMounted ? (
     <Menu
-      autoSelect={false}
+      autoSelect={canSearch}
+      initialFocusRef={canSearch ? searchInputRef : undefined}
       isOpen={isOpen}
       onOpen={handleOpen}
       onClose={onClose}
@@ -487,6 +513,7 @@ const MultipleSelect = <T = any,>({
   ScrollData,
   isSelectAll,
   setIsSelectAll,
+  showSelectAll = false,
   isDisabled = false,
 
   formLabel,
@@ -540,14 +567,19 @@ const MultipleSelect = <T = any,>({
       invalidLabel: t('common:invalid_value')
     });
   }, [formatValue, list, t]);
+  const uniqueListValues = useMemo(
+    () => Array.from(new Set(list.map((item) => item.value))),
+    [list]
+  );
   const selectedTagSizeStyle = selectedTagSizeStyleMap[size];
   const tagWidth = tagStyle?.w;
-  const canInferSelectAll = !ScrollData && (isSelectAll !== undefined || !!setIsSelectAll);
+  const canInferSelectAll =
+    !ScrollData && (isSelectAll !== undefined || !!setIsSelectAll || showSelectAll);
   const isFullSelected = useMemo(() => {
-    if (list.length === 0 || formatValue.length !== list.length) return false;
+    if (uniqueListValues.length === 0 || formatValue.length < uniqueListValues.length) return false;
 
-    return list.every((item) => formatValue.includes(item.value));
-  }, [formatValue, list]);
+    return uniqueListValues.every((value) => formatValue.includes(value));
+  }, [formatValue, uniqueListValues]);
   const isAllSelected = !!isSelectAll || (canInferSelectAll && isFullSelected);
   const openedMenuButtonStyle: Pick<ButtonProps, 'bg' | 'borderColor' | 'boxShadow'> = isMenuOpen
     ? {
@@ -566,7 +598,7 @@ const MultipleSelect = <T = any,>({
   const onclickItem = useCallback(
     (val: T) => {
       if (isAllSelected) {
-        onSelect(list.map((item) => item.value).filter((i) => i !== val));
+        onSelect([val]);
         setIsSelectAll?.(false);
         return;
       }
@@ -577,19 +609,18 @@ const MultipleSelect = <T = any,>({
       onSelect(nextValue);
       setIsSelectAll?.(
         !ScrollData &&
-          list.length > 0 &&
-          nextValue.length === list.length &&
-          list.every((item) => nextValue.includes(item.value))
+          uniqueListValues.length > 0 &&
+          uniqueListValues.every((value) => nextValue.includes(value))
       );
     },
-    [isAllSelected, formatValue, onSelect, setIsSelectAll, ScrollData, list]
+    [isAllSelected, formatValue, onSelect, setIsSelectAll, ScrollData, uniqueListValues]
   );
 
   const onSelectAll = useCallback(() => {
-    onSelect(isAllSelected ? [] : list.map((item) => item.value));
+    onSelect(isAllSelected ? [] : uniqueListValues);
 
     setIsSelectAll?.(!isAllSelected);
-  }, [isAllSelected, onSelect, list, setIsSelectAll]);
+  }, [isAllSelected, onSelect, uniqueListValues, setIsSelectAll]);
 
   // 动态长度计算器 - 计算一行能展示多少个tag，剩余用+n表示
   const calculateLayout = useCallback(() => {
@@ -838,6 +869,7 @@ const MultipleSelect = <T = any,>({
         onclickItem={onclickItem}
         onSelectAll={onSelectAll}
         setIsSelectAll={setIsSelectAll}
+        showSelectAll={showSelectAll}
         ScrollData={ScrollData}
         canSearch={canSearch}
         searchValue={searchValue}

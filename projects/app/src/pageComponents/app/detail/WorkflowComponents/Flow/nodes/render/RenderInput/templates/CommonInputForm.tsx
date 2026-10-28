@@ -8,10 +8,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getSelectedInputRenderType,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
@@ -140,10 +138,10 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   );
 
   // item.key 是字段名，直接展开会被 React 当成元素 key；field value 始终来自 Runtime。
-  const { key: _itemKey, value: _itemValue, ...inputProps } = item;
+  const { key: inputKey, value: _itemValue, ...inputProps } = item;
 
   return (
-    <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={inputKey}>
       {/* 字段撤销由 Runtime 统一托管：打上标记后画布快捷键在捕获阶段接管，
           不再让编辑器本地历史（Lexical 按秒合并连续输入）与逐条记录的工作流历史互相覆盖。 */}
       <Box data-workflow-history="external">
@@ -151,6 +149,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           <Box h={'100px'} />
         ) : (
           <InputRender
+            key={inputKey}
             inputType={inputType}
             value={value}
             onChange={handleChange}

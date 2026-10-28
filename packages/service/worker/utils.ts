@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 import { serviceEnv } from '../env';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 type WorkerTaskOutcome =
   | 'success'
@@ -21,7 +22,8 @@ export enum WorkerNameEnum {
   htmlStr2Md = 'htmlStr2Md',
   countGptMessagesTokens = 'countGptMessagesTokens',
   systemPluginRun = 'systemPluginRun',
-  text2Chunks = 'text2Chunks'
+  text2Chunks = 'text2Chunks',
+  workflowBuilderMermaid = 'workflowBuilderMermaid'
 }
 
 export const getSafeEnv = () => {
@@ -64,6 +66,11 @@ type WorkerRunTaskType<T> = WorkerTaskLogContext & {
   queueTimeoutId?: NodeJS.Timeout;
   abortController?: AbortController;
   lastLoggedResourceBytes: number;
+  /**
+   * 主线程在失败发生处（此时错误尚未跨线程、仍是原始对象）判定的预期任务错误。
+   * 只用主线程状态传递，不放进 worker 消息：结构化克隆会把自定义 Error 压平成普通 Error。
+   */
+  expectedTaskError?: boolean;
   resolve: (e: any) => void;
   reject: (e: any) => void;
 };
@@ -136,12 +143,11 @@ export type WorkerPoolResourceSnapshot = {
 };
 
 export type WorkerPoolResourcePolicy<Props> = {
-  getTaskResourceBytes: (data: Props) => number;
-  getResourceSnapshot: () => WorkerPoolResourceSnapshot;
-  /** 可选的额外准入判断，用于无法按任务大小估算、只检查当前系统余量的轻量任务。 */
-  canRunTask?: (props: { data: Props; resourceSnapshot: WorkerPoolResourceSnapshot }) => boolean;
-  queueTimeoutMs: number;
-  resourcePollIntervalMs?: number;
+  getTaskResourceBytes: (data: Props) => number; // 估算任务所需资源（字节），用于准入检查和运行期间的资源预留
+  getResourceSnapshot: () => WorkerPoolResourceSnapshot; // 读取当前可用资源、单任务资源上限及可选的内存日志明细
+  canRunTask?: (props: { data: Props; resourceSnapshot: WorkerPoolResourceSnapshot }) => boolean; // 额外的资源准入条件，返回 false 时继续排队
+  queueTimeoutMs: number; // 排队超时（毫秒），超时拒绝任务；任务开始执行后停止排队计时
+  resourcePollIntervalMs?: number; // 排队期间复查资源余量的间隔（毫秒），默认 1000
 };
 
 export type WorkerPoolLogger = Pick<
@@ -176,6 +182,83 @@ export class WorkerTaskExecutionTimeoutError extends Error {
   }
 }
 
+const WORKER_NETWORK_ERROR_CODES = [
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EAI_AGAIN',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ECONNABORTED',
+  'ERR_NETWORK',
+  'ERR_NAME_NOT_RESOLVED'
+];
+
+const WORKER_PLACEHOLDER_DOMAIN_PATTERN = /(?:^|[^a-zA-Z0-9-])example\.com(?=$|[^a-zA-Z0-9-])/i;
+const WORKER_NETWORK_ERROR_PATTERN = new RegExp(
+  `\\b(?:${WORKER_NETWORK_ERROR_CODES.join('|')})\\b`
+);
+
+/**
+ * 校验 Worker 任务执行错误是否属于预期的网络/DNS 故障或用户业务异常。
+ *
+ * 只在**主线程发生失败的位置**调用（此时拿到的是未跨线程的原始错误对象，`instanceof` 与自定义字段都有效），
+ * 判定结果记录到 task 上供 completeTask 使用。不要对跨线程克隆后的对象调用：
+ * 结构化克隆会把 `UserError` 压平成 `name: 'Error'` 的普通 Error。
+ *
+ * 网络/DNS 故障（ENOTFOUND、ECONNREFUSED 等）允许降级为 warn，不区分任务来源。
+ * 先检查原始消息中的配置占位符，再识别 UserError 和本层/cause 的错误码；
+ * 仅在缺少错误码时兼容明确的错误码文案与旧版文件超限错误，未知错误保留 error。
+ *
+ * 该函数必须对任意输入安全返回，读取错误属性失败时保守地保留 error，
+ * 避免分类异常中断 loadFileError 回传，使任务只能等待执行超时。
+ */
+export const isExpectedWorkerTaskError = (error: unknown): boolean => {
+  try {
+    /** 只读取分类所需的原始字段，避免展示文案或 URL 脱敏改变错误含义。 */
+    const getErrorDetails = (value: unknown) => {
+      const isObject = typeof value === 'object' && value !== null;
+      return {
+        code: isObject && 'code' in value && typeof value.code === 'string' ? value.code : '',
+        name: isObject && 'name' in value && typeof value.name === 'string' ? value.name : '',
+        message:
+          typeof value === 'string'
+            ? value
+            : isObject && 'message' in value && typeof value.message === 'string'
+              ? value.message
+              : '',
+        cause: isObject && 'cause' in value ? value.cause : undefined
+      };
+    };
+    const current = getErrorDetails(error);
+    const cause = getErrorDetails(current.cause);
+    const messages = [current.message, cause.message];
+
+    // 占位符检查必须覆盖参与分类的 cause，否则 cause 里的占位域名会被误降级
+    if (messages.some((message) => WORKER_PLACEHOLDER_DOMAIN_PATTERN.test(message))) {
+      return false;
+    }
+
+    if (error instanceof UserError || current.name === 'UserError') return true;
+
+    // 错误码优先于文案：getaddrinfo 的 EAI_MEMORY 等基础设施故障不能因文本相似而降级。
+    const codes = [current.code, cause.code].filter(Boolean);
+    if (codes.length > 0) {
+      return codes.some((code) => WORKER_NETWORK_ERROR_CODES.includes(code));
+    }
+
+    // 兼容只保留消息的旧错误；按完整错误码匹配，避免误认其他标识符中的片段。
+    return messages.some(
+      (message) =>
+        WORKER_NETWORK_ERROR_PATTERN.test(message) || message.includes('maximum allowed size')
+    );
+  } catch {
+    // 分类失败时保守地按未知异常处理（保持 error 级别）
+    return false;
+  }
+};
+
 /*
   多线程任务管理
   * 全局只需要创建一个示例
@@ -184,6 +267,7 @@ export class WorkerTaskExecutionTimeoutError extends Error {
   * 务必保证，每个线程只会同时运行 1 个任务，否则 callback 会对应不上。
   * taskTimeoutMs：单任务超时时间，超时会终止 worker 并从队列摘除（避免 hang 住占池）。
   * maxTasksPerWorker：worker 完成多少任务后回收（应对依赖库的内存泄漏，例如 readFile 的 mammoth/xlsx/pdf-parse）。
+  * 空闲线程不阻止进程退出；运行和排队任务保持进程存活，线程仍按原有策略复用和回收。
 */
 export class WorkerPool<Props = Record<string, any>, Response = any> {
   name: WorkerNameEnum;
@@ -216,16 +300,16 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     getTaskType = () => 'default',
     logger = getLogger(LogCategories.INFRA.WORKER)
   }: {
-    name: WorkerNameEnum;
-    maxReservedThreads: number;
-    taskTimeoutMs?: number;
-    maxTasksPerWorker?: number;
-    resourcePolicy?: WorkerPoolResourcePolicy<Props>;
-    idleWorkerTimeoutMs?: number;
-    minIdleWorkers?: number;
-    queueWarningThreshold?: number;
-    getTaskType?: (data: Props) => string;
-    logger?: WorkerPoolLogger;
+    name: WorkerNameEnum; // Worker 类型，对应 worker/<name>.js 线程入口
+    maxReservedThreads: number; // 池内线程数量上限，达到上限且没有空闲线程时排队
+    taskTimeoutMs?: number; // 单任务执行超时（毫秒），默认 60000，从派发时计时，超时终止线程
+    maxTasksPerWorker?: number; // 单线程完成任务数上限，默认 1000，达到后回收线程
+    resourcePolicy?: WorkerPoolResourcePolicy<Props>; // 资源准入和排队超时策略，未配置时仅按线程容量调度
+    idleWorkerTimeoutMs?: number; // 空闲回收等待时间（毫秒），未配置或为 0 时不按空闲时长回收
+    minIdleWorkers?: number; // 空闲回收时保留的线程数，默认 0，不会主动创建线程
+    queueWarningThreshold?: number; // 排队告警阈值，默认取线程上限且至少为 1，仅告警、不限制排队
+    getTaskType?: (data: Props) => string; // 提取日志中的任务类型，默认返回 'default'
+    logger?: WorkerPoolLogger; // 日志记录器，默认使用 INFRA.WORKER 分类
   }) {
     this.name = name;
     this.maxReservedThreads = maxReservedThreads;
@@ -432,7 +516,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     );
   }
 
-  /** 外部内存释放不会触发 worker 事件，因此等待队列需要低频复查动态可用内存。 */
+  /** 外部内存释放不会触发 worker 事件；有排队任务时保持进程存活并低频复查动态余量。 */
   private scheduleQueuePoll() {
     if (!this.resourcePolicy || this.waitQueue.length === 0 || this.queuePollTimeoutId) return;
 
@@ -440,7 +524,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       this.queuePollTimeoutId = undefined;
       this.dispatchTasks();
     }, this.resourcePolicy.resourcePollIntervalMs ?? 1000);
-    this.queuePollTimeoutId.unref();
   }
 
   /**
@@ -500,6 +583,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       clearTimeout(workerItem.idleTimeoutId);
       workerItem.idleTimeoutId = undefined;
       workerItem.status = 'running';
+      workerItem.worker.ref();
       workerItem.taskTime = Date.now();
       task.startedAt = workerItem.taskTime;
       task.abortController = new AbortController();
@@ -557,7 +641,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     }
   }
 
-  /** 提交任务；资源永久不满足时立即拒绝，暂时不足时最多等待 resourcePolicy.queueTimeoutMs。 */
+  /** 提交任务；配置资源策略时检查资源准入和排队超时，执行超时从任务派发时开始计时。 */
   run(data: Props, transferList?: TransferListItem[], handlers?: WorkerRunHandlers) {
     return new Promise<Response>((resolve, reject) => {
       const taskId = randomUUID();
@@ -617,12 +701,13 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       };
 
       if (this.resourcePolicy) {
+        const queueTimeoutMs = this.resourcePolicy.queueTimeoutMs;
         task.queueTimeoutId = setTimeout(() => {
           const taskIndex = this.waitQueue.indexOf(task);
           if (taskIndex < 0) return;
 
           this.waitQueue.splice(taskIndex, 1);
-          const error = new WorkerTaskQueueTimeoutError(this.resourcePolicy!.queueTimeoutMs);
+          const error = new WorkerTaskQueueTimeoutError(queueTimeoutMs);
           const queueDurationMs = Date.now() - task.enqueuedAt;
           const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
           logger.error('Worker task queue timeout', {
@@ -644,8 +729,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
           });
           reject(error);
           this.dispatchTasks();
-        }, this.resourcePolicy.queueTimeoutMs);
-        task.queueTimeoutId.unref();
+        }, queueTimeoutMs);
+        // 排队也属于未完成的业务任务，超时计时器需要保持进程存活。
       }
 
       this.waitQueue.push(task);
@@ -781,6 +866,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       });
     });
 
+    // 所有线程池统一在空闲时释放引用，任务开始时恢复引用；线程本身继续复用。
+    worker.unref();
     return item;
   }
 
@@ -803,7 +890,13 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     const resourceSnapshot = this.resourcePolicy?.getResourceSnapshot();
 
     if (result.type === 'error') {
-      this.logger.error('Worker task failed', {
+      // 使用主线程在失败处判定的结果，而不是在这里猜测跨线程克隆后的错误形态
+      const isExpected = task.expectedTaskError === true;
+      const logFn = isExpected
+        ? this.logger.warn.bind(this.logger)
+        : this.logger.error.bind(this.logger);
+
+      logFn('Worker task failed', {
         eventName: 'worker.task.failed',
         workerName: this.name,
         workerId: item.id,
@@ -833,6 +926,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     if (item.tasksCompleted >= this.maxTasksPerWorker) {
       this.deleteWorker(item.id, undefined, 'max_tasks');
     } else {
+      item.worker.unref();
       this.scheduleIdleWorkerCleanup(item);
       this.dispatchTasks();
     }
@@ -1026,6 +1120,10 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
         reply('loadFileResult', result, [result.buffer]);
       })
       .catch((error) => {
+        // 预期内的失败（用户业务异常、网络/DNS 故障）降级为 warn，不区分任务来源：
+        // 来源相关的处理由上游调用方负责。判定在此进行：此刻 error 尚未跨线程，instanceof 与 cause 都有效。
+        task.expectedTaskError = isExpectedWorkerTaskError(error);
+
         this.logger.warn('Worker task file source failed', {
           eventName:
             error instanceof Error && error.message.includes('maximum allowed size')
@@ -1087,17 +1185,18 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   }
 }
 
+/** 按任务类型复用进程内线程池；首次调用确定调度参数和线程入口，后续调用复用同一实例。 */
 export const getWorkerController = <Props, Response>(props: {
-  name: WorkerNameEnum;
-  maxReservedThreads: number;
-  taskTimeoutMs?: number;
-  maxTasksPerWorker?: number;
-  resourcePolicy?: WorkerPoolResourcePolicy<Props>;
-  idleWorkerTimeoutMs?: number;
-  minIdleWorkers?: number;
-  queueWarningThreshold?: number;
-  getTaskType?: (data: Props) => string;
-  logger?: WorkerPoolLogger;
+  name: WorkerNameEnum; // Worker 类型，对应线程入口；同类型复用缓存的线程池
+  maxReservedThreads: number; // 池内线程数量上限，达到上限且没有空闲线程时排队
+  taskTimeoutMs?: number; // 单任务执行超时（毫秒），默认 60000，从派发时计时，超时终止线程
+  maxTasksPerWorker?: number; // 单线程完成任务数上限，默认 1000，达到后回收线程
+  resourcePolicy?: WorkerPoolResourcePolicy<Props>; // 资源准入和排队超时策略，未配置时仅按线程容量调度
+  idleWorkerTimeoutMs?: number; // 空闲回收等待时间（毫秒），未配置或为 0 时不按空闲时长回收
+  minIdleWorkers?: number; // 空闲回收时保留的线程数，默认 0，不会主动创建线程
+  queueWarningThreshold?: number; // 排队告警阈值，默认取线程上限且至少为 1，仅告警、不限制排队
+  getTaskType?: (data: Props) => string; // 提取日志中的任务类型，默认返回 'default'
+  logger?: WorkerPoolLogger; // 日志记录器，默认使用 INFRA.WORKER 分类
 }) => {
   if (!global.workerPoll) {
     // @ts-ignore

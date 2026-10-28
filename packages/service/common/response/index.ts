@@ -2,12 +2,13 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { getErrorMessage, UserError } from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import { markProfileError } from '../profiling';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -121,15 +122,10 @@ export function processError(params: {
   }
 
   // 2. 提取通用错误消息
-  let msg = error?.response?.statusText || error?.message || '请求错误';
-  if (typeof error === 'string') {
-    msg = error;
-  } else if (proxyError[error?.code]) {
+  // 上游响应体的具体原因优先于 statusText；保留既有网络错误提示和业务码语义。
+  let msg = getErrorMessage(error, '请求错误');
+  if (typeof error !== 'string' && proxyError[error?.code]) {
     msg = '网络连接异常';
-  } else if (error?.response?.data?.error?.message) {
-    msg = error?.response?.data?.error?.message;
-  } else if (error?.error?.message) {
-    msg = error?.error?.message;
   }
 
   // 3. 根据错误类型记录不同级别的日志
@@ -222,6 +218,11 @@ export const getSseErrorResponse = (
   data: string;
   shouldClearCookie: boolean;
 } => {
+  // SSE 错误按协议以 HTTP 200 正常结束，共享入口只能按状态码/断流判断成败，
+  // 因此在这个唯一的 SSE 错误载荷出口标记采集失败（v1、v2、pro 等入口共享）。
+  // 只影响观测口径，不改变响应内容。
+  markProfileError(error);
+
   const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
 
@@ -271,6 +272,12 @@ export function responseWrite({
   const Write = res?.write;
 
   if (!Write) return;
+
+  // 直接写出 error 事件（如 workflowSseEvent.error）同样意味着请求失败；
+  // 与 getSseErrorResponse 的标记互为兜底，重复调用只保留第一个错误。
+  if (event === SseResponseEventEnum.error) {
+    markProfileError(data);
+  }
 
   if (event) {
     Write(`event: ${event}\n`);

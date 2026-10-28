@@ -98,7 +98,7 @@ const NodePluginInput = ({ data, selected }: CanvasNodeProps) => {
   const Render = useMemo(() => {
     return (
       <NodeCard
-        minW={'300px'}
+        minW={'350px'}
         selected={selected}
         menuForbid={{
           copy: true,

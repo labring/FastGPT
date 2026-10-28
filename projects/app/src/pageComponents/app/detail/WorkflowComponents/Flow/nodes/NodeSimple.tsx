@@ -18,8 +18,13 @@ const NodeSimple = ({
   data,
   selected,
   minW = '524px',
-  maxW
-}: CanvasNodeProps & { minW?: string | number; maxW?: string | number }) => {
+  maxW,
+  minH
+}: CanvasNodeProps & {
+  minW?: string | number;
+  maxW?: string | number;
+  minH?: string | number;
+}) => {
   const { t } = useTranslation();
   const { nodeId } = data;
   const {
@@ -39,7 +44,7 @@ const NodeSimple = ({
   );
   const Render = useMemo(() => {
     return (
-      <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
+      <NodeCard minW={minW} maxW={maxW} minH={minH} selected={selected} {...data}>
         {isTool && hasDynamicInput && (
           <>
             <Container>
@@ -69,6 +74,7 @@ const NodeSimple = ({
   }, [
     minW,
     maxW,
+    minH,
     selected,
     data,
     isTool,

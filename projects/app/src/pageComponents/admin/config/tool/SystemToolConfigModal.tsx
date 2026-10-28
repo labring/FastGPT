@@ -37,14 +37,16 @@ import {
   putAdminUpdateToolRuntimeConfig,
   putAdminUpdateSystemTool
 } from '@/web/core/plugin/admin/tool/api';
-import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { i18nT, parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import {
+  PluginStatusEnum,
+  type PluginStatusType,
+  type PluginTextType
+} from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import MultipleSelect, {
-  useMultipleSelect
-} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { UserTagsSchema } from '@fastgpt/global/support/user/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
@@ -99,7 +101,7 @@ const normalizeRuntimeConfig = (config: unknown): RuntimeConfigValue => {
 
 type ChildToolConfigItem = {
   id: string;
-  name?: string;
+  name?: PluginTextType;
   systemKeyCost?: number;
 };
 
@@ -255,16 +257,13 @@ const SystemToolConfigModal = ({
 
   // 从 tool 读取只读数据
   const inputList = useMemo(
-    () => jsonSchema2SecretInput({ jsonSchema: tool?.secretSchema }) ?? [],
-    [tool?.secretSchema]
+    () => jsonSchema2SecretInput({ jsonSchema: tool?.secretSchema, lang: i18n.language }) ?? [],
+    [tool?.secretSchema, i18n.language]
   );
   const isFolder = tool?.isToolSet;
   const modalWidth = isFolder ? TOOL_SET_MODAL_WIDTH : SINGLE_TOOL_MODAL_WIDTH;
 
-  const { value: selectedTags, setValue: setSelectedTags } = useMultipleSelect<string>(
-    tool?.tags ?? [],
-    false
-  );
+  const [selectedTags, setSelectedTags] = useState<string[]>(tool?.tags ?? []);
 
   useEffect(() => {
     setValue('tags', selectedTags);
@@ -340,7 +339,7 @@ const SystemToolConfigModal = ({
   const versionSelectList = useMemo(
     () =>
       toolVersions.map((item) => ({
-        label: item.versionDescription || item.version,
+        label: item.version,
         value: item.version
       })),
     [toolVersions]
@@ -438,7 +437,7 @@ const SystemToolConfigModal = ({
   );
 
   const openToolUninstallConfirm = () => {
-    const toolName = parseI18nString(tool?.name || '', i18n.language) || toolId;
+    const toolName = selectPluginText(tool?.name, i18n.language) || toolId;
 
     openUninstallConfirm({
       title: t('app:toolkit_uninstall'),
@@ -536,6 +535,7 @@ const SystemToolConfigModal = ({
     return (
       <ConfigRow key={item.key} label={labelSection}>
         <Input
+          placeholder={item.placeholder}
           bg={'white'}
           h={9}
           borderColor={'myGray.200'}
@@ -740,7 +740,7 @@ const SystemToolConfigModal = ({
               return (
                 <Tr key={childTool.id}>
                   <Td fontSize="12px" color={'myGray.500'} py={2} px={3}>
-                    <Text fontSize="12px">{childTool.name}</Text>
+                    <Text fontSize="12px">{selectPluginText(childTool.name, i18n.language)}</Text>
                   </Td>
                   <Td fontSize="12px" py={1} px={3}>
                     <MyNumberInput
@@ -783,13 +783,13 @@ const SystemToolConfigModal = ({
 
       <ConfigRow label={t('app:toolkit_plugin_name')}>
         <Box color={'#24282C'} fontSize={'14px'} lineHeight={'20px'}>
-          {tool?.name || '-'}
+          {selectPluginText(tool?.name, i18n.language) || '-'}
         </Box>
       </ConfigRow>
 
       <ConfigRow label={t('app:toolkit_plugin_intro')} align={'flex-start'}>
         <Text color={'#24282C'} fontSize={'14px'} lineHeight={'20px'} whiteSpace={'pre-wrap'}>
-          {tool?.intro || '-'}
+          {selectPluginText(tool?.intro, i18n.language) || '-'}
         </Text>
       </ConfigRow>
       {toolListSection}
@@ -834,13 +834,13 @@ const SystemToolConfigModal = ({
 
       <ConfigRow label={t('app:toolkit_plugin_name')}>
         <Box color={'#24282C'} fontSize={'14px'} lineHeight={'20px'}>
-          {tool?.name || '-'}
+          {selectPluginText(tool?.name, i18n.language) || '-'}
         </Box>
       </ConfigRow>
 
       <ConfigRow label={t('app:toolkit_plugin_intro')} align={'flex-start'}>
         <Text color={'#24282C'} fontSize={'14px'} lineHeight={'20px'} whiteSpace={'pre-wrap'}>
-          {tool?.intro || '-'}
+          {selectPluginText(tool?.intro, i18n.language) || '-'}
         </Text>
       </ConfigRow>
     </ConfigCard>
@@ -871,7 +871,7 @@ const SystemToolConfigModal = ({
         lineHeight={'26px'}
         fontWeight={'500'}
       >
-        {t('app:toolkit_tool_config', { name: tool?.name })}
+        {t('app:toolkit_tool_config', { name: selectPluginText(tool?.name, i18n.language) })}
       </Box>
       <ModalBody flex={1} minH={0} overflowY={'auto'} px={8} pt={0} pb={0}>
         {isToolOffline ? (

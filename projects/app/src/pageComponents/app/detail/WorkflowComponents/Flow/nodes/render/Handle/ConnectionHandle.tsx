@@ -1,17 +1,16 @@
 import React, { useContext, useMemo } from 'react';
 import { Position } from '@xyflow/react';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
+import { getFoldedSourceHandleIds } from './utils';
 
 /** 保留稳定数组身份；左右额外偏移由 MySourceHandle/MyTargetHandle 按状态计算。 */
 const sourceTranslate = [9, 0] as [number, number];
@@ -50,44 +49,24 @@ export const ConnectionSourceHandle = ({
     })();
 
     const RightHandle = (() => {
-      // When the node is folded and has multiple branches, only render the first output.
-      if (node && nodeHandle?.view.isFolded) {
-        const firstHandleId = (() => {
-          if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
-            const options = node?.inputs?.find(
-              (input) => input.key === NodeInputKeyEnum.userSelectOptions
-            )?.value;
-            if (options && options.length > 0) {
-              return getHandleId(nodeId, 'source', options[0].key);
-            }
-          } else if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-            const ifElseList = node.inputs.find(
-              (input) => input.key === NodeInputKeyEnum.ifElseList
-            )?.value as IfElseListItemType[] | undefined;
-            const firstIfElse = ifElseList?.[0];
-            if (firstIfElse) {
-              return getHandleId(nodeId, 'source', getIfElseBranchHandleKey(firstIfElse));
-            }
-          } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
-            const options = node?.inputs?.find(
-              (input) => input.key === NodeInputKeyEnum.agents
-            )?.value;
-            if (options && options.length > 0) {
-              return getHandleId(nodeId, 'source', options[0].key);
-            }
-          }
-        })();
-
-        if (firstHandleId) {
-          return (
-            <MySourceHandle
-              nodeId={nodeId}
-              handleId={firstHandleId}
-              position={Position.Right}
-              translate={sourceTranslate}
-            />
-          );
-        }
+      // 折叠只合并端口位置，不卸载端口，避免已有连线失去 ReactFlow handle。
+      if (node && nodeHandle?.view.isFolded && sourceType === 'source') {
+        return (
+          <>
+            {getFoldedSourceHandleIds(node as unknown as FlowNodeItemType).map(
+              (handleId, index) => (
+                <MySourceHandle
+                  key={handleId}
+                  nodeId={nodeId}
+                  handleId={handleId}
+                  position={Position.Right}
+                  translate={[4, 0]}
+                  showHandle={index === 0}
+                />
+              )
+            )}
+          </>
+        );
       }
 
       const handleId = getHandleId(nodeId, sourceType, Position.Right);
@@ -126,104 +105,41 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }) {
   const renderHandle = useContext(WorkflowHandleRenderContext);
   const connectingEdge = useWorkflowUIValue((v) => v.connectingEdge);
-  const nodeFlowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
-  const nodeParentNodeId = useNode(nodeId, (node) => node?.data.parentNodeId);
+  const runtime = useWorkflowRuntime();
+  const edges = useWorkflow((structure) => structure.edges);
   const connectingNodeId = connectingEdge?.nodeId ?? nodeId;
-  const connectingNodeFlowNodeType = useNode(connectingNodeId, (node) => node?.data.flowNodeType);
-  const connectingNodeParentNodeId = useNode(connectingNodeId, (node) => node?.data.parentNodeId);
+  const targetNode = useNode(nodeId, (node) => node?.data);
+  const sourceNode = useNode(connectingNodeId, (node) => node?.data);
+  const handleId = getHandleId(nodeId, 'target', Position.Left);
+  const allowed = useMemo(() => {
+    if (!connectingEdge) return true;
+    if (!runtime) return false;
 
-  /**
-   * 禁止连接的图判定：本节点已被挂成工具，或本次拖拽的 source handle 已经连到本节点。
-   * 两个条件都走图索引（byTarget），复杂度从每条边全量扫 O(E) 降到 O(入度)。
-   */
-  const forbidConnectByGraph = useWorkflow(
-    (_structure, graph) =>
-      graph.isMountedTool(nodeId) ||
-      (!!connectingEdge &&
-        graph
-          .getIncomingEdges(nodeId)
-          .some((edge) => edge.sourceHandle === connectingEdge.handleId))
+    const nodes = runtime.getWorkflowData().nodes;
+    return checkExecutionConnection({
+      connection: {
+        source: connectingEdge.nodeId,
+        sourceHandle: connectingEdge.handleId,
+        target: nodeId,
+        targetHandle: handleId
+      },
+      edges: [...edges],
+      getNodeById: (id) => nodes.find((node) => node.nodeId === id)
+    }).allowed;
+  }, [connectingEdge, edges, handleId, nodeId, runtime, sourceNode, targetNode]);
+  const showTargetHandle = targetNode
+    ? moduleTemplatesFlat.find((item) => item.flowNodeType === targetNode.flowNodeType)
+        ?.showTargetHandle
+    : undefined;
+
+  if (!renderHandle || !showTargetHandle) return null;
+  return (
+    <MyTargetHandle
+      nodeId={nodeId}
+      handleId={handleId}
+      position={Position.Left}
+      translate={targetTranslate}
+      showHandle={allowed}
+    />
   );
-
-  const { LeftHandle } = useMemo(() => {
-    const node =
-      nodeFlowNodeType === undefined
-        ? undefined
-        : { flowNodeType: nodeFlowNodeType, parentNodeId: nodeParentNodeId };
-    const connectingNode =
-      connectingNodeFlowNodeType === undefined
-        ? undefined
-        : {
-            flowNodeType: connectingNodeFlowNodeType,
-            parentNodeId: connectingNodeParentNodeId
-          };
-
-    let forbidConnect = forbidConnectByGraph;
-
-    // 目标节点容器或模板上下文不允许时禁止连接（与 Tool 柄及最终提交共用规则）；
-    // context 在连线拖拽开始时由 Runtime 算好，这里只按 target 应用纯规则。
-    if (node && connectingNode && connectingEdge) {
-      if (
-        !isConnectionTargetAllowed({
-          context: connectingEdge.context,
-          targetNode: node,
-          sourceParentNodeId: connectingNode.parentNodeId
-        })
-      ) {
-        forbidConnect = true;
-      }
-    }
-
-    const showHandle = (() => {
-      if (forbidConnect) return false;
-      if (!node) return false;
-
-      // Tool connecting
-      if (connectingEdge && connectingEdge.handleId === NodeOutputKeyEnum.selectedTools)
-        return false;
-
-      // Unable to connect oneself
-      if (connectingEdge && connectingEdge.nodeId === nodeId) return false;
-      // Not the same parent node
-      if (connectingNode && connectingNode?.parentNodeId !== node?.parentNodeId) return false;
-
-      return true;
-    })();
-
-    const LeftHandle = (() => {
-      // 同 source 柄：显隐看当前模板，文档节点不携带模板展示字段。
-      const showTargetHandle = node
-        ? moduleTemplatesFlat.find((item) => item.flowNodeType === node.flowNodeType)
-            ?.showTargetHandle
-        : undefined;
-      if (!node || !showTargetHandle) return null;
-
-      const handleId = getHandleId(nodeId, 'target', Position.Left);
-
-      return (
-        <MyTargetHandle
-          nodeId={nodeId}
-          handleId={handleId}
-          position={Position.Left}
-          translate={targetTranslate}
-          showHandle={showHandle}
-        />
-      );
-    })();
-
-    return {
-      showHandle,
-      LeftHandle
-    };
-  }, [
-    connectingEdge,
-    connectingNodeFlowNodeType,
-    connectingNodeParentNodeId,
-    forbidConnectByGraph,
-    nodeFlowNodeType,
-    nodeParentNodeId,
-    nodeId
-  ]);
-
-  return renderHandle ? <>{LeftHandle}</> : null;
 });

@@ -62,11 +62,13 @@ const ChatRecordContextProvider = ({
   params,
   feedbackRecordId,
   fetchFn,
+  showInitialLoading = true,
   showPrevLoading = true
 }: {
   children: ReactNode;
   params: ChatRecordProviderParams;
   feedbackRecordId?: string;
+  showInitialLoading?: boolean;
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
@@ -76,7 +78,6 @@ const ChatRecordContextProvider = ({
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
   const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
-  const callApi = fetchFn ?? getChatRecords;
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
@@ -88,7 +89,12 @@ const ChatRecordContextProvider = ({
     async (
       data: LinkedPaginationProps<ChatRecordProviderParams>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
-      if (!fetchFn && !hasChatAuthTargetInput(data)) {
+      const request = (() => {
+        if (fetchFn) return () => fetchFn(data);
+        if (hasChatAuthTargetInput(data)) return () => getChatRecords(data);
+        return undefined;
+      })();
+      if (!request) {
         return {
           list: [],
           hasMorePrev: false,
@@ -98,7 +104,7 @@ const ChatRecordContextProvider = ({
 
       setIsChatRecordsLoaded(false);
 
-      const res = await callApi(data).finally(() => {
+      const res = await request().finally(() => {
         setIsChatRecordsLoaded(true);
       });
       setTotalRecordsCount(res.total);
@@ -114,12 +120,13 @@ const ChatRecordContextProvider = ({
       };
     },
     {
-      pageSize: 10,
+      pageSize: 20,
       params,
       currentData,
       defaultScroll: 'bottom',
-      showPrevLoading,
-      showErrorToast: false
+      showErrorToast: false,
+      showInitialLoading,
+      showPrevLoading
     }
   );
 

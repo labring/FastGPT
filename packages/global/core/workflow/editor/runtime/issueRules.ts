@@ -1,13 +1,12 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum, LoopRunModeEnum } from '../../node/constant';
 import {
   getSelectedInputRenderType,
-  isWorkflowSystemModelInput,
-  nodeInputIsReference,
-  workflowModelKeyMappings
-} from '../../utils';
+  nodeInputIsReference
+} from '../../../../common/workflow/reference';
+import { isWorkflowSystemModelInput } from '../../../../common/workflow/model';
+import { workflowModelKeyMappings } from '../../model/constants';
 import { moduleTemplatesFlat } from '../../template/constants';
-import { LoopRunModeEnum } from '../../template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '../../template/system/ifElse/constant';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { AppErrEnum } from '../../../../common/error/code/app';
@@ -95,9 +94,7 @@ const MODEL_INPUT_LABELS: Record<string, string> = {
   [NodeInputKeyEnum.datasetSearchRerankModelId]: 'common:core.dataset.search.ReRank',
   [NodeInputKeyEnum.datasetSearchRerankModel]: 'common:core.dataset.search.ReRank',
   [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'common:core.module.template.Query extension',
-  [NodeInputKeyEnum.datasetSearchExtensionModel]: 'common:core.module.template.Query extension',
-  [NodeInputKeyEnum.datasetDeepSearchModelId]: 'common:deep_rag_search',
-  [NodeInputKeyEnum.datasetDeepSearchModel]: 'common:deep_rag_search'
+  [NodeInputKeyEnum.datasetSearchExtensionModel]: 'common:core.module.template.Query extension'
 };
 
 /** 只需要 key/label/debugLabel 的字段标识；label 缺失时按 MODEL_INPUT_LABELS 或 key 回退。 */
@@ -396,9 +393,6 @@ export const collectNodeIssues = (
         }
         if (legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel) {
           return NodeInputKeyEnum.datasetSearchUsingExtensionQuery;
-        }
-        if (legacyKey === NodeInputKeyEnum.datasetDeepSearchModel) {
-          return NodeInputKeyEnum.datasetDeepSearch;
         }
       })();
       const isDatasetQueryExtension =

@@ -6,6 +6,33 @@ vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
   OgClient: { query: vi.fn() }
 }));
 
+describe('OpenGaussVectorCtrl.embRecall', () => {
+  beforeEach(() => {
+    vi.mocked(OgClient.query)
+      .mockReset()
+      .mockResolvedValue([{}, { rows: [] }] as any);
+  });
+
+  it('scopes the query to the team and datasets', async () => {
+    await new OpenGaussVectorCtrl().embRecall({
+      teamId: 'team-a',
+      datasetIds: ['dataset-a', 'dataset-b'],
+      vector: [0.1, 0.2],
+      limit: 20,
+      forbidCollectionIdList: [],
+      filterCollectionIdList: undefined
+    });
+
+    expect(OgClient.query).toHaveBeenCalledOnce();
+    const [query] = vi.mocked(OgClient.query).mock.calls[0];
+    expect(query).toMatchObject({ query_timeout: 120_000 });
+    const sql = typeof query === 'string' ? query : query.text;
+    expect(sql).toMatch(
+      /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
+    );
+  });
+});
+
 describe('OpenGaussVectorCtrl.refreshCreateTime', () => {
   beforeEach(() => {
     vi.mocked(OgClient.query)

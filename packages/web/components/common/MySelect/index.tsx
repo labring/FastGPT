@@ -26,6 +26,7 @@ import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 import EmptyTip from '../EmptyTip';
+import { filterSelectOptionsBySearch } from '../TagFilter/FilterSearchInput';
 import { useMenuListPresence } from './useMenuListPresence';
 
 /** 选择组件 Props 类型
@@ -50,6 +51,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
     description?: string;
     value: T;
     showBorder?: boolean;
+    searchText?: string;
   }[];
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
@@ -385,11 +387,11 @@ const SelectMenu = React.memo(function SelectMenu({
     if (!isSearch || !search) {
       return list;
     }
-    return list.filter((item) => {
-      const text = `${item.label?.toString()}${item.alias}${item.value}`;
-      const regx = new RegExp(search, 'gi');
-      return regx.test(text);
-    });
+    const searchableList = list.map((item) => ({
+      ...item,
+      searchText: [item.searchText, item.label, item.alias, item.value].join(' ')
+    }));
+    return filterSelectOptionsBySearch(searchableList, search);
   }, [list, search, isSearch]);
 
   useEffect(() => {

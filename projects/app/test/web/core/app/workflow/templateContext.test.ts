@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  buildNodeTemplateContext,
   createHideInContext,
   createShowInContext,
   getNodeContainerCheckError,
@@ -35,6 +36,81 @@ const ctx = (patch: Partial<NodeTemplateContext>): NodeTemplateContext => ({
 });
 
 describe('template context', () => {
+  it('buildNodeTemplateContext：源节点不存在返回 null，字段正确映射', () => {
+    const node = {
+      nodeId: 'n1',
+      flowNodeType: FlowNodeTypeEnum.toolParams,
+      parentNodeId: 'loop1'
+    };
+    const loopNode = { nodeId: 'loop1', flowNodeType: FlowNodeTypeEnum.loopRun };
+    const edges = [
+      { target: 'n1', targetHandle: NodeOutputKeyEnum.selectedTools },
+      { target: 'other', targetHandle: 'x' }
+    ];
+
+    expect(
+      buildNodeTemplateContext({
+        sourceNode: undefined,
+        edges,
+        handleId: 'h',
+        getNodeById: () => undefined
+      })
+    ).toBeNull();
+
+    const result = buildNodeTemplateContext({
+      sourceNode: node,
+      edges,
+      handleId: 'h',
+      getNodeById: (id) => (id === 'loop1' ? (loopNode as any) : undefined)
+    });
+    expect(result).toEqual({
+      isSidebar: false,
+      sourceNodeId: 'n1',
+      sourceType: FlowNodeTypeEnum.toolParams,
+      isConnectedTool: true,
+      handleId: 'h',
+      parentType: FlowNodeTypeEnum.loopRun,
+      hasToolNode: false,
+      hasLoopRunNode: false,
+      takenUniqueTypes: []
+    });
+  });
+
+  it('buildNodeTemplateContext：未被工具调用挂载时 isConnectedTool 为 false', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        isTool: false,
+        parentNodeId: undefined
+      },
+      edges: [{ target: 'n2', targetHandle: NodeOutputKeyEnum.selectedTools }],
+      handleId: null,
+      getNodeById: () => undefined
+    });
+    expect(result?.isConnectedTool).toBe(false);
+    expect(result?.parentType).toBeNull();
+  });
+
+  it('buildNodeTemplateContext：工具子流程后续节点保留 Stop Tool', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n3',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        isTool: false,
+        parentNodeId: undefined
+      },
+      edges: [
+        { source: 'toolCall', target: 'n1', targetHandle: NodeOutputKeyEnum.selectedTools },
+        { source: 'n1', target: 'n2' },
+        { source: 'n2', target: 'n3' }
+      ],
+      getNodeById: () => undefined
+    });
+
+    expect(result?.isConnectedTool).toBe(true);
+    expect(isTemplateVisible(StopToolNode, result)).toBe(true);
+  });
   it('工厂函数：白名单仅在匹配任一规则且上下文非空时可见', () => {
     const predicate = createShowInContext([
       { sourceType: FlowNodeTypeEnum.toolCall, handleId: NodeOutputKeyEnum.selectedTools },
@@ -134,7 +210,7 @@ describe('template context', () => {
     // 来源不是工具调用时同样拒绝。
     expect(
       connect(
-        ctx({ sourceType: FlowNodeTypeEnum.aiChat, handleId: NodeOutputKeyEnum.selectedTools })
+        ctx({ sourceType: FlowNodeTypeEnum.chatNode, handleId: NodeOutputKeyEnum.selectedTools })
       )
     ).toBe(false);
   });
@@ -285,6 +361,25 @@ describe('template context', () => {
     ).toBeUndefined();
   });
 
+  it('buildNodeTemplateContext 支持使用目标容器覆盖源节点容器', () => {
+    const result = buildNodeTemplateContext({
+      sourceNode: {
+        nodeId: 'n1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        isTool: false,
+        parentNodeId: 'loop1'
+      },
+      edges: [],
+      targetParentType: FlowNodeTypeEnum.parallelRun,
+      getNodeById: () =>
+        ({
+          nodeId: 'loop1',
+          flowNodeType: FlowNodeTypeEnum.loopRun
+        }) as any
+    });
+
+    expect(result?.parentType).toBe(FlowNodeTypeEnum.parallelRun);
+  });
   it('stopTool 仅在已挂载工具节点（工具子流程）可见', () => {
     expect(isTemplateVisible(StopToolNode, null)).toBe(false);
     expect(isTemplateVisible(StopToolNode, ctx({ isConnectedTool: true }))).toBe(true);

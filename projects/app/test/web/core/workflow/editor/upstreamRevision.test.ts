@@ -6,7 +6,7 @@ import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { WorkflowSessionProvider } from '@/web/core/workflow/editor/session/workflowSession';
@@ -197,14 +197,14 @@ describe('useNodeWorkflowDocument upstream revision', () => {
     expect(observed.B).toBe(beforeB);
   });
 
-  it('改名会连带重算 outputs，被 Runtime 判成结构变更，一律全量失效', async () => {
+  it('不相连节点改名只刷新自身，不刷新下游派生列表', async () => {
     const beforeB = observed.B;
+    const beforeC = observed.C;
 
-    // C 与 A / B 都不相连，但 affectedRecords.structure 为真时不做闭包判定：
-    // 来源闭包本身可能已经不同，保守方向只会多算不会漏算。
     await dispatch({ type: 'updateNode', nodeId: 'C', patch: { name: 'renamed' } });
 
-    expect(observed.B).not.toBe(beforeB);
+    expect(observed.C).not.toBe(beforeC);
+    expect(observed.B).toBe(beforeB);
   });
 
   it('结构与 chatConfig 变化一律刷新', async () => {

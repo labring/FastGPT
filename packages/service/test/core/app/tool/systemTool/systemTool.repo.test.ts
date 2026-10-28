@@ -80,8 +80,8 @@ const createPluginTool = ({
   isToolset: false,
   hasSecret,
   type: 'tool',
-  name: { en: name },
-  description: { en: `${name} intro` },
+  name: { en: name, 'zh-CN': name },
+  description: { en: `${name} intro`, 'zh-CN': `${name} intro` },
   pluginId,
   version: '1.0.0',
   etag: `${pluginId}-etag`,
@@ -156,6 +156,43 @@ describe('SystemToolRepo.getSystemToolList', () => {
       'systemTool-low-order-single-match',
       'systemTool-second-order-single-match'
     ]);
+  });
+
+  it('merges configured workflow tools with system tools', async () => {
+    mocks.listTools.mockResolvedValue([createPluginTool({ pluginId: 'normal', name: 'Normal' })]);
+    const workflowConfig = createToolConfig({ pluginId: 'workflow', pluginOrder: 0, tags: [] });
+    mocks.findSystemTools.mockResolvedValue([
+      {
+        ...workflowConfig,
+        customConfig: { ...workflowConfig.customConfig, associatedPluginId: 'app-1' }
+      }
+    ]);
+
+    const tools = await SystemToolRepo.getInstance().getSystemToolList({ sources: ['system'] });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-normal', 'systemTool-workflow']);
+  });
+
+  it('keeps list plugin metadata unchanged across UI locales', async () => {
+    const name = { en: 'Search', 'zh-CN': '搜索' };
+    const intro = { en: 'Find documents', 'zh-CN': '查找文档' };
+    const readmeUrls = { en: 'https://example.com/en.md', 'zh-CN': 'https://example.com/zh.md' };
+    mocks.listTools.mockResolvedValue([
+      {
+        ...createPluginTool({ pluginId: 'search', name: 'Search' }),
+        name,
+        description: intro,
+        readmeUrls
+      }
+    ]);
+    mocks.findSystemTools.mockResolvedValue([]);
+
+    const repo = SystemToolRepo.getInstance();
+    const english = await repo.getSystemToolList({ lang: 'en' });
+    const chinese = await repo.getSystemToolList({ lang: 'zh-CN' });
+
+    expect(english[0]).toMatchObject({ name, intro, readmeUrls });
+    expect(chinese[0]).toMatchObject({ name, intro, readmeUrls });
   });
 
   it('keeps plugin order sorting when no tags are provided', async () => {
@@ -337,6 +374,7 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
           isToolParam: true,
           'x-fastgpt-node-input': {
             valueType: WorkflowIOValueTypeEnum.string,
+            toolDescription: 'Search query',
             renderTypeList: [FlowNodeInputTypeEnum.input]
           }
         },
@@ -407,8 +445,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'system',
       isToolset: true,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -419,8 +457,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       children: [
         {
           id: 'forecast',
-          name: { en: 'Forecast' },
-          description: { en: 'Forecast intro' },
+          name: { en: 'Forecast', 'zh-CN': '预报' },
+          description: { en: 'Forecast intro', 'zh-CN': '预报简介' },
           inputSchema,
           outputSchema
         }
@@ -444,6 +482,64 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     expect(tool).not.toHaveProperty('secrets');
   });
 
+  it('keeps detail plugin metadata unchanged across UI locales', async () => {
+    const name = { en: 'Search', 'zh-CN': '搜索' };
+    const intro = { en: 'Find documents', 'zh-CN': '查找文档' };
+    const childName = { en: 'Search pages', 'zh-CN': '搜索页面' };
+    const childDescription = { en: 'Search page index', 'zh-CN': '搜索页面索引' };
+    const readmeUrls = { en: 'https://example.com/en.md', 'zh-CN': 'https://example.com/zh.md' };
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-search',
+      currentCost: 0,
+      hasTokenFee: false,
+      systemKeyCost: 0,
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: true,
+      name,
+      description: intro,
+      readmeUrls,
+      readmeUrl: 'https://example.com/legacy.md',
+      pluginId: 'search',
+      version: '1.0.0',
+      icon: 'search.svg',
+      tags: [],
+      inputSchema: { type: 'object', properties: {} },
+      outputSchema: { type: 'object', properties: {} },
+      children: [
+        {
+          id: 'pages',
+          name: childName,
+          description: childDescription,
+          inputSchema: { type: 'object', properties: {} },
+          outputSchema: { type: 'object', properties: {} }
+        }
+      ]
+    });
+
+    const repo = SystemToolRepo.getInstance();
+    const english = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'en' });
+    const chinese = await repo.getSystemToolDetail({
+      pluginId: 'systemTool-search',
+      lang: 'zh-CN'
+    });
+
+    expect(english).toMatchObject({ name, intro, readmeUrls });
+    expect(english.readmeUrl).toBe('https://example.com/legacy.md');
+    expect(english.children?.[0]).toMatchObject({
+      name: childName,
+      description: childDescription
+    });
+    expect(chinese).toMatchObject({ name, intro, readmeUrls });
+    expect(chinese.children?.[0]).toMatchObject({
+      name: childName,
+      description: childDescription
+    });
+  });
+
   it('uses the parent tool secret for toolset child details', async () => {
     const parentSecrets = { apiKey: 'parent-secret' };
     mocks.findSystemTool
@@ -463,8 +559,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'system',
       isToolset: true,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -477,8 +573,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       children: [
         {
           id: 'forecast',
-          name: { en: 'Forecast' },
-          description: { en: 'Forecast intro' }
+          name: { en: 'Forecast', 'zh-CN': '预报' },
+          description: { en: 'Forecast intro', 'zh-CN': '预报简介' }
         }
       ]
     });
@@ -501,8 +597,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'system',
       isToolset: false,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -532,8 +628,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'system',
       isToolset: false,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -569,8 +665,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'system',
       isToolset: true,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -583,8 +679,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
       children: [
         {
           id: 'forecast',
-          name: { en: 'Forecast' },
-          description: { en: 'Forecast intro' }
+          name: { en: 'Forecast', 'zh-CN': '预报' },
+          description: { en: 'Forecast intro', 'zh-CN': '预报简介' }
         }
       ]
     });
@@ -606,8 +702,8 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getTool.mockResolvedValue({
       source: 'debug:tmbId:tmb-1',
       isToolset: false,
-      name: { en: 'Weather' },
-      description: { en: 'Weather intro' },
+      name: { en: 'Weather', 'zh-CN': '天气' },
+      description: { en: 'Weather intro', 'zh-CN': '天气简介' },
       pluginId: 'weather',
       version: '1.0.0',
       icon: 'weather.svg',
@@ -856,8 +952,8 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
 
     expect(tool).toMatchObject({
       id: 'systemTool-weather/forecast',
-      name: 'Forecast',
-      intro: 'Forecast intro',
+      name: { en: 'Forecast' },
+      intro: { en: 'Forecast intro' },
       avatar: 'forecast.svg',
       currentCost: 2,
       systemKeyCost: 1
@@ -914,8 +1010,8 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
 
     expect(tool.children?.[0]).toMatchObject({
       id: 'forecast',
-      name: 'Forecast',
-      description: 'Forecast intro',
+      name: { en: 'Forecast' },
+      description: { en: 'Forecast intro' },
       icon: 'forecast.svg'
     });
     expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
@@ -1384,7 +1480,10 @@ describe('SystemToolRepo.getVersions', () => {
 
   it('lists commercial plugin versions from commercial source', async () => {
     mocks.findSystemTool.mockResolvedValue(undefined);
-    mocks.listPluginVersions.mockResolvedValue([{ version: '2.0.0' }, { version: '1.0.0' }]);
+    mocks.listPluginVersions.mockResolvedValue([
+      { version: '2.0.0', versionDescription: { en: 'Release', 'zh-CN': '发布' } },
+      { version: '1.0.0' }
+    ]);
 
     const versions = await SystemToolRepo.getInstance().getVersions({
       pluginId: 'commercial-search'
@@ -1394,6 +1493,9 @@ describe('SystemToolRepo.getVersions', () => {
       pluginId: 'search',
       source: 'commercial'
     });
-    expect(versions).toEqual([{ version: '2.0.0' }, { version: '1.0.0' }]);
+    expect(versions).toEqual([
+      { version: '2.0.0', versionDescription: { en: 'Release', 'zh-CN': '发布' } },
+      { version: '1.0.0', versionDescription: undefined }
+    ]);
   });
 });

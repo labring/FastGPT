@@ -7,9 +7,10 @@ import {
 } from '../constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 import { ModelTypeEnum } from '../../ai/constants';
-import { getHandleId } from '../utils';
+import { getHandleId } from '../../../common/workflow/reference';
 import { moduleTemplatesFlat } from '../template/constants';
 import { isNodeConnectionAllowed } from '../template/context';
+import type { FlowNodeTemplateOutputItemType } from '../template/output';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
@@ -56,9 +57,9 @@ export const updateWorkflowNodeOutputValidity = ({
   llmModelMap
 }: {
   inputs: FlowNodeInputItemType[];
-  outputs: FlowNodeOutputItemType[];
+  outputs: FlowNodeTemplateOutputItemType[];
   llmModelMap?: WorkflowLLMModelMap;
-}): FlowNodeOutputItemType[] => {
+}): FlowNodeTemplateOutputItemType[] => {
   if (!llmModelMap) return outputs;
 
   let nextOutputs = outputs;

@@ -6,9 +6,11 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { isValidArrayReferenceValue } from '@fastgpt/global/common/workflow/reference';
+import type {
+  ReferenceArrayValueType,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';

@@ -11,7 +11,7 @@ type TeamChatRateLimitParams = {
 const teamChatRateLimit = defineRateLimitInterface<TeamChatRateLimitParams>({
   scene: RateLimitSceneEnum.Team,
   policy: 'chat-qpm',
-  failureMode: 'closed',
+  failureMode: 'open',
   getKeySegments: ({ teamId }) => ['team', teamId],
   getLimit: ({ limit }) => limit,
   getWindowSeconds: ({ seconds }) => seconds,

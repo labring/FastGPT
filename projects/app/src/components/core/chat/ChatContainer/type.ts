@@ -12,6 +12,8 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
+import type { ChatAgentBuilderVersion } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentBuilderVersion';
 
 type BaseGeneratingMessageProps = {
   responseValueId?: string;
@@ -33,8 +35,10 @@ type BaseGeneratingMessageProps = {
   // Sandbox
   sandboxStatus?: SandboxStatusItemType;
   skill?: SkillModuleResponseItemType;
+  workflowBuilderVersion?: WorkflowBuilderVersion;
 
   formData?: ChatAgentConfigFormDataType;
+  chatAgentBuilderVersion?: ChatAgentBuilderVersion;
 };
 
 type ToolStreamEvent =

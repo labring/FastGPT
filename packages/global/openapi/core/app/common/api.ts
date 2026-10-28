@@ -1,6 +1,6 @@
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { ParentIdSchema } from '../../../../common/parentFolder/type';
-import { AppListSortEnum, AppTypeEnum } from '../../../../core/app/constants';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../../../common/parentFolder/type';
+import { AppListSortEnum, AppListSortSchema, AppTypeEnum } from '../../../../core/app/constants';
 import {
   AppChatConfigTypeSchema,
   AppTTSConfigTypeSchema,
@@ -21,7 +21,11 @@ import {
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { WorkflowReferenceSnapshotSchema } from '../../../../core/workflow/type/io';
 import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import {
+  createPaginationSchema,
+  PaginationPageSizeLimit,
+  PaginationResponseSchema
+} from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
 
@@ -293,7 +297,7 @@ export type CreateAppResponseType = z.infer<typeof CreateAppResponseSchema>;
  * API: 获取应用列表
  * Route: POST /api/core/app/list
  * Method: POST
- * Description: 获取当前团队下当前用户可读的应用或文件夹列表。
+ * Description: 已弃用，使用 POST /api/core/app/listV2；旧接口保留数组响应兼容。
  * Tags: ['基础管理']
  * ============================================================================ */
 
@@ -317,10 +321,7 @@ export const ListAppBodySchema = z
       example: '客服',
       description: '应用名称或介绍搜索关键词'
     }),
-    sort: z.enum(AppListSortEnum).optional().meta({
-      example: AppListSortEnum.updateTimeDesc,
-      description: '列表排序。缺省按最近修改倒序'
-    }),
+    sort: AppListSortSchema.optional(),
     tmbIds: z
       .array(ObjectIdSchema)
       .optional()
@@ -349,10 +350,10 @@ export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
  * API: 获取应用列表 V2
  * Route: POST /api/core/app/listV2
  * Method: POST
- * Description: 分页获取当前团队下当前用户可读的应用或文件夹列表。
+ * Description: 分页或按 ID 列表获取当前团队下当前用户可读的应用或文件夹，优先按 ID 查询并过滤目录和分页字段。
  * Tags: ['基础管理']
  * ============================================================================ */
-export const ListAppV2BodySchema = ListAppBodySchema.extend({
+const ListAppV2FiltersSchema = ListAppBodySchema.omit({ parentId: true }).extend({
   excludeAppId: ObjectIdSchema.optional().meta({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
   }),
@@ -360,7 +361,33 @@ export const ListAppV2BodySchema = ListAppBodySchema.extend({
     example: true,
     description: '是否返回非文件夹 App 和工具被正式应用引用的数量'
   })
-}).extend(PaginationSchema.shape);
+});
+
+// ID 分支优先匹配，由 Zod 过滤目录和分页字段；分页分支拒绝已有但无效的 ID，避免意外扩大查询范围。
+export const ListAppV2BodySchema = z.union([
+  z
+    .object({
+      appIds: z
+        .array(ObjectIdSchema)
+        .min(1)
+        .max(PaginationPageSizeLimit)
+        .meta({
+          example: ['68ad85a7463006c963799a05'],
+          description: `按应用或文件夹 ID 精确查询，最多 ${PaginationPageSizeLimit} 个；优先匹配该分支，解析时过滤 parentId 和分页参数，保留公共筛选字段`
+        }),
+      ...ListAppV2FiltersSchema.shape
+    })
+    .meta({ title: '按 IDs 获取' }),
+  createPaginationSchema({
+    ...ListAppV2FiltersSchema.shape,
+    parentId: ListAppBodySchema.shape.parentId.meta({
+      example: null,
+      description:
+        '父级应用/文件夹 ID；null 或空字符串表示根目录；搜索时限定在指定目录及其子树，不传则搜索全部可读资源'
+    }),
+    appIds: z.never().optional()
+  }).meta({ title: '分页获取' })
+]);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
 
 export const AppListItemSchema = z
@@ -386,6 +413,10 @@ export const AppListItemSchema = z
     }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
+    }),
+    folderAccessMode: FolderAccessModeSchema.optional().meta({
+      example: 'navigate',
+      description: '文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限'
     })
   })
   .meta({

@@ -45,7 +45,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -481,7 +481,12 @@ const NodeAgent = ({ data, selected }: CanvasNodeProps) => {
                     onClickSkill={onClickSkill}
                     onRemoveSkill={onRemoveSkill}
                     ExtensionPopover={[OptimizerPopoverComponent]}
-                    placeholder={promptInput.placeholder ? t(promptInput.placeholder as any) : ''}
+                    placeholder={[
+                      promptInput.placeholder ? t(promptInput.placeholder as any) : '',
+                      t('workflow:agent.prompt_placeholder')
+                    ]
+                      .filter(Boolean)
+                      .join('\n')}
                   />
                 </WorkflowFieldScope>
               ) : (

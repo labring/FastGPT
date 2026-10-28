@@ -106,15 +106,17 @@ export async function generateQA(): Promise<any> {
 
         try {
           const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
-          const modelData = modelHandle.getLLMModelData(
-            getDatasetModelReference(data.dataset, 'agent')
+          const modelData = modelHandle.getModelData(
+            getDatasetModelReference(data.dataset, 'agent'),
+            { type: 'llm' }
           );
-          const embeddingModelData = modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(data.dataset, 'embedding')
+          const embeddingModelData = modelHandle.getModelData(
+            getDatasetModelReference(data.dataset, 'embedding'),
+            { type: 'embedding' }
           );
-          const vlmModelData = modelHandle.getVlmModelData(
+          const vlmModelData = modelHandle.getModelData(
             getDatasetModelReference(data.dataset, 'vlm'),
-            { optional: true }
+            { type: 'llm', vision: true, optional: true }
           );
           const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
   ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;

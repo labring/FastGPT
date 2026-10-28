@@ -61,6 +61,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       top={[0, '67px']}
       position={'fixed'}
       placement={'left'}
+      animationMode={'slideFromLeft'}
       showMask={false}
       headerProps={{
         minH: 0,

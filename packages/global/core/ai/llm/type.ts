@@ -3,6 +3,7 @@ import type { Stream } from 'openai/streaming';
 import { audioFileType } from '../../../common/file/constants';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
+import { UserChatSelectSchema } from '../../chat/input/type';
 
 /* 通用类型 */
 export const ChatCompletionContentPartTextSchema = z.object({
@@ -99,7 +100,15 @@ export const ChatCompletionContentPartFileTypeSchema = z.object({
   fileType: z.enum(['file', 'audio', 'video']).optional(),
   key: z.string().optional()
 });
+/** FastGPT 结构化问答传输；模型请求适配时会转换为文本或工具结果。 */
+export const ChatCompletionContentPartSelectSchema = z.object({
+  type: z.literal('select'),
+  select: UserChatSelectSchema,
+  key: z.string().optional()
+});
+
 export const ChatCompletionContentPartSchema = z.discriminatedUnion('type', [
+  ChatCompletionContentPartSelectSchema,
   ChatCompletionContentPartTextSchema,
   ChatCompletionContentPartImageSchema,
   ChatCompletionContentPartInputAudioSchema,

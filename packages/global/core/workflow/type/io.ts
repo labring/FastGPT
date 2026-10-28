@@ -1,4 +1,3 @@
-import type { LLMModelDataType } from '../../ai/model/schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';
@@ -252,6 +251,9 @@ export const InputConfigTypeSchema = z.object({
   description: z.string().optional().meta({
     description: '输入配置说明'
   }),
+  placeholder: z.string().optional().meta({
+    description: '输入配置占位提示'
+  }),
   required: BoolSchema.optional().meta({
     description: '该输入配置是否必填'
   }),
@@ -349,7 +351,7 @@ export const ToolReferenceNodeInputTypeSchema = FlowNodeInputItemTypeSchema.omit
   customJsonSchema: true
 });
 
-// Workflow node output
+/** 工作流输出的纯数据契约，供存储、运行时、Core、CLI 和 API 共用。 */
 export const FlowNodeOutputItemTypeSchema = z.object({
   id: z.string().meta({
     description: '节点输出 ID'
@@ -394,31 +396,6 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   invalid: BoolSchema.optional().meta({
     description: '该输出当前是否不可用'
   }),
-  invalidCondition: z
-    .function({
-      input: z.tuple([
-        z.object({
-          inputs: z.custom<FlowNodeInputItemType[]>(),
-          llmModelMap: z.custom<
-            Record<
-              string,
-              Pick<LLMModelDataType, 'modelId' | 'config'> & {
-                model?: LLMModelDataType['model'];
-              }
-            >
-          >()
-        })
-      ]),
-      output: BoolSchema
-    })
-    .optional()
-    .meta({
-      override: {
-        type: 'string',
-        description: 'Function placeholder; not represented in JSON payloads'
-      }
-    }),
-
   customFieldConfig: CustomFieldConfigTypeSchema.optional().meta({
     description: '动态输出项编辑配置'
   }),
@@ -439,6 +416,14 @@ export const ReferenceValueTypeSchema = z.union([
 ]);
 export type ReferenceValueType = z.infer<typeof ReferenceValueTypeSchema>;
 
+/* http node */
+export const HttpParamAndHeaderItemTypeSchema = z.object({
+  key: z.string(),
+  type: z.string(),
+  value: z.string()
+});
+export type HttpParamAndHeaderItemType = z.infer<typeof HttpParamAndHeaderItemTypeSchema>;
+
 /**
  * 已删除引用来源的历史展示元数据（根级稀疏数组）。
  * 只在来源消失时捕获，导出前按「来源仍缺失且仍有 consumer」压缩，因此不是全量引用表。
@@ -458,3 +443,12 @@ export const WorkflowReferenceSnapshotSchema = z.object({
   })
 });
 export type WorkflowReferenceSnapshot = z.infer<typeof WorkflowReferenceSnapshotSchema>;
+
+export type EditorVariablePickerType = {
+  key: string;
+  label: string;
+  required?: boolean;
+  icon?: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  valueDesc?: string;
+};

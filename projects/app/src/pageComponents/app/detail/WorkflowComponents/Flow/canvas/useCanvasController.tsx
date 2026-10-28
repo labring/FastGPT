@@ -15,9 +15,9 @@ import {
 } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
+  LoopRunModeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import '@xyflow/react/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -36,6 +36,8 @@ import { useWorkflowUIValue } from './canvasState';
 import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { formatWorkflowDiagnostic } from '@/web/core/workflow/check/diagnostic';
 import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './nodeDimensions';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
@@ -1035,13 +1037,18 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {
-      if (!connect.sourceHandle || !connect.targetHandle) {
-        return;
-      }
-      if (connect.source === connect.target) {
+      const workflow = runtime?.getWorkflowData();
+      if (!workflow) return;
+      const nodesById = new Map(workflow.nodes.map((node) => [node.nodeId, node]));
+      const result = checkExecutionConnection({
+        connection: connect,
+        edges: workflow.edges,
+        getNodeById: (nodeId) => nodesById.get(nodeId)
+      });
+      if (!result.allowed) {
         return toast({
           status: 'warning',
-          title: t('common:core.module.Can not connect self')
+          title: formatWorkflowDiagnostic({ diagnostic: result.reason, t }).message
         });
       }
 
@@ -1050,7 +1057,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         connect
       });
     },
-    [onConnect, t, toast]
+    [onConnect, runtime, t, toast]
   );
 
   /* edge */

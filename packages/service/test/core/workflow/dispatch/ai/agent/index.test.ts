@@ -7,6 +7,7 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -42,6 +43,7 @@ const {
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
   ensureAppSandboxRuntimeReadyMock,
+  authSkillByTmbIdMock,
   getLLMModelDataMock
 } = vi.hoisted(() => ({
   runAgentLoopMock: vi.fn(),
@@ -68,7 +70,17 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
   ensureAppSandboxRuntimeReadyMock: vi.fn(),
+  authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/permission/skill/auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/permission/skill/auth')>()),
+  authSkillByTmbId: authSkillByTmbIdMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
@@ -77,12 +89,14 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal)
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   }),
   getTeamModelHandle: async () => ({
     ...(await (
       await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
+    getModelData: getLLMModelDataMock,
     getLLMModelData: getLLMModelDataMock
   })
 }));
@@ -520,6 +534,12 @@ describe('dispatchRunAgent user context', () => {
     let sandboxReadyBeforeLoop = false;
     runAgentLoopMock.mockImplementationOnce(async () => {
       sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
+      expect(
+        props.workflowStreamResponse.mock.calls
+          .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+          .filter((event: { event: string }) => event.event === 'sandboxStatus')
+          .map((event: { data: { phase: string } }) => event.data.phase)
+      ).toEqual(['lazyInit', 'ready']);
       return {
         status: 'done',
         completeMessages: [],
@@ -590,31 +610,34 @@ describe('dispatchRunAgent user context', () => {
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses the runtime member for skill injection without an App resource context', async () => {
+  it('authorizes skills as the runtime member before sandbox injection without an App resource context', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const skillId = '507f1f77bcf86cd799439011';
+    const skill = { _id: skillId, name: 'Report' };
+    authSkillByTmbIdMock.mockResolvedValueOnce({ skill });
     const props = createProps();
     props.params.useAgentSandbox = true;
-    props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
+    props.params.skills = [{ skillId, name: 'Report' }];
     props.runningAppInfo.tmbId = 'app_owner_tmb';
     props.runningUserInfo.tmbId = 'external_user_tmb';
 
-    let result: any;
-    runWithContext(
+    const result = await runWithContext(
       {
         mcpClientMemory: {}
       },
-      () => {
-        result = dispatchRunAgent(props);
-      }
+      () => dispatchRunAgent(props)
     );
-    await result;
 
     expect(result.error).toBeUndefined();
+    expect(authSkillByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'external_user_tmb',
+      skillId,
+      per: ReadPermissionVal,
+      isRoot: false
+    });
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        teamId: 'team_1',
-        tmbId: 'external_user_tmb',
-        skillIds: ['skill_1']
+        skills: [skill]
       })
     );
   });
@@ -647,8 +670,8 @@ describe('dispatchRunAgent user context', () => {
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
-    expect(sandboxStatusEvents).toEqual([
-      {
+    expect(sandboxStatusEvents).toEqual(
+      ['lazyInit', 'upgrading', 'lazyInit', 'ready'].map((phase) => ({
         event: 'sandboxStatus',
         data: {
           sandboxId: getRunningSandboxId({
@@ -656,21 +679,10 @@ describe('dispatchRunAgent user context', () => {
             sourceId: 'app_1',
             userId: 'user_1'
           }),
-          phase: 'upgrading'
+          phase
         }
-      },
-      {
-        event: 'sandboxStatus',
-        data: {
-          sandboxId: getRunningSandboxId({
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: 'app_1',
-            userId: 'user_1'
-          }),
-          phase: 'lazyInit'
-        }
-      }
-    ]);
+      }))
+    );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
     expect(result.error).toBeUndefined();
@@ -696,6 +708,12 @@ describe('dispatchRunAgent user context', () => {
 
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
+    expect(
+      props.workflowStreamResponse.mock.calls
+        .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+        .filter((event: { event: string }) => event.event === 'sandboxStatus')
+        .map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit']);
     expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
@@ -947,14 +965,15 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
+  it('ignores legacy unwrapped Ask memory without crashing a new run', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'legacy-plan',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1003,25 +1022,9 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(runAgentLoopMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        provider: 'fastAgent',
-        input: expect.objectContaining({
-          userAnswer: '前端原始问题',
-          providerState: {
-            pendingMainContext: expect.objectContaining({
-              askToolCallId: 'call_ask',
-              activePlan: {
-                planId: 'legacy-plan',
-                name: 'Legacy plan',
-                description: 'Legacy description',
-                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
-              }
-            })
-          }
-        })
-      })
-    );
+    const input = runAgentLoopMock.mock.calls[0][0].input;
+    expect(input.providerState).toBeUndefined();
+    expect(input.userAnswer).toBeUndefined();
     expect(result.data.answerText).toBe('continued answer');
   });
 
@@ -1039,16 +1042,14 @@ describe('dispatchRunAgent user context', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           },
           {
             question: 'Second?',
             options: [
               { summary: 'C', value: 'C' },
               { summary: 'D', value: 'D' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
@@ -1098,10 +1099,11 @@ describe('dispatchRunAgent user context', () => {
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
     props.lastInteractive = {
-      type: 'agentPlanAskQuery',
+      type: 'agentAsk',
       askId: 'call_ask_1',
       params: {
-        content: 'Need confirmation'
+        description: '',
+        questions: [{ question: 'Need confirmation', options: [] }]
       }
     };
     props.histories[props.histories.length - 1].memories = {

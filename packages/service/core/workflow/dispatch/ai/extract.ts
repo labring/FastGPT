@@ -1,15 +1,15 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  type NodeInputKeyEnum,
   NodeOutputKeyEnum,
   toolValueTypeList,
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
+
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
-import { getTeamModelHandle } from '../../../ai/model/catalog/service';
 
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -22,6 +22,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { loadWorkflowModelResource } from '../../resource/service';
 import { getWorkflowSourceNodeKey } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
@@ -48,6 +49,7 @@ type ActionProps = Props & {
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { content, history = 6, modelId, model, description, extractKeys }
@@ -56,8 +58,12 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
-  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
-  const extractModel = modelHandle.getLLMModelData({ modelId, model });
+  const extractModel = await loadWorkflowModelResource({
+    appTeamId: runningAppInfo.teamId,
+    userInfo: runningUserInfo,
+    modelId,
+    model
+  });
   const chatHistories = getHistories(history, histories);
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });

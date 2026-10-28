@@ -18,6 +18,7 @@ import {
 import { systemMigrations, type SystemMigration } from './registry';
 import type { SystemMigrationStateSchemaType } from './mongoSchema';
 import { SystemMigrationDependencyError } from './error';
+import { createSystemMigrationPlan } from './plan';
 
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
@@ -42,28 +43,13 @@ const assertMigrationDependenciesComplete = async (
   }
 };
 
-/** 静态阶段保证未执行项也可见，Mongo 只补充已经上报过的可变状态。 */
-const getProgressList = (
-  migration: SystemMigration,
-  state: SystemMigrationStateSchemaType | undefined,
-  failedRecordCounts: Map<string, number>
-) => {
-  const storedProgress = state?.progress ?? [];
-  const progressMap = new Map(storedProgress.map((progress) => [progress.key, progress]));
-
-  return migration.progressSteps.map(({ key, labelKey }) => ({
-    key,
-    labelKey,
-    status: SystemMigrationStatusEnum.pending,
-    ...progressMap.get(key),
-    failedRecordCount: failedRecordCounts.get(key) ?? 0
-  }));
-};
-
 /** 合并不可变静态元数据和 Mongo 最新运行状态，供管理员页面读取。 */
 export const getSystemMigrationList = async (
   migrations: readonly SystemMigration[] = systemMigrations
 ): Promise<SystemMigrationListResponse> => {
+  const startupIds = new Set(
+    createSystemMigrationPlan(migrations).startupMigrations.map((migration) => migration.id)
+  );
   const migrationIds = migrations.map((migration) => migration.id);
   let states = await getMigrationStates(migrationIds);
   const existingIds = new Set(states.map((state) => state._id));
@@ -84,24 +70,19 @@ export const getSystemMigrationList = async (
 
   return SystemMigrationListResponseSchema.parse({
     serverTime: await getMigrationServerTime(),
-    // register() 会同步等待阻塞任务；这里展示的是数据库事实，不再维护第二套进程内状态。
-    businessReady: migrations
-      .filter((migration) => migration.blockStartup)
-      .every(
-        (migration) => stateMap.get(migration.id)?.status === SystemMigrationStatusEnum.succeeded
-      ),
     migrations: migrations.map((migration, index) => {
       const state = stateMap.get(migration.id);
       const stageFailedRecordCounts =
         failedRecordCountMap.get(migration.id) ?? new Map<string, number>();
+      const progressMap = new Map(state?.progress?.map((progress) => [progress.key, progress]));
       return {
         id: migration.id,
         version: migration.version,
         order: index + 1,
         nameKey: migration.nameKey,
         descriptionKey: migration.descriptionKey,
-        blockStartup: migration.blockStartup,
-        onFailure: migration.onFailure,
+        blockStartup: startupIds.has(migration.id),
+        independent: !startupIds.has(migration.id) && migration.independent === true,
         status:
           state?.status ??
           (migration.manual
@@ -109,7 +90,14 @@ export const getSystemMigrationList = async (
             : SystemMigrationStatusEnum.pending),
         heartbeatAt: state?.heartbeatAt,
         leaseExpireAt: state?.leaseExpireAt,
-        progress: getProgressList(migration, state, stageFailedRecordCounts),
+        // 静态阶段保证未执行项也可见，Mongo 只补充已经上报的状态。
+        progress: migration.progressSteps.map(({ key, labelKey }) => ({
+          key,
+          labelKey,
+          status: SystemMigrationStatusEnum.pending,
+          ...progressMap.get(key),
+          failedRecordCount: stageFailedRecordCounts.get(key) ?? 0
+        })),
         // 最终结果只属于 succeeded 终态，异常历史数据不能被客户端误认为本轮成功结果。
         result:
           state?.status === SystemMigrationStatusEnum.succeeded && state.result !== undefined
@@ -155,38 +143,25 @@ export const getSystemMigrationFailedRecords = async (
   });
 };
 
-/** 仅允许管理员把非阻塞 failed 任务恢复为 pending，并保留断点和错误数据等待 runner 接管。 */
-export const retryNonBlockingSystemMigration = async (
+/** 仅允许管理员把 failed 任务恢复为 pending，并保留断点和错误数据等待 runner 接管。 */
+export const retrySystemMigration = async (
   migrationId: string,
   migrations: readonly SystemMigration[] = systemMigrations
 ): Promise<void> => {
   const migration = migrations.find((item) => item.id === migrationId);
   if (!migration) throw new UserError('System migration not found');
-  if (migration.blockStartup) {
-    throw new UserError('Blocking system migration must be recovered by restarting the App node');
+  if (
+    createSystemMigrationPlan(migrations).startupMigrations.some((item) => item.id === migrationId)
+  ) {
+    throw new UserError(
+      'Startup migration must be recovered by restarting the lease-owning App node'
+    );
   }
   await assertMigrationDependenciesComplete(migration, migrations);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。
     throw new UserError('Only a failed system migration can be retried');
   }
-};
-
-/** 读取阻塞任务状态；缺失、pending、running 和 failed 都必须继续阻塞启动。 */
-export const areBlockingMigrationsComplete = async (
-  migrations: readonly SystemMigration[] = systemMigrations
-): Promise<boolean> => {
-  const blockingIds = migrations
-    .filter((migration) => migration.blockStartup)
-    .map((migration) => migration.id);
-
-  if (blockingIds.length === 0) return true;
-
-  const states = await getMigrationStates(blockingIds);
-  const stateMap = getStateMap(states);
-  return blockingIds.every(
-    (migrationId) => stateMap.get(migrationId)?.status === SystemMigrationStatusEnum.succeeded
-  );
 };
 
 /** 管理员确认环境已满足迁移前提后，将等待中的手动任务交给 runner；请求内不执行脚本。 */
@@ -196,8 +171,8 @@ export const startManualSystemMigration = async (
 ): Promise<void> => {
   const migration = migrations.find((item) => item.id === migrationId);
   if (!migration) throw new UserError('System migration not found');
-  if (!migration.manual || migration.blockStartup) {
-    throw new UserError('Only a manual non-blocking system migration can be started');
+  if (!migration.manual) {
+    throw new UserError('Only a manual system migration can be started');
   }
   await assertMigrationDependenciesComplete(migration, migrations);
   await ensureMigrationStates([migration]);

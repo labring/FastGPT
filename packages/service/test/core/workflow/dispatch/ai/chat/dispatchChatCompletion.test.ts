@@ -26,9 +26,20 @@ const { requestMock } = fixture;
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: fixture.requestMock }));
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
+    getModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } }),
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: { maxResponse: 4096 } })
   }),
   getTeamModelHandle: async () => ({
+    getModelData: () => ({
+      modelId: 'model',
+      name: 'model',
+      config: {
+        maxResponse: 4096,
+        maxContext: 8192,
+        audio: fixture.modelSupportsAudio,
+        video: fixture.modelSupportsVideo
+      }
+    }),
     getLLMModelData: () => ({
       modelId: 'model',
       name: 'model',
@@ -74,6 +85,10 @@ vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) =
 }));
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: () => ({ totalPoints: 7 })
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countGptMessagesTokens: vi.fn(async () => 1),

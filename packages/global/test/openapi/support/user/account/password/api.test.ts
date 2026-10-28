@@ -3,7 +3,8 @@ import {
   CreatePasswordVerificationBodySchema,
   PasswordAuthorizationBodySchema,
   SensitiveAccountVerificationBodySchema,
-  UpdatePasswordBodySchema
+  UpdatePasswordBodySchema,
+  UpdateRootPasswordBodySchema
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type {
   CreatePasswordVerificationBody,
@@ -79,6 +80,7 @@ describe('password API contracts', () => {
         passwordChangeSession: 'session'
       })
     ).toBeDefined();
+    expect(() => UpdatePasswordBodySchema.parse({ newPsw: 'b'.repeat(64) })).toThrow();
     expect(() =>
       UpdatePasswordBodySchema.parse({ newPsw: 'short', passwordChangeSession: 'session' })
     ).toThrow();
@@ -87,6 +89,24 @@ describe('password API contracts', () => {
         newPsw: 'b'.repeat(64),
         passwordChangeSession: 'session',
         confirmPsw: 'b'.repeat(64)
+      })
+    ).toThrow();
+  });
+
+  it('validates the open-source root password change payload', () => {
+    expect(
+      UpdateRootPasswordBodySchema.parse({ oldPsw: 'c'.repeat(64), newPsw: 'b'.repeat(64) })
+    ).toBeDefined();
+    expect(UpdateRootPasswordBodySchema.parse({ newPsw: 'b'.repeat(64) })).toBeDefined();
+    // 旧密码同样必须是摘要，不能把明文透传到服务端。
+    expect(() =>
+      UpdateRootPasswordBodySchema.parse({ oldPsw: 'plain-password', newPsw: 'b'.repeat(64) })
+    ).toThrow();
+    expect(() =>
+      UpdateRootPasswordBodySchema.parse({
+        oldPsw: 'c'.repeat(64),
+        newPsw: 'b'.repeat(64),
+        passwordChangeSession: 'session'
       })
     ).toThrow();
   });

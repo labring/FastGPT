@@ -9,6 +9,7 @@ import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
+  LoopRunModeEnum,
   EDGE_TYPE
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -16,12 +17,15 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
-  filterWorkflowNodeOutputsByType,
-  filterSelectableWorkflowNodeOutputs
+  getNodeAllSource
 } from '@/web/core/workflow/utils';
-import { workflowReferenceValueIsSelectable } from '@fastgpt/global/core/workflow/editor/utils';
 import {
-  applyWorkflowStartInputAutoFill,
+  filterWorkflowNodeOutputsByType,
+  filterSelectableWorkflowNodeOutputs,
+  workflowReferenceValueIsSelectable
+} from '@fastgpt/global/common/workflow/reference';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/core/workflow/editor/startAutoFill';
+import {
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
@@ -33,7 +37,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/syst
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 describe('nodeTemplate2FlowNode', () => {
@@ -323,7 +327,7 @@ describe('auto-fill input variables after connecting from workflow start', () =>
     ).toBe(true);
   });
 
-  it('允许文件链接引用转换为用户问题字符串', () => {
+  it('标量字符串输入不接受文件数组输出', () => {
     expect(
       workflowReferenceValueIsSelectable({
         value: ['start', NodeOutputKeyEnum.userFiles] as any,
@@ -335,7 +339,7 @@ describe('auto-fill input variables after connecting from workflow start', () =>
         ],
         valueType: WorkflowIOValueTypeEnum.string
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('收集自动填充补丁时，同一个节点的文件链接和用户问题应同时返回', () => {
@@ -943,13 +947,150 @@ describe('storeNode2FlowNode', () => {
     );
   });
 
++  it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'examLoop',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunMode,
+          value: LoopRunModeEnum.array,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunInputArray,
+          value: [],
+          valueType: WorkflowIOValueTypeEnum.arrayAny,
+          renderTypeList: [FlowNodeInputTypeEnum.reference]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopCustomOutputs,
+          value: [],
+          valueType: WorkflowIOValueTypeEnum.dynamic,
+          renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
+        },
+        {
+          label: '',
+          key: NodeInputKeyEnum.childrenNodeIdList,
+          value: [],
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      outputs: [
+        {
+          id: 'collectedResults',
+          key: 'collectedResults',
+          label: 'collectedResults',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.arrayAny
+        }
+      ],
+      name: 'Loop',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    const declared = result.data.inputs.find((input) => input.key === 'collectedResults');
+    expect(declared).toBeDefined();
+    expect(declared).toMatchObject({
+      key: 'collectedResults',
+      canEdit: true,
+      valueType: WorkflowIOValueTypeEnum.arrayAny,
+      required: false
+    });
+    expect(declared?.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
+    // 动态输出保留，避免 NodeLoopRun 挂载时被当作未声明输出删除
+    expect(result.data.outputs.find((o) => o.key === 'collectedResults')?.type).toBe(
+      FlowNodeOutputTypeEnum.dynamic
+    );
+  });
+
+  it('loopRun: 已有 canEdit 输入声明的动态输出不重复补齐', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'examLoop',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          label: '',
+          key: NodeInputKeyEnum.loopRunMode,
+          value: LoopRunModeEnum.array,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'collectedResults',
+          label: 'collectedResults',
+          valueType: WorkflowIOValueTypeEnum.arrayAny,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          canEdit: true
+        }
+      ],
+      outputs: [
+        {
+          id: 'collectedResults',
+          key: 'collectedResults',
+          label: 'collectedResults',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.arrayAny
+        }
+      ],
+      name: 'Loop',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    const canEditInputs = result.data.inputs.filter((input) => input.canEdit === true);
+    expect(canEditInputs).toHaveLength(1);
+    expect(canEditInputs[0].key).toBe('collectedResults');
+  });
+
+  it('非 loopRun 节点的动态输出不受兜底影响', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      position: { x: 0, y: 0 },
+      inputs: [],
+      outputs: [
+        {
+          id: 'dynamicOutput',
+          key: 'dynamicOutput',
+          label: 'Dynamic Output',
+          type: FlowNodeOutputTypeEnum.dynamic
+        }
+      ],
+      name: 'Test Node',
+      version: '1.0'
+    };
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: any) => key) as any
+    });
+
+    expect(result.data.inputs.some((input) => input.canEdit === true)).toBe(false);
+  });
+
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:
   // - utils.deprecated.test.ts: 测试 deprecated inputs/outputs
   // - utils.version.test.ts: 测试 version 和 avatar inheritance
 });
 
 describe('filterWorkflowNodeOutputsByType', () => {
-  it('should include outputs that can be formatted as strings', () => {
+  it('keeps only outputs compatible with string inputs', () => {
     const outputs: FlowNodeOutputItemType[] = [
       {
         id: '1',
@@ -976,7 +1117,7 @@ describe('filterWorkflowNodeOutputsByType', () => {
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
 
-    expect(result.map((output) => output.id)).toEqual(['1', '2', '3']);
+    expect(result.map((output) => output.id)).toEqual(['1']);
   });
 
   it('should return all outputs for any type', () => {
@@ -1171,5 +1312,140 @@ describe('workflowReferenceValueIsSelectable', () => {
         valueType: WorkflowIOValueTypeEnum.string
       })
     ).toBe(false);
+  });
+});
++describe('getNodeAllSource', () => {
+  const makeNode = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
+    ({
+      id: nodeId,
+      nodeId,
+      parentNodeId,
+      name: nodeId,
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [],
+      outputs: [
+        {
+          id: 'output',
+          key: 'output',
+          label: 'output',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    }) as FlowNodeItemType;
+
+  const makeNodeWithoutOutputs = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
+    ({
+      ...makeNode(nodeId, parentNodeId),
+      outputs: []
+    }) as FlowNodeItemType;
+
+  const getSourceNodeIds = ({
+    nodeId,
+    nodes,
+    edges
+  }: {
+    nodeId: string;
+    nodes: FlowNodeItemType[];
+    edges: Edge[];
+  }) => {
+    const nodeMap = new Map(nodes.map((node) => [node.nodeId, node]));
+
+    return getNodeAllSource({
+      nodeId,
+      getNodeById: (nodeId) => (nodeId ? nodeMap.get(nodeId) : undefined),
+      edges,
+      chatConfig: {} as any,
+      t: ((key: string) => key) as any
+    }).map((node) => node.nodeId);
+  };
+
+  const getSelectableSourceNodeIds = ({
+    nodeId,
+    nodes,
+    edges
+  }: {
+    nodeId: string;
+    nodes: FlowNodeItemType[];
+    edges: Edge[];
+  }) => {
+    const nodeMap = new Map(nodes.map((node) => [node.nodeId, node]));
+
+    return getNodeAllSource({
+      nodeId,
+      getNodeById: (nodeId) => (nodeId ? nodeMap.get(nodeId) : undefined),
+      edges,
+      chatConfig: {} as any,
+      t: ((key: string) => key) as any
+    })
+      .filter(
+        (node) =>
+          filterSelectableWorkflowNodeOutputs({
+            outputs: node.outputs,
+            valueType: WorkflowIOValueTypeEnum.any,
+            catchError: node.catchError
+          }).length > 0
+      )
+      .map((node) => node.nodeId);
+  };
+
+  it('orders source nodes by incoming edge distance', () => {
+    const nodes = [makeNode('target'), makeNode('direct'), makeNode('ancestor')];
+    const edges = [
+      { id: 'ancestor-to-direct', source: 'ancestor', target: 'direct' },
+      { id: 'direct-to-target', source: 'direct', target: 'target' }
+    ] as Edge[];
+
+    expect(getSourceNodeIds({ nodeId: 'target', nodes, edges })).toEqual([
+      'direct',
+      'ancestor',
+      VARIABLE_NODE_ID
+    ]);
+  });
+
+  it('orders nested node references by nearest edge and keeps global variables last', () => {
+    const nodes = [
+      makeNode('reply', 'loop'),
+      makeNode('loop'),
+      makeNode('loopStart', 'loop'),
+      makeNode('textConcat'),
+      makeNode('pluginStart')
+    ];
+    const edges = [
+      { id: 'plugin-to-text', source: 'pluginStart', target: 'textConcat' },
+      { id: 'text-to-loop', source: 'textConcat', target: 'loop' },
+      { id: 'loopStart-to-reply', source: 'loopStart', target: 'reply' }
+    ] as Edge[];
+
+    expect(getSourceNodeIds({ nodeId: 'reply', nodes, edges })).toEqual([
+      'loopStart',
+      'textConcat',
+      'pluginStart',
+      VARIABLE_NODE_ID
+    ]);
+  });
+
+  it('keeps same-level upstream references before parent references after filtering empty outputs', () => {
+    const nodes = [
+      makeNode('variableUpdate', 'loop'),
+      makeNodeWithoutOutputs('reply', 'loop'),
+      makeNode('loop'),
+      makeNode('loopStart', 'loop'),
+      makeNode('textConcat'),
+      makeNode('pluginStart')
+    ];
+    const edges = [
+      { id: 'plugin-to-text', source: 'pluginStart', target: 'textConcat' },
+      { id: 'text-to-loop', source: 'textConcat', target: 'loop' },
+      { id: 'loopStart-to-reply', source: 'loopStart', target: 'reply' },
+      { id: 'reply-to-variable-update', source: 'reply', target: 'variableUpdate' }
+    ] as Edge[];
+
+    expect(getSelectableSourceNodeIds({ nodeId: 'variableUpdate', nodes, edges })).toEqual([
+      'loopStart',
+      'textConcat',
+      'pluginStart',
+      VARIABLE_NODE_ID
+    ]);
   });
 });

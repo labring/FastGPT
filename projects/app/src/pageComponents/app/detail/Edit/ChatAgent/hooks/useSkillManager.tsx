@@ -30,7 +30,7 @@ import {
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 import { getSkillListV2 } from '@/web/core/skill/api';
@@ -42,7 +42,7 @@ import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 type AgentSkillListItemType = ListSkillsResponse['list'][number];
 type SkillPickerPageParams = Parameters<SkillOptionPageLoader>[0];
-const SKILL_PICKER_PAGE_SIZE = 50;
+const SKILL_PICKER_PAGE_SIZE = 20;
 
 const getSkillId = (id?: string, source?: string) =>
   source ? getToolIdentityKey(id, source) : id || '';
@@ -67,31 +67,39 @@ const toSkillLabelItem = (
   configStatus: tool.pluginData?.error ? 'invalid' : configStatus
 });
 
-const toSystemToolItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
+const toSystemToolItem = (
+  item: NodeTemplateListItemType,
+  parentId: string | undefined,
+  lang: string
+): SkillItemType => {
   const isFolder = item.isFolder ?? false;
 
   return {
     parentId: item.parentId ?? parentId,
     id: item.id,
     source: item.source,
-    label: item.name,
+    label: selectPluginText(item.name, lang),
     icon: item.avatar,
-    description: item.intro,
+    description: selectPluginText(item.intro, lang),
     isFolder,
     canClick: !isFolder
   };
 };
 
-const toTeamAppItem = (item: NodeTemplateListItemType, parentId?: string): SkillItemType => {
+const toTeamAppItem = (
+  item: NodeTemplateListItemType,
+  parentId: string | undefined,
+  lang: string
+): SkillItemType => {
   const isFolder = item.isFolder ?? false;
 
   return {
     parentId: item.parentId ?? parentId,
     id: item.id,
     source: item.source,
-    label: item.name,
+    label: selectPluginText(item.name, lang),
     icon: item.avatar,
-    description: item.intro,
+    description: selectPluginText(item.intro, lang),
     isFolder,
     canClick: !isFolder
   };
@@ -151,11 +159,13 @@ export const useSkillManager = ({
     ): Promise<SkillOptionPageType> => {
       const data = await getAppToolTemplates({ parentId: folderId, source });
       return {
-        list: data.slice(offset, offset + pageSize).map((item) => toSystemToolItem(item, folderId)),
+        list: data
+          .slice(offset, offset + pageSize)
+          .map((item) => toSystemToolItem(item, folderId, i18n.language)),
         total: data.length
       };
     },
-    []
+    [i18n.language]
   );
 
   const { data: systemTools = [] } = useRequest(
@@ -163,7 +173,7 @@ export const useSkillManager = ({
       const data = await getAppToolTemplates({ getAll: true }).catch(() => {
         return [];
       });
-      const apiTools = data.map((item) => toSystemToolItem(item));
+      const apiTools = data.map((item) => toSystemToolItem(item, undefined, i18n.language));
 
       const datasetSearchInfo = systemSubInfo[SubAppIds.datasetSearch];
       if (datasetSearchInfo) {
@@ -201,7 +211,8 @@ export const useSkillManager = ({
       return apiTools;
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [i18n.language]
     }
   );
   const onLoadSystemTool = useCallback(
@@ -235,11 +246,13 @@ export const useSkillManager = ({
         }
       );
       return {
-        list: response.list.map((item) => toTeamAppItem(item, parentId ?? undefined)),
+        list: response.list.map((item) =>
+          toTeamAppItem(item, parentId ?? undefined, i18n.language)
+        ),
         total: response.total
       };
     },
-    []
+    [i18n.language]
   );
 
   const rootListCacheRef = useRef<Map<string, SkillOptionPageType>>(new Map());
@@ -289,9 +302,9 @@ export const useSkillManager = ({
         {
           source: 'mine',
           parentId: folderId,
+          withAppCount: false,
           offset,
-          pageSize,
-          withAppCount: false
+          pageSize
         },
         cancelToken
       );
@@ -451,7 +464,7 @@ export const useSkillManager = ({
   /** Lazily load the first page of tools and keep later pages on the same loader. */
   const loadMyTools = useCallback(async () => {
     const types = [AppTypeEnum.toolFolder, ...ToolTypeList];
-    const firstPage = await loadRootPage('myTools', () =>
+    const firstPage = await loadRootPage(`myTools:${i18n.language}`, () =>
       loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
     );
 
@@ -470,12 +483,12 @@ export const useSkillManager = ({
       ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
+  }, [i18n.language, loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
   /** Lazily load the first page of agents and keep later pages on the same loader. */
   const loadMyAgents = useCallback(async () => {
     const types = [AppTypeEnum.folder, ...AppTypeList];
-    const firstPage = await loadRootPage('agent', () =>
+    const firstPage = await loadRootPage(`agent:${i18n.language}`, () =>
       loadTeamAppPage(null, types, { offset: 0, pageSize: SKILL_PICKER_PAGE_SIZE })
     );
 
@@ -494,7 +507,7 @@ export const useSkillManager = ({
       ) => loadTeamAppPage(folderId, types, params, cancelToken),
       onClick: onAddAppOrTool
     };
-  }, [loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
+  }, [i18n.language, loadRootPage, loadTeamAppPage, onAddAppOrTool, t]);
 
   /** Lazily load the first page of associated skills and update the lookup map. */
   const loadAgentSkills = useCallback(async () => {

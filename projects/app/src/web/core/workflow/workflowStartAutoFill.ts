@@ -9,8 +9,6 @@ import {
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { isEqual } from 'lodash-es';
 
-export { applyWorkflowStartInputAutoFill };
-
 type WorkflowStartAutoFillPatch = {
   nodeId: string;
   key: string;

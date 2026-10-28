@@ -19,22 +19,20 @@ import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
-/** get resource permission for a team member
- * If there is no permission for the team member, it will return undefined
- * @param resourceType: PerResourceTypeEnum
- * @param teamId
- * @param tmbId
- * @param resourceId
- * @returns PermissionValueType | undefined
+/**
+ * 解析成员的资源权限，个人权限（包括 0）优先，否则合并成员组与组织权限。
+ * 传入 session 时所有读取复用调用方事务，避免漏读尚未提交的默认组并重复创建。
  */
 export const getTmbPermission = async ({
   resourceType,
   teamId,
   tmbId,
-  resourceId
+  resourceId,
+  session
 }: {
   teamId: string;
   tmbId: string;
+  session?: ClientSession;
 } & (
   | {
       resourceType: 'team';
@@ -51,7 +49,8 @@ export const getTmbPermission = async ({
       resourceType: resourceType as PerResourceTypeEnum,
       teamId,
       resourceId,
-      collaborator: { tmbId }
+      collaborator: { tmbId },
+      session
     })
   )?.permission;
 
@@ -61,10 +60,18 @@ export const getTmbPermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const [groups, orgIds] = await Promise.all([
-    getGroupsByTmbId({ tmbId, teamId }),
-    getOrgIdSetWithParentByTmbId({ tmbId, teamId })
-  ]);
+  const [groups, orgIds] = await (async () => {
+    if (session) {
+      // 同一个事务 session 不支持并行查询；无事务时仍保留原有并发读取。
+      const groups = await getGroupsByTmbId({ tmbId, teamId, session });
+      const orgIds = await getOrgIdSetWithParentByTmbId({ tmbId, teamId, session });
+      return [groups, orgIds] as const;
+    }
+    return Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }),
+      getOrgIdSetWithParentByTmbId({ tmbId, teamId })
+    ]);
+  })();
   const permissions = await resourcePermissionRepo.findByCollaborators({
     resourceType: resourceType as PerResourceTypeEnum,
     teamId,
@@ -72,10 +79,53 @@ export const getTmbPermission = async ({
     collaborators: [
       ...groups.map((group) => ({ groupId: String(group._id) })),
       ...Array.from(orgIds).map((orgId) => ({ orgId: String(orgId) }))
-    ]
+    ],
+    session
   });
 
   return sumPer(...permissions.map((item) => item.permission));
+};
+
+/**
+ * 批量解析资源有效权限；成员组/组织由请求上下文提供，避免每个资源重复解析。
+ * 个人记录（包括 0）优先于组/组织；只查询候选 ID，每 1000 个一批，缺失记录返回 0。
+ */
+export const getTmbPermissionMap = async ({
+  resourceType,
+  resourceIds,
+  teamId,
+  tmbId,
+  groupIds,
+  orgIds
+}: {
+  resourceType: PerResourceTypeEnum;
+  resourceIds: string[];
+  teamId: string;
+  tmbId: string;
+  groupIds: string[];
+  orgIds: string[];
+}): Promise<Map<string, PermissionValueType>> => {
+  const ids = [...new Set(resourceIds)];
+  const personal = new Map<string, PermissionValueType>();
+  const inherited = new Map<string, PermissionValueType>();
+  for (let offset = 0; offset < ids.length; offset += 1000) {
+    const rows = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
+      resourceType,
+      resourceIds: ids.slice(offset, offset + 1000),
+      teamId,
+      collaborators: [
+        { tmbId },
+        ...groupIds.map((groupId) => ({ groupId })),
+        ...orgIds.map((orgId) => ({ orgId }))
+      ]
+    });
+    for (const row of rows) {
+      const id = String(row.resourceId);
+      if (String(row.tmbId ?? '') === tmbId) personal.set(id, row.permission);
+      else inherited.set(id, sumPer(inherited.get(id) ?? 0, row.permission) ?? 0);
+    }
+  }
+  return new Map(ids.map((id) => [id, personal.get(id) ?? inherited.get(id) ?? 0]));
 };
 
 /**
@@ -140,9 +190,9 @@ export const getClbsInfo = async ({
   ownerTmbId?: string;
   showUsername?: boolean;
 }): Promise<CollaboratorItemDetailType[]> => {
-  const tmbIds = [];
-  const orgIds = [];
-  const groupIds = [];
+  const tmbIds: string[] = [];
+  const orgIds: string[] = [];
+  const groupIds: string[] = [];
 
   for (const clb of clbs) {
     if (clb.tmbId) tmbIds.push(clb.tmbId);

@@ -5,7 +5,10 @@ import '@xyflow/react/dist/style.css';
 import { defaultEdgeOptions, maxZoom, minZoom } from '../../constants';
 import NodeTemplatesPopover from '../NodeTemplatesPopover';
 import SearchButton from '../../../Workflow/components/SearchButton';
-import SystemConfigDrawer from '../SystemConfigDrawer';
+import SystemConfigDrawer, { SystemConfigButton } from '../SystemConfigDrawer';
+import WorkflowBuilderEntry from '../../WorkflowBuilder/WorkflowBuilderEntry';
+import { useWorkflowBuilderUI } from '../../WorkflowBuilder/hooks/useWorkflowBuilderUI';
+import WorkflowToolbarTooltip from '../../WorkflowBuilder/presentation/WorkflowToolbarTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useWorkflowCanvasRendererValue, useWorkflowCanvasValue } from './workflowCanvasContext';
 import ContextMenu from '../components/ContextMenu';
@@ -22,11 +25,10 @@ import {
   useUpdateNodeInternals,
   useViewport
 } from '@xyflow/react';
-import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, usePrefersReducedMotion } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkflowUIValue } from './canvasState';
 import { WorkflowSelectionProvider } from '../context/workflowSelectionContext';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import {
   useWorkflowIssueFocusNodeId,
@@ -449,50 +451,68 @@ const ViewportObserver = () => {
 /** 画布背景：写成模块常量，内联字面量会让 ReactFlow 每次渲染都收到新的 style 对象。 */
 const canvasStyle = { background: '#F7F8FA' };
 
-type CanvasOverlaysProps = {
-  isOpenTemplate: boolean;
-  onOpenTemplate: () => void;
-  onCloseTemplate: () => void;
-};
+/** 画布工具栏共享 Builder 面板开合状态，同时把搜索层挂到画布容器。 */
+const CanvasOverlays = React.memo(() => {
+  const { t } = useTranslation();
+  const { activeLeftPanel, closeLeftPanel, toggleLeftPanel, workflowCanvasRef } =
+    useWorkflowBuilderUI();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const isLeftPanelOpen = Boolean(activeLeftPanel);
+  const isOpenTemplate = activeLeftPanel === 'nodeTemplates';
 
-/**
- * 画布左上角按钮与三个侧边栏入口。
- *
- * 单独 memo 出来：`WorkflowCanvas` 会随每次投影（画布数组换身份）与手势起止重渲染，
- * 而这一层的输入只有「添加节点侧边栏开合」，不该跟着刷新。
- */
-const CanvasOverlays = React.memo(
-  ({ isOpenTemplate, onOpenTemplate, onCloseTemplate }: CanvasOverlaysProps) => {
-    const { t } = useTranslation();
-
-    return (
-      <>
-        <Box position={'absolute'} top={20} left={6} zIndex={1}>
-          <MyTooltip shouldWrapChildren={false} label={t('workflow:to_add_node')}>
-            <IconButton
-              icon={<MyIcon name="core/app/workflowToolbarAdd" boxSize={6} color={'white'} />}
-              w={9}
-              minW={9}
-              h={9}
-              p={1.5}
-              borderRadius={'50%'}
-              bg={'black'}
-              _hover={{ bg: 'myGray.700' }}
-              aria-label={t('workflow:to_add_node')}
-              border={'none'}
-              boxShadow={'0 4px 5px rgba(19, 51, 107, 0.20), 0 0 0.5px rgba(19, 51, 107, 0.50)'}
-              onClick={() => (isOpenTemplate ? onCloseTemplate() : onOpenTemplate())}
-            />
-          </MyTooltip>
-        </Box>
-        <SearchButton />
-        <SystemConfigDrawer />
-        <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
-        <NodeTemplatesPopover />
-      </>
-    );
-  }
-);
+  return (
+    <>
+      <Flex
+        position={'absolute'}
+        top={'50%'}
+        left={5}
+        zIndex={2}
+        transform={isLeftPanelOpen ? 'translate(calc(-100% - 24px), -50%)' : 'translate(0, -50%)'}
+        opacity={isLeftPanelOpen ? 0 : 1}
+        pointerEvents={isLeftPanelOpen ? 'none' : 'auto'}
+        aria-hidden={isLeftPanelOpen}
+        inert={isLeftPanelOpen}
+        transition={prefersReducedMotion ? 'none' : 'transform 200ms ease, opacity 160ms ease'}
+        w={'40px'}
+        px={1}
+        py={2}
+        direction={'column'}
+        alignItems={'center'}
+        gap={2}
+        bg={'white'}
+        borderRadius={'8px'}
+        boxShadow={'0 0 1px rgba(19, 51, 107, 0.10), 0 4px 10px rgba(19, 51, 107, 0.10)'}
+      >
+        <WorkflowBuilderEntry />
+        <WorkflowToolbarTooltip label={t('workflow:to_add_node')}>
+          <IconButton
+            icon={<MyIcon name="core/app/workflowToolbarAdd" boxSize={'18px'} color={'white'} />}
+            w={8}
+            minW={8}
+            h={8}
+            p={'7px'}
+            borderRadius={'6px'}
+            bg={'black'}
+            _hover={{ bg: '#1D2532' }}
+            aria-label={t('workflow:to_add_node')}
+            border={'none'}
+            onClick={() => toggleLeftPanel('nodeTemplates')}
+          />
+        </WorkflowToolbarTooltip>
+        <Box w={'20px'} h={'1px'} flexShrink={0} bg={'#E8EBF0'} />
+        <SystemConfigButton />
+        <Box w={'20px'} h={'1px'} flexShrink={0} bg={'#E8EBF0'} />
+        <SearchButton inToolbar portalContainerRef={workflowCanvasRef} />
+      </Flex>
+      <SystemConfigDrawer />
+      <NodeTemplatesModal
+        isOpen={isOpenTemplate}
+        onClose={() => closeLeftPanel('nodeTemplates')}
+      />
+      <NodeTemplatesPopover />
+    </>
+  );
+});
 CanvasOverlays.displayName = 'CanvasOverlays';
 
 const WorkflowCanvas = () => {
@@ -524,11 +544,7 @@ const WorkflowCanvas = () => {
     onPaneClick
   } = useCanvasController({ helperLinesRef });
 
-  const {
-    isOpen: isOpenTemplate,
-    onOpen: onOpenTemplate,
-    onClose: onCloseTemplate
-  } = useDisclosure();
+  const { workflowCanvasRef } = useWorkflowBuilderUI();
 
   const [movingCanvas, setMovingCanvas] = useState(false);
   // 手势起止只改一个 className 字符串，提成稳定引用后 ZoomPane 的 props 不再每帧换身份。
@@ -555,6 +571,7 @@ const WorkflowCanvas = () => {
   return (
     <>
       <Box
+        ref={workflowCanvasRef}
         flex={'1 0 0'}
         h={0}
         w={'100%'}
@@ -565,11 +582,7 @@ const WorkflowCanvas = () => {
         }}
       >
         {/* open module template */}
-        <CanvasOverlays
-          isOpenTemplate={isOpenTemplate}
-          onOpenTemplate={onOpenTemplate}
-          onCloseTemplate={onCloseTemplate}
-        />
+        <CanvasOverlays />
 
         <ReactFlow
           ref={reactFlowWrapperCallback}

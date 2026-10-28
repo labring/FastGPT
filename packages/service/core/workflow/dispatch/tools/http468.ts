@@ -1,4 +1,3 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   contentTypeMap,
   ContentTypes,
@@ -28,7 +27,7 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -87,7 +86,7 @@ type HttpResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.errorText]: string; //未使用，仅作类型。
     [NodeOutputKeyEnum.error]: string; // 适配字段
-    [NodeOutputKeyEnum.httpRawError]?: ReturnType<typeof formatHttpError>;
+    [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
   }
 >;
 
@@ -312,12 +311,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
     });
 
-    const errText = getErrText(error);
-    const errObj = formatHttpError(error);
+    const { rawText, ...errObj } = formatHttpError(error);
     return getNodeErrResponse({
-      error: errText,
+      error: rawText,
       customErr: {
-        [NodeOutputKeyEnum.error]: errText,
+        [NodeOutputKeyEnum.error]: rawText,
         [NodeOutputKeyEnum.httpRawError]: errObj
       },
       responseData: {

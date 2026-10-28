@@ -9,12 +9,13 @@ import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import {
   createIfElseBranchId,
   getIfElseBranchHandleKey
-} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+} from '@fastgpt/global/common/workflow/condition';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
 import { MySourceHandle } from '../render/Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import ListItem from './ListItem';
+import { useNodeHandleDrag } from '../render/Handle/useNodeHandleDrag';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
@@ -29,15 +30,31 @@ const elseHandleTranslate = [9, 0] as [number, number];
 
 const NodeIfElse = ({ data, selected }: CanvasNodeProps) => {
   const { nodeId } = data;
+  const { onBeforeCapture, onDragEnd, draggingHandle } = useNodeHandleDrag(nodeId);
 
   return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <IfElseEditor nodeId={nodeId} />
-    </NodeCard>
+    <>
+      <NodeCard selected={selected} minW={'686px'} maxW={'1000px'} {...data}>
+        <IfElseEditor
+          nodeId={nodeId}
+          onBeforeCapture={onBeforeCapture}
+          onDragEnd={onDragEnd}
+        />
+      </NodeCard>
+      {draggingHandle}
+    </>
   );
 };
 
-const IfElseEditor = ({ nodeId }: { nodeId: string }) => {
+const IfElseEditor = ({
+  nodeId,
+  onBeforeCapture,
+  onDragEnd
+}: {
+  nodeId: string;
+  onBeforeCapture: ReturnType<typeof useNodeHandleDrag>['onBeforeCapture'];
+  onDragEnd: ReturnType<typeof useNodeHandleDrag>['onDragEnd'];
+}) => {
   const { t } = useTranslation();
   const nodeActions = useNodeActions(nodeId);
   // 边集合只在删除分支的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
@@ -131,6 +148,8 @@ const IfElseEditor = ({ nodeId }: { nodeId: string }) => {
       <DndDrag<IfElseListItemType>
         onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
         dataList={ifElseList}
+        onBeforeCapture={onBeforeCapture}
+        onDragEnd={onDragEnd}
         renderClone={(provided, snapshot, rubric) => (
           <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.ifElseList}>
             <ListItem

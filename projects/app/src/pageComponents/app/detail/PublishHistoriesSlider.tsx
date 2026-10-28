@@ -211,7 +211,7 @@ const TeamCloud = ({
     data: scrollDataList,
     setData
   } = useScrollPagination(getAppVersionList, {
-    pageSize: 30,
+    pageSize: 20,
     params: {
       appId: appDetail._id
     },

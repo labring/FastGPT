@@ -16,7 +16,7 @@ You can skip directly to v4.9.3 — v4.9.2 has a workflow data type conversion b
 
 Pro edition users using SSO or member sync with DingTalk or WeCom need to migrate their existing SSO configuration:
 
-Refer to [SSO & External Member Sync](../../../guide/admin/sso.en.mdx) for deploying and configuring the `sso-service`.
+Refer to [SSO & External Member Sync](/en/guide/admin/sso) for deploying and configuring the `sso-service`.
 
 1. Before upgrading images, copy and back up the existing configuration from the Pro admin panel (e.g., for WeCom, copy the AppId, Secret, etc.).
 2. Follow the documentation above to deploy the SSO service and configure the relevant environment variables.
@@ -36,7 +36,7 @@ Pro edition users can make this change in the admin panel under `System Configur
 
 ## Important Updates
 
-- Dataset data import API changes: added optional parameters `chunkSettingMode`, `chunkSplitMode`, and `indexSize`. See the [Dataset Data Import API](../../../openapi/dataset.en.mdx) documentation for details.
+- Dataset data import API changes: added optional parameters `chunkSettingMode`, `chunkSplitMode`, and `indexSize`. See the [Dataset Data Import API](/en/openapi/dataset) documentation for details.
 
 ## New Features
 
@@ -63,7 +63,7 @@ Pro edition users can make this change in the admin panel under `System Configur
 10. Model testing loading animation improvements.
 11. Minor chunking algorithm adjustments:
 
-- Stronger continuity between cross-processing symbols.
+- Improved text continuity when processing across split markers.
 - Code blocks now use the LLM model context as chunk size to better preserve code block integrity.
 - Tables now use the LLM model context as chunk size to better preserve table integrity.
 

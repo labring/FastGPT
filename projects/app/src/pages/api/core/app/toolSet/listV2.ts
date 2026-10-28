@@ -10,6 +10,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getHTTPToolList } from '@fastgpt/service/core/app/http';
 import { getMCPChildren } from '@fastgpt/service/core/app/mcp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import {
   ListToolSetV2BodySchema,
   ListToolSetV2ResponseSchema,
@@ -21,13 +22,9 @@ import {
 async function handler(
   req: ApiRequestProps<ListToolSetV2BodyType>
 ): Promise<ListToolSetV2ResponseType> {
-  const {
-    parentId,
-    searchKey,
-    pageNum = 1,
-    pageSize = 50,
-    offset
-  } = parseApiInput({ req, bodySchema: ListToolSetV2BodySchema }).body;
+  const body = parseApiInput({ req, bodySchema: ListToolSetV2BodySchema }).body;
+  const { parentId, searchKey } = body;
+  const { pageSize, offset: skip } = normalizePagination(body);
   const { app } = await authApp({
     req,
     authToken: true,
@@ -48,7 +45,6 @@ async function handler(
   const filteredTools = searchRegex
     ? tools.filter((tool) => searchRegex.test(`${tool.name}\n${tool.description ?? ''}`))
     : tools;
-  const skip = offset ?? (pageNum - 1) * pageSize;
   const list = filteredTools.slice(skip, skip + pageSize).map((tool) => ({
     id: tool.id,
     avatar: tool.avatar ?? app.avatar,

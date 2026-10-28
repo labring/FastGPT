@@ -81,7 +81,10 @@ const MarkdownRender = ({
 
   chatAuthData,
   allowedCitationIds,
-  onOpenCiteModal
+  onOpenCiteModal,
+  onSendQuestion,
+  onEditQuestion,
+  onQuickReplyClick
 }: MarkdownProps) => {
   const instanceIdRef = useRef<number>();
   if (instanceIdRef.current === undefined) {
@@ -96,7 +99,10 @@ const MarkdownRender = ({
       markdownClassName: className,
       chatAuthData,
       allowedCitationIds,
-      onOpenCiteModal
+      onOpenCiteModal,
+      onSendQuestion,
+      onEditQuestion,
+      onQuickReplyClick
     }),
     [
       allowedCitationIds,
@@ -104,6 +110,9 @@ const MarkdownRender = ({
       chatAuthData,
       className,
       onOpenCiteModal,
+      onSendQuestion,
+      onEditQuestion,
+      onQuickReplyClick,
       showAnimation
     ]
   );

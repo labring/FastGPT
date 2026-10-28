@@ -20,8 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -54,11 +53,7 @@ import {
   sanitizeFileSelectValue
 } from './utils';
 import { isEqual } from 'lodash-es';
-import {
-  getChatAuthTargetInput,
-  hasChatTargetInput,
-  useChatApiTarget
-} from '@/web/core/chat/utils';
+import { toChatAuthApiTarget, hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
 import { getFileAmountLimit, getFileSizeLimitBytes } from '@fastgpt/global/core/workflow/fileLimit';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useFileSelectorLinkIcons } from './useLinkIcons';
@@ -193,8 +188,7 @@ const FileSelector = ({
   isDisabled?: boolean;
   isInvalid?: boolean;
 }) => {
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount, maxUploadFileSize } = useFileUploadLimits();
   const { toast } = useToast();
   const { t } = useSafeTranslation();
 
@@ -204,8 +198,8 @@ const FileSelector = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const fileUploadMode = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploadMode);
   const chatAuthTarget = useMemo(
-    () => getChatAuthTargetInput({ ...chatTarget, outLinkAuthData }),
-    [chatTarget, outLinkAuthData]
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
+    [sourceTarget, outLinkAuthData]
   );
   const setFileUploadingCount = useContextSelector(
     WorkflowRuntimeContext,
@@ -394,12 +388,10 @@ const FileSelector = ({
   const maxSelectFiles = getFileAmountLimit({
     moduleMaxFileAmount: maxFiles,
     defaultModuleMaxFileAmount: 5,
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
   const maxSize = getFileSizeLimitBytes({
-    teamMaxFileSize: teamPlanStatus?.standard?.maxUploadFileSize,
-    systemMaxFileSize: feConfigs?.uploadFileMaxSize ?? 500
+    systemMaxFileSize: maxUploadFileSize
   });
   const canSelectFileAmount = Math.max(maxSelectFiles - fileList.length, 0);
   const isMaxSelected = canSelectFileAmount <= 0;

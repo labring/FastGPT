@@ -17,20 +17,47 @@ import {
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import Tag from '@fastgpt/web/components/common/Tag';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUsers } from '@/web/admin/user/api';
 import UserEditModal from './components/UserEditModal';
-import type { UserItemType } from '@fastgpt/global/openapi/admin/user/api';
+import type {
+  AdminUserStatusFilterType,
+  UserItemType
+} from '@fastgpt/global/openapi/admin/user/api';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+import { isAccountCancellationAnonymizedUsername } from '@fastgpt/global/support/user/account/cancellation/utils';
 import UserAddModal from './components/UserAddModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+
+const userStatusColorMap = {
+  [UserStatusEnum.active]: 'green',
+  [UserStatusEnum.inactive]: 'yellow',
+  [UserStatusEnum.forbidden]: 'red',
+  cancelled: 'gray'
+} as const;
 
 const UserTable = () => {
+  const { t } = useSafeTranslation();
   // const [username, setUsername] = useState<string>();
   const [userDetail, setUserDetail] = useState<UserItemType>();
   const [search, setSearch] = useState<string>();
+  const [status, setStatus] = useState<AdminUserStatusFilterType | undefined>(
+    UserStatusEnum.active
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const statusOptions = [
+    { label: t('common:All'), value: undefined },
+    { label: t('admin:user_status_active'), value: UserStatusEnum.active },
+    { label: t('admin:user_status_inactive'), value: UserStatusEnum.inactive },
+    { label: t('admin:user_status_forbidden'), value: UserStatusEnum.forbidden },
+    { label: t('admin:user_status_cancelled'), value: 'cancelled' as const }
+  ];
 
   const {
     data: users,
@@ -43,9 +70,11 @@ const UserTable = () => {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-users-list',
     params: {
-      username: search
+      username: search,
+      // 接口保留多选契约；单选“全部”时省略条件，其余转换为单元素数组。
+      statuses: status ? [status] : undefined
     },
-    refreshDeps: [search],
+    refreshDeps: [search, status],
     scrollContainerRef
   });
 
@@ -76,6 +105,12 @@ const UserTable = () => {
             h={'36px'}
           ></Input>
         </InputGroup>
+        <SingleSelectFilter
+          title={t('common:Status')}
+          value={status}
+          options={statusOptions}
+          onChange={setStatus}
+        />
         <UserAddModal
           data={{}}
           updateData={() => {
@@ -104,36 +139,48 @@ const UserTable = () => {
             <Tr>
               <Th>用户名</Th>
               <Th>创建时间</Th>
-              <Th>状态</Th>
+              <Th>{t('common:Status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {users.map((item) => (
-              <Tr key={item.username}>
-                <Td>{item.username}</Td>
-                <Td>
-                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                </Td>
-                <Td>{item.status}</Td>
-                <Td>
-                  <Button
-                    variant={'whiteBase'}
-                    size={'sm'}
-                    mr={2}
-                    onClick={() => setUserDetail(item)}
-                  >
-                    详情
-                  </Button>
-                  <UserEditModal
-                    data={item}
-                    getData={() => {
-                      getData(1);
-                    }}
-                  />
-                </Td>
-              </Tr>
-            ))}
+            {users.map((item) => {
+              // 注销展示按用户名推断，保留真实 status 供筛选和编辑操作使用。
+              const displayStatus = isAccountCancellationAnonymizedUsername(item.username)
+                ? 'cancelled'
+                : item.status;
+
+              return (
+                <Tr key={item.username}>
+                  <Td>{item.username}</Td>
+                  <Td>
+                    {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  </Td>
+                  <Td>
+                    <Tag colorSchema={userStatusColorMap[displayStatus]}>
+                      {statusOptions.find((option) => option.value === displayStatus)?.label ??
+                        item.status}
+                    </Tag>
+                  </Td>
+                  <Td>
+                    <Button
+                      variant={'whiteBase'}
+                      size={'sm'}
+                      mr={2}
+                      onClick={() => setUserDetail(item)}
+                    >
+                      详情
+                    </Button>
+                    <UserEditModal
+                      data={item}
+                      getData={() => {
+                        getData(1);
+                      }}
+                    />
+                  </Td>
+                </Tr>
+              );
+            })}
           </Tbody>
         </Table>
         {!isLoading && users.length === 0 && (

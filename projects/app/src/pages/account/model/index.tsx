@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
@@ -11,6 +11,8 @@ import ModelTable from '@/components/core/ai/ModelTable';
 import ModelManagementContainer, {
   type ModelTabType
 } from '@/pageComponents/model/ModelManagementContainer';
+import ReplaceInvalidModelsModal from '@/pageComponents/model/ReplaceInvalidModelsModal';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const ModelProvider = () => {
   const { t } = useSafeTranslation();
@@ -21,6 +23,8 @@ const ModelProvider = () => {
 
   const isRoot = userInfo?.username === 'root';
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
+  const isTeamOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
+  const [replaceModalOpen, setReplaceModalOpen] = useState(false);
 
   const modelTabList = useMemo<{ label: string; value: ModelTabType }[]>(
     () => [
@@ -93,15 +97,29 @@ const ModelProvider = () => {
               onBeforeTabChange={handleBeforeTabChange}
               renderCustomTab={(tab, TabNode) =>
                 tab === 'active_model' ? (
-                  <ModelTable permissionConfig contentPx={6} Tab={TabNode} />
+                  <ModelTable
+                    permissionConfig
+                    contentPx={6}
+                    Tab={TabNode}
+                    onReplaceInvalidModels={
+                      isTeamOwner ? () => setReplaceModalOpen(true) : undefined
+                    }
+                  />
                 ) : null
               }
             />
           ) : (
-            <ModelTable permissionConfig contentPx={6} />
+            <ModelTable
+              permissionConfig
+              contentPx={6}
+              onReplaceInvalidModels={isTeamOwner ? () => setReplaceModalOpen(true) : undefined}
+            />
           )}
         </Flex>
       </Flex>
+      {isTeamOwner && replaceModalOpen && (
+        <ReplaceInvalidModelsModal onClose={() => setReplaceModalOpen(false)} />
+      )}
     </AccountContainer>
   );
 };

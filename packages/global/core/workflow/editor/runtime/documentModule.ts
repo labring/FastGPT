@@ -8,13 +8,18 @@ import {
 import { StoreEdgeItemTypeSchema, type StoreEdgeItemType } from '../../type/edge';
 import { StoreNodeItemTypeSchema, type NodeTemplateContext } from '../../type/node';
 import { AppChatConfigTypeSchema } from '../../../app/type';
+import { isToolWorkflowConnectionAllowed } from '../../../../common/workflow/connection';
 import {
   getWorkflowReferenceItems,
   isConnectionTargetAllowed,
   isWorkflowEdgeSourceHandleValid
 } from '../utils';
-import { nodeInputIsReference } from '../../utils';
-import { applyWorkflowStartInputAutoFill } from '../startAutoFill';
+import { nodeInputIsReference } from '../../../../common/workflow/reference';
+import {
+  applyWorkflowStartInputAutoFill,
+  getWorkflowStartAutoFillValue,
+  isWorkflowStartAutoFilledValue
+} from '../startAutoFill';
 import type {
   PlacementRequest,
   RuntimeEdgeId,
@@ -67,6 +72,7 @@ import {
   placementError,
   recordEdgeChange,
   recordNodeChange,
+  restoreRuntimeNodeOutputValidity,
   reuseEqualItems,
   ROOT_PARENT_KEY,
   splitNode,
@@ -517,6 +523,17 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     ) {
       return false;
     }
+    if (
+      !isToolWorkflowConnectionAllowed({
+        source: edge.source,
+        target: edge.target,
+        isToolConnection: edge.targetHandle === NodeOutputKeyEnum.selectedTools,
+        edges: working.edges.filter(({ id }) => id !== ignoreEdgeId).map(({ data }) => data),
+        getNodeById: (nodeId) => getFlowNodeById({ working, nodeId, meta })
+      })
+    ) {
+      return false;
+    }
     return isConnectionTargetAllowed({
       context: derivePlacementContext({
         sourceNodeId: edge.source,
@@ -540,6 +557,53 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       });
       return targets;
     };
+    const getCommittedTargets = (nodeId: string) =>
+      (graphIndex.bySource.get(nodeId) ?? []).map((edge) => edge.data.target);
+    const getReachableNodeIds = (
+      startNodeId: string,
+      getTargets: (nodeId: string) => string[]
+    ) => {
+      const reachable = new Set<string>();
+      const pending = [...getTargets(startNodeId)];
+      let index = 0;
+      while (index < pending.length) {
+        const nodeId = pending[index++];
+        if (!nodeId || reachable.has(nodeId)) continue;
+        reachable.add(nodeId);
+        pending.push(...getTargets(nodeId));
+      }
+      return reachable;
+    };
+    const updateInputs = (
+      target: (typeof working.nodes)[number],
+      inputs: typeof target.data.inputs
+    ) => {
+      if (valuesEqual(target.data.inputs, inputs)) return;
+
+      const nextData = { ...target.data, inputs };
+      const targetIndex = getWorkingNodeIndex({ working, nodeId: target.data.nodeId, meta });
+      if (targetIndex < 0) return;
+      working.nodes = working.nodes.slice();
+      const nextRecord = { ...target, data: nextData };
+      working.nodes[targetIndex] = nextRecord;
+      updateReferenceGraphNode({
+        graph: referenceGraph,
+        before: target.data,
+        after: nextData
+      });
+      recordNodeChange({
+        meta,
+        nodeId: target.data.nodeId,
+        before: target,
+        after: nextRecord,
+        afterIndex: targetIndex
+      });
+      collectNodeFieldChanges({
+        changedFieldIds: meta.changedFieldIds,
+        before: target.data,
+        after: nextData
+      });
+    };
     const startIds = new Set(workflowStartIds);
     meta.nodeChanges.forEach(({ before, after }, nodeId) => {
       if (before?.data.flowNodeType === FlowNodeTypeEnum.workflowStart) startIds.delete(nodeId);
@@ -549,48 +613,80 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     startIds.forEach((startNodeId) => {
       const startNode = getWorkingNode(startNodeId, meta);
       if (!startNode) return;
-      const visited = new Set<string>();
-      const queue = getWorkingTargets(startNode.data.nodeId);
-      while (queue.length > 0) {
-        const nodeId = queue.shift();
-        if (!nodeId || visited.has(nodeId)) continue;
-        visited.add(nodeId);
-        const target = getWorkingNode(nodeId, meta);
-        if (!target) continue;
+      const previousStart = meta.nodeChanges.get(startNodeId)?.before;
+      const previousOutputs =
+        meta.kind !== 'replace' &&
+        previousStart?.data.flowNodeType === FlowNodeTypeEnum.workflowStart
+          ? previousStart.data.outputs
+          : startNode.data.outputs;
+      const currentReachable = getReachableNodeIds(startNodeId, getWorkingTargets);
 
-        const nextInputs = applyWorkflowStartInputAutoFill({
-          inputs: target.data.inputs,
-          workflowStartNodeId: startNode.data.nodeId,
-          workflowStartOutputs: startNode.data.outputs
+      // 只有节点失去所有流程开始路径时才回滚，删除冗余分支不能清掉仍有效的引用。
+      if (meta.kind !== 'replace' && meta.removedEdges.size > 0) {
+        const previousReachable = getReachableNodeIds(startNodeId, getCommittedTargets);
+        previousReachable.forEach((nodeId) => {
+          if (currentReachable.has(nodeId)) return;
+          const target = getWorkingNode(nodeId, meta);
+          if (!target) return;
+          const hadUserFilesOutput = previousOutputs.some(
+            (output) => output.id === NodeOutputKeyEnum.userFiles
+          );
+          const inputs = target.data.inputs.map((input) =>
+            isWorkflowStartAutoFilledValue({
+              inputKey: input.key,
+              value: input.value,
+              workflowStartNodeId: startNodeId,
+              hasUserFilesOutput: hadUserFilesOutput
+            })
+              ? { ...input, value: undefined }
+              : input
+          );
+          updateInputs(target, inputs);
         });
-        if (!valuesEqual(target.data.inputs, nextInputs)) {
-          const nextData = { ...target.data, inputs: nextInputs };
-          const previousData = target.data;
-          const targetIndex = getWorkingNodeIndex({ working, nodeId, meta });
-          // 保留原记录上的运行时元数据（forbidDelete），只替换语义数据。
-          const nextRecord = { ...target, data: nextData };
-          working.nodes = working.nodes.slice();
-          working.nodes[targetIndex] = nextRecord;
-          updateReferenceGraphNode({
-            graph: referenceGraph,
-            before: previousData,
-            after: nextData
-          });
-          recordNodeChange({
-            meta,
-            nodeId,
-            before: target,
-            after: nextRecord,
-            afterIndex: targetIndex
-          });
-          collectNodeFieldChanges({
-            changedFieldIds: meta.changedFieldIds,
-            before: previousData,
-            after: nextData
-          });
-        }
-        queue.push(...getWorkingTargets(nodeId));
       }
+
+      const hasUserFilesOutput = startNode.data.outputs.some(
+        (output) => output.id === NodeOutputKeyEnum.userFiles
+      );
+      const hadUserFilesOutput = previousOutputs.some(
+        (output) => output.id === NodeOutputKeyEnum.userFiles
+      );
+      const outputsChanged = !valuesEqual(previousOutputs, startNode.data.outputs);
+
+      currentReachable.forEach((nodeId) => {
+        const target = getWorkingNode(nodeId, meta);
+        if (!target) return;
+
+        let inputs = target.data.inputs;
+        if (outputsChanged) {
+          inputs = inputs.map((input) =>
+            isWorkflowStartAutoFilledValue({
+              inputKey: input.key,
+              value: input.value,
+              workflowStartNodeId: startNodeId,
+              hasUserFilesOutput: hadUserFilesOutput
+            })
+              ? {
+                  ...input,
+                  value: getWorkflowStartAutoFillValue({
+                    inputKey: input.key,
+                    workflowStartNodeId: startNodeId,
+                    hasUserFilesOutput
+                  })
+                }
+              : input
+          );
+        }
+
+        updateInputs(
+          target,
+          applyWorkflowStartInputAutoFill({
+            inputs,
+            workflowStartNodeId: startNodeId,
+            workflowStartOutputs: startNode.data.outputs
+          })
+        );
+      });
     });
   };
 
@@ -650,7 +746,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
   ): void => {
     switch (command.type) {
       case 'addNode': {
-        const parsedNode = StoreNodeItemTypeSchema.parse(command.node);
+        const parsedNode = restoreRuntimeNodeOutputValidity(
+          StoreNodeItemTypeSchema.parse(command.node),
+          command.node
+        );
         if (getWorkingNode(parsedNode.nodeId, meta)) {
           throw getError('duplicate_node', `Node already exists: ${parsedNode.nodeId}`);
         }
@@ -686,8 +785,9 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         }
         working.nodes = working.nodes.slice();
         const current = working.nodes[index];
+        const runtimeNode = restoreRuntimeNodeOutputValidity(parsedNode, command.node, current.data);
         const { record: nextNode, view } = splitNode(
-          parsedNode,
+          runtimeNode,
           current.forbidDelete === true || hasForbidDelete(command.node)
         );
         validateNodePlacement({
@@ -715,12 +815,17 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         const currentView = getStagedNodeView(views, command.nodeId);
         working.nodes = working.nodes.slice();
         // patch 里的 position/isFolded 会被当前视图覆盖：几何只能走 commitGeometry。
-        const nextData = StoreNodeItemTypeSchema.parse({
+        const rawNode = {
           ...cloneValue(current.data),
           ...cloneValue(command.patch),
           ...(currentView.position ? { position: currentView.position } : {}),
           ...(currentView.isFolded !== undefined ? { isFolded: currentView.isFolded } : {})
-        });
+        };
+        const nextData = restoreRuntimeNodeOutputValidity(
+          StoreNodeItemTypeSchema.parse(rawNode),
+          rawNode,
+          current.data
+        );
         if (nextData.nodeId !== command.nodeId)
           throw getError('invalid_command', 'updateNode cannot change nodeId');
         if (nextData.parentNodeId !== current.data.parentNodeId) {

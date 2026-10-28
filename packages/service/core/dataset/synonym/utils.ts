@@ -42,7 +42,10 @@ type MatcherNode = {
 };
 
 export type DatasetSynonymMatcher = {
-  transform(text: string): {
+  transform(
+    text: string,
+    options?: { preserveMatchedTermCase?: boolean }
+  ): {
     transformedText: string;
     usedMappings: DatasetSynonymMappingMetadataType[];
   };
@@ -459,7 +462,7 @@ export const buildSynonymMatcher = (
   }
 
   return {
-    transform(text) {
+    transform(text, options) {
       const characters = Array.from(text);
       const normalizedCharacters = characters.map(normalizeMatchCharacter);
       const output: string[] = [];
@@ -514,7 +517,7 @@ export const buildSynonymMatcher = (
             standardizedTerm: mapping.standardizedTerm
           };
           usedMappings.set(
-            `${metadata.mappingId}:${normalizeSynonymTerm(metadata.matchedTerm)}`,
+            `${metadata.mappingId}:${options?.preserveMatchedTermCase ? metadata.matchedTerm : normalizeSynonymTerm(metadata.matchedTerm)}`,
             metadata
           );
         }

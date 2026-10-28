@@ -89,7 +89,7 @@ export const getWorkflowDebugRuntimeContext = ({
 }) => ({
   sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: appId },
   chatId: chatId ?? '',
-  outLinkAuthData: {},
+  outLinkAuthData: undefined,
   fileUploadMode: 'draft' as const
 });
 

@@ -748,17 +748,20 @@ const RenderBody = ({
 
   useEffect(() => {
     if (typeInput !== undefined) return;
-    // 旧文档缺少 contentType 字段时补齐：整表提交，写入后 typeInput 有值，effect 不再重入。
-    nodeActions?.updateNode((current) => ({
-      inputs: current.inputs.concat({
+    // 基于派发时的最新 inputs 去重，避免旧文档字段初始化重复。
+    nodeActions?.updateNode((current) => {
+      if (current.inputs.some((input) => input.key === NodeInputKeyEnum.httpContentType)) return {};
+      return {
+        inputs: current.inputs.concat({
         key: NodeInputKeyEnum.httpContentType,
         renderTypeList: [FlowNodeInputTypeEnum.hidden],
         valueType: WorkflowIOValueTypeEnum.string,
         value: ContentTypes.json,
         label: '',
         required: false
-      })
-    }));
+        })
+      };
+    });
   }, [nodeActions, typeInput]);
 
   const Render = useMemo(() => {

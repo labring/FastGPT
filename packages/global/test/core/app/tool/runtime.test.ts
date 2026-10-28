@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   compileToolRuntime,
   mergeToolRuntimeParams,
-  validateToolInputValue,
-  validateToolRuntimeParams
+  validateToolInputValue
 } from '@fastgpt/global/core/app/tool/runtime';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -86,6 +85,24 @@ describe('compileToolRuntime', () => {
     });
     expect(manualCompiled.agentGeneratedKeys).toEqual([]);
     expect(manualCompiled.modelTool.function).not.toHaveProperty('parameters');
+  });
+
+  it('builds the function description from the tool name and intro', () => {
+    const compiled = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: 'Search documents',
+      inputs: []
+    });
+    const withoutIntro = compileToolRuntime({
+      toolId: 'search',
+      name: 'Search',
+      description: '',
+      inputs: []
+    });
+
+    expect(compiled.modelTool.function.description).toBe('Search: Search documents');
+    expect(withoutIntro.modelTool.function.description).toBe('Search');
   });
 
   it('separates model parameters from configured values and defaults', () => {
@@ -268,6 +285,7 @@ describe('compileToolRuntime', () => {
       inputs: [
         {
           key: 'dataset',
+          label: 'Dataset',
           valueType: WorkflowIOValueTypeEnum.selectDataset,
           renderTypeList: [FlowNodeInputTypeEnum.selectDataset],
           selectedType: FlowNodeInputTypeEnum.agentGenerated,
@@ -275,6 +293,7 @@ describe('compileToolRuntime', () => {
         },
         {
           key: 'mixedUnion',
+          label: 'Mixed union',
           valueType: WorkflowIOValueTypeEnum.any,
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.input,
@@ -294,6 +313,7 @@ describe('compileToolRuntime', () => {
       inputs: [
         {
           key: 'filter',
+          label: 'Filter',
           valueType: WorkflowIOValueTypeEnum.object,
           renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
           selectedType: FlowNodeInputTypeEnum.agentGenerated
@@ -348,6 +368,7 @@ describe('compileToolRuntime', () => {
         },
         {
           key: 'limit',
+          label: 'Limit',
           valueType: WorkflowIOValueTypeEnum.number,
           renderTypeList: [FlowNodeInputTypeEnum.numberInput],
           selectedType: FlowNodeInputTypeEnum.numberInput,
@@ -367,14 +388,14 @@ describe('compileToolRuntime', () => {
 });
 
 describe('mergeToolRuntimeParams', () => {
-  it('filters unknown model fields and keeps fixed bindings authoritative', () => {
+  it('passes through model fields and keeps fixed bindings authoritative', () => {
     const result = mergeToolRuntimeParams({
       agentGeneratedKeys: ['query'],
       fixedInputBindings: { limit: 5 },
       aiParams: { query: 'fastgpt', limit: 100, unknown: true }
     });
 
-    expect(result).toEqual({ limit: 5, query: 'fastgpt' });
+    expect(result).toEqual({ limit: 5, query: 'fastgpt', unknown: true });
   });
 
   it('rejects conflicting generated and fixed keys', () => {
@@ -388,7 +409,75 @@ describe('mergeToolRuntimeParams', () => {
   });
 });
 
-describe('JSON Schema runtime validation', () => {
+describe('JSON Schema manual input validation', () => {
+  const legacyObject = {
+    type: 'object',
+    properties: { name: { type: 'string', required: true } }
+  };
+  it.each([
+    {
+      name: 'array items',
+      schema: { type: 'array', items: legacyObject },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'legacy tuple items',
+      schema: { type: 'array', items: [legacyObject], additionalItems: false },
+      valid: [{ name: 'Alice' }],
+      invalid: [{}]
+    },
+    {
+      name: 'anyOf',
+      schema: { anyOf: [legacyObject, { type: 'null' }] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'boolean oneOf branch',
+      schema: { oneOf: [false, legacyObject] },
+      valid: { name: 'Alice' },
+      invalid: {}
+    },
+    {
+      name: 'additionalProperties',
+      schema: { type: 'object', additionalProperties: legacyObject },
+      valid: { entry: { name: 'Alice' } },
+      invalid: { entry: {} }
+    },
+    {
+      name: '$defs reference',
+      schema: { $ref: '#/$defs/entry', $defs: { entry: legacyObject } },
+      valid: { name: 'Alice' },
+      invalid: {}
+    }
+  ])('normalizes nested legacy required flags in $name', ({ schema, valid, invalid }) => {
+    const before = structuredClone(schema);
+    expect(validateToolInputValue({ schema, value: valid }).success).toBe(true);
+    expect(validateToolInputValue({ schema, value: invalid }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
+  it('combines standard required keys with legacy flags and preserves schema annotations as data', () => {
+    const data = { required: true, properties: { name: { required: false } } };
+    const schema = {
+      type: 'object',
+      required: ['count'],
+      properties: {
+        count: { type: 'number' },
+        name: { type: 'string', required: true },
+        literal: { enum: [data], default: data, examples: [data] }
+      }
+    };
+    const before = structuredClone(schema);
+    expect(
+      validateToolInputValue({ schema, value: { count: 0, name: 'Alice', literal: data } }).success
+    ).toBe(true);
+    expect(validateToolInputValue({ schema, value: { name: 'Alice' } }).success).toBe(false);
+    expect(validateToolInputValue({ schema, value: { count: 0 } }).success).toBe(false);
+    expect(schema).toEqual(before);
+  });
+
   const propertySchema = {
     type: 'string',
     pattern: '^[a-z]+$',
@@ -402,119 +491,6 @@ describe('JSON Schema runtime validation', () => {
     });
 
     const invalid = validateToolInputValue({ schema: propertySchema, value: 'A' });
-    expect(invalid.success).toBe(false);
-    expect(invalid.errors.length).toBeGreaterThan(0);
-  });
-
-  it('validates complete runtime parameters while preserving required checks', () => {
-    const result = validateToolRuntimeParams({
-      jsonSchema: {
-        type: 'object',
-        properties: {
-          query: propertySchema
-        },
-        required: ['query'],
-        additionalProperties: false
-      },
-      params: { query: 'fastgpt' }
-    });
-
-    expect(result).toEqual({ success: true, errors: [] });
-
-    expect(
-      validateToolRuntimeParams({
-        jsonSchema: {
-          type: 'object',
-          properties: { query: propertySchema },
-          additionalProperties: false
-        },
-        params: { query: 'fastgpt', unknown: true }
-      }).success
-    ).toBe(false);
-  });
-
-  it('validates root union schemas', () => {
-    const jsonSchema = {
-      oneOf: [
-        {
-          type: 'object',
-          properties: { query: { type: 'string', minLength: 3 } },
-          required: ['query'],
-          additionalProperties: false
-        },
-        {
-          type: 'object',
-          properties: { count: { type: 'number', minimum: 1 } },
-          required: ['count'],
-          additionalProperties: false
-        }
-      ]
-    };
-
-    expect(
-      validateToolRuntimeParams({
-        jsonSchema,
-        params: { query: 'fastgpt' }
-      })
-    ).toEqual({ success: true, errors: [] });
-
-    const invalid = validateToolRuntimeParams({
-      jsonSchema,
-      params: { query: 'x' }
-    });
-    expect(invalid.success).toBe(false);
-    expect(invalid.errors.length).toBeGreaterThan(0);
-  });
-
-  it('validates root references and pattern properties without pre-filtering params', () => {
-    const referencedSchema = {
-      $ref: '#/$defs/input',
-      $defs: {
-        input: {
-          type: 'object',
-          properties: { query: { type: 'string', minLength: 3 } },
-          required: ['query'],
-          additionalProperties: false
-        }
-      }
-    };
-    expect(
-      validateToolRuntimeParams({ jsonSchema: referencedSchema, params: { query: 'fastgpt' } })
-    ).toEqual({ success: true, errors: [] });
-
-    const patternSchema = {
-      type: 'object',
-      patternProperties: { '^value_': { type: 'number' } },
-      additionalProperties: false
-    };
-    expect(
-      validateToolRuntimeParams({ jsonSchema: patternSchema, params: { value_count: 'invalid' } })
-        .success
-    ).toBe(false);
-  });
-
-  it('validates draft 2020-12 schemas with the matching AJV dialect', () => {
-    const jsonSchema = {
-      $schema: 'https://json-schema.org/draft/2020-12/schema',
-      type: 'object',
-      properties: {
-        query: { type: 'string', minLength: 3 }
-      },
-      required: ['query'],
-      additionalProperties: false
-    };
-
-    expect(
-      validateToolRuntimeParams({
-        jsonSchema,
-        params: { query: 'fastgpt' }
-      })
-    ).toEqual({ success: true, errors: [] });
-
-    const invalid = validateToolRuntimeParams({
-      jsonSchema,
-      params: { query: 'x' }
-    });
     expect(invalid.success).toBe(false);
     expect(invalid.errors.length).toBeGreaterThan(0);
   });

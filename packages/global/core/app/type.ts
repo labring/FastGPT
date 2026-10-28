@@ -7,7 +7,11 @@ import {
 } from '../dataset/search/tagFilter';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
-import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
+import {
+  ParentIdSchema,
+  type FolderAccessMode,
+  type ParentIdType
+} from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type';
 import { SourceMemberSchema, UserTagsSchema, type SourceMemberType } from '../../support/user/type';
 import z from 'zod';
@@ -211,6 +215,10 @@ export type AppResourcesType = z.infer<typeof AppResourcesSchema>;
 export const AppStorageSchemaTypeSchema = z.object({
   _id: ObjectIdSchema,
   parentId: ParentIdSchema.optional(),
+  /** 仅文件夹存储的根到父级路径，不包含当前文档自身 ID。 */
+  ancestorIds: z.array(ObjectIdSchema).optional().meta({
+    description: '仅文件夹持久化的祖先目录 ID 数组，按根到父级排序，不包含自身'
+  }),
   teamId: z.string(),
   tmbId: z.string(),
   type: z.enum(AppTypeEnum),
@@ -280,11 +288,13 @@ export type AppStorageSchemaType = z.infer<typeof AppStorageSchemaTypeSchema>;
  *
  * 历史存量数据可能缺少 avatar/intro，但客户端始终接收字符串，避免可空类型向 UI 扩散。
  */
-export const AppSchemaTypeSchema = AppStorageSchemaTypeSchema.extend({
+export const AppSchemaTypeSchema = AppStorageSchemaTypeSchema.omit({ ancestorIds: true }).extend({
   avatar: z.preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON)),
   intro: z.string()
 });
 export type AppSchemaType = z.infer<typeof AppSchemaTypeSchema>;
+/** Mongo storage also carries the folder-only path omitted from client-facing App schemas. */
+export type AppMongoSchemaType = AppSchemaType & Pick<AppStorageSchemaType, 'ancestorIds'>;
 
 export type AppListItemType = {
   _id: string;
@@ -306,6 +316,8 @@ export type AppListItemType = {
   relatedAppCount?: number;
   /** 仅在列表请求显式要求置顶排序时返回 */
   isPinned?: boolean;
+  /** 仅在 folder 列表项返回；navigate 不授予详情或管理权限。 */
+  folderAccessMode?: FolderAccessMode;
 };
 
 const referencedAppExample = {
@@ -350,6 +362,13 @@ export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
 export const ReferencedAppsResponseSchema = z
   .object({
     list: z.array(ReferencedAppSchema).meta({ description: '当前用户有权限读取的引用应用' }),
+    hiddenApps: z
+      .array(
+        z.object({
+          sourceMember: SourceMemberSchema.optional().meta({ description: '应用创建者信息' })
+        })
+      )
+      .meta({ description: '当前用户无权查看的引用应用创建者' }),
     hiddenCount: IntSchema.meta({
       description: '当前用户无权限查看的引用应用数量',
       example: 0
@@ -357,7 +376,7 @@ export const ReferencedAppsResponseSchema = z
   })
   .meta({
     description: '正式应用引用列表及当前用户无权限查看的数量',
-    example: { list: [referencedAppExample], hiddenCount: 0 }
+    example: { list: [referencedAppExample], hiddenApps: [], hiddenCount: 0 }
   });
 export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 

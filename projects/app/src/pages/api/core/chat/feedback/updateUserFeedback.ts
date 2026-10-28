@@ -1,5 +1,5 @@
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';

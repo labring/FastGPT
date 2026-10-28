@@ -3,18 +3,8 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import {
-  type AIModelDataType,
-  type EmbeddingModelDataType,
-  type LLMModelDataType,
-  type RerankModelDataType,
-  type STTModelDataType,
-  type TTSModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import type { SystemDefaultModelType } from '../../type';
-import { resolveEffectiveDefaultModelIds } from '../default/resolve';
 import { getModelProviderMetadata, preloadModelProviders } from '../provider/controller';
 import { formatDbModelToRuntimeModel } from '../runtime';
 import { desensitizeModel } from '../transform';
@@ -30,95 +20,35 @@ import { createModelHandle, type ModelHandle } from './handle';
  * 只读取数据库安装实例并原子发布运行时模型快照，不执行插件请求、历史迁移或自动预装。
  */
 const publishInstalledModels = async ({ language = 'en' }: { language?: string } = {}) => {
-  const _systemModelList: AIModelDataType[] = [];
-  const _systemModelMap = new Map<string, AIModelDataType>();
-  const _systemDefaultModel: SystemDefaultModelType = {};
-
-  const pushModel = (modelData: AIModelDataType) => {
-    _systemModelList.push(modelData);
-    _systemModelMap.set(`id:${modelData.modelId}`, modelData);
-    _systemModelMap.set(`model:${modelData.model}`, modelData);
-  };
-
   try {
     const {
       models: dbModels,
       defaultModelIds: configuredDefaultModelIds,
       revision
     } = await readModelCatalogSnapshot({ scope: ModelScopeEnum.system });
-    dbModels.forEach((dbModel) => {
-      pushModel(formatDbModelToRuntimeModel(dbModel, { language, fallbackProvider: false }));
-    });
-
-    // 快照已按 system 作用域读取，这里只需按启用状态过滤。
+    const _systemModelList = dbModels.map((dbModel) =>
+      formatDbModelToRuntimeModel(dbModel, { language, fallbackProvider: false })
+    );
     const _systemActiveModelList = _systemModelList.filter((model) => model.isActive);
-    // 两类目录只在候选集合上不同，默认槽位和回退规则由同一解析器负责。
-    const effectiveDefaults = resolveEffectiveDefaultModelIds({
-      models: _systemActiveModelList,
-      configuredDefaults: configuredDefaultModelIds
-    });
-    const resolveModel = <T extends AIModelDataType>(
-      slot: keyof typeof effectiveDefaults,
-      predicate: (model: AIModelDataType) => model is T
-    ) => {
-      const id = effectiveDefaults[slot];
-      const model = id ? _systemModelMap.get('id:' + id) : undefined;
-      return model && predicate(model) ? model : undefined;
-    };
-    _systemDefaultModel.llm = resolveModel(
-      ModelTypeEnum.llm,
-      (model): model is LLMModelDataType => model.type === ModelTypeEnum.llm
-    );
-    _systemDefaultModel.datasetTextLLM = resolveModel(
-      'datasetTextLLM',
-      (model): model is LLMModelDataType => model.type === ModelTypeEnum.llm
-    );
-    _systemDefaultModel.datasetImageLLM = resolveModel(
-      'datasetImageLLM',
-      (model): model is LLMModelDataType => model.type === ModelTypeEnum.llm
-    );
-    _systemDefaultModel.chatTitleLLM = resolveModel(
-      'chatTitleLLM',
-      (model): model is LLMModelDataType => model.type === ModelTypeEnum.llm
-    );
-    _systemDefaultModel.embedding = resolveModel(
-      ModelTypeEnum.embedding,
-      (model): model is EmbeddingModelDataType => model.type === ModelTypeEnum.embedding
-    );
-    _systemDefaultModel.tts = resolveModel(
-      ModelTypeEnum.tts,
-      (model): model is TTSModelDataType => model.type === ModelTypeEnum.tts
-    );
-    _systemDefaultModel.stt = resolveModel(
-      ModelTypeEnum.stt,
-      (model): model is STTModelDataType => model.type === ModelTypeEnum.stt
-    );
-    _systemDefaultModel.rerank = resolveModel(
-      ModelTypeEnum.rerank,
-      (model): model is RerankModelDataType => model.type === ModelTypeEnum.rerank
-    );
 
     // 完整目录与内容版本一起发布，不暴露多次赋值的半成品。
-    {
-      const version = hashStr(
-        JSON.stringify({
-          schemaVersion: 1,
-          // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
-          models: _systemActiveModelList.map(desensitizeModel),
-          providers: getModelProviderMetadata().providers,
-          defaultModelIds: configuredDefaultModelIds
-        })
-      );
-      publishSystemModelHandle(
-        createModelHandle({
-          models: _systemModelList,
-          defaultModels: _systemDefaultModel,
-          configuredDefaultModelIds,
-          revision,
-          version
-        })
-      );
-    }
+    const version = hashStr(
+      JSON.stringify({
+        schemaVersion: 1,
+        // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
+        models: _systemActiveModelList.map(desensitizeModel),
+        providers: getModelProviderMetadata().providers,
+        defaultModelIds: configuredDefaultModelIds
+      })
+    );
+    publishSystemModelHandle(
+      createModelHandle({
+        models: _systemModelList,
+        configuredDefaultModelIds,
+        revision,
+        version
+      })
+    );
 
     const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
     logger.debug('System models loaded', {
@@ -183,7 +113,7 @@ export const refreshModelHandle = async () => {
 
 /**
  * 启动依赖 Plugin Provider 元数据；模板 listModels 不参与已安装实例的加载和运行。
- * 历史模型迁移由阻塞升级任务负责。
+ * 历史模型迁移由启动阻塞任务负责，各节点在业务启动前重载；运行期仍由读取入口按修订号刷新。
  */
 export const loadSystemModels = async (refresh = false, language = 'en') => {
   if (!refresh && getCachedSystemModelHandle()) return;

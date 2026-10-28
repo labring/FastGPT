@@ -1,7 +1,7 @@
 import z from 'zod';
 import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { PaginationSchema } from '../../../api';
+import { createPaginationSchema } from '../../../api';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
@@ -127,7 +127,7 @@ export type PublishAppResponseType = z.infer<typeof PublishAppResponseSchema>;
  * Tags: ['版本管理']
  * ============================================================================ */
 
-export const AppVersionListBodySchema = PaginationSchema.extend({
+export const AppVersionListBodySchema = createPaginationSchema({
   appId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'

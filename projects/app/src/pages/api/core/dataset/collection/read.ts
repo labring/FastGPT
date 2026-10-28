@@ -4,7 +4,8 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
+import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';

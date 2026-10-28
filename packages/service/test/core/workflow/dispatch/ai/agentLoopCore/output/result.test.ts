@@ -148,8 +148,7 @@ describe('summarizeAgentLoopCoreResult', () => {
                   { summary: 'Yes', value: 'Yes' },
                   { summary: 'No', value: 'No' },
                   { summary: 'Not sure', value: 'Not sure' }
-                ],
-                answer: ''
+                ]
               }
             ]
           }

@@ -1,10 +1,14 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getHandleId
+} from '@fastgpt/global/common/workflow/reference';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
@@ -21,13 +25,19 @@ import {
 } from '@fastgpt/global/core/workflow/editor/utils';
 import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
-import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
 import { useWorkflowReferenceScope } from '@fastgpt/web/components/common/Textarea/PromptEditor/context';
 import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useReferenceOptions } from '@/web/core/workflow/editor/react/useWorkflowQueries';
 import { useWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorProvider';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { Position } from '@xyflow/react';
+import { MySourceHandle } from '../../Handle';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -58,6 +68,7 @@ type CommonSelectProps = {
   list: ReferenceListItem[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
   /** 懒加载列表：打开选择器时计算一次；已选内容的展示来自当前字段 scope。 */
   onOpenList?: () => void;
 };
@@ -69,14 +80,17 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 
 const referenceOptionsToList = ({
   options,
-  t
+  t,
+  excludeValueTypes
 }: {
   options: readonly WorkflowReferenceOption[];
   t: TFunction;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
 }): ReferenceListItem[] => {
   const bySource = new Map<string, ReferenceListItem>();
 
   options.forEach((option) => {
+    if (option.sourceType && excludeValueTypes?.includes(option.sourceType)) return;
     const [sourceId, outputId] = option.reference;
     const source: ReferenceListItem = bySource.get(sourceId) ?? {
       label: (
@@ -108,16 +122,21 @@ const referenceOptionsToList = ({
 export const useReference = ({
   nodeId,
   valueType = WorkflowIOValueTypeEnum.any,
-  includeChildren
+  includeChildren,
+  excludeValueTypes
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
   includeChildren?: boolean;
+  excludeValueTypes?: WorkflowIOValueTypeEnum[];
 }) => {
   const { t } = useSafeTranslation();
   const options = useReferenceOptions({ nodeId, valueType, includeChildren });
 
-  const referenceList = useMemo(() => referenceOptionsToList({ options, t }), [options, t]);
+  const referenceList = useMemo(
+    () => referenceOptionsToList({ options, t, excludeValueTypes }),
+    [excludeValueTypes, options, t]
+  );
 
   return { referenceList };
 };
@@ -159,17 +178,20 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const fieldData = useField(nodeId, item.key, 'input', (field) => field?.data);
   const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const flowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
+  const currentInput = fieldData?.input;
+  const isDynamicOptionsInput =
+    flowNodeType === FlowNodeTypeEnum.userSelect && item.key === NodeInputKeyEnum.userSelectOptions;
+  const excludeValueTypes = isDynamicOptionsInput ? DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES : undefined;
   const referenceList = useMemo(
     () =>
       referenceOptionsToList({
         options: fieldData?.referenceOptions ?? [],
-        t
+        t,
+        excludeValueTypes
       }),
-    [fieldData?.referenceOptions, t]
+    [excludeValueTypes, fieldData?.referenceOptions, t]
   );
-
-  const currentInput = fieldData?.input;
-  const isArray = currentInput?.valueType?.includes('array') ?? false;
+  const isArray = isDynamicOptionsInput || (currentInput?.valueType?.includes('array') ?? false);
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
@@ -187,16 +209,30 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
 
   return (
     <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
+    <Box position={'relative'}>
       <ReferSelector
         placeholder={
-          t(currentInput.referencePlaceholder as any) || t('common:select_reference_variable')
+          t(currentInput.referencePlaceholder as any) ||
+          (isDynamicOptionsInput
+            ? t('workflow:please_select_variable')
+            : t('common:select_reference_variable'))
         }
         list={referenceList}
         value={currentInput.value}
         onSelect={onSelect}
         popDirection={popDirection}
         isArray={isArray}
+        excludeValueTypes={excludeValueTypes}
       />
+      {isDynamicOptionsInput && (
+        <MySourceHandle
+          nodeId={nodeId}
+          handleId={getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)}
+          position={Position.Right}
+          translate={[34, 0]}
+        />
+      )}
+    </Box>
     </WorkflowFieldScope>
   );
 };
@@ -205,11 +241,13 @@ export default React.memo(Reference);
 
 const getReferenceStatus = (
   references: WorkflowFieldSnapshot['references'] | undefined,
-  value: unknown
+  value: unknown,
+  excludeValueTypes?: WorkflowIOValueTypeEnum[]
 ) => {
   const reference = getWorkflowReferenceItems(value)[0];
   if (!reference) return undefined;
   return references?.find((status) => {
+    if (status.sourceType && excludeValueTypes?.includes(status.sourceType)) return false;
     const statusReference = getWorkflowReferenceItems(status.reference)[0];
     return statusReference?.[0] === reference[0] && statusReference?.[1] === reference[1];
   });
@@ -241,7 +279,8 @@ const SingleReferenceSelector = ({
   onSelect,
   popDirection,
   ButtonProps,
-  onOpenList
+  onOpenList,
+  excludeValueTypes
 }: SelectProps<false>) => {
   // runtime 只发 i18n key 或字面量，展示名统一在渲染层过一遍 t。
   const { t } = useSafeTranslation();
@@ -252,7 +291,7 @@ const SingleReferenceSelector = ({
 
       // 给出字段引用状态时按状态展示：来源被删除时状态里带的是 Reference Snapshot 的
       // 历史名字与图标，因此失效引用同样可读，只有连历史元数据都没有的才回落占位符。
-      const status = getReferenceStatus(references, value);
+      const status = getReferenceStatus(references, value, excludeValueTypes);
       if (status) {
         const nodeText = status?.sourceLabel ? t(status.sourceLabel) : '';
         const outputText = status?.outputLabel ? t(status.outputLabel) : '';
@@ -278,7 +317,7 @@ const SingleReferenceSelector = ({
         text: nodeText && outputText ? `${nodeText} > ${outputText}` : nodeText || outputText
       };
     },
-    [list, references, t]
+    [excludeValueTypes, list, references, t]
   );
 
   // 存量数据可能是多选形态 [[nodeId, outputId]]：展示时取第一项即可，不回写文档。
@@ -288,7 +327,7 @@ const SingleReferenceSelector = ({
     () => getWorkflowReferenceItems(value)[0] as ReferenceItemValueType,
     [value]
   );
-  const status = getReferenceStatus(references, selectorVal);
+  const status = getReferenceStatus(references, selectorVal, excludeValueTypes);
   const isInvalidReference =
     isConfiguredReferenceValue(selectorVal) &&
     (status
@@ -310,6 +349,7 @@ const SingleReferenceSelector = ({
               w={'100%'}
               overflow={'hidden'}
               fontSize={'sm'}
+              fontWeight={'normal'}
               data-preserve-width
             >
               {!!selected?.avatar && (
@@ -346,7 +386,7 @@ const SingleReferenceSelector = ({
               )}
             </Flex>
           ) : (
-            <Box fontSize={'sm'} color={'myGray.400'}>
+            <Box fontSize={'sm'} fontWeight={'normal'} color={'myGray.500'}>
               {placeholder}
             </Box>
           )
@@ -390,7 +430,9 @@ const MultipleReferenceSelector = ({
   list = [],
   onSelect,
   popDirection,
-  onOpenList
+  ButtonProps,
+  onOpenList,
+  excludeValueTypes
 }: SelectProps<true>) => {
   const { t } = useSafeTranslation();
   const references = useWorkflowReferenceScope();
@@ -419,7 +461,7 @@ const MultipleReferenceSelector = ({
     // 给出字段引用状态时按状态解析展示名，此时 list 可以是懒加载的空数组。
     // 失效引用不再被抹成空名：来源被删除时状态里带的是 Reference Snapshot 的历史名字与图标。
     return arrayVal.map((item) => {
-      const status = getReferenceStatus(references, item);
+      const status = getReferenceStatus(references, item, excludeValueTypes);
       if (status) {
         return {
           rawValue: item,
@@ -438,7 +480,15 @@ const MultipleReferenceSelector = ({
         status: undefined
       };
     });
-  }, [arrayVal, getSelectValue, references, t]);
+  }, [arrayVal, excludeValueTypes, getSelectValue, references, t]);
+
+  useEffect(() => {
+    // Adapt array type from old version
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+      // @ts-ignore
+      onSelect([value]);
+    }
+  }, [formatList, onSelect, value]);
 
   const ArraySelector = useMemo(() => {
     return (
@@ -450,6 +500,8 @@ const MultipleReferenceSelector = ({
               gridTemplateColumns={'1fr 1fr'}
               gap={2}
               fontSize={'sm'}
+              fontWeight={'normal'}
+              pointerEvents={'auto'}
               _hover={{
                 '.delete': {
                   visibility: 'visible'
@@ -527,8 +579,13 @@ const MultipleReferenceSelector = ({
                       _hover={{
                         color: 'red.600'
                       }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         // formatList 与 arrayVal 保持同序，直接按下标删除原始值。
                         onSelect(arrayVal.filter((_, itemIndex) => itemIndex !== index));
                       }}
@@ -545,7 +602,7 @@ const MultipleReferenceSelector = ({
               })}
             </Grid>
           ) : (
-            <Box fontSize={'sm'} color={'myGray.400'}>
+            <Box fontSize={'sm'} fontWeight={'normal'} color={'myGray.500'}>
               {placeholder}
             </Box>
           )
@@ -557,9 +614,20 @@ const MultipleReferenceSelector = ({
         }}
         popDirection={popDirection}
         onOpenFunc={onOpenList}
+        ButtonProps={ButtonProps}
       />
     );
-  }, [arrayVal, formatList, list, onOpenList, onSelect, placeholder, popDirection, t]);
+  }, [
+    arrayVal,
+    ButtonProps,
+    formatList,
+    list,
+    onOpenList,
+    onSelect,
+    placeholder,
+    popDirection,
+    t
+  ]);
 
   return ArraySelector;
 };

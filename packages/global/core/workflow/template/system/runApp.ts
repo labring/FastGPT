@@ -12,7 +12,8 @@ export const RunAppNode: FlowNodeTemplateType = {
   intro: '',
   name: '',
   showStatus: false,
-  isTool: false,
+  // 应用可作为工具挂载，静态模板与服务端解析后的应用模板保持一致。
+  isTool: true,
   inputs: [], // [{key:'pluginId'},...]
   outputs: []
 };

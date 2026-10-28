@@ -11,10 +11,8 @@ import {
   postCheckCensor,
   postConcatUsage,
   postCreateUsage,
-  postDeepRag,
   postPushUsageItems
 } from '@fastgpt/service/thirdProvider/fastgptPro/api';
-import type { DeepRagSearchProps } from '@fastgpt/service/core/dataset/search';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -22,11 +20,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import {
-  getAgentSandboxArchiveMaxBytes,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxSkillMaxBytes
-} from '@fastgpt/service/core/ai/sandbox/config';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -44,10 +38,6 @@ export function initGlobalVariables() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
       if (!isProVersion()) return Promise.resolve({ code: 200 });
       return postCheckCensor({ text });
-    };
-
-    global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
-      return postDeepRag(data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
@@ -109,17 +99,15 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+    uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
     skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
-    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   },
   scripts: [],
   favicon: '/favicon.ico',
-  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
-  uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -156,6 +144,7 @@ export async function initSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
+      datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_coupon: appEnv.SHOW_COUPON,
@@ -170,8 +159,7 @@ export async function initSystemConfig() {
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
       show_agent_sandbox_free_tip:
-        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
-      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''
+        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP
     },
     systemEnv: Object.assign(
       {

@@ -5,7 +5,11 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  NodeOutputItemType,
+  RuntimeNodeItemType,
+  WorkflowResourceContext
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,7 +22,6 @@ import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap
 } from '../types/runtime';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/core/workflow/editor/utils';
@@ -42,7 +45,7 @@ import {
   mergeWorkflowRuntimeSummary
 } from './utils/summary';
 import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -73,7 +76,6 @@ import {
 import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
-import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -84,7 +86,7 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import type { WorkflowResourceContext } from '../utils/resource';
+import { markProfileError, profileStage } from '../../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -131,6 +133,10 @@ type WorkflowUsageProps = RequireOnlyOne<{
   usageId: string;
 }>;
 
+/**
+ * 执行入口级工作流并返回根运行摘要。根错误统一标记请求采集失败，不依赖调用方是否落库；
+ * 子工作流通过 runWorkflow 执行，已捕获错误和工具内部错误沿用根 summary 的排除语义。
+ */
 export async function dispatchWorkFlow({
   usageSource,
   usageId,
@@ -159,7 +165,7 @@ export async function dispatchWorkFlow({
 
   /* Init function */
   // Check point
-  await checkTeamAIPoints(runningUserInfo.teamId);
+  await profileStage({ event: 'wf.points.check' }, () => checkTeamAIPoints(runningUserInfo.teamId));
 
   const {
     fileContext,
@@ -167,18 +173,20 @@ export async function dispatchWorkFlow({
     getPreviewUrl,
     query: runtimeQuery,
     histories: preparedHistories
-  } = await prepareWorkflowFileContext({
-    query,
-    histories,
-    scope: {
-      sourceType: runningAppInfo.sourceType,
-      sourceId: runningAppInfo.sourceId,
-      uid: data.uid,
-      chatId
-    },
-    maxFileAmount: data.maxFileAmount,
-    maxBytesPerFile: data.maxBytesPerFile
-  });
+  } = await profileStage({ event: 'wf.file.context' }, () =>
+    prepareWorkflowFileContext({
+      query,
+      histories,
+      scope: {
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
+        uid: data.uid,
+        chatId
+      },
+      maxFileAmount: data.maxFileAmount,
+      maxBytesPerFile: data.maxBytesPerFile
+    })
+  );
   const getHistoryPreviewUrl = async (key: string) => {
     try {
       return await getPreviewUrl(key);
@@ -188,66 +196,77 @@ export async function dispatchWorkFlow({
     }
   };
 
-  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await Promise.all([
-    getUserChatInfo(runningUserInfo.tmbId),
-    (() => {
-      if (lastInteractive?.usageId) {
-        return lastInteractive.usageId;
-      }
-      if (usageSource) {
-        return createChatUsageRecord({
-          appName: runningAppInfo.name,
-          appId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.app
-              ? runningAppInfo.sourceId
-              : undefined,
-          skillId:
-            runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
-              ? runningAppInfo.sourceId
-              : undefined,
-          teamId: runningUserInfo.teamId,
-          tmbId: runningUserInfo.tmbId,
-          source: usageSource
-        });
-      }
-      return usageId;
-    })(),
-    // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
-    addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
-    // Remove stopping sign
-    delAgentRuntimeStopSign({
-      ...chatSource,
-      chatId
-    })
-  ]);
+  const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await profileStage(
+    { event: 'wf.init' },
+    () =>
+      Promise.all([
+        runningUserInfo.externalProvider
+          ? {
+              timezone: runningUserInfo.timezone ?? 'Asia/Shanghai',
+              externalProvider: runningUserInfo.externalProvider
+            }
+          : getUserChatInfo(runningUserInfo.tmbId),
+        (() => {
+          if (lastInteractive?.usageId) {
+            return lastInteractive.usageId;
+          }
+          if (usageSource) {
+            return createChatUsageRecord({
+              appName: runningAppInfo.name,
+              appId:
+                runningAppInfo.sourceType === ChatSourceTypeEnum.app
+                  ? runningAppInfo.sourceId
+                  : undefined,
+              skillId:
+                runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
+                  ? runningAppInfo.sourceId
+                  : undefined,
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId,
+              source: usageSource
+            });
+          }
+          return usageId;
+        })(),
+        // 复用 Context 的鉴权和请求级签名缓存，刷新 history 里其它服务端文件引用。
+        addPreviewUrlToChatItems(preparedHistories, 'chatFlow', getHistoryPreviewUrl),
+        // Remove stopping sign
+        delAgentRuntimeStopSign({
+          ...chatSource,
+          chatId
+        })
+      ])
+  );
 
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
-  const variableState = await WorkflowVariableState.create({
-    timezone,
-    runningAppInfo,
-    uid: data.uid,
-    chatId,
-    responseChatItemId,
-    histories: runtimeHistories,
-    variablesConfig: data.chatConfig?.variables,
-    inputVariables: data.variables,
-    externalVariables: externalProvider.externalWorkflowVariables,
-    runtimeOnlyVariables: getEntryPointRuntimeVariables({
-      entryPoints: data.chatConfig?.entryPoints,
-      inputVariables: data.variables
-    }),
-    maxFileAmount: data.maxFileAmount,
-    resolveInputFile: async (file) => {
-      const ref = await fileRegistrar.registerInputFile({
-        file,
-        source: 'variable'
-      });
-      if (!ref) throw new UserError('Invalid workflow variable file');
-      return ref.modelUrl;
-    }
-  });
+  const variableState = await profileStage({ event: 'wf.variable.state' }, () =>
+    WorkflowVariableState.create({
+      timezone,
+      runningAppInfo,
+      uid: data.uid,
+      chatId,
+      responseChatItemId,
+      histories: runtimeHistories,
+      variablesConfig: data.chatConfig?.variables,
+      inputVariables: data.variables,
+      externalVariables: externalProvider.externalWorkflowVariables,
+      runtimeOnlyVariables: getEntryPointRuntimeVariables({
+        entryPoints: data.chatConfig?.entryPoints,
+        inputVariables: data.variables
+      }),
+      maxFileAmount: data.maxFileAmount,
+      resolveInputFile: async (file) => {
+        const ref = await fileRegistrar.registerInputFile({
+          file,
+          source: 'variable'
+        });
+        if (!ref) throw new UserError('Invalid workflow variable file');
+        return ref.modelUrl;
+      }
+    })
+  );
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
@@ -275,18 +294,20 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
-  const nodeResponseSink = await createWorkflowEntryNodeResponseSink({
-    teamId: data.runningAppInfo.teamId,
-    sourceType: data.runningAppInfo.sourceType,
-    sourceId: data.runningAppInfo.sourceId,
-    chatId,
-    chatItemDataId: responseChatItemId,
-    nodeResponseWriteConfig: data.nodeResponseWriteConfig,
-    apiVersion: data.apiVersion,
-    responseAllData: data.responseAllData,
-    responseDetail: data.responseDetail,
-    workflowStreamResponse: data.workflowStreamResponse
-  });
+  const nodeResponseSink = await profileStage({ event: 'wf.sink.create' }, () =>
+    createWorkflowEntryNodeResponseSink({
+      teamId: data.runningAppInfo.teamId,
+      sourceType: data.runningAppInfo.sourceType,
+      sourceId: data.runningAppInfo.sourceId,
+      chatId,
+      chatItemDataId: responseChatItemId,
+      nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+      apiVersion: data.apiVersion,
+      responseAllData: data.responseAllData,
+      responseDetail: data.responseDetail,
+      workflowStreamResponse: data.workflowStreamResponse
+    })
+  );
 
   // Init some props
   return new Promise((resolve, reject) => {
@@ -314,6 +335,10 @@ export async function dispatchWorkFlow({
         })
           .then(async (result) => {
             await nodeResponseSink.close();
+            // HTTP 200/SSE 正常收尾也可能包含根运行错误；只按最终摘要判断，避免子层错误误报。
+            const { errorText, hasError } = result.workflowRuntimeSummary;
+            if (errorText || hasError) markProfileError(errorText || 'Workflow run failed');
+
             resolve({
               ...result,
               // 对外只返回当前 workflow 层的统一 summary；详情 rows 仍由共享 writer 持久化，
@@ -891,14 +916,6 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            // 模型资源校验必须在 try 内：失败时走节点错误分支（支持 catchError），
-            // 否则异常会冲出调度循环，导致整个工作流无输出。
-            await assertWorkflowNodeModelResources({
-              node,
-              params,
-              teamId: this.data.runningUserInfo.teamId,
-              tmbId: this.data.runningUserInfo.tmbId
-            });
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
             if (result.error) {

@@ -1,5 +1,8 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -15,31 +18,32 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
+const resolveExtractMockModel = (...args: unknown[]) => {
+  const model = getLLMModelMock(...args);
+  return {
+    ...model,
+    modelId: '68ad85a7463006c963799a65',
+    config: model.config ?? model
+  };
+};
+
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
-    getLLMModelData: (...args: unknown[]) => {
-      const model = getLLMModelMock(...args);
-      return {
-        ...model,
-        modelId: '68ad85a7463006c963799a65',
-        config: model.config ?? model
-      };
-    }
+    getModelData: resolveExtractMockModel,
+    getLLMModelData: resolveExtractMockModel
   }),
   getTeamModelHandle: async () => ({
-    getLLMModelData: (...args: unknown[]) => {
-      const model = getLLMModelMock(...args);
-      return {
-        ...model,
-        modelId: '68ad85a7463006c963799a65',
-        config: model.config ?? model
-      };
-    }
+    getModelData: resolveExtractMockModel,
+    getLLMModelData: resolveExtractMockModel
   })
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
+}));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
 }));
 
 import { dispatchContentExtract } from '@fastgpt/service/core/workflow/dispatch/ai/extract';
@@ -138,6 +142,41 @@ describe('dispatchContentExtract', () => {
       modelName: 'DeepSeek R1'
     });
   });
+
+  it.each([
+    { answer: '{"status":"open","extra":"ignored"}', expected: 'open' },
+    { answer: '{}', expected: 'closed' }
+  ])(
+    'uses persisted extraction descriptions, newline enums and defaults: $answer',
+    async ({ answer, expected }) => {
+      getLLMModelMock.mockReturnValue({ model: 'gpt-4o', name: 'GPT-4o', maxContext: 128000 });
+      createLLMResponseMock.mockResolvedValue(mockLLMResponse(answer));
+      const props = createProps();
+      props.params.extractKeys = JSON.parse(
+        JSON.stringify([
+          {
+            key: 'status',
+            desc: 'Current status',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            defaultValue: 'closed',
+            enum: 'open\n\nclosed'
+          }
+        ])
+      );
+      const before = structuredClone(props.params.extractKeys);
+      const result = await dispatchContentExtract(props);
+
+      expect(result.data).toMatchObject({ success: true, status: expected });
+      expect(result.data).not.toHaveProperty('extra');
+      expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).toContain(
+        JSON.stringify({
+          status: { type: 'string', description: 'Current status', enum: ['open', 'closed'] }
+        })
+      );
+      expect(props.params.extractKeys).toEqual(before);
+    }
+  );
 
   it('uses plain JSON extraction even when the model supports tool choice', async () => {
     getLLMModelMock.mockReturnValue({

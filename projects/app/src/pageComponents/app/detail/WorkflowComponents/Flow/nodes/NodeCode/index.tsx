@@ -214,7 +214,7 @@ const NodeCode = ({ data, selected }: CanvasNodeProps) => {
   }, [t, nodeId, inputs, outputs]);
 
   return (
-    <NodeCard minW={'400px'} selected={selected} rtDoms={rtDoms} {...data}>
+    <NodeCard minW={'524px'} selected={selected} rtDoms={rtDoms} {...data}>
       {isTool && hasDynamicInput && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />

@@ -25,7 +25,7 @@ import type {
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 const createRuntime = (): WorkflowRuntimePort => {
   const editor = createWorkflowEditor({
@@ -120,6 +120,148 @@ const createContainerRuntime = (): WorkflowRuntimePort =>
     edges: [],
     chatConfig: {}
   });
+
+describe('workflow start auto-fill runtime', () => {
+  const createStartNode = (includeUserFiles = false) => ({
+    nodeId: 'start',
+    flowNodeType: FlowNodeTypeEnum.workflowStart,
+    name: 'Start',
+    inputs: [],
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.userChatInput,
+        key: NodeOutputKeyEnum.userChatInput,
+        type: FlowNodeOutputTypeEnum.source,
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      ...(includeUserFiles
+        ? [
+            {
+              id: NodeOutputKeyEnum.userFiles,
+              key: NodeOutputKeyEnum.userFiles,
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.arrayString
+            }
+          ]
+        : [])
+    ]
+  });
+  const createInputNode = (nodeId: string, extraInputKey?: string, fileInput = false) => ({
+    nodeId,
+    flowNodeType: FlowNodeTypeEnum.chatNode,
+    name: nodeId,
+    inputs: [
+      ...[NodeInputKeyEnum.userChatInput, extraInputKey].filter(
+        (key): key is string => key !== undefined
+      ),
+      ...(fileInput ? [NodeInputKeyEnum.fileUrlList] : [])
+    ].map((key) => ({
+      key,
+      label: key,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType:
+        key === NodeInputKeyEnum.fileUrlList
+          ? WorkflowIOValueTypeEnum.arrayString
+          : WorkflowIOValueTypeEnum.string
+    })),
+    outputs: [
+      {
+        id: 'out',
+        key: 'out',
+        type: FlowNodeOutputTypeEnum.source,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ]
+  });
+  const edge = (source: string, target: string, sourceKey: string, targetKey: string) => ({
+    source,
+    target,
+    sourceHandle: getHandleId(source, 'source', sourceKey),
+    targetHandle: getHandleId(target, 'target', targetKey)
+  });
+
+  it('keeps auto-filled input while another start path remains, then clears it on final disconnect', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        createStartNode(),
+        createInputNode('branchA'),
+        createInputNode('branchB'),
+        createInputNode('target', 'otherInput')
+      ],
+      edges: [],
+      chatConfig: {}
+    } as never);
+
+    [
+      edge('start', 'branchA', NodeOutputKeyEnum.userChatInput, NodeInputKeyEnum.userChatInput),
+      edge('start', 'branchB', NodeOutputKeyEnum.userChatInput, NodeInputKeyEnum.userChatInput),
+      edge('branchA', 'target', 'out', NodeInputKeyEnum.userChatInput),
+      edge('branchB', 'target', 'out', 'otherInput')
+    ].forEach((connectedEdge) => {
+      expect(editor.dispatch({ type: 'connectEdge', edge: connectedEdge }).ok).toBe(true);
+    });
+
+    const targetInput = () =>
+      editor.getNode('target')?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
+        ?.value;
+    expect(targetInput()).toEqual(['start', NodeOutputKeyEnum.userChatInput]);
+
+    expect(
+      editor.dispatch({
+        type: 'disconnectEdge',
+        edge: edge('branchA', 'target', 'out', NodeInputKeyEnum.userChatInput)
+      }).ok
+    ).toBe(true);
+    expect(targetInput()).toEqual(['start', NodeOutputKeyEnum.userChatInput]);
+
+    expect(
+      editor.dispatch({
+        type: 'disconnectEdge',
+        edge: edge('branchB', 'target', 'out', 'otherInput')
+      }).ok
+    ).toBe(true);
+    expect(targetInput()).toBeUndefined();
+  });
+
+  it('removes file references auto-filled from a start output that is later disabled', () => {
+    const editor = createWorkflowEditor({
+      nodes: [createStartNode(true), createInputNode('target', undefined, true)],
+      edges: [],
+      chatConfig: {}
+    } as never);
+    const fileEdge = edge(
+      'start',
+      'target',
+      NodeOutputKeyEnum.userChatInput,
+      NodeInputKeyEnum.fileUrlList
+    );
+
+    expect(editor.dispatch({ type: 'connectEdge', edge: fileEdge }).ok).toBe(true);
+    expect(
+      editor
+        .getNode('target')
+        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+    ).toEqual([['start', NodeOutputKeyEnum.userFiles]]);
+
+    expect(
+      editor.dispatch({
+        type: 'updateNode',
+        nodeId: 'start',
+        patch: {
+          outputs: editor
+            .getNode('start')!
+            .outputs.filter((output) => output.id !== NodeOutputKeyEnum.userFiles)
+        }
+      }).ok
+    ).toBe(true);
+    expect(
+      editor
+        .getNode('target')
+        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+    ).toBeUndefined();
+  });
+});
 
 describe('workflow editor runtime modules', () => {
   it('commits a command batch atomically', () => {
@@ -1847,12 +1989,16 @@ describe('workflow environment facts', () => {
     ).toBe(false);
 
     expect(editor.undo().ok).toBe(true);
-    expect(editor.getNode('source')?.name).toBe('Source');
     expect(
       editor
-        .getNode('source')
+        .getWorkflow()
+        .nodes.find((node) => node.nodeId === 'source')
         ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
     ).toBe(false);
+    expect(editor.getNode('source')?.name).toBe('Source');
+    expect(editor.getNode('source')?.inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value).toBe(
+      'reasoning-model'
+    );
     expect(editor.redo().ok).toBe(true);
     expect(
       editor

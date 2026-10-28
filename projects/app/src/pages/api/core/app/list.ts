@@ -1,3 +1,4 @@
+/** @deprecated 使用 /api/core/app/listV2，旧接口仅保留兼容。 */
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,

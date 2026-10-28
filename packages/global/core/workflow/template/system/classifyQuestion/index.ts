@@ -54,15 +54,15 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       label: '',
       value: [
         {
-          value: 'Greeting',
+          value: i18nT('workflow:question_classification_default_1'),
           key: 'wqre'
         },
         {
-          value: 'Question regarding xxx',
+          value: i18nT('workflow:question_classification_default_2'),
           key: 'sdfa'
         },
         {
-          value: 'Other Questions',
+          value: i18nT('workflow:question_classification_default_3'),
           key: 'agex'
         }
       ]

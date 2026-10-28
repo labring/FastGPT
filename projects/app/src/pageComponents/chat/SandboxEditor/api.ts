@@ -11,7 +11,6 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST, POSTRawFile } from '@/web/common/api/request';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type SandboxRawTargetRequest = {
@@ -41,22 +40,6 @@ const normalizeSandboxRequest = <T extends SandboxRawTargetRequest>(data: T): T 
   }
 
   return { ...data, appId: undefined } as T;
-};
-
-/**
- * 生成浏览器直连 sandbox proxy 的 WebSocket 地址。
- */
-export const getSandboxProxyWsUrl = ({
-  channel,
-  ticket
-}: {
-  channel: 'fs' | 'terminal';
-  ticket: string;
-}) => {
-  const { agentSandboxProxyUrl = '' } = useSystemStore.getState().feConfigs;
-  const proxyBaseUrl = agentSandboxProxyUrl.replace(/\/+$/, '');
-
-  return `${proxyBaseUrl}/${channel}?ticket=${encodeURIComponent(ticket)}`;
 };
 
 /**

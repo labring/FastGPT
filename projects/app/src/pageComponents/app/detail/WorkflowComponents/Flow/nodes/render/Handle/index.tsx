@@ -40,76 +40,59 @@ const handleHighLightStyle = {
   zIndex: 15
 };
 
+// 保持 ReactFlow 实际端口尺寸稳定，避免视觉高亮改变连线坐标。
+const handleBaseStyle: React.CSSProperties = {
+  width: handleSizeConnected,
+  height: handleSizeConnected,
+  border: 'none',
+  background: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 15
+};
+
 type Props = {
   nodeId: string;
   handleId: string;
   position: Position;
   translate?: [number, number];
+  showHandle?: boolean;
 };
 
 export const MySourceHandle = React.memo(function MySourceHandle({
   nodeId,
   translate,
   handleId,
-  position
+  position,
+  showHandle = true
 }: Props) {
   const { t } = useTranslation();
   const renderHandle = useContext(WorkflowHandleRenderContext);
-
-  // 连通判定走 Runtime 图查询（bySource 索引，O(出度)），selector 只返回 boolean，
-  // 别处连线/断线不会让这个 handle 重渲染。
   const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
   );
-  const selected = useWorkflowSelectionValue((v) => v.selectedNodesMap[nodeId]);
-  // connectingEdge 有两个互相独立的用途，各取一个 boolean，不把整个对象取回来：
-  // 本 handle 是不是拖拽源（高亮），以及是否正在从 tool 柄拖拽（此时隐藏所有 source 柄）。
-  const isConnectingSelf = useWorkflowUIValue((v) => v.connectingEdge?.handleId === handleId);
+  const selected = useWorkflowSelectionValue((value) => value.selectedNodesMap[nodeId]);
+  const isConnectingSelf = useWorkflowUIValue((value) => value.connectingEdge?.handleId === handleId);
   const isConnectingTool = useWorkflowUIValue(
-    (v) => v.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
+    (value) => value.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
-  const nodeIsHover = useWorkflowUIValue((v) => v.hoverNodeId === nodeId);
-
+  const isConnecting = useWorkflowUIValue((value) => !!value.connectingEdge);
+  const isConnectingNode = useWorkflowUIValue((value) => value.connectingEdge?.nodeId === nodeId);
+  const nodeIsHover = useWorkflowUIValue((value) => value.hoverNodeId === nodeId);
   const active = nodeIsHover || !!selected || isConnectingSelf;
+  const visible =
+    showHandle &&
+    (!isConnecting || isConnectingNode) &&
+    !isConnectingTool &&
+    (active || connected);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
-    if (position === Position.Right) {
-      const offset = active ? 8 : 5;
-      return `${translate[0] + offset}px, -50%`;
-    }
-  }, [active, position, translate]);
+    if (position === Position.Right) return `${translate[0] + 5}px, -50%`;
+  }, [position, translate]);
 
-  const { styles, showAddIcon } = useMemo(() => {
-    if (active) {
-      return {
-        styles: {
-          ...handleHighLightStyle,
-          transform: `${translateStr ? `translate(${translateStr})` : ''}`
-        },
-        showAddIcon: true
-      };
-    }
-
-    if (connected) {
-      return {
-        styles: {
-          ...handleConnectedStyle,
-          transform: `${translateStr ? `translate(${translateStr})` : ''}`
-        },
-        showAddIcon: false
-      };
-    }
-
-    return {
-      styles: {
-        visibility: 'hidden' as const
-      },
-      showAddIcon: false
-    };
-  }, [active, connected, translateStr]);
-
-  if (!renderHandle || isConnectingTool) return null;
+  if (!renderHandle) return null;
 
   return (
     <MyTooltip
@@ -129,89 +112,77 @@ export const MySourceHandle = React.memo(function MySourceHandle({
     >
       <Box position="absolute" right={0} top="50%" w="0px" h="0px">
         <Handle
-          style={styles}
+          style={{
+            ...handleBaseStyle,
+            transform: translateStr ? `translate(${translateStr})` : undefined,
+            visibility: visible ? 'visible' : 'hidden'
+          }}
           type="source"
           id={handleId}
           data-workflow-source-handle-id={handleId}
           position={position}
           isConnectableEnd={false}
+          isConnectableStart={showHandle}
         >
-          {showAddIcon && (
-            <MyIcon
-              name={'edgeAdd'}
-              color={'primary.500'}
-              pointerEvents={'none'}
-              w={`${handleAddIconSize}px`}
-              h={`${handleAddIconSize}px`}
-            />
-          )}
+          <Box
+            style={active ? handleHighLightStyle : handleConnectedStyle}
+            flexShrink={0}
+            pointerEvents={'none'}
+          >
+            {active && (
+              <MyIcon
+                name={'edgeAdd'}
+                color={'primary.500'}
+                pointerEvents={'none'}
+                w={`${handleAddIconSize}px`}
+                h={`${handleAddIconSize}px`}
+              />
+            )}
+          </Box>
         </Handle>
       </Box>
     </MyTooltip>
   );
 });
+
 export const MyTargetHandle = React.memo(function MyTargetHandle({
   nodeId,
   handleId,
   position,
   translate,
   showHandle
-}: Props & {
-  showHandle: boolean;
-}) {
+}: Props & { showHandle: boolean }) {
   const renderHandle = useContext(WorkflowHandleRenderContext);
-  // 同 MySourceHandle：图查询按 byTarget 索引算连通，只返回 boolean。
   const connected = useWorkflow((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'target' })
   );
-  // 这里只需要「有没有在拖拽连线」这一个事实，不需要 connectingEdge 对象本身。
-  const isConnecting = useWorkflowUIValue((v) => !!v.connectingEdge);
+  const isConnecting = useWorkflowUIValue((value) => !!value.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';
-
-    if (position === Position.Left) {
-      const offset = isConnecting ? -8 : -5;
-      return `${translate[0] + offset}px, -50%`;
-    }
-  }, [isConnecting, position, translate]);
-
-  const styles = useMemo(() => {
-    if ((!isConnecting && !connected) || !showHandle) {
-      return {
-        visibility: 'hidden' as const
-      };
-    }
-
-    if (isConnecting) {
-      return {
-        ...handleHighLightStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''}`
-      };
-    }
-
-    if (connected) {
-      return {
-        ...handleConnectedStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''}`
-      };
-    }
-    return {
-      visibility: 'hidden' as const,
-      zIndex: 15
-    };
-  }, [connected, isConnecting, showHandle, translateStr]);
+    if (position === Position.Left) return `${translate[0] - 5}px, -50%`;
+  }, [position, translate]);
 
   if (!renderHandle) return null;
 
   return (
     <Handle
-      style={styles}
-      isConnectableEnd={styles && showHandle}
+      style={{
+        ...handleBaseStyle,
+        transform: translateStr ? `translate(${translateStr})` : undefined,
+        visibility: (isConnecting || connected) && showHandle ? 'visible' : 'hidden'
+      }}
+      isConnectableEnd={showHandle}
       isConnectableStart={false}
       type="target"
       id={handleId}
       position={position}
-    />
+    >
+      <Box
+        style={isConnecting ? handleHighLightStyle : handleConnectedStyle}
+        flexShrink={0}
+        pointerEvents={'none'}
+      />
+    </Handle>
   );
 });

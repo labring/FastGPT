@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
@@ -181,6 +183,32 @@ describe('authDatasetCollection', () => {
     ).resolves.toMatchObject({ dataset: { permission: { hasReadPer: true } } });
   });
 
+  it('does not inherit owner from the parent folder ACL', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'dataset-owner',
+      parentId: 'parent-id',
+      inheritPermission: true
+    });
+    // 父目录上该用户是 owner，但子知识库属于其他成员：最多只能继承 manage
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+
+    await expect(
+      authDatasetByTmbId({ tmbId: 'folder-owner', datasetId, per: OwnerPermissionVal })
+    ).rejects.toBe(DatasetErrEnum.unAuthDataset);
+    mockGetTmbPermission.mockResolvedValueOnce(OwnerRoleVal).mockResolvedValueOnce(0);
+    await expect(
+      authDatasetByTmbId({ tmbId: 'folder-owner', datasetId, per: ManagePermissionVal })
+    ).resolves.toMatchObject({
+      dataset: { permission: { isOwner: false, hasManagePer: true } }
+    });
+  });
+
   it('allows root access without requiring the dataset team to match', async () => {
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
@@ -202,6 +230,23 @@ describe('authDatasetCollection', () => {
       })
     ).resolves.toMatchObject({ dataset: { permission: { isOwner: true } } });
     expect(mockGetTmbPermission).not.toHaveBeenCalled();
+  });
+
+  it('reuses provided tmbInfo without querying getTmbInfoByTmbId', async () => {
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    await expect(
+      authDatasetByTmbId({
+        tmbId: 'tmb-a',
+        datasetId,
+        per: ReadPermissionVal,
+        tmbInfo: {
+          teamId: 'team-a',
+          permission: { isOwner: false } as any
+        }
+      })
+    ).resolves.toMatchObject({ dataset: { permission: { isOwner: true } } });
+    expect(mockGetTmbInfoByTmbId).not.toHaveBeenCalled();
   });
 
   it('rejects a collection whose team does not match its dataset team', async () => {
@@ -417,6 +462,7 @@ describe('authDatasetCollectionCreate', () => {
   it('uses the parent collection write permission for nested creation', async () => {
     mockGetCollectionWithDataset.mockResolvedValue({
       _id: collectionId,
+      type: DatasetCollectionTypeEnum.folder,
       teamId: 'team-a',
       datasetId,
       tmbId: 'tmb-owner'
@@ -431,6 +477,20 @@ describe('authDatasetCollectionCreate', () => {
         parentId: collectionId
       })
     ).resolves.toMatchObject({ collection: { _id: collectionId } });
+  });
+
+  it('rejects a writable non-folder parent', async () => {
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      type: DatasetCollectionTypeEnum.virtual,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-owner'
+    });
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+    await expect(
+      authDatasetCollectionCreate({ mockReq, authToken: true, datasetId, parentId: collectionId })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
   });
 
   it('rejects a parent collection from another dataset', async () => {

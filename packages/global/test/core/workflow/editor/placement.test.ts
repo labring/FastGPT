@@ -141,6 +141,27 @@ describe('placement context', () => {
     expect(isConnectedTool('start')).toBe(false);
   });
 
+  it('拒绝普通流程连入工具子流程', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        node('start', FlowNodeTypeEnum.workflowStart),
+        node('outside', FlowNodeTypeEnum.chatNode),
+        node('tool1', FlowNodeTypeEnum.toolCall),
+        node('n1', FlowNodeTypeEnum.chatNode),
+        node('n2', FlowNodeTypeEnum.chatNode)
+      ],
+      edges: [
+        edge('tool1', 'n1', NodeOutputKeyEnum.selectedTools),
+        edge('n1', 'n2')
+      ],
+      chatConfig: {}
+    } as never);
+
+    expect(
+      editor.dispatch({ type: 'connectEdge', edge: edge('outside', 'n2') }).error?.code
+    ).toBe('invalid_edge');
+  });
+
   it('同一批新增 selectedTools 边后仍能连接 stopTool', () => {
     const editor = createStagedToolPlacementRuntime();
 

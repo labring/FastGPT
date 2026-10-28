@@ -1,13 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
@@ -19,7 +18,9 @@ import {
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
+import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
 import { type ClientSession } from 'mongoose';
 
@@ -33,7 +34,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 /**
  * 更新知识库接口
  * 1. 若包含 parentId，则复用 moveDataset 服务完成鉴权、层级检查、权限继承与移动操作；
- * 2. 若包含基础信息或模型配置，则校验写权限并更新。
+ * 2. 若包含基础信息或模型配置，则校验管理员权限并更新。
  */
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const {
@@ -91,49 +92,90 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   }
 
   // 2. 基础属性更新
-  const { dataset, permission, tmbId, teamId, isRoot } = await authDataset({
+  const { dataset, tmbId, teamId, isRoot } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: id,
-    per: ReadPermissionVal
+    per: ManagePermissionVal
   });
-
-  if (!permission.hasWritePer) {
-    return Promise.reject(DatasetErrEnum.unAuthDataset);
-  }
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: modelHandle.getLLMModelData({
-          modelId: dataset.agentModelId,
-          model: dataset.agentModel
-        }),
-        vectorModel: modelHandle.getEmbeddingModelData({
-          modelId: dataset.vectorModelId,
-          model: dataset.vectorModel
-        })
+        llmModel: modelHandle.getModelData(
+          {
+            modelId: dataset.agentModelId,
+            model: dataset.agentModel
+          },
+          { type: 'llm' }
+        ),
+        vectorModel: modelHandle.getModelData(
+          {
+            modelId: dataset.vectorModelId,
+            model: dataset.vectorModel
+          },
+          { type: 'embedding' }
+        )
       })
     : undefined;
 
-  const agentModelData = modelHandle.getLLMModelData(
+  const agentModelData = modelHandle.getModelData(
     { modelId: agentModelId, model: agentModel },
-    { optional: true }
+    { type: 'llm', optional: true }
   );
   // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
   const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
-  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
+  const vlmModelData = modelHandle.getModelData(vlmReference, {
+    type: 'llm',
+    vision: true,
+    optional: true
+  });
   const selectedModels = [agentModelData, vlmModelData].filter((model) => model !== undefined);
   await assertAuthModels({
     actor: { teamId, tmbId, isRoot },
     modelIds: selectedModels.map((model) => model.modelId),
     action: 'use',
     handle: modelHandle
+  });
+
+  const apiDatasetServerPatch =
+    apiDatasetServer === undefined
+      ? undefined
+      : buildDatasetConfigUpdatePatch({
+          currentValue: dataset.apiDatasetServer,
+          patchValue: apiDatasetServer,
+          rootPath: 'apiDatasetServer'
+        });
+  const configAuditLogs = buildDatasetUpdateAuditLogs({
+    dataset,
+    modelHandle,
+    update: {
+      name,
+      intro,
+      avatar,
+      agentModelId,
+      agentModel,
+      agentModelData,
+      vlmModelId,
+      vlmModel,
+      vlmModelData,
+      clearVlmModel,
+      websiteConfig,
+      externalReadUrl,
+      apiDatasetServer: {
+        enabled: apiDatasetServer !== undefined,
+        value: apiDatasetServerPatch?.effectiveValue
+      },
+      autoSync,
+      chunkSettings,
+      chunkSettingsEnabled: rawChunkSettings !== undefined,
+      fileParseConfig: sangforFileParseConfig
+    }
   });
 
   const onUpdate = async (session: ClientSession) => {
@@ -170,34 +212,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
-    const apiDatasetParams = (() => {
-      if (!apiDatasetServer) return {};
-
-      const flattenObjectWithConditions = (
-        obj: any,
-        prefix = 'apiDatasetServer'
-      ): Record<string, any> => {
-        const result: Record<string, any> = {};
-
-        if (!obj || typeof obj !== 'object') return result;
-
-        Object.keys(obj).forEach((key) => {
-          const value = obj[key];
-          const newKey = prefix ? `${prefix}.${key}` : key;
-
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            // Recursively flatten nested objects
-            Object.assign(result, flattenObjectWithConditions(value, newKey));
-          } else {
-            // Add non-empty primitive values
-            result[newKey] = value;
-          }
-        });
-
-        return result;
-      };
-      return flattenObjectWithConditions(apiDatasetServer);
-    })();
+    const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
 
     await MongoDataset.findByIdAndUpdate(
       id,
@@ -229,10 +244,25 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await getS3AvatarSource().refreshAvatar(avatar, dataset.avatar, session);
   };
 
-  await mongoSessionRun(async (session) => {
-    logDatasetUpdate({ tmbId, teamId, dataset });
-    return onUpdate(session);
-  });
+  await mongoSessionRun((session) => onUpdate(session));
+
+  // 事务提交成功后才写审计：失败回滚的更新不应该出现在操作日志里。
+  // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。
+  if (configAuditLogs.length > 0) {
+    void addAuditLogs(
+      configAuditLogs.map(({ changeItem, oldValue, newValue }) => ({
+        tmbId,
+        teamId,
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        params: {
+          datasetName: name ?? dataset.name,
+          changeItem,
+          oldValue,
+          newValue
+        }
+      }))
+    );
+  }
 }
 export default NextAPI(handler);
 
@@ -253,26 +283,4 @@ const updateSyncSchedule = async ({
     // remove Job Scheduler
     return removeDatasetSyncJobScheduler(dataset._id);
   }
-};
-
-const logDatasetUpdate = ({
-  tmbId,
-  teamId,
-  dataset
-}: {
-  tmbId: string;
-  teamId: string;
-  dataset: any;
-}) => {
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.UPDATE_DATASET,
-      params: {
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
 };

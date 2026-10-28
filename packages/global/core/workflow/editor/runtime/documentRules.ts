@@ -14,10 +14,11 @@ import {
 import type { NodeTemplateContext, StoreNodeItemType } from '../../type/node';
 import type { FlowNodeInputItemType } from '../../type/io';
 import type { AppChatConfigType } from '../../../app/type';
-import { isValidArrayReferenceValue } from '../../utils';
+import { isValidArrayReferenceValue } from '../../../../common/workflow/reference';
 import { getNodeContainerCheckError } from '../../template/context';
 import type { NodeContainerCheckError } from '../../template/context';
 import { moduleTemplatesFlat } from '../../template/constants';
+import type { FlowNodeTemplateOutputItemType } from '../../template/output';
 import type {
   NodeViewState,
   WorkflowCommandError,
@@ -202,6 +203,48 @@ export const collectNodeFieldChanges = ({
   });
 };
 
+/** Schema.parse 会剥离模板回调；从输入节点或同类型旧记录恢复 Runtime-only 输出状态。 */
+export const restoreRuntimeNodeOutputValidity = <T extends WorkflowNodeData>(
+  node: T,
+  rawNode: unknown,
+  fallbackNode?: WorkflowNodeData
+): T => {
+  const getOutputMap = (value: unknown) => {
+    const rawOutputs = isObject(value) && Array.isArray(value.outputs) ? value.outputs : [];
+    const outputs = new Map<string, Record<string, unknown>>();
+    rawOutputs.forEach((output) => {
+      if (isObject(output) && typeof output.id === 'string') outputs.set(output.id, output);
+    });
+    return outputs;
+  };
+  const rawOutputsById = getOutputMap(rawNode);
+  const fallbackOutputsById =
+    fallbackNode?.flowNodeType === node.flowNodeType
+      ? getOutputMap(fallbackNode)
+      : new Map<string, Record<string, unknown>>();
+
+  return {
+    ...node,
+    outputs: node.outputs.map((output) => {
+      const rawOutput = rawOutputsById.get(output.id);
+      const fallbackOutput = fallbackOutputsById.get(output.id);
+      const invalid =
+        typeof rawOutput?.invalid === 'boolean' ? rawOutput.invalid : fallbackOutput?.invalid;
+      const invalidCondition =
+        typeof rawOutput?.invalidCondition === 'function'
+          ? rawOutput.invalidCondition
+          : fallbackOutput?.invalidCondition;
+      if (typeof invalid !== 'boolean' && typeof invalidCondition !== 'function') return output;
+
+      return {
+        ...output,
+        ...(typeof invalid === 'boolean' ? { invalid } : {}),
+        ...(typeof invalidCondition === 'function' ? { invalidCondition } : {})
+      } as typeof output;
+    })
+  } as T;
+};
+
 /**
  * 提交一次节点记录替换：同步 staged 引用图，只在语义数据真的变化时登记 node change，
  * 并收集受影响的字段身份。replace/updateNode/updateField 三个命令共用这一条提交路径。
@@ -260,7 +303,9 @@ export const buildDocument = (input: unknown, edgeIdStart = 0): CanonicalResult 
   const rawNodes = isObject(input) && Array.isArray(input.nodes) ? input.nodes : [];
   const views: NodeViewStore = new Map();
   const nodes = canonical.nodes.map((node, index) => {
-    const { record, view } = splitNode(node, hasForbidDelete(rawNodes[index]));
+    const rawNode = rawNodes[index];
+    const runtimeNode = restoreRuntimeNodeOutputValidity(node, rawNode);
+    const { record, view } = splitNode(runtimeNode, hasForbidDelete(rawNode));
     views.set(record.data.nodeId, view);
     return record;
   });
@@ -306,7 +351,7 @@ export const documentToCanonical = ({
     return {
       ...cloneValue(data),
       // invalid/invalidCondition 只属于 Runtime 环境派生，不参与 canonical/history 比较或持久化。
-      outputs: cloneValue(data.outputs).map(
+      outputs: (cloneValue(data.outputs) as FlowNodeTemplateOutputItemType[]).map(
         ({ invalid: _, invalidCondition: __, ...output }) => output
       ),
       ...(view?.position ? { position: cloneValue(view.position) } : {}),

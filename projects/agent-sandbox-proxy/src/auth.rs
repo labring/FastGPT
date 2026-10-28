@@ -314,6 +314,12 @@ mod tests {
     }
 
     #[test]
+    fn test_preview_session_cannot_be_used_as_websocket_ticket() {
+        init_test_secret("test-secret-key-1234567890-very-long-32");
+        assert!(verify_jwt_ticket("a12345678901234567890123").is_err());
+    }
+
+    #[test]
     fn test_verify_jwt_ticket_success() {
         let secret = "test-secret-key-1234567890-very-long-32";
         init_test_secret(secret);

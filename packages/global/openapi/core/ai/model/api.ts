@@ -4,7 +4,7 @@ import {
   EmbeddingModelDocumentSchema,
   LLMModelConfigSchema,
   LLMModelDocumentSchema,
-  ModelPriceTierSchema,
+  ModelPricingSchema,
   RerankModelConfigSchema,
   RerankModelDocumentSchema,
   STTModelConfigSchema,
@@ -19,7 +19,7 @@ import { IntSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { OutLinkChatAuthQuerySchema } from '../../../../support/permission/chat';
 import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
 
 export const ModelChannelSummarySchema = z.object({
@@ -43,13 +43,11 @@ const MyModelBaseSchema = z.object({
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
-  charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
-  priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),
-  inputPrice: z.number().optional().meta({ description: '旧版输入价格展示字段' }),
-  outputPrice: z.number().optional().meta({ description: '旧版输出价格展示字段' })
+  pricing: ModelPricingSchema.optional().meta({ description: '模型计价配置；缺失时免费' })
 });
 
 export const MyLLMModelItemSchema = MyModelBaseSchema.extend({
+  pricing: LLMModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.llm),
   config: LLMModelConfigSchema.omit({
     defaultSystemChatPrompt: true,
@@ -58,6 +56,7 @@ export const MyLLMModelItemSchema = MyModelBaseSchema.extend({
   })
 });
 export const MyEmbeddingModelItemSchema = MyModelBaseSchema.extend({
+  pricing: EmbeddingModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.embedding),
   config: EmbeddingModelConfigSchema.omit({
     defaultConfig: true,
@@ -66,14 +65,17 @@ export const MyEmbeddingModelItemSchema = MyModelBaseSchema.extend({
   })
 });
 export const MyRerankModelItemSchema = MyModelBaseSchema.extend({
+  pricing: RerankModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.rerank),
   config: RerankModelConfigSchema.omit({ defaultConfig: true })
 });
 export const MyTTSModelItemSchema = MyModelBaseSchema.extend({
+  pricing: TTSModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.tts),
   config: TTSModelConfigSchema
 });
 export const MySTTModelItemSchema = MyModelBaseSchema.extend({
+  pricing: STTModelDocumentSchema.shape.pricing,
   type: z.literal(ModelTypeEnum.stt),
   config: STTModelConfigSchema
 });
@@ -112,7 +114,7 @@ export const ModelProviderSchema = z.object({
 
 export const GetModelCatalogQuerySchema = z.object({
   version: z.string().trim().min(1).optional().meta({ description: '客户端已有目录版本' }),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+  outLinkAuthData: OutLinkChatAuthQuerySchema.optional().meta({
     example: JSON.stringify({ shareId: 'share-id', outLinkUid: 'out-link-user-id' }),
     description: '分享链接鉴权数据；存在时使用发布链接绑定的成员身份计算模型权限'
   })
@@ -146,20 +148,12 @@ const PublicPriceModelBaseSchema = z.object({
   testMode: z.boolean().optional().meta({ example: false, description: '是否为测试模式' })
 });
 
-const PublicCharsPriceSchema = z.number().optional().meta({
-  example: 1,
-  description: '对应模型计费单位的积分单价'
-});
-
 export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.llm)
       .meta({ example: ModelTypeEnum.llm, description: '模型类型' }),
-    priceTiers: z.array(ModelPriceTierSchema).meta({
-      example: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
-      description: '分段输入输出价格配置'
-    }),
+    pricing: LLMModelDocumentSchema.shape.pricing,
     config: LLMModelConfigSchema.pick({
       maxContext: true,
       vision: true,
@@ -172,27 +166,27 @@ export const PublicPriceSystemModelSchema = z.discriminatedUnion('type', [
     type: z
       .literal(ModelTypeEnum.embedding)
       .meta({ example: ModelTypeEnum.embedding, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
+    pricing: EmbeddingModelDocumentSchema.shape.pricing,
     config: EmbeddingModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.rerank)
       .meta({ example: ModelTypeEnum.rerank, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema,
+    pricing: RerankModelDocumentSchema.shape.pricing,
     config: RerankModelConfigSchema.pick({ maxToken: true })
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.tts)
       .meta({ example: ModelTypeEnum.tts, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
+    pricing: TTSModelDocumentSchema.shape.pricing
   }),
   PublicPriceModelBaseSchema.extend({
     type: z
       .literal(ModelTypeEnum.stt)
       .meta({ example: ModelTypeEnum.stt, description: '模型类型' }),
-    charsPointsPrice: PublicCharsPriceSchema
+    pricing: STTModelDocumentSchema.shape.pricing
   })
 ]);
 export type PublicPriceSystemModel = z.infer<typeof PublicPriceSystemModelSchema>;
@@ -284,12 +278,7 @@ export const TestModelQuerySchema = ModelReferenceSchema.extend({
 });
 export type TestModelQuery = z.infer<typeof TestModelQuerySchema>;
 
-const TestModelPriceFields = {
-  charsPointsPrice: true,
-  priceTiers: true,
-  inputPrice: true,
-  outputPrice: true
-} as const;
+const TestModelPriceFields = { pricing: true } as const;
 
 export const TestDraftModelDataSchema = z
   .discriminatedUnion('type', [
@@ -473,15 +462,7 @@ export const GetSystemModelConfigResponseSchema = z.object({
     description: '全部渠道摘要，供新增、编辑和关联渠道交互复用'
   }),
   providers: z.array(ModelProviderSchema),
-  defaultModelIds: ModelDefaultIdsSchema,
-  aiproxyChannels: z.array(
-    z.object({
-      channelId: z.number(),
-      name: z.object({ en: z.string(), 'zh-CN': z.string(), 'zh-Hant': z.string() }),
-      avatar: z.string(),
-      website: z.string().optional()
-    })
-  )
+  defaultModelIds: ModelDefaultIdsSchema
 });
 export type GetSystemModelConfigResponse = z.infer<typeof GetSystemModelConfigResponseSchema>;
 

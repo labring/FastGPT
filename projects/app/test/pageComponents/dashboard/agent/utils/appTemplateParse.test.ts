@@ -580,6 +580,52 @@ describe('parseAppImportConfig', () => {
 });
 
 describe('parseWorkflowImportConfig', () => {
+  it.each([
+    { policy: undefined, expected: undefined },
+    { policy: 'fallback' as const, expected: 'configured-default' },
+    { policy: 'preserve' as const, expected: 'missing-model' },
+    { policy: 'validate' as const, expected: 'reject' }
+  ])(
+    'keeps ordinary imports and explicit $policy model policy separate',
+    async ({ policy, expected }) => {
+      const result = parseWorkflowImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [
+            createWorkflowNode('workflowStart'),
+            {
+              ...createWorkflowNode('chatNode', 'chat'),
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.aiModelId,
+                  value: 'missing-model',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+                }
+              ]
+            }
+          ],
+          edges: []
+        },
+        t,
+        models: [
+          { modelId: 'first-model', model: 'first', type: ModelTypeEnum.llm },
+          { modelId: 'configured-default', model: 'default', type: ModelTypeEnum.llm }
+        ],
+        modelCatalogLoaded: true,
+        defaultModelIds: { [ModelTypeEnum.llm]: 'configured-default' },
+        modelReferencePolicy: policy
+      });
+      if (expected === 'reject') {
+        await expect(result).rejects.toThrow('Model model is unavailable');
+        return;
+      }
+      const workflow = await result;
+      expect(workflow.nodes[1].inputs).toEqual([
+        expect.objectContaining({ key: NodeInputKeyEnum.aiModelId, value: expected })
+      ]);
+    }
+  );
+
   it('should parse workflow JSON and ignore app meta in workflow detail import', async () => {
     const result = await parseWorkflowImportConfig({
       config: {

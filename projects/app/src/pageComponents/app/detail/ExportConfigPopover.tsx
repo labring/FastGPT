@@ -10,7 +10,7 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
-import { addModelNamesToWorkflow } from '@fastgpt/global/core/workflow/utils';
+import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';

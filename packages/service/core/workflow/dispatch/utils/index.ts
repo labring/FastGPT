@@ -15,7 +15,10 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import {
+  getMCPToolRuntimeNode,
+  parsetMcpToolConfig
+} from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
   getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
@@ -30,10 +33,11 @@ import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/ty
 import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
 import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
-import { filterWorkflowToolList, loadWorkflowAppResource } from '../../utils/resource';
+import { filterWorkflowToolList } from '../../resource/context';
+import { loadWorkflowAppResource } from '../../resource/service';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -310,22 +314,8 @@ export const filterSystemVariables = (variables: Record<string, any>): SystemVar
   };
 };
 
-/**
- * 将 HTTP 请求异常整理成可序列化、可展示的错误摘要。
- *
- * Axios 等请求库的原始错误通常包含循环引用和大量配置对象，这里只保留排查请求失败所需的
- * method、status、code 和响应数据。
- */
-export const formatHttpError = (error: any) => {
-  return {
-    message: getErrText(error),
-    data: error?.response?.data,
-    name: error?.name,
-    method: error?.config?.method,
-    code: error?.code,
-    status: error?.status
-  };
-};
+/** HTTP 错误摘要已下沉到 common/api/httpError，供 HTTP 节点与工具调用共用。 */
+export { formatHttpError } from '../../../../common/api/httpError';
 
 /**
  * 重写 runtime workflow 中的工具相关节点配置。
@@ -465,8 +455,7 @@ export const rewriteRuntimeWorkFlow = async ({
         if (systemToolId) {
           const children = await getSystemToolRunTimeNodeFromSystemToolset({
             toolSetNode,
-            teamId,
-            lang
+            teamId
           });
           children.forEach((node) => {
             const runtimeNode = initToolSetChildNode(node);
@@ -588,11 +577,8 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, RuntimeMcpTool[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        const toolList = filterWorkflowToolList({
-          context: getWorkflowResourceContext(),
-          appId: String(toolset._id),
-          tools: (await getMCPChildren(toolset)) as RuntimeMcpTool[]
-        });
+        // 单工具补齐只读取定义，执行入口会按具体 toolName 完成资源鉴权。
+        const toolList = (await getMCPChildren(toolset)) as RuntimeMcpTool[];
         toolListMap.set(String(toolset._id), toolList);
       })
     );
@@ -636,14 +622,7 @@ export const rewriteRuntimeWorkFlow = async ({
     const toolListMap = new Map<string, HttpToolConfigType[]>();
     await Promise.all(
       toolsets.map(async (toolset) => {
-        toolListMap.set(
-          String(toolset._id),
-          filterWorkflowToolList({
-            context: getWorkflowResourceContext(),
-            appId: String(toolset._id),
-            tools: await getHTTPToolList(toolset)
-          })
-        );
+        toolListMap.set(String(toolset._id), await getHTTPToolList(toolset));
       })
     );
     httpToolNodes.forEach((node) => {

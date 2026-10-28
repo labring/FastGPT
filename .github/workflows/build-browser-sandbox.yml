@@ -12,6 +12,10 @@ concurrency:
   group: browser-sandbox-${{ github.event.inputs.version }}
   cancel-in-progress: false
 
+env:
+  FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+  DOCKER_HUB_NAME: ${{ secrets.DOCKER_HUB_NAME }}
+
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
@@ -154,6 +158,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -197,6 +202,7 @@ jobs:
           retention-days: 7
 
       - name: Build for Ali Hub ${{ matrix.arch }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         id: build-aliyun
         uses: docker/build-push-action@v6
         with:
@@ -214,11 +220,13 @@ jobs:
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests/ghcr
-          mkdir -p ${{ runner.temp }}/digests/aliyun
           ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
-          aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
           touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
-          touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            mkdir -p ${{ runner.temp }}/digests/aliyun
+            aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
+            touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          fi
 
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
@@ -229,6 +237,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Ali Hub digest
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: aliyun-digests-fastgpt-browser-sandbox-${{ github.sha }}-${{ matrix.arch }}
@@ -254,6 +263,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Ali Hub
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -261,6 +271,7 @@ jobs:
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
       - name: Login to Docker Hub
+        if: ${{ env.DOCKER_HUB_NAME != '' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_NAME }}
@@ -274,6 +285,7 @@ jobs:
           merge-multiple: true
 
       - name: Download Ali Hub digests
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/aliyun
@@ -290,8 +302,10 @@ jobs:
           echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
           echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
           echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:${VERSION}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-browser-sandbox:latest" >> $GITHUB_ENV
+          fi
 
       - name: Create manifest lists
         working-directory: ${{ runner.temp }}/digests
@@ -305,31 +319,50 @@ jobs:
             GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
           done
           ALI_SOURCES=()
-          for digest_file in aliyun/*; do
-            [[ -f "$digest_file" ]] || continue
-            ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
-          done
-          if [[ "${#GHCR_SOURCES[@]}" -ne 2 || "${#ALI_SOURCES[@]}" -ne 2 ]]; then
-            echo "Expected two GHCR and two Ali Hub digests"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            for digest_file in aliyun/*; do
+              [[ -f "$digest_file" ]] || continue
+              ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
+            done
+          fi
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR digests"
             exit 1
           fi
-          for tag in "${Git_Tag}" "${Docker_Hub_Tag}"; do
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && "${#ALI_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two Ali Hub digests"
+            exit 1
+          fi
+          TAGS=("${Git_Tag}")
+          if [[ -n "$DOCKER_HUB_NAME" ]]; then
+            TAGS+=("${Docker_Hub_Tag}")
+          fi
+          for tag in "${TAGS[@]}"; do
             docker buildx imagetools create -t "${tag}" "${GHCR_SOURCES[@]}"
             sleep 5
           done
-          docker buildx imagetools create -t "${Ali_Tag}" "${ALI_SOURCES[@]}"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            docker buildx imagetools create -t "${Ali_Tag}" "${ALI_SOURCES[@]}"
+
+            if [[ "${{ needs.validate-version.outputs.stable }}" == "true" ]]; then
+              docker buildx imagetools create -t "${Ali_Latest}" "${ALI_SOURCES[@]}"
+            fi
+
+            manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
+            jq -e '
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
+              ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
+            ' <<<"$manifest" >/dev/null
+          fi
 
           if [[ "${{ needs.validate-version.outputs.stable }}" == "true" ]]; then
-            for tag in "${Git_Latest}" "${Docker_Hub_Latest}"; do
+            LATEST_TAGS=("${Git_Latest}")
+            if [[ -n "$DOCKER_HUB_NAME" ]]; then
+              LATEST_TAGS+=("${Docker_Hub_Latest}")
+            fi
+            for tag in "${LATEST_TAGS[@]}"; do
               docker buildx imagetools create -t "${tag}" "${GHCR_SOURCES[@]}"
               sleep 5
             done
-            docker buildx imagetools create -t "${Ali_Latest}" "${ALI_SOURCES[@]}"
           fi
-
-          manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
-          jq -e '
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
-            ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
-          ' <<<"$manifest" >/dev/null

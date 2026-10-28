@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
@@ -42,7 +42,7 @@ describe('useChatStore', () => {
       appChatIdMap: {},
       sourceChatIdMap: {},
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 
@@ -344,7 +344,7 @@ describe('useChatStore', () => {
       chatId: '',
       lastChatId: '',
       lastPane: undefined,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
     const store = useChatStore.getState();
     store.setSource(ChatSourceEnum.api);
@@ -381,7 +381,7 @@ describe('useChatStore', () => {
       appChatIdMap: {},
       sourceChatIdMap: {},
       lastPane: ChatSidebarPaneEnum.HOME,
-      outLinkAuthData: {}
+      outLinkAuthData: undefined
     });
   });
 
@@ -447,5 +447,90 @@ describe('createCustomStorage', () => {
     storage.removeItem('test');
     expect(mockStorage.removeItem).toHaveBeenCalledTimes(2);
     expect(mockStorage.removeItem).toHaveBeenCalledWith('test');
+  });
+});
+
+describe('chat store cross-tab synchronization', () => {
+  const previousWindow = globalThis.window;
+  const localStorageMock = { getItem: vi.fn(), setItem: vi.fn() };
+  const sessionStorageMock = { getItem: vi.fn(), setItem: vi.fn() };
+  const windowMock = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  let store: typeof useChatStore;
+  let storageListener: (event: StorageEvent) => void;
+  const sessionState = {
+    source: ChatSourceEnum.online,
+    appId: 'current-tab-app',
+    chatId: 'current-tab-chat',
+    agentChatTestTab: 'chat_debug'
+  };
+  const sharedState = {
+    lastChatId: 'online-external-chat',
+    appChatIdMap: { 'online:external-app': 'external-chat' },
+    sourceChatIdMap: { 'skillEdit:skill-1': 'external-skill-chat' }
+  };
+  const externalValue = JSON.stringify({ state: sharedState, version: 0 });
+
+  beforeEach(async () => {
+    vi.resetModules();
+    localStorageMock.getItem.mockReturnValue(null);
+    sessionStorageMock.getItem.mockReturnValue(JSON.stringify({ state: sessionState, version: 0 }));
+    windowMock.addEventListener.mockClear();
+    vi.stubGlobal('localStorage', localStorageMock);
+    vi.stubGlobal('sessionStorage', sessionStorageMock);
+    vi.stubGlobal('window', windowMock);
+
+    ({ useChatStore: store } = await import('@/web/core/chat/context/useChatStore'));
+    storageListener = windowMock.addEventListener.mock.calls.find(
+      ([event]) => event === 'storage'
+    )?.[1];
+    expect(storageListener).toBeTypeOf('function');
+    localStorageMock.getItem.mockClear();
+    sessionStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    sessionStorageMock.setItem.mockClear();
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('window', previousWindow);
+    vi.stubGlobal('localStorage', mockStorage);
+    vi.stubGlobal('sessionStorage', mockStorage);
+    vi.resetModules();
+  });
+
+  it('updates shared fields without writing back or replacing the current tab session', () => {
+    localStorageMock.getItem.mockReturnValue(externalValue);
+
+    // 相同对象内容反复到达也不能重新持久化，否则多个标签页会继续互相触发 storage 事件。
+    for (let index = 0; index < 2; index++) {
+      storageListener({
+        key: 'chatStore',
+        newValue: externalValue,
+        storageArea: localStorage
+      } as StorageEvent);
+    }
+
+    expect(store.getState()).toMatchObject({ ...sharedState, ...sessionState });
+    expect(localStorageMock.setItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'another storage key', key: 'anotherStore', newValue: '{}', area: 'local' },
+    { name: 'a deleted value', key: 'chatStore', newValue: null, area: 'local' },
+    { name: 'sessionStorage updates', key: 'chatStore', newValue: '{}', area: 'session' }
+  ])('ignores $name', ({ key, newValue, area }) => {
+    const previousState = store.getState();
+
+    storageListener({
+      key,
+      newValue,
+      storageArea: area === 'local' ? localStorage : sessionStorage
+    } as StorageEvent);
+
+    expect(store.getState()).toBe(previousState);
+    expect(localStorageMock.getItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.getItem).not.toHaveBeenCalled();
+    expect(localStorageMock.setItem).not.toHaveBeenCalled();
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled();
   });
 });

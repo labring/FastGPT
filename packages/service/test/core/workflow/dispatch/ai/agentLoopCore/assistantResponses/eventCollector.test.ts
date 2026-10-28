@@ -44,7 +44,6 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
         name: 'search',
         args: '{"q":"FastGPT"}'
       }),
-      rawResponse: 'result',
       response: 'result',
       seconds: 0.1
     });
@@ -224,7 +223,6 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     collector.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'workflow result',
       response: 'workflow result',
       seconds: 0.1,
       assistantMessages: [{ role: 'assistant', content: 'context only' }],
@@ -248,7 +246,6 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     collector.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'duplicate',
       response: 'duplicate',
       seconds: 0.2,
       assistantMessages: [{ role: 'assistant', content: 'duplicate child answer' }],
@@ -311,7 +308,6 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     collector.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'search unavailable',
       response: 'search unavailable',
       errorMessage: 'search unavailable',
       seconds: 0.1

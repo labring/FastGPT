@@ -15,6 +15,7 @@ import Flow from '../WorkflowComponents/Flow';
 import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
 import { WorkflowUIProvider } from '../WorkflowComponents/Flow/canvas/canvasState';
 import { WorkflowModalProvider } from '../WorkflowComponents/Flow/panels/workflowPanelState';
+import { WorkflowBuilderUIProvider } from '../WorkflowComponents/WorkflowBuilder/context';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -47,7 +48,14 @@ const WorkflowEdit = () => {
           <Header />
 
           {currentTab === TabEnum.appEdit ? (
-            <Flow />
+            <WorkflowBuilderUIProvider
+              appId={appDetail._id}
+              canEdit={!!appDetail.permission?.hasWritePer}
+              entryAccess={'hidden'}
+              systemInitialized={true}
+            >
+              <Flow />
+            </WorkflowBuilderUIProvider>
           ) : (
             <Flex
               flexDirection={'column'}

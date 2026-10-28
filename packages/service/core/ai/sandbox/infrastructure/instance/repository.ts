@@ -13,6 +13,7 @@ import {
 } from '../../constants';
 import { randomUUID } from 'node:crypto';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { SANDBOX_WORKSPACE_VOLUME_NAME } from '@fastgpt/global/core/ai/sandbox/volume';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -97,7 +98,7 @@ const buildCurrentOperationFilter = (resource: SandboxResourceRef) => {
 };
 
 const buildSandboxResourceSourceQuery = ({ sourceType, sourceId, userId }: SandboxSourceParams) => {
-  if (sourceType === ChatSourceTypeEnum.app || sourceType === ChatSourceTypeEnum.skillEdit) {
+  if (isSandboxSourceType(sourceType)) {
     return { sourceType, sourceId, ...(userId ? { userId } : {}) };
   }
   if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {

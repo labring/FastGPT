@@ -1,3 +1,6 @@
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+} from '@fastgpt/global/common/workflow/reference';
 import { Flex, Stack } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -5,6 +8,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { type UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
@@ -15,6 +19,7 @@ import {
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 
 export const defaultFormInput: UserInputFormItemType = {
   type: FlowNodeInputTypeEnum.input,
@@ -26,16 +31,20 @@ export const defaultFormInput: UserInputFormItemType = {
   defaultValue: '',
   valueType: WorkflowIOValueTypeEnum.string,
   required: false,
-  list: [{ label: '', value: '' }]
+  list: [{ label: '', value: '' }],
+  listInputType: FlowNodeInputTypeEnum.input,
+  listReference: []
 };
 
 // Modal for add or edit user input form items
 const InputFormEditModal = ({
+  nodeId,
   defaultValue,
   onClose,
   onSubmit,
   keys
 }: {
+  nodeId: string;
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
@@ -46,9 +55,13 @@ const InputFormEditModal = ({
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
+  const runtime = useWorkflowRuntime();
 
   const form = useForm({
-    defaultValues: defaultValue
+    defaultValues: {
+      ...defaultValue,
+      list: defaultValue.list?.length ? defaultValue.list : [{ label: '', value: '' }]
+    }
   });
   const { setValue, watch, reset } = form;
 
@@ -73,6 +86,30 @@ const InputFormEditModal = ({
         return;
       }
 
+      if (isReferenceOptionFormItem(data)) {
+        const selectableReferenceKeys = new Set(
+          (runtime?.getReferenceOptions({ nodeId }) ?? [])
+            .filter(
+              ({ sourceType }) =>
+                !sourceType || !DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES.includes(sourceType)
+            )
+            .map(({ reference }) => JSON.stringify(reference))
+        );
+        const selectableReferences = (data.listReference ?? []).filter((item) =>
+          selectableReferenceKeys.has(JSON.stringify(item))
+        );
+
+        if (selectableReferences.length === 0) {
+          toast({
+            status: 'warning',
+            title: t('workflow:please_select_variable')
+          });
+          return;
+        }
+
+        data.listReference = selectableReferences;
+      }
+
       data.key = data.label;
       data.valueType = defaultValueType as WorkflowIOValueTypeEnum;
 
@@ -93,6 +130,8 @@ const InputFormEditModal = ({
       keys,
       defaultValueType,
       isEdit,
+      nodeId,
+      runtime,
       toast,
       t,
       onSubmit,
@@ -121,19 +160,15 @@ const InputFormEditModal = ({
             inputTypeList={inputTypeList}
             selectedType={inputType}
             onTypeChange={(type) => {
+              if (type === inputType) return;
+
               setValue('type', type as FlowNodeInputTypeEnum);
-              setValue('defaultValue', '');
-              if (
-                (type === FlowNodeInputTypeEnum.select ||
-                  type === FlowNodeInputTypeEnum.multipleSelect) &&
-                !form.getValues('list')?.length
-              ) {
-                setValue('list', [{ label: '', value: '' }]);
-              }
+              setValue('defaultValue', type === FlowNodeInputTypeEnum.multipleSelect ? [] : '');
             }}
           />
         </Stack>
         <InputTypeConfig
+          nodeId={nodeId}
           form={form}
           type={'formInput'}
           isEdit={isEdit}

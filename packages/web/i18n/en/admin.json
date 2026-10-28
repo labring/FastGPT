@@ -46,5 +46,9 @@
   "license_community": "Community",
   "license_current_version": "Current version",
   "license_admin_home_community_description": "View the current version and capabilities",
-  "license_upgrade_commercial": "Learn about the commercial edition"
+  "license_upgrade_commercial": "Learn about the commercial edition",
+  "user_status_active": "Active",
+  "user_status_inactive": "Pending activation",
+  "user_status_forbidden": "Disabled",
+  "user_status_cancelled": "Cancelled"
 }

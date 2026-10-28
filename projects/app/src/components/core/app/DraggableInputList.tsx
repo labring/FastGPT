@@ -27,6 +27,8 @@ type DraggableInputListProps<T extends DraggableInputListItemType> = {
   /** 改用自动撑高的多行文本框，长文本会在框内换行而不是横向溢出 */
   multiline?: boolean;
   onDragEnd: (items: T[]) => void;
+  onBeforeCapture?: (capture: { draggableId: string }) => void;
+  onDragFinish?: () => void;
   onChange: (key: string, value: string) => void;
   onAdd: () => void;
   onDelete: (key: string) => void;
@@ -45,6 +47,8 @@ function DraggableInputList<T extends DraggableInputListItemType>({
   maxLength,
   multiline,
   onDragEnd,
+  onBeforeCapture,
+  onDragFinish,
   onChange,
   onAdd,
   onDelete,
@@ -58,6 +62,8 @@ function DraggableInputList<T extends DraggableInputListItemType>({
       <DndDrag<T>
         dataList={items}
         onDragEndCb={onDragEnd}
+        onBeforeCapture={onBeforeCapture}
+        onDragEnd={onDragFinish}
         renderInnerPlaceholder={false}
         renderClone={(provided, snapshot, rubric) => (
           <DraggableInputItem

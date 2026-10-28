@@ -1,19 +1,37 @@
+import type { WorkflowModelCheckData } from '@fastgpt/global/core/workflow/model/type';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
+import {
+  getWorkflowNodeModelInputs,
+  isWorkflowModelExpression,
+  isWorkflowSystemModelInput
+} from '@fastgpt/global/common/workflow/model';
 import { getUserModelSummaries } from '@/web/core/ai/model/catalogApi';
 import {
+  getModelDefault,
   getModelDetail,
   getModelReadIdentity,
   matchesModelFilter,
   peekModelCatalog
 } from '@/web/core/ai/model/modelData';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import {
   getSelectedInputRenderType,
-  isWorkflowSystemModelInput,
-  workflowModelKeyMappings
-} from '@fastgpt/global/core/workflow/utils';
-import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
+
+import {
+  workflowDatasetParamModelSlots,
+  workflowSystemModelSlots
+} from '@fastgpt/global/core/workflow/model/constants';
+import type {
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
+import type {
+  DeepReadonly,
+  WorkflowEnvironmentModel
+} from '@fastgpt/global/core/workflow/editor/types';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -21,15 +39,21 @@ import {
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
-/**
- * 同步读取当前团队可用的模型目录，作为 Runtime 的环境事实（getEnvironment 必须同步）。
- * 目录未就绪返回 undefined，与“目录为空”区分开：调用方据此跳过本轮模型规则，
- * 目录就绪后由 host 触发一次 Issue 刷新补上结果。
- */
+type WorkflowModelNodeData = Pick<StoreNodeItemType, 'flowNodeType' | 'inputs'>;
+type WorkflowModelNode =
+  | WorkflowModelNodeData
+  | { data: WorkflowModelNodeData }
+  | DeepReadonly<WorkflowModelNodeData>
+  | { data: DeepReadonly<WorkflowModelNodeData> };
+
+const getWorkflowModelNodeData = (node: WorkflowModelNode) =>
+  ('data' in node ? node.data : node) as WorkflowModelNodeData;
+
+/** Runtime 的模型规则同步读取已就绪目录；目录冷启动期间返回 undefined，暂不报错。 */
 export const peekWorkflowEnvironmentModels = () => {
   const catalog = peekModelCatalog();
   if (!catalog) return undefined;
-  // 与 peekModelDetail 共用同一份过滤规则，避免可选列表和可用性校验出现两套口径。
+
   return catalog.modelList
     .filter((model) => matchesModelFilter(model, {}))
     .map((model) => ({
@@ -40,20 +64,11 @@ export const peekWorkflowEnvironmentModels = () => {
     }));
 };
 
-type WorkflowModelNode =
-  | Pick<StoreNodeItemType, 'flowNodeType' | 'inputs'>
-  | { data: Pick<FlowNodeItemType, 'flowNodeType' | 'inputs'> }
-  | DeepReadonly<Pick<StoreNodeItemType, 'flowNodeType' | 'inputs'>>
-  | { data: DeepReadonly<Pick<FlowNodeItemType, 'flowNodeType' | 'inputs'>> };
-
-const getWorkflowModelNodeData = (node: WorkflowModelNode) =>
-  ('data' in node ? node.data : node) as Pick<FlowNodeItemType, 'flowNodeType' | 'inputs'>;
-
 /**
  * 按实际引用读取模型校验信息。个人目录之外的模型通过应用草稿基线确认可用性，
  * 与知识库、工具的已有资源规则一致；摘要只用于当前校验，不能写入个人候选目录。
  */
-export const getWorkflowModelDetails = async ({
+export const getWorkflowModelCheckData = async ({
   nodes,
   chatConfig,
   appId
@@ -61,28 +76,36 @@ export const getWorkflowModelDetails = async ({
   nodes: readonly WorkflowModelNode[];
   chatConfig?: AppChatConfigType | DeepReadonly<AppChatConfigType>;
   appId?: string;
-}) => {
+}): Promise<WorkflowModelCheckData> => {
   const references = new Map<string, { modelId?: string; model?: string }>();
   const legacySelectorValues = new Set<string>();
   const add = (modelId: unknown, model: unknown) => {
     const value = getModelReferenceValue({ modelId, model });
-    if (typeof value !== 'string' || isEmptyModelValue(value) || /^\{\{.*\}\}$/.test(value)) return;
+    if (typeof value !== 'string' || isEmptyModelValue(value) || isWorkflowModelExpression(value))
+      return;
     const reference = !isEmptyModelValue(modelId) ? { modelId: value } : { model: value };
     references.set(JSON.stringify(reference), reference);
   };
-
   for (const node of nodes) {
     const data = getWorkflowModelNodeData(node);
-    for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
-      const canonical = data.inputs.find((input) => input.key === modelIdKey);
-      const legacy = data.inputs.find((input) => input.key === legacyKey);
-      const modelInput = canonical ?? legacy;
-      if (!modelInput || !isWorkflowSystemModelInput({ node: data, input: modelInput })) continue;
-      add(canonical?.value ?? canonical?.defaultValue, legacy?.value ?? legacy?.defaultValue);
+    for (const slot of workflowSystemModelSlots) {
+      const inputs = getWorkflowNodeModelInputs({ node: data, slot });
+      const canonicalInputs = inputs.modelIdInputs.filter((input) => !nodeInputIsReference(input));
+      const legacyInputs = inputs.legacyInputs.filter((input) => !nodeInputIsReference(input));
+      if (canonicalInputs.length > 0) {
+        const fallbackLegacyValue = legacyInputs[0]?.value ?? legacyInputs[0]?.defaultValue;
+        for (const canonical of canonicalInputs) {
+          add(canonical.value ?? canonical.defaultValue, fallbackLegacyValue);
+        }
+      } else {
+        for (const legacy of legacyInputs) {
+          add(undefined, legacy.value ?? legacy.defaultValue);
+        }
+      }
     }
-
     for (const input of data.inputs) {
       if (
+        !nodeInputIsReference(input) &&
         !isWorkflowSystemModelInput({ node: data, input }) &&
         getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.selectLLMModel
       ) {
@@ -98,36 +121,57 @@ export const getWorkflowModelDetails = async ({
       const datasetParams = data.inputs.find(
         (input) => input.key === NodeInputKeyEnum.datasetParams
       )?.value;
-      const params = datasetParams as Record<string, unknown> | undefined;
-      add(
-        params?.[NodeInputKeyEnum.datasetSearchRerankModelId],
-        params?.[NodeInputKeyEnum.datasetSearchRerankModel]
-      );
-      add(
-        params?.[NodeInputKeyEnum.datasetSearchExtensionModelId],
-        params?.[NodeInputKeyEnum.datasetSearchExtensionModel]
-      );
+      for (const { legacyKey, modelIdKey } of workflowDatasetParamModelSlots) {
+        add(datasetParams?.[modelIdKey], datasetParams?.[legacyKey]);
+      }
     }
   }
-
   add(chatConfig?.questionGuide?.modelId, chatConfig?.questionGuide?.model);
   add(chatConfig?.ttsConfig?.modelId, chatConfig?.ttsConfig?.model);
 
   const identity = getModelReadIdentity()?.key;
   const refs = [...references.values()];
-  const details = await Promise.all(
-    refs.map(async (reference) => {
-      const detail = await getModelDetail(reference);
-      if (detail || !reference.modelId || !legacySelectorValues.has(reference.modelId)) {
-        return detail;
-      }
-      return getModelDetail({ model: reference.modelId });
-    })
-  );
-  const models: (Pick<MyModelItemType, 'modelId' | 'type'> & { model?: string })[] = details.filter(
-    (model): model is NonNullable<typeof model> => model !== undefined
-  );
-  if (!appId) return models;
+  const defaultChecks: Promise<MyModelItemType | undefined>[] = [];
+  if (
+    chatConfig?.questionGuide?.open === true &&
+    isEmptyModelValue(getModelReferenceValue(chatConfig.questionGuide))
+  ) {
+    defaultChecks.push(getModelDefault({ modelType: ModelTypeEnum.llm }));
+  }
+  if (
+    chatConfig?.ttsConfig?.type === 'model' &&
+    isEmptyModelValue(getModelReferenceValue(chatConfig.ttsConfig))
+  ) {
+    defaultChecks.push(getModelDefault({ modelType: ModelTypeEnum.tts }));
+  }
+  const [details, defaultDetails] = await Promise.all([
+    Promise.all(
+      refs.map(async (reference) => {
+        const detail = await getModelDetail(reference);
+        if (detail || !reference.modelId || !legacySelectorValues.has(reference.modelId))
+          return detail;
+        return getModelDetail({ model: reference.modelId });
+      })
+    ),
+    Promise.all(defaultChecks)
+  ]);
+  const data: WorkflowModelCheckData = {
+    references: details.flatMap((model) =>
+      model
+        ? [
+            {
+              modelId: model.modelId,
+              type: model.type,
+              ...(isSystemModel(model) ? { legacyModel: model.model } : {})
+            }
+          ]
+        : []
+    ),
+    defaultModelIds: Object.fromEntries(
+      defaultDetails.flatMap((model) => (model ? [[model.type, model.modelId]] : []))
+    )
+  };
+  if (!appId) return data;
 
   // 只补查个人目录未命中的稳定 ID；服务端确认应用权限、基线与状态，校验器继续按真实类型检查。
   const missingIds = refs.flatMap((ref, index) =>
@@ -143,9 +187,28 @@ export const getWorkflowModelDetails = async ({
     }
     for (const summary of summaries) {
       if (summary.status === 'active' && summary.type) {
-        models.push({ modelId: summary.modelId, type: summary.type });
+        data.references.push({ modelId: summary.modelId, type: summary.type });
       }
     }
   }
-  return models;
+  return data;
+};
+
+/** 将 main 的异步校验结果投影为 Runtime 所需的模型摘要数组。 */
+export const getWorkflowModelDetails = async ({
+  nodes,
+  chatConfig,
+  appId
+}: {
+  nodes: readonly WorkflowModelNode[];
+  chatConfig?: AppChatConfigType | DeepReadonly<AppChatConfigType>;
+  appId?: string;
+}): Promise<WorkflowEnvironmentModel[]> => {
+  const { references } = await getWorkflowModelCheckData({ nodes, chatConfig, appId });
+
+  return references.map(({ modelId, type, legacyModel }) => ({
+    modelId,
+    type,
+    ...(legacyModel === undefined ? {} : { model: legacyModel })
+  }));
 };

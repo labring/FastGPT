@@ -10,7 +10,11 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { parseHeaderCert } from '../auth/common';
 import { getTmbPermission } from '../controller';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 
 export type AuthSkillResponse = AuthResponseType<SkillPermission> & {
   skill: AgentSkillSchemaType & { permission: SkillPermission };
@@ -28,18 +32,20 @@ export const authSkillByTmbId = async ({
   tmbId,
   skillId,
   per,
-  isRoot = false
+  isRoot = false,
+  tmbInfo
 }: {
   tmbId: string;
   skillId: string;
   per: PermissionValueType;
   isRoot?: boolean;
+  tmbInfo?: Pick<TeamTmbItemType, 'teamId' | 'permission'>;
 }): Promise<{
   skill: AgentSkillSchemaType & { permission: SkillPermission };
 }> => {
   const skill = await (async () => {
     const [{ teamId, permission: tmbPer }, skill] = await Promise.all([
-      getTmbInfoByTmbId({ tmbId }),
+      tmbInfo ?? getTmbInfoByTmbId({ tmbId }),
       MongoAgentSkills.findOne({ _id: skillId, deleteTime: null }).lean()
     ]);
 
@@ -93,7 +99,11 @@ export const authSkillByTmbId = async ({
       })
     ]);
 
-    const Per = new SkillPermission({ role: sumPer(folderPer, myPer), isOwner });
+    // 父级 owner 在子级只能是 manage；物化快照已含父级贡献，这里只兜底历史缺失快照。
+    const Per = new SkillPermission({
+      role: sumPer(toInheritedPermissionValue(folderPer), myPer),
+      isOwner
+    });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(SkillErrEnum.unAuthSkill);

@@ -10,7 +10,7 @@ upgradeTags:
 
 Since OpenAI has begun deprecating function calls in favor of tool choice, FastGPT has updated its configuration and invocation methods accordingly. You'll need to make some changes to your configuration file:
 
-The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx).
+The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](/en/self-host/config/model/intro).
 
 1. The main change is renaming the `functionCall` field to `toolChoice` in your model configuration. Models with this set to `true` will use OpenAI's tools mode by default; models without it or with it set to `false` will use prompt-based generation.
 
@@ -20,10 +20,10 @@ The query rewriting model and content extraction model now share the same config
 
 ## V4.6.5 New Features
 
-1. New - [Query rewriting node](../../../guide/build/workflow/nodes/coreferenceResolution.en.mdx)
-2. New - [Text Editor node](../../../guide/build/workflow/nodes/text_editor.en.mdx)
-3. New - [Classifier node](../../../guide/build/workflow/nodes/tfswitch.en.mdx)
-4. New - [Custom Feedback node](../../../guide/build/workflow/nodes/custom_feedback.en.mdx)
+1. New - [Query rewriting node](/en/guide/build/workflow/nodes/coreferenceResolution)
+2. New - [Text Editor node](/en/guide/build/workflow/nodes/text_editor)
+3. New - [Condition node](/en/guide/build/workflow/nodes/tfswitch)
+4. New - [Custom Feedback node](/en/guide/build/workflow/nodes/custom_feedback)
 5. New - The Content Extraction node now supports model selection and field enumerations.
 6. Improved - DOCX parsing with table support (tables are converted to Markdown).
 7. Improved - Advanced orchestration connection line interactions.

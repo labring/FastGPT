@@ -30,7 +30,8 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
   getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
+vi.mock('@fastgpt/service/core/workflow/resource/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/resource/service')>()),
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
 }));
 
@@ -38,27 +39,45 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: filterDatasetsByTmbIdMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getSystemModelHandle: async () => ({
-    getDefaultLLMModelData: vi.fn(),
-    getDefaultRerankModelData: vi.fn(),
-    getEmbeddingModelData: vi.fn(() => ({
-      model: 'embedding-model',
-      name: 'Embedding Model',
-      config: {}
-    })),
-    getLLMModelData: vi.fn(({ model }: { model: string }) => ({
-      modelId: '68ad85a7463006c963799a43',
-      model,
-      name: `${model} name`,
-      config: { maxContext: 1000 }
-    })),
-    getRerankModelData: vi.fn(() => undefined),
-    getVlmModelData: vi.fn(({ model }: { model: string }) => ({
-      model,
-      name: `${model} name`,
-      config: { vision: true }
-    })),
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => {
+  const createHandle = () => ({
+    getDefaultModelData: vi.fn(),
+    getModelData: vi.fn(
+      (
+        { modelId, model }: { modelId?: string; model?: string },
+        { type, vision }: { type?: string; vision?: boolean } = {}
+      ) => {
+        if (type === 'rerank')
+          return {
+            modelId: 'rerank-model',
+            name: 'Rerank Model',
+            config: {}
+          };
+        if (type === 'embedding') {
+          return {
+            model: 'embedding-model',
+            name: 'Embedding Model',
+            config: {}
+          };
+        }
+        if (vision) {
+          return modelId || model
+            ? {
+                modelId,
+                model,
+                name: `${model ?? modelId} name`,
+                config: { vision: true }
+              }
+            : undefined;
+        }
+        return {
+          modelId: '68ad85a7463006c963799a43',
+          model,
+          name: `${model} name`,
+          config: { maxContext: 1000 }
+        };
+      }
+    ),
     getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
       modelId || model
         ? {
@@ -69,39 +88,12 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
           }
         : undefined
     )
-  }),
-  getTeamModelHandle: async () => ({
-    getDefaultLLMModelData: vi.fn(),
-    getDefaultRerankModelData: vi.fn(),
-    getEmbeddingModelData: vi.fn(() => ({
-      model: 'embedding-model',
-      name: 'Embedding Model',
-      config: {}
-    })),
-    getLLMModelData: vi.fn(({ model }: { model: string }) => ({
-      modelId: '68ad85a7463006c963799a43',
-      model,
-      name: `${model} name`,
-      config: { maxContext: 1000 }
-    })),
-    getRerankModelData: vi.fn(() => undefined),
-    getVlmModelData: vi.fn(({ model }: { model: string }) => ({
-      model,
-      name: `${model} name`,
-      config: { vision: true }
-    })),
-    getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
-      modelId || model
-        ? {
-            modelId,
-            model,
-            name: `${model ?? modelId} name`,
-            config: { vision: true }
-          }
-        : undefined
-    )
-  })
-}));
+  });
+  return {
+    getSystemModelHandle: async () => createHandle(),
+    getTeamModelHandle: async () => createHandle()
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
@@ -125,8 +117,14 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
   resolveReadableCollectionIds: resolveReadableCollectionIdsMock
 }));
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: vi.fn(async () => ({ handle: {}, models: [] })),
+  getAuthorizedModelIds: vi.fn(async () => new Set())
+}));
 
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
+import { serviceEnv } from '../../../../../../../env';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 
 const llmModelData = (model: string) =>
   ({
@@ -137,6 +135,58 @@ const llmModelData = (model: string) =>
   }) as any;
 
 describe('dispatchAgentDatasetSearch', () => {
+  it.each([true, false])(
+    'gates mapping fields and instructions with the deployment feature (%s)',
+    async (enabled) => {
+      const previous = serviceEnv.DATASET_SYNONYM_ENABLED;
+      serviceEnv.DATASET_SYNONYM_ENABLED = enabled;
+      countPromptTokensMock.mockResolvedValue(0);
+      const quote = {
+        id: 'chunk',
+        q: 'alias',
+        a: 'answer',
+        sourceName: 'doc.md',
+        synonymMappings: { alias: 'standard' },
+        score: [{ type: SearchScoreTypeEnum.embedding, value: 0.9, index: 0 }]
+      };
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: [quote],
+        embeddingTokens: 0,
+        reRankInputTokens: 0,
+        usingSimilarityFilter: false,
+        usingReRank: false
+      });
+      try {
+        const result = await dispatchAgentDatasetSearch({
+          args: JSON.stringify({ query: ['alias'] }),
+          teamId: 'team_1',
+          tmbId: 'tmb_1',
+          llmModel: llmModelData('gpt-main'),
+          datasetParams: {
+            datasets: [{ datasetId: 'dataset_1' }],
+            similarity: 0.4,
+            limit: 5000,
+            searchMode: DatasetSearchModeEnum.embedding,
+            usingReRank: false
+          }
+        });
+        const response = JSON.parse(result.response);
+        expect(response.cites[0].content).toBe('alias\nanswer');
+        if (enabled) {
+          expect(response.prompt).toContain('synonymMappings');
+          expect(response.cites[0]).toMatchObject({
+            synonymMappings: { alias: 'standard' }
+          });
+        } else {
+          expect(response.prompt).toBe(getDatasetSearchToolResponsePrompt());
+          expect(response.cites[0]).not.toHaveProperty('synonymMappings');
+        }
+      } finally {
+        serviceEnv.DATASET_SYNONYM_ENABLED = previous;
+      }
+    }
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     getDatasetSearchVlmModelMock.mockResolvedValue({
@@ -300,6 +350,80 @@ describe('dispatchAgentDatasetSearch', () => {
       'chunk_2'
     ]);
     expect(result.nodeResponse?.totalPoints).toBeCloseTo(0.26);
+  });
+
+  it('passes the pre-rerank retrievalResults snapshot through to nodeResponse', async () => {
+    const quote = {
+      id: 'chunk_1',
+      q: 'question 1',
+      a: 'answer 1',
+      sourceName: 'doc.md',
+      score: [{ type: SearchScoreTypeEnum.reRank, value: 0.7, index: 0 }]
+    };
+    const recalled = {
+      id: 'chunk_recalled',
+      q: 'recalled',
+      a: 'recalled answer',
+      sourceName: 'doc.md',
+      score: [{ type: SearchScoreTypeEnum.embedding, value: 0.5, index: 1 }]
+    };
+
+    // 检索层开启重排且 RETRIEVAL_RESULTS_LIMIT > 0 时才会产出该快照
+    defaultSearchDatasetDataMock.mockResolvedValueOnce({
+      searchRes: [quote],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: true,
+      retrievalResults: [quote, recalled]
+    });
+    const withSnapshot = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: llmModelData('gpt-main'),
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        usingReRank: true,
+        rerankWeight: 0.5
+      } as any
+    });
+
+    expect(withSnapshot.nodeResponse?.searchUsingReRank).toBe(true);
+    expect(withSnapshot.nodeResponse?.quoteList?.map((item: { id: string }) => item.id)).toEqual([
+      'chunk_1'
+    ]);
+    expect(
+      withSnapshot.nodeResponse?.retrievalResults?.map((item: { id: string }) => item.id)
+    ).toEqual(['chunk_1', 'chunk_recalled']);
+
+    // 未重排时检索层不产出快照，nodeResponse 不应出现该键
+    defaultSearchDatasetDataMock.mockResolvedValueOnce({
+      searchRes: [quote],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+    const withoutSnapshot = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: llmModelData('gpt-main'),
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        similarity: 0.4,
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        usingReRank: false,
+        rerankWeight: 0.5
+      } as any
+    });
+
+    expect(withoutSnapshot.nodeResponse).not.toHaveProperty('retrievalResults');
   });
 
   it('sets query extension and chunk selection LLM points to zero when user OpenAI key is valid', async () => {

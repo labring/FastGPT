@@ -10,8 +10,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import {
   ManagePermissionVal,
-  ReadPermissionVal,
-  WritePermissionVal
+  ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -26,9 +25,7 @@ import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { moveCollectionPermission } from '@fastgpt/service/support/permission/collection/controller';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { authDatasetCollectionMove } from '@fastgpt/service/support/permission/collection/moveAuth';
 
 // Set folder collection children forbid status
 const updateFolderChildrenForbid = async ({
@@ -89,21 +86,21 @@ async function handler(req: ApiRequestProps) {
   } = parseApiInput({ req, bodySchema: UpdateDatasetCollectionBodySchema }).body;
   let id = parsedCollectionId;
 
-  // 通过 externalFileId 查找 collection：先鉴权 dataset，再查询
+  // 通过 externalFileId 查找 collection：这里只做定位，更新门槛由后续 collection manage 承担
   if (datasetId && externalFileId) {
     await authDataset({
       req,
       authToken: true,
       authApiKey: true,
       datasetId,
-      per: WritePermissionVal
+      per: ReadPermissionVal
     });
 
     const collection = await MongoDatasetCollection.findOne({ datasetId, externalFileId }, '_id');
     if (!collection) {
       return Promise.reject(CommonErrEnum.fileNotFound);
     }
-    id = collection._id;
+    id = String(collection._id);
   }
 
   if (!id) {
@@ -111,51 +108,35 @@ async function handler(req: ApiRequestProps) {
   }
 
   const isMove = parentId !== undefined;
-  // Move 需要先读取 Collection 定位源父级；普通字段更新直接要求 Collection write。
-  const { collection, teamId, tmbId } = await authDatasetCollection({
-    req,
-    authToken: true,
-    authApiKey: true,
-    collectionId: id,
-    per: isMove ? ReadPermissionVal : WritePermissionVal
-  });
+  const targetParentId = parentId || null;
+  // move 只校验源父级/目标父级；字段更新要求节点自身 manage。
+  const hasMetaUpdate =
+    !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
+  const auth = { req, authToken: true, authApiKey: true, collectionId: id };
+  const { collection, teamId, tmbId } = isMove
+    ? await authDatasetCollectionMove({ ...auth, targetParentId })
+    : await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+
+  // 同请求携带字段更新时仍需节点 manage，避免借 move 绕过改名/禁用等门槛
+  if (isMove && hasMetaUpdate) {
+    await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+  }
 
   // Move collection：parentId 显式提供时在事务前校验深度/环
   if (isMove) {
-    if (parentId) {
-      const { collection: targetCollection } = await authDatasetCollection({
-        req,
-        authToken: true,
-        authApiKey: true,
-        collectionId: parentId,
-        per: ManagePermissionVal
-      });
-      if (String(targetCollection.datasetId) !== String(collection.datasetId)) {
-        return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
-      }
-    }
-    if (collection.parentId) {
-      await authDatasetCollection({
-        req,
-        authToken: true,
-        authApiKey: true,
-        collectionId: String(collection.parentId),
-        per: ManagePermissionVal
-      });
-    }
-    if (parentId === null || !collection.parentId) {
-      await authUserPer({
-        req,
-        authToken: true,
-        authApiKey: true,
-        per: TeamDatasetCreatePermissionVal
-      });
-    }
     await checkMoveFolderDepth({
       resourceId: id,
-      targetParentId: parentId,
-      teamId: collection.teamId,
-      model: MongoDatasetCollection,
+      targetParentId,
+      findResource: (id) =>
+        MongoDatasetCollection.findOne(
+          { _id: id, teamId: collection.teamId, datasetId: collection.datasetId },
+          '_id parentId type'
+        ).lean(),
+      findChildren: (parentId) =>
+        MongoDatasetCollection.find(
+          { parentId, teamId: collection.teamId, datasetId: collection.datasetId },
+          '_id type'
+        ).lean(),
       isFolderType: (type) => type === DatasetCollectionTypeEnum.folder
     });
   }
@@ -182,7 +163,7 @@ async function handler(req: ApiRequestProps) {
           tmbId: String(collection.tmbId),
           inheritPermission: collection.inheritPermission
         },
-        targetParentId: parentId,
+        targetParentId,
         session
       });
     }
@@ -193,8 +174,6 @@ async function handler(req: ApiRequestProps) {
       },
       {
         $set: {
-          // parentId 在 move 分支由 moveCollectionPermission 更新，避免重复写入
-          ...(!isMove && parentId !== undefined && { parentId: parentId || null }),
           ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
           ...(collectionTags !== undefined && { tags: collectionTags }),
           ...(forbid !== undefined && { forbid }),

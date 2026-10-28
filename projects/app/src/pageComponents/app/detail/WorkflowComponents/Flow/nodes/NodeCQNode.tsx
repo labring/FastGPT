@@ -3,7 +3,7 @@ import { Position } from '@xyflow/react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
@@ -11,10 +11,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getOutputDisconnectCommands, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
@@ -136,7 +136,7 @@ const NodeCQNode = ({ data, selected }: CanvasNodeProps) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard minW={'400px'} selected={selected} {...data}>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
         <Container>
           <RenderInput
             nodeId={nodeId}

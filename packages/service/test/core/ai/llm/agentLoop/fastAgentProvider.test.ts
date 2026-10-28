@@ -205,6 +205,140 @@ describe('runFastAgentLoop', () => {
     expect(toolNames.some((name: string) => name.startsWith('sandbox_'))).toBe(true);
   });
 
+  it('does not disable executable tools for a sandbox-only runtime', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_sandbox_only',
+        content: 'direct answer'
+      })
+    ]);
+
+    await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'inspect workspace'
+          }
+        ],
+        systemPrompt: 'Sandbox is available.'
+      },
+      runtime: createRuntime({
+        toolCatalog: {
+          runtimeTools: []
+        },
+        systemTools: {
+          sandbox: {
+            enabled: true,
+            client: {} as any
+          }
+        }
+      })
+    });
+
+    const systemMessage = createLLMResponseMock.mock.calls[0][0].body.messages.find(
+      (message: { role: string }) => message.role === ChatCompletionRequestMessageRoleEnum.System
+    );
+    expect(systemMessage.content).toBe('Sandbox is available.');
+    expect(systemMessage.content).not.toContain('<tool_constraint>');
+  });
+
+  it('returns an injected ask validation error to the model without pausing', async () => {
+    const validate = vi.fn(() => 'Preview markdown is required.');
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_invalid_preview',
+        name: 'ask_user',
+        content: '```mermaid\nflowchart LR\n  A --> B\n```',
+        args: {
+          reason: 'Need workflow confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Confirm this workflow?',
+              options: [
+                { summary: 'Confirm', value: 'Confirm the workflow.' },
+                { summary: 'Revise', value: 'Revise the workflow.' }
+              ]
+            }
+          ]
+        }
+      }),
+      text({
+        requestId: 'req_after_preview_validation',
+        content: 'Recovered after preview validation.'
+      })
+    ]);
+
+    const result = await runFastAgentLoop({
+      runtime: createRuntime({
+        systemTools: {
+          ask: { enabled: true, validate }
+        }
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Build a workflow'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(validate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questions: [expect.objectContaining({ question: 'Confirm this workflow?' })]
+      })
+    );
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_invalid_preview',
+      content: 'Preview markdown is required.'
+    });
+    expect(result.assistantMessages.at(-1)).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: 'Recovered after preview validation.'
+    });
+  });
+
+  it('validates sandbox calls before executing through the client', async () => {
+    const sandboxClient = { exec: vi.fn() };
+    const validate = vi.fn(() => 'Private workspace access denied.');
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_restricted_sandbox',
+        name: 'sandbox_shell',
+        args: { command: 'cat /private/workflow.json' }
+      }),
+      text({ requestId: 'req_after_rejection', content: 'Access was denied.' })
+    ]);
+
+    const result = await runFastAgentLoop({
+      input: { messages: [{ role: 'user', content: 'Read private workflow' }] },
+      runtime: createRuntime({
+        systemTools: {
+          sandbox: { enabled: true, client: sandboxClient as any, validate }
+        }
+      })
+    });
+
+    expect(result.status).toBe('done');
+    expect(validate).toHaveBeenCalledWith({
+      toolName: 'sandbox_shell',
+      args: JSON.stringify({ command: 'cat /private/workflow.json' })
+    });
+    expect(sandboxClient.exec).not.toHaveBeenCalled();
+    expect(result.completeMessages).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        tool_call_id: 'call_restricted_sandbox',
+        content: 'Private workspace access denied.'
+      })
+    );
+  });
+
   it('initializes runtime plan from history without changing request messages', async () => {
     const activePlan = {
       planId: 'plan_resume',

@@ -19,7 +19,6 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -277,9 +276,7 @@ describe('pre-created data queue routing', () => {
     'stops the heartbeat when scheduling a missing-collection rebuild throws (synonym=%s)',
     async (synonymEnabled) => {
       const { task, collection } = await createContext({ mode: TrainingModeEnum.rebuildIndex });
-      const synonym = vi
-        .spyOn(synonymService, 'isDatasetSynonymEnabled')
-        .mockReturnValue(synonymEnabled);
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: synonymEnabled });
       await MongoDatasetCollection.deleteOne({ _id: collection._id });
       const enqueue = vi
         .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
@@ -294,7 +291,6 @@ describe('pre-created data queue routing', () => {
         expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
       } finally {
         enqueue.mockRestore();
-        synonym.mockRestore();
       }
     }
   );
@@ -627,12 +623,13 @@ describe('pre-created data queue routing', () => {
       .spyOn(modelService, 'getTeamModelHandle')
       .mockImplementation(async (context) => {
         const modelHandle = await getTeamModelHandle(context);
-        return new Proxy(modelHandle, {
-          get(target, property, receiver) {
-            if (property === 'getVlmModelData') return vlmLookup;
-            return Reflect.get(target, property, receiver);
-          }
-        });
+        return {
+          ...modelHandle,
+          getModelData: ((reference: unknown, options?: { vision?: boolean }) => {
+            if (options?.vision) return vlmLookup();
+            return modelHandle.getModelData(reference as any, options as any);
+          }) as typeof modelHandle.getModelData
+        };
       });
     try {
       await generateRebuildIndex();

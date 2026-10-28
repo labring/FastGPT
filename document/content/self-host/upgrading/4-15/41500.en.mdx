@@ -57,7 +57,7 @@ TRUSTED_PROXY_ENABLE=false
 # Trusted reverse proxy IP/CIDR list, separated by commas or whitespace. Only takes effect when TRUSTED_PROXY_ENABLE=true.
 # Only X-Forwarded-For/X-Real-IP from explicitly trusted proxies will be used for client IP resolution. (optional)
 TRUSTED_PROXY_IPS=
-# Maximum string length for synchronous system variable replacement, in M. Range: 1-100.
+# Maximum string length for synchronous system variable replacement, in millions of characters. Range: 1-100.
 SYSTEM_MAX_STRING_LENGTH_M=100
 # Maximum folder depth. Default: 4. Range: 2-20.
 MAX_FOLDER_DEPTH=4
@@ -297,7 +297,7 @@ db.chats
 
 #### 6.2 Workflow V1 -> V2 Migration (optional)
 
-Run this only when upgrading directly from a version earlier than `<4.8`, or when your deployment still contains historical V1 Workflow data. The API defaults to dry-run mode. It scans, converts, and validates the saved structure without writing to the database.
+Run this only when upgrading directly from a version earlier than `4.8`, or when your deployment still contains historical V1 Workflow data. The API defaults to dry-run mode. It scans, converts, and validates the saved structure without writing to the database.
 
 ```bash
 curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
@@ -365,7 +365,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 
 ## Major Impacts
 
-1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
+1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](/en/openapi/intro).
 2. Some APIs now enforce stricter data format validation. If you see a `zod parse error`, please submit an issue. It may be caused by legacy data or custom data structures that do not match the declared schema.
 3. LLM request traces now enforce team isolation. `llm_request_records` stores `teamId`, `GET /api/core/ai/record/getRecord` queries by `{ requestId, teamId }`, and the unique index changes to `{ teamId, requestId }`. Trace records written before this upgrade do not contain `teamId` and can no longer be queried; the UI will treat them as expired. Export relevant logs or keep original request details before upgrading if you need to investigate historical calls. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
 
@@ -441,7 +441,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 5. Fixed TTS playback errors when adapting to the latest OpenAI SDK.
 6. Fixed oversized chunks that could occur when Dataset data chunks contained code blocks.
 7. Fixed abnormal multimodal file link retrieval from models.
-8. Fixed potential security risks related to the indexing API, HTTP tool parsing, and private S3 object keys.
+8. Fixed potential security risks related to the `training` API, HTTP tool parsing, and private S3 object keys.
 9. Fixed abnormal MCP tool expansion for tool calls after interactive nodes.
 10. Fixed abnormal tool call parameter schemas for array and object types in Workflow tools.
 11. Fixed UI offset in publish channel portals.
@@ -465,7 +465,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 11. Added design documentation and unit tests for stream-resume-related modules.
 12. Changed the volume manager runtime from Bun to Node.js.
 13. Images are now processed promptly inside workers instead of retaining base64 data, reducing memory usage.
-14. Added string length protection for system string processing. When strings are too large, synchronized replacement stops to avoid high CPU load.
+14. Added string length protection for system string processing. When strings are too large, synchronous replacement stops to avoid high CPU load.
 15. Workflow `nodeResponse` is now stored in a flattened structure to avoid save failures in large nested Workflows.
 16. Removed `temperature` and `max_tokens` from all built-in LLM requests to avoid incompatibility with some models.
 17. Fixed dirty enum-expression strings such as `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` in Workflow node configuration that caused input rendering and IO type checks to behave incorrectly.

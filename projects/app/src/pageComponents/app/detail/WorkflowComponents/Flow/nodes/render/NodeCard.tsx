@@ -29,7 +29,6 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-
 import type {
   DeepReadonly,
   WorkflowNodeData,
@@ -42,6 +41,7 @@ import {
 } from '@fastgpt/global/core/plugin/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  type NodeGradients,
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
   isNestedParentNodeType
@@ -91,6 +91,7 @@ import { useIsToolNode } from './useWorkflowDocument';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
+import { useNodeHandleLayout } from './Handle/useNodeHandleLayout';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 
 /**
@@ -136,7 +137,8 @@ const getCurrentSystemToolTemplate = async (node?: WorkflowNodeData) => {
     return getClientToolPreviewNode({
       appId: node.pluginId,
       versionId: node.version ?? '',
-      source: node.source
+      source: node.source,
+      lang: node.metadataLocale ?? 'en'
     });
   } catch {
     return;
@@ -144,7 +146,7 @@ const getCurrentSystemToolTemplate = async (node?: WorkflowNodeData) => {
 };
 
 const NodeCard = (props: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     children,
     minW = '300px',
@@ -173,6 +175,11 @@ const NodeCard = (props: Props) => {
   // 工具子流程节点：结构快照里指向本节点的 selectedTools 入边即可判定；
   // 该入边必然来自工具调用节点，不必再额外确认画布上存在工具调用节点。
   const isTool = useIsToolNode(nodeId);
+  useNodeHandleLayout({
+    node: node ? { ...node, isFolded, intro: introOverride ?? node.intro } : undefined,
+    toolConnected: isTool,
+    language: i18n.language
+  });
 
   const avatar = node?.avatar ?? LOGO_ICON;
   const avatarLinear = node?.avatarLinear;
@@ -301,6 +308,7 @@ const NodeCard = (props: Props) => {
       node?.pluginData?.status,
       node?.pluginId,
       node?.source,
+      node?.metadataLocale,
       node?.version
     ],
     queryFn: async () => {
@@ -318,7 +326,10 @@ const NodeCard = (props: Props) => {
             ? {
                 status: currentSystemToolTemplate.status,
                 courseUrl: currentSystemToolTemplate.courseUrl,
-                readmeUrl: currentSystemToolTemplate.readmeUrl,
+                readmeUrl:
+                  node.readmeUrl ??
+                  node.pluginData?.readmeUrl ??
+                  currentSystemToolTemplate.readmeUrl,
                 userGuide: currentSystemToolTemplate.userGuide,
                 diagram: currentSystemToolTemplate.diagram
               }
@@ -757,7 +768,8 @@ const NodeIntro = React.memo(function NodeIntro({
   );
 
   return (
-    <Box w={'100%'} minW={0} overflow={'hidden'}>
+    // 使用 contain: inline-size 阻止长介绍文案在 shrink-to-fit 节点中参与 max-content 宽度计算，同时保持宽度铺满与高度自适应换行
+    <Box w={'100%'} minW={0} overflow={'hidden'} sx={{ contain: 'inline-size' }}>
       <InlineEdit
         value={intro}
         onSave={handleSave}
@@ -846,7 +858,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
         const template = await getClientToolPreviewNode({
           appId: node.pluginId,
           versionId,
-          source: node.source
+          source: node.source,
+          lang: node.metadataLocale ?? 'en'
         });
 
         if (!!template) {
@@ -908,11 +921,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: WorkflowNo
         value: ''
       },
       ...versionList.map((item) => ({
-        label: item.versionDescription || item.version,
+        label: item.version,
         value: item.version
       }))
     ],
-    [node.isLatestVersion, node.version, t, versionList]
+    [t, versionList]
   );
   const valueLabel = useMemo(() => {
     return (
@@ -992,6 +1005,7 @@ const MenuRender = React.memo(function MenuRender({
         showStatus: data.showStatus,
         pluginId: data.pluginId,
         source: data.source,
+        metadataLocale: data.metadataLocale,
         inputs: data.inputs,
         outputs: data.outputs,
         version: data.version,

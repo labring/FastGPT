@@ -107,6 +107,21 @@ const reduceQueue = () => {
   return global.datasetParseQueueLen === 0;
 };
 
+/**
+ * 识别会让解析任务必须暂停的团队额度错误，返回值供调用方区分日志级别与提示文案。
+ *
+ * 枚举值收敛在函数内部，调用方不需要（也不应该）自己传错误码。
+ * 同时兼容两种抛出形态：`checkDatasetIndexLimit` 直接 `Promise.reject(枚举值)`，
+ * 经上层包装后则可能是 `Error.message`。
+ */
+const getQuotaErrorCode = (err: unknown): TeamErrEnum | undefined => {
+  const code = err instanceof Error ? err.message : err;
+
+  if (code === TeamErrEnum.datasetSizeNotEnough) return TeamErrEnum.datasetSizeNotEnough;
+  if (code === TeamErrEnum.aiPointsNotEnough) return TeamErrEnum.aiPointsNotEnough;
+  return undefined;
+};
+
 /** 读取并分块原文；共用训练租约，解析失败才扣重试次数，容量不足则暂停等待恢复。 */
 export const datasetParseQueue = async (): Promise<any> => {
   const max = global.systemEnv?.datasetParseMaxProcess || 10;
@@ -167,8 +182,9 @@ export const datasetParseQueue = async (): Promise<any> => {
         try {
           // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
           const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
-          const embeddingModelData = modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(dataset, 'embedding')
+          const embeddingModelData = modelHandle.getModelData(
+            getDatasetModelReference(dataset, 'embedding'),
+            { type: 'embedding' }
           );
           const agentModelData = modelHandle.findModelData(
             getDatasetModelReference(dataset, 'agent'),
@@ -238,10 +254,17 @@ export const datasetParseQueue = async (): Promise<any> => {
             continue;
           }
 
+          // 模板与备份同为 CSV 结构化导入（逐行 q/a/index/metadata），重解析必须走行解析器，
+          // 且必须读取原始 CSV——默认的 formatText 是 Markdown 表格，行解析器识别不出表头。
+          const csvStructured =
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
+
           const { title, rawText } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,
             customPdfParse: collection.customPdfParse,
+            getFormatText: !csvStructured,
             // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
             sangforFileParseConfig: collection.customPdfParse
               ? getDatasetIultmzhFileParseConfig(dataset)
@@ -287,7 +310,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
             chunkSettingMode: collection.chunkSettingMode,
             trainingType: collection.trainingType,
-            backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+            backupParse: csvStructured
           });
 
           // Check dataset limit
@@ -362,7 +385,10 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
         } catch (err) {
           if (err instanceof TrainingLeaseLostError) continue;
-          if (err === TeamErrEnum.datasetSizeNotEnough) {
+
+          const quotaErrorCode = getQuotaErrorCode(err);
+
+          if (quotaErrorCode === TeamErrEnum.datasetSizeNotEnough) {
             logger.info('Parse queue dataset limit exceeded, locking task', {
               trainingId: data._id,
               datasetId: data.datasetId,
@@ -370,6 +396,18 @@ export const datasetParseQueue = async (): Promise<any> => {
             });
             await taskLease.fail(i18nT('common:code_error.team_error.dataset_size_not_enough'), {
               blocked: true
+            });
+
+            continue;
+          }
+
+          if (quotaErrorCode === TeamErrEnum.aiPointsNotEnough) {
+            // 任务开始时已校验过团队余额；这里说明执行期间余额被其它任务消耗。
+            // 不再重复锁定，交由下一轮领取任务时的起始校验统一暂停该团队任务。
+            logger.warn('Parse queue AI points limit exceeded, skipping task', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
             });
 
             continue;

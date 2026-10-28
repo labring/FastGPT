@@ -30,7 +30,9 @@ export type CanvasNodeOf<T extends FlowNodeTypeEnum> = CanvasNodeByType[T];
 export type WorkflowCanvasNode = CanvasNodeByType[keyof CanvasNodeByType];
 
 type Mutable<T> = T extends readonly (infer U)[]
-  ? Mutable<U>[]
+  ? number extends T['length']
+    ? Mutable<U>[]
+    : { -readonly [K in keyof T]: Mutable<T[K]> }
   : T extends object
     ? { -readonly [K in keyof T]: Mutable<T[K]> }
     : T;

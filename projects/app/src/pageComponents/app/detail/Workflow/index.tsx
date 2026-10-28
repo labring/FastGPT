@@ -15,6 +15,11 @@ import { ReactFlowCustomProvider } from '../WorkflowComponents/context/index';
 import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
 import { WorkflowUIProvider } from '../WorkflowComponents/Flow/canvas/canvasState';
 import { WorkflowModalProvider } from '../WorkflowComponents/Flow/panels/workflowPanelState';
+import WorkflowBuilder from '../WorkflowComponents/WorkflowBuilder';
+import { WorkflowBuilderUIProvider } from '../WorkflowComponents/WorkflowBuilder/context';
+import { WorkflowBuilderUIInitializer } from '../WorkflowComponents/WorkflowBuilder/hooks/useWorkflowBuilderUI';
+import { getWorkflowBuilderEntryAccess } from '../WorkflowComponents/WorkflowBuilder/uiState';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -23,8 +28,18 @@ const WorkflowEdit = () => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
+  const feConfigs = useSystemStore((state) => state.feConfigs);
+  const systemInitialized = useSystemStore((state) => state.initd);
 
   const { initRuntime } = useWorkflowSessionActions();
+  const canEdit = !!appDetail.permission?.hasWritePer;
+  const entryAccess = getWorkflowBuilderEntryAccess({
+    systemInitialized,
+    isPlus: !!feConfigs?.isPlus,
+    showAgentSandbox: !!feConfigs?.show_agent_sandbox,
+    showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
+    canEdit
+  });
 
   useMount(() => {
     initRuntime(
@@ -48,7 +63,16 @@ const WorkflowEdit = () => {
           <Header />
 
           {currentTab === TabEnum.appEdit ? (
-            <Flow />
+            <WorkflowBuilderUIProvider
+              appId={appDetail._id}
+              canEdit={canEdit}
+              entryAccess={entryAccess}
+              systemInitialized={systemInitialized}
+            >
+              <WorkflowBuilderUIInitializer />
+              <Flow />
+              <WorkflowBuilder />
+            </WorkflowBuilderUIProvider>
           ) : (
             <Flex
               flexDirection={'column'}

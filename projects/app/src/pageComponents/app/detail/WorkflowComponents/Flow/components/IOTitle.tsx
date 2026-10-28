@@ -3,7 +3,7 @@ import { Box, type StackProps, HStack, Switch, Text } from '@chakra-ui/react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { Position } from '@xyflow/react';
 import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
@@ -36,8 +36,10 @@ const IOTitle = ({
 
     const catchHandle = getHandleId(nodeId, 'source_catch', Position.Right);
     nodeActions.updateNode(() => ({ catchError: checked }), {
-      disconnectEdges: getEdges()
-        .filter((edge) => edge.sourceHandle === catchHandle)
+      disconnectEdges: checked
+        ? []
+        : getEdges()
+            .filter((edge) => edge.source === nodeId && edge.sourceHandle === catchHandle)
         .map((edge) => ({
           edge: {
             source: edge.source,

@@ -1,18 +1,21 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { useContextSelector } from 'use-context-selector';
+import { Button } from '@chakra-ui/react';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   createEmptyTagFilterValue,
+  isDatasetTagFilterOpen,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/search/tagFilter';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { useReference } from './Reference';
 import DatasetTagFilterRows, {
   DatasetTagFilterDeprecated,
-  DatasetTagFilterUpgradeButton,
-  TagFilterLogicToggle
+  DatasetTagFilterUpgradeButton
 } from '@/components/core/dataset/DatasetTagFilterRows';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
@@ -120,11 +123,12 @@ const DatasetTagFilterRender = ({ item, nodeId }: RenderInputProps) => {
   );
 };
 
-/** 标题右侧组件：新版显示 AND/OR 切换；旧版显示「已弃用，升级到最新版本」 */
+/** 标题右侧组件：旧版显示升级按钮；新版显示开启/关闭按钮 */
 export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   item,
   nodeId
 }: RenderInputProps) {
+  const { t } = useTranslation();
   const fieldInput = useField(nodeId, item.key, 'input', (field) => field?.data.input);
   const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const nodeActions = useNodeActions(nodeId);
@@ -155,7 +159,10 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
             description:
               DatasetSearchModule.inputs.find((input) => input.key === item.key)?.description ??
               item.description,
-            value: createEmptyTagFilterValue()
+            value: {
+              ...createEmptyTagFilterValue(),
+              open: true
+            }
           };
           const workflow = serializeWorkflow();
           if (!workflow) throw new Error('Workflow data is unavailable');
@@ -179,15 +186,44 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
     );
   }
 
+  const isOpen = isDatasetTagFilterOpen(fieldInput.value);
+
+  const handleToggle = () => {
+    const nextOpen = !isOpen;
+    const renderType = getSelectedInputRenderType(item);
+    const nextValue =
+      renderType === FlowNodeInputTypeEnum.reference
+        ? nextOpen
+          ? []
+          : undefined
+        : {
+            ...(isDatasetTagFilterValue(fieldInput.value)
+              ? fieldInput.value
+              : createEmptyTagFilterValue()),
+            open: nextOpen
+          };
+
+    fieldActions.setValue(nextValue);
+  };
+
   return (
-    <TagFilterLogicToggle
-      value={
-        isDatasetTagFilterValue(fieldInput.value) ? fieldInput.value : createEmptyTagFilterValue()
+    <MyTooltip
+      label={
+        isOpen ? t('workflow:tag_filter_close_tooltip') : t('workflow:tag_filter_open_tooltip')
       }
-      onChange={(value) => {
-        fieldActions.setValue(value);
-      }}
-    />
+    >
+      <Button
+        className={'nodrag'}
+        variant={'transparentBase'}
+        iconSpacing={1}
+        size={'sm'}
+        mr={'-5px'}
+        color={'myGray.600'}
+        onClick={handleToggle}
+      >
+        {isOpen ? t('app:sandbox_enable') : t('app:sandbox_disable')}
+      </Button>
+    </MyTooltip>
   );
 });
 

@@ -6,36 +6,59 @@ import { Box, Flex } from '@chakra-ui/react';
 import NodeInputSelect, {
   getSelectedRenderTypeState
 } from '@fastgpt/web/components/core/workflow/NodeInputSelect';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  USER_SELECT_DEFAULT_OPTIONS,
+  USER_SELECT_REFERENCE_HANDLE_KEY
+} from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import ValueTypeLabel from '../ValueTypeLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
-import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import {
+  createEmptyTagFilterValue,
+  isDatasetTagFilterOpen,
+  isDatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/search/tagFilter';
+import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
+import type { WorkflowCommand, WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
+import { cloneValue } from '@fastgpt/global/core/workflow/editor/runtime/kernel';
 
 type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
   RightComponent?: React.JSX.Element;
-  rightInline?: boolean;
   isTool?: boolean;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Props) => {
+const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const { t } = useSafeTranslation();
+  const runtime = useWorkflowRuntime();
+  const node = useNode<WorkflowNodeData>(nodeId, (handle) => handle?.data);
   const nodeActions = useNodeActions(nodeId);
 
   const labelText = t(input.label as any);
   const descriptionText = input.description ? t(input.description as any) : undefined;
 
   const { required, renderTypeList, valueType, valueDesc } = input;
+  const isUserSelectOptions =
+    node?.flowNodeType === FlowNodeTypeEnum.userSelect &&
+    input.key === NodeInputKeyEnum.userSelectOptions;
+  const isCollectionFilter = input.key === NodeInputKeyEnum.collectionFilterMatch;
+  const isLegacyTagFilter = isCollectionFilter && datasetSearchUsesLegacyFilter(node?.inputs ?? []);
+  const isTagFilterClosed =
+    isCollectionFilter && !isLegacyTagFilter && !isDatasetTagFilterOpen(input.value);
   const renderType =
     getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
-  const shouldRenderRightInline =
-    rightInline ?? renderType === FlowNodeInputTypeEnum.datasetTagFilter;
   const displayRenderTypeList = useMemo(
     () =>
       getToolInputDisplayRenderTypeList({
@@ -46,21 +69,108 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
   );
   const onChangeRenderType = useCallback(
     (e: string) => {
+      const nextRenderType = e as FlowNodeInputTypeEnum;
+
+      const nextValue = (() => {
+        if (isUserSelectOptions) {
+          return nextRenderType === FlowNodeInputTypeEnum.reference
+            ? []
+            : USER_SELECT_DEFAULT_OPTIONS.map((item) => ({ ...item }));
+        }
+        if (isCollectionFilter && !isLegacyTagFilter) {
+          return nextRenderType === FlowNodeInputTypeEnum.reference
+            ? []
+            : {
+                ...(isDatasetTagFilterValue(input.value)
+                  ? input.value
+                  : createEmptyTagFilterValue()),
+                open: true
+              };
+        }
+        return undefined;
+      })();
+
       const nextInput = {
         ...input,
         ...getSelectedRenderTypeState({
-          renderTypeList: displayRenderTypeList,
-          selectedType: e as FlowNodeInputTypeEnum
+          renderTypeList: [...displayRenderTypeList],
+          selectedType: nextRenderType
         }),
-        value: undefined
+        value: nextValue
       };
 
       // 切换渲染类型整条替换输入记录（含清空 value），属于记录级变更。
-      nodeActions?.updateNode((current) => ({
-        inputs: current.inputs.map((item) => (item.key === input.key ? nextInput : item))
-      }));
+      const updateNodeInput = () =>
+        nodeActions?.updateNode((current) => ({
+          inputs: current.inputs.map((item) => (item.key === input.key ? nextInput : item))
+        }));
+
+      if (!isUserSelectOptions || !runtime) {
+        updateNodeInput();
+        return;
+      }
+
+      const currentNode = runtime.getNode(nodeId);
+      if (!currentNode) return;
+
+      const edges = runtime.getWorkflow().edges;
+      const optionHandleIds =
+        nextRenderType === FlowNodeInputTypeEnum.reference && Array.isArray(input.value)
+          ? input.value.map((item: { key: string }) => getHandleId(nodeId, 'source', item.key))
+          : [];
+      // 手动切引用时按选项顺序保留首条已连线分支，并把边迁移和节点更新放进同一事务。
+      const edgeToKeep =
+        optionHandleIds
+          .map((handleId) =>
+            edges.find((edge) => edge.source === nodeId && edge.sourceHandle === handleId)
+          )
+          .find((edge) => edge !== undefined) ?? edges.find((edge) => edge.source === nodeId);
+      if (!edgeToKeep) {
+        updateNodeInput();
+        return;
+      }
+
+      const nextFirstHandleId =
+        nextRenderType === FlowNodeInputTypeEnum.reference
+          ? getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)
+          : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
+      const commands: WorkflowCommand[] = edges
+        .flatMap((edge, index) =>
+          edge.source === nodeId &&
+          (edge !== edgeToKeep || edge.sourceHandle !== nextFirstHandleId)
+            ? [index]
+            : []
+        )
+        .sort((a, b) => b - a)
+        .map((index) => ({ type: 'disconnectEdge', index }));
+
+      commands.push({
+        type: 'updateNode',
+        nodeId,
+        patch: {
+          inputs: cloneValue(
+            currentNode.inputs.map((item) => (item.key === input.key ? nextInput : item))
+          ) as FlowNodeInputItemType[]
+        }
+      });
+      if (edgeToKeep.sourceHandle !== nextFirstHandleId) {
+        commands.push({
+          type: 'connectEdge',
+          edge: { ...edgeToKeep, sourceHandle: nextFirstHandleId }
+        });
+      }
+      runtime.dispatch(commands);
     },
-    [displayRenderTypeList, input, nodeActions]
+    [
+      displayRenderTypeList,
+      input,
+      isCollectionFilter,
+      isLegacyTagFilter,
+      isUserSelectOptions,
+      nodeId,
+      nodeActions,
+      runtime
+    ]
   );
 
   return (
@@ -72,12 +182,14 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
         {descriptionText && <QuestionTip ml={1} label={descriptionText}></QuestionTip>}
       </Flex>
       {/* value type */}
-      {[FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(renderType) && (
-        <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />
-      )}
+      {!isTagFilterClosed &&
+        !isUserSelectOptions &&
+        [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.fileSelect].includes(
+          renderType
+        ) && <ValueTypeLabel className="nodrag" valueType={valueType} valueDesc={valueDesc} />}
 
       {/* input type select */}
-      {displayRenderTypeList && displayRenderTypeList.length > 1 && (
+      {!isTagFilterClosed && displayRenderTypeList && displayRenderTypeList.length > 1 && (
         <Box ml={2} className="nodrag">
           <NodeInputSelect
             renderTypeList={displayRenderTypeList}
@@ -122,8 +234,8 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
       {/* Right Component */}
       {!input.deprecated && RightComponent && (
         <>
-          {!shouldRenderRightInline && <Box flex={'1'} />}
-          {shouldRenderRightInline ? <Box ml={2}>{RightComponent}</Box> : RightComponent}
+          <Box flex={'1'} />
+          {RightComponent}
         </>
       )}
     </Box>

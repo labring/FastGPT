@@ -1,11 +1,12 @@
 import { addMonths } from 'date-fns';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { isAuxiliaryGenerationSourceType } from '@fastgpt/global/common/chat/source';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
-import { authChatTargetCrud } from '../../support/permission/auth/chat';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ChatHistoryAuthProps = {
@@ -23,12 +24,12 @@ type ClearChatHistoriesAuthProps = Omit<ChatHistoryAuthProps, 'sourceType'> & {
 };
 
 /**
- * 将历史会话接口的鉴权上下文转换为 chat 表查询条件。
+ * 一次完成历史会话鉴权并构造查询条件，供列表操作和清空历史复用。
  *
  * 外链仍沿用 App-only 鉴权，并通过真实 appId 生成 source-aware 查询；
  * 标准 App/Skill Edit 请求必须先在 API schema 中转换为 `sourceType/sourceId`。
  */
-export async function buildChatHistoryMatch({
+async function getChatHistoryContext({
   req,
   sourceType,
   sourceId,
@@ -49,7 +50,8 @@ export async function buildChatHistoryMatch({
     sourceId: resolvedSourceId,
     tmbId,
     uid,
-    authType
+    authType,
+    scope
   } = await authChatTargetCrud({
     req,
     authToken: true,
@@ -61,29 +63,33 @@ export async function buildChatHistoryMatch({
     per
   });
 
-  if (authType === AuthUserTypeEnum.outLink) {
-    return {
-      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      shareId: outLinkAuthData?.shareId,
-      outLinkUid: uid,
-      updateTime: {
-        $gte: addMonths(new Date(), -1)
-      }
-    };
-  }
+  const match =
+    authType === AuthUserTypeEnum.outLink
+      ? {
+          ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
+          shareId: outLinkAuthData?.shareId,
+          outLinkUid: uid,
+          updateTime: { $gte: addMonths(new Date(), -1) }
+        }
+      : {
+          ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
+          ...scope,
+          tmbId,
+          ...(source && { source })
+        };
+  return { match, authType, resolvedSourceType, resolvedSourceId };
+}
 
-  return {
-    ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-    tmbId,
-    ...(source && { source })
-  };
+/** 历史列表、改名和软删除默认使用当前成员范围；外链沿用发布身份和时间范围。 */
+export async function buildChatHistoryMatch(props: ChatHistoryAuthProps) {
+  return (await getChatHistoryContext(props))?.match;
 }
 
 /**
  * 构造“清空历史”接口的范围。
  *
  * App 清空保持旧语义：网页登录只清 `online`，API Key 只清 `api`；
- * Skill Edit 没有 App 入口来源区分，只按 skill source 和当前成员清理。
+ * Skill Edit 和辅助生成只按资源来源及当前成员清理。
  */
 export async function buildClearChatHistoriesMatch({
   req,
@@ -91,65 +97,25 @@ export async function buildClearChatHistoriesMatch({
   sourceId,
   outLinkAuthData
 }: ClearChatHistoriesAuthProps) {
-  const match = await buildChatHistoryMatch({
-    req,
-    sourceType,
-    sourceId,
-    outLinkAuthData
-  });
-  if (!match) return undefined;
+  const context = await getChatHistoryContext({ req, sourceType, sourceId, outLinkAuthData });
+  if (!context) return undefined;
+  const { match, authType, resolvedSourceType, resolvedSourceId } = context;
 
-  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
+  // 辅助生成和 Skill 的会话不按 online/api 入口分组，直接复用同一次鉴权的成员范围。
+  if (
+    authType === AuthUserTypeEnum.outLink ||
+    sourceType === ChatSourceTypeEnum.skillEdit ||
+    isAuxiliaryGenerationSourceType(sourceType)
+  ) {
     return match;
   }
-
-  if (!sourceId) {
-    return undefined;
-  }
-
-  const {
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId,
-    tmbId,
-    uid,
-    authType
-  } = await authChatTargetCrud({
-    req,
-    authToken: true,
-    authApiKey: true,
-    sourceType,
-    sourceId,
-    outLinkAuthData
-  });
-
-  if (authType === AuthUserTypeEnum.outLink) {
-    return {
-      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      outLinkUid: uid
-    };
-  }
-
-  if (sourceType === ChatSourceTypeEnum.skillEdit) {
-    return {
-      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      tmbId
-    };
-  }
-
-  if (authType === AuthUserTypeEnum.token) {
-    return {
-      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      tmbId,
-      source: ChatSourceEnum.online
-    };
-  }
-
+  if (authType === AuthUserTypeEnum.token) return { ...match, source: ChatSourceEnum.online };
   if (authType === AuthUserTypeEnum.apikey) {
+    // 普通 App 的 API 清空保留原有整应用 api 记录语义。
     return {
       ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       source: ChatSourceEnum.api
     };
   }
-
   return Promise.reject(ChatErrEnum.unAuthChat);
 }

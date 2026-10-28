@@ -19,6 +19,7 @@ import { TeamPointCache, teamQpmCache } from '@fastgpt/dal/redis/caches';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 import { getRuntimeStandardPlanConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 const teamPointCache = new TeamPointCache({ logger });
@@ -78,8 +79,11 @@ export const buildStandardPlan = (
   auditLogStoreDuration: standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
   ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
   customDomain: standard?.customDomain ?? standardConstants.customDomain,
-  maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount,
+  ...getFileUploadLimits({
+    teamPlan: standard,
+    plan: standardConstants,
+    systemLimit: global.feConfigs?.limit
+  }),
   enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
 

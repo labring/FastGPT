@@ -5,8 +5,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 
 const ifElseHandleTranslate = [9, 0] as [number, number];
 const ifElseElseHandleTranslate = [9, 0] as [number, number];

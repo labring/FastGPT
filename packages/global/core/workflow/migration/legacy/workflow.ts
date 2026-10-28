@@ -1,7 +1,5 @@
-import type { CanonicalWorkflowData } from '../schema';
-import { CanonicalWorkflowDataSchema } from '../schema';
-import type { LegacyWorkflowDataInput } from './schema';
-import { LegacyWorkflowDataSchema } from './schema';
+import { type CanonicalWorkflowData, CanonicalWorkflowDataSchema } from '../schema';
+import { type LegacyWorkflowDataInput, LegacyWorkflowDataSchema } from './schema';
 import {
   migrateLegacyFlowNodeInputToCurrent,
   migrateLegacyHttpToolInputDefaultMode,
@@ -11,12 +9,12 @@ import { migrateSystemConfigToChatConfig } from './systemConfig';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
+import { getElseIFLabel } from '../../../../common/workflow/condition';
 import {
-  getElseIFLabel,
   getHandleId,
   isValidReferenceValueFormat,
   nodeInputIsReference
-} from '../../utils';
+} from '../../../../common/workflow/reference';
 
 // 这些旧插件没有持久化 catchError，但当前运行时需要显式开启错误分支。
 const legacyCatchErrorPluginIds = new Set([

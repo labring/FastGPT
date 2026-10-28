@@ -6,30 +6,27 @@ import {
 
 describe('canManagePasswordFromAccountInfo', () => {
   it('exposes password management for root accounts', () => {
-    expect(canManagePasswordFromAccountInfo({ isPlus: true, username: 'root' })).toBe(true);
+    expect(canManagePasswordFromAccountInfo({ username: 'root' })).toBe(true);
   });
 
   it('does not expose password management for WeCom users', () => {
-    expect(canManagePasswordFromAccountInfo({ isPlus: true, username: 'wecom-user' })).toBe(false);
+    expect(canManagePasswordFromAccountInfo({ username: 'wecom-user' })).toBe(false);
   });
 
-  it('exposes password management only for loaded Plus users', () => {
-    expect(canManagePasswordFromAccountInfo({ isPlus: true, username: 'member' })).toBe(true);
-    expect(canManagePasswordFromAccountInfo({ isPlus: false, username: 'member' })).toBe(false);
-    expect(canManagePasswordFromAccountInfo({ isPlus: true })).toBe(false);
+  it('exposes password management for regular accounts', () => {
+    expect(canManagePasswordFromAccountInfo({ username: 'member' })).toBe(true);
+    expect(canManagePasswordFromAccountInfo({})).toBe(false);
   });
 
   it('hides password management only when password availability is explicitly false', () => {
     expect(
       canManagePasswordFromAccountInfo({
-        isPlus: true,
         username: 'sso-user',
         passwordAvailable: false
       })
     ).toBe(false);
     expect(
       canManagePasswordFromAccountInfo({
-        isPlus: true,
         username: 'legacy-user',
         passwordAvailable: undefined
       })

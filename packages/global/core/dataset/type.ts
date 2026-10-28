@@ -23,7 +23,7 @@ import {
 } from './apiDataset/type';
 import { SourceMemberSchema } from '../../support/user/type';
 import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './data/constants';
-import { ParentIdSchema } from '../../common/parentFolder/type';
+import { FolderAccessModeSchema, ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
@@ -162,6 +162,9 @@ export const DatasetSchema = z
   .object({
     _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
     parentId: ParentIdSchema.meta({ description: '父级 ID' }),
+    ancestorIds: z.array(ObjectIdSchema).optional().meta({
+      description: '仅文件夹持久化的祖先目录路径，不包含自身'
+    }),
     userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
     teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
@@ -439,7 +442,12 @@ export const DatasetListItemSchema = z.object({
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    description: '被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回',
+    example: 0
+  }),
+  fileCount: IntSchema.optional().meta({
+    description:
+      '知识库所有层级的非目录集合数量，不按文件权限过滤；仅 listV2 请求 withFileCount 时返回，folder 类型不返回',
     example: 0
   }),
   vectorModel: EmbeddingModelDataSchema.optional().meta({
@@ -447,12 +455,18 @@ export const DatasetListItemSchema = z.object({
   }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
+  folderAccessMode: FolderAccessModeSchema.optional().meta({
+    example: 'navigate',
+    description: '文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限'
+  }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' })
 });
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 
 export const DatasetItemSchema = DatasetSchema.omit({
   // 详情不展示创建时间，避免历史记录尚未补齐该字段时阻断详情读取；列表使用独立 Schema。
+  // 路径元数据只用于服务端目录索引，不作为客户端数据返回。
+  ancestorIds: true,
   createTime: true,
   vectorModel: true,
   agentModel: true,
@@ -622,7 +636,11 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
         })
       )
       .meta({ description: '评分列表' }),
-    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    synonymMappings: z
+      .record(z.string(), z.string())
+      .optional()
+      .meta({ description: '分块实际命中的原词到标准词映射' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;

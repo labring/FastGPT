@@ -6,7 +6,10 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { isToolParamInput } from '../../../app/formEdit/utils';
-import { getSelectedInputRenderType, nodeInputIsReference } from '../../utils';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '../../../../common/workflow/reference';
 import { i18nT } from '../../../../common/i18n/utils';
 import {
   filterSelectableWorkflowNodeOutputs,

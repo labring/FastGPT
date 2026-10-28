@@ -75,7 +75,11 @@ const NodeLoopStart = ({ data, selected }: CanvasNodeProps) => {
         type: FlowNodeOutputTypeEnum.static,
         valueType: loopItemInputType
       });
-    } else if (loopItemInputType && loopArrayOutput?.valueType !== loopItemInputType) {
+    } else if (
+      loopItemInputType &&
+      loopArrayOutput &&
+      loopArrayOutput.valueType !== loopItemInputType
+    ) {
       nextOutputs = documentOutputs.map((output) =>
         output.key === NodeOutputKeyEnum.nestedStartInput
           ? { ...output, valueType: loopItemInputType }

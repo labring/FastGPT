@@ -157,7 +157,8 @@ export const ChannelPath: OpenAPIPath = {
   '/core/ai/model/channel/providerMetas': {
     get: {
       summary: '获取渠道 Provider 元数据',
-      description: '返回渠道创建和编辑表单所需的非敏感 Provider 默认配置。',
+      description:
+        '登录后返回渠道类型的多语言名称、图标、官网及表单默认配置；canCreate 标识可创建的类型。',
       tags: [DevApiTagsMap.model],
       responses: {
         200: {

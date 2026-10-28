@@ -1,7 +1,8 @@
 import z from 'zod';
 import { IntSchema } from '../../../../common/zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
-import { I18nStringSchema, PluginToolTagSchema } from '../../../../core/plugin/type';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
+import { PluginTextSchema, PluginToolTagSchema } from '../../../../core/plugin/type';
+import { LanguageSchema } from '../../../../common/i18n/type';
 import { PluginPermissionListSchema } from '../../../../sdk/fastgpt-plugin';
 
 export const MarketplaceOfficialSource = 'official';
@@ -17,17 +18,13 @@ export type MarketplaceSourceFilterType = z.infer<typeof MarketplaceSourceFilter
 
 export const MarketplaceToolChildSchema = z.object({
   id: z.string().meta({ example: 'search', description: '子工具 ID' }),
-  name: I18nStringSchema.meta({
+  name: PluginTextSchema.meta({
     example: { en: 'Web Search', 'zh-CN': '网页搜索' },
     description: '子工具名称'
   }),
-  description: I18nStringSchema.optional().meta({
+  description: PluginTextSchema.optional().meta({
     example: { en: 'Search the web', 'zh-CN': '搜索互联网内容' },
     description: '子工具简介'
-  }),
-  toolDescription: z.string().meta({
-    example: 'Search current information from the web',
-    description: '提供给模型的子工具说明'
   })
 });
 export type MarketplaceToolChildType = z.infer<typeof MarketplaceToolChildSchema>;
@@ -64,11 +61,11 @@ export const MarketplaceToolBaseSchema = z.object({
     description: '插件来源；旧版市场数据可能为空'
   }),
   isToolset: z.boolean().meta({ example: false, description: '是否为工具集' }),
-  name: I18nStringSchema.meta({
+  name: PluginTextSchema.meta({
     example: { en: 'Web Search', 'zh-CN': '网页搜索' },
     description: '工具名称'
   }),
-  description: I18nStringSchema.meta({
+  description: PluginTextSchema.meta({
     example: { en: 'Search the web', 'zh-CN': '搜索互联网内容' },
     description: '工具简介'
   }),
@@ -86,6 +83,10 @@ export const MarketplaceToolBaseSchema = z.object({
     example: 'https://example.com/readme.md',
     description: '插件 README 地址'
   }),
+  readmeUrls: z
+    .partialRecord(LanguageSchema, z.string())
+    .optional()
+    .meta({ description: '按语言区分的插件 README 地址' }),
   tags: z
     .array(z.string())
     .optional()
@@ -93,10 +94,6 @@ export const MarketplaceToolBaseSchema = z.object({
       example: ['search', 'productivity'],
       description: '工具标签 ID 列表'
     }),
-  toolDescription: z.string().meta({
-    example: 'Search current information from the web',
-    description: '提供给模型的工具说明'
-  }),
   downloadCount: IntSchema.meta({ example: 128, description: '累计下载次数' }),
   downloadUrl: z.string().optional().meta({
     example: 'https://example.com/fastgpt-web-search.pkg',
@@ -145,7 +142,7 @@ export const MarketplaceToolDetailItemSchema = MarketplaceToolBaseSchema.extend(
       example: { type: 'object', properties: { apiKey: { type: 'string' } } },
       description: '工具密钥 JSON Schema 定义'
     }),
-  versionDescription: I18nStringSchema.optional().meta({
+  versionDescription: PluginTextSchema.optional().meta({
     example: { en: 'Initial release', 'zh-CN': '首次发布' },
     description: '版本更新说明'
   }),
@@ -180,7 +177,7 @@ export const MarketplaceToolDetailSchema = z.object({
  * Tags: ['系统工具', 'Read']
  * ============================================================================ */
 
-export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
+export const GetMarketplaceToolsBodySchema = createPaginationSchema({
   searchKey: z.string().optional().meta({
     example: 'search',
     description: '按工具名称、简介或 ID 搜索'

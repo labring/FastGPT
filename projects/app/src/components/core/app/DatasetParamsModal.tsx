@@ -5,8 +5,6 @@ import {
   Button,
   Flex,
   HStack,
-  ModalBody,
-  ModalFooter,
   Slider,
   SliderFilledTrack,
   SliderThumb,
@@ -16,12 +14,15 @@ import {
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import DatasetTagFilterRows, {
+  type TagFilterReferenceList
+} from '@/components/core/dataset/DatasetTagFilterRows';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -37,7 +38,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
   limit = 'limit',
-  queryExtension = 'queryExtension'
+  queryExtension = 'queryExtension',
+  tagFilter = 'tagFilter'
 }
 
 const DatasetParamsModal = ({
@@ -53,10 +55,17 @@ const DatasetParamsModal = ({
   datasetSearchExtensionModelId,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
+  collectionFilterMatch,
+  showTagFilter = false,
+  datasetIds = [],
+  tagFilterReferenceList = [],
   maxTokens,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
+  showTagFilter?: boolean;
+  datasetIds?: string[];
+  tagFilterReferenceList?: TagFilterReferenceList;
   maxTokens?: number; // limit max tokens
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
@@ -66,29 +75,30 @@ const DatasetParamsModal = ({
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
+  // 固定本次弹窗的初始值；values 接受完整业务类型，避免 DeepPartial 将 unknown 条件值收窄成对象。
+  const [initialValues] = useState<AppDatasetSearchParamsType>(() => ({
+    searchMode,
+    embeddingWeight: embeddingWeight ?? 0.5,
+    usingReRank: !!usingReRank,
+    // 只恢复已保存的引用，不在初始化阶段选择默认模型。
+    rerankModelId,
+    rerankModel,
+    rerankWeight: rerankWeight ?? 0.5,
+    limit,
+    similarity,
+    datasetSearchUsingExtensionQuery,
+    datasetSearchExtensionModelId,
+    datasetSearchExtensionModel,
+    datasetSearchExtensionBg,
+    ...(showTagFilter ? { collectionFilterMatch } : {})
+  }));
   const { register, setValue, getValues, handleSubmit, watch } =
-    useForm<AppDatasetSearchParamsType>({
-      defaultValues: {
-        searchMode,
-        embeddingWeight: embeddingWeight || 0.5,
-        usingReRank: !!usingReRank,
-        // 只恢复已保存的引用，不在初始化阶段选择默认模型。
-        rerankModelId,
-        rerankModel,
-        rerankWeight: rerankWeight || 0.5,
-        limit,
-        similarity,
-        datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId,
-        datasetSearchExtensionModel,
-        datasetSearchExtensionBg
-      }
-    });
+    useForm<AppDatasetSearchParamsType>({ values: initialValues });
 
   const searchModeWatch = watch('searchMode');
   const embeddingWeightWatch = watch('embeddingWeight');
   const fullTextWeightWatch = useMemo(() => {
-    const val = 1 - (embeddingWeightWatch || 0.5);
+    const val = 1 - (embeddingWeightWatch ?? 0.5);
     return Number(val.toFixed(2));
   }, [embeddingWeightWatch]);
 
@@ -98,6 +108,7 @@ const DatasetParamsModal = ({
   const usingReRankWatch = watch('usingReRank');
   const reRankModelIdWatch = watch('rerankModelId');
   const rerankWeightWatch = watch('rerankWeight');
+  const collectionFilterMatchWatch = watch('collectionFilterMatch');
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -118,14 +129,53 @@ const DatasetParamsModal = ({
     <MyModal
       isOpen={true}
       onClose={onClose}
-      iconSrc="/imgs/modal/params.svg"
+      isCentered
       title={t('common:core.dataset.search.Dataset Search Params')}
-      w={['90vw', '550px']}
+      size={'md'}
+      bodyStyles={{
+        overflow: 'hidden',
+        px: 0
+      }}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button
+            onClick={() => {
+              handleSubmit((values) => {
+                if (
+                  values.datasetSearchUsingExtensionQuery &&
+                  isEmptyModelValue(values.datasetSearchExtensionModelId)
+                ) {
+                  toast({
+                    status: 'warning',
+                    title: t('common:core.workflow.check.model_required_short', {
+                      inputName: t('common:core.module.template.Query extension')
+                    })
+                  });
+                  setCurrentTabType(SearchSettingTabEnum.queryExtension);
+                  return;
+                }
+                // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
+                const {
+                  rerankModel: _rerankModel,
+                  datasetSearchExtensionModel: _extensionModel,
+                  ...canonicalValues
+                } = values;
+                onSuccess(canonicalValues);
+                onClose();
+              })();
+            }}
+          >
+            {t('common:Done')}
+          </Button>
+        </>
+      }
     >
-      <ModalBody flex={'auto'} overflow={'auto'} px={[4, 10]}>
+      <Box px={8} flexShrink={0}>
         <LightRowTabs<SearchSettingTabEnum>
           width={'100%'}
-          mb={3}
           list={[
             {
               icon: 'common/setting',
@@ -141,7 +191,16 @@ const DatasetParamsModal = ({
               label: t('common:core.module.template.Query extension'),
               value: SearchSettingTabEnum.queryExtension,
               icon: 'core/dataset/questionExtension'
-            }
+            },
+            ...(showTagFilter
+              ? [
+                  {
+                    icon: 'core/dataset/tag',
+                    label: t('workflow:tag_filter'),
+                    value: SearchSettingTabEnum.tagFilter
+                  }
+                ]
+              : [])
           ]}
           inlineStyles={{
             borderBottomColor: 'myGray.200',
@@ -150,8 +209,10 @@ const DatasetParamsModal = ({
           value={currentTabType}
           onChange={setCurrentTabType}
         />
+      </Box>
+      <Box flex={'1 1 auto'} minH={0} overflowY={'auto'} px={8} pt={3} pb={1}>
         {currentTabType === SearchSettingTabEnum.searchMode && (
-          <Box mt={3}>
+          <Box pt={1}>
             <LeftRadio<DatasetSearchModeEnum>
               py={2.5}
               gridGap={4}
@@ -352,7 +413,7 @@ const DatasetParamsModal = ({
         )}
         {currentTabType === SearchSettingTabEnum.queryExtension && (
           <Box>
-            <Box transform={'translateY(-5px)'} fontSize={'xs'} color={'myGray.500'}>
+            <Box fontSize={'xs'} color={'myGray.500'}>
               {t('common:core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
@@ -423,41 +484,21 @@ const DatasetParamsModal = ({
             )}
           </Box>
         )}
-      </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button
-          onClick={() => {
-            handleSubmit((values) => {
-              if (
-                values.datasetSearchUsingExtensionQuery &&
-                isEmptyModelValue(values.datasetSearchExtensionModelId)
-              ) {
-                toast({
-                  status: 'warning',
-                  title: t('common:core.workflow.check.model_required_short', {
-                    inputName: t('common:core.module.template.Query extension')
-                  })
-                });
-                setCurrentTabType(SearchSettingTabEnum.queryExtension);
-                return;
-              }
-              // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
-              const {
-                rerankModel: _rerankModel,
-                datasetSearchExtensionModel: _extensionModel,
-                ...canonicalValues
-              } = values;
-              onSuccess(canonicalValues);
-              onClose();
-            })();
-          }}
-        >
-          {t('common:Done')}
-        </Button>
-      </ModalFooter>
+        {currentTabType === SearchSettingTabEnum.tagFilter && showTagFilter && (
+          <Box pt={3}>
+            {/* 仅 SimpleApp 与 ChatAgent 在弹窗内展示标签过滤；二者自接入起即为结构化格式，且不支持工作流转回简易应用，无旧版字符串历史数据 */}
+            <DatasetTagFilterRows
+              usePortal
+              value={collectionFilterMatchWatch}
+              onChange={(value) => {
+                setValue('collectionFilterMatch', value, { shouldDirty: true });
+              }}
+              datasetIds={datasetIds}
+              referenceList={tagFilterReferenceList}
+            />
+          </Box>
+        )}
+      </Box>
     </MyModal>
   );
 };

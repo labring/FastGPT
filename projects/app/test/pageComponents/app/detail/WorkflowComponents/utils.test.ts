@@ -8,9 +8,65 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { filterSensitiveNodesData, storeNode2FlowNode } from '@/web/core/workflow/utils';
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
+    it.each([
+      {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        version: '1.2.3',
+        versionLabel: '1.2.3',
+        isLatestVersion: true
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        version: 'published-version-id',
+        versionLabel: 'Initial release',
+        isLatestVersion: false
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        version: '',
+        versionLabel: undefined,
+        isLatestVersion: true
+      }
+    ])(
+      'preserves $flowNodeType version metadata through sanitized JSON export and import',
+      ({ flowNodeType, ...versionMetadata }) => {
+        const t = ((key: string) => key) as any;
+        const node = storeNode2FlowNode({
+          item: {
+            nodeId: 'tool-node',
+            name: 'Tool',
+            flowNodeType,
+            pluginId: 'systemTool-search',
+            ...versionMetadata,
+            inputs: [],
+            outputs: []
+          },
+          t
+        });
+        const workflow = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+        const exportedConfig = JSON.parse(
+          JSON.stringify({
+            ...workflow,
+            nodes: filterSensitiveNodesData(workflow.nodes),
+            chatConfig: {}
+          })
+        );
+        const importedWorkflow = migrateWorkflowToCurrent(exportedConfig);
+        const restoredNode = storeNode2FlowNode({ item: importedWorkflow.nodes[0], t });
+
+        expect({
+          version: restoredNode.data.version,
+          versionLabel: restoredNode.data.versionLabel,
+          isLatestVersion: restoredNode.data.isLatestVersion
+        }).toEqual(versionMetadata);
+      }
+    );
+
     it('should convert UI workflow to store workflow', () => {
       const mockHandleList = [{ getAttribute: () => 'source1' }, { getAttribute: () => 'target1' }];
 
@@ -31,6 +87,7 @@ describe('WorkflowComponents utils', () => {
             intro: 'Intro 1',
             avatar: 'avatar1',
             flowNodeType: FlowNodeTypeEnum.userInput,
+            metadataLocale: 'zh-CN',
             showStatus: true,
             version: 1,
             inputs: [],
@@ -75,6 +132,7 @@ describe('WorkflowComponents utils', () => {
         intro: 'Intro 1',
         avatar: 'avatar1',
         flowNodeType: FlowNodeTypeEnum.userInput,
+        metadataLocale: 'zh-CN',
         position: { x: 100, y: 100 }
       });
 
@@ -85,6 +143,45 @@ describe('WorkflowComponents utils', () => {
         sourceHandle: 'source1',
         targetHandle: 'target1'
       });
+    });
+
+    it('preserves selected plugin tool metadata locale when saving an Agent node', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.selectedTools,
+                label: '',
+                renderTypeList: [],
+                value: [
+                  {
+                    id: 'search',
+                    pluginId: 'search',
+                    name: 'Search',
+                    flowNodeType: FlowNodeTypeEnum.tool,
+                    version: '1.0.0',
+                    metadataLocale: 'zh-CN',
+                    inputs: [],
+                    outputs: []
+                  }
+                ]
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].value).toEqual([
+        expect.objectContaining({ metadataLocale: 'zh-CN' })
+      ]);
     });
 
     it('should keep valid edges when ReactFlow handles have not mounted yet', () => {

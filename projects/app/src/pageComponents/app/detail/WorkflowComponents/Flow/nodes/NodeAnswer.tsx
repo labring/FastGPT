@@ -15,7 +15,7 @@ const NodeAnswer = ({ data, selected }: CanvasNodeProps) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} {...data}>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
         <Container>
           <RenderInput nodeId={nodeId} flowInputList={inputs} />
         </Container>

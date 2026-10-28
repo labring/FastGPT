@@ -1,5 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
+import type { ChatAllAppTabEnum, ChatSettingTabOptionEnum } from '@/pageComponents/chat/constants';
 import {
   ChatSidebarPaneEnum,
   defaultCollapseStatus,
@@ -10,16 +10,14 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getRecentlyUsedApps } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useLatest, useMount } from 'ahooks';
+import { useLatest, useMemoizedFn, useMount } from 'ahooks';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 import type { UserType } from '@fastgpt/global/support/user/type';
-
-type RecentlyUsedAppPlaceholderInput = Partial<GetRecentlyUsedAppsResponseType[number]>;
 
 export type ChatPageContextValue = {
   // Pane & collapse
@@ -27,7 +25,7 @@ export type ChatPageContextValue = {
   handlePaneChange: (
     pane: ChatSidebarPaneEnum,
     _id?: string,
-    _tab?: ChatSettingTabOptionEnum
+    _tab?: ChatSettingTabOptionEnum | ChatAllAppTabEnum
   ) => void;
   collapse: CollapseStatusType;
   onTriggerCollapse: () => void;
@@ -40,8 +38,7 @@ export type ChatPageContextValue = {
   isInitedUser: boolean;
   userInfo: UserType | null;
   myApps: GetRecentlyUsedAppsResponseType;
-  upsertRecentlyUsedAppPlaceholder: (app: RecentlyUsedAppPlaceholderInput) => void;
-  refreshRecentlyUsed: () => void;
+  refreshRecentlyUsed: (appId: string) => void;
 };
 
 export const ChatPageContext = createContext<ChatPageContextValue>({
@@ -57,7 +54,6 @@ export const ChatPageContext = createContext<ChatPageContextValue>({
   isInitedUser: false,
   userInfo: null,
   myApps: [],
-  upsertRecentlyUsedAppPlaceholder: () => {},
   refreshRecentlyUsed: () => {}
 });
 
@@ -85,21 +81,17 @@ export const ChatPageContextProvider = ({
   };
 
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
-  const [recentlyUsedAppPlaceholders, setRecentlyUsedAppPlaceholders] =
-    useState<GetRecentlyUsedAppsResponseType>([]);
   // Home App 是门户页背后的隐藏应用；缓存它的 id，避免移动/桌面切换时被最近使用列表短暂暴露。
   const [cachedHomeAppId, setCachedHomeAppId] = useState('');
 
-  // Get recently used apps
-  const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
+  // 进入页面或切换成员时拉取一次，已在列表中的应用不因点击、对话或计时而刷新。
+  const { data: myApps = [], refreshAsync: requestRecentlyUsed } = useRequest(
     () => getRecentlyUsedApps(),
     {
       manual: false,
       ready: !!userInfo,
       errorToast: '',
-      refreshDeps: [userInfo?.team?.tmbId],
-      pollingInterval: 30000,
-      throttleWait: 500 // 500ms throttle
+      refreshDeps: [userInfo?.team?.tmbId]
     }
   );
 
@@ -149,6 +141,7 @@ export const ChatPageContextProvider = ({
     cachedHomeAppId ||
     (feConfigs.isPlus && pane === ChatSidebarPaneEnum.HOME ? activeAppId : '');
 
+  /* eslint-disable react-hooks/set-state-in-effect -- 隐藏应用 id 需跨配置请求缓存，并在商业能力关闭时清理。 */
   useEffect(() => {
     if (!feConfigs.isPlus) {
       setCachedHomeAppId('');
@@ -161,39 +154,31 @@ export const ChatPageContextProvider = ({
 
     setCachedHomeAppId((current) => (current === nextHomeAppId ? current : nextHomeAppId));
   }, [chatSettings?.appId, feConfigs.isPlus]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const upsertRecentlyUsedAppPlaceholder = useCallback(
-    (app: RecentlyUsedAppPlaceholderInput) => {
-      const { appId, name, avatar } = app;
-      if (!appId || !name || !avatar) return;
-      if (appId === homeAppId) return;
-
-      setRecentlyUsedAppPlaceholders((state) => [
-        {
-          appId,
-          name,
-          avatar
-        },
-        ...state.filter((item) => item.appId !== appId)
-      ]);
-    },
-    [homeAppId]
+  const displayedMyApps = useMemo(
+    () => myApps.filter((app) => app.appId !== homeAppId),
+    [homeAppId, myApps]
   );
 
-  const mergedMyApps = useMemo(() => {
-    const appMap = new Map<string, GetRecentlyUsedAppsResponseType[number]>();
+  /** 对话正常结束后，仅在当前列表缺少该应用时刷新；失败保留原列表，供下一轮重试。 */
+  const refreshRecentlyUsed = useMemoizedFn((appId: string) => {
+    const tmbId = userInfo?.team?.tmbId;
+    if (!tmbId || !appId || appId === homeAppId || myApps.some((app) => app.appId === appId)) {
+      return;
+    }
 
-    [...recentlyUsedAppPlaceholders, ...myApps].forEach((app) => {
-      if (app.appId === homeAppId) return;
-      appMap.set(app.appId, app);
-    });
-
-    return Array.from(appMap.values());
-  }, [homeAppId, myApps, recentlyUsedAppPlaceholders]);
+    // 请求层 maxQuantity: 1 取消重叠旧请求，去重只依据最新列表，不保留已刷新应用的记录。
+    void requestRecentlyUsed().catch(() => {});
+  });
 
   const lastestPane = useLatest(pane);
   const handlePaneChange = useCallback(
-    async (newPane: ChatSidebarPaneEnum, id?: string, tab?: ChatSettingTabOptionEnum) => {
+    async (
+      newPane: ChatSidebarPaneEnum,
+      id?: string,
+      tab?: ChatSettingTabOptionEnum | ChatAllAppTabEnum
+    ) => {
       if (newPane === lastestPane.current && !id && !tab) return;
 
       const _id = (() => {
@@ -268,8 +253,7 @@ export const ChatPageContextProvider = ({
       logos,
       isInitedUser: true,
       userInfo,
-      myApps: mergedMyApps,
-      upsertRecentlyUsedAppPlaceholder,
+      myApps: displayedMyApps,
       refreshRecentlyUsed
     }),
     [
@@ -281,8 +265,7 @@ export const ChatPageContextProvider = ({
       refreshChatSetting,
       logos,
       userInfo,
-      mergedMyApps,
-      upsertRecentlyUsedAppPlaceholder,
+      displayedMyApps,
       refreshRecentlyUsed
     ]
   );

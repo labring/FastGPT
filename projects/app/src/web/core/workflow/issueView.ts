@@ -18,7 +18,7 @@ export type WorkflowIssueLike = WorkflowCheckIssue | WorkflowConfigIssue;
 export type WorkflowIssueUIStatus = 'pending_improve' | 'pending_handle';
 
 /** 待处理：引用失效、工具不可用、模型与虚拟机不可用，都需要用户先修外部依赖。其余是待完善。 */
-const PENDING_HANDLE_CODES = new Set<WorkflowIssueCode>([
+const PENDING_HANDLE_CODES = new Set<string>([
   'invalid_reference',
   'invalid_reference_type',
   'unreachable_reference',
@@ -35,7 +35,7 @@ const PENDING_HANDLE_CODES = new Set<WorkflowIssueCode>([
 ]);
 
 /** 按 issue code 映射节点提示条的状态前缀，不直接使用 level 字段。 */
-export const getWorkflowIssueUIStatus = (code: WorkflowIssueCode): WorkflowIssueUIStatus =>
+export const getWorkflowIssueUIStatus = (code: WorkflowIssueLike['code']): WorkflowIssueUIStatus =>
   PENDING_HANDLE_CODES.has(code) ? 'pending_handle' : 'pending_improve';
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -114,7 +114,8 @@ export const collectWorkflowErrorIssues = (runtime: WorkflowRuntimePort) => {
  * i18next 解析；未命中时保留原文。`params.nodeName` 是工作流自身信息，`model` 是纯数据。
  */
 export const renderWorkflowIssueMessage = (issue: WorkflowIssueLike, t: TFunction) => {
-  const key = WORKFLOW_ISSUE_I18N_KEYS[issue.code] as any;
+  const key = WORKFLOW_ISSUE_I18N_KEYS[issue.code as WorkflowIssueCode];
+  if (!key) return issue.message ?? issue.code;
   const params = issue.params;
   if (!params) return t(key);
   return t(key, {

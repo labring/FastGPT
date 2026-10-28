@@ -194,16 +194,21 @@ const AppCard = ({
         </Flex>
 
         {/* Intro Text */}
-        <Box
-          className={'textEllipsis2'}
-          wordBreak={'break-all'}
-          color={'myGray.600'}
-          fontSize={'sm'}
-          lineHeight={'1.6'}
-          height={'40px'}
+        <MyTooltip
+          label={appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          showOnlyWhenOverflow
         >
-          {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
-        </Box>
+          <Box
+            className={'textEllipsis2'}
+            wordBreak={'break-all'}
+            color={'myGray.600'}
+            fontSize={'sm'}
+            lineHeight={'1.6'}
+            height={'40px'}
+          >
+            {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
+          </Box>
+        </MyTooltip>
       </Box>
       {transitionCreateNew !== undefined && (
         <MyModal isOpen title={t('app:transition_to_workflow')} iconSrc="core/app/type/workflow">

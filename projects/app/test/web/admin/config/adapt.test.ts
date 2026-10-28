@@ -57,6 +57,44 @@ const createFormInput = (overrides: DeepPartial<ConfigFormInput> = {}): ConfigFo
 };
 
 describe('formatFormData2ConfigStore', () => {
+  it.each([undefined, 0, 8])(
+    'round-trips vector recall concurrency with input %j',
+    (concurrency) => {
+      const form = formatConfigStore2FormSchema({
+        fastgpt: { feConfigs: {}, systemEnv: { vectorRecallConcurrency: concurrency } } as any,
+        fastgptPro: {} as any
+      });
+      expect(form.siteSettings.systemEnv.vectorRecallConcurrency).toBe(concurrency ?? 0);
+
+      const stored = formatFormData2ConfigStore(form);
+      expect(stored.fastgpt.systemEnv.vectorRecallConcurrency).toBe(concurrency ?? 0);
+      expect(stored.fastgpt.feConfigs).not.toHaveProperty('vectorRecallConcurrency');
+    }
+  );
+
+  it.each([undefined, { url: 'https://current-sso.example.com' }, { url: '' }])(
+    'moves legacy SSO URLs into systemEnv without overriding explicit server config %j',
+    (serverConfig) => {
+      const source = {
+        fastgpt: {
+          feConfigs: { sso: { url: 'https://legacy-sso.example.com', title: 'SSO' } },
+          systemEnv: { sso: serverConfig }
+        },
+        fastgptPro: {}
+      };
+      const form = formatConfigStore2FormSchema(source as any);
+      const stored = formatFormData2ConfigStore(form);
+      const expected = serverConfig ?? { url: 'https://legacy-sso.example.com' };
+      expect(form.siteSettings.systemEnv.sso).toEqual(expected);
+      expect(form.loginSettings.sso).not.toHaveProperty('url');
+      expect(stored.fastgpt.systemEnv.sso).toEqual(expected);
+      expect(stored.fastgpt.feConfigs.sso).toEqual({
+        title: 'SSO',
+        enabled: Boolean(expected.url)
+      });
+      expect(source.fastgpt.feConfigs.sso.url).toBe('https://legacy-sso.example.com');
+    }
+  );
   it('persists sandbox quotas in server configuration', () => {
     const form = createFormInput();
     form.siteSettings.systemEnv.agentSandboxMax = 12;
@@ -139,7 +177,12 @@ describe('sandbox quota config round trip', () => {
     const input = createFormInput();
     input.siteSettings.systemEnv.agentSandboxMax = 12;
     input.siteSettings.systemEnv.agentSandboxMaxPerTeam = undefined;
-    input.siteSettings.limit = { exportDatasetLimitMinutes: 20, websiteSyncLimitMinuted: 60 };
+    input.siteSettings.limit = {
+      uploadFileMaxAmount: 7,
+      uploadFileMaxSize: 32,
+      exportDatasetLimitMinutes: 20,
+      websiteSyncLimitMinuted: 60
+    };
     const stored = formatFormData2ConfigStore(input);
     const form = formatConfigStore2FormSchema(stored);
 
@@ -150,8 +193,42 @@ describe('sandbox quota config round trip', () => {
     const saved = formatFormData2ConfigStore(form);
     expect(saved.fastgpt.systemEnv).toMatchObject(stored.fastgpt.systemEnv);
     expect(saved.fastgpt.feConfigs.limit).toEqual({
+      uploadFileMaxAmount: 7,
+      uploadFileMaxSize: 32,
       exportDatasetLimitMinutes: 20,
       websiteSyncLimitMinuted: 60
     });
   });
+});
+
+// 服务端策略只在 systemEnv 保存；兼容旧字段时不覆盖显式空白名单。
+describe('backend configuration boundary', () => {
+  it.each([undefined, []])(
+    'migrates legacy policies with systemEnv whitelist %s taking precedence',
+    (configured) => {
+      const form = formatConfigStore2FormSchema({
+        fastgpt: {
+          feConfigs: {
+            fileUrlWhitelist: ['private.internal'],
+            ip_whitelist: '10.0.0.1',
+            evalFileMaxLines: 100
+          },
+          systemEnv: { fileUrlWhitelist: configured }
+        } as any,
+        fastgptPro: {} as any
+      });
+      const stored = formatFormData2ConfigStore(form);
+      expect(stored.fastgpt.systemEnv.fileUrlWhitelist).toEqual(configured ?? ['private.internal']);
+      expect(stored.fastgpt.systemEnv.ip_whitelist).toBe('10.0.0.1');
+      for (const key of [
+        'fileUrlWhitelist',
+        'ip_whitelist',
+        'evalFileMaxLines',
+        'uploadFileMaxAmount',
+        'uploadFileMaxSize'
+      ]) {
+        expect(stored.fastgpt.feConfigs).not.toHaveProperty(key);
+      }
+    }
+  );
 });

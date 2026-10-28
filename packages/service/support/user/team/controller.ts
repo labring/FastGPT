@@ -56,7 +56,8 @@ async function getTeamMember(
     (await getTmbPermission({
       resourceType: PerResourceTypeEnum.team,
       teamId: tmb.teamId,
-      tmbId: tmb._id
+      tmbId: tmb._id,
+      session
     })) ?? TeamDefaultRoleVal;
 
   return {

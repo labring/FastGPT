@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { getDynamicOutputDisconnectCommands } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderOutput/DynamicOutputs';
 
 const edges = [

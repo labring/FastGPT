@@ -130,8 +130,8 @@ const OutLink = (props: Props) => {
   const initSign = useRef(false);
   const { data, loading } = useRequest(
     async () => {
-      const shareId = outLinkAuthData.shareId;
-      const outLinkUid = outLinkAuthData.outLinkUid;
+      const shareId = outLinkAuthData?.shareId;
+      const outLinkUid = outLinkAuthData?.outLinkUid;
       if (!outLinkUid || !shareId || forbidLoadChatRef.current) return;
 
       const res = await getInitOutLinkChatInfo({
@@ -168,7 +168,7 @@ const OutLink = (props: Props) => {
   );
   const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
   const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
-  const isShareAuthReady = !!outLinkAuthData.shareId && !!outLinkAuthData.outLinkUid;
+  const isShareAuthReady = !!outLinkAuthData?.shareId && !!outLinkAuthData?.outLinkUid;
   const { SandboxEntryIcon } = useSandboxStatus({
     appId: isShareAuthReady ? appId : '',
     chatId,
@@ -546,7 +546,7 @@ const Render = (props: Props) => {
 
     setOutLinkAuthData(outLinkAuthData);
     return () => {
-      setOutLinkAuthData({});
+      setOutLinkAuthData();
     };
   }, [chatStoreLoaded, outLinkAuthData, setOutLinkAuthData]);
 

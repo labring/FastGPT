@@ -1,12 +1,11 @@
+import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { checkStoreWorkflowBeforeRunOrPublish } from '@/web/core/workflow/service';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 import {
-  collectWorkflowErrorIssues,
   getToolErrorMessage,
-  renderWorkflowIssueMessage
-} from '@/web/core/workflow/issueView';
-import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
+  getWorkflowCheckIssueMessage
+} from '@/web/core/workflow/check/message';
 import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
 import type { Form2WorkflowFnType } from './type';
 
@@ -90,11 +89,17 @@ export const checkAppFormResourceIssues = ({
   ];
 
   for (const item of resourceItems) {
-    if (item.error === 'resource_no_permission') {
-      return renderWorkflowIssueMessage({ level: 'error', code: 'resource_no_permission' }, t);
+    if (item.error === WorkflowCheckIssueCodeEnum.resourceNoPermission) {
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceNoPermission,
+        t
+      });
     }
     if (item.error) {
-      return renderWorkflowIssueMessage({ level: 'error', code: 'resource_missing' }, t);
+      return getWorkflowCheckIssueMessage({
+        issueCode: WorkflowCheckIssueCodeEnum.resourceMissing,
+        t
+      });
     }
   }
 
@@ -141,31 +146,20 @@ export const checkAppFormBeforePublish = async ({
 
   // 3. 工作流图级校验（模型可用性、节点输入完整性等）
   const workflow = form2WorkflowFn(appForm, t);
-  const models = await getWorkflowModelDetails({
+  const checkResults = await checkStoreWorkflowBeforeRunOrPublish({
     nodes: workflow.nodes,
+    edges: workflow.edges,
+    appId,
     chatConfig: appForm.chatConfig,
-    appId
-  });
-  const runtime = hydrateRuntime({
-    input: workflow,
-    chatConfig: appForm.chatConfig,
-    t,
-    getEnvironment: () => ({
-      models,
-      sandbox: {
-        configured: !!showSandbox,
-        planSupported: !!enableSandbox
-      }
-    })
+    t
   });
 
-  try {
-    const errors = collectWorkflowErrorIssues(runtime);
-    if (errors.length > 0) {
-      return renderWorkflowIssueMessage(errors[0], t);
-    }
-  } finally {
-    runtime.dispose();
+  if (checkResults.hasError) {
+    return (
+      checkResults.firstErrorIssue?.message ||
+      t('app:app.error.publish_unExist_app') ||
+      t('common:core.workflow.Check Failed')
+    );
   }
 
   return undefined;

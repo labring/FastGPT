@@ -6,6 +6,7 @@ import {
   WORKFLOW_ISSUE_I18N_KEYS,
   WorkflowIssueCode
 } from '@fastgpt/global/core/workflow/editor/issueCode';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 import {
   getWorkflowIssueUIStatus,
@@ -78,6 +79,15 @@ describe('renderWorkflowIssueMessage', () => {
     expect(renderWorkflowIssueMessage(createIssue({ code: WorkflowIssueCode.noUpstream }), t)).toBe(
       'common:core.workflow.check.no_upstream'
     );
+  });
+
+  it('falls back to the diagnostic message when a code has no UI translation', () => {
+    expect(
+      renderWorkflowIssueMessage(
+        createIssue({ code: WorkflowDiagnosticCodeEnum.cliArgumentInvalid, message: 'Invalid CLI argument' }),
+        t
+      )
+    ).toBe('Invalid CLI argument');
   });
 });
 

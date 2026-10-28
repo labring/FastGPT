@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   formatModelProviders,
   getModelProviderFromCache,
@@ -39,12 +38,6 @@ export const useModelConfig = ({
     () => (request.data as GetSystemModelConfigResponse | undefined)?.defaultModelIds ?? {},
     [request.data]
   );
-  const aiproxyChannels = useMemo(() => {
-    const rawChannels =
-      (request.data as GetSystemModelConfigResponse | undefined)?.aiproxyChannels ?? [];
-    if (rawChannels.length > 0) return rawChannels;
-    return useSystemStore.getState().aiproxyChannels ?? [];
-  }, [request.data]);
   const providerCache = useMemo(
     () => formatModelProviders(request.data?.providers ?? []),
     [request.data?.providers]
@@ -81,7 +74,6 @@ export const useModelConfig = ({
     models,
     channels,
     providers,
-    aiproxyChannels,
     defaultModelIds,
     getModelProvider,
     getModelProviders,

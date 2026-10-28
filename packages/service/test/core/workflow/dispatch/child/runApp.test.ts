@@ -14,7 +14,7 @@ vi.mock('../../../../../core/workflow/dispatch/index', () => ({
   runWorkflow: (args: any) => mocks.runWorkflow(args)
 }));
 
-vi.mock('../../../../../core/workflow/utils/resource', () => ({
+vi.mock('../../../../../core/workflow/resource/service', () => ({
   loadChildWorkflowWithResource: (args: any) => mocks.loadChildWorkflowWithResource(args)
 }));
 

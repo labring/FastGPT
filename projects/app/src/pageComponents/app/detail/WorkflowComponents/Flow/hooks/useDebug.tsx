@@ -1,10 +1,10 @@
 import React from 'react';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
-import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  type RuntimeEdgeItemType,
-  type StoreEdgeItemType
+import type {
+  RuntimeEdgeItemType,
+  StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useCallback, useState } from 'react';
@@ -30,8 +30,7 @@ import {
 } from '../nodes/render/useWorkflowDocument';
 import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useFileUploadLimits } from '@/web/common/file/hooks/useFileUploadLimits';
 import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import {
   checkInputShouldRenderInDebug,
@@ -57,11 +56,9 @@ enum TabEnum {
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { maxUploadFileCount } = useFileUploadLimits();
   const debugFileMaxAmount = getUserFileAmountLimit({
-    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
-    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+    systemMaxFileAmount: maxUploadFileCount
   });
 
   // 可引用来源要按 id 查任意节点并展开容器子节点：语义快照提供 edges，

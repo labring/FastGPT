@@ -24,6 +24,8 @@ FastGPT uses the `AI Proxy` service to connect to different model providers. AI 
 
 ### Architecture Diagram
 
+When FastGPT requests a model such as `gpt-5`, AI Proxy finds the channels configured for that model, selects an available channel, and forwards the request to its upstream provider. The provider's response returns through AI Proxy to FastGPT.
+
 ![alt text](../../../../public/imgs/image-95.png)
 
 ### Model Types
@@ -61,7 +63,7 @@ Using Alibaba Bailian models as an example:
 
 1. Channel Name: A display label for the channel, used for identification only.
 2. Protocol Type: The API protocol for the model. Generally, select the provider that offers the model. Most providers support the OpenAI protocol, so you can also choose OpenAI as the protocol type.
-3. Models: The specific models available in this channel. The system includes popular models by default. If the model you need isn't in the dropdown, click "Add Model" to [add a custom model](./intro.en.mdx#add-a-custom-model).
+3. Models: The specific models available in this channel. The system includes popular models by default. If the model you need isn't in the dropdown, click "Add Model" to [add a custom model](/en/self-host/config/model/intro#add-a-custom-model).
 4. Model Mapping: Maps the model name in FastGPT requests to the actual model name at the provider. For example:
 
 ```json
@@ -125,6 +127,8 @@ If the built-in models don't meet your needs, you can add custom models. If the 
 
 1. **Add via Form**
 
+In `Model Configuration`, click `Add Model` in the top-right corner and select the model type. Enter the provider, a unique model ID, display name, pricing, and supported capabilities, then click `Confirm`.
+
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![alt text](../../../../public/imgs/image-96.png) | ![alt text](../../../../public/imgs/image-97.png) |
@@ -133,9 +137,15 @@ If the built-in models don't meet your needs, you can add custom models. If the 
 
 If you find it tedious to configure models through the UI, you can use a configuration file instead. This is also useful for quickly replicating the configuration from one system to another.
 
+Click `Configuration File` in the top-right corner of `Model Configuration` to open the JSON editor. Copy the existing configuration as a backup, edit the model array, and click `Confirm` to apply it. Confirming replaces the entire current model configuration, so include every model you want to retain.
+
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![alt text](../../../../public/imgs/image-98.png) | ![alt text](../../../../public/imgs/image-99.png) |
+
+Token model prices and tier boundaries use M Tokens. Text-to-speech is priced per 1M characters; speech-to-text remains per 60 seconds. Unit prices support up to two decimal places.
+
+Only system models use these prices; team models are free. Pricing is stored under pricing: LLMs use tiers with inputPrice, outputPrice, and an optional maxInputTokens upper limit in M Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use unitPrice: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Legacy root-level prices are read only by the migration and ignored by the new runtime. Missing pricing is free until migration completes.
 
 <Accordions>
 <Accordion title="Language Model Fields">
@@ -152,7 +162,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "maxResponse": 16000, // Maximum response length
     "quoteMaxToken": 120000, // Maximum citation content tokens
     "maxTemperature": 1.2, // Maximum temperature
-    "charsPointsPrice": 0, // Points per 1k tokens (commercial edition)
+    "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Points per M Tokens (commercial edition)
     "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
     "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
@@ -178,7 +188,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "provider": "OpenAI", // Model provider
     "model": "text-embedding-3-small", // Model ID
     "name": "text-embedding-3-small", // Display name
-    "charsPointsPrice": 0, // Points per 1k tokens
+    "pricing": { "unitPrice": 0 }, // Points per M Tokens
     "defaultToken": 512, // Default token count for text splitting
     "maxToken": 3000 // Maximum token count
   }
@@ -230,7 +240,7 @@ If you find it tedious to configure models through the UI, you can use a configu
         "value": "fishaudio/fish-speech-1.5:anna" // Voice ID
       }
     ],
-    "charsPointsPrice": 0 // Points per 1k tokens
+    "pricing": { "unitPrice": 0 } // Points per 1M characters
   }
 }
 ```
@@ -248,7 +258,7 @@ If you find it tedious to configure models through the UI, you can use a configu
     "provider": "OpenAI", // Model provider
     "model": "gpt-transcribe", // Model ID
     "name": "gpt-transcribe", // Display name
-    "charsPointsPrice": 0, // Points per 1k tokens
+    "pricing": { "unitPrice": 0 }, // Points per 60 seconds
     "type": "stt" // Model type
   }
 }
@@ -401,7 +411,7 @@ Model calls made through channels are logged on the `Call Logs` page. Logs inclu
 
 ### Self-Hosted Models
 
-[See the ReRank model deployment tutorial](../../custom-models/bge-rerank.en.mdx)
+[See the ReRank model deployment tutorial](/en/self-host/custom-models/bge-rerank)
 
 ### Migrating from OneAPI to AI Proxy
 

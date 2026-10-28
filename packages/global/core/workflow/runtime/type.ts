@@ -10,6 +10,7 @@ import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
+import type { AppResource } from '../../app/type';
 
 const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
 
@@ -21,8 +22,7 @@ export type RuntimeNodeItemType = {
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
-  /** @deprecated Unused now in favor of `intro` in node data. */
-  toolDescription?: StoreNodeItemType['toolDescription'];
+  metadataLocale?: StoreNodeItemType['metadataLocale'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
@@ -121,13 +121,6 @@ export const DispatchNodeResponseSchema = z
       .array(SearchDataResponseQuoteListItemSchema)
       .optional()
       .meta({ description: '融合候选集（去重/过滤前），仅重排开启时记录' }),
-    deepSearchResult: z
-      .object({
-        model: z.string().meta({ description: '模型' }),
-        inputTokens: z.number().meta({ description: '输入 token' }),
-        outputTokens: z.number().meta({ description: '输出 token' })
-      })
-      .optional(),
 
     // dataset concat
     concatLength: z.number().optional(),
@@ -307,3 +300,10 @@ export const NodeOutputItemSchema = z.object({
   value: z.any().meta({ ...JsonValueOpenApiMeta, description: '节点输出值' })
 });
 export type NodeOutputItemType = z.infer<typeof NodeOutputItemSchema>;
+
+export type WorkflowResourceContext = {
+  teamId?: string;
+  /** 保留 root 在同团队内的资源 ACL 旁路；不能绕过 teamId 归属检查。 */
+  isRoot: boolean;
+  resourceMap: Map<string, AppResource>;
+};

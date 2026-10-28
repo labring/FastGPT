@@ -1,5 +1,5 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
-import { nodeInputIsReference } from '../utils';
+import { nodeInputIsReference } from '../../../common/workflow/reference';
 import { isEqual } from 'lodash-es';
 import type {
   FlowNodeInputItemType,

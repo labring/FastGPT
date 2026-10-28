@@ -10,6 +10,7 @@ import { isSafeImgSrc } from '@fastgpt/global/common/string/url';
 
 import { fastgptMarkdownSanitizeSchema } from './sanitizeSchema';
 import { rehypeImageCitations } from './rehypeImageCitations';
+import { rehypeTablePipes } from './rehypeTablePipes';
 
 /**
  * Markdown Remark 解析插件配置：
@@ -25,15 +26,17 @@ export const markdownRemarkPlugins: PluggableList = [
 
 /**
  * Markdown Rehype 渲染与安全净化插件流水线：
- * 1. RehypeKatex: 渲染 KaTeX 数学公式为 HTML
- * 2. rehypeRaw: 将 Markdown 中的原生 HTML 标签还原为 HAST 抽象语法树节点
- * 3. rehypeSanitize: 基于严格白名单彻底剥离 script/style/on* 事件/非法协议
- * 4. RehypeExternalLinks: 外部链接自动添加 target="_blank" 及 noopener 保护
- * 5. rehypeImageCitations: FastGPT 专属引用与图片居中增强插件
+ * 1. rehypeRaw: 将 Markdown 中的原生 HTML 标签还原为 HAST 抽象语法树节点
+ * 2. rehypeSanitize: 基于严格白名单彻底剥离 script/style/on* 事件/非法协议
+ * 3. rehypeTablePipes: 恢复表格代码和公式中的管道符实体，保留 LaTeX 语义
+ * 4. RehypeKatex: 渲染 KaTeX 数学公式为 HTML
+ * 5. RehypeExternalLinks: 外部链接自动添加 target="_blank" 及 noopener 保护
+ * 6. rehypeImageCitations: FastGPT 专属引用与图片居中增强插件
  */
 export const markdownBaseRehypePlugins: PluggableList = [
   rehypeRaw,
   [rehypeSanitize, fastgptMarkdownSanitizeSchema],
+  rehypeTablePipes,
   RehypeKatex,
   [RehypeExternalLinks, { target: '_blank', rel: ['noopener', 'noreferrer'] }],
   rehypeImageCitations

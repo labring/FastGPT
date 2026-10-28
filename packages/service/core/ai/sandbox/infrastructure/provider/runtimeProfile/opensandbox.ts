@@ -66,6 +66,28 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH;
   const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim());
 
+  /**
+   * 按最终 limits 独立派生 CPU、内存 requests；倍率为 1 时保持该维度不变。
+   * 环境变量 schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
+   * CPU 向下取整到毫核、内存到 MiB，最低分别为 1m、1Mi；不派生磁盘预留。
+   */
+  function deriveResourceRequests(limits: { cpuCount: number; memoryMiB: number }) {
+    const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
+    const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
+    if (cpuFactor === 1 && memoryFactor === 1) return undefined;
+
+    return {
+      cpuCount:
+        cpuFactor > 1
+          ? Math.max(1, Math.floor((limits.cpuCount * 1000) / cpuFactor)) / 1000
+          : limits.cpuCount,
+      memoryMiB:
+        memoryFactor > 1
+          ? Math.max(1, Math.floor(limits.memoryMiB / memoryFactor))
+          : limits.memoryMiB
+    };
+  }
+
   return {
     provider: 'opensandbox',
     defaultImage,
@@ -76,8 +98,11 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       // OpenSandbox create 必须带镜像；调用方显式传入的镜像优先，其次才使用运行态默认镜像。
       const createConfig = input.createConfig ?? {};
       const isKubernetesRuntime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'kubernetes';
-      const { networkPolicy: requestedNetworkPolicy, ...createConfigWithoutNetworkPolicy } =
-        createConfig;
+      const {
+        networkPolicy: requestedNetworkPolicy,
+        resourceRequests: requestedResourceRequests,
+        ...createConfigWithoutNetworkPolicy
+      } = createConfig;
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
         throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
@@ -104,6 +129,10 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
           serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
         ...storageLimit
       };
+      // 仅 Kubernetes 运行态下发 requests（按 CPU/内存独立倍率派生）；Docker 运行态不下发该字段。
+      const resourceRequests = isKubernetesRuntime
+        ? (requestedResourceRequests ?? deriveResourceRequests(resourceLimits))
+        : undefined;
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeStringRecord(createConfig.metadata, input.metadata);
       // volume 既可能来自 volume manager，也可能来自调用方透传的 createConfig；运行态 VM 配置优先。
@@ -118,6 +147,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
         ...createConfigWithoutNetworkPolicy,
         image,
         resourceLimits,
+        ...(resourceRequests ? { resourceRequests } : {}),
         readyTimeoutSeconds: createConfig.readyTimeoutSeconds ?? 120,
         ...(entrypoint ? { entrypoint } : {}),
         ...(env ? { env } : {}),

@@ -81,6 +81,8 @@ export type ChatDispatchProps = {
     contact: string;
     teamId: string;
     tmbId: string;
+    timezone?: string;
+    externalProvider?: ExternalProviderType;
   };
   uid: string; // Who run this workflow
 
@@ -101,9 +103,6 @@ export type ChatDispatchProps = {
   apiVersion?: 'v1' | 'v2';
 
   workflowDispatchDeep: number;
-
-  /** 当前节点的资源输入是否来自工作流引用，动态资源回退到运行人权限。 */
-  dynamicDataset?: boolean;
 
   responseAllData?: boolean;
   responseDetail?: boolean;

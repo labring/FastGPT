@@ -161,6 +161,16 @@ describe('useToolCatalog', () => {
     expect(result.getToolInfo('missing')).toBeUndefined();
   });
 
+  it('uses the node intro regardless of dispatch language', async () => {
+    const { tools } = await useToolCatalog({
+      messages: [],
+      toolNodes: [createToolNode({ intro: 'Search summary' })],
+      lang: 'zh-CN'
+    });
+
+    expect(tools[0].function.description).toBe('Search: Search summary');
+  });
+
   it('exposes only agent-generated params to model schema', () => {
     const schema = createToolSchema(
       createToolNode({

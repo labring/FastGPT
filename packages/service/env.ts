@@ -113,6 +113,14 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_STORAGE_SIZE_GI: NumSchema.min(1).default(1).meta({
       description: 'Agent Sandbox 存储容量，单位 Gi'
     }),
+    AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox CPU 超卖倍数（仅 opensandbox + kubernetes 运行态生效）：CPU requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
+    AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: NumSchema.min(1).default(1).meta({
+      description:
+        'Agent Sandbox 内存超卖倍数（仅 opensandbox + kubernetes 运行态生效）：内存 requests = limits / 该值；1 = 该维度不超卖（requests 镜像 limits）'
+    }),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -134,7 +142,7 @@ export const serviceEnv = createEnv({
     }),
     AGENT_SANDBOX_MAX: IntSchema.min(1).default(100).meta({
       description:
-        'Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池，超出即拒绝；替代原 AGENT_SANDBOX_MAX_EDIT_DEBUG）'
+        'Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池，超出即拒绝）'
     }),
     AGENT_SANDBOX_MAX_PER_TEAM: IntSchema.min(1).optional().meta({
       description: '单团队 Agent sandbox 活跃实例配额；不配置表示不限制'
@@ -489,10 +497,7 @@ export const serviceEnv = createEnv({
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')
   },
   emptyStringAsUndefined: true,
-  runtimeEnv: {
-    ...getRuntimeEnv(),
-    AGENT_SANDBOX_MAX: process.env.AGENT_SANDBOX_MAX || process.env.AGENT_SANDBOX_MAX_EDIT_DEBUG
-  },
+  runtimeEnv: getRuntimeEnv(),
   onValidationError(issues) {
     const paths = issues.map((issue) => issue.path).join(', ');
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);

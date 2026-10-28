@@ -353,7 +353,16 @@ export const createWorkflowEditor = (
     const ctx: TransactionContext = { working, views, meta, referenceGraph: workingReferenceGraph };
     try {
       list.forEach((command) => applyCommand(ctx, command));
-      if (list.some((command) => command.type === 'connectEdge')) {
+      if (
+        list.some(
+          (command) =>
+            command.type === 'connectEdge' ||
+            command.type === 'disconnectEdge' ||
+            command.type === 'removeNodes' ||
+            command.type === 'replaceNode' ||
+            (command.type === 'updateNode' && command.patch.outputs !== undefined)
+        )
+      ) {
         document.applyWorkflowStartAutoFill(ctx);
       }
     } catch (error) {

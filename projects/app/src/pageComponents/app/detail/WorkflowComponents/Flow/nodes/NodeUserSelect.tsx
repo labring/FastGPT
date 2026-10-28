@@ -8,13 +8,14 @@ import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { type UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
+import { useNodeHandleDrag } from './render/Handle/useNodeHandleDrag';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
@@ -30,6 +31,7 @@ const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
   const { inputs = [], outputs = [] } =
     useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
   const nodeActions = useNodeActions(nodeId);
+  const { onBeforeCapture, onDragEnd, draggingHandle } = useNodeHandleDrag(nodeId);
   // 边集合只在删除选项的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。
@@ -48,6 +50,8 @@ const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
           <Box>
             <DraggableInputList<UserSelectOptionItemType>
               items={options}
+              onBeforeCapture={onBeforeCapture}
+              onDragFinish={onDragEnd}
               addText={t('common:core.module.Add_option')}
               onDragEnd={(list) => {
                 optionsField.setValue(list);
@@ -100,19 +104,22 @@ const NodeUserSelect = ({ data, selected }: CanvasNodeProps) => {
         );
       }
     }),
-    [getEdges, nodeActions, nodeId, optionsField, t]
+    [getEdges, nodeActions, nodeId, onBeforeCapture, onDragEnd, optionsField, t]
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
-      <Container>
-        <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
-      </Container>
-      <Container>
-        <IOTitle text={t('common:Output')} />
-        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-      </Container>
-    </NodeCard>
+    <>
+      <NodeCard minW={'524px'} selected={selected} {...data}>
+        <Container>
+          <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
+        </Container>
+        <Container>
+          <IOTitle text={t('common:Output')} />
+          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+        </Container>
+      </NodeCard>
+      {draggingHandle}
+    </>
   );
 };
 export default React.memo(NodeUserSelect);

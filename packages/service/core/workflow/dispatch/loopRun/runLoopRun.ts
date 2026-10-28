@@ -10,7 +10,7 @@ import {
   rewriteNodeOutputByHistories,
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';

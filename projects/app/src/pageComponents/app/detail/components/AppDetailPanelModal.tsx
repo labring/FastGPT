@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Flex, type BoxProps, type FlexProps } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  type BoxProps,
+  type FlexProps,
+  usePrefersReducedMotion
+} from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 export type AppDetailPanelModalProps = {
@@ -15,6 +21,8 @@ export type AppDetailPanelModalProps = {
   top?: BoxProps['top'];
   position?: BoxProps['position'];
   placement?: 'left' | 'right';
+  /** 左侧工作区面板使用位移动画；默认值保留其他弹窗原有的宽高过渡。 */
+  animationMode?: 'resize' | 'slideFromLeft';
   showMask?: boolean;
   closeOnMaskClick?: boolean;
   contentProps?: Omit<BoxProps, 'children'>;
@@ -24,8 +32,6 @@ export const APP_DETAIL_PANEL_WIDTH_PX = 400;
 
 /** 面板宽高的过渡时长：收起动画期间内容必须保持挂载，见 `usePanelContentMounted`。 */
 export const APP_DETAIL_PANEL_TRANSITION_MS = 200;
-
-const PANEL_TRANSITION = `width ${APP_DETAIL_PANEL_TRANSITION_MS}ms ease, height ${APP_DETAIL_PANEL_TRANSITION_MS}ms ease`;
 
 /**
  * 收起动画结束后再卸载面板内容。
@@ -74,10 +80,15 @@ const AppDetailPanelModal = ({
   top = 0,
   position = 'absolute',
   placement = 'right',
+  animationMode = 'resize',
   showMask = true,
   closeOnMaskClick = true,
   contentProps
 }: AppDetailPanelModalProps) => {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const usesSlideFromLeft = animationMode === 'slideFromLeft';
+  const motionDuration = prefersReducedMotion ? '0ms' : `${APP_DETAIL_PANEL_TRANSITION_MS}ms`;
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -115,8 +126,8 @@ const AppDetailPanelModal = ({
         top={top}
         left={placement === 'left' ? 0 : undefined}
         right={placement === 'right' ? 0 : undefined}
-        h={isOpen ? height : 0}
-        w={isOpen ? width : 0}
+        h={usesSlideFromLeft ? height : isOpen ? height : 0}
+        w={usesSlideFromLeft ? width : isOpen ? width : 0}
         minW={0}
         minH={0}
         bg={'white'}
@@ -124,8 +135,13 @@ const AppDetailPanelModal = ({
         borderRadius={'md'}
         overflow={'hidden'}
         pointerEvents={isOpen ? 'auto' : 'none'}
-        transition={PANEL_TRANSITION}
-        willChange={'width, height'}
+        visibility={usesSlideFromLeft ? (isOpen ? 'visible' : 'hidden') : undefined}
+        transform={usesSlideFromLeft ? `translateX(${isOpen ? '0' : '-100%'})` : undefined}
+        transition={
+          usesSlideFromLeft
+            ? `transform ${motionDuration} ease, visibility 0s linear ${isOpen ? '0ms' : motionDuration}`
+            : `width ${motionDuration} ease, height ${motionDuration} ease`
+        }
         {...contentProps}
       >
         <Flex

@@ -11,7 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { i18nT } from '../../../../../common/i18n/utils';
-import { LoopRunModeEnum } from './loopRun';
+import { LoopRunModeEnum } from '../../../node/constant';
 
 export const LoopRunStartNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopRunStart,

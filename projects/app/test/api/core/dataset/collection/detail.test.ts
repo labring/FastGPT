@@ -2,6 +2,7 @@ import detailHandler from '@/pages/api/core/dataset/collection/detail';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,6 +46,31 @@ describe('collection detail S3 metadata binding', () => {
       contentLength: 10
     });
   });
+
+  it.each([null, undefined, 'remote-parent'])(
+    '兼容 API 文件旧父级字段：%s',
+    async (apiFileParentId) => {
+      const users = await getFakeUsers(1);
+      const member = users.members[0];
+      const { collection } = await createCollection({
+        teamId: users.owner.teamId,
+        tmbId: member.tmbId
+      });
+      // 直接写原始记录，包含历史版本可能持久化的 null。
+      await MongoDatasetCollection.collection.updateOne(
+        { _id: new Types.ObjectId(collection._id) },
+        { $set: { type: DatasetCollectionTypeEnum.apiFile, apiFileParentId } }
+      );
+
+      const response = await Call(detailHandler, {
+        auth: member,
+        query: { id: String(collection._id) }
+      });
+
+      expect(response.code).toBe(200);
+      expect(response.data.apiFileParentId).toBe(apiFileParentId ?? undefined);
+    }
+  );
 
   it('reads metadata when the fileId belongs to the collection dataset', async () => {
     const users = await getFakeUsers(1);

@@ -1,4 +1,4 @@
-import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { AgentLoopCoreEventStream, CreateAgentLoopCoreEventStreamParams } from './type';
@@ -9,6 +9,7 @@ const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
  * 创建 agent-loop 到 workflow SSE 的共享流式适配器。
  *
  * 这里只负责前端实时事件，不维护 assistantResponses 或 nodeResponses。
+ * 工具响应透传模型实际消费的完整结果，与聊天记录一致，不再按展示长度裁剪。
  * ToolCall 通过 streamAnswer 开关控制是否把模型内容作为聊天回答输出；
  * Workflow Agent 通常始终开启 answer，只用 streamReasoning 控制思考过程展示。
  */
@@ -16,7 +17,6 @@ export const createAgentLoopCoreEventStream = ({
   workflowStreamResponse,
   streamAnswer = true,
   streamReasoning = true,
-  sliceToolResponse = false,
   getToolInfo
 }: CreateAgentLoopCoreEventStreamParams): AgentLoopCoreEventStream => {
   // response id 只用于流式 UI 识别 value 边界，不写入最终聊天记录。
@@ -61,7 +61,7 @@ export const createAgentLoopCoreEventStream = ({
     });
   };
 
-  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call) => {
+  const streamToolCall: AgentLoopCoreEventStream['streamToolCall'] = (call, options) => {
     if (!streamAnswer) return;
 
     const toolInfo = getToolInfo(call.function.name);
@@ -76,7 +76,8 @@ export const createAgentLoopCoreEventStream = ({
           toolName: toolInfo.name,
           toolAvatar: toolInfo.avatar || '',
           functionName: call.function.name,
-          params: call.function.arguments ?? ''
+          params: options?.hideDetails ? '' : (call.function.arguments ?? ''),
+          ...(options?.hideDetails ? { hideDetails: true } : {})
         }
       }
     });
@@ -117,9 +118,7 @@ export const createAgentLoopCoreEventStream = ({
           toolName: '',
           toolAvatar: '',
           params: '',
-          response: sliceToolResponse
-            ? sliceStrStartEnd(response || '', 5000, 5000)
-            : response || ''
+          response: response ?? ''
         }
       }
     });

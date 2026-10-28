@@ -1,4 +1,3 @@
-import { authDatasetCreateModels } from '@/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -19,10 +18,13 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
+import { checkCreateResourceParent } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -46,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
-  const { teamId, tmbId, userId, isRoot } = parentId
+  const { teamId, tmbId, isRoot } = parentId
     ? await authDataset({
         req,
         datasetId: parentId,
@@ -61,43 +63,64 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
         per: TeamDatasetCreatePermissionVal
       });
 
-  // check model valid
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const vectorModelStore =
-    modelHandle.getEmbeddingModelData(
-      { modelId: vectorModelId, model: vectorModel },
-      { optional: true }
-    ) ?? modelHandle.getDefaultModelData('embedding');
-  const agentModelStore =
-    modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
-    modelHandle.getDefaultModelData('llm');
-  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
-  const explicitVlm = vlmModelId !== undefined || vlmModel !== undefined;
-  const rawVlmModel = (() => {
-    if (vlmModelId !== undefined)
-      return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
-    if (vlmModel !== undefined)
-      return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
-    return modelHandle.getDefaultModelData('datasetImageLLM');
-  })();
-
-  const vlmModelStore = await authDatasetCreateModels({
-    actor: { teamId, tmbId, isRoot },
-    handle: modelHandle,
-    vectorModel: vectorModelStore,
-    agentModel: agentModelStore,
-    vlmModel: rawVlmModel,
-    explicitVlm
+  await checkCreateResourceParent({
+    parentId,
+    findResource: (id) => MongoDataset.findOne({ _id: id, teamId }, '_id parentId type').lean(),
+    isFolder: type === DatasetTypeEnum.folder,
+    isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
   });
+
+  // check model valid & permission
+  const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
+  const vectorModelStore =
+    modelHandle.getModelData(
+      { modelId: vectorModelId, model: vectorModel },
+      { type: 'embedding', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('embedding', { authorizedIds });
+  const agentModelStore =
+    modelHandle.getModelData(
+      { modelId: agentModelId, model: agentModel },
+      { type: 'llm', optional: true, authorizedIds }
+    ) ?? modelHandle.getDefaultModelData('llm', { authorizedIds });
+  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认（无权限默认 VLM 自动降级为 undefined）。
+  const vlmModelStore = (() => {
+    if (vlmModelId !== undefined)
+      return modelHandle.getModelData(
+        { modelId: vlmModelId },
+        { type: 'llm', vision: true, optional: true, authorizedIds }
+      );
+    if (vlmModel !== undefined)
+      return modelHandle.getModelData(
+        { model: vlmModel },
+        { type: 'llm', vision: true, optional: true, authorizedIds }
+      );
+    return modelHandle.getDefaultModelData('datasetImageLLM', { authorizedIds });
+  })();
 
   // check limit
   await checkTeamDatasetLimit(teamId);
 
   const datasetId = await mongoSessionRun(async (session) => {
+    const ancestorIds =
+      type === DatasetTypeEnum.folder
+        ? await getFolderAncestorIdsFromParentId({
+            parentId: parentId ? String(parentId) : null,
+            findFolder: (id) =>
+              MongoDataset.findOne({ _id: id, teamId, type: DatasetTypeEnum.folder })
+                .select('_id parentId')
+                .session(session)
+                .lean()
+          })
+        : undefined;
     const [dataset] = await MongoDataset.create(
       [
         {
           ...parseParentIdInMongo(parentId),
+          ...(ancestorIds ? { ancestorIds } : {}),
           name,
           intro,
           teamId,
@@ -131,8 +154,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   pushTrack.createDataset({
     type,
     teamId,
-    tmbId,
-    uid: userId
+    tmbId
   });
 
   (async () => {

@@ -2,7 +2,7 @@ import { i18nT } from '../../../common/i18n/utils';
 import { chatHistoryValueDesc } from '../node/constant';
 import type { VariableInputEnum } from '../constants';
 import { WorkflowIOValueTypeEnum } from '../constants';
-import { getAppChatConfig } from '../utils';
+import { getAppChatConfig } from '../../../common/app/chat';
 import type { AppChatConfigType } from '../../app/type';
 
 export type WorkflowGlobalVariable = {

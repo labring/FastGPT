@@ -252,7 +252,7 @@ const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
 
   const Render = useMemo(() => {
     return (
-      <NodeCard selected={selected} minW={'522px'} maxW={'1000px'} {...data}>
+      <NodeCard selected={selected} minW={'524px'} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
           <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.updateList}>
             <Flex flexDirection={'column'} gap={4}>

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -839,7 +840,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-stripped_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
   });
@@ -858,7 +859,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'legacy_mcp_app', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
     expect(tools[0].requestSchema.function.parameters).toEqual(getModelToolSchema(mcpInputSchema));
@@ -879,7 +880,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       tools: [{ id: 'mcp-legacy_mcp_app/search', config: {} }]
     });
 
-    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app, undefined);
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
     expect(tools).toHaveLength(1);
     expect(tools[0].id).toBe('legacy_mcp_appsearch');
     expect(tools[0].name).toBe('search');
@@ -921,6 +922,81 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'http_app',
       name: 'http_app name'
     });
+  });
+
+  it.each([
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'snapshot' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'snapshot' },
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'member' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'member' },
+    { source: 'mcp', appId: 'mcp_app', toolName: 'search', authorization: 'denied' },
+    { source: 'http', appId: 'http_app', toolName: 'create', authorization: 'denied' }
+  ])(
+    'loads $source child tools using $authorization authorization',
+    async ({ source, appId, toolName, authorization }) => {
+      if (authorization === 'denied') {
+        authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
+      }
+      const tools = await runWithContext(
+        {
+          mcpClientMemory: {},
+          resourceContext: {
+            isRoot: false,
+            resourceMap: new Map([
+              [
+                `tool:${appId}`,
+                {
+                  type: 'tool',
+                  id: appId,
+                  data: { toolNames: [authorization === 'snapshot' ? toolName : 'otherTool'] }
+                }
+              ]
+            ])
+          }
+        },
+        () =>
+          getAgentRuntimeTools({
+            tmbId: 'tmb_1',
+            tools: [{ id: `${source}-${appId}/${toolName}`, config: {} }]
+          })
+      );
+
+      expect(tools).toHaveLength(authorization === 'denied' ? 0 : 1);
+      if (authorization === 'snapshot') {
+        expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+      } else {
+        expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
+      }
+      if (authorization !== 'denied') expect(tools[0].name).toBe(toolName);
+    }
+  );
+
+  it.each([
+    { appId: 'mcp_app', tool: mcpTool },
+    { appId: 'http_app', tool: httpTool }
+  ])('keeps snapshot child selection when expanding $appId', async ({ appId, tool }) => {
+    const children = [tool, { ...tool, name: 'otherTool' }];
+    getMCPChildrenMock.mockResolvedValue(children);
+    getHTTPToolListMock.mockResolvedValue(children);
+
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          isRoot: false,
+          resourceMap: new Map([
+            [`tool:${appId}`, { type: 'tool', id: appId, data: { toolNames: [tool.name] } }]
+          ])
+        }
+      },
+      () => getAgentRuntimeTools({ tmbId: 'tmb_1', tools: [{ id: appId, config: {} }] })
+    );
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].toolConfig?.mcpTool?.toolId ?? tools[0].toolConfig?.httpTool?.toolId).toContain(
+      `/${tool.name}`
+    );
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
   });
 
   it('loads a selected HTTP tool with its request schema', async () => {
@@ -990,7 +1066,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters.required).toEqual(['generated']);
   });
 
-  it('loads a dynamic MCP tool without using the parent resource snapshot', async () => {
+  it('falls back to member permissions when an MCP tool is not in the resource snapshot', async () => {
     const tools = await runWithContext(
       {
         mcpClientMemory: {},
@@ -1003,14 +1079,12 @@ describe('getAgentRuntimeTools schema loading', () => {
       () =>
         getAgentRuntimeTools({
           tmbId: 'tmb_1',
-          dynamic: true,
           tools: [{ id: 'mcp-mcp_app/search', config: {} }]
         })
     );
 
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('search');
-    expect(tools[0].dynamic).toBe(true);
     expect(authAppByTmbIdMock).toHaveBeenCalledWith(
       expect.objectContaining({ appId: 'mcp_app', tmbId: 'tmb_1' })
     );
@@ -1139,6 +1213,74 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(
       getModelToolSchema(systemToolInputSchema)
     );
+  });
+
+  it('uses plugin intro instead of legacy toolDescription for model descriptions', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-search',
+      name: { en: 'Document search', 'zh-CN': '文档搜索' },
+      intro: { en: 'Search summary', 'zh-CN': '搜索简介' },
+      toolDescription: { en: 'Legacy tool description', 'zh-CN': '旧工具级描述' },
+      avatar: 'search.png',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      inputSchema: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: {
+            type: 'string',
+            isToolParam: true,
+            'x-i18n': { title: { en: 'Query', 'zh-CN': '查询' } }
+          }
+        }
+      }
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      lang: 'zh-CN',
+      tools: [{ id: 'systemTool-search', metadataLocale: 'en', config: {} }]
+    });
+
+    expect(tools[0].name).toBe('Document search');
+    expect(tools[0].inputs.find((input) => input.key === 'query')?.label).toBe('Query');
+    expect(tools[0].requestSchema.function.description).toBe('Document search: Search summary');
+    expect(tools[0].requestSchema.function.parameters?.properties?.query).toEqual({
+      type: 'string'
+    });
+
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-empty-intro',
+      name: 'Search',
+      intro: '',
+      toolDescription: 'Legacy tool description',
+      avatar: 'search.png',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      inputSchema: { type: 'object', properties: {} }
+    });
+
+    const emptyIntroTools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-empty-intro', config: {} }]
+    });
+
+    expect(emptyIntroTools[0].requestSchema.function.description).toBe('Search');
   });
 
   it('uses saved modes before recommendations and recommends modes for new inputs', async () => {
@@ -1589,7 +1731,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(getSystemToolDetailMock).toHaveBeenCalledWith({
       pluginId: 'systemTool-gpjj5s',
-      lang: undefined,
+      lang: 'en',
       source: 'debug:tmbId:tmb-1'
     });
     expect(tools[0].toolConfig?.systemTool).toEqual({

@@ -1,3 +1,4 @@
+import { loadWorkflowSkillResources } from '../../../../../resource/service';
 import type { AgentInputFile } from '../../adapter/userContext';
 import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/builtin';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
@@ -50,7 +51,6 @@ type EnsureAgentSandboxRuntimeParams = {
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
   skillIds: string[];
-  dynamicSkills?: boolean;
   selectedSkills?: SelectedAgentSkillItemType[];
   editSkillId?: string;
   prepareActions?: AgentSandboxPrepareAction[];
@@ -78,7 +78,6 @@ export async function ensureAgentSandboxRuntime({
   needSandboxRuntime,
   sandboxEntrypoint,
   skillIds,
-  dynamicSkills = false,
   selectedSkills,
   editSkillId,
   prepareActions = [],
@@ -120,11 +119,9 @@ export async function ensureAgentSandboxRuntime({
             context,
             preparePackageMirrors(),
             injectSelectedSkillFiles({
-              teamId,
               tmbId,
               skillIds,
-              selectedSkills,
-              dynamicSkills
+              selectedSkills
             }),
             injectCurrentInputFiles(currentFiles, readInputFile),
             ...prepareActions,
@@ -192,26 +189,20 @@ const scanEditDebugSkillInfos = (): AgentSandboxPrepareStep => async (context) =
 
 const injectSelectedSkillFiles =
   ({
-    teamId,
     tmbId,
     skillIds,
-    selectedSkills,
-    dynamicSkills
+    selectedSkills
   }: {
-    teamId: string;
     tmbId: string;
     skillIds: string[];
     selectedSkills?: SelectedAgentSkillItemType[];
-    dynamicSkills: boolean;
   }): AgentSandboxPrepareStep =>
   async (context) => {
+    const skills = await loadWorkflowSkillResources({ skillIds, tmbId });
     const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: context.sandbox,
-      teamId,
-      tmbId,
-      skillIds,
-      workDirectory: context.workspaceRoot ?? context.workDirectory,
-      dynamic: dynamicSkills
+      skills,
+      workDirectory: context.workspaceRoot ?? context.workDirectory
     });
     const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
 

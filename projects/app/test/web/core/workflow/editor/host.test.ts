@@ -17,6 +17,7 @@ import {
   useWorkflowHistory,
   useWorkflowPersistence,
   useWorkflowRuntime,
+  useWorkflowIssueFocusNodeId,
   useWorkflowSessionActions,
   WorkflowSessionProvider,
   mergeViewOverlayPatches,
@@ -59,7 +60,8 @@ vi.mock('@/web/core/workflow/editor/react/workflowEditorProvider', () => ({
 const t = ((key: string) => key) as never;
 
 type TestAppDetail = { chatConfig: Record<string, unknown> };
-type TestHost = { runtime: WorkflowRuntimePort | null } & WorkflowSessionActions &
+type TestHost = { runtime: WorkflowRuntimePort | null; issueFocusNodeId?: string } &
+  WorkflowSessionActions &
   WorkflowPersistenceState &
   WorkflowHistoryState;
 
@@ -135,6 +137,7 @@ const renderHost = async (
   const Observer = () => {
     host = {
       runtime: useWorkflowRuntime(),
+      issueFocusNodeId: useWorkflowIssueFocusNodeId(),
       ...useWorkflowSessionActions(),
       ...useWorkflowPersistence(),
       ...useWorkflowHistory()
@@ -221,6 +224,44 @@ describe('WorkflowSessionProvider version history', () => {
       appId: 'app-a'
     });
 
+    act(() => root.unmount());
+  });
+
+  it('does not focus an isolated workflow start node on initial attach', async () => {
+    const initial = materializeWorkflow({
+      input: {
+        nodes: [
+          {
+            nodeId: 'start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            name: 'Workflow Start',
+            position: { x: 0, y: 0 },
+            inputs: [],
+            outputs: []
+          }
+        ],
+        edges: []
+      },
+      chatConfig: {},
+      t
+    });
+    const runtime = hydrateWorkflowEditor(initial);
+    const { root, readHost } = await renderHost(initial.chatConfig, runtime);
+
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(readHost().issueFocusNodeId).toBeUndefined();
+    act(() => root.unmount());
+  });
+
+  it('focuses the first non-entry error node on initial attach', async () => {
+    const initial = answerDocument();
+    const runtime = hydrateWorkflowEditor(initial);
+    const { root, readHost } = await renderHost(initial.chatConfig, runtime);
+
+    await act(async () => vi.advanceTimersByTime(300));
+
+    expect(readHost().issueFocusNodeId).toBe('answer');
     act(() => root.unmount());
   });
 

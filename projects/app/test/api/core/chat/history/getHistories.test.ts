@@ -271,7 +271,7 @@ describe('getHistories api test', () => {
     expect(res.data.list.find((chat) => chat.chatId === otherChatId)).toBeUndefined();
   });
 
-  it('should list share histories by outLinkAuthData without appId', async () => {
+  it.each([false, true])('lists share histories (mixed=%s)', async (mixedTargets) => {
     const shareId = `share-${getNanoid(8)}`;
     const outLinkUid = `share-user-${getNanoid(8)}`;
     const otherOutLinkUid = `share-user-${getNanoid(8)}`;
@@ -319,8 +319,11 @@ describe('getHistories api test', () => {
       })
     ]);
 
-    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+    const res = await Call<unknown, unknown, GetHistoriesResponseType>(handler, {
       body: {
+        ...(mixedTargets
+          ? { appId, skillId: appId, sourceType: ChatSourceTypeEnum.workflowBuilder }
+          : {}),
         outLinkAuthData: {
           shareId,
           outLinkUid
@@ -456,7 +459,7 @@ describe('getHistories api test', () => {
     expect(res.error).toBeDefined();
   });
 
-  it('should list skill edit histories by skillId and source-aware match', async () => {
+  it.each([false, true])('lists Skill histories (mixed=%s)', async (mixedTargets) => {
     const skill = await MongoAgentSkills.create({
       name: 'History Skill',
       source: AgentSkillSourceEnum.personal,
@@ -502,9 +505,10 @@ describe('getHistories api test', () => {
       { $unset: { sourceType: '' } }
     );
 
-    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+    const res = await Call<unknown, unknown, GetHistoriesResponseType>(handler, {
       auth: testUser,
       body: {
+        ...(mixedTargets ? { appId, sourceType: ChatSourceTypeEnum.workflowBuilder } : {}),
         skillId,
         source: ChatSourceEnum.test
       },

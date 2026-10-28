@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   getLegacyDefaultModelFlags,
   repairSystemModelDocument
@@ -10,7 +11,7 @@ const canonicalLlm = {
   provider: 'OpenAI',
   model: 'gpt-test',
   name: 'GPT test',
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     maxContext: 32000,
@@ -18,7 +19,7 @@ const canonicalLlm = {
     quoteMaxToken: 24000,
     toolChoice: true
   }
-};
+} satisfies AIModelDocumentDataType;
 
 describe('repairSystemModelDocument', () => {
   it('keeps a valid canonical document and never lets residual metadata overwrite it', () => {

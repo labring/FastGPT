@@ -1,5 +1,5 @@
-import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
+import { softDeleteChatItems } from '@fastgpt/service/core/chat/delete';
+import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
@@ -8,7 +8,6 @@ import {
   type DeleteChatRecordResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
@@ -40,16 +39,12 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     return DeleteChatRecordResponseSchema.parse(undefined);
   }
 
-  await MongoChatItem.updateMany(
-    {
-      ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
-      chatId,
-      dataId: { $in: targetContentIds }
-    },
-    {
-      $set: { deleteTime: new Date() }
-    }
-  );
+  await softDeleteChatItems({
+    sourceType: authRes.sourceType,
+    sourceId: resolvedSourceId,
+    chatId,
+    contentIds: targetContentIds
+  });
 
   return DeleteChatRecordResponseSchema.parse(undefined);
 }

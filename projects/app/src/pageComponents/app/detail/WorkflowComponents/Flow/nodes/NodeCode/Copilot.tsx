@@ -115,11 +115,11 @@ const NodeCopilot = ({
                 input.value && Array.isArray(input.value) && input.value.length === 2
                   ? `[${input.value[0]}.${input.value[1]}]`
                   : '';
-              return `- ${input.label} (${input.valueType}): ${referenceInfo}`;
+              return `- ${input.key} (${input.valueType}): ${referenceInfo}`;
             })
             .join('\n'),
           outputs: dynamicOutputs
-            .map((output) => `- ${output.label} (${output.valueType})`)
+            .map((output) => `- ${output.key} (${output.valueType})`)
             .join('\n')
         })
       };
@@ -154,8 +154,10 @@ const NodeCopilot = ({
         const outputVar = currentNode?.outputs?.find((output) => output.id === variable.key);
         const inputVar = currentNode?.inputs?.find((input) => input.key === variable.key);
         const variableType = outputVar?.valueType || inputVar?.valueType;
+        // 选择器用输出 id 定位端口；提示词使用业务 key，原有引用标识保持不变。
+        const parameterKey = outputVar?.key ?? inputVar?.key ?? variable.key;
 
-        return `[param: {paramName:${variable.parent.label}.${variable.label}, paramRefer:${cleanRef}, paramType:${variableType}}]`;
+        return `[param: {paramName:${parameterKey}, paramRefer:${cleanRef}, paramType:${variableType}}]`;
       }
       return match;
     });
@@ -234,8 +236,8 @@ const NodeCopilot = ({
               renderTypeList: [FlowNodeInputTypeEnum.reference],
               valueType: input.type as WorkflowIOValueTypeEnum,
               canEdit: true,
-              key: input.label,
-              label: input.label,
+              key: input.key,
+              label: input.key,
               value: referenceValue,
               customInputConfig: {
                 selectValueTypeList: Object.values(ArrayTypeMap),
@@ -250,31 +252,31 @@ const NodeCopilot = ({
       // 出参按 key 复用原 id 与位置，生成结果里没有的旧出参删除并断开其 handle 连线。
       const existingOutputKeys = new Set(dynamicOutputs.map((output) => output.key));
       const removedOutputKeys = dynamicOutputs
-        .filter((output) => !outputs.some((item) => item.label === output.key))
+        .filter((output) => !outputs.some((item) => item.key === output.key))
         .map((output) => output.key);
       const nextOutputs = documentOutputs
         .filter((output) => !removedOutputKeys.includes(output.key))
         .map((output) => {
-          const extracted = outputs.find((item) => item.label === output.key);
+          const extracted = outputs.find((item) => item.key === output.key);
           if (!extracted) return output;
           return {
             ...output,
             type: FlowNodeOutputTypeEnum.dynamic,
             valueType: extracted.type as WorkflowIOValueTypeEnum,
-            label: extracted.label,
+            label: extracted.key,
             valueDesc: '',
             description: ''
           };
         })
         .concat(
           outputs
-            .filter((output) => !existingOutputKeys.has(output.label))
+            .filter((output) => !existingOutputKeys.has(output.key))
             .map((output) => ({
               id: nanoid(),
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.label,
+              key: output.key,
               valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.label,
+              label: output.key,
               valueDesc: '',
               description: ''
             }))

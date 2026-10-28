@@ -178,7 +178,7 @@ const NodeExtract = ({ data, selected }: CanvasNodeProps) => {
   );
 
   return (
-    <NodeCard minW={'400px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       {isTool && hasDynamicInput && (
         <>
           <Container>

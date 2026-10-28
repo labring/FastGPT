@@ -241,7 +241,14 @@ const ArrayRenderList = React.memo(function ArrayRenderList({
                 onClick={() => handleSelect(item)}
                 {...(isSelected ? { color: 'primary.600' } : {})}
               >
-                {showCheckbox && <Checkbox isChecked={isChecked} mr={1} />}
+                {showCheckbox && (
+                  <Checkbox
+                    isChecked={isChecked}
+                    mr={1}
+                    icon={<MyIcon name={'common/check'} w={'12px'} />}
+                    pointerEvents={'none'}
+                  />
+                )}
                 <Box>{item.label}</Box>
               </Flex>
             );

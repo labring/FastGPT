@@ -10,7 +10,7 @@ import {
   canInputBeManuallyConfigured,
   isAgentGeneratedToolInput
 } from '../formEdit/utils';
-import { getSelectedInputRenderType } from '../../workflow/utils';
+import { getSelectedInputRenderType } from '../../../common/workflow/reference';
 import {
   buildModelVisibleToolJsonSchema,
   type JSONSchemaInputType,
@@ -158,7 +158,7 @@ export const compileToolRuntime = ({
   };
 };
 
-/** 过滤模型未知字段，并将模型参数与固定绑定合并为最终工具入参。 */
+/** 透传模型参数，并将固定绑定合并为最终工具入参；固定绑定始终优先。 */
 export const mergeToolRuntimeParams = ({
   agentGeneratedKeys,
   fixedInputBindings,
@@ -173,8 +173,8 @@ export const mergeToolRuntimeParams = ({
   }
 
   return {
-    ...fixedInputBindings,
-    ...Object.fromEntries(Object.entries(aiParams).filter(([key]) => generatedKeySet.has(key)))
+    ...aiParams,
+    ...fixedInputBindings
   };
 };
 
@@ -198,12 +198,68 @@ const getAjv = (schema: object) => {
   return ajvDraft7;
 };
 
+/** 编译并缓存工具校验器；旧版 property 必填标记转换为标准对象 required，原始 Schema 保持不变。 */
 const getValidator = (schema: object) => {
   const cacheKey = JSON.stringify(schema);
   const cached = validatorCache.get(cacheKey);
   if (cached) return cached;
 
-  const validator = getAjv(schema).compile(schema);
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+
+  /** 仅遍历 Schema 关键字，避免改写 const、enum、default 中同名的业务字段。 */
+  const normalizeLegacyRequired = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(normalizeLegacyRequired);
+    if (!isRecord(value)) return value;
+
+    const normalized = { ...value };
+    if (typeof value.required === 'boolean') delete normalized.required;
+    const properties = isRecord(value.properties) ? value.properties : {};
+    const required = [
+      ...(Array.isArray(value.required) ? value.required : []),
+      ...Object.entries(properties)
+        .filter(([, property]) => isRecord(property) && property.required === true)
+        .map(([key]) => key)
+    ];
+    if (required.length > 0) normalized.required = [...new Set(required)];
+
+    for (const key of [
+      'properties',
+      'patternProperties',
+      '$defs',
+      'definitions',
+      'dependentSchemas'
+    ]) {
+      const schemas = value[key];
+      if (isRecord(schemas)) {
+        normalized[key] = Object.fromEntries(
+          Object.entries(schemas).map(([key, child]) => [key, normalizeLegacyRequired(child)])
+        );
+      }
+    }
+    for (const key of [
+      'items',
+      'additionalItems',
+      'additionalProperties',
+      'unevaluatedItems',
+      'unevaluatedProperties',
+      'contains',
+      'propertyNames',
+      'not',
+      'if',
+      'then',
+      'else',
+      'allOf',
+      'anyOf',
+      'oneOf',
+      'prefixItems'
+    ]) {
+      if (value[key] !== undefined) normalized[key] = normalizeLegacyRequired(value[key]);
+    }
+    return normalized;
+  };
+
+  const validator = getAjv(schema).compile(normalizeLegacyRequired(schema) as object);
   validatorCache.set(cacheKey, validator);
   return validator;
 };
@@ -233,38 +289,5 @@ export const validateToolInputValue = ({
       success: false,
       errors: [error instanceof Error ? error.message : String(error)]
     };
-  }
-};
-
-/** 在外部工具调用前使用完整原始 schema 校验已经剔除内部字段的参数。 */
-export const validateToolRuntimeParams = ({
-  jsonSchema,
-  params
-}: {
-  jsonSchema?: JSONSchemaInputType;
-  params: Record<string, unknown>;
-}): ToolSchemaValidationResult => {
-  if (!jsonSchema) return { success: true, errors: [] };
-
-  try {
-    const validator = getValidator(jsonSchema);
-    const success = validator(params);
-    return {
-      success,
-      errors: success ? [] : formatValidationErrors(validator.errors)
-    };
-  } catch (error) {
-    return {
-      success: false,
-      errors: [error instanceof Error ? error.message : String(error)]
-    };
-  }
-};
-
-/** 服务端运行时断言，错误信息保持可定位的字段路径。 */
-export const assertToolRuntimeParams = (props: Parameters<typeof validateToolRuntimeParams>[0]) => {
-  const result = validateToolRuntimeParams(props);
-  if (!result.success) {
-    throw new Error(`Tool input validation failed: ${result.errors.join('; ')}`);
   }
 };

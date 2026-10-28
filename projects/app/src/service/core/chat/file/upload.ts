@@ -1,3 +1,4 @@
+import { getFileUploadLimits } from '@fastgpt/global/common/file/limit';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
@@ -48,9 +49,13 @@ export const createAuthorizedChatFileUploadUrl = async ({
   }
 
   const planStatus = await getTeamPlanStatus({ teamId });
+  const uploadLimits = getFileUploadLimits({
+    teamPlan: planStatus.standard,
+    systemLimit: global.feConfigs.limit
+  });
   await assertUploadRateLimit({
     identity: uid,
-    limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount
+    limit: uploadLimits.maxUploadFileCount
   });
 
   return getS3ChatSource().createUploadChatFileURL({
@@ -65,6 +70,6 @@ export const createAuthorizedChatFileUploadUrl = async ({
     uId: uid,
     allowedExtensions,
     extensionRules,
-    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+    maxFileSize: uploadLimits.maxUploadFileSize
   });
 };

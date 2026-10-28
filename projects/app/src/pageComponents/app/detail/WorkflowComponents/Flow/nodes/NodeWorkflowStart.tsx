@@ -1,21 +1,19 @@
 import React from 'react';
 import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { workflowSystemVariables } from '@/web/core/app/utils';
-import {
-  formatEditorVariablePickerIcon,
-  getAppChatConfig
-} from '@fastgpt/global/core/workflow/utils';
+import { workflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
+import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
@@ -62,6 +60,7 @@ const NodeStart = ({ data, selected }: CanvasNodeProps) => {
 
   return (
     <NodeCard
+      minW={'350px'}
       selected={selected}
       menuForbid={{
         copy: true,

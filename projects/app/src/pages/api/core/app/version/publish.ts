@@ -5,7 +5,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getInputReferences } from '@fastgpt/global/core/workflow/editor/runtime/kernel';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
+import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,
   PublishAppQuerySchema,
@@ -22,14 +22,16 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getAppDraftVersion } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
+import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
+import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 
+/** 保存或发布应用版本，资源归属和模型目录以目标应用团队为边界，ACL 保留实际操作者身份。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
     query: { appId },
@@ -48,13 +50,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     bodySchema: PublishAppBodySchema
   });
 
-  const { app, tmbId, teamId, isRoot } = await authApp({
+  const { app, tmbId, isRoot } = await authApp({
     appId,
     req,
     per: WritePermissionVal,
     authToken: true
   });
 
+  // Root 可管理其他团队的应用；资源归属与默认模型以应用团队为边界。
+  const teamId = String(app.teamId);
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes,
     edges,
@@ -62,11 +66,15 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     referenceSnapshots
   });
   const modelHandle = await getTeamModelHandle({ teamId });
+  const authorizedIds = await getAuthorizedModelIds({
+    actor: { teamId, tmbId, isRoot },
+    handle: modelHandle
+  });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models: modelHandle.getActiveModels(),
-    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getDefaultModelIds(authorizedIds),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
   await beforeUpdateAppFormat({
@@ -75,8 +83,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    models: modelHandle.getAllModels()
+    chatConfig: normalizedWorkflow.chatConfig
   });
 
   /** 请求省略快照时，从事务内最新草稿继承仍被引用且当前来源不可解析的展示元数据。 */
@@ -112,8 +119,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         appId,
         extracted,
         tmbId,
+        teamId,
         isRoot,
         blockOnUnauthorized: false,
+        modelHandle,
         session
       });
       await MongoAppVersion.findOneAndUpdate(
@@ -171,8 +180,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       appId,
       extracted,
       tmbId,
+      teamId,
       isRoot,
       blockOnUnauthorized: !!isPublish,
+      modelHandle,
       session
     });
 
