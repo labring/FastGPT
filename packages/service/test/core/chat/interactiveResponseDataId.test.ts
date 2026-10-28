@@ -73,20 +73,21 @@ describe('resolveResponseChatItemId', () => {
           nodeOutputs: [],
           params: {
             askId: 'call_ask',
-            blockerType: 'user_choice',
-            description: '',
-            submitted: false,
-            questions: [
-              {
-                question: 'Need more input',
-                options: [
-                  { summary: 'Use repo', value: 'Use repo' },
-                  { summary: 'Use docs', value: 'Use docs' },
-                  { summary: 'Use defaults', value: 'Use defaults' }
-                ],
-                answer: ''
-              }
-            ]
+            arguments: JSON.stringify({
+              reason: '',
+              blockerType: 'user_choice',
+              questions: [
+                {
+                  question: 'Need more input',
+                  options: [
+                    { summary: 'Use repo', value: 'Use repo' },
+                    { summary: 'Use docs', value: 'Use docs' },
+                    { summary: 'Use defaults', value: 'Use defaults' }
+                  ],
+                  answer: ''
+                }
+              ]
+            })
           }
         },
         userContent: {
@@ -121,20 +122,21 @@ describe('resolveResponseChatItemId', () => {
 
               params: {
                 askId: 'call_ask',
-                blockerType: 'user_choice',
-                description: '',
-                submitted: false,
-                questions: [
-                  {
-                    question: 'Need more input',
-                    options: [
-                      { summary: 'Use repo', value: 'Use repo' },
-                      { summary: 'Use docs', value: 'Use docs' },
-                      { summary: 'Use defaults', value: 'Use defaults' }
-                    ],
-                    answer: ''
-                  }
-                ]
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Need more input',
+                      options: [
+                        { summary: 'Use repo', value: 'Use repo' },
+                        { summary: 'Use docs', value: 'Use docs' },
+                        { summary: 'Use defaults', value: 'Use defaults' }
+                      ],
+                      answer: ''
+                    }
+                  ]
+                })
               }
             }
           }

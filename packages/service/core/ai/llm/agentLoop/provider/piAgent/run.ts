@@ -6,6 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   normalizeToolResponseContent,
@@ -14,11 +15,7 @@ import {
 import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { AgentUsageModuleName } from '../../domain/usage';
-import {
-  askUserToolName,
-  formatAgentAskToolResponse,
-  type AgentAskPayload
-} from '../../domain/systemTool/ask';
+import { askUserToolName, formatAgentAskToolResponse } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
   normalizeAgentLoopUsages,

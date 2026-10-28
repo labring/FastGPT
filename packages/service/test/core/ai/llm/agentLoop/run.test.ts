@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { defaultQAModels } from '@fastgpt/global/core/ai/constants';
 
 const { providerRunMock, getAgentLoopProviderMock } = vi.hoisted(() => ({
   providerRunMock: vi.fn(),
@@ -59,7 +60,7 @@ describe('runAgentLoop', () => {
       input: { messages: [] },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-4' },
+        llmParams: { model: defaultQAModels[0] },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         usagePush
@@ -92,7 +93,7 @@ describe('runAgentLoop', () => {
       input: { messages: [] },
       runtime: {
         teamId: 'team_1',
-        llmParams: { model: 'gpt-4' },
+        llmParams: { model: defaultQAModels[0] },
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn()
       }
@@ -101,32 +102,37 @@ describe('runAgentLoop', () => {
     expect(result.usages).toEqual([providerUsage]);
   });
 
-  it('normalizes an unexpected provider rejection into an error result', async () => {
-    const providerState = { cursor: 'state_1' };
-    providerRunMock.mockRejectedValue(new Error('provider crashed'));
+  it.each(['fastAgent', 'piAgent'] as const)(
+    'normalizes an unexpected %s rejection and only preserves Pi state',
+    async (provider) => {
+      const providerState = { cursor: 'state_1' };
+      getAgentLoopProviderMock.mockReturnValue({ name: provider, run: providerRunMock });
+      providerRunMock.mockRejectedValue(new Error('provider crashed'));
 
-    const result = await runAgentLoop({
-      input: {
-        messages: [{ role: 'user', content: 'hello' }],
-        providerState
-      },
-      runtime: {
-        teamId: 'team_1',
-        llmParams: { model: 'gpt-4' },
-        toolCatalog: { runtimeTools: [] },
-        executeTool: vi.fn()
-      }
-    });
+      const result = await runAgentLoop({
+        provider,
+        input: {
+          messages: [{ role: 'user', content: 'hello' }],
+          providerState
+        },
+        runtime: {
+          teamId: 'team_1',
+          llmParams: { model: defaultQAModels[0] },
+          toolCatalog: { runtimeTools: [] },
+          executeTool: vi.fn()
+        }
+      });
 
-    expect(result).toMatchObject({
-      status: 'error',
-      error: expect.objectContaining({ message: 'provider crashed' }),
-      completeMessages: [{ role: 'user', content: 'hello' }],
-      assistantMessages: [],
-      requestIds: [],
-      providerState,
-      finishReason: 'error',
-      usages: []
-    });
-  });
+      expect(result).toMatchObject({
+        status: 'error',
+        error: expect.objectContaining({ message: 'provider crashed' }),
+        completeMessages: [{ role: 'user', content: 'hello' }],
+        assistantMessages: [],
+        requestIds: [],
+        providerState: provider === 'fastAgent' ? undefined : providerState,
+        finishReason: 'error',
+        usages: []
+      });
+    }
+  );
 });

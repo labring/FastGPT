@@ -1053,17 +1053,19 @@ describe('useUserContext', () => {
 
                   params: {
                     askId: 'ask_1',
-                    blockerType: 'user_choice',
-                    description: 'Choose one',
-                    questions: [
-                      {
-                        question: 'Choose one?',
-                        options: [
-                          { summary: 'A', value: 'A' },
-                          { summary: 'B', value: 'B' }
-                        ]
-                      }
-                    ]
+                    arguments: JSON.stringify({
+                      reason: 'Choose one',
+                      blockerType: 'user_choice',
+                      questions: [
+                        {
+                          question: 'Choose one?',
+                          options: [
+                            { summary: 'A', value: 'A' },
+                            { summary: 'B', value: 'B' }
+                          ]
+                        }
+                      ]
+                    })
                   }
                 } as any
               }

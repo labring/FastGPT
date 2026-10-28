@@ -3,7 +3,8 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/typ
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
-import { parseAgentAskToolCall, type AgentAskPayload } from '../../../domain/systemTool/ask';
+import { parseAgentAskToolCall } from '../../../domain/systemTool/ask';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { applyPlanUpdate, applySetPlan } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
@@ -301,7 +302,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         metadata
       });
     },
-    onRunTool: async ({ call, messages, assistantMessage }) => {
+    onRunTool: async ({ call, messages }) => {
       // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
       if (call.function.name === askToolName) {
         const parsed = parseAgentAskToolCall(call);
@@ -312,18 +313,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         const validationError = await runtime.systemTools?.ask?.validate?.(parsed.ask);
         if (validationError) {
           return createToolResponse(validationError, { skipResponseCompress: true });
-        }
-
-        // 有效 Ask 的原始参数以 interactive 为唯一来源，运行消息也使用同样的规范形式。
-        const argumentsText = JSON.stringify({
-          reason: parsed.ask.reason,
-          blockerType: parsed.ask.blockerType,
-          questions: parsed.ask.questions
-        });
-        call.function.arguments = argumentsText;
-        if (assistantMessage?.role === 'assistant') {
-          const original = assistantMessage.tool_calls?.find((tool) => tool.id === call.id);
-          if (original) original.function.arguments = argumentsText;
         }
 
         emitAgentLoopEvent(runtime, {

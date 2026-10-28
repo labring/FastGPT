@@ -430,17 +430,19 @@ describe('useChatGenerate.sendPrompt', () => {
 
               params: {
                 askId: 'ask-1',
-                blockerType: 'user_choice',
-                description: '',
-                questions: (select.type === 'agentAsk' ? select.questions : []).map(
-                  ({ question }) => ({
-                    question,
-                    options: [
-                      { summary: 'Upload file', value: 'upload' },
-                      { summary: 'Paste text', value: 'paste' }
-                    ]
-                  })
-                )
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: (select.type === 'agentAsk' ? select.questions : []).map(
+                    ({ question }) => ({
+                      question,
+                      options: [
+                        { summary: 'Upload file', value: 'upload' },
+                        { summary: 'Paste text', value: 'paste' }
+                      ]
+                    })
+                  )
+                })
               }
             }
           : {
@@ -448,9 +450,11 @@ describe('useChatGenerate.sendPrompt', () => {
               type: 'workflowBuilderPreview',
               previewId: 'preview-1',
               params: {
-                title: 'Confirm workflow?',
-                mermaid: 'flowchart LR; A --> B',
-                sections: []
+                arguments: JSON.stringify({
+                  title: 'Confirm workflow?',
+                  mermaid: 'flowchart LR; A --> B',
+                  sections: [{ title: 'Goal', content: 'Build the workflow' }]
+                })
               }
             };
       const request = Promise.withResolvers<{ responseText: string }>();

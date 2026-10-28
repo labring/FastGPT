@@ -126,17 +126,19 @@ describe('getInteractiveByHistories', () => {
 
         params: {
           askId: 'ask-1',
-          blockerType: 'user_choice',
-          description: '',
-          questions: [
-            {
-              question: 'Choose?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Choose?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       };
       for (const source of [
@@ -185,9 +187,11 @@ describe('getInteractiveByHistories', () => {
       type: 'workflowBuilderPreview',
       previewId: 'preview-1',
       params: {
-        title: 'Confirm workflow',
-        mermaid: 'flowchart LR\n  A --> B',
-        sections: []
+        arguments: JSON.stringify({
+          title: 'Confirm workflow',
+          mermaid: 'flowchart LR\n  A --> B',
+          sections: [{ title: 'Goal', content: 'Build the workflow' }]
+        })
       }
     } satisfies WorkflowInteractiveResponseType;
 
@@ -211,17 +215,19 @@ describe('isPendingAgentAsk', () => {
 
         params: {
           askId: 'ask-1',
-          blockerType: 'user_choice',
-          description: 'Need input',
-          questions: [
-            {
-              question: 'Need input?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          arguments: JSON.stringify({
+            reason: 'Need input',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Need input?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       } as WorkflowInteractiveResponseType)
     ).toBe(true);
@@ -321,17 +327,19 @@ describe('resolveInteractiveResponseChatItemId', () => {
 
       params: {
         askId: 'ask-1',
-        blockerType: 'user_choice',
-        description: 'Need input',
-        questions: [
-          {
-            question: 'Need input?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: 'Need input',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     } as WorkflowInteractiveResponseType;
 

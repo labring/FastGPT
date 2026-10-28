@@ -1,4 +1,5 @@
 import React from 'react';
+import { parseWorkflowBuilderPreviewArguments } from '@fastgpt/global/core/workflow/builder/utils';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -32,9 +33,11 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble', 
       chatValue
         .map((value) => {
           if (value.interactive?.type === 'workflowBuilderPreview') {
-            return value.interactive.params.sections
-              .map((section) => `${section.title}${section.content}`)
-              .join('');
+            return (
+              parseWorkflowBuilderPreviewArguments(value.interactive.params.arguments)
+                ?.sections.map((section) => `${section.title}${section.content}`)
+                .join('') ?? ''
+            );
           }
           return value.text?.content ?? '';
         })
@@ -55,9 +58,11 @@ const answeredAsk: Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }> = {
 
         params: {
           askId: 'ask-1',
-          blockerType: 'user_choice',
-          description: '',
-          questions: [{ question: 'Question', options: [] }]
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [{ question: 'Question', options: [] }]
+          })
         },
         entryNodeIds: [],
         memoryEdges: [],
@@ -215,9 +220,11 @@ describe('ChatItem interactive replies', () => {
         type: 'workflowBuilderPreview',
         previewId: 'preview-1',
         params: {
-          title: '确认工作流方案？',
-          mermaid: 'flowchart LR\n  A --> B',
-          sections: [{ title: '工作流说明', content: '预览内容' }]
+          arguments: JSON.stringify({
+            title: '确认工作流方案？',
+            mermaid: 'flowchart LR\n  A --> B',
+            sections: [{ title: '工作流说明', content: '预览内容' }]
+          })
         }
       };
       const dom = renderChatItem([

@@ -982,9 +982,11 @@ describe('dispatchRunAgent user context', () => {
 
       params: {
         askId: 'legacy-plan',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [{ question: 'Need confirmation', options: [] }]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Need confirmation', options: [] }]
+        })
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1047,24 +1049,26 @@ describe('dispatchRunAgent user context', () => {
 
       params: {
         askId: 'call_ask',
-        blockerType: 'user_choice',
-        description: 'Need confirmation',
-        questions: [
-          {
-            question: 'First?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          },
-          {
-            question: 'Second?',
-            options: [
-              { summary: 'C', value: 'C' },
-              { summary: 'D', value: 'D' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: 'Need confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'First?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            },
+            {
+              question: 'Second?',
+              options: [
+                { summary: 'C', value: 'C' },
+                { summary: 'D', value: 'D' }
+              ]
+            }
+          ]
+        })
       }
     };
     props.histories.at(-1).value.push({
@@ -1132,9 +1136,11 @@ describe('dispatchRunAgent user context', () => {
 
       params: {
         askId: 'call_ask_1',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [{ question: 'Need confirmation', options: [] }]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Need confirmation', options: [] }]
+        })
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1208,7 +1214,33 @@ describe('dispatchRunAgent user context', () => {
           ]
         }
       },
-      completeMessages: [],
+      completeMessages: [
+        {
+          role: 'assistant',
+          tool_calls: [
+            {
+              id: 'call_ask_2',
+              type: 'function',
+              function: {
+                name: 'ask_user',
+                arguments: JSON.stringify({
+                  reason: 'Need another confirmation',
+                  blockerType: 'missing_required_input',
+                  questions: [
+                    {
+                      question: 'Confirm again?',
+                      options: [
+                        { summary: 'Yes', value: 'Yes' },
+                        { summary: 'No', value: 'No' }
+                      ]
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        }
+      ],
       assistantMessages: [],
       requestIds: []
     });

@@ -1,17 +1,14 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '@mariozechner/pi-ai';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { AgentAskPayloadSchema, type AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  AgentAskPayloadSchema,
-  createAskUserAgentTool,
-  type AgentAskPayload
-} from '../../../domain/systemTool/ask';
+import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
   applySetPlan,

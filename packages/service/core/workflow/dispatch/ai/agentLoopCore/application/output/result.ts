@@ -3,7 +3,7 @@ import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { AgentUsageModuleName } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreResult } from '../../domain/result';
-import { createAgentLoopCoreAskInteractive } from '../../adapter/interactive';
+import { createAgentLoopCoreAskInteractive } from '../../adapter/interactive/ask';
 import { agentLoopUsagesToChatNodeUsages } from '../../adapter/usage';
 import {
   getAgentLoopCoreFinalMessageReasoning,
@@ -61,6 +61,12 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   const toolChildPause = result.pause?.type === 'tool_child' ? result.pause : undefined;
   const ask = askPause?.ask;
   const askId = askPause?.askId;
+  // 从真实调用取原始字符串，不能从已解析的 ask 对象重新序列化。
+  const askArguments = askId
+    ? result.completeMessages
+        .flatMap((message) => (message.role === 'assistant' ? (message.tool_calls ?? []) : []))
+        .findLast((call) => call.id === askId)?.function.arguments
+    : undefined;
   const toolChildInteractive = toolChildPause
     ? {
         type: 'toolChildrenInteractive' as const,
@@ -91,10 +97,10 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     reasoningText: getAgentLoopCoreFinalMessageReasoning(result.assistantMessages),
     providerState: result.providerState,
     interactive:
-      ask && askId
+      ask && askId && askArguments !== undefined
         ? createAgentLoopCoreAskInteractive({
             askId,
-            ask
+            arguments: askArguments
           })
         : toolChildInteractive
   };

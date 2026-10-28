@@ -6,7 +6,7 @@ import type {
 import type { SandboxClient } from '../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../sandbox/application/toolCall/type';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
-import type { AgentAskPayload } from './systemTool/ask';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentLoopUsage } from './usage';
 
 export type AgentLoopToolCatalog = {

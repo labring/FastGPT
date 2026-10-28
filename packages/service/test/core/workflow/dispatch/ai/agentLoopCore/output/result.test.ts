@@ -116,11 +116,24 @@ describe('summarizeAgentLoopCoreResult', () => {
       ]
     };
 
+    const argumentsText = JSON.stringify(ask, null, 2);
+
     expect(
       summarizeAgentLoopCoreResult({
         status: 'interactive',
         requestIds: [],
-        completeMessages: [],
+        completeMessages: [
+          {
+            role: 'assistant',
+            tool_calls: [
+              {
+                id: 'call_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: argumentsText }
+              }
+            ]
+          }
+        ],
         assistantMessages: [],
         assistantResponses: [],
         finishReason: 'stop',
@@ -139,21 +152,7 @@ describe('summarizeAgentLoopCoreResult', () => {
         interactive: {
           type: 'agentAsk',
 
-          params: {
-            askId: 'call_ask',
-            blockerType: 'missing_required_input',
-            description: 'Need input',
-            questions: [
-              {
-                question: 'Confirm?',
-                options: [
-                  { summary: 'Yes', value: 'Yes' },
-                  { summary: 'No', value: 'No' },
-                  { summary: 'Not sure', value: 'Not sure' }
-                ]
-              }
-            ]
-          }
+          params: { askId: 'call_ask', arguments: argumentsText }
         }
       })
     );

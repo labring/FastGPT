@@ -21,6 +21,51 @@ export const AgentAskQuestionSchema = z.object({
 });
 export type AgentAskQuestion = z.infer<typeof AgentAskQuestionSchema>;
 
+const AgentAskBaseSchema = z.object({
+  reason: z.string(),
+  blockerType: AgentAskBlockerTypeSchema
+});
+
+/** Ask 工具和展示共用参数契约；旧单题参数只在消费时转换，不改写原始字符串。 */
+export const AgentAskPayloadSchema = z
+  .union([
+    AgentAskBaseSchema.extend({
+      questions: z.array(AgentAskQuestionSchema).min(1).max(3)
+    }),
+    AgentAskBaseSchema.extend({
+      question: z.string().trim().min(1),
+      options: z.array(z.string().trim().min(1)).min(2).max(5)
+    })
+  ])
+  .transform((payload) =>
+    'questions' in payload
+      ? payload
+      : {
+          reason: payload.reason,
+          blockerType: payload.blockerType,
+          questions: [
+            {
+              question: payload.question,
+              options: payload.options.map((option) => ({ summary: option, value: option }))
+            }
+          ]
+        }
+  );
+export type AgentAskPayload = z.infer<typeof AgentAskPayloadSchema>;
+
+/** 解析 Ask 原始 JSON；展示与执行必须使用同一入口，不能修复后另存一份参数。 */
+export const AgentAskArgumentsSchema = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'Ask tool arguments are not valid JSON.' });
+      return z.NEVER;
+    }
+  })
+  .pipe(AgentAskPayloadSchema);
+
 export const AgentAskAnswerPayloadSchema = z.object({
   answers: z.array(z.string())
 });

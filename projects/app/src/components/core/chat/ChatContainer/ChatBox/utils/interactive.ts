@@ -9,6 +9,8 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveFormInputFileValues } from '../../../components/FormInputResult';
@@ -19,7 +21,10 @@ export const isPendingAgentAsk = (interactive?: WorkflowInteractiveResponseType)
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return isAgentAskInteractive(finalInteractive);
+  return (
+    isAgentAskInteractive(finalInteractive) &&
+    AgentAskInteractiveSchema.safeParse(finalInteractive).success
+  );
 };
 
 /** 判断当前是否正在等待 Workflow Builder 的 Mermaid 方案确认。 */
@@ -27,7 +32,7 @@ export const isPendingWorkflowBuilderPreview = (interactive?: WorkflowInteractiv
   if (!interactive) return false;
 
   const finalInteractive = extractDeepestInteractive(interactive);
-  return finalInteractive?.type === 'workflowBuilderPreview';
+  return WorkflowBuilderPreviewInteractiveSchema.safeParse(finalInteractive).success;
 };
 
 /**

@@ -30,18 +30,21 @@ describe('softDeleteChatItems', () => {
           ? {
               ...runtime,
               type,
-              askId: 'ask-1',
               params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'Choose?',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' }
-                    ]
-                  }
-                ]
+                askId: 'ask-1',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose?',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           : {
@@ -49,14 +52,11 @@ describe('softDeleteChatItems', () => {
               type,
               previewId: 'preview-1',
               params: {
-                title: 'Confirm?',
-                mermaid: 'flowchart LR; A --> B',
-                sections: [],
-                actions: [
-                  { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                  { value: 'revise', label: 'Revise', inputMode: 'text' },
-                  { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                ]
+                arguments: JSON.stringify({
+                  title: 'Confirm?',
+                  mermaid: 'flowchart LR; A --> B',
+                  sections: [{ title: 'Goal', content: 'Build' }]
+                })
               }
             };
       const previous = await MongoChatItem.create({
@@ -69,7 +69,14 @@ describe('softDeleteChatItems', () => {
         ...source,
         obj: ChatRoleEnum.Human,
         dataId: 'reply-round',
-        value: [{ select: { type, questions: [{ question: 'Choose?', value: 'A' }] } }]
+        value: [
+          {
+            select:
+              type === 'agentAsk'
+                ? { type, questions: [{ question: 'Choose?', value: 'A' }] }
+                : { type, action: 'confirm' }
+          }
+        ]
       });
       const ai = await MongoChatItem.create({
         ...source,

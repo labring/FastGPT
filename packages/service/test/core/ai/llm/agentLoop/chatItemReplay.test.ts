@@ -5,7 +5,10 @@ import type {
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentLoopRuntime } from '@fastgpt/service/core/ai/llm/agentLoop/domain/runtime';
-import { runAgentLoopCore } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/run';
+import {
+  runAgentLoopCore,
+  runAgentLoopCoreWithSummary
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/run';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -13,6 +16,7 @@ import { formatAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { readAgentLoopCoreActivePlan } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/activePlan';
 import { appendWorkflowInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
+import { getWorkflowBuilderPreviewToolResponse } from '@fastgpt/global/core/workflow/builder/utils';
 
 const mocks = vi.hoisted(() => ({ llm: vi.fn(), compress: vi.fn(), sandbox: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', () => ({
@@ -87,6 +91,9 @@ describe('FastAgent ChatItem replay', () => {
 
   it('replays concurrent tools, failed Ask, plan and a valid Ask in the exact response groups', async () => {
     const plan = { name: 'Work', steps: ['Build'] };
+    const originalAsk = call('ask', 'ask_user', ask);
+    const rawArguments = ` \n${JSON.stringify({ questions: ask.questions, extension: '原始额外字段', blockerType: ask.blockerType, reason: ask.reason }, null, 2)}\n`;
+    originalAsk.function.arguments = rawArguments;
     mockCreateLLMResponseQueue(mocks.llm, [
       {
         ...text({ content: 'Research', reasoning: 'Compare sources' }),
@@ -96,11 +103,7 @@ describe('FastAgent ChatItem replay', () => {
       toolCall({ id: 'invalid', name: 'ask_user', args: { reason: 'Missing questions' } }),
       {
         ...text({ content: 'Choose first' }),
-        toolCalls: [
-          call('plan', 'set_plan', plan),
-          call('ask', 'ask_user', ask),
-          call('after', 'write')
-        ],
+        toolCalls: [call('plan', 'set_plan', plan), originalAsk, call('after', 'write')],
         finishReason: 'tool_calls'
       }
     ]);
@@ -158,13 +161,10 @@ describe('FastAgent ChatItem replay', () => {
     const interactive = values.find((value) => value.interactive)!;
     expect(interactive.interactive).toMatchObject({
       type: 'agentAsk',
-      params: {
-        askId: 'ask',
-        blockerType: 'user_choice',
-        description: ask.reason,
-        questions: ask.questions
-      }
+      params: { askId: 'ask', arguments: rawArguments }
     });
+    expect(Object.keys(interactive.interactive!.params).sort()).toEqual(['arguments', 'askId']);
+    expect(originalAsk.function.arguments).toBe(rawArguments);
     expect(interactive).not.toHaveProperty('agentAsk');
     expect(interactive.interactive).not.toHaveProperty('askId');
     expect(interactive.tools?.map((tool) => tool.id)).toEqual(['plan', 'after']);
@@ -227,6 +227,104 @@ describe('FastAgent ChatItem replay', () => {
     ).toEqual(transcript(result.completeMessages));
   });
 
+  it('stores a valid Preview once and replays the exact original arguments before and after a Human reply', async () => {
+    const rawArguments =
+      ' \n' +
+      JSON.stringify(
+        {
+          sections: [{ title: 'Goal', content: 'Build' }],
+          extension: 'keep',
+          mermaid: 'flowchart TD\n A-->B',
+          title: 'Plan'
+        },
+        null,
+        2
+      ) +
+      '\n';
+    const preview = {
+      type: 'workflowBuilderPreview' as const,
+      previewId: 'preview-1',
+      params: { arguments: rawArguments }
+    };
+    const response = JSON.stringify({
+      ok: true,
+      state: 'awaiting_confirmation',
+      previewId: preview.previewId,
+      taskComplete: false
+    });
+    mockCreateLLMResponseQueue(mocks.llm, [
+      {
+        ...text({ content: 'Please confirm', reasoning: 'Plan the workflow' }),
+        toolCalls: [
+          {
+            id: 'preview-call',
+            type: 'function',
+            function: { name: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME, arguments: rawArguments }
+          }
+        ],
+        finishReason: 'tool_calls'
+      }
+    ]);
+    const initial: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [{ text: { content: 'Build' } }]
+    };
+    const { result, summary } = await runAgentLoopCoreWithSummary({
+      provider: 'fastAgent',
+      input: { messages: rebuild([initial]) },
+      runtime: runtime({
+        executeTool: async () => ({
+          response,
+          interactive: preview,
+          hideInUI: true,
+          assistantMessages: [],
+          usages: []
+        })
+      })
+    });
+    if (!summary.interactive) throw new Error('Expected Preview interactive');
+    const values = result.assistantResponses;
+    appendWorkflowInteractiveValue({
+      values,
+      interactive: { ...summary.interactive, entryNodeIds: [], memoryEdges: [], nodeOutputs: [] }
+    });
+    appendWorkflowInteractiveValue({
+      values,
+      interactive: { ...summary.interactive, entryNodeIds: [], memoryEdges: [], nodeOutputs: [] }
+    });
+    expect(values).toHaveLength(1);
+    expect(values[0]).not.toHaveProperty('tools');
+    expect(values[0].hideInUI).toBe(false);
+    expect(values[0].modelResponseId).toEqual(expect.any(String));
+    const history: ChatItemMiniType[] = [initial, { obj: ChatRoleEnum.AI, value: values }];
+    expect(transcript(rebuild(history))).toEqual(transcript(result.completeMessages));
+    const decision = {
+      previewId: preview.previewId,
+      action: 'revise' as const,
+      feedback: 'Add review'
+    };
+    const human: ChatItemMiniType = {
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          select: {
+            type: 'workflowBuilderPreview',
+            action: 'revise',
+            reviseText: decision.feedback
+          }
+        }
+      ]
+    };
+    const original = structuredClone(values);
+    const expected = result.completeMessages.map((message) =>
+      message.role === 'tool' && message.tool_call_id === 'preview-call'
+        ? { ...message, content: JSON.stringify(getWorkflowBuilderPreviewToolResponse(decision)) }
+        : message
+    );
+    expect(transcript(rebuild([...history, human]))).toEqual(transcript(expected));
+    expect(values).toEqual(original);
+  });
+
   it('replays hidden server User continuations between distinct model responses', async () => {
     mockCreateLLMResponseQueue(mocks.llm, [text({ content: 'First' }), text({ content: 'Done' })]);
     const initial: ChatItemMiniType = {
@@ -283,9 +381,11 @@ describe('FastAgent ChatItem replay', () => {
       type: 'agentAsk' as const,
       params: {
         askId: 'child-ask',
-        blockerType: ask.blockerType,
-        description: ask.reason,
-        questions: ask.questions
+        arguments: JSON.stringify({
+          reason: ask.reason,
+          blockerType: ask.blockerType,
+          questions: ask.questions
+        })
       },
       entryNodeIds: [],
       memoryEdges: [],

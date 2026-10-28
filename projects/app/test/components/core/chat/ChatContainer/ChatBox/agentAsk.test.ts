@@ -9,9 +9,11 @@ const ask: AgentAskInteractive = {
 
   params: {
     askId: 'ask-1',
-    blockerType: 'user_choice',
-    description: 'Choose a direction',
-    questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
+    arguments: JSON.stringify({
+      reason: 'Choose a direction',
+      blockerType: 'user_choice',
+      questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
+    })
   }
 };
 const askValue = {
@@ -23,9 +25,11 @@ const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
   previewId: 'preview-1',
   params: {
-    title: 'Confirm this workflow?',
-    mermaid: 'flowchart LR\n  A --> B',
-    sections: []
+    arguments: JSON.stringify({
+      title: 'Confirm this workflow?',
+      mermaid: 'flowchart LR\n  A --> B',
+      sections: [{ title: 'Goal', content: 'Build the workflow' }]
+    })
   }
 };
 const previewValue = {

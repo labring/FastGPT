@@ -203,12 +203,16 @@ export const createAgentLoopCoreAssistantEventCollector = ({
       }
       case 'ask_start': {
         if (!event.id) return;
-        const group = groupsByCall.get(event.id) ?? ensureCurrent();
+        const existingGroup = groupsByCall.get(event.id);
+        const argumentsText =
+          event.params ?? existingGroup?.tools?.find((tool) => tool.id === event.id)?.params;
+        if (typeof argumentsText !== 'string') return;
+        const group = existingGroup ?? ensureCurrent();
         askIds.add(event.id);
         group.tools = group.tools?.filter((tool) => tool.id !== event.id);
         if (!group.tools?.length) delete group.tools;
         group.interactive = {
-          ...createAgentLoopCoreAskInteractive({ askId: event.id, ask: event.ask }),
+          ...createAgentLoopCoreAskInteractive({ askId: event.id, arguments: argumentsText }),
           entryNodeIds: [],
           memoryEdges: [],
           nodeOutputs: []

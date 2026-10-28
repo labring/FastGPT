@@ -142,17 +142,19 @@ describe('delete chat record api', () => {
       nodeOutputs: [],
       params: {
         askId: 'ask-1',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [
-          {
-            question: 'Choose?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Choose?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     };
     const previousAi = await MongoChatItem.create({

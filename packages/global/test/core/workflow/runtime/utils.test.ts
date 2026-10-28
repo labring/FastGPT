@@ -97,7 +97,10 @@ describe('isAgentAskInteractive', () => {
           ...runtime,
           type: 'agentAsk',
 
-          params: { askId: 'ask-1', blockerType: 'user_choice', description: '', questions: [] }
+          params: {
+            askId: 'ask-1',
+            arguments: JSON.stringify({ reason: '', blockerType: 'user_choice', questions: [] })
+          }
         }
       }
     };
@@ -874,17 +877,19 @@ describe('getLastInteractiveValue', () => {
       nodeOutputs: [],
       params: {
         askId: 'ask-1',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [
-          {
-            question: 'Choose?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Choose?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     };
     const ai: ChatItemMiniType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
@@ -957,18 +962,20 @@ describe('getLastInteractiveValue', () => {
       nodeOutputs: [],
       params: {
         askId: 'call_ask',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [
-          {
-            question: 'What do you want?',
-            options: [
-              { summary: 'Use repo', value: 'Use repo' },
-              { summary: 'Use docs', value: 'Use docs' },
-              { summary: 'Use defaults', value: 'Use defaults' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'What do you want?',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ]
+            }
+          ]
+        })
       }
     } as WorkflowInteractiveResponseType;
 
@@ -983,18 +990,20 @@ describe('getLastInteractiveValue', () => {
 
       params: {
         askId: 'call_ask',
-        blockerType: 'user_choice',
-        description: '',
-        questions: [
-          {
-            question: 'What do you want?',
-            options: [
-              { summary: 'Use repo', value: 'Use repo' },
-              { summary: 'Use docs', value: 'Use docs' },
-              { summary: 'Use defaults', value: 'Use defaults' }
-            ]
-          }
-        ]
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'What do you want?',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ]
+            }
+          ]
+        })
       }
     });
   });
@@ -1019,9 +1028,11 @@ describe('getLastInteractiveValue', () => {
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          title: 'Confirm?',
-          mermaid: 'flowchart LR; A --> B',
-          sections: []
+          arguments: JSON.stringify({
+            title: 'Confirm?',
+            mermaid: 'flowchart LR; A --> B',
+            sections: [{ title: 'Goal', content: 'Build the workflow' }]
+          })
         }
       };
       const messages: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];

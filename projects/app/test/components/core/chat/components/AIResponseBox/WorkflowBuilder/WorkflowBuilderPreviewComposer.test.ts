@@ -34,9 +34,11 @@ const interactive: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
   previewId: 'preview-1',
   params: {
-    title: '确认工作流方案',
-    mermaid: 'flowchart LR; A --> B',
-    sections: []
+    arguments: JSON.stringify({
+      title: '确认工作流方案',
+      mermaid: 'flowchart LR; A --> B',
+      sections: [{ title: 'Goal', content: 'Build the workflow' }]
+    })
   }
 };
 

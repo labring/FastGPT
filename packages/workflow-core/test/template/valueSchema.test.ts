@@ -38,7 +38,13 @@ describe('getNodeInputValueSchema', () => {
 
   it.each([
     { type: 'team' },
+    {
+      type: 'system',
+      value: Object.fromEntries(input.inputList!.map(({ key }) => [key, { secret: '', value: '' }]))
+    },
     { type: 'system', value: { appSecret: { value: 'would-be-discarded' } } },
+    { type: 'system', value: { appSecret: { secret: 'would-be-discarded' } } },
+    { type: 'system', value: { unknownKey: { secret: '', value: '' } } },
     { type: 'manual' },
     { type: 'manual', value: { appSecret: 'not-a-secret-wrapper' } },
     { type: 'manual', value: { appSecret: { secret: 42 } } },

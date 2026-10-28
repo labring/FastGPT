@@ -30,7 +30,11 @@ import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../workflow/builder/constant
 import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
 import { AgentAskInteractiveSchema } from '../workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
-import { formatAgentAskAnswers, parseAgentAskAnswers } from '../ai/agent/utils';
+import {
+  formatAgentAskAnswers,
+  parseAgentAskAnswers,
+  parseAgentAskArguments
+} from '../ai/agent/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
 type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
@@ -295,8 +299,10 @@ export const chats2GPTMessages = ({
   let results: ChatCompletionMessageParam[] = [];
   const responseIds = new WeakMap<ChatCompletionMessageParam, string>();
   const sourceMessages = getCheckpointAwareMessages(messages);
+  // Agent 专用恢复事实不能改写普通节点的用户输入，也不能进入 ChatBox 传输历史。
+  const restoreAgentContext = reserveTool && !reserveSelect;
   const inputContexts = new Map<number, NonNullable<AIChatItemValueItemType['inputContext']>>();
-  if (!reserveSelect)
+  if (restoreAgentContext)
     sourceMessages.forEach((item, index) => {
       if (item.obj !== ChatRoleEnum.AI || sourceMessages[index - 1]?.obj !== ChatRoleEnum.Human)
         return;
@@ -312,7 +318,7 @@ export const chats2GPTMessages = ({
       }
     });
   const resumedToolResponses = new Map<string, string>();
-  if (!reserveSelect)
+  if (restoreAgentContext)
     sourceMessages.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI)
         item.value.forEach((value) => {
@@ -356,8 +362,10 @@ export const chats2GPTMessages = ({
       select?.type === 'agentAsk'
         ? select.questions.map((question) => question.value)
         : parseAgentAskAnswers(text);
+    const payload = parseAgentAskArguments(ask.params.arguments);
+    if (!payload) return;
     return formatAgentAskAnswers({
-      questions: ask.params.questions,
+      questions: payload.questions,
       answers: answers.length ? answers : [text]
     });
   };
@@ -424,7 +432,15 @@ export const chats2GPTMessages = ({
     if (item?.obj !== ChatRoleEnum.AI) return;
     const preview = getWorkflowBuilderPreview(item.value);
     if (!preview) return;
-    const interactive = item.value.findLast((value) => value.interactive)?.interactive;
+    const interactive = item.value.findLast(
+      (value) => !value.displayOnly && value.interactive
+    )?.interactive;
+    // 子工具内部的预览不属于父模型，不能把其调用恢复为父模型工具。
+    if (
+      interactive?.type === 'toolChildrenInteractive' &&
+      interactive.params.childrenResponse?.type !== 'workflowBuilderPreview'
+    )
+      return;
     const toolCallId =
       interactive?.type === 'toolChildrenInteractive'
         ? interactive.params.toolParams.toolCallId
@@ -437,7 +453,8 @@ export const chats2GPTMessages = ({
           (!toolCallId || tool.id === toolCallId) &&
           normalizeChatToolContext(tool)
       );
-    return tool ? { preview, toolCallId: tool.id } : undefined;
+    const id = toolCallId ?? tool?.id;
+    return id ? { preview, toolCallId: id } : undefined;
   };
 
   sourceMessages.forEach((item, index) => {
@@ -542,6 +559,13 @@ export const chats2GPTMessages = ({
               userContent: next
             })
           : undefined;
+      const hasStoredPreviewTool =
+        previewContext &&
+        item.value.some((value) =>
+          (value.tools ?? (value.tool ? [value.tool] : [])).some(
+            (tool) => tool.id === previewContext.toolCallId
+          )
+        );
 
       const appendAssistantToolCall = ({
         id,
@@ -616,12 +640,42 @@ export const chats2GPTMessages = ({
 
       item.value.forEach((value) => {
         if (value.displayOnly) return;
+        const valuePreview =
+          !hasStoredPreviewTool && previewContext ? getWorkflowBuilderPreview([value]) : undefined;
+        const previewToolContext =
+          valuePreview && previewContext
+            ? ({
+                toolCall: {
+                  id: previewContext.toolCallId,
+                  type: 'function' as const,
+                  function: {
+                    name: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+                    arguments: valuePreview.params.arguments
+                  }
+                },
+                toolResponse: {
+                  role: ChatCompletionRequestMessageRoleEnum.Tool,
+                  tool_call_id: previewContext.toolCallId,
+                  content: JSON.stringify(
+                    previewDecision
+                      ? getWorkflowBuilderPreviewToolResponse(previewDecision)
+                      : {
+                          ok: true,
+                          state: 'awaiting_confirmation',
+                          previewId: valuePreview.previewId,
+                          taskComplete: false
+                        }
+                  )
+                }
+              } satisfies NormalizedChatToolContext)
+            : undefined;
         if (value.modelResponseId && !value.contextCheckpoint) {
           flushPendingRuntimeToolResponses();
           const contexts = reserveTool
             ? (value.tools ?? []).map(normalizeChatToolContext).filter(isNormalizedChatToolContext)
             : [];
           const currentAsk = getAsk({ ...item, value: [value] });
+          if (previewToolContext) contexts.push(previewToolContext);
           if (reserveTool && currentAsk) {
             const response = getAskResponse(currentAsk, next);
             if (response !== undefined)
@@ -631,11 +685,7 @@ export const chats2GPTMessages = ({
                   type: 'function',
                   function: {
                     name: 'ask_user',
-                    arguments: JSON.stringify({
-                      reason: currentAsk.params.description,
-                      blockerType: currentAsk.params.blockerType,
-                      questions: currentAsk.params.questions
-                    })
+                    arguments: currentAsk.params.arguments
                   }
                 },
                 toolResponse: {
@@ -690,12 +740,13 @@ export const chats2GPTMessages = ({
         }
 
         if (value.userMessage) {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: value.userMessage.content,
-            hideInUI: true
-          });
+          if (restoreAgentContext)
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: value.userMessage.content,
+              hideInUI: true
+            });
           return;
         }
 
@@ -736,14 +787,22 @@ export const chats2GPTMessages = ({
             appendAssistantToolCall({
               id: ask.params.askId,
               functionName: 'ask_user',
-              params: JSON.stringify({
-                reason: ask.params.description,
-                blockerType: ask.params.blockerType,
-                questions: ask.params.questions
-              })
+              params: ask.params.arguments
             });
             appendToolMessage({ id: ask.params.askId, response });
           }
+        }
+
+        if (previewToolContext) {
+          appendAssistantToolCall({
+            id: previewToolContext.toolCall.id,
+            functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+            params: previewToolContext.toolCall.function.arguments
+          });
+          appendToolMessage({
+            id: previewToolContext.toolCall.id,
+            response: previewToolContext.toolResponse.content
+          });
         }
 
         if (typeof value.reasoning?.content === 'string') {

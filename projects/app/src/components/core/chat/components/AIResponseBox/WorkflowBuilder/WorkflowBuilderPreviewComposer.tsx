@@ -1,5 +1,6 @@
 import type { AgentAskQuestion } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
+import { parseWorkflowBuilderPreviewArguments } from '@fastgpt/global/core/workflow/builder/utils';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import AgentAskComposer, {
@@ -21,15 +22,19 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
   const cancelLabel = t('workflow:workflow_builder_preview_cancel');
   const [submittedValue, setSubmittedValue] = useState('');
   const isSubmitted = !!submittedValue;
+  const payload = useMemo(
+    () => parseWorkflowBuilderPreviewArguments(interactive.params.arguments),
+    [interactive.params.arguments]
+  );
   const question = useMemo<AgentAskQuestion>(
     () => ({
-      question: interactive.params.title,
+      question: payload?.title ?? '',
       options: [
         { value: 'confirm', summary: confirmLabel },
         { value: 'cancel', summary: cancelLabel }
       ]
     }),
-    [interactive.params.title, confirmLabel, cancelLabel]
+    [payload?.title, confirmLabel, cancelLabel]
   );
 
   const onSubmit = useCallback(
@@ -47,7 +52,7 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
     [continueInteractive]
   );
 
-  if (isSubmitted) {
+  if (isSubmitted || !payload) {
     return null;
   }
 

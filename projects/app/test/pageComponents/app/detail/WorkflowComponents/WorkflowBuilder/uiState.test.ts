@@ -24,9 +24,11 @@ const createPreviewInteractive = (
   memoryEdges: [],
   nodeOutputs: [],
   params: {
-    title: '方案预览',
-    mermaid: 'flowchart LR\nA --> B',
-    sections: []
+    arguments: JSON.stringify({
+      title: '方案预览',
+      mermaid: 'flowchart LR\nA --> B',
+      sections: [{ title: 'Goal', content: 'Build the workflow' }]
+    })
   }
 });
 

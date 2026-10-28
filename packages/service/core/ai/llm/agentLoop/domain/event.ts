@@ -4,7 +4,7 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { AgentAskPayload } from './systemTool/ask';
+import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentLoopUsage } from './usage';
 import type { AgentLoopAssistantResponse } from './tool';
 

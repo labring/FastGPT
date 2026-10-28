@@ -145,9 +145,11 @@ export const confirmedPreview: AIChatItemValueItemType = {
     memoryEdges: [],
     nodeOutputs: [],
     params: {
-      title: 'Preview',
-      mermaid: 'flowchart LR',
-      sections: []
+      arguments: JSON.stringify({
+        title: 'Preview',
+        mermaid: 'flowchart LR',
+        sections: [{ title: 'Goal', content: 'Build the workflow' }]
+      })
     }
   }
 };

@@ -341,9 +341,11 @@ describe('mergeResumeCompletedChatRecords', () => {
             usageId: 'same-usage',
             params: {
               askId: id,
-              blockerType: 'user_choice',
-              description: '',
-              questions: [{ question: 'Question', options: [] }]
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [{ question: 'Question', options: [] }]
+              })
             }
           };
         }

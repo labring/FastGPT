@@ -5,7 +5,8 @@ import {
   isWorkflowBuilderVersionExpiredError,
   getWorkflowBuilderPreview,
   getWorkflowBuilderPreviewDecision,
-  getWorkflowBuilderPreviewToolResponse
+  getWorkflowBuilderPreviewToolResponse,
+  parseWorkflowBuilderPreviewArguments
 } from '@fastgpt/global/core/workflow/builder/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
@@ -15,6 +16,40 @@ import type {
   WorkflowBuilderPreviewInteractive
 } from '@fastgpt/global/core/workflow/builder/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+
+describe('parseWorkflowBuilderPreviewArguments', () => {
+  it('derives display fields without changing original whitespace, property order or extensions', () => {
+    const raw =
+      ' \n' +
+      JSON.stringify(
+        {
+          sections: [{ title: 'Goal', content: 'Build' }],
+          extension: true,
+          mermaid: 'flowchart TD\n A-->B',
+          title: ' Plan '
+        },
+        null,
+        2
+      ) +
+      '\n';
+    expect(parseWorkflowBuilderPreviewArguments(raw)).toEqual({
+      title: 'Plan',
+      mermaid: 'flowchart TD\n A-->B',
+      sections: [{ title: 'Goal', content: 'Build' }]
+    });
+    expect(raw.startsWith(' \n')).toBe(true);
+    expect(raw).toContain('"extension": true');
+  });
+  it.each([
+    'not JSON',
+    "{title:'JSON5'}",
+    '{}',
+    undefined,
+    JSON.stringify({ title: 'Plan', mermaid: 'flowchart TD\n A-->B', sections: [] })
+  ])('ignores invalid or legacy arguments: %s', (raw) => {
+    expect(parseWorkflowBuilderPreviewArguments(raw)).toBeUndefined();
+  });
+});
 
 const version: WorkflowBuilderVersion = {
   versionNo: 1,
@@ -64,9 +99,11 @@ const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
   previewId: 'preview',
   params: {
-    title: 'Plan',
-    mermaid: 'flowchart TD\n A-->B',
-    sections: []
+    arguments: JSON.stringify({
+      title: 'Plan',
+      mermaid: 'flowchart TD\n A-->B',
+      sections: [{ title: 'Goal', content: 'Build the workflow' }]
+    })
   }
 };
 
@@ -83,7 +120,10 @@ describe('getWorkflowBuilderPreview', () => {
           interactive: {
             type: 'agentAsk',
 
-            params: { askId: 'ask', blockerType: 'user_choice', description: '', questions: [] },
+            params: {
+              askId: 'ask',
+              arguments: JSON.stringify({ reason: '', blockerType: 'user_choice', questions: [] })
+            },
             entryNodeIds: [],
             memoryEdges: [],
             nodeOutputs: []

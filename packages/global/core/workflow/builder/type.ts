@@ -76,21 +76,45 @@ export type WorkflowBuilderPreviewReply = z.infer<typeof WorkflowBuilderPreviewR
 
 export const WorkflowBuilderPreviewSectionSchema = z.object({
   title: z.string().trim().min(1),
-  content: z.string()
+  content: z.string().trim().min(1)
 });
 export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPreviewSectionSchema>;
 
+/** Preview 展示与服务端校验共用的工具参数，解析结果不重复持久化。 */
+export const WorkflowBuilderPreviewPayloadSchema = z.object({
+  title: z.string().trim().min(1),
+  mermaid: z.string().trim().min(1),
+  sections: z.array(WorkflowBuilderPreviewSectionSchema).min(1)
+});
+export type WorkflowBuilderPreviewPayload = z.infer<typeof WorkflowBuilderPreviewPayloadSchema>;
+
+/** 严格解析原始 JSON；拒绝自动修复，确保客户端可以解析同一份原文。 */
+export const WorkflowBuilderPreviewArgumentsSchema = z
+  .string()
+  .transform((value, ctx) => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      ctx.addIssue({ code: 'custom', message: 'Preview tool arguments are not valid JSON.' });
+      return z.NEVER;
+    }
+  })
+  .pipe(WorkflowBuilderPreviewPayloadSchema);
+
 /**
- * Workflow Builder 的唯一预览载荷。
- * Mermaid 和说明挂在同一个交互节点上；固定操作由前端渲染，不随预览重复存储。
+ * 仅保存模型原始参数字符串；展示时解析，恢复 tool call 时原样使用。
+ * 固定操作由前端提供，回答独立保存到下一条 Human。
  */
 export const WorkflowBuilderPreviewInteractiveSchema = z.object({
   type: z.literal('workflowBuilderPreview'),
   previewId: z.string().min(1),
   params: z.object({
-    title: z.string().trim().min(1),
-    mermaid: z.string().trim().min(1),
-    sections: z.array(WorkflowBuilderPreviewSectionSchema)
+    arguments: z
+      .string()
+      .refine((value) => WorkflowBuilderPreviewArgumentsSchema.safeParse(value).success, {
+        message: 'Invalid Preview tool arguments'
+      })
+      .meta({ description: '模型原始 Preview 工具参数 JSON 字符串，展示时解析，恢复时原样使用' })
   })
 });
 export type WorkflowBuilderPreviewInteractive = z.infer<

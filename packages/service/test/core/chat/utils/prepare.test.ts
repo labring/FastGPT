@@ -347,17 +347,19 @@ describe('prepare chat round', () => {
         nodeOutputs: [],
         params: {
           askId: 'chat-agent-helper-ask',
-          blockerType: 'user_choice',
-          description: 'Collect requirements',
-          questions: [
-            {
-              question: 'Audience?',
-              options: [
-                { summary: 'A', value: 'A' },
-                { summary: 'B', value: 'B' }
-              ]
-            }
-          ]
+          arguments: JSON.stringify({
+            reason: 'Collect requirements',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Audience?',
+                options: [
+                  { summary: 'A', value: 'A' },
+                  { summary: 'B', value: 'B' }
+                ]
+              }
+            ]
+          })
         }
       };
       const result = await preChatRound({
@@ -448,18 +450,20 @@ describe('prepare chat round', () => {
 
         params: {
           askId: 'call_ask',
-          blockerType: 'user_choice',
-          description: '',
-          questions: [
-            {
-              question: 'Need more input',
-              options: [
-                { summary: 'Use repo', value: 'Use repo' },
-                { summary: 'Use docs', value: 'Use docs' },
-                { summary: 'Use defaults', value: 'Use defaults' }
-              ]
-            }
-          ]
+          arguments: JSON.stringify({
+            reason: '',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: 'Need more input',
+                options: [
+                  { summary: 'Use repo', value: 'Use repo' },
+                  { summary: 'Use docs', value: 'Use docs' },
+                  { summary: 'Use defaults', value: 'Use defaults' }
+                ]
+              }
+            ]
+          })
         }
       } as any
     });
@@ -490,18 +494,20 @@ describe('prepare chat round', () => {
 
             params: {
               askId: 'call_ask',
-              blockerType: 'user_choice',
-              description: '',
-              questions: [
-                {
-                  question: 'Need more input',
-                  options: [
-                    { summary: 'Use repo', value: 'Use repo' },
-                    { summary: 'Use docs', value: 'Use docs' },
-                    { summary: 'Use defaults', value: 'Use defaults' }
-                  ]
-                }
-              ]
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Need more input',
+                    options: [
+                      { summary: 'Use repo', value: 'Use repo' },
+                      { summary: 'Use docs', value: 'Use docs' },
+                      { summary: 'Use defaults', value: 'Use defaults' }
+                    ]
+                  }
+                ]
+              })
             }
           }
         }

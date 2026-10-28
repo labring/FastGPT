@@ -1354,18 +1354,20 @@ describe('pushChatRecords', () => {
 
               params: {
                 askId: 'call_ask_agent',
-                blockerType: 'user_choice',
-                description: '需要用户明确任务目标',
-                questions: [
-                  {
-                    question: '请补充目标',
-                    options: [
-                      { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                      { summary: '改为研究 Go', value: '改为研究 Go' },
-                      { summary: '先给出学习路线', value: '先给出学习路线' }
-                    ]
-                  }
-                ]
+                arguments: JSON.stringify({
+                  reason: '需要用户明确任务目标',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: '请补充目标',
+                      options: [
+                        { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                        { summary: '改为研究 Go', value: '改为研究 Go' },
+                        { summary: '先给出学习路线', value: '先给出学习路线' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -1394,18 +1396,20 @@ describe('pushChatRecords', () => {
         nodeOutputs: [],
         params: {
           askId: 'call_ask_agent',
-          blockerType: 'user_choice',
-          description: '需要用户明确任务目标',
-          questions: [
-            {
-              question: '请补充目标',
-              options: [
-                { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                { summary: '改为研究 Go', value: '改为研究 Go' },
-                { summary: '先给出学习路线', value: '先给出学习路线' }
-              ]
-            }
-          ]
+          arguments: JSON.stringify({
+            reason: '需要用户明确任务目标',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: '请补充目标',
+                options: [
+                  { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                  { summary: '改为研究 Go', value: '改为研究 Go' },
+                  { summary: '先给出学习路线', value: '先给出学习路线' }
+                ]
+              }
+            ]
+          })
         }
       };
 
@@ -1426,17 +1430,19 @@ describe('pushChatRecords', () => {
 
                 params: {
                   askId: 'ask-1',
-                  blockerType: 'user_choice',
-                  description: '',
-                  questions: [
-                    {
-                      question: '方向？',
-                      options: [
-                        { summary: 'Rust', value: 'rust' },
-                        { summary: 'Go', value: 'go' }
-                      ]
-                    }
-                  ]
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: '方向？',
+                        options: [
+                          { summary: 'Rust', value: 'rust' },
+                          { summary: 'Go', value: 'go' }
+                        ]
+                      }
+                    ]
+                  })
                 }
               }
             : {
@@ -1444,14 +1450,16 @@ describe('pushChatRecords', () => {
                 type: 'workflowBuilderPreview',
                 previewId: 'preview-1',
                 params: {
-                  title: '确认方案？',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: [
-                    { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                    { value: 'revise', label: 'Revise', inputMode: 'text' },
-                    { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                  ]
+                  arguments: JSON.stringify({
+                    title: '确认方案？',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build the workflow' }],
+                    actions: [
+                      { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+                      { value: 'revise', label: 'Revise', inputMode: 'text' },
+                      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+                    ]
+                  })
                 }
               };
         const select = {

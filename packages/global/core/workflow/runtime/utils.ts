@@ -15,6 +15,7 @@ import {
   type WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '../builder/type';
+import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../builder/constants';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
@@ -451,7 +452,7 @@ export function rewriteNodeOutputByHistories(
   });
 }
 
-/** 给同一条 Ask value 补齐工作流续跑包装，不重复保存 interactive 或回写历史 AI。 */
+/** 补齐交互续跑包装；成功 Preview 接管原工具所属 value，避免参数和等待结果重复存储。 */
 export const appendWorkflowInteractiveValue = ({
   values,
   interactive
@@ -460,18 +461,35 @@ export const appendWorkflowInteractiveValue = ({
   interactive: WorkflowInteractiveResponseType;
 }) => {
   const latest = extractDeepestInteractive(interactive);
-  if (isAgentAskInteractive(latest)) {
+  if (isAskInteractive(latest)) {
     const existing = values.find((value) => {
       if (value.displayOnly || !value.interactive) return false;
       const current = extractDeepestInteractive(value.interactive);
-      return (
-        !!latest.params?.askId &&
-        isAgentAskInteractive(current) &&
-        current.params?.askId === latest.params.askId
-      );
+      return isAgentAskInteractive(latest)
+        ? !!latest.params?.askId &&
+            isAgentAskInteractive(current) &&
+            current.params?.askId === latest.params.askId
+        : current?.type === 'workflowBuilderPreview' && current.previewId === latest.previewId;
     });
     if (existing) {
       existing.interactive = interactive;
+      return;
+    }
+  }
+  if (latest.type === 'workflowBuilderPreview' && interactive.type === 'toolChildrenInteractive') {
+    const callId = interactive.params.toolParams.toolCallId;
+    const group = values.find(
+      (value) =>
+        !value.displayOnly &&
+        value.tools?.some(
+          (tool) => tool.id === callId && tool.functionName === WORKFLOW_BUILDER_PREVIEW_TOOL_NAME
+        )
+    );
+    if (group) {
+      group.tools = group.tools?.filter((tool) => tool.id !== callId);
+      if (!group.tools?.length) delete group.tools;
+      group.interactive = interactive;
+      group.hideInUI = false;
       return;
     }
   }

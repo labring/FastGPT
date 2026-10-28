@@ -3,6 +3,7 @@ import { getUserChatSelect } from '../../chat/input/utils';
 import { extractDeepestInteractive } from '../runtime/utils';
 import {
   WorkflowBuilderPreviewInteractiveSchema,
+  WorkflowBuilderPreviewArgumentsSchema,
   type WorkflowBuilderPreviewDecision,
   type WorkflowBuilderPreviewInteractive,
   type WorkflowBuilderVersion,
@@ -10,6 +11,12 @@ import {
 } from './type';
 import appErr, { AppErrEnum } from '../../../common/error/code/app';
 import { getErrResponse, UserError } from '../../../common/error/utils';
+
+/** 安全读取预览展示内容；旧格式或损坏参数不阻断历史会话和普通输入。 */
+export const parseWorkflowBuilderPreviewArguments = (value: unknown) => {
+  const parsed = WorkflowBuilderPreviewArgumentsSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+};
 
 /** 失败日志只保留受控类别和数字错误码，避免原始异常携带凭证、工作流正文或归档路径。 */
 export const getWorkflowBuilderErrorLog = (error: unknown) => {
@@ -61,7 +68,7 @@ export const getWorkflowBuilderPreview = (values: readonly AIChatItemValueItemTy
   )?.interactive;
   if (!interactive) return;
   const preview = extractDeepestInteractive(interactive);
-  if (preview.type !== 'workflowBuilderPreview') return;
+  if (preview?.type !== 'workflowBuilderPreview') return;
   const result = WorkflowBuilderPreviewInteractiveSchema.safeParse(preview);
   return result.success ? result.data : undefined;
 };

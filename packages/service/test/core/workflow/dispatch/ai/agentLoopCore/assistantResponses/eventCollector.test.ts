@@ -58,14 +58,18 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     expect(collector.assistantResponses).toEqual([]);
   });
 
-  it('does not create an interactive without a valid tool call id', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector();
-    collector.emitEvent({
-      type: 'ask_start',
-      ask: { reason: 'Legacy input', blockerType: 'user_choice', questions: [] }
-    });
-    expect(collector.assistantResponses).toEqual([]);
-  });
+  it.each([undefined, 'missing-arguments'])(
+    'ignores Ask events without original call data: %s',
+    (id) => {
+      const collector = createAgentLoopCoreAssistantEventCollector();
+      collector.emitEvent({
+        type: 'ask_start',
+        id,
+        ask: { reason: 'Legacy input', blockerType: 'user_choice', questions: [] }
+      });
+      expect(collector.assistantResponses).toEqual([]);
+    }
+  );
 
   it('keeps text, reasoning and streamed tools in one response with final parameters and original call order', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
@@ -194,13 +198,11 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('stores valid Ask only in interactive and does not append its waiting result', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector();
-    collector.emitEvent(end('ask-response', [call('ask', 'ask_user')]));
-    collector.emitEvent({
-      type: 'ask_start',
-      id: 'ask',
-      ask: {
+  it.each([false, true])(
+    'stores raw Ask arguments once, with explicit event params: %s',
+    (explicitParams) => {
+      const collector = createAgentLoopCoreAssistantEventCollector();
+      const ask = {
         reason: 'Need input',
         blockerType: 'ambiguous_goal',
         questions: [
@@ -212,21 +214,31 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
             ]
           }
         ]
-      }
-    });
-    collector.emitEvent({
-      type: 'tool_run_end',
-      call: call('ask', 'ask_user'),
-      response: 'Waiting',
-      seconds: 0
-    });
-    expect(collector.assistantResponses).toHaveLength(1);
-    expect(collector.assistantResponses[0]).toMatchObject({
-      interactive: { type: 'agentAsk', params: { askId: 'ask', blockerType: 'ambiguous_goal' } }
-    });
-    expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
-    expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');
-  });
+      } as const;
+      const argumentsText = JSON.stringify(ask, null, 2);
+      const originalCall = call('ask', 'ask_user');
+      originalCall.function.arguments = argumentsText;
+      collector.emitEvent(end('ask-response', [originalCall]));
+      collector.emitEvent({
+        type: 'ask_start',
+        id: 'ask',
+        ask: JSON.parse(argumentsText),
+        ...(explicitParams ? { params: argumentsText } : {})
+      });
+      collector.emitEvent({
+        type: 'tool_run_end',
+        call: call('ask', 'ask_user'),
+        response: 'Waiting',
+        seconds: 0
+      });
+      expect(collector.assistantResponses).toHaveLength(1);
+      expect(collector.assistantResponses[0]).toMatchObject({
+        interactive: { type: 'agentAsk', params: { askId: 'ask', arguments: argumentsText } }
+      });
+      expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
+      expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');
+    }
+  );
 
   it('deduplicates checkpoints and separates the next response from compressed history', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();
