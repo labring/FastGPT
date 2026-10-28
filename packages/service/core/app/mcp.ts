@@ -32,6 +32,7 @@ import {
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
+import { profileStage } from '../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -427,57 +428,59 @@ export class MCPClient {
     this.safeFetch = safeFetch;
 
     logger.debug('Start connect mcp client', { url: this.url });
-    try {
-      const transport = new StreamableHTTPClientTransport(new URL(this.url), {
-        fetch: safeFetch,
-        requestInit: {
-          headers: this.headers
-        }
-      });
-      await this.client.connect(transport);
-    } catch (streamableError: any) {
-      // 如果是 MCP 协议格式错误（外部 server 返回不合规响应），转换为 UserError
-      if (isMcpProtocolError(streamableError)) {
-        await this.closeSafeFetch();
-        logger.info('MCP protocol error from external server', {
-          url: this.url,
-          error: streamableError
-        });
-        throw toMcpProtocolUserError(streamableError);
-      }
-
-      if (!shouldFallbackToSSE(streamableError)) {
-        await this.closeSafeFetch();
-        logger.info('Streamable HTTP error', streamableError);
-        throw streamableError;
-      }
-
+    await profileStage({ event: 'mcpClient.connect' }, async () => {
       try {
-        await this.client.connect(
-          new SSEClientTransport(new URL(this.url), {
-            fetch: safeFetch,
-            requestInit: {
-              headers: this.headers
-            }
-          })
-        );
-      } catch (sseError: any) {
-        await this.closeSafeFetch();
-        logger.info('SSE error', sseError);
-
-        // 如果 SSE fallback 也是协议错误，直接抛出 UserError
-        if (isMcpProtocolError(sseError)) {
-          throw toMcpProtocolUserError(sseError);
+        const transport = new StreamableHTTPClientTransport(new URL(this.url), {
+          fetch: safeFetch,
+          requestInit: {
+            headers: this.headers
+          }
+        });
+        await this.client.connect(transport);
+      } catch (streamableError: any) {
+        // 如果是 MCP 协议格式错误（外部 server 返回不合规响应），转换为 UserError
+        if (isMcpProtocolError(streamableError)) {
+          await this.closeSafeFetch();
+          logger.info('MCP protocol error from external server', {
+            url: this.url,
+            error: streamableError
+          });
+          throw toMcpProtocolUserError(streamableError);
         }
 
-        // 否则抛出组合错误消息
-        throw new Error(
-          `MCP connection failed. Streamable HTTP: ${getErrorMessage(
-            streamableError
-          )}; SSE: ${getErrorMessage(sseError)}`
-        );
+        if (!shouldFallbackToSSE(streamableError)) {
+          await this.closeSafeFetch();
+          logger.info('Streamable HTTP error', streamableError);
+          throw streamableError;
+        }
+
+        try {
+          await this.client.connect(
+            new SSEClientTransport(new URL(this.url), {
+              fetch: safeFetch,
+              requestInit: {
+                headers: this.headers
+              }
+            })
+          );
+        } catch (sseError: any) {
+          await this.closeSafeFetch();
+          logger.info('SSE error', sseError);
+
+          // 如果 SSE fallback 也是协议错误，直接抛出 UserError
+          if (isMcpProtocolError(sseError)) {
+            throw toMcpProtocolUserError(sseError);
+          }
+
+          // 否则抛出组合错误消息
+          throw new Error(
+            `MCP connection failed. Streamable HTTP: ${getErrorMessage(
+              streamableError
+            )}; SSE: ${getErrorMessage(sseError)}`
+          );
+        }
       }
-    }
+    });
 
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
@@ -602,15 +605,17 @@ export class MCPClient {
       const client = await this.getConnection();
       logger.debug('MCP client calling tool', { url: this.url, toolName, params });
 
-      return await client.callTool(
-        {
-          name: toolName,
-          arguments: params
-        },
-        undefined,
-        {
-          timeout: 300000
-        }
+      return await profileStage({ event: 'mcpClient.call', params: { toolName } }, () =>
+        client.callTool(
+          {
+            name: toolName,
+            arguments: params
+          },
+          undefined,
+          {
+            timeout: 300000
+          }
+        )
       );
     } catch (error) {
       logger.error('MCP client tool call failed', { url: this.url, toolName, error });

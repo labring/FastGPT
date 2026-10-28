@@ -28,7 +28,12 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   }
 }));
 
-const { getSseErrorResponse, jsonRes, processError } = await import('../../../common/response');
+const profilingMocks = vi.hoisted(() => ({ markProfileError: vi.fn() }));
+
+vi.mock('@fastgpt/service/common/profiling', () => profilingMocks);
+
+const { getSseErrorResponse, jsonRes, processError, responseWrite, sseErrRes } =
+  await import('../../../common/response');
 
 function buildZodError() {
   try {
@@ -314,5 +319,42 @@ describe('SSE stream resume mirror', () => {
     ]);
     expect(flushMirror).toHaveBeenCalledTimes(1);
     expect(response.write).not.toHaveBeenCalled();
+  });
+});
+
+describe('SSE error response profiling', () => {
+  beforeEach(() => {
+    profilingMocks.markProfileError.mockClear();
+  });
+
+  it('marks the request profile as failed when building an SSE error payload', () => {
+    const error = new Error('auth failed');
+
+    const response = getSseErrorResponse(error);
+
+    // 响应载荷保持原样，只是同时把请求标记为失败
+    expect(response.event).toBe('error');
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
+  });
+
+  it('marks the request profile as failed when a direct error event is written', () => {
+    const res = { write: vi.fn(() => true) };
+
+    responseWrite({ res: res as any, event: 'error', data: '{"message":"node failed"}' });
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith('{"message":"node failed"}');
+
+    profilingMocks.markProfileError.mockClear();
+    responseWrite({ res: res as any, event: 'answer', data: 'content' });
+    expect(profilingMocks.markProfileError).not.toHaveBeenCalled();
+  });
+
+  it('marks the request profile as failed when sseErrRes writes an SSE error', () => {
+    const error = new Error('auth failed');
+    const res = { write: vi.fn(() => true) };
+
+    sseErrRes(res as any, error);
+
+    expect(res.write).toHaveBeenCalled();
+    expect(profilingMocks.markProfileError).toHaveBeenCalledWith(error);
   });
 });
