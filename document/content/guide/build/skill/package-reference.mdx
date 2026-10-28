@@ -34,7 +34,7 @@ description: 详细说明 Skill 资源包目录规范、SKILL.md 元数据定义
 
 每个技能目录下的 `SKILL.md` 采用 YAML Frontmatter 声明关键元信息，正文部分编写提供给大语言模型的任务指引：
 
-```markdown
+````markdown
 ---
 name: extract-emails
 description: 从输入文本中提取所有电子邮箱地址，去重并保持首次出现顺序。
@@ -51,14 +51,14 @@ description: 从输入文本中提取所有电子邮箱地址，去重并保持�
 ```bash
 python3 skills/extract-emails/extract.py "<input_text>"
 ```
-```
+````
 
 元数据字段约定：
 
-| 字段 | 类型 | 要求 | 说明 |
-| --- | --- | --- | --- |
-| `name` | 字符串 | 必填 | 技能唯一标识，采用小写英文字母、数字和短横线（`-`），同一技能资源包内保持唯一。 |
-| `description` | 字符串 | 必填 | 技能功能摘要。Agent 在规划和工具调用时依据该描述决定是否调度本技能。 |
+| 字段          | 类型   | 要求 | 说明                                                                            |
+| ------------- | ------ | ---- | ------------------------------------------------------------------------------- |
+| `name`        | 字符串 | 必填 | 技能唯一标识，采用小写英文字母、数字和短横线（`-`），同一技能资源包内保持唯一。 |
+| `description` | 字符串 | 必填 | 技能功能摘要。Agent 在规划和工具调用时依据该描述决定是否调度本技能。            |
 
 正文要求：
 
@@ -79,22 +79,23 @@ Agent 关联该 Skill 资源后，将读取资源内包含的所有技能描述�
 
 系统始终自动应用内置的 `DEFAULT_GITIGNORE_CONTENT` 规则，默认排除以下目录与临时产物：
 
-- 依赖目录：`node_modules/`、`.venv/`、`env/`
-- 构建产物：`dist/`、`build/`、`*.egg-info/`
-- 缓存文件：`__pycache__/`、`*.pyc`、`.cache/`
-- 版本控制目录：`.git/`
+- 依赖目录：`node_modules/`、`.npm/`、`.yarn/`、`.pnpm-store/`、`.venv/`、`venv/`、`env/`
+- 构建与缓存产物：`dist/`、`build/`、`.next/`、`out/`、`.nuxt/`、`__pycache__/`、`*.pyc`、`.pytest_cache/`、`*.egg-info/`、`.eggs/`
+- 编辑器、系统文件与大体积归档：`.vscode/`、`.idea/`、`.DS_Store`、`package.zip`、常见音视频与压缩包及 `*.log`
 
 ### 根目录 .gitignore 叠加
 
 发布打包时，系统将工作区根目录的 `.gitignore` 规则与系统默认忽略规则合并生效。
 
-### 凭证文件安全防护
+### 凭证、Git 元数据与自定义缓存排除
 
-系统默认排除清单涵盖运行缓存与依赖目录，未自动包含 `.env` 与 `.env.*` 文件。开发者必须在根目录 `.gitignore` 中显式声明排除项：
+`.env`、`.env.*`、`.git/` 与 `.cache/` 均在系统默认排除清单之外。为防止本地调试凭证、Git 历史对象或自定义缓存目录随 ZIP 包分发，开发者应在根目录 `.gitignore` 中显式声明排除项：
 
 ```text
 .env
 .env.*
+.git/
+.cache/
 *.key
 *.pem
 ```

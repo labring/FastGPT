@@ -22,9 +22,7 @@ description: 通过 OpenAPI 处理工作流交互节点（用户选择 / 表单�
     "maxBudget": 5000,
     "strictMode": true
   },
-  "messages": [
-    { "role": "user", "content": "请核对本笔差旅申请" }
-  ]
+  "messages": [{ "role": "user", "content": "请核对本笔差旅申请" }]
 }
 ```
 
@@ -76,7 +74,7 @@ event: answer
 data: [DONE]
 ```
 
-- **表单输入节点（`type: "formInput"`）**：`params.inputForm` 包含表单字段定义数组（字段 `key`、`label`、`type`、`required`、`list` 选项等）。
+- **表单输入节点（工作流节点类型为 `formInput`，响应判别值为 `interactive.type: "userInput"`）**：当工作流在表单输入节点暂停时，返回的 `interactive` 对象使用 `"type": "userInput"`，`params.inputForm` 包含表单字段定义数组（字段 `key`、`label`、`type`、`required`、`list` 选项等）。
 
 ### 步骤 2：向同一 `chatId` 提交用户输入以恢复运行
 
@@ -90,9 +88,7 @@ data: [DONE]
   "chatId": "session_20261028_001",
   "stream": true,
   "detail": true,
-  "messages": [
-    { "role": "user", "content": "确认改写" }
-  ]
+  "messages": [{ "role": "user", "content": "确认改写" }]
 }
 ```
 
@@ -117,10 +113,10 @@ data: [DONE]
 
 ## 常见错误排查
 
-| 现象 | 原因与修复方式 |
-| --- | --- |
-| 工作流停在交互节点但客户端未收到选项配置 | 调用时未设置 `detail: true`；开启 `detail: true` 后才能接收 `interactive` 事件或 `responseData` |
-| 第二次提交后从流程开头重新执行而非从断点恢复 | 第二次请求遗漏了 `chatId` 或传入了新的 `chatId`；必须保持同一 `chatId` |
-| 表单恢复报错或字段为空 | `formInput` 的恢复消息 `content` 必须是序列化后的 JSON 字符串，且键名需与 `inputForm` 中的字段 `key` 一致 |
+| 现象                                         | 原因与修复方式                                                                                            |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 工作流停在交互节点但客户端未收到选项配置     | 调用时未设置 `detail: true`；开启 `detail: true` 后才能接收 `interactive` 事件或 `responseData`           |
+| 第二次提交后从流程开头重新执行而非从断点恢复 | 第二次请求遗漏了 `chatId` 或传入了新的 `chatId`；必须保持同一 `chatId`                                    |
+| 表单恢复报错或字段为空                       | `formInput` 的恢复消息 `content` 必须是序列化后的 JSON 字符串，且键名需与 `inputForm` 中的字段 `key` 一致 |
 
 下一步：查阅完整的[对话与会话 API 端点字典](/zh-CN/openapi/chat)。

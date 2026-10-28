@@ -38,7 +38,7 @@ description: FastGPT 系统工具开发指南
 | 密钥       | API Key、Base URL、账号密码等，通过 `secretSchema` 描述。 |
 | 外部 API   | 请求方式、鉴权方式、超时、限流、错误响应和测试账号。      |
 | 文件能力   | 需要上传文件时使用 `ctx.invoke.uploadFile()`。            |
-| 流式输出   | 需要展示中间进度时使用 `ctx.streamResponse()`。           |
+| 流式输出   | 需要流式返回文本回答时使用 `ctx.streamResponse()`。       |
 | 测试样例   | 至少包含成功路径、参数错误、鉴权失败和上游失败。          |
 
 影响插件 ID、鉴权方式、计费或上架安全性的信息需要先确认。其他信息可以使用合理默认值继续推进，并在提交说明中记录假设。
@@ -203,7 +203,7 @@ export default defineTool({
 - handler 返回值必须匹配 `outputSchema`。
 - 外部 API 错误需要转成可定位的错误信息，并避免输出密钥、令牌和完整敏感响应。
 - 调用宿主文件上传能力时，使用 `ctx.invoke.uploadFile()`，并优先保留返回的 `err`。
-- 展示进度时，使用 `ctx.streamResponse()`。
+- 需要流式输出文本回答时，使用 `ctx.streamResponse({ type: 'answer' | 'fastAnswer', content })`。
 
 ## 4. 实现工具集
 
@@ -321,18 +321,26 @@ import {
 import z from 'zod';
 
 const secretSchema = z.object({
-  apiKey: z.string().min(1).meta({
-    title: 'API Key',
-    isSecret: true
-  } satisfies SecretSchemaMetaType)
+  apiKey: z
+    .string()
+    .min(1)
+    .meta({
+      title: 'API Key',
+      isSecret: true
+    } satisfies SecretSchemaMetaType)
 });
+
+const UPSTREAM_SEARCH_URL = 'https://api.example.com/v1/search';
 
 const handler = createToolHandler({
   inputSchema: z.object({
-    endpoint: z.string().url().meta({
-      title: '目标地址',
-      description: '外部服务的请求 URL'
-    } satisfies InputSchemaMetaType)
+    query: z
+      .string()
+      .min(1)
+      .meta({
+        title: '查询词',
+        description: '发送到受信任外部服务的检索关键词'
+      } satisfies InputSchemaMetaType)
   }),
   outputSchema: z.object({
     status: z.string().meta({
@@ -345,7 +353,9 @@ const handler = createToolHandler({
   secretSchema,
   handler: async (input, ctx) => {
     try {
-      const res = await fetch(input.endpoint, {
+      const requestUrl = new URL(UPSTREAM_SEARCH_URL);
+      requestUrl.searchParams.set('q', input.query);
+      const res = await fetch(requestUrl.toString(), {
         headers: {
           Authorization: `Bearer ${ctx.secrets.apiKey}`,
           'Content-Type': 'application/json'
@@ -363,49 +373,53 @@ const handler = createToolHandler({
 });
 ```
 
+将携带密钥的请求目标固定在受信任的服务端常量或受控配置中，避免将调用方或模型可控的任意 URL 直接作为发送 `ctx.secrets` 的目标地址。
+
 ### 6.2 宿主文件上传与产物返回
 
 当工具需要生成文件（如报表、导出的图片或音视频）并返回给 FastGPT 用户时，调用宿主提供的文件上传能力 `ctx.invoke.uploadFile()`。宿主负责安全存储并生成外部访问链接：
 
 ```ts
 handler: async (input, ctx) => {
-  const content = Buffer.from(`Report for ${input.query}\nGenerated at ${new Date().toISOString()}`);
-  const uploadResult = await ctx.invoke.uploadFile({
-    buffer: content,
-    filename: 'report.txt',
+  const content = Buffer.from(
+    `Report for ${input.query}\nGenerated at ${new Date().toISOString()}`
+  );
+  const [result, err] = await ctx.invoke.uploadFile({
+    file: content,
+    fileName: 'report.txt',
     contentType: 'text/plain'
   });
 
-  if (uploadResult.err) {
-    throw new Error(`Failed to upload generated file: ${uploadResult.err}`);
+  if (err) {
+    throw new Error(`Failed to upload generated file: ${err}`);
   }
 
   return {
-    fileUrl: uploadResult.url,
+    fileUrl: result.accessURL,
     filename: 'report.txt'
   };
-}
+};
 ```
 
-### 6.3 任务执行进度流式推送
+### 6.3 流式文本回答输出
 
-执行长耗时任务时，使用 `ctx.streamResponse()` 向调用端持续发送进度状态事件：
+需要将工具生成的文本实时流式输出到对话窗口时，使用 `ctx.streamResponse()` 发送 `{ type: 'answer' | 'fastAnswer', content: string }` 消息：
 
 ```ts
 handler: async (input, ctx) => {
   await ctx.streamResponse({
-    event: 'progress',
-    data: { percent: 25, message: 'Fetching remote resources...' }
+    type: 'answer',
+    content: 'Fetching remote resources...\n'
   });
 
   // 执行核心业务处理
   await ctx.streamResponse({
-    event: 'progress',
-    data: { percent: 100, message: 'Processing complete' }
+    type: 'answer',
+    content: 'Processing complete.\n'
   });
 
   return { result: 'Operation completed successfully' };
-}
+};
 ```
 
 ### 6.4 外部副作用与重复调用控制

@@ -38,7 +38,7 @@ Clarify these items before coding:
 | Secrets                          | API Key, Base URL, username/password, and similar values, described through `secretSchema`. |
 | External API                     | Request method, auth method, timeout, rate limit, error response, and test account.         |
 | File capability                  | Use `ctx.invoke.uploadFile()` when file upload is needed.                                   |
-| Streaming output                 | Use `ctx.streamResponse()` when intermediate progress should be shown to the user.          |
+| Streaming output                 | Use `ctx.streamResponse()` when streaming text answers to the user.                         |
 | Test cases                       | Include at least success, invalid parameters, auth failure, and upstream failure.           |
 
 Missing information that affects plugin ID, auth method, billing, or listing security should be confirmed first. Other missing information can use reasonable defaults, with assumptions recorded in the submission notes.
@@ -203,7 +203,7 @@ Core rules:
 - Handler return values must match `outputSchema`.
 - Convert external API errors into actionable messages and avoid exposing secrets, tokens, or complete sensitive responses.
 - Use `ctx.invoke.uploadFile()` when host file upload is needed, and prefer preserving the returned `err`.
-- Use `ctx.streamResponse()` when progress should be shown to users.
+- Use `ctx.streamResponse({ type: 'answer' | 'fastAnswer', content })` when streaming text answers to users.
 
 ## 4. Implement a Toolkit
 
@@ -321,18 +321,26 @@ import {
 import z from 'zod';
 
 const secretSchema = z.object({
-  apiKey: z.string().min(1).meta({
-    title: 'API Key',
-    isSecret: true
-  } satisfies SecretSchemaMetaType)
+  apiKey: z
+    .string()
+    .min(1)
+    .meta({
+      title: 'API Key',
+      isSecret: true
+    } satisfies SecretSchemaMetaType)
 });
+
+const UPSTREAM_SEARCH_URL = 'https://api.example.com/v1/search';
 
 const handler = createToolHandler({
   inputSchema: z.object({
-    endpoint: z.string().url().meta({
-      title: 'Target URL',
-      description: 'External service request URL'
-    } satisfies InputSchemaMetaType)
+    query: z
+      .string()
+      .min(1)
+      .meta({
+        title: 'Query',
+        description: 'Search keyword sent to the trusted upstream service'
+      } satisfies InputSchemaMetaType)
   }),
   outputSchema: z.object({
     status: z.string().meta({
@@ -345,7 +353,9 @@ const handler = createToolHandler({
   secretSchema,
   handler: async (input, ctx) => {
     try {
-      const res = await fetch(input.endpoint, {
+      const requestUrl = new URL(UPSTREAM_SEARCH_URL);
+      requestUrl.searchParams.set('q', input.query);
+      const res = await fetch(requestUrl.toString(), {
         headers: {
           Authorization: `Bearer ${ctx.secrets.apiKey}`,
           'Content-Type': 'application/json'
@@ -363,49 +373,53 @@ const handler = createToolHandler({
 });
 ```
 
+Keep the authenticated upstream endpoint fixed in a trusted server constant or controlled configuration so `ctx.secrets` credentials are sent only to verified hosts.
+
 ### 6.2 Host File Uploads And Artifact Return
 
 When a tool produces generated files (such as reports, exported images, or media) and returns them to FastGPT callers, invoke the host upload capability `ctx.invoke.uploadFile()`. The host stores the artifact and returns an accessible URL:
 
 ```ts
 handler: async (input, ctx) => {
-  const content = Buffer.from(`Report for ${input.query}\nGenerated at ${new Date().toISOString()}`);
-  const uploadResult = await ctx.invoke.uploadFile({
-    buffer: content,
-    filename: 'report.txt',
+  const content = Buffer.from(
+    `Report for ${input.query}\nGenerated at ${new Date().toISOString()}`
+  );
+  const [result, err] = await ctx.invoke.uploadFile({
+    file: content,
+    fileName: 'report.txt',
     contentType: 'text/plain'
   });
 
-  if (uploadResult.err) {
-    throw new Error(`Failed to upload generated file: ${uploadResult.err}`);
+  if (err) {
+    throw new Error(`Failed to upload generated file: ${err}`);
   }
 
   return {
-    fileUrl: uploadResult.url,
+    fileUrl: result.accessURL,
     filename: 'report.txt'
   };
-}
+};
 ```
 
-### 6.3 Streaming Progress Notifications
+### 6.3 Streaming Text Answer Output
 
-For long-running tasks, use `ctx.streamResponse()` to send incremental progress notifications to the caller:
+To stream text answer chunks directly to the conversation client during execution, call `ctx.streamResponse()` with `{ type: 'answer' | 'fastAnswer', content: string }`:
 
 ```ts
 handler: async (input, ctx) => {
   await ctx.streamResponse({
-    event: 'progress',
-    data: { percent: 25, message: 'Fetching remote resources...' }
+    type: 'answer',
+    content: 'Fetching remote resources...\n'
   });
 
   // Execute processing logic
   await ctx.streamResponse({
-    event: 'progress',
-    data: { percent: 100, message: 'Processing complete' }
+    type: 'answer',
+    content: 'Processing complete.\n'
   });
 
   return { result: 'Operation completed successfully' };
-}
+};
 ```
 
 ### 6.4 Side Effects And Repeated Invocation Handling

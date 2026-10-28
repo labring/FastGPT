@@ -34,7 +34,7 @@ Core layout conventions:
 
 The `SKILL.md` file in each skill directory declares metadata via YAML Frontmatter and provides runtime task guidelines in Markdown:
 
-```markdown
+````markdown
 ---
 name: extract-emails
 description: Extract all email addresses from text, deduplicate, and preserve original order.
@@ -51,14 +51,14 @@ Invoke via Python script:
 ```bash
 python3 skills/extract-emails/extract.py "<input_text>"
 ```
-```
+````
 
 Metadata schema definitions:
 
-| Field | Type | Requirement | Description |
-| --- | --- | --- | --- |
-| `name` | string | Required | Unique skill identifier using lowercase alphanumeric characters and hyphens (`-`). Must be unique within the skill package. |
-| `description` | string | Required | Concise functional summary. The Agent references this description during planning to decide whether to dispatch this skill. |
+| Field         | Type   | Requirement | Description                                                                                                                 |
+| ------------- | ------ | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | string | Required    | Unique skill identifier using lowercase alphanumeric characters and hyphens (`-`). Must be unique within the skill package. |
+| `description` | string | Required    | Concise functional summary. The Agent references this description during planning to decide whether to dispatch this skill. |
 
 Body guidelines:
 
@@ -79,22 +79,23 @@ Publishing a version packages workspace files into a standard ZIP snapshot. The 
 
 The system automatically applies the built-in `DEFAULT_GITIGNORE_CONTENT` list, excluding the following categories:
 
-- Dependency directories: `node_modules/`, `.venv/`, `env/`
-- Build artifacts: `dist/`, `build/`, `*.egg-info/`
-- Cache directories: `__pycache__/`, `*.pyc`, `.cache/`
-- Version control metadata: `.git/`
+- Dependency directories: `node_modules/`, `.npm/`, `.yarn/`, `.pnpm-store/`, `.venv/`, `venv/`, `env/`
+- Build and Python cache artifacts: `dist/`, `build/`, `.next/`, `out/`, `.nuxt/`, `__pycache__/`, `*.pyc`, `.pytest_cache/`, `*.egg-info/`, `.eggs/`
+- Editor, OS, and binary archive files: `.vscode/`, `.idea/`, `.DS_Store`, `package.zip`, media/archive binaries, and `*.log`
 
 ### Root .gitignore Merging
 
 During packaging, exclusions declared in the project root `.gitignore` merge with the system default rules.
 
-### Credential Protection
+### Credential, Git Metadata, and Custom Cache Exclusions
 
-System default exclusions cover build caches and dependencies, while `.env` and `.env.*` files remain outside default exclusion lists. Authors must explicitly declare credential exclusions in the project root `.gitignore`:
+`.env`, `.env.*`, `.git/`, and `.cache/` are outside `DEFAULT_GITIGNORE_CONTENT`. To keep local credentials, Git repository history, and custom cache directories out of distributed ZIP packages, declare them explicitly in the project root `.gitignore`:
 
 ```text
 .env
 .env.*
+.git/
+.cache/
 *.key
 *.pem
 ```

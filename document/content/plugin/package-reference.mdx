@@ -9,13 +9,13 @@ description: 工具插件的构建产物、作者侧元信息与 Schema 声明�
 
 工具插件的 `index.ts` 默认导出 `defineTool()` 或 `defineToolSet()` 定义。CLI 构建后通常生成：
 
-| 文件 | 作用 |
-| --- | --- |
-| `dist/index.js` | 工具的可执行构建产物 |
-| `dist/manifest.json` | 构建生成的元信息与 Schema |
-| 图标文件 | 主工具图标，以及工具集可选的子工具图标 |
-| `README.md` | 可选的插件说明 |
-| `assets/**` | 可选的静态资源 |
+| 文件                 | 作用                                   |
+| -------------------- | -------------------------------------- |
+| `dist/index.js`      | 工具的可执行构建产物                   |
+| `dist/manifest.json` | 构建生成的元信息与 Schema              |
+| 图标文件             | 主工具图标，以及工具集可选的子工具图标 |
+| `README.md`          | 可选的插件说明                         |
+| `assets/**`          | 可选的静态资源                         |
 
 `pack` 命令生成用于安装的 `.pkg` 文件，实际输出位置以插件项目的 `pack` 脚本或 CLI `--output` 参数为准。需要调整元信息或 Schema 时，修改源码后重新构建和打包。
 
@@ -23,17 +23,17 @@ description: 工具插件的构建产物、作者侧元信息与 Schema 声明�
 
 以下是作者在 SDK 定义中维护的字段。构建生成的 Manifest 结构由所用 CLI 与 SDK 版本决定。
 
-| 声明位置 | 作用 |
-| --- | --- |
-| `manifest.pluginId` | 稳定的插件标识，用于识别同一插件的不同版本 |
-| `manifest.version` | 语义化版本号，供安装和更新时识别版本 |
-| `manifest.name`、`manifest.description` | 中英文显示名称与功能说明 |
-| `manifest.versionDescription` | 本版本的变更说明 |
-| `manifest.tags` | 插件分类标签 |
-| `createToolHandler({ inputSchema })` | 输入类型、约束、默认值与界面字段说明 |
-| `createToolHandler({ outputSchema })` | handler 返回值的类型与字段说明 |
+| 声明位置                                                                 | 作用                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `manifest.pluginId`                                                      | 稳定的插件标识，用于识别同一插件的不同版本                          |
+| `manifest.version`                                                       | 语义化版本号，供安装和更新时识别版本                                |
+| `manifest.name`、`manifest.description`                                  | 中英文显示名称与功能说明                                            |
+| `manifest.versionDescription`                                            | 本版本的变更说明                                                    |
+| `manifest.tags`                                                          | 插件分类标签                                                        |
+| `createToolHandler({ inputSchema })`                                     | 输入类型、约束、默认值与界面字段说明                                |
+| `createToolHandler({ outputSchema })`                                    | handler 返回值的类型与字段说明                                      |
 | `createToolHandler({ secretSchema })`、`defineToolSet({ secretSchema })` | 密钥配置与敏感字段声明（单工具在 handler 声明，工具集支持顶层共享） |
-| `defineToolSet({ children })` | 工具集的子工具 ID、名称、说明与 handler |
+| `defineToolSet({ children })`                                            | 工具集的子工具 ID、名称、说明与 handler                             |
 
 工具集的子工具 ID 应保持稳定，保证已配置的工作流可以继续引用。密钥通过 `secretSchema` 声明，handler 从 `ctx.secrets` 读取；图标命名见[工具开发指南](/zh-CN/plugin/system-tool-development#5-图标规范)。
 
@@ -43,19 +43,19 @@ CLI 的 `tool` 与 `tool-suite` 用于选择项目骨架。安装后的工具类
 
 执行 handler 时，SDK 提供 `ctx` 运行时上下文参数，支持以下能力：
 
-| 属性 / 方法 | 作用 | 使用场景 |
-| --- | --- | --- |
-| `ctx.secrets` | 包含已配置并解密的敏感配置对象 | 读取 API Key、Token、私有服务端点 |
-| `ctx.invoke.uploadFile()` | 向 FastGPT 宿主上传文件并获取可访问链接 | 工具输出报表文件、图片或媒体资源 |
-| `ctx.streamResponse()` | 向客户端推送流式中间状态事件 | 长耗时任务进度推送与多步骤状态同步 |
+| 属性 / 方法               | 作用                                                                                                         | 使用场景                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `ctx.secrets`             | 包含已配置并解密的敏感配置对象                                                                               | 读取 API Key、Token、私有服务端点 |
+| `ctx.invoke.uploadFile()` | 向 FastGPT 宿主上传文件（`{ file, fileName, contentType }`），返回 `[result, err]` 元组与 `result.accessURL` | 工具输出报表文件、图片或媒体资源  |
+| `ctx.streamResponse()`    | 向客户端流式发送文本回答片段（`{ type: 'answer' \| 'fastAnswer', content }`）                                | 实时流式输出长文本回答内容        |
 
 ## SDK 与 CLI 入口
 
-| 组件 | 使用者 | 职责 |
-| --- | --- | --- |
-| `@fastgpt-plugin/sdk-factory` | 插件作者 | 定义工具、工具集、handler、Schema 和宿主能力调用 |
-| `@fastgpt-plugin/cli` | 插件作者 | 创建项目、本地调试、联调、构建、检查与打包 |
-| `@fastgpt-plugin/sdk-client` | FastGPT 服务集成开发者 | 调用插件服务的管理和运行接口 |
+| 组件                          | 使用者                 | 职责                                             |
+| ----------------------------- | ---------------------- | ------------------------------------------------ |
+| `@fastgpt-plugin/sdk-factory` | 插件作者               | 定义工具、工具集、handler、Schema 和宿主能力调用 |
+| `@fastgpt-plugin/cli`         | 插件作者               | 创建项目、本地调试、联调、构建、检查与打包       |
+| `@fastgpt-plugin/sdk-client`  | FastGPT 服务集成开发者 | 调用插件服务的管理和运行接口                     |
 
 使用目标项目声明的兼容版本。完整接口参考对应版本的 [SDK Factory 文档](https://github.com/labring/fastgpt-plugin/blob/main/sdk/factory/README.md)与 [CLI 文档](https://github.com/labring/fastgpt-plugin/blob/main/apps/cli/README.md)。
 

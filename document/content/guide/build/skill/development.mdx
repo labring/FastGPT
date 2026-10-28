@@ -22,9 +22,9 @@ import { Alert } from '@/components/docs/Alert';
 
 可直接在工作区中创建以下参考实现：
 
-`skills/extract-emails/SKILL.md`:
+`skills/extract-emails/SKILL.md` :
 
-```markdown
+````markdown
 ---
 name: extract-emails
 description: 从输入文本中提取所有电子邮箱地址，去重并保持首次出现顺序。
@@ -41,9 +41,9 @@ description: 从输入文本中提取所有电子邮箱地址，去重并保持�
 ```bash
 python3 skills/extract-emails/extract.py "<input_text>"
 ```
-```
+````
 
-`skills/extract-emails/extract.py`:
+`skills/extract-emails/extract.py` :
 
 ```python
 import re
@@ -120,7 +120,6 @@ bob@example.org
 ### 3.3 实时文件导出
 
 你可以点击页面右上角菜单中的“导出配置”，将当前工作区中实时的所有代码与配置文件打包成 ZIP 压缩包下载到本地，方便进行本地备份或分享。
-
 
 ---
 

@@ -1,9 +1,10 @@
 ---
-title: "Data Maintenance and Incremental Updates"
+title: 'Data Maintenance and Incremental Updates'
 description: Master data chunk fine-tuning, whole-file overwriting, hash-based content diffing, and batch index rebuilding.
 ---
 
 {/* Preserve incoming bookmarks for reorganized sections. */}
+
 <span id="choose-an-update-method" />
 <span id="edit-a-data-chunk" />
 <span id="replace-a-local-file" />
@@ -34,12 +35,12 @@ Choose the update path according to the source type:
 
 Record collection IDs used by external integrations and update references after replacement.
 
-## Scenario 3: Batch Data Chunk State Management
+## Scenario 3: Collection-Level Disabling and Chunk Cleanup
 
-Knowledge bases support discrete operational toggles on every data chunk:
+Knowledge bases support toggling retrieval eligibility at the collection level and cleaning up individual chunks inside a collection:
 
-- **Disable Chunks**: Toggle a chunk status to "Disabled". Disabled chunks exit the active retrieval candidate pool immediately while remaining visible in the admin console for later re-enablement.
-- **Delete Chunks**: For permanently obsolete clauses, click "Delete" to execute physical cleanup. The platform cascades removals through both the vector database and the full-text search index.
+- **Disable a Collection (Affects All Chunks in the Collection)**: Toggle the status switch on the target collection row in the collection list (requires Manage permission on the collection). Disabling a collection excludes all chunks in that collection from active retrieval while preserving its stored chunks for later re-enablement.
+- **Delete Individual Chunks**: For permanently obsolete clauses, click "Delete" on the chunk card inside the collection details view. The platform removes the chunk from both the vector database and the full-text search index.
 
 ## Scenario 4: Rebuild Vector and Supplementary Indexes
 
@@ -54,7 +55,7 @@ Use the rebuild operation supported by the current knowledge base when refreshin
 
 - [ ] After indexing completes, edited chunks match expected queries in Search Test.
 - [ ] Replacement collections finish processing; tags, permissions, and external IDs are verified.
-- [ ] Disabled chunks no longer appear in search testing results.
+- [ ] Disabled collections have all of their chunks excluded from search testing results.
 - [ ] Full rebuild tasks display "Ready" with zero unhandled errors.
 
 ## Next Steps

@@ -22,9 +22,7 @@ Supply values matching your application's declared [global variable keys](/en/gu
     "maxBudget": 5000,
     "strictMode": true
   },
-  "messages": [
-    { "role": "user", "content": "Verify this travel reimbursement request" }
-  ]
+  "messages": [{ "role": "user", "content": "Verify this travel reimbursement request" }]
 }
 ```
 
@@ -42,7 +40,10 @@ When vision or document parsing is enabled on the application, pass a structured
     {
       "role": "user",
       "content": [
-        { "type": "text", "text": "Extract the signing date and total amount from the attached contract" },
+        {
+          "type": "text",
+          "text": "Extract the signing date and total amount from the attached contract"
+        },
         {
           "type": "file_url",
           "name": "contract.pdf",
@@ -76,7 +77,7 @@ event: answer
 data: [DONE]
 ```
 
-- **Form Input node (`type: "formInput"`)**: `params.inputForm` contains the array of form field definitions (`key`, `label`, `type`, `required`, and `list` options).
+- **Form Input node (workflow node type `formInput`, response discriminator `interactive.type: "userInput"`)**: When execution pauses at a Form Input node, the returned `interactive` object uses `"type": "userInput"`, and `params.inputForm` contains the array of form field definitions (`key`, `label`, `type`, `required`, and `list` options).
 
 ### Step 2: Resume Execution with the Same `chatId`
 
@@ -90,9 +91,7 @@ Render the options or form in your client UI. Once the user submits their choice
   "chatId": "session_20261028_001",
   "stream": true,
   "detail": true,
-  "messages": [
-    { "role": "user", "content": "Approve rewrite" }
-  ]
+  "messages": [{ "role": "user", "content": "Approve rewrite" }]
 }
 ```
 
@@ -117,10 +116,10 @@ The server restores the saved checkpoint for `chatId` and continues executing do
 
 ## Troubleshooting
 
-| Symptom | Cause and Resolution |
-| --- | --- |
-| Workflow pauses at an interactive node without returning options | `detail: true` was omitted; enable `detail: true` to receive `interactive` events |
-| Follow-up submission restarts the workflow from the start node | `chatId` was omitted or changed; pass the exact `chatId` from the suspended turn |
-| Form input resumption fails or fields arrive empty | Ensure `content` is a JSON-serialized string whose keys match `params.inputForm[].key` |
+| Symptom                                                          | Cause and Resolution                                                                   |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Workflow pauses at an interactive node without returning options | `detail: true` was omitted; enable `detail: true` to receive `interactive` events      |
+| Follow-up submission restarts the workflow from the start node   | `chatId` was omitted or changed; pass the exact `chatId` from the suspended turn       |
+| Form input resumption fails or fields arrive empty               | Ensure `content` is a JSON-serialized string whose keys match `params.inputForm[].key` |
 
 Next: Consult the full [Conversation and Session API Reference](/en/openapi/chat).
