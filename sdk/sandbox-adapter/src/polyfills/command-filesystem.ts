@@ -90,10 +90,11 @@ export class CommandFilesystemPolyfill {
    * does not exist or stat is unavailable).
    */
   private async statSize(path: string): Promise<number | undefined> {
-    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'.
+    // GNU stat uses -c '%s', BSD/macOS stat uses -f '%z'. -L sizes the file a
+    // symlink points to, which is what `tail` reads.
     const quotedPath = this.shellQuote(path);
     const result = await this.executor.execute(
-      `stat -c '%s' ${quotedPath} 2>/dev/null || stat -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
+      `stat -L -c '%s' ${quotedPath} 2>/dev/null || stat -L -f '%z' ${quotedPath} 2>/dev/null || echo STAT_FAILED`
     );
     const stdout = result.stdout.trim();
     if (!stdout || stdout.includes('STAT_FAILED')) return undefined;
@@ -119,8 +120,9 @@ export class CommandFilesystemPolyfill {
 
     const result = await this.executor.execute(cmd);
     // The pipeline exits with base64's status, so a `tail` that can't read the
-    // file (e.g. permission denied) only shows up on stderr.
-    if (result.exitCode !== 0 || (!result.stdout && result.stderr.trim())) {
+    // file (e.g. permission denied) only shows up on stderr. Some base64
+    // builds print a bare newline for empty input.
+    if (result.exitCode !== 0 || (!result.stdout.trim() && result.stderr.trim())) {
       throw this.createFileError(path, result.stderr);
     }
     return base64ToBytes(result.stdout);
@@ -452,15 +454,25 @@ export class CommandFilesystemPolyfill {
   /**
    * Overwrite an existing file with `data` without leaving it partly written.
    *
-   * The data goes to a temporary file next to `path` over as many commands as
-   * it needs. Once its size is checked, one command copies it over `path`.
-   * Copying with `cat` rewrites the existing file, so its mode, owner and
-   * links are kept. If a step before the copy fails, `path` is untouched.
+   * A symlink is followed and the file it points to is replaced, so the link
+   * stays a link. That file is copied with `cp -p` to a temporary file in the
+   * same directory, which keeps its mode and timestamps, and the copy is
+   * rewritten with `data` over as many commands as it needs. Once its size is
+   * checked, `mv` renames it over the file in one step. If any step fails,
+   * the original file is untouched. Other hard links to the file keep the old
+   * content, as with `sed -i`.
    */
   private async replaceFileContents(path: string, data: Uint8Array): Promise<void> {
-    const tempPath = `${path}.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.tmp`;
+    const target = await this.resolveSymlinks(path);
+    const quotedTarget = this.shellQuote(target);
+    const tempPath = `${target}.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.tmp`;
     const quotedTemp = this.shellQuote(tempPath);
     try {
+      const copy = await this.executor.execute(`cp -p ${quotedTarget} ${quotedTemp}`);
+      if (copy.exitCode !== 0) {
+        throw this.createFileError(path, copy.stderr);
+      }
+
       await this.appendBytes({ path: tempPath, data, truncate: true });
 
       const size = await this.executor.execute(`wc -c < ${quotedTemp}`);
@@ -473,13 +485,26 @@ export class CommandFilesystemPolyfill {
         );
       }
 
-      const result = await this.executor.execute(`cat ${quotedTemp} > ${this.shellQuote(path)}`);
+      const result = await this.executor.execute(`mv -f ${quotedTemp} ${quotedTarget}`);
       if (result.exitCode !== 0) {
         throw this.createFileError(path, result.stderr);
       }
     } finally {
       await this.executor.execute(`rm -f ${quotedTemp}`).catch(() => undefined);
     }
+  }
+
+  /**
+   * Return the file `path` finally points to, or `path` itself if it is not a
+   * symlink or `readlink -f` is unavailable.
+   */
+  private async resolveSymlinks(path: string): Promise<string> {
+    const quotedPath = this.shellQuote(path);
+    const result = await this.executor.execute(
+      `if [ -L ${quotedPath} ]; then readlink -f ${quotedPath}; fi`
+    );
+    const resolved = result.stdout.replace(/\n$/, '');
+    return result.exitCode === 0 && resolved ? resolved : path;
   }
 
   // ==================== Health Check Polyfill ====================

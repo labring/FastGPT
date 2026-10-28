@@ -1,5 +1,15 @@
 import { execFile } from 'node:child_process';
-import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  chmod,
+  lstat,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -172,7 +182,9 @@ MemAvailable:   6144000 kB`)
     ) => {
       const dir = await mkdtemp(join(tmpdir(), 'command-fs-'));
       const path = join(dir, 'file.txt');
-      await writeFile(path, content, { mode: 0o640 });
+      await writeFile(path, content);
+      // 显式 chmod，避免宿主 umask 影响初始权限
+      await chmod(path, 0o640);
 
       const executor = {
         execute: async (command: string): Promise<ExecuteResult> => {
@@ -195,6 +207,7 @@ MemAvailable:   6144000 kB`)
         path,
         polyfill: new CommandFilesystemPolyfill(executor),
         read: () => readFile(path, 'utf8'),
+        dir,
         listDir: () => readdir(dir),
         cleanup: () => rm(dir, { recursive: true, force: true })
       };
@@ -250,6 +263,42 @@ MemAvailable:   6144000 kB`)
 
         await expect(read()).resolves.toBe(original);
         await expect(listDir()).resolves.toEqual(['file.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('keeps the original file when the final rename fails', async () => {
+      const original = 'keep the old line\n';
+      const { path, polyfill, read, listDir, cleanup } = await setupShell(original, (command) =>
+        command.startsWith('mv -f')
+      );
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toThrow('connection lost');
+
+        await expect(read()).resolves.toBe(original);
+        await expect(listDir()).resolves.toEqual(['file.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it.each([
+      ['longer', `old\n${'valuable line\n'.repeat(4)}`],
+      ['shorter', 'old\n']
+    ])('edits the file a symlink points to when it is %s than the link', async (_, content) => {
+      const { path, polyfill, read, dir, cleanup } = await setupShell(content);
+      const link = join(dir, 'link.txt');
+      await symlink('file.txt', link);
+      try {
+        await polyfill.replaceContent([{ path: link, oldContent: 'old', newContent: 'new' }]);
+
+        await expect(read()).resolves.toBe(content.replace('old', 'new'));
+        expect((await lstat(link)).isSymbolicLink()).toBe(true);
+        expect((await stat(path)).mode & 0o777).toBe(0o640);
+        expect((await readdir(dir)).sort()).toEqual(['file.txt', 'link.txt']);
       } finally {
         await cleanup();
       }
