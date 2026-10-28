@@ -1307,7 +1307,7 @@
   "password_confirm_placeholder": "確認密碼",
   "password_expired_action": "前往設定",
   "password_expired_tip": "您已較長時間未修改密碼。為了您的帳號安全，請重新設定密碼。",
-  "password_new_placeholder": "請輸入密碼",
+  "password_new_placeholder": "請輸入新密碼",
   "password_not_match": "兩次密碼輸入不一致",
   "password_oauth_start": "前往 {{provider}} 驗證",
   "password_old_placeholder": "填寫舊密碼",
