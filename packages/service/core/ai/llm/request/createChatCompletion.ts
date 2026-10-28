@@ -1,7 +1,7 @@
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 import OpenAI from '@fastgpt/global/core/ai';
-import { getAIApi, getModelOpenAIOptions } from '../../config';
+import { getAIApi, getModelOpenAIOptions, type AIApiRequestMeta } from '../../config';
 import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/error';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
@@ -20,6 +20,27 @@ const isAbortedRequestError = (error: unknown): boolean =>
   error instanceof OpenAI.APIUserAbortError ||
   (error instanceof Error && error.message === 'Request was aborted.');
 
+/** 用户 key 的请求与流读取失败共用本地诊断日志，并保留原始异常供上层分类。 */
+export const createUserKeyError = ({
+  error,
+  requestMeta,
+  request
+}: {
+  error: unknown;
+  requestMeta: AIApiRequestMeta;
+  request?: CreateChatCompletionProps['body'];
+}) => {
+  const errorSnapshot = sanitizeLLMRequestRecordPayload({
+    baseUrl: requestMeta.baseUrl,
+    request,
+    error
+  });
+  logger.info('User AI API error', { ...errorSnapshot, otel: false });
+  return new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`, undefined, {
+    cause: error
+  });
+};
+
 /**
  * 执行一次真实的 chat.completions.create 请求。
  *
@@ -27,7 +48,8 @@ const isAbortedRequestError = (error: unknown): boolean =>
  * 当 requestMeta.usedUserOpenAIKey=true 时，说明请求已经走用户 key，
  * 这里必须避免继续叠加模型配置里的 requestUrl/requestAuth，防止覆盖用户自己的配置。
  * 失败日志与 Mongo 请求记录共用 base64 清洗快照，不修改实际请求或原始异常。
- * 用户 key 的所有请求失败统一记录 info，并用 UserConfigError 保留原始 cause，供上层降噪。
+ * 用户 key 的初始请求与上游流读取失败统一记录 info，并用 UserConfigError 保留原始 cause。
+ * 流的消费回调和业务解析在此边界外执行，其内部异常仍保留系统错误身份。
  */
 export const createChatCompletion = async ({
   modelData,
@@ -81,18 +103,7 @@ export const createChatCompletion = async ({
     };
   } catch (error) {
     if (requestMeta.usedUserOpenAIKey) {
-      const errorSnapshot = sanitizeLLMRequestRecordPayload({
-        baseUrl: requestMeta.baseUrl,
-        request: body,
-        error
-      });
-      // 用户自行配置的服务统一保留本地 info，不按状态码区分，也不导出到 OTel。
-      logger.info('User AI API error', { ...errorSnapshot, otel: false });
-      return Promise.reject(
-        new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`, undefined, {
-          cause: error
-        })
-      );
+      return Promise.reject(createUserKeyError({ error, requestMeta, request: body }));
     }
 
     // 平台请求被中断不是真实的上游故障，沿用 warn 和原始异常。

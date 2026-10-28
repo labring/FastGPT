@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import OpenAI from '@fastgpt/global/core/ai';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
+import { createStreamResponse } from '@fastgpt/service/core/ai/llm/request/response/stream';
+import * as aiUtils from '@fastgpt/service/core/ai/utils';
 
 const mockLogger = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -163,6 +165,126 @@ describe('createChatCompletion', () => {
 
     expect(result.isStreamResponse).toBe(true);
     expect(result.response).toBe(streamResponse);
+  });
+
+  describe('stream error boundary', () => {
+    const responseChunk = {
+      choices: [{ delta: { content: 'hello' }, finish_reason: null }]
+    };
+    const parserBody = () => ({ ...createBody(), model: { config: { reasoning: false } } });
+
+    /** 仅替换 HTTP I/O，保留 SDK 的 SSE 解码、异常和取消行为。 */
+    const requestStream = async ({
+      usedUserOpenAIKey,
+      chunks = [responseChunk]
+    }: {
+      usedUserOpenAIKey: boolean;
+      chunks?: unknown[];
+    }) => {
+      const ai = new OpenAI({
+        apiKey: 'test-key',
+        maxRetries: 0,
+        fetch: async () =>
+          new Response(chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join(''), {
+            headers: { 'content-type': 'text/event-stream' }
+          })
+      });
+      mockGetAIApi.mockReturnValue({
+        ai,
+        requestMeta: { usedUserOpenAIKey, baseUrl: 'https://api.openai.com/v1' }
+      });
+      const result = await createChatCompletion({
+        modelData: createModel(),
+        body: { ...createBody(), stream: true },
+        userKey: { key: 'user-key', baseUrl: 'https://api.openai.com/v1' }
+      });
+      if (!result.isStreamResponse) throw new Error('Expected a stream response');
+      return result.response;
+    };
+
+    it.each([false, true])(
+      'classifies SDK SSE errors using the actual user-key metadata=%s',
+      async (usedUserOpenAIKey) => {
+        const response = await requestStream({
+          usedUserOpenAIKey,
+          chunks: [
+            responseChunk,
+            {
+              error: {
+                message: 'invalid user API key',
+                type: 'invalid_request_error',
+                code: 'invalid_api_key'
+              }
+            }
+          ]
+        });
+        const result = await createStreamResponse({
+          body: parserBody(),
+          response,
+          requestMeta: { usedUserOpenAIKey }
+        });
+
+        expect(result.answerText).toBe('hello');
+        expect(isUserConfigError(result.error)).toBe(usedUserOpenAIKey);
+        const originalError = usedUserOpenAIKey ? result.error.cause : result.error;
+        expect(originalError).toMatchObject({ code: 'invalid_api_key' });
+        if (usedUserOpenAIKey) {
+          expect(originalError).toBeInstanceOf(OpenAI.APIError);
+          expect(mockLogger.info).toHaveBeenCalledExactlyOnceWith(
+            'User AI API error',
+            expect.objectContaining({ otel: false })
+          );
+        } else {
+          expect(mockLogger.info).not.toHaveBeenCalled();
+        }
+        expect(mockLogger.error).not.toHaveBeenCalled();
+        expect(mockLogger.warn).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(['callback', 'parser'] as const)(
+      'preserves internal %s failures when using a user key',
+      async (source) => {
+        const response = await requestStream({ usedUserOpenAIKey: true });
+        const error = new TypeError('internal failure');
+        const fail = () => {
+          throw error;
+        };
+        if (source === 'parser') {
+          const parser = aiUtils.parseLLMStreamResponse();
+          const spy = vi
+            .spyOn(aiUtils, 'parseLLMStreamResponse')
+            .mockReturnValueOnce({ ...parser, parsePart: fail });
+          onTestFinished(() => spy.mockRestore());
+        }
+        const result = await createStreamResponse({
+          body: parserBody(),
+          response,
+          requestMeta: { usedUserOpenAIKey: true },
+          onStreaming: source === 'callback' ? fail : undefined
+        });
+
+        expect(result.error).toBe(error);
+        expect(isUserConfigError(result.error)).toBe(false);
+        expect(mockLogger.info).not.toHaveBeenCalled();
+        expect(response.controller.signal.aborted).toBe(true);
+      }
+    );
+
+    it('keeps cancellation connected to the original SDK stream', async () => {
+      const response = await requestStream({ usedUserOpenAIKey: true });
+      const result = await createStreamResponse({
+        body: parserBody(),
+        response,
+        requestMeta: { usedUserOpenAIKey: true },
+        isAborted: () => true
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(result.finish_reason).toBe('close');
+      expect(response.controller.signal.aborted).toBe(true);
+      expect(mockLogger.info).not.toHaveBeenCalled();
+    });
   });
 
   it.each([

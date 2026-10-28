@@ -116,6 +116,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         if (currentIsStreamResponse) {
           return createStreamResponse({
             response,
+            requestMeta,
             body,
             isAborted: args.isAborted,
             onStreaming: args.onStreaming,

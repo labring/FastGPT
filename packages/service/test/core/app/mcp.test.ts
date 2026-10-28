@@ -705,16 +705,29 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(1);
     });
 
-    it('should not fallback to SSE when Streamable HTTP fails with a 5xx', async () => {
-      const mcpClient = new MCPClient(config);
-      const client = getPrivateClient(mcpClient);
-      client.connect = vi
-        .fn()
-        .mockRejectedValue(new StreamableHTTPError(500, 'Internal Server Error'));
+    it.each([
+      {
+        kind: 'external server',
+        error: new StreamableHTTPError(500, 'Internal Server Error'),
+        external: true
+      },
+      { kind: 'internal', error: new TypeError('Internal connection failure'), external: false }
+    ])(
+      'keeps $kind connection diagnostics without attempting SSE fallback',
+      async ({ error, external }) => {
+        const mcpClient = new MCPClient(config);
+        const client = getPrivateClient(mcpClient);
+        const infoLog = vi.spyOn(getLogger(LogCategories.MODULE.APP.MCP_TOOLS), 'info');
+        client.connect = vi.fn().mockRejectedValue(error);
 
-      await expect((mcpClient as any).getConnection()).rejects.toThrow('Internal Server Error');
-      expect(client.connect).toHaveBeenCalledTimes(1);
-    });
+        await expect((mcpClient as any).getConnection()).rejects.toBe(error);
+        expect(client.connect).toHaveBeenCalledTimes(1);
+        expect(infoLog).toHaveBeenCalledWith('Streamable HTTP error', {
+          error,
+          ...(external ? { otel: false } : {})
+        });
+      }
+    );
 
     it('should not hide Streamable HTTP 429 behind an SSE probe', async () => {
       const mcpClient = new MCPClient(config);

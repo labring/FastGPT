@@ -686,7 +686,10 @@ export class MCPClient {
 
         if (!shouldFallbackToSSE(streamableError)) {
           await this.closeSafeFetch();
-          logger.info('Streamable HTTP error', streamableError);
+          logger.info('Streamable HTTP error', {
+            error: streamableError,
+            ...(isMcpExternalFailure(streamableError) ? { otel: false } : {})
+          });
           throw streamableError;
         }
 
