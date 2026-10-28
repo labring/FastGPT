@@ -529,7 +529,8 @@ export const SecretInputForm = ({
                                       display={'flex'}
                                       alignItems={'center'}
                                     >
-                                      {formatReferenceValue(referenceValue) || 'Reference'}
+                                      {formatReferenceValue(referenceValue) ||
+                                        t('common:core.workflow.inputType.Reference')}
                                     </Box>
                                   )
                                 }

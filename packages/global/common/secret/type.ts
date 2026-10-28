@@ -1,6 +1,9 @@
 import z from 'zod';
 
-/** 结构化工作流引用，支持单个引用和兼容历史的引用数组。 */
+/**
+ * 结构化工作流引用，保留历史引用数组的结构兼容。
+ * 结构合法不代表目标字段接受数组：请求头要求字符串，系统工具参数要求标量。
+ */
 export const ReferenceValueSchema = z.union([
   z.tuple([z.string().min(1), z.string().min(1)]),
   z.array(z.tuple([z.string().min(1), z.string().min(1)])).min(1)
@@ -28,7 +31,8 @@ export const StaticSecretValueSchema = z.union([SecretPlainValueSchema, SecretCi
 export const SecretRefValueSchema = z
   .object({
     ref: ReferenceValueSchema.meta({
-      description: '工作流变量引用，运行时解析后使用'
+      description:
+        '工作流变量引用，运行时解析后按目标类型校验。请求头必须为字符串，系统工具参数必须为标量；引用数组仅保留结构兼容，不放宽目标类型要求。'
     })
   })
   .strict();

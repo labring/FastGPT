@@ -208,7 +208,7 @@ const AuthValueDisplay = ({
               textOverflow={'ellipsis'}
               whiteSpace={'nowrap'}
             >
-              {formatReferenceValue(secretValue) || 'Reference'}
+              {formatReferenceValue(secretValue) || t('common:core.workflow.inputType.Reference')}
             </Box>
           ) : showInput ? (
             <Input
