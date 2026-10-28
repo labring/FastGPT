@@ -60,7 +60,14 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     memoryKey
   ] as ClassifyQuestionAgentItemType;
 
-  const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await completions({
+  const {
+    arg,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
+    usedUserOpenAIKey
+  } = await completions({
     ...props,
     lastMemory,
     histories: chatHistories,
@@ -71,7 +78,9 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const { totalPoints } = formatModelChars2Points({
     model: cqModel,
     inputTokens: inputTokens,
-    outputTokens: outputTokens
+    outputTokens: outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
   props.usagePush([
     {
@@ -79,7 +88,9 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       totalPoints: usedUserOpenAIKey ? 0 : totalPoints,
       modelId: cqModel.modelId,
       inputTokens: inputTokens,
-      outputTokens: outputTokens
+      outputTokens: outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     }
   ]);
 
@@ -100,6 +111,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       query: userChatInput,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -147,7 +160,7 @@ const completions = async ({
 
   const {
     answerText: answer,
-    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     body: {
       model: cqModel,
@@ -172,6 +185,8 @@ const completions = async ({
   return {
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     usedUserOpenAIKey,
     arg: { type: id }
   };

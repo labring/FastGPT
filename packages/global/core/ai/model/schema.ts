@@ -10,7 +10,16 @@ export const ModelPriceTierSchema = z.object({
     .optional()
     .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
   inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
-  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
+  outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 }),
+  // 必须区分未配置与显式 0，不能把 null 或空字符串转换为免费。
+  cacheReadPrice: z.number().min(0).optional().meta({
+    description: '每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费',
+    example: 0.2
+  }),
+  cacheCreationPrice: z.number().min(0).optional().meta({
+    description: '每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费',
+    example: 2.5
+  })
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 

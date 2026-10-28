@@ -146,7 +146,9 @@ ${chunkSummaries}
     const { totalPoints } = formatModelChars2Points({
       model,
       inputTokens: response.usage.inputTokens,
-      outputTokens: response.usage.outputTokens
+      outputTokens: response.usage.outputTokens,
+      cacheReadTokens: response.usage.cacheReadTokens,
+      cacheCreationTokens: response.usage.cacheCreationTokens
     });
 
     const usage: ChatNodeUsageType = {
@@ -154,7 +156,9 @@ ${chunkSummaries}
       moduleName: i18nT('account_usage:dataset_chunk_selection'),
       modelId: model.modelId,
       inputTokens: response.usage.inputTokens,
-      outputTokens: response.usage.outputTokens
+      outputTokens: response.usage.outputTokens,
+      cacheReadTokens: response.usage.cacheReadTokens,
+      cacheCreationTokens: response.usage.cacheCreationTokens
     };
     const seconds = +((Date.now() - llmStartTime) / 1000).toFixed(2);
 
@@ -322,14 +326,18 @@ export const dispatchAgentDatasetSearch = async ({
         const { totalPoints } = formatModelChars2Points({
           model: extensionModelData!,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         });
         const queryExtensionUsage: ChatNodeUsageType = {
           totalPoints: queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
           modelId: extensionModelData!.modelId,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         };
         usages.push(queryExtensionUsage);
         childrenResponsePoints += queryExtensionUsage.totalPoints;
@@ -361,14 +369,18 @@ export const dispatchAgentDatasetSearch = async ({
         const { totalPoints } = formatModelChars2Points({
           model: vlmModelData!,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         });
         const imageCaptionUsage: ChatNodeUsageType = {
           totalPoints: imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints,
           moduleName: i18nT('account_usage:image_parse'),
           modelId: vlmModelData!.modelId,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         };
         usages.push(imageCaptionUsage);
         childrenResponsePoints += imageCaptionUsage.totalPoints;

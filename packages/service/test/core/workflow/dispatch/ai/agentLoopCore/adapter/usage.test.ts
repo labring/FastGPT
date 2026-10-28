@@ -29,7 +29,9 @@ describe('agentLoopUsagesToChatNodeUsages', () => {
           totalPoints: 2,
           modelId: 'model-id',
           inputTokens: 10,
-          outputTokens: 5
+          outputTokens: 5,
+          cacheReadTokens: 6,
+          cacheCreationTokens: 0
         }
       ])
     ).toEqual([
@@ -38,7 +40,9 @@ describe('agentLoopUsagesToChatNodeUsages', () => {
         totalPoints: 2,
         modelId: 'model-id',
         inputTokens: 10,
-        outputTokens: 5
+        outputTokens: 5,
+        cacheReadTokens: 6,
+        cacheCreationTokens: 0
       }
     ]);
   });

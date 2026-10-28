@@ -289,7 +289,9 @@ export async function runSkillDebugChat({
           const { totalPoints } = formatModelChars2Points({
             model: usageModel,
             inputTokens: item.inputTokens ?? 0,
-            outputTokens: item.outputTokens ?? 0
+            outputTokens: item.outputTokens ?? 0,
+            cacheReadTokens: item.cacheReadTokens,
+            cacheCreationTokens: item.cacheCreationTokens
           });
           if (totalPoints > 0) {
             return {

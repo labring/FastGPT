@@ -270,7 +270,9 @@ export const dispatchDatasetSearch = async (
         const { totalPoints } = formatModelChars2Points({
           model: extensionModelData!,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         });
         const llmPoints = queryExtensionResult.usedUserOpenAIKey ? 0 : totalPoints;
         const queryExtensionUsage: ChatNodeUsageType = {
@@ -278,7 +280,9 @@ export const dispatchDatasetSearch = async (
           moduleName: i18nT('common:core.module.template.Query extension'),
           modelId: extensionModelData?.modelId,
           inputTokens: queryExtensionResult.inputTokens,
-          outputTokens: queryExtensionResult.outputTokens
+          outputTokens: queryExtensionResult.outputTokens,
+          cacheReadTokens: queryExtensionResult.cacheReadTokens,
+          cacheCreationTokens: queryExtensionResult.cacheCreationTokens
         };
         nodeUsages.push(queryExtensionUsage);
         childrenResponsePoints += queryExtensionUsage.totalPoints;
@@ -310,7 +314,9 @@ export const dispatchDatasetSearch = async (
         const { totalPoints } = formatModelChars2Points({
           model: vlmModel!,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         });
         const imageCaptionPoints = imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints;
         const imageCaptionUsage: ChatNodeUsageType = {
@@ -318,7 +324,9 @@ export const dispatchDatasetSearch = async (
           moduleName: i18nT('account_usage:image_parse'),
           modelId: vlmModel?.modelId,
           inputTokens: imageCaptionResult.inputTokens,
-          outputTokens: imageCaptionResult.outputTokens
+          outputTokens: imageCaptionResult.outputTokens,
+          cacheReadTokens: imageCaptionResult.cacheReadTokens,
+          cacheCreationTokens: imageCaptionResult.cacheCreationTokens
         };
         nodeUsages.push(imageCaptionUsage);
         childrenResponsePoints += imageCaptionUsage.totalPoints;

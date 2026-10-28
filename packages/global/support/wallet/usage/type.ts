@@ -34,6 +34,10 @@ export type UsageItemCountType = {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  /** 包含在 inputTokens 中的缓存读取量。 */
+  cacheReadTokens?: number;
+  /** 包含在 inputTokens 中的缓存创建量。 */
+  cacheCreationTokens?: number;
   charsLength?: number;
   duration?: number;
   pages?: number;

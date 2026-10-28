@@ -66,7 +66,7 @@ const modelRowHeight = 80;
 const modelTableColumnWidth = {
   selection: '48px',
   channels: '160px',
-  billing: '240px',
+  billing: '320px',
   scope: '160px',
   active: '128px',
   actions: '160px'

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
@@ -33,8 +33,8 @@ const embeddingModel = {
   provider: 'openai',
   model: 'mock-embedding-model',
   name: 'Mock Embedding Model',
-  type: ModelTypeEnum.embedding,
-  scope: 'system' as const,
+  type: ModelTypeEnum.embedding as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     defaultToken: 100,
@@ -49,8 +49,8 @@ const vlmModel = {
   provider: 'openai',
   model: 'mock-vlm-model',
   name: 'Mock VLM Model',
-  type: ModelTypeEnum.llm,
-  scope: 'system' as const,
+  type: ModelTypeEnum.llm as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     maxContext: 128000,
@@ -149,7 +149,7 @@ import { searchDatasetData } from '../../../../core/dataset/search/defaultRecall
 import { fullTextRecall } from '../../../../core/dataset/search/defaultRecall/fullTextRecall';
 
 afterEach(() => {
-  serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+  Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: originalMultipleDataToBase64 });
 });
 
 describe('default recall dataset search', () => {
@@ -158,7 +158,7 @@ describe('default recall dataset search', () => {
     // 重置 getFullTextStore 可切换 mock(ISSUE-015):默认走 mongo 委托,避免 milvus 用例污染
     mockUseMilvusStore.value = false;
     mockFullTextStoreSearch.mockReset();
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: originalMultipleDataToBase64 });
     mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
       prompts.map((prompt) => prompt.length)
     );
@@ -198,6 +198,8 @@ describe('default recall dataset search', () => {
       usage: {
         inputTokens: 3,
         outputTokens: 2,
+        cacheReadTokens: 1,
+        cacheCreationTokens: 1,
         usedUserOpenAIKey: true
       }
     });
@@ -222,6 +224,8 @@ describe('default recall dataset search', () => {
       model: 'mock-vlm-model',
       inputTokens: 3,
       outputTokens: 2,
+      cacheReadTokens: 1,
+      cacheCreationTokens: 1,
       requestIds: ['req_image_caption_2'],
       seconds: expect.any(Number),
       usedUserOpenAIKey: true,
@@ -369,7 +373,7 @@ describe('default recall dataset search', () => {
 
   it('should ignore failed image embedding normalization and keep text recall', async () => {
     embeddingModel.config.vision = true;
-    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: true });
     mockGetImageBase64.mockRejectedValueOnce(new Error('expired image'));
     mockGetVectors.mockResolvedValueOnce({
       tokens: 12,
@@ -583,14 +587,14 @@ describe('default recall dataset search', () => {
     const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
     const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     afterEach(() => {
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
-      serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: originalLimit });
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: originalSynonymEnabled });
     });
 
     it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
-      serviceEnv.DATASET_SYNONYM_ENABLED = true;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 20 });
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -608,7 +612,7 @@ describe('default recall dataset search', () => {
 
     it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 20 });
 
       const result = await runSearch({ usingReRank: false });
 
@@ -620,7 +624,7 @@ describe('default recall dataset search', () => {
 
     it('重排请求但 rerank 模型缺失时不产出候选集', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 20 });
 
       const result = await runSearch({ usingReRank: true, rerankModel: undefined });
 
@@ -632,7 +636,7 @@ describe('default recall dataset search', () => {
 
     it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 0 });
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -642,7 +646,7 @@ describe('default recall dataset search', () => {
 
     it('候选数超过上限时按上限截断', async () => {
       arrangeTwoCandidates();
-      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
+      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 1 });
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 

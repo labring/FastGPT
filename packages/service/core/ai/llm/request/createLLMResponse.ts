@@ -268,6 +268,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       usage: {
         inputTokens,
         outputTokens,
+        cacheReadTokens: usage.cache_read_tokens,
+        cacheCreationTokens: usage.cache_write_tokens,
         usedUserOpenAIKey: aiRequestMeta.usedUserOpenAIKey
       },
       rawUsage: usage,
@@ -303,6 +305,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       usage: {
         inputTokens: 0,
         outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
         usedUserOpenAIKey: false
       },
       requestMessages: initialRequestMessages,

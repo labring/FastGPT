@@ -95,18 +95,24 @@ export const pushQuestionGuideUsage = ({
   model,
   inputTokens,
   outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   teamId,
   tmbId
 }: {
   model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   teamId: string;
   tmbId: string;
 }) => {
   const { totalPoints, modelId } = formatModelChars2Points({
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     model
   });
 
@@ -122,7 +128,9 @@ export const pushQuestionGuideUsage = ({
         amount: totalPoints,
         modelId,
         inputTokens,
-        outputTokens
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens
       }
     ]
   });
@@ -189,6 +197,8 @@ export const pushDatasetTestUsage = ({
     model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     embeddingTokens: number;
     embeddingModel: AIModelDataType;
   };
@@ -196,6 +206,8 @@ export const pushDatasetTestUsage = ({
     model: AIModelDataType;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
   };
 }) => {
   const list: UsageItemType[] = [];
@@ -205,7 +217,9 @@ export const pushDatasetTestUsage = ({
     const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({
       model: extensionUsage.model,
       inputTokens: extensionUsage.inputTokens,
-      outputTokens: extensionUsage.outputTokens
+      outputTokens: extensionUsage.outputTokens,
+      cacheReadTokens: extensionUsage.cacheReadTokens,
+      cacheCreationTokens: extensionUsage.cacheCreationTokens
     });
     points += llmPoints;
     list.push({
@@ -213,7 +227,9 @@ export const pushDatasetTestUsage = ({
       amount: llmPoints,
       modelId: llmModelId,
       inputTokens: extensionUsage.inputTokens,
-      outputTokens: extensionUsage.outputTokens
+      outputTokens: extensionUsage.outputTokens,
+      cacheReadTokens: extensionUsage.cacheReadTokens,
+      cacheCreationTokens: extensionUsage.cacheCreationTokens
     });
 
     const { totalPoints: embeddingPoints, modelId: embeddingModelId } = formatModelChars2Points({
@@ -258,7 +274,9 @@ export const pushDatasetTestUsage = ({
     const { totalPoints, modelId } = formatModelChars2Points({
       model: imageCaptionUsage.model,
       inputTokens: imageCaptionUsage.inputTokens,
-      outputTokens: imageCaptionUsage.outputTokens
+      outputTokens: imageCaptionUsage.outputTokens,
+      cacheReadTokens: imageCaptionUsage.cacheReadTokens,
+      cacheCreationTokens: imageCaptionUsage.cacheCreationTokens
     });
     points += totalPoints;
     list.push({
@@ -266,7 +284,9 @@ export const pushDatasetTestUsage = ({
       amount: totalPoints,
       modelId,
       inputTokens: imageCaptionUsage.inputTokens,
-      outputTokens: imageCaptionUsage.outputTokens
+      outputTokens: imageCaptionUsage.outputTokens,
+      cacheReadTokens: imageCaptionUsage.cacheReadTokens,
+      cacheCreationTokens: imageCaptionUsage.cacheCreationTokens
     });
   }
 

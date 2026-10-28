@@ -40,16 +40,19 @@ async function handler(
   });
   const qgModel = modelHandle.getDefaultModelData('llm', { authorizedIds });
 
-  const { result, inputTokens, outputTokens } = await createQuestionGuide({
-    messages: messages as ChatCompletionMessageParam[],
-    model: qgModel,
-    teamId
-  });
+  const { result, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens } =
+    await createQuestionGuide({
+      messages: messages as ChatCompletionMessageParam[],
+      model: qgModel,
+      teamId
+    });
 
   pushQuestionGuideUsage({
     model: qgModel,
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     teamId,
     tmbId
   });

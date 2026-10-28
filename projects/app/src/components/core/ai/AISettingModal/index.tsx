@@ -35,7 +35,7 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { PriceLine } from '../PriceTiersLabel';
+import PriceTiersLabel from '../PriceTiersLabel';
 import { filterModelMultimodalSettings } from '../SettingLLMModel/utils';
 
 type MultimodalValue =
@@ -345,35 +345,22 @@ const AIChatSettingsModal = ({
                   <Tr>
                     <Td>
                       {!!selectedModel && (
-                        <PriceLine
+                        <PriceTiersLabel
                           config={selectedModel}
                           unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
-                          priceKey={'input'}
                           fontSize={'mini'}
                         />
                       )}
                     </Td>
-                    <Td rowSpan={2}>
+                    <Td>
                       {selectedModel
                         ? `${Math.round(selectedModel.config.maxContext / 1000)}K`
                         : '—'}
                     </Td>
-                    <Td rowSpan={2}>
+                    <Td>
                       {selectedModel?.config.toolChoice || selectedModel?.config.functionCall
                         ? t('common:support')
                         : t('common:not_support')}
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>
-                      {!!selectedModel && (
-                        <PriceLine
-                          config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
-                          priceKey={'output'}
-                          fontSize={'mini'}
-                        />
-                      )}
                     </Td>
                   </Tr>
                 </Tbody>

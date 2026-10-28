@@ -93,6 +93,8 @@ export type FastAgentLoopResultBase = {
   assistantMessages: ChatCompletionMessageParam[];
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   llmTotalPoints?: number;
   finishReason?: CompletionFinishReason;
   requestIds: string[];

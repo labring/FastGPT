@@ -12,6 +12,8 @@ type ImageCaptionQueries = {
   requestIds: string[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   seconds: number;
   usedUserOpenAIKey: boolean;
 };
@@ -55,7 +57,13 @@ export const getImageCaptionQueries = async ({
         const {
           answerText,
           requestId,
-          usage: { inputTokens, outputTokens, usedUserOpenAIKey }
+          usage: {
+            inputTokens,
+            outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
+            usedUserOpenAIKey
+          }
         } = await createLLMResponse({
           userKey,
           teamId,
@@ -89,6 +97,8 @@ export const getImageCaptionQueries = async ({
           requestId,
           inputTokens,
           outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens,
           seconds: +((Date.now() - llmStartTime) / 1000).toFixed(2),
           usedUserOpenAIKey
         };
@@ -119,6 +129,8 @@ export const getImageCaptionQueries = async ({
     requestIds: results.map((item) => item.requestId).filter(Boolean),
     inputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),
     outputTokens: results.reduce((sum, item) => sum + item.outputTokens, 0),
+    cacheReadTokens: results.reduce((sum, item) => sum + (item.cacheReadTokens ?? 0), 0),
+    cacheCreationTokens: results.reduce((sum, item) => sum + (item.cacheCreationTokens ?? 0), 0),
     seconds: results.reduce((sum, item) => sum + item.seconds, 0),
     usedUserOpenAIKey:
       billableResults.length > 0 && billableResults.every((item) => item.usedUserOpenAIKey)

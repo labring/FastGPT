@@ -188,6 +188,8 @@ export async function handler(
             model: extensionModelData,
             inputTokens: queryExtensionResult.inputTokens,
             outputTokens: queryExtensionResult.outputTokens,
+            cacheReadTokens: queryExtensionResult.cacheReadTokens,
+            cacheCreationTokens: queryExtensionResult.cacheCreationTokens,
             embeddingTokens: queryExtensionResult.embeddingTokens,
             embeddingModel: embeddingModelData
           }
@@ -197,7 +199,9 @@ export async function handler(
         ? {
             model: vlmModelData,
             inputTokens: imageCaptionResult.inputTokens,
-            outputTokens: imageCaptionResult.outputTokens
+            outputTokens: imageCaptionResult.outputTokens,
+            cacheReadTokens: imageCaptionResult.cacheReadTokens,
+            cacheCreationTokens: imageCaptionResult.cacheCreationTokens
           }
         : undefined
   });

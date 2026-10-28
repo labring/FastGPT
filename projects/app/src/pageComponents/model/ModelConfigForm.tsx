@@ -98,14 +98,16 @@ const removeNaNValues = (value: unknown): void => {
 const Section = ({
   title,
   children,
-  showBorder = true
+  showBorder = true,
+  fullWidth = false
 }: {
   title: string;
   children: React.ReactNode;
   showBorder?: boolean;
+  fullWidth?: boolean;
 }) => (
   <Grid
-    templateColumns={['1fr', '160px minmax(0, 1fr)']}
+    templateColumns={fullWidth ? '1fr' : ['1fr', '160px minmax(0, 1fr)']}
     rowGap={[3, 4]}
     columnGap={'32px'}
     py={6}
@@ -777,7 +779,7 @@ const ModelConfigForm = ({
       )}
 
       {priceUnit && feConfigs?.isPlus && !isTeamModel && (
-        <Section title={t('config_model:model.price_config_section')}>
+        <Section title={t('config_model:model.price_config_section')} fullWidth={isLLMModel}>
           {isLLMModel ? (
             <ModelPriceTiersTable
               control={control}

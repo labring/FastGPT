@@ -60,8 +60,8 @@ const ModelEditModal = ({
         isOpen
         isLoading={loadingModelData}
         onClose={onClose}
-        maxW={['80vw', '70vw']}
-        w="800px"
+        maxW="calc(100vw - 32px)"
+        w="900px"
         h="100%"
         footerStyles={{ display: 'flex', w: 'full' }}
         footer={

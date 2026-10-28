@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { LLMModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   calculateModelPrice,
@@ -81,6 +82,73 @@ describe('getRuntimeResolvedPriceTiers', () => {
 });
 
 describe('calculateModelPrice', () => {
+  it.each([
+    { cache: {}, expected: 28 },
+    { cache: { cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }, expected: 17.7 },
+    { cache: { cacheReadPrice: 0 }, expected: 16 },
+    { cache: { cacheCreationPrice: 0 }, expected: 26 },
+    { cache: { cacheReadPrice: 0, cacheCreationPrice: 0 }, expected: 14 }
+  ])('splits total input into ordinary and cached tokens: $cache', ({ cache, expected }) => {
+    const config = {
+      ...model,
+      pricing: { tiers: [{ inputPrice: 2, outputPrice: 4, ...cache }] }
+    };
+    expect(
+      calculateModelPrice({
+        config,
+        inputTokens: 10000000,
+        outputTokens: 2000000,
+        cacheReadTokens: 6000000,
+        cacheCreationTokens: 1000000
+      }).totalPoints
+    ).toBeCloseTo(expected);
+  });
+
+  it.each([
+    { read: 200, write: 200, expected: 0.00002 },
+    { read: -5, write: -5, expected: 0.0002 },
+    { read: NaN, write: Infinity, expected: 0.0002 },
+    { read: 60, write: 100, expected: 0.000112 }
+  ])('bounds cache counts by total input: $read / $write', ({ read, write, expected }) => {
+    const config = {
+      ...model,
+      pricing: {
+        tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }]
+      }
+    };
+    expect(
+      calculateModelPrice({
+        config,
+        inputTokens: 100,
+        cacheReadTokens: read,
+        cacheCreationTokens: write
+      }).totalPoints
+    ).toBeCloseTo(expected, 10);
+  });
+
+  it('selects a tier by total input, including caches, and keeps team models free', () => {
+    const config = {
+      ...model,
+      pricing: {
+        tiers: [
+          { maxInputTokens: 0.005, inputPrice: 1000, outputPrice: 1000, cacheReadPrice: 0 },
+          { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
+        ]
+      }
+    };
+    const usage = {
+      inputTokens: 10000,
+      outputTokens: 2000,
+      cacheReadTokens: 6000,
+      cacheCreationTokens: 1000
+    };
+    expect(calculateModelPrice({ config, ...usage }).totalPoints).toBeCloseTo(17.7);
+    expect(
+      calculateModelPrice({ config: { ...config, scope: ModelScopeEnum.team }, ...usage })
+        .totalPoints
+    ).toBe(0);
+    expect(calculateModelPrice({ config, inputTokens: NaN, outputTokens: -1 }).totalPoints).toBe(0);
+  });
   it('uses right-closed input tiers, deriving lower bounds and falling back to the last finite tier', () => {
     const config = {
       ...model,
@@ -184,6 +252,28 @@ describe('normalizeModelPricingForRead', () => {
 });
 
 describe('normalizeModelPricingForSave', () => {
+  it('rounds optional cache rates without turning omissions into free prices', () => {
+    const pricing = normalizeModelPricingForSave({
+      ...model,
+      pricing: {
+        tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0, cacheCreationPrice: 1.005 }]
+      }
+    }).pricing;
+    expect(LLMModelPricingSchema.parse(pricing).tiers?.[0]).toEqual({
+      inputPrice: 2,
+      outputPrice: 4,
+      cacheReadPrice: 0,
+      cacheCreationPrice: 1.01
+    });
+    expect(
+      LLMModelPricingSchema.parse(normalizeModelPricingForSave(tieredModel).pricing).tiers?.[0]
+    ).not.toHaveProperty('cacheReadPrice');
+    expect(
+      sanitizeModelPriceTiers([
+        { inputPrice: 2, outputPrice: 4, cacheReadPrice: NaN, cacheCreationPrice: -1 }
+      ])
+    ).toEqual([{ inputPrice: 2, outputPrice: 4 }]);
+  });
   it('marks missing prices as configured and preserves empty or explicit free prices', () => {
     expect(normalizeModelPricingForSave(model).pricing).toEqual({});
     for (const pricing of [{}, { tiers: [] }, { tiers: [{ inputPrice: 0, outputPrice: 0 }] }]) {

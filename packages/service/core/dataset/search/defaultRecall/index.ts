@@ -78,6 +78,8 @@ export async function searchDatasetData(
           model: imageCaptionQueries.model,
           inputTokens: imageCaptionQueries.inputTokens,
           outputTokens: imageCaptionQueries.outputTokens,
+          cacheReadTokens: imageCaptionQueries.cacheReadTokens,
+          cacheCreationTokens: imageCaptionQueries.cacheCreationTokens,
           requestIds: imageCaptionQueries.requestIds,
           seconds: imageCaptionQueries.seconds,
           usedUserOpenAIKey: imageCaptionQueries.usedUserOpenAIKey,

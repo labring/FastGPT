@@ -1,4 +1,5 @@
 import type openai from 'openai';
+import type { CompletionUsage as OpenAICompletionUsage } from 'openai/resources';
 import type { Stream } from 'openai/streaming';
 import { audioFileType } from '../../../common/file/constants';
 import z from 'zod';
@@ -254,12 +255,27 @@ export type ChatCompletionMessageParam = z.infer<typeof ChatCompletionMessagePar
 /* ========= Message end ===== */
 
 /* ===== 一些自定义扩展类型 ===== */
+/** OpenAI 兼容渠道的缓存扩展；prompt_tokens 包含缓存读取与创建。 */
+export type LLMCompletionUsage = OpenAICompletionUsage & {
+  cache_creation_tokens?: number;
+  prompt_cache_hit_tokens?: number;
+  prompt_tokens_details?: OpenAICompletionUsage['prompt_tokens_details'] & {
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
+    cache_creation_tokens?: number;
+  };
+};
+
 // Stream response
 export type StreamResponseType = Stream<
-  openai.Chat.Completions.ChatCompletionChunk & { error?: any }
+  Omit<openai.Chat.Completions.ChatCompletionChunk, 'usage'> & {
+    error?: any;
+    usage?: LLMCompletionUsage | null;
+  }
 >;
-export type UnStreamResponseType = openai.Chat.Completions.ChatCompletion & {
+export type UnStreamResponseType = Omit<openai.Chat.Completions.ChatCompletion, 'usage'> & {
   error?: any;
+  usage?: LLMCompletionUsage;
 };
 
 export const CompletionFinishReasonSchema = z

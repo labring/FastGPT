@@ -304,6 +304,11 @@ overrides:
 
 packageExtensionsChecksum: sha256-n2WBeRAb8arF4yewIvrByuptxk2N5rGXAZZCplMikdY=
 
+patchedDependencies:
+  '@mariozechner/pi-ai@0.67.3':
+    hash: 8e96e80e5e7e712ea5b2a641b96e616770f0133bbdab827bf1f5e6624deb6ec4
+    path: patches/@mariozechner__pi-ai@0.67.3.patch
+
 importers:
 
   .:
@@ -616,7 +621,7 @@ importers:
         version: 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       '@mariozechner/pi-ai':
         specifier: ^0.67.3
-        version: 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
+        version: 0.67.3(patch_hash=8e96e80e5e7e712ea5b2a641b96e616770f0133bbdab827bf1f5e6624deb6ec4)(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       '@maxmind/geoip2-node':
         specifier: ^6.3.4
         version: 6.3.4
@@ -18139,7 +18144,7 @@ snapshots:
 
   '@mariozechner/pi-agent-core@0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
     dependencies:
-      '@mariozechner/pi-ai': 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
+      '@mariozechner/pi-ai': 0.67.3(patch_hash=8e96e80e5e7e712ea5b2a641b96e616770f0133bbdab827bf1f5e6624deb6ec4)(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - aws-crt
@@ -18149,7 +18154,7 @@ snapshots:
       - ws
       - zod
 
-  '@mariozechner/pi-ai@0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
+  '@mariozechner/pi-ai@0.67.3(patch_hash=8e96e80e5e7e712ea5b2a641b96e616770f0133bbdab827bf1f5e6624deb6ec4)(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
     dependencies:
       '@anthropic-ai/sdk': 0.73.0(zod@4.1.12)
       '@aws-sdk/client-bedrock-runtime': 3.1030.0

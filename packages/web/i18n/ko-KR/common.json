@@ -1383,5 +1383,8 @@
   "core.workflow.check.source_output_missing": "노드 {{nodeId}}의 출력 {{outputKey}}가 없거나 연결할 수 없습니다",
   "core.workflow.check.node_missing": "노드 {{nodeId}}가 더 이상 없습니다. 남아 있는 연결을 삭제하세요",
   "core.workflow.check.option_keys_invalid": "옵션 또는 분류의 키가 없거나 중복되었습니다",
-  "core.workflow.check.form_configuration_invalid": "양식 필드 키 또는 해당 출력 구성이 불완전합니다: {{fieldKeys}}"
+  "core.workflow.check.form_configuration_invalid": "양식 필드 키 또는 해당 출력 구성이 불완전합니다: {{fieldKeys}}",
+  "model.cache_read_price": "캐시 읽기",
+  "model.cache_creation_price": "캐시 생성",
+  "model.cache_price_default": "입력 가격"
 }

@@ -49,7 +49,14 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({
+  const {
+    extensionQueries,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
+    embeddingTokens
+  } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
@@ -62,7 +69,9 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({
     model: queryExtensionModel,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   const { totalPoints: embeddingPoints, modelId: embeddingModelId } = formatModelChars2Points({
@@ -77,7 +86,9 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
       totalPoints: llmPoints,
       modelId: llmModelId,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     },
     {
       moduleName: `${node.name} - Embedding`,
@@ -106,6 +117,8 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
       model: queryExtensionModel.name,
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       embeddingTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)

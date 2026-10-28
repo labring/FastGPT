@@ -1,0 +1,35 @@
+diff --git a/dist/providers/openai-completions.js b/dist/providers/openai-completions.js
+index 82f2345d3441e331c6a2ac04d71eb56b3f2120eb..b301c4f83edfce03453fb35748781262239ec226 100644
+--- a/dist/providers/openai-completions.js
++++ b/dist/providers/openai-completions.js
+@@ -631,20 +631,17 @@ function convertTools(tools, compat) {
+     }));
+ }
+ function parseChunkUsage(rawUsage, model) {
+-    const promptTokens = rawUsage.prompt_tokens || 0;
+-    const reportedCachedTokens = rawUsage.prompt_tokens_details?.cached_tokens || 0;
+-    const cacheWriteTokens = rawUsage.prompt_tokens_details?.cache_write_tokens || 0;
+-    const reasoningTokens = rawUsage.completion_tokens_details?.reasoning_tokens || 0;
+-    // Normalize to pi-ai semantics:
+-    // - cacheRead: hits from cache created by previous requests only
+-    // - cacheWrite: tokens written to cache in this request
+-    // Some OpenAI-compatible providers (observed on OpenRouter) report cached_tokens
+-    // as (previous hits + current writes). In that case, remove cacheWrite from cacheRead.
+-    const cacheReadTokens = cacheWriteTokens > 0 ? Math.max(0, reportedCachedTokens - cacheWriteTokens) : reportedCachedTokens;
++    // Keep OpenAI-compatible cache aliases consistent with FastGPT's normal request path.
++    // cached_tokens may include writes; explicit read/create fields represent separate counts.
++    const safeCount = (value) => typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
++    const promptTokens = safeCount(rawUsage.prompt_tokens);
++    const details = rawUsage.prompt_tokens_details;
++    const cacheWriteTokens = Math.min(promptTokens, safeCount(rawUsage.cache_creation_tokens ?? details?.cache_creation_tokens ?? details?.cache_write_tokens));
++    const cacheReadTokens = Math.min(promptTokens - cacheWriteTokens, safeCount(details?.cache_read_tokens ?? rawUsage.prompt_cache_hit_tokens ?? Math.max(0, safeCount(details?.cached_tokens) - safeCount(details?.cache_write_tokens))));
+     const input = Math.max(0, promptTokens - cacheReadTokens - cacheWriteTokens);
+-    // Compute totalTokens ourselves since we add reasoning_tokens to output
+-    // and some providers (e.g., Groq) don't include them in total_tokens
+-    const outputTokens = (rawUsage.completion_tokens || 0) + reasoningTokens;
++    // Match FastGPT's normal request path: reasoning_tokens is a breakdown of completion_tokens.
++    // Adding it again overcharges OpenAI-compatible reasoning models.
++    const outputTokens = safeCount(rawUsage.completion_tokens);
+     const usage = {
+         input,
+         output: outputTokens,

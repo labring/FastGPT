@@ -365,6 +365,12 @@ export const ChannelDashboardSummarySchema = z.object({
   output_tokens: IntSchema.optional()
     .default(0)
     .meta({ example: 200, description: '输出 Token 数' }),
+  cached_tokens: IntSchema.optional()
+    .default(0)
+    .meta({ example: 600, description: '缓存读取 Token 数，包含在输入 Token 数内' }),
+  cache_creation_tokens: IntSchema.optional()
+    .default(0)
+    .meta({ example: 100, description: '缓存创建 Token 数，包含在输入 Token 数内' }),
   total_tokens: IntSchema.optional().default(0).meta({ example: 1200, description: '总 Token 数' }),
   max_rpm: IntSchema.optional().default(0).meta({ example: 10, description: '最大 RPM' }),
   max_tpm: IntSchema.optional().default(0).meta({ example: 1200, description: '最大 TPM' }),

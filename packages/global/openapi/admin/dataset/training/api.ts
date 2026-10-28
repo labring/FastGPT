@@ -28,6 +28,16 @@ export type AdminLlmParagraphBody = z.infer<typeof AdminLlmParagraphBodySchema>;
 export const AdminLlmParagraphResponseSchema = z.object({
   resultText: z.string().meta({ description: '补充段落标题后的文本' }),
   totalInputTokens: z.number().nonnegative().meta({ description: '模型输入 Token 数' }),
-  totalOutputTokens: z.number().nonnegative().meta({ description: '模型输出 Token 数' })
+  totalOutputTokens: z.number().nonnegative().meta({ description: '模型输出 Token 数' }),
+  cacheReadTokens: z
+    .number()
+    .nonnegative()
+    .optional()
+    .meta({ description: '输入中缓存读取 Token 数' }),
+  cacheCreationTokens: z
+    .number()
+    .nonnegative()
+    .optional()
+    .meta({ description: '输入中缓存创建 Token 数' })
 });
 export type AdminLlmParagraphResponse = z.infer<typeof AdminLlmParagraphResponseSchema>;

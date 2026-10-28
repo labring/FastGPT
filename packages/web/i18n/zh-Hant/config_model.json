@@ -106,7 +106,6 @@
   "video": "支援視頻識別",
   "video_tip": "如果模型支援視頻識別，則開啟該開關。",
   "waiting_test": "等待測試",
-  "active_model": "可用模型",
   "channel": "模型管道",
   "config_model": "模型設定",
   "create_model": "新增模型",
@@ -294,5 +293,6 @@
   "replace_invalid_failed_samples": "失敗樣例",
   "replace_invalid_retry": "重新執行",
   "replace_invalid_retry_note": "可使用相同對應再次執行，以處理未完成的失效引用。",
-  "replace_invalid_request_failed": "替換請求失敗；已寫入的記錄不會自動回復，可重新執行。"
+  "replace_invalid_request_failed": "替換請求失敗；已寫入的記錄不會自動回復，可重新執行。",
+  "model.cache_price_tip": "價格單位：積分 / M Tokens，最多 2 位小數。快取讀取和快取建立留空時沿用該級輸入價，填 0 表示免費。"
 }

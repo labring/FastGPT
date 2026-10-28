@@ -88,6 +88,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let reasoningText = '';
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheCreationTokens = 0;
   let llmTotalPoints = 0;
   let finishReason: CompletionFinishReason = 'stop';
   const pendingMainContext = state.pendingMainContext;
@@ -618,24 +620,34 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         assistantMessages.push(standardAssistantMessage);
       }
 
-      const requestInputTokens = event.message.usage?.input || 0;
+      // pi-ai 的 input 不含缓存；FastGPT 的 inputTokens 统一表示总输入，用于匹配价格档位。
+      const requestCacheReadTokens = event.message.usage?.cacheRead ?? 0;
+      const requestCacheCreationTokens = event.message.usage?.cacheWrite ?? 0;
+      const requestInputTokens =
+        (event.message.usage?.input ?? 0) + requestCacheReadTokens + requestCacheCreationTokens;
       const requestOutputTokens = event.message.usage?.output || 0;
       const totalPoints = runtime.llmParams.userKey?.key
         ? 0
         : formatModelChars2Points({
             model: modelData,
             inputTokens: requestInputTokens,
-            outputTokens: requestOutputTokens
+            outputTokens: requestOutputTokens,
+            cacheReadTokens: requestCacheReadTokens,
+            cacheCreationTokens: requestCacheCreationTokens
           }).totalPoints;
       inputTokens += requestInputTokens;
       outputTokens += requestOutputTokens;
+      cacheReadTokens += requestCacheReadTokens;
+      cacheCreationTokens += requestCacheCreationTokens;
       llmTotalPoints += totalPoints;
       const usage: AgentLoopUsage = {
         moduleName: AgentUsageModuleName.agentCall,
         modelId: modelData.modelId,
         totalPoints,
         inputTokens: requestInputTokens,
-        outputTokens: requestOutputTokens
+        outputTokens: requestOutputTokens,
+        cacheReadTokens: requestCacheReadTokens,
+        cacheCreationTokens: requestCacheCreationTokens
       };
       pushAgentLoopUsages(runtime, [usage]);
 
@@ -758,6 +770,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
             modelId: modelData.modelId,
             inputTokens,
             outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
             totalPoints: llmTotalPoints
           }
         ]

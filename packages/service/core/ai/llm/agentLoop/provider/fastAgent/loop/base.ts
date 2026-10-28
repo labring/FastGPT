@@ -76,6 +76,8 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     usage?: {
       inputTokens: number;
       outputTokens: number;
+      cacheReadTokens?: number;
+      cacheCreationTokens?: number;
       totalPoints: number;
     };
     firstTokenTime?: number;
@@ -120,6 +122,8 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   llmTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   contextCheckpoint?: string;
 
@@ -262,6 +266,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
+  let cacheReadTokens = 0;
+  let cacheCreationTokens = 0;
   let llmTotalPoints: number = 0; // 每次 LLM 调用单独计价后累加，避免梯度计费错误
   let finish_reason: CompletionFinishReason | undefined;
   let requestError: any;
@@ -463,7 +469,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       : formatModelChars2Points({
           model: modelData,
           inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
+          outputTokens: usage.outputTokens,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheCreationTokens: usage.cacheCreationTokens
         }).totalPoints;
     onLLMRequestEnd?.({
       requestIndex: runTimes,
@@ -476,6 +484,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       usage: {
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheCreationTokens: usage.cacheCreationTokens,
         totalPoints
       },
       seconds: +((Date.now() - requestStartTime) / 1000).toFixed(2),
@@ -494,6 +504,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // 错误响应也可能产生消耗，退出前先累计；每轮单独计价以兼容梯度计费。
       inputTokens += usage.inputTokens;
       outputTokens += usage.outputTokens;
+      cacheReadTokens += usage.cacheReadTokens ?? 0;
+      cacheCreationTokens += usage.cacheCreationTokens ?? 0;
       llmTotalPoints += totalPoints;
 
       if (requestError) {
@@ -748,6 +760,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     model: modelData.model,
     inputTokens,
     outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     llmTotalPoints,
     contextCheckpoint,
     completeMessages: requestMessages,
