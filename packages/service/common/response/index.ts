@@ -273,6 +273,12 @@ export function responseWrite({
 
   if (!Write) return;
 
+  // 直接写出 error 事件（如 workflowSseEvent.error）同样意味着请求失败；
+  // 与 getSseErrorResponse 的标记互为兜底，重复调用只保留第一个错误。
+  if (event === SseResponseEventEnum.error) {
+    markProfileError(data);
+  }
+
   if (event) {
     Write(`event: ${event}\n`);
   }
