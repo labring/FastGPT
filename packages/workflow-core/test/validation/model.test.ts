@@ -209,22 +209,15 @@ describe('checkWorkflowModels', () => {
     ).toEqual(item.expected);
   });
 
-  it('keeps Web defaults for auxiliary slots but requires the enabled deep-search model', () => {
+  it('keeps Web defaults for auxiliary slots and ignores retired search fields', () => {
     const inputs = [
       makeInput(NodeInputKeyEnum.datasetSearchUsingReRank, { value: true }),
       makeInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, { value: true }),
       makeInput(NodeInputKeyEnum.datasetSearchExtensionModelId, { defaultValue: 'stale-default' }),
       makeInput(NodeInputKeyEnum.datasetSearchExtensionModel, { value: 'stale-legacy' }),
-      makeInput(NodeInputKeyEnum.datasetDeepSearch, { value: true }),
-      makeInput(NodeInputKeyEnum.datasetDeepSearchModelId)
+      makeInput('datasetDeepSearch', { value: true }),
+      makeInput('datasetDeepSearchModelId', { value: 'deleted-model' })
     ];
-    expect(check(makeDocument(inputs, FlowNodeTypeEnum.datasetSearchNode))).toEqual([
-      expect.objectContaining({
-        code: WorkflowDiagnosticCodeEnum.modelRequired,
-        inputKey: NodeInputKeyEnum.datasetDeepSearchModelId
-      })
-    ]);
-    inputs.find((item) => item.key === NodeInputKeyEnum.datasetDeepSearchModelId)!.value = 'llm-id';
     expect(check(makeDocument(inputs, FlowNodeTypeEnum.datasetSearchNode))).toEqual([]);
     inputs.find((item) => item.key === NodeInputKeyEnum.datasetSearchExtensionModelId)!.value =
       'missing';
