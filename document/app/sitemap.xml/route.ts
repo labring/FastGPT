@@ -23,7 +23,12 @@ export function GET() {
   const urlEntries = pages
     .map((page) => {
       const filePath = `content/${page.data._file.path}`;
-      const lastModified = (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
+      const rawLastModified =
+        (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
+      const lastModified =
+        typeof rawLastModified === 'number' || rawLastModified instanceof Date
+          ? new Date(rawLastModified).toISOString()
+          : rawLastModified;
       const routePath = page.url.replace(/^\/(?:zh-CN|en)/, '');
       const zhUrl = `${zhOrigin}/zh-CN${routePath}`;
       const enUrl = `${enOrigin}/en${routePath}`;
