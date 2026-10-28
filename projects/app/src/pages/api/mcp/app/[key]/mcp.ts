@@ -15,7 +15,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { withHttpRequestProfile } from '@fastgpt/service/common/http/requestProfile';
-import { markProfileError } from '@fastgpt/service/common/profiling';
+import { isProfiling, markProfileError } from '@fastgpt/service/common/profiling';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 const mcpExpectedClientErrors = new Set<string>([
@@ -47,6 +47,30 @@ export type mcpQuery = { key: string };
 
 export type mcpBody = toolCallProps;
 
+/**
+ * 补全 SDK 自行生成的错误响应的失败标记。
+ *
+ * MCP SDK 会把协议与参数错误直接写成响应而不抛异常：Accept 不完整时返回 406，
+ * `tools/call` 缺少 `params.name` 等参数校验失败时返回 200 + SSE 内的 JSON-RPC error。
+ * 这些情况都不会进入业务 catch，若不额外观测，失败请求会以 `status=ok` 进入直方图。
+ *
+ * - 包装 `transport.send`：SDK 生成的 JSON-RPC error 都经由它发送（覆盖 HTTP 200 的情况）；
+ * - `handleRequest` 返回后检查 HTTP 状态码，覆盖 406 这类 transport 自行返回、不经过 send 的响应。
+ *
+ * 只做失败标记，不改变任何响应内容与状态码。
+ */
+const observeMcpTransportErrors = (transport: StreamableHTTPServerTransport) => {
+  if (!isProfiling()) return;
+
+  const originalSend = transport.send.bind(transport);
+  transport.send = (message, options) => {
+    if ('error' in message && message.error) {
+      markProfileError(message.error.message || 'MCP JSON-RPC error');
+    }
+    return originalSend(message, options);
+  };
+};
+
 const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponseType<any>) => {
   const key = req.query.key;
   const server = new Server(
@@ -63,6 +87,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
   const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined
   });
+  observeMcpTransportErrors(transport);
   res.on('close', () => {
     logger.debug('[MCP server] Close connection');
     transport.close();
@@ -116,6 +141,11 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     // Connect to transport
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
+
+    // transport 自行返回的协议错误（如 Accept 不完整时的 406）不会抛异常，按状态码补标。
+    if (res.statusCode >= 400) {
+      markProfileError(`MCP responded ${res.statusCode}`);
+    }
   } catch (error) {
     markProfileError(error);
     const isExpectedClientError = isMcpExpectedClientError(error);

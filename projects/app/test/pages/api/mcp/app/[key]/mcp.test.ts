@@ -8,7 +8,8 @@ const mocks = vi.hoisted(() => ({
   getMcpServerTools: vi.fn(),
   callMcpServerTool: vi.fn(),
   getMcpAuthProxyFromHeaders: vi.fn(),
-  handleRequest: vi.fn()
+  handleRequest: vi.fn(),
+  send: vi.fn()
 }));
 
 const mockLogger = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const mockLogger = vi.hoisted(() => ({
 vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
   class StreamableHTTPServerTransport {
     handleRequest = mocks.handleRequest;
+    send = mocks.send;
     close = vi.fn();
   }
   return { StreamableHTTPServerTransport };
@@ -65,12 +67,18 @@ beforeAll(async () => {
 const createRes = () => {
   const res = {
     writableFinished: false,
+    statusCode: 200,
     on: vi.fn(),
     status: vi.fn().mockReturnThis(),
     json: vi.fn()
   };
   return res;
 };
+
+const getProfilePayloads = () =>
+  mockLogger.info.mock.calls
+    .filter(([message]) => String(message).startsWith('Request profile '))
+    .map(([, payload]) => payload);
 
 const callPostHandler = async (profile = false) => {
   const req = {
@@ -88,6 +96,8 @@ describe('mcp app handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getMcpAuthProxyFromHeaders.mockReturnValue({});
+    mocks.getMcpServerTools.mockResolvedValue([]);
+    mocks.send.mockResolvedValue(undefined);
   });
 
   it.each([false, true])(
@@ -175,5 +185,36 @@ describe('mcp app handler', () => {
     );
     expect(profiles).toHaveLength(1);
     expect(profiles[0][1]).toMatchObject({ kind: 'mcp', ok: false });
+  });
+
+  it('marks the profile as failed when the transport returns an HTTP error without throwing', async () => {
+    // Accept 不完整时 SDK 直接返回 406 JSON-RPC error，不抛异常
+    mocks.handleRequest.mockImplementationOnce(async (_req: any, res: any) => {
+      res.statusCode = 406;
+    });
+
+    await callPostHandler(true);
+
+    expect(getProfilePayloads()).toEqual([
+      expect.objectContaining({ kind: 'mcp', ok: false, error: 'MCP responded 406' })
+    ]);
+  });
+
+  it('marks the profile as failed when the SDK sends a JSON-RPC error over HTTP 200', async () => {
+    // 缺少 params.name 时 SDK 校验失败，经 transport.send 发出 SSE 内的 JSON-RPC error
+    mocks.handleRequest.mockImplementationOnce(async function (this: any) {
+      await this.send({
+        jsonrpc: '2.0',
+        id: 1,
+        error: { code: -32602, message: 'Invalid params' }
+      });
+    });
+
+    await callPostHandler(true);
+
+    expect(mocks.send).toHaveBeenCalledOnce();
+    expect(getProfilePayloads()).toEqual([
+      expect.objectContaining({ kind: 'mcp', ok: false, error: 'Invalid params' })
+    ]);
   });
 });
