@@ -85,7 +85,7 @@ import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
-import { profileStage } from '../../../common/profiling';
+import { markProfileError, profileStage } from '../../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -132,6 +132,10 @@ type WorkflowUsageProps = RequireOnlyOne<{
   usageId: string;
 }>;
 
+/**
+ * 执行入口级工作流并返回根运行摘要。根错误统一标记请求采集失败，不依赖调用方是否落库；
+ * 子工作流通过 runWorkflow 执行，已捕获错误和工具内部错误沿用根 summary 的排除语义。
+ */
 export async function dispatchWorkFlow({
   usageSource,
   usageId,
@@ -330,6 +334,10 @@ export async function dispatchWorkFlow({
         })
           .then(async (result) => {
             await nodeResponseSink.close();
+            // HTTP 200/SSE 正常收尾也可能包含根运行错误；只按最终摘要判断，避免子层错误误报。
+            const { errorText, hasError } = result.workflowRuntimeSummary;
+            if (errorText || hasError) markProfileError(errorText || 'Workflow run failed');
+
             resolve({
               ...result,
               // 对外只返回当前 workflow 层的统一 summary；详情 rows 仍由共享 writer 持久化，

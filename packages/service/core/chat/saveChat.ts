@@ -36,7 +36,6 @@ import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { markProfileError } from '../../common/profiling';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { WorkflowRuntimeSummaryType } from '../workflow/dispatch/type';
 import {
@@ -250,15 +249,6 @@ type FailChatRoundParams = ChatSourceParams & {
  */
 export const finalizeChatRound = async (props: Props) => {
   beforeProcess(props);
-
-  // 工作流可以正常返回但内部节点失败：部分入口（Pro 首页对话、chatTest 等）以 HTTP 200
-  // 收尾并只在 summary 里携带错误，共享入口无法识别；在共享落库出口补标采集失败，
-  // 不改变落库与响应内容。
-  if (props.workflowRuntimeSummary?.errorText) {
-    markProfileError(props.workflowRuntimeSummary.errorText);
-  } else if (props.workflowRuntimeSummary?.hasError) {
-    markProfileError('Workflow run failed');
-  }
 
   const {
     chatId,
