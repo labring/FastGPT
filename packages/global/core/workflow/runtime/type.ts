@@ -119,13 +119,6 @@ export const DispatchNodeResponseSchema = z
       .array(SearchDataResponseQuoteListItemSchema)
       .optional()
       .meta({ description: '融合候选集（去重/过滤前），仅重排开启时记录' }),
-    deepSearchResult: z
-      .object({
-        model: z.string().meta({ description: '模型' }),
-        inputTokens: z.number().meta({ description: '输入 token' }),
-        outputTokens: z.number().meta({ description: '输出 token' })
-      })
-      .optional(),
 
     // dataset concat
     concatLength: z.number().optional(),

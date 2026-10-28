@@ -130,6 +130,58 @@ describe('listAuthorizedSystemToolTemplates', () => {
     expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
     expect(mocks.getClientToolPreviewNode).not.toHaveBeenCalled();
   });
+
+  it('preserves debug priority, root visibility and search filtering', async () => {
+    const debugSource = 'debug:tmbId:member-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-match', { hideTags: ['hidden-user'] }),
+      createTool('systemTool-other'),
+      createTool('systemTool-debug-match', { source: debugSource })
+    ]);
+    mocks.getDebugSessionStatus.mockResolvedValue({
+      enabled: true,
+      status: 'enabled',
+      source: debugSource
+    });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
+
+    const tools = await listAuthorizedSystemToolTemplates({
+      ...context,
+      isRoot: true,
+      searchKey: 'MATCH'
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-debug-match', 'systemTool-match']);
+  });
+
+  it.each([
+    [PluginStatusEnum.Normal, true, ['systemTool-set/match']],
+    [PluginStatusEnum.Hidden, true, []],
+    [PluginStatusEnum.Normal, false, []]
+  ] as const)(
+    'filters children for parent status %s with children=%s',
+    async (status, hasChildren, expectedIds) => {
+      mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
+        ...createTool('systemTool-set', { isToolSet: true, status }),
+        children: hasChildren
+          ? [
+              { id: 'match', name: 'Match', status: PluginStatusEnum.Normal },
+              { id: 'other', name: 'Other', status: PluginStatusEnum.Normal },
+              { id: 'hidden-match', name: 'Hidden match', status: PluginStatusEnum.Hidden }
+            ]
+          : undefined
+      });
+
+      const tools = await listAuthorizedSystemToolTemplates({
+        ...context,
+        parentId: 'systemTool-set',
+        searchKey: 'match'
+      });
+
+      expect(tools.map((tool) => tool.id)).toEqual(expectedIds);
+      expect(mocks.getSystemToolList).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('getAuthorizedSystemToolTemplateCatalog', () => {

@@ -107,9 +107,7 @@ describe('tokenLogin API', () => {
     });
 
     expect(pushTrack.dailyUserActive).toHaveBeenCalledWith({
-      uid: String(testUser._id),
-      teamId: String(testTeam._id),
-      tmbId: String(testTmb._id)
+      uid: String(testUser._id)
     });
   });
 

@@ -219,7 +219,7 @@ describe('WorkflowBuilder applyVersion', () => {
     expect(mocks.pushPastSnapshot).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
       status: 'error',
-      title: 'workflow_builder_apply_failed',
+      title: 'workflow:workflow_builder_apply_failed',
       description: 'commit failed'
     });
 
@@ -461,7 +461,7 @@ describe('WorkflowBuilder applyVersion', () => {
 
     expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
       status: 'error',
-      title: 'workflow_builder_apply_failed',
+      title: 'workflow:workflow_builder_apply_failed',
       description: error.message
     });
     expect(mocks.initData).not.toHaveBeenCalled();

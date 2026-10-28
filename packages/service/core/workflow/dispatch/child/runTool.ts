@@ -248,7 +248,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: tool.id,
         result: 1,
         usagePoint: usagePoints,
@@ -412,7 +411,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: uId,
         toolId: systemToolId,
         result: 0,
         msg: getErrText(error)

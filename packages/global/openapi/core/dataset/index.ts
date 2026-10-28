@@ -381,7 +381,7 @@ export const DatasetPath: OpenAPIPath = {
 
 - 输入格式：选择“文本检索”或“图片检索”；至少提供非空白的 \`text\` 或一张 \`queryImageUrls\` 图片，也可以两者同时传入。
 - 图片上传：先调用 \`/core/dataset/file/presignSearchTestImage\`，按返回的预签名信息上传图片，再将 \`temp/\${teamId}/...\` key 传入 \`queryImageUrls\`。最多 10 张，仅接受当前团队的临时 key，不支持公网 URL、dataset key 或 chat key。
-- 检索配置：支持向量、全文和混合检索，以及文本重排序、问题扩展和深度搜索。\`datasetDeepSearch=true\` 且 \`text\` 非空白时才进入深度搜索；纯图片输入走普通检索。
+- 检索配置：支持向量、全文和混合检索，以及文本重排序和问题扩展；纯图片输入不执行文本扩展。
 - \`limit\` 是召回内容的 token 预算，并非结果条数；默认 5000，超过 20000 时按 20000 处理。`,
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.datasetOther],
       requestBody: {

@@ -37,7 +37,8 @@ export const CommonOtherPath: OpenAPIPath = {
   '/common/tracks/push': {
     post: {
       summary: '上报行为埋点',
-      description: '上报当前用户的前端行为事件及关联数据',
+      description:
+        '仅接收指定的前端行为事件及各事件对应的 data，拒绝未声明的数据字段；辅助生成入口点击按小时全局聚合，不接受服务端链路事件',
       tags: [DevApiTagsMap.commonOther],
       requestBody: {
         required: true,

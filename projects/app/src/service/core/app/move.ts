@@ -27,6 +27,7 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
+import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
 
 const logAppMove = ({
   tmbId,
@@ -91,18 +92,20 @@ export const moveApp = async ({
     });
   }
 
-  const isFolderType =
-    app.type === AppTypeEnum.toolFolder
-      ? (type: string) => type === AppTypeEnum.toolFolder
-      : app.type === AppTypeEnum.folder
-        ? (type: string) => type === AppTypeEnum.folder
-        : () => false;
+  // 普通应用与工具分属两棵目录树，移动目标必须是同一棵树内的文件夹。
+  await validateParentFolderType({ parentId, childType: app.type });
+
+  const folderTree = getAppFolderTree(app.type);
+  const isFolderType = (type: string) =>
+    AppFolderTypeList.includes(type as AppTypeEnum) &&
+    (!folderTree || getAppFolderTree(type) === folderTree);
 
   await checkMoveFolderDepth({
     resourceId: appId,
     targetParentId: parentId,
-    teamId: app.teamId,
-    model: MongoApp,
+    findResource: (id) =>
+      MongoApp.findOne({ _id: id, teamId: app.teamId }, '_id parentId type').lean(),
+    findChildren: (parentId) => MongoApp.find({ parentId, teamId: app.teamId }, '_id type').lean(),
     isFolderType
   });
 
@@ -111,6 +114,7 @@ export const moveApp = async ({
     const ancestorIds = isPathFolder
       ? await getFolderAncestorIdsFromParentId({
           parentId: parentId ? String(parentId) : null,
+          maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
           findFolder: (id) =>
             MongoApp.findOne({ _id: id, teamId: app.teamId, type: app.type })
               .select('_id parentId')
@@ -123,6 +127,7 @@ export const moveApp = async ({
       await rewriteFolderSubtreeAncestorIds({
         rootId: appId,
         rootAncestorIds: ancestorIds,
+        // 路径重写也按目标祖先加子树的绝对层级校验，不能沿用只读遍历上限。
         maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
         findChildFolders: (parentIds) =>
           MongoApp.find({ teamId: app.teamId, parentId: { $in: parentIds }, type: app.type })

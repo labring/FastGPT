@@ -2105,7 +2105,7 @@ describe('summarizeRuntimeNodeResponses', () => {
     expect(summary).toMatchObject({ llmInputTokens: 20, llmOutputTokens: 8 });
   });
 
-  it('counts dataset LLM children and deep search, excluding embedding and rerank tokens', () => {
+  it('counts dataset LLM children, excluding embedding and rerank tokens', () => {
     const summary = summarizeRuntimeNodeResponses(undefined, [
       {
         id: 'dataset-search',
@@ -2113,7 +2113,6 @@ describe('summarizeRuntimeNodeResponses', () => {
         moduleType: FlowNodeTypeEnum.datasetSearchNode,
         embeddingTokens: 700,
         reRankInputTokens: 300,
-        deepSearchResult: { inputTokens: 9, outputTokens: 4 },
         childrenResponses: [
           {
             id: 'query-extension',
@@ -2127,7 +2126,7 @@ describe('summarizeRuntimeNodeResponses', () => {
       } as any
     ]);
 
-    expect(summary).toMatchObject({ llmInputTokens: 24, llmOutputTokens: 10 });
+    expect(summary).toMatchObject({ llmInputTokens: 15, llmOutputTokens: 6 });
   });
 
   it('deduplicates dataset child tokens when the child row arrives before its parent', () => {
