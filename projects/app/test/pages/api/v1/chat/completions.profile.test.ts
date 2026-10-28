@@ -1,11 +1,12 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
-import { beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 /**
- * v1 completions 的 SSE 错误以 HTTP 200 正常结束，共享入口无法按状态码识别失败。
- * 这个用例走真实的 NextAPI 入口与真实 ServerResponse，验证错误仍被标记为采集失败，
- * 同时响应协议保持原样（200 + SSE error 事件）。
+ * v1 completions 的已处理错误和工作流错误摘要都可能以 HTTP 200 正常结束。
+ * 运行真实的路由、NextAPI、采集器和 ServerResponse，仅替换工作流准备与执行依赖，
+ * 验证 JSON/SSE 的失败分类和原有响应协议。
  */
 
 // 必须运行真实的共享入口与 SSE 响应，才能验证「HTTP 200 + SSE error」被正确归为失败。
@@ -23,6 +24,10 @@ const authMocks = vi.hoisted(() => ({
   authChatCompletionHeaderRequest: vi.fn()
 }));
 
+const workflowMocks = vi.hoisted(() => ({
+  dispatchWorkFlow: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/common/logger')>();
   return {
@@ -33,6 +38,42 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 
 vi.mock('@/service/support/permission/auth/chatCompletion', () => authMocks);
 
+vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
+  LimitTypeEnum: { chat: 'chat' },
+  teamFrequencyLimit: vi.fn(async () => true)
+}));
+
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppLatestVersion: vi.fn(async () => ({
+    versionId: 'version-1',
+    nodes: [],
+    edges: [],
+    chatConfig: {},
+    resources: []
+  }))
+}));
+
+vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/fileLimits')>()),
+  getWorkflowFileLimits: vi.fn(async () => ({ maxFileAmount: 5, maxBytesPerFile: 1024 }))
+}));
+
+vi.mock('@fastgpt/service/support/user/team/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/user/team/utils')>()),
+  getRunningUserInfoByTmbId: vi.fn(async () => ({}))
+}));
+
+vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
+  preChatRound: vi.fn(async () => ({
+    chatId: 'chat-1',
+    responseChatItemId: 'response-1',
+    shouldPersistChatRound: false,
+    shouldFinalizePreparedRound: false
+  }))
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch', () => workflowMocks);
+
 let handler: (req: any, res: any) => Promise<unknown>;
 
 beforeAll(async () => {
@@ -41,14 +82,14 @@ beforeAll(async () => {
   handler = (await import('@/pages/api/v1/chat/completions')).default as typeof handler;
 });
 
-const createHttpObjects = () => {
+const createHttpObjects = (stream = true) => {
   const req: any = Object.assign(new IncomingMessage(new Socket()), {
     method: 'POST',
     url: '/api/v1/chat/completions',
     query: {},
     body: {
       appId: '68ad85a7463006c963799a05',
-      stream: true,
+      stream,
       messages: [{ role: 'user', content: 'hi' }]
     }
   });
@@ -80,6 +121,20 @@ const getProfilePayloads = () =>
     .map(([, payload]) => payload);
 
 describe('v1 chat completions profile status', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authMocks.authChatCompletionHeaderRequest.mockResolvedValue({
+      teamId: '67f4c91c79a4d61b1f116b2b',
+      tmbId: '67f4c91c79a4d61b1f116b2c',
+      authType: 'apikey',
+      app: {
+        _id: '68ad85a7463006c963799a05',
+        name: 'Chat',
+        type: AppTypeEnum.workflow
+      }
+    });
+  });
+
   it('marks the profile as failed when an auth error is written as an SSE error', async () => {
     authMocks.authChatCompletionHeaderRequest.mockRejectedValue(new Error('auth failed'));
 
@@ -104,4 +159,44 @@ describe('v1 chat completions profile status', () => {
       })
     ]);
   });
+
+  it.each([
+    { stream: false, errorText: 'node failed' },
+    { stream: true, errorText: 'node failed' },
+    { stream: false, errorText: undefined },
+    { stream: true, errorText: undefined }
+  ])(
+    'records a returned workflow error=$errorText for stream=$stream',
+    async ({ stream, errorText }) => {
+      workflowMocks.dispatchWorkFlow.mockResolvedValue({
+        flowUsages: [],
+        assistantResponses: [{ type: 'text', text: { content: 'answer' } }],
+        newVariables: {},
+        durationSeconds: 1,
+        flatNodeResponses: [],
+        workflowRuntimeSummary: { hasError: !!errorText, errorText }
+      });
+      const { req, res } = createHttpObjects(stream);
+      const writeSpy = vi.spyOn(res, 'write');
+
+      await handler(req, res);
+
+      expect(workflowMocks.dispatchWorkFlow).toHaveBeenCalledOnce();
+      expect(res.statusCode).toBe(200);
+      expect(res.writableEnded).toBe(true);
+      const profiles = getProfilePayloads();
+      expect(profiles).toEqual([expect.objectContaining({ ok: !errorText })]);
+      expect(profiles[0].error).toBe(errorText);
+      if (stream) {
+        const response = writeSpy.mock.calls.map(([chunk]) => String(chunk)).join('');
+        expect(response).toContain('data: [DONE]');
+        expect(response).not.toContain('event: error');
+        expect(res.json).not.toHaveBeenCalled();
+      } else {
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ error: errorText, choices: expect.any(Array) })
+        );
+      }
+    }
+  );
 });
