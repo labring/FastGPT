@@ -9,14 +9,59 @@ import { Alert } from '@/components/docs/Alert';
 
 在开始编写代码前，你需要先在技能列表中创建一个开发项目。系统支持以下两种方式来创建或载入技能：
 
-![新建与导入技能](/imgs/create_import_skill.png)
+![新建技能后的空工作区，左侧输入需求，右侧管理文件](/imgs/optimized/current/skill-workspace.png.webp)
 
 ### 1.1 点击新建区域创建技能
 
-在页面中点击带有加号的“新建”卡片，在弹出的窗口中设置技能名称、图标、介绍以及**需求描述**。系统在后台初始化该技能时，会根据你的输入采取不同的方式：
+在“工作台 → 技能”中点击“新建”，填写名称、图标和介绍。本例命名为“提取邮箱”。确认后等待沙盒启动和文件加载，初始工作区包含 `skills/` 目录和 `.gitignore`。
 
-- **使用默认模板**：如果你保留默认的“目标/流程/要求”模板未作修改，系统将直接使用内置的基础结构和样例代码生成技能工作区（不调用 AI 模型，不产生积分消耗）。
-- **AI 辅助生成**：如果你在此输入了具体的功能需求（例如“帮我编写一个从文本中提取所有邮箱地址的技能”），系统在后台会调用**系统配置的默认大语言模型**，根据你的描述自动生成技能方案 `SKILL.md` 并完成代码初始化，这会产生相应的积分消耗。
+进入工作区后，在左侧对话输入功能需求，或在右侧文件树直接创建代码文件。标准文件结构包含：
+
+- `skills/extract-emails/SKILL.md`：声明技能元信息与模型调度指引。
+- `skills/extract-emails/extract.py`：负责提取与去重逻辑的执行脚本。
+
+可直接在工作区中创建以下参考实现：
+
+`skills/extract-emails/SKILL.md` :
+
+````markdown
+---
+name: extract-emails
+description: 从输入文本中提取所有电子邮箱地址，去重并保持首次出现顺序。
+---
+
+# 邮箱提取技能
+
+从用户提供的长文本中识别电子邮箱地址，去重并按首次出现顺序输出。
+
+## 执行方式
+
+通过命令行调用 Python 脚本：
+
+```bash
+python3 skills/extract-emails/extract.py "<input_text>"
+```
+````
+
+`skills/extract-emails/extract.py` :
+
+```python
+import re
+import sys
+
+def extract_emails(text: str) -> list[str]:
+    pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    matches = re.findall(pattern, text)
+    return list(dict.fromkeys(matches))
+
+if __name__ == '__main__':
+    content = sys.argv[1] if len(sys.argv) > 1 else ''
+    emails = extract_emails(content)
+    for email in emails:
+        print(email)
+```
+
+AI 辅助生成使用当前选中的模型并消耗积分；遇到方案问题时按教程目标回答，再检查生成的文件。
 
 ### 1.2 导入已有技能 ZIP 压缩包
 
@@ -28,7 +73,7 @@ import { Alert } from '@/components/docs/Alert';
 
 当你在后台打开技能详情页时，系统会在安全的沙盒容器中为你初始化并拉起一个独立的运行空间，同时在右侧通过文件树加载你的项目。
 
-![工作区文件管理](/imgs/workspace_file_management.png)
+![提取邮箱技能的文件树、SKILL.md 编辑器和终端实测结果](/imgs/optimized/current/skill-result.png.webp)
 
 ### 2.1 多文件管理
 
@@ -55,7 +100,14 @@ import { Alert } from '@/components/docs/Alert';
 
 左侧的智能体调试面板提供了一个测试环境，允许你通过与智能体对话来实时测试和调用你编写的技能逻辑：
 
-![智能体对话调试](/imgs/agent_debug_chat.png)
+本例使用 `Contact alice@example.com and bob@example.org; CC alice@example.com` 测试。终端执行生成的脚本，预期按顺序输出两个唯一地址：
+
+```text
+alice@example.com
+bob@example.org
+```
+
+上图右下方终端展示该输入的实际运行结果。核对生成代码、执行输出和去重顺序后，再发布版本。模型生成的文件结构和回复格式可能变化。
 
 ### 3.1 即改即生效
 
@@ -68,3 +120,12 @@ import { Alert } from '@/components/docs/Alert';
 ### 3.3 实时文件导出
 
 你可以点击页面右上角菜单中的“导出配置”，将当前工作区中实时的所有代码与配置文件打包成 ZIP 压缩包下载到本地，方便进行本地备份或分享。
+
+---
+
+## 4. 相关阅读
+
+- 目录规范与元数据定义：[Skill 包格式与运行时规范](/zh-CN/guide/build/skill/package-reference)
+- 依赖安装与前置环境准备：[初始化脚本](/zh-CN/guide/build/skill/initialization)
+- 版本快照保存与回滚切换：[版本与发布](/zh-CN/guide/build/skill/version)
+- 在 Agent 中绑定与调用：[在 Agent 中使用 Skill](/zh-CN/guide/build/skill/integration)

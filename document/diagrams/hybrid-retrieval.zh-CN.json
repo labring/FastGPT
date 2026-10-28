@@ -1,0 +1,154 @@
+{
+  "type": "architecture",
+  "title": "文本混合检索",
+  "nodes": [
+    {
+      "id": "query",
+      "label": "文本查询",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "chat"
+    },
+    {
+      "id": "vector",
+      "label": "向量召回",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "vector"
+    },
+    {
+      "id": "text",
+      "label": "全文召回",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "search"
+    },
+    {
+      "id": "fusion",
+      "label": "加权融合",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "fusion"
+    },
+    {
+      "id": "rerank",
+      "label": "可选重排",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "sub": "失败时沿用召回结果",
+      "illustration": "sort"
+    },
+    {
+      "id": "filter",
+      "label": "去重与过滤",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "sub": "按支持的得分类型",
+      "illustration": "filter"
+    },
+    {
+      "id": "tokens",
+      "label": "Token 预算",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "sub": "按完整数据块选取",
+      "illustration": "gauge"
+    },
+    {
+      "id": "context",
+      "label": "检索上下文",
+      "row": 6,
+      "col": 0,
+      "kind": "store",
+      "illustration": "document"
+    }
+  ],
+  "edges": [
+    [
+      "query",
+      "vector",
+      "",
+      "primary"
+    ],
+    [
+      "query",
+      "text",
+      "",
+      "default"
+    ],
+    [
+      "vector",
+      "fusion",
+      "",
+      "primary"
+    ],
+    [
+      "text",
+      "fusion",
+      "",
+      "default"
+    ],
+    [
+      "fusion",
+      "rerank",
+      "",
+      "primary"
+    ],
+    [
+      "rerank",
+      "filter",
+      "",
+      "primary"
+    ],
+    [
+      "filter",
+      "tokens",
+      "",
+      "primary"
+    ],
+    [
+      "tokens",
+      "context",
+      "",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "fusion",
+      "file": "packages/service/core/dataset/search/defaultRecall/index.ts",
+      "line": 113
+    },
+    {
+      "id": "rerank",
+      "file": "packages/service/core/dataset/search/defaultRecall/rerank.ts",
+      "line": 72
+    },
+    {
+      "id": "filter",
+      "file": "packages/service/core/dataset/search/defaultRecall/result.ts",
+      "line": 88
+    },
+    {
+      "id": "tokens",
+      "file": "packages/service/core/dataset/search/defaultRecall/utils.ts",
+      "line": 53
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

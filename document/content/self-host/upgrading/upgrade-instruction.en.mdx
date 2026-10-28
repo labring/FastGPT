@@ -25,11 +25,11 @@ Upgrading FastGPT usually involves two steps:
 
 **GitHub Container Registry**
 
-- FastGPT main image: ghcr.io/labring/fastgpt:latest
+- FastGPT main image: ghcr.io/labring/fastgpt
 - Plugin image: ghcr.io/labring/fastgpt-plugin
 - Code sandbox image: ghcr.io/labring/fastgpt-code-sandbox
 - MCP SSE server image: ghcr.io/labring/fastgpt-mcp_server
-- Commercial edition image: ghcr.io/c121914yu/fastgpt-pro:latest
+- Commercial edition image: ghcr.io/c121914yu/fastgpt-pro
 
 **Alibaba Cloud**
 
@@ -37,25 +37,25 @@ Upgrading FastGPT usually involves two steps:
 - Plugin image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
 - Code sandbox image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
 - MCP SSE server image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
-- Commercial edition image: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
+- Commercial edition image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 
-An image consists of the image name and a `Tag`. For example, registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.6.1 refers to the `4.6.3` version image. Check Docker Hub or the GitHub repository for details.
+Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.
 
 ## Updating Images on Sealos
 
 1. Open [Sealos Cloud](https://cloud.sealos.io?uid=fnWRt09fZP) and find App Management on the desktop.
 
-![Sealos desktop with App Management](../../../public/imgs/updateImageSealos1.jpg)
+![Sealos desktop with App Management](/imgs/optimized/updateImageSealos1.jpg.webp)
 
 2. Select the corresponding app - click the three dots on the right - Update.
 
-![App menu for changing a deployment](../../../public/imgs/updateImageSealos2.png)
+![App menu for changing a deployment](/imgs/optimized/updateImageSealos2.png.webp)
 
 3. Update the image - Confirm changes.
 
    If you need to modify the configuration file, scroll down to the `Configuration File` section to make changes.
 
-![Image and configuration settings](../../../public/imgs/updateImageSealos3.png)
+![Image and configuration settings](/imgs/optimized/updateImageSealos3.png.webp)
 
 ## Updating Images with Docker Compose
 
@@ -74,8 +74,7 @@ After updating the images, check the version notes in the documentation. Version
 
 ### Why do I need to run an upgrade script?
 
-When there are significant changes to the database schema that cannot be handled through default values, or when the migration logic is complex, an upgrade script is used to update certain database fields.
-Following the initialization steps carefully will not cause any data loss. However, if the data volume is large, the initialization may take a while, during which the service may be temporarily unavailable.
+Starting with FastGPT 4.17+, the application automatically runs a distributed startup migration executor. Nodes coordinate via MongoDB leases to run registered schema transformations sequentially with checkpoint cursors. For large datasets, schedule upgrades during maintenance windows to allow sufficient time for data backfill.
 
 ### What is `{{host}}`?
 
@@ -83,7 +82,7 @@ Following the initialization steps carefully will not cause any data loss. Howev
 
 On Sealos, open the app details and look under **Network Configuration**. The **External Address** column shows the public URL; use its domain name for `{{host}}` when the request already includes `https://`.
 
-![App details showing the external address and environment variables](../../../public/imgs/updateImageSealos4.png)
+![App details showing the external address and environment variables](/imgs/optimized/updateImageSealos4.png.webp)
 
 ### How to get the rootkey
 
@@ -93,14 +92,8 @@ On Sealos, you can find it in the environment variables panel shown in the image
 
 ### How to upgrade across multiple versions
 
-Back up your data first!
-
-You can upgrade to the latest version and then run all the upgrade scripts in order. However, for stability, we recommend upgrading one version at a time. For example, if your current version is 4.4.7 and you need to upgrade to 4.6:
-
-1. Update the image to 4.5, run the upgrade script
-2. Update the image to 4.5.1, run the upgrade script
-3. Update the image to 4.5.2, run the upgrade script
-4. Update the image to 4.6, run the upgrade script
-5. .....
-
-Upgrade one version at a time.
+1. Read every intervening release note and follow the documented upgrade path, including required intermediate versions.
+2. Back up MongoDB, vector storage, object storage, and configuration consistently; verify restoration in a separate environment.
+3. Rehearse the upgrade with a copy of production data. Check startup migrations and run only the manual steps required by those releases.
+4. Upgrade during a maintenance window and verify login, ingestion, retrieval, chat, and file downloads before restoring traffic.
+5. Prepare a rollback using compatible application images and data backups. Data migrations can require restoring the prior data state together with the prior version.

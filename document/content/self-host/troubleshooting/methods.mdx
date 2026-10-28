@@ -5,17 +5,43 @@ description: FastGPT 私有部署常见问题排查方式
 
 ## 一、错误排查方式
 
-可以先找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
+可以先找找 [Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
 
 ### (1)获取后端错误
 
-1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
+1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试 `docker logs 容器名` 查看对应日志。
 2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
+
+```bash
+# 查看近 200 行主服务与插件服务实时日志
+docker compose ps
+docker logs --tail 200 -f fastgpt
+docker logs --tail 200 -f fastgpt-plugin
+```
 
 ---
 
 ### (2)前端错误
 
-前端报错时，页面会出现崩溃，并提示检查控制台日志。可以打开浏览器控制台，并查看`console`中的 log 日志。还可以点击对应 log 的超链接，会提示到具体错误文件，可以把这些详细错误信息提供，方便排查。
+前端报错时，页面会出现崩溃，并提示检查控制台日志。可以打开浏览器控制台，并查看 `console` 中的 log 日志。还可以点击对应 log 的超链接，会提示到具体错误文件，可以把这些详细错误信息提供，方便排查。
 
 ---
+
+## 二、按故障域快速分诊矩阵
+
+| 故障现象                                                | 优先检查组件与日志                                                                                                                            | 对应专项排查手册                                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **服务启动失败 / 反复重启**                             | 检查 `fastgpt` 容器启动日志中的 MongoDB、PostgreSQL/Milvus、Redis 与 S3 连通性自检报错                                                        | [排查注意事项](/zh-CN/self-host/troubleshooting/attention) · [通用问题排查](/zh-CN/self-host/troubleshooting/faq)                    |
+| **对话或向量化报 401/404/429/500**                      | 进入 `/admin/resources/model` 执行渠道连通性测试，核对 AIProxy / OneAPI 转发地址与模型名                                                      | [模型问题排查](/zh-CN/self-host/troubleshooting/model-errors)                                                                        |
+| **文件上传失败 / 图片裂图 / 403 SignatureDoesNotMatch** | 检查对象存储公网访问端点（`STORAGE_EXTERNAL_ENDPOINT`）、内部端点（`STORAGE_S3_ENDPOINT`）、路径寻址（`STORAGE_S3_FORCE_PATH_STYLE`）与桶策略 | [存储桶问题排查](/zh-CN/self-host/troubleshooting/s3-issues) · [对象存储配置](/zh-CN/self-host/config/object-storage)                |
+| **系统工具列表为空或执行报错**                          | 检查 `fastgpt-plugin` 容器运行状态与 `PLUGIN_BASE_URL`、`PLUGIN_TOKEN` 是否两端一致                                                           | [插件运行时配置](/zh-CN/plugin/runtime)                                                                                              |
+| **工作流代码运行节点不可用**                            | 检查 `fastgpt-sandbox` 容器状态，以及 `CODE_SANDBOX_URL`、`CODE_SANDBOX_TOKEN` 与沙箱端 `SANDBOX_TOKEN` 是否一致                              | [环境变量配置](/zh-CN/self-host/config/env) · [代码运行节点](/zh-CN/guide/build/workflow/nodes/sandbox-v2)                           |
+| **对话 Agent V2 虚拟机沙箱不可用**                      | 检查 `AGENT_SANDBOX_PROVIDER` 及对应的 `AGENT_SANDBOX_OPENSANDBOX_*` 或 `AGENT_SANDBOX_SEALOS_*` 配置与服务状态                               | [OpenSandbox 配置](/zh-CN/self-host/config/sandbox/opensandbox) · [Sealos Devbox 配置](/zh-CN/self-host/config/sandbox/sealosdevbox) |
+
+## 三、提交社区 Issue 的标准信息清单
+
+向维护团队提交排障请求前，请准备以下脱敏信息（务必抹除 `API Key`、数据库密码与 `rootkey`）：
+
+1. **环境基线**：FastGPT 镜像版本号、`fastgpt-plugin` 镜像版本号、部署方式（Docker Compose / Sealos / K8s）及宿主机架构（`x86_64` / `ARM64`）。
+2. **最小复现路径**：从进入页面到触发报错的具体点击步骤与输入样例。
+3. **双端证据**：浏览器开发者工具 `Network` 面板中失败请求的 URL、状态码与响应 JSON，以及同一时间点 `fastgpt` 容器的标准错误输出日志。

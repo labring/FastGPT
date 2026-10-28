@@ -3,7 +3,7 @@ title: Tool Calling & Termination
 description: FastGPT Tool Calling node overview
 ---
 
-![Tool Calling node overview](/imgs/flow-tool1.png)
+![Tool Calling & Termination — interface example](/imgs/optimized/current/node-tool-call.png.webp)
 
 ### What is a Tool
 
@@ -32,34 +32,27 @@ Based on the tool description, parameter descriptions, and whether parameters ar
 
 #### Tool Calling Logic
 
-Models that support `function calling` can invoke multiple tools in a single turn. The calling logic:
+Models supporting `function calling` can return several tool calls in one turn; the ToolCall node executes them sequentially. Model text and tool calls can appear in the same turn:
 
-1. The node builds the conversation messages and calls the AI model.
-2. If the model requests tools, FastGPT displays their status, runs them, and adds their results to the messages for the next call.
-3. A termination marker ends the call cycle. Otherwise, the updated messages are sent to the model for another round.
-4. When the model returns content, FastGPT outputs it and ends the call.
+![ToolCall execution loop](/imgs/diagrams/tool-call-loop.en.light.svg)
 
-![Tool calling loop and termination conditions](/imgs/flow-tool2.png)
+The loop runs for at most 50 rounds and returns ordinary tool errors to the model as tool results. Interaction requests pause execution; a tool termination signal, user cancellation, or model request error ends the loop. The client receives tool status updates during execution.
 
 ### How to Use
 
-|                           |                           |
-| ------------------------- | ------------------------- |
-| ![Connect the Tool Calling node to a tool](/imgs/flow-tool3.png) | ![Edit the connected tool description and inputs](/imgs/flow-tool4.png) |
+Connect the tool-call node's bottom diamond to the top diamond of a tool. For detailed connection types, tool entry ownership, and workflow boundary rules, see [Workflow validation rules](/en/guide/build/workflow/rules). The example below connects **Custom Tool Variables** as a tool, then passes the generated `service` value to **Specified Reply** and **Tool Call Stop**.
 
-In the advanced workflow editor, drag from the tool calling connection point. Eligible tools display a diamond icon at the top, which you can connect to the diamond at the bottom of the tool calling node.
+![Tool connection and termination workflow](/imgs/optimized/current/tool-connections.png.webp)
 
-Connected tools automatically separate tool inputs from regular inputs. You can also edit the `description` to fine-tune when the tool gets called.
-
-Debugging tool calling is still more art than science, so start with a small number of tools, optimize them, then gradually add more.
+Give the tool a clear description and define required arguments. This example asks the model to choose `support` or `sales`. Inspect the generated argument during debugging before adding more tools.
 
 #### Use Cases
 
 By default, after the tool calling node invokes a tool, it returns the tool's output to the AI for summarization. To finish immediately after the tool branch, place a **Tool Calling Termination** node at its end.
 
-In the example below, after the Dataset search runs, results are sent to an HTTP request. The search results are not returned to the tool calling node for AI summarization.
+In this verified example, the request `Please call support.` produces `support` through Specified Reply and then reaches Tool Call Stop:
 
-![Send Dataset Search results to an HTTP node and end the call](/imgs/flow-tool5.png)
+![Reply followed by Tool Call Stop](/imgs/optimized/current/tool-connections.png.webp)
 
 ### Additional Nodes
 
@@ -69,10 +62,25 @@ When you use the tool calling node, a Tool Calling Termination node and a Custom
 
 Tool Calling Termination ends the current call cycle. Place it after a tool node. When the workflow reaches this node, it forcibly ends the current tool call -- no further tools are invoked, and the AI won't generate a summary based on tool results.
 
-![Tool Calling Termination node](/imgs/flow-tool6.png)
+![Tool Calling Termination — interface example](/imgs/optimized/current/tool-stop.png.webp)
 
 ### Custom Tool Variables
 
 Custom variables extend tool input capabilities. For nodes that aren't recognized as tool parameters or can't be directly tool-called, you can define custom tool variables with appropriate parameter descriptions. The tool calling node will then invoke this node and its downstream workflow accordingly.
 
-![Configure custom tool input variables](/imgs/flow-tool7.png)
+![Custom Tool Variables — interface example](/imgs/optimized/current/tool-variables.png.webp)
+
+## Inputs, outputs, and boundaries
+
+Configure the model, prompt, history, file links, and user question. The model needs tool-call support, and the execution identity needs access to tools and their resources. Attach tools through their tool connection handles and check descriptions, required arguments, and fixed inputs. See [Agent node](/en/guide/build/workflow/nodes/agent) for autonomous planning and Skill configuration.
+
+The main output is AI response content as a string, with error text for node error handling. Tool Calling Termination signals the current tool-call loop to stop. To show a fixed result, connect Specified Reply before termination.
+
+## Example: retrieve a policy on demand
+
+1. Connect Start to Tool Calling. Reference the starting user question and select a model supporting tool calls.
+2. Attach Dataset search through the tool handle and select the processed Travel Policy knowledge base. Describe the tool as retrieving travel reimbursement deadlines and required documents.
+3. Instruct the model to retrieve before answering policy questions. Ask “How soon after returning must I submit travel expenses?”
+4. Inspect tool arguments and citations in execution details. Confirm that retrieval returns `15 calendar days` and that the final answer preserves that deadline.
+
+Use the sample from [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa). The model chooses tools and arguments, so inspect actual calls during debugging. Design business confirmation before enabling external write operations. Separate model, argument, resource-permission, and external-service errors when troubleshooting.

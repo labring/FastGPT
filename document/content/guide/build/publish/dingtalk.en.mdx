@@ -5,15 +5,15 @@ description: FastGPT DingTalk Bot Integration Tutorial
 
 Starting from version 4.8.16, FastGPT commercial edition supports direct DingTalk bot integration without additional APIs.
 
+![FastGPT dingtalk channel configuration with empty credentials](/imgs/optimized/current/publish-dingtalk.png.webp)
+
+The screenshot shows the FastGPT configuration form. Enter credentials from your own platform application. Follow the official platform console linked below for its current console layout.
+
 ## 1. Create a DingTalk Internal Enterprise App
 
 1. Create an internal enterprise app in the [DingTalk Developer Console](https://open-dev.dingtalk.com/fe/app).
 
-![Create an internal enterprise app in DingTalk](/imgs/dingtalk-bot-1.png)
-
 2. Obtain the **Client ID** and **Client Secret**.
-
-![DingTalk Client ID and Client Secret](/imgs/dingtalk-bot-2.png)
 
 ## 2. Add a Publishing Channel in FastGPT
 
@@ -21,21 +21,15 @@ In FastGPT, select the app you want to integrate. On the **Publishing Channels**
 
 Enter the **Client ID** and **Client Secret** obtained earlier into the configuration dialog.
 
-![FastGPT DingTalk channel credentials](/imgs/dingtalk-bot-3.png)
-
 After creation, click the **Request URL** button and copy the callback address.
 
 ## 3. Add **Bot** Capability to the App
 
 In the DingTalk Developer Console, click **Add App Capability** on the left sidebar, and add the **Bot** capability to the internal enterprise app you just created.
 
-![Add the Bot capability in DingTalk](/imgs/dingtalk-bot-4.png)
-
 ## 4. Configure Bot Callback Address
 
 Click the **Bot** capability on the left sidebar, then set the **Message Receiving Mode** at the bottom to **HTTP Mode**, and paste the FastGPT callback address you copied earlier as the message receiving address.
-
-![HTTP message receiving mode and callback URL](/imgs/dingtalk-bot-5.png)
 
 After debugging, click **Publish**.
 
@@ -43,16 +37,9 @@ After debugging, click **Publish**.
 
 After the bot is published, you still need to publish the app version on the **Version Management and Publishing** page.
 
-![DingTalk version management and publishing](/imgs/dingtalk-bot-6.png)
-
 Click **Create New Version**, set the version number and description, then click save to publish.
 
-![Create and publish a DingTalk app version](/imgs/dingtalk-bot-7.png)
-
 Once the app is published, you can use the bot within your DingTalk enterprise. You can chat with the bot privately, or add the bot to a group and `@mention the bot` to start a conversation.
-
-![DingTalk conversation with the published bot](/imgs/dingtalk-bot-8.png)
-
 
 ## FAQ
 

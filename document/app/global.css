@@ -116,13 +116,67 @@ html.dark [data-rmiz-modal-overlay='visible'] {
 /* Content */
 
 /* img */
+.docs-diagram {
+  display: block;
+  margin: 1.5em 0;
+  overflow-x: auto;
+}
+
+.docs-diagram-dark,
+html.dark .docs-diagram-light {
+  display: none;
+}
+
+html.dark .docs-diagram-dark {
+  display: block;
+}
+
+.docs-diagram > [data-rmiz] {
+  display: block;
+  min-width: 520px;
+}
+
+@media (max-width: 767px) {
+  .docs-diagram > [data-rmiz] {
+    min-width: var(--diagram-min-width, 520px);
+  }
+}
+
+#nd-page article .docs-diagram img {
+  width: 100%;
+  margin: 0;
+}
+
+.docs-screenshot {
+  display: block;
+  width: 100%;
+  margin: 1.5em auto;
+}
+
+/* Padding resolves against the outer span, preserving 6% of the image's short side. */
+.docs-screenshot > [data-rmiz] {
+  display: block;
+  padding: var(--screenshot-padding);
+  background: url('/screenshot-background.webp') center / cover;
+  border-radius: 8px;
+}
+
+.docs-screenshot [data-rmiz-content] {
+  display: block;
+}
+
+#nd-page article .docs-screenshot img {
+  width: 100%;
+  margin: 0;
+}
+
 #nd-page article img {
   object-fit: contain;
   display: block;
   margin-left: auto;
   margin-right: auto;
-  max-width: 80%;
-  max-height: 500px;
+  max-width: 100%;
+  height: auto;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
   border-radius: 6px;
 }

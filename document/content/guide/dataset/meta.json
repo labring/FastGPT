@@ -2,14 +2,19 @@
   "title": "知识库",
   "root": false,
   "pages": [
-    "rag",
+    "lifecycle",
+    "import-data",
+    "template",
+    "websync",
+    "third-party",
     "dataset_engine",
+    "test-retrieval",
+    "rag",
+    "connect-application",
+    "update-data",
     "collection_tags",
     "collection_tags_legacy",
     "collection_permission",
-    "websync",
-    "third-party",
-    "template",
     "faq"
   ]
 }

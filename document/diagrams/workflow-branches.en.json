@@ -1,0 +1,107 @@
+{
+  "type": "flowchart",
+  "title": "Branch execution and skip propagation",
+  "nodes": [
+    {
+      "id": "start",
+      "label": "Workflow start",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "workflow"
+    },
+    {
+      "id": "classify",
+      "label": "Classify intent",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "router"
+    },
+    {
+      "id": "search",
+      "label": "Dataset search",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "search"
+    },
+    {
+      "id": "answer",
+      "label": "AI answer",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "model"
+    },
+    {
+      "id": "form",
+      "label": "Ticket form",
+      "row": 2,
+      "col": 1,
+      "kind": "muted",
+      "illustration": "form"
+    },
+    {
+      "id": "reply",
+      "label": "Ticket reply",
+      "row": 3,
+      "col": 1,
+      "kind": "muted",
+      "illustration": "chat"
+    }
+  ],
+  "edges": [
+    [
+      "start",
+      "classify",
+      "",
+      "primary"
+    ],
+    [
+      "classify",
+      "search",
+      "active",
+      "primary"
+    ],
+    [
+      "search",
+      "answer",
+      "active",
+      "primary"
+    ],
+    [
+      "classify",
+      "form",
+      "skipped",
+      "async"
+    ],
+    [
+      "form",
+      "reply",
+      "skipped",
+      "async"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "classify",
+      "file": "packages/service/core/workflow/dispatch/ai/classifyQuestion.ts",
+      "line": 91
+    },
+    {
+      "id": "form",
+      "file": "packages/service/core/workflow/dispatch/index.ts",
+      "line": 683
+    }
+  ],
+  "dir": "TB",
+  "lang": "en",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -1,0 +1,110 @@
+{
+  "type": "architecture",
+  "title": "通过可信后端集成 FastGPT",
+  "nodes": [
+    {
+      "id": "client",
+      "label": "用户端",
+      "row": 0,
+      "col": 0,
+      "kind": "external",
+      "sub": "网页 / 移动端",
+      "illustration": "browser"
+    },
+    {
+      "id": "backend",
+      "label": "业务后端",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "sub": "安全保存 API Key",
+      "illustration": "runtime"
+    },
+    {
+      "id": "sdk",
+      "label": "服务端客户端",
+      "row": 1,
+      "col": 1,
+      "kind": "backend",
+      "sub": "OpenAI SDK / HTTP",
+      "illustration": "code"
+    },
+    {
+      "id": "api",
+      "label": "FastGPT API",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "core"
+    },
+    {
+      "id": "chat",
+      "label": "应用与会话",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "chat"
+    },
+    {
+      "id": "dataset",
+      "label": "知识库操作",
+      "row": 3,
+      "col": 1,
+      "kind": "backend",
+      "illustration": "files"
+    }
+  ],
+  "edges": [
+    [
+      "client",
+      "backend",
+      "",
+      "primary"
+    ],
+    [
+      "backend",
+      "api",
+      "",
+      "primary"
+    ],
+    [
+      "sdk",
+      "api",
+      "调用",
+      "link"
+    ],
+    [
+      "api",
+      "chat",
+      "",
+      "default"
+    ],
+    [
+      "api",
+      "dataset",
+      "",
+      "default"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "api",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 174
+    },
+    {
+      "id": "chat",
+      "file": "projects/app/src/pages/api/v1/chat/completions.ts",
+      "line": 377
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

@@ -1,0 +1,11 @@
+{
+  "pages": [
+    "guide",
+    "developers",
+    "self-host",
+    "!openapi",
+    "!plugin",
+    "!faq",
+    "!toc"
+  ]
+}

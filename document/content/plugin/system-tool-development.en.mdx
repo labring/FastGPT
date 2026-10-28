@@ -5,7 +5,7 @@ description: FastGPT system tool development guide
 
 ## Introduction
 
-This document targets system tool development after FastGPT v4.15.0. The new FastGPT Plugin service unifies system tools, model presets, and similar capabilities as installable, updatable, runtime-isolated plugin packages. A plugin is eventually delivered to the FastGPT Plugin service as a `.pkg` file.
+This document targets system tool development after FastGPT v4.15.0. System tools use SDK definitions and are delivered to the FastGPT Plugin service as `.pkg` files for installation, updates, and runtime management. Model presets use a [static configuration contribution workflow](/en/plugin/model-presets).
 
 The currently stable system tool plugin types are:
 
@@ -20,7 +20,7 @@ System tool plugins run in the runtime provided by the FastGPT Plugin service. T
 2. The plugin package protocol upgrades from the old built-in system tool directory to a unified `.pkg` format, making installation, version management, hot updates, and future plugin type expansion easier.
 3. The plugin runtime is managed by the server. The current default runtime is `local-pool`, where each plugin version has its own process pool, queue, and runtime configuration.
 4. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in build artifacts for use by FastGPT pages, workflows, and Agents.
-5. Tool development uses `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory`. The legacy `config.ts`, `versionList`, and `bun run build:pkg` flow is no longer the primary development model.
+5. Tool development uses `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory` to define schemas and build packages.
 
 ## Information To Collect Before Development
 
@@ -38,7 +38,7 @@ Clarify these items before coding:
 | Secrets                          | API Key, Base URL, username/password, and similar values, described through `secretSchema`. |
 | External API                     | Request method, auth method, timeout, rate limit, error response, and test account.         |
 | File capability                  | Use `ctx.invoke.uploadFile()` when file upload is needed.                                   |
-| Streaming output                 | Use `ctx.streamResponse()` when intermediate progress should be shown to the user.          |
+| Streaming output                 | Use `ctx.streamResponse()` when streaming text answers to the user.                         |
 | Test cases                       | Include at least success, invalid parameters, auth failure, and upstream failure.           |
 
 Missing information that affects plugin ID, auth method, billing, or listing security should be confirmed first. Other missing information can use reasonable defaults, with assumptions recorded in the submission notes.
@@ -203,7 +203,7 @@ Core rules:
 - Handler return values must match `outputSchema`.
 - Convert external API errors into actionable messages and avoid exposing secrets, tokens, or complete sensitive responses.
 - Use `ctx.invoke.uploadFile()` when host file upload is needed, and prefer preserving the returned `err`.
-- Use `ctx.streamResponse()` when progress should be shown to users.
+- Use `ctx.streamResponse({ type: 'answer' | 'fastAnswer', content })` when streaming text answers to users.
 
 ## 4. Implement a Toolkit
 
@@ -304,199 +304,155 @@ Notes:
 - Child tools without their own icons reuse the main plugin icon by default.
 - After build, check the `icon` field in `dist/manifest.json`.
 
-## 6. Local Debugging
+## 6. Key Development Recipes
 
-Install dependencies in the plugin directory first:
+### 6.1 Authenticated External API Requests
 
-```bash
-cd packages/tools/my-tool
-pnpm install
+When calling external third-party services requiring an API key, declare the secret field in `secretSchema` and extract it via `ctx.secrets` in the handler. Handle network and HTTP errors with actionable messages while keeping credentials omitted from logs and error text:
+
+```ts
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType,
+  type SecretSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const secretSchema = z.object({
+  apiKey: z
+    .string()
+    .min(1)
+    .meta({
+      title: 'API Key',
+      isSecret: true
+    } satisfies SecretSchemaMetaType)
+});
+
+const UPSTREAM_SEARCH_URL = 'https://api.example.com/v1/search';
+
+const handler = createToolHandler({
+  inputSchema: z.object({
+    query: z
+      .string()
+      .min(1)
+      .meta({
+        title: 'Query',
+        description: 'Search keyword sent to the trusted upstream service'
+      } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    status: z.string().meta({
+      title: 'Status'
+    } satisfies OutputSchemaMetaType),
+    data: z.any().meta({
+      title: 'Response Data'
+    } satisfies OutputSchemaMetaType)
+  }),
+  secretSchema,
+  handler: async (input, ctx) => {
+    try {
+      const requestUrl = new URL(UPSTREAM_SEARCH_URL);
+      requestUrl.searchParams.set('q', input.query);
+      const res = await fetch(requestUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${ctx.secrets.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Upstream service returned status ${res.status}`);
+      }
+      const data = await res.json();
+      return { status: 'success', data };
+    } catch (err: any) {
+      throw new Error(`External API request failed: ${err.message || 'unknown error'}`);
+    }
+  }
+});
 ```
 
-View plugin and debuggable tool information:
+Keep the authenticated upstream endpoint fixed in a trusted server constant or controlled configuration so `ctx.secrets` credentials are sent only to verified hosts.
 
-```bash
-pnpx @fastgpt-plugin/cli debug .
+### 6.2 Host File Uploads And Artifact Return
+
+When a tool produces generated files (such as reports, exported images, or media) and returns them to FastGPT callers, invoke the host upload capability `ctx.invoke.uploadFile()`. The host stores the artifact and returns an accessible URL:
+
+```ts
+handler: async (input, ctx) => {
+  const content = Buffer.from(
+    `Report for ${input.query}\nGenerated at ${new Date().toISOString()}`
+  );
+  const [result, err] = await ctx.invoke.uploadFile({
+    file: content,
+    fileName: 'report.txt',
+    contentType: 'text/plain'
+  });
+
+  if (err) {
+    throw new Error(`Failed to upload generated file: ${err}`);
+  }
+
+  return {
+    fileUrl: result.accessURL,
+    filename: 'report.txt'
+  };
+};
 ```
 
-Run one single-tool debug invocation:
+### 6.3 Streaming Text Answer Output
 
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
+To stream text answer chunks directly to the conversation client during execution, call `ctx.streamResponse()` with `{ type: 'answer' | 'fastAnswer', content: string }`:
+
+```ts
+handler: async (input, ctx) => {
+  await ctx.streamResponse({
+    type: 'answer',
+    content: 'Fetching remote resources...\n'
+  });
+
+  // Execute processing logic
+  await ctx.streamResponse({
+    type: 'answer',
+    content: 'Processing complete.\n'
+  });
+
+  return { result: 'Operation completed successfully' };
+};
 ```
 
-Run a child tool in a Toolkit:
+### 6.4 Side Effects And Repeated Invocation Handling
 
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --tool search --input '{"query":"hello"}' --secrets '{"apiKey":"test"}'
-```
+FastGPT Workflows and Agents may call a tool multiple times during loop executions or retries. For operations with side effects (such as database writes, external charges, or messaging):
 
-Use files when input, secrets, or system variables are large:
+- **Business idempotency**: Include a unique identifier (such as `requestId` or `orderId`) in the input schema, and enforce idempotency on the external service.
+- **State awareness**: Return existing outcomes for already completed external actions.
+- **Explicit timeouts**: Set bounded timeouts on requests, detect cancellation signals, and stop pending downstream work promptly.
 
-```bash
-pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file secrets.json --system-var-file system-var.json
-```
+## 7. Debugging, Packaging, And Publishing Workflow
 
-Local debug boundaries:
+<span id="6-local-debugging" />
+<span id="7-remote-debugging" />
+<span id="71-generate-a-debug-link" />
+<span id="72-start-a-local-remote-debug-session" />
+<span id="73-specify-plugin-directories-and-watch-changes" />
+<span id="74-verify-in-fastgpt" />
+<span id="75-end-debugging" />
+<span id="8-build-check-and-pack" />
+<span id="9-verification-checklist" />
+<span id="10-publishing-workflow" />
+<span id="community-plugins" />
+<span id="official-plugins" />
+<span id="business-plugins" />
 
-- `ctx.invoke.uploadFile()` uses a local mock implementation and defaults to `.fastgpt-plugin-debug/uploads`.
-- Local debug quickly validates plugin logic and schemas.
-- Local debug does not simulate the production child-process pool, real Node.js IPC, network environment, server timeout, or queue scheduling.
-- Before listing an official plugin, install it manually in a test environment and complete end-to-end testing.
+After implementing your tool, follow the unified delivery path in [debugging, packing, and publishing](/en/plugin/debugging-and-publishing):
 
-## 7. Remote Debugging
-
-Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the developer running that session.
-
-Before using it, confirm that the test environment has deployed the FastGPT Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
-
-### 7.1 Generate A Debug Link
-
-1. Sign in to the FastGPT test environment.
-2. Go to the System Tools page and click Local Debug.
-
-![System Tools local debug entry](/imgs/plugins/system-tool-debug-entry.png)
-
-3. In the modal, click Generate Link and copy the debug link.
-4. If a debug session already exists, click Refresh Link to generate a new connection key; the old link becomes invalid.
-
-![Generate local debug link](/imgs/plugins/system-tool-debug-link.png)
-
-The debug link is only for connecting your local CLI to the test environment. Do not commit it to code repositories, documentation examples, or chat logs.
-
-### 7.2 Start A Local Remote-Debug Session
-
-Run this command in a plugin directory or a workspace that contains multiple plugin directories:
-
-```bash
-fastgpt-plugin dev
-```
-
-After startup, paste the debug link copied from FastGPT into the TUI. The CLI exchanges the connection key from the link for a short-lived WSS connect token, then mounts local plugins to the FastGPT debug channel.
-
-Scripts and Agents can use non-interactive mode:
-
-```bash
-fastgpt-plugin dev --no-interactive \
-  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fpg_dbg_..."
-```
-
-When passing only a raw connection key, tell the CLI where the exchange endpoint is:
-
-```bash
-FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange \
-  fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
-```
-
-After `--connect` connects successfully, it saves the connection key so later `fastgpt-plugin dev` runs can reuse the local config. In the TUI, press `c` to enter and save a new debug link or connection key.
-
-### 7.3 Specify Plugin Directories And Watch Changes
-
-When no plugin directory is passed, `dev` auto-discovers plugins from the current directory. If the current directory contains `index.ts`, it is used as the plugin entry; otherwise, the CLI scans one level of child directories for `index.ts`.
-
-You can also pass one or more plugin directories explicitly:
-
-```bash
-fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
-```
-
-`--watch` reloads local plugins and recreates the remote-debug session after local file changes. The CLI reconnects by default when disconnected; use `--no-reconnect` to disable automatic reconnect.
-
-### 7.4 Verify In FastGPT
-
-After the CLI reports that remote debugging is ready, return to the FastGPT test environment:
-
-1. Check the debug plugin on the System Tools page.
-2. Select the debug tool in an app, workflow, or Agent.
-3. Fill in secrets and input parameters, then start a real invocation.
-4. Check local handler logs and errors in the CLI terminal.
-
-The debug tool `source` is bound to the currently signed-in member, so other members do not see that debug plugin by default.
-
-### 7.5 End Debugging
-
-Press `Ctrl+C` in the local terminal to close the current CLI debug session; press `Ctrl+C` again to force exit.
-
-The End Debugging action in FastGPT revokes the current member's debug channel and removes the debug plugin entry from the page. If the debug link is exposed, the signed-in member changes, or authorization needs to be renewed, use Refresh Link to generate a new link.
-
-## 8. Build, Check, And Pack
-
-Generated plugin projects normally support these commands from the plugin directory:
-
-```bash
-pnpm run test
-pnpm run build
-pnpx @fastgpt-plugin/cli check --entry . --output ./dist
-pnpm run pack
-```
-
-You can also pass directories explicitly:
-
-```bash
-pnpx @fastgpt-plugin/cli build --entry packages/tools/my-tool --output packages/tools/my-tool/dist --minify
-pnpx @fastgpt-plugin/cli check --entry packages/tools/my-tool --output packages/tools/my-tool/dist
-pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --output packages/tools/my-tool/out
-```
-
-Build artifacts should include:
-
-- `dist/index.js`
-- `dist/manifest.json`
-- icon files
-- optional `README.md`
-- optional `assets/**`
-
-Packaging produces a `.pkg` file. Uploading, installation, and listing should all use that `.pkg` file.
-
-## 9. Verification Checklist
-
-Before submitting, confirm:
-
-- `index.ts` default export is correct.
-- `manifest.pluginId`, `manifest.version`, Chinese and English names, and descriptions are complete.
-- Toolkit `children[].id` values are stable and unique.
-- `inputSchema` covers all user inputs and includes required type and range constraints.
-- `outputSchema` matches handler return values.
-- `secretSchema` covers all secret configuration and sensitive fields set `isSecret: true`.
-- External API success, failure, empty response, timeout, and auth failure are handled.
-- Error messages help locate issues and do not leak secrets or sensitive responses.
-- `pnpm run test` passes, or the reason it cannot be tested is documented.
-- `build`, `check`, and `pack` pass.
-- Icons and schemas in `dist/manifest.json` are as expected.
-- Remote debugging completes a real invocation in the test environment, or the reason remote debugging is not needed for this change is documented.
-- `.pkg` can be installed in a test environment and complete a real invocation.
-
-## 10. Publishing Workflow
-
-### Community Plugins
-
-Community plugins usually start by creating and pushing an independent GitHub repository from the plugin directory:
-
-```bash
-cd packages/tools/my-tool
-git init
-git add .
-git commit -m "feat: add my-tool plugin"
-gh repo create --public --source=. --remote=origin --push
-```
-
-Then return to the `fastgpt-community-plugins` repository, submit the submodule or reference update, and open a PR to `labring/fastgpt-community-plugins`.
-
-### Official Plugins
-
-Official plugins require:
-
-1. Code review.
-2. Build, check, test, and package.
-3. Manual `.pkg` installation in a test environment.
-4. Complete functional testing, including external APIs, secret configuration, error paths, and concurrent calls.
-5. Pre-listing security checks, focusing on SSRF, secret leakage, arbitrary file access, command execution, and dependency risk.
-
-### Business Plugins
-
-Business plugins are released to private repositories. Manage versions, secrets, installation packages, and acceptance records according to the customer delivery process. Security boundaries for external APIs, customer private addresses, and account secrets should be recorded separately.
-
-If you do not need official inclusion, see [Upload System Tool](/en/guide/build/tools/system-plugins/upload_system_tool) to use the plugin in your own FastGPT deployment.
+1. **Local debugging**: Use `pnpx @fastgpt-plugin/cli debug . --run` to verify schemas, defaults, and boundary inputs. See [local debugging](/en/plugin/debugging-and-publishing#local-debugging).
+2. **Remote debugging**: Connect to your FastGPT test environment using `pnpx @fastgpt-plugin/cli dev`. See [remote debugging](/en/plugin/debugging-and-publishing#remote-debugging).
+3. **Build and pack**: Run `pnpm run build`, `cli check`, and `pnpm run pack` to generate `.pkg` artifacts. See [build, check, and pack](/en/plugin/debugging-and-publishing#build-check-pack).
+4. **Pre-submission verification**: Check items against the [verification checklist](/en/plugin/debugging-and-publishing#verification-checklist).
+5. **Publishing channels**: Choose community distribution, official distribution, or private commercial delivery. See [publishing workflow](/en/plugin/debugging-and-publishing#publishing-workflow).
 
 ## FAQ
 

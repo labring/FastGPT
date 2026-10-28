@@ -19,21 +19,15 @@ FastGPT supports the `Streamable HTTP` transport. Self-hosted deployments can al
 
 After logging into FastGPT, open `Studio` and click `MCP Server` to access the management page. Here you can see all your MCP Servers and the number of apps each one manages.
 
-![Create MCP server](/imgs/mcp_server1.png)
-
 You can customize the MCP Server name and select which apps to associate.
 
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![Name the MCP Server](/imgs/mcp_server2.png) | ![Select the apps to expose](/imgs/mcp_server3.png) |
+![MCP service creation form with an exposed demo application](/imgs/optimized/current/mcp-create.png.webp)
+
+Under Exposed applications, select Manage, choose an application, and enter a clear tool name and description. The screenshot shows the completed form; verify client calls separately.
 
 ### 2. Get the MCP Server URL
 
 After creating an MCP Server, click `Start Using` to get the access URL.
-
-|                            |                            |
-| -------------------------- | -------------------------- |
-| ![Open Start Using](/imgs/mcp_server4.png) | ![Copy the MCP Server connection configuration](/imgs/mcp_server5.png) |
 
 ### 3. Use the MCP Server
 
@@ -43,16 +37,8 @@ Open Cursor's settings page and click MCP to enter the MCP configuration page. C
 
 Return to Cursor's MCP management page and you'll see your MCP Server listed. Make sure to set it to `enabled`.
 
-|                            |                            |                            |
-| -------------------------- | -------------------------- | -------------------------- |
-| ![Open Cursor MCP settings](/imgs/mcp_server6.png) | ![Add the FastGPT MCP configuration](/imgs/mcp_server7.png) | ![Enable the MCP Server in Cursor](/imgs/mcp_server8.png) |
-
-Open Cursor's chat panel and switch to `Agent` mode — only this mode triggers MCP Server calls.
+Open the client chat panel, select a mode and model that support tool calls, and enable the service using the current client interface.
 After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (described as: query fastgpt Dataset), which calls the FastGPT app to process the question and return results.
-
-|                            |                             |
-| -------------------------- | --------------------------- |
-| ![Ask an Agent-mode question](/imgs/mcp_server9.png) | ![Cursor receives the FastGPT app result](/imgs/mcp_server10.png) |
 
 ## Configure Identity Proxy
 
@@ -75,7 +61,7 @@ When a request does not include an identity proxy header, the tool continues to 
 Pass the identity in the MCP transport headers, not in the tool arguments. FastGPT accepts these headers:
 
 | Header                          | Value                      | Description                                                      |
-| ------------------------------- | -------------------------- | ---------------------------------------------------------------- |
+| --- | --- | --- |
 | `x-fastgpt-auth-proxy-username` | Team member login username | Recommended; this is usually the member's login email address    |
 | `x-fastgpt-auth-proxy-tmb-id`   | FastGPT team member ID     | Use this when your system already stores FastGPT team member IDs |
 

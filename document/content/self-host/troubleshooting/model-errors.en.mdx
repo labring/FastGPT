@@ -6,12 +6,12 @@ description: FastGPT Self-Hosting Model Troubleshooting
 
 ### (1) How to check model availability issues
 
-1. For a self-hosted model, confirm that its service is running.
-2. Send a `curl` request directly to the upstream model API. Test this for both cloud and self-hosted models.
-3. Send the same type of request through OneAPI to check the gateway connection.
-4. Test the model in FastGPT.
+1. For privately deployed models, first confirm whether the deployed model is normal.
+2. Directly test whether the upstream model is running normally through CURL request (cloud model or private model are both tested).
+3. Test the AI Proxy channel in Model Providers. If that channel uses a relay such as OneAPI, inspect the relay separately.
+4. Use the model for testing in FastGPT.
 
-Use the following `curl` examples, substituting your service URL and credentials:
+These examples call upstream services directly. Replace the endpoint, model, and credentials with values supported by your channel. Remove credentials from recorded errors. See [model configuration](/en/self-host/config/model/intro).
 
 <Tabs items={['LLM Model','Embedding Model','Rerank Model','TTS Model','Speech-to-Text Model']}>
   <Tab value="LLM Model">
@@ -55,7 +55,7 @@ curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
   "model": "bge-rerank-m3",
   "query": "Who is the director",
   "documents": [
-    "Who are you?\nI am the assistant for the film Suzume"
+    "Who are you?\nI am the assistant of the movie 'Suzume'"
   ]
 }'
 ```
@@ -88,47 +88,18 @@ curl https://api.openai.com/v1/audio/transcriptions \
 
 ### (2) Error - Model response is empty/Model error
 
-OneAPI can close a streaming request before returning any content.
+Empty output can result from upstream rejection, incompatible parameters, or an event stream ending early. Inspect model-call logs and compare the actual request with the upstream response. Test both JSON and streaming modes; `stream: false` may return a more complete error.
 
-Starting with version 4.8.10, the error log includes the request body sent to the model. Copy that body and send it to OneAPI with `curl` to reproduce the failure. Testing with `stream=false` can expose an error that the streaming response hides.
+Check provider content policies, supported parameters, temperature and output constraints, context length, and streaming compatibility. Start with the model and messages plus required fields, then add optional parameters individually.
 
-Check these possible causes:
+### Test model tool calling
 
-1. The model provider's content controls rejected the request.
-2. The model rejects optional request parameters. Test with `messages` and the required parameters first.
-3. Parameter values exceed the model's supported range: some models reject a `temperature` of 0 or values with two decimal places; `max_tokens` or the context length may also exceed the limit.
-4. The deployed model service has a problem or lacks compatible streaming support.
+The model and channel must both support tool calling. Verify ordinary chat first, then the two-round protocol below. The sample address represents an OpenAI-compatible model endpoint or relay.
 
-Use the request body from your error log in a test like this:
+##### 1. Request a tool call
 
 ```bash
-curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
---header 'Authorization: Bearer sk-xxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "model": "xxx",
-  "temperature": 0.01,
-  "max_tokens": 1000,
-  "stream": true,
-  "messages": [
-    {
-      "role": "user",
-      "content": "You are hungry"
-    }
-  ]
-}'
-```
-
----
-
-### Testing tool calling support
-
-Both the model provider and OneAPI must support tool calling. Test the full two-round exchange in streaming mode.
-
-#### 1. Request a tool call
-
-```bash
-curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -146,8 +117,8 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
     {
       "type": "function",
       "function": {
-        "name": "hCVbIY",
-        "description": "Get the current time in the user time zone.",
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -160,39 +131,38 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 }'
 ```
 
-#### 2. Inspect the response
 
-A successful response includes `tool_calls`. In a streaming response, inspect `choices[].delta.tool_calls` and collect the call ID, function name, and argument fragments. For example, the relevant part of a chunk looks like this:
+##### 2. Inspect the response
+
+When the model selects a tool, `choices[0].delta.tool_calls` carries the call. Merge function-name and argument fragments by index and retain the actual `id`. This example shows a complete fragment shape:
 
 ```json
 {
-  "choices": [
-    {
-      "index": 0,
-      "delta": {
-        "tool_calls": [
-          {
-            "index": 0,
-            "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
-            "type": "function",
-            "function": {
-              "name": "hCVbIY",
-              "arguments": "{}"
-            }
-          }
-        ]
-      }
-    }
-  ]
+  "id": "example-chat-id",
+  "object": "chat.completion.chunk",
+  "choices": [{
+    "index": 0,
+    "delta": {
+      "tool_calls": [{
+        "index": 0,
+        "id": "example-call-id",
+        "type": "function",
+        "function": { "name": "get_time", "arguments": "{}" }
+      }]
+    },
+    "finish_reason": null
+  }]
 }
 ```
 
-#### 3. Return the tool result
 
-Send the assistant's tool call and the corresponding tool result in a second request. Use the call ID and function name from your actual first response in both messages. The example below uses `kDia9S19c4RO` as the call ID and a sample time as the tool result. The model should then produce an answer using that result.
+
+##### 3. Send the tool result in a second streamed request
+
+Send the tool result using the actual call ID, function name, and arguments returned in the first round. `example-call-id` is a placeholder. Expect the model to continue using the tool result; it may request another tool.
 
 ```bash
-curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -209,19 +179,19 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
       "role": "assistant",
       "tool_calls": [
         {
-          "id": "kDia9S19c4RO",
+          "id": "example-call-id",
           "type": "function",
           "function": {
-            "name": "hCVbIY",
+            "name": "get_time",
             "arguments": "{}"
           }
         }
       ]
     },
     {
-      "tool_call_id": "kDia9S19c4RO",
+      "tool_call_id": "example-call-id",
       "role": "tool",
-      "name": "hCVbIY",
+      "name": "get_time",
       "content": "{\n  \"time\": \"2024-09-14 22:59:21 Sunday\"\n}"
     }
   ],
@@ -229,8 +199,8 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
     {
       "type": "function",
       "function": {
-        "name": "hCVbIY",
-        "description": "Get the current time in the user time zone.",
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -243,26 +213,18 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 }'
 ```
 
----
+### Vector search scores exceed 1
 
-### Vector search scores greater than 1
-
-Scores above 1 indicate that the embedding model produces unnormalized vectors. FastGPT currently supports normalized embedding models; use a model that normalizes its vectors.
-
----
+Check embedding normalization, the vector backend's similarity metric, and reranking. Score meaning depends on the backend and model. Verify ranking and thresholds against fixed samples; see [retrieval settings](/en/guide/dataset/dataset_engine).
 
 ### (3) "Current group upstream load is saturated, please try again later"
 
-If you encounter this error (e.g. `request id:xxx`) in the logs or response, this is typically a OneAPI channel issue. Try switching to a different model or a different relay provider.
-
----
+This error commonly comes from an upstream relay such as OneAPI. Check channel concurrency, rate limits, quota, and service health. Record request identifiers for the service administrator. Verify capabilities and application behavior before switching models.
 
 ### (4) "Connection Error" in logs when using the API
 
-Most likely the API key is pointing to OpenAI's endpoint, but the server is deployed in mainland China and can't reach overseas endpoints. Use a relay service or reverse proxy to resolve the connectivity issue.
-
----
+From the service making the request, check DNS, ports, TLS, proxy address, and network policy, then credentials. Test the upstream and AI Proxy channel separately to identify the failing hop.
 
 ### (5) Enable image indexing reports 400
 
-You need to correctly configure the OCR model in `Admin` -> `System Configuration`.
+Inspect the specific error and the visual/OCR capability, file format, model configuration, and quota required by image processing. Confirm availability according to the deployment's system configuration and import mode.

@@ -12,7 +12,7 @@ import { Alert } from '@/components/docs/Alert';
 - Trigger-based execution
 - Core node for integrating external services
 
-![HTTP Request node configuration](/imgs/http1.jpg)
+![Characteristics — interface example](/imgs/optimized/current/node-http.png.webp)
 
 ## Overview
 
@@ -167,6 +167,10 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 1. To get the `message` content, set the `key` to `message`.
 2. To get the user's name, set the `key` to `data.user.name`.
 3. To get the second element in the list, set the `key` to `data.list[1]`. If you select string as the output type, it will automatically return the JSON string `[ { "test": 22 } ]`.
+
+### Error responses and troubleshooting
+
+When the HTTP node receives a non-2xx response whose body lacks `message` or `msg`, the node error text includes a capped snippet of that response body (up to 2000 characters) to help troubleshoot the failure.
 
 ### Auto-format Output
 

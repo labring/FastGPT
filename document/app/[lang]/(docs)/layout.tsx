@@ -4,15 +4,14 @@ import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { LargeSearchToggle } from 'fumadocs-ui/components/layout/search-toggle';
 import { ThemeToggle } from 'fumadocs-ui/components/layout/theme-toggle';
 import { baseOptions } from '@/app/layout.config';
-import { t, getLocalizedPath, i18n } from '@/lib/i18n';
+import { getLocalizedPath, i18n, t } from '@/lib/i18n';
 import '@/app/global.css';
 import { CustomSidebarComponents } from '@/components/sideBar';
-import { SidebarKeepOpen } from '@/components/sidebarKeepOpen';
 import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
+import { MobileNav } from '@/components/docs/mobileNav';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
-import { normalizePageTreeSections } from '@/lib/page-tree';
-import { BookOpen, Code, Handshake, Plug, Server } from 'lucide-react';
+import { BookOpen, Code, Handshake, Server } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -23,27 +22,40 @@ export default async function Layout({
 }) {
   const { lang } = await params;
 
+  const tree = source.pageTree[lang] ?? source.pageTree[i18n.defaultLanguage];
+  // Section membership follows the navigation tree, including cross-directory pages.
+  const sectionUrls = tree.children.map((section) => {
+    const urls = new Set<string>();
+    const visit = (node: (typeof tree.children)[number]) => {
+      if (node.type === 'page') urls.add(node.url);
+      if (node.type === 'folder') {
+        if (node.index) urls.add(node.index.url);
+        node.children.forEach(visit);
+      }
+    };
+    visit(section);
+    return urls;
+  });
+
   const iconClass = 'size-4';
   const tab = [
     {
       icon: <BookOpen className={iconClass} />,
-      title: t('common:guide', lang),
-      url: getLocalizedPath('/guide', lang)
-    },
-    {
-      icon: <Plug className={iconClass} />,
-      title: t('common:pluginSystem', lang),
-      url: getLocalizedPath('/plugin', lang)
-    },
-    {
-      icon: <Server className={iconClass} />,
-      title: t('common:selfHost', lang),
-      url: getLocalizedPath('/self-host', lang)
+      title: lang === 'en' ? 'Use FastGPT' : '使用 FastGPT',
+      url: getLocalizedPath('/guide/getting-started', lang),
+      urls: sectionUrls[0]
     },
     {
       icon: <Code className={iconClass} />,
-      title: t('common:api_reference', lang),
-      url: getLocalizedPath('/openapi', lang)
+      title: lang === 'en' ? 'Developers' : '开发者',
+      url: getLocalizedPath('/developers', lang),
+      urls: sectionUrls[1]
+    },
+    {
+      icon: <Server className={iconClass} />,
+      title: lang === 'en' ? 'Deploy and Operate' : '部署与运维',
+      url: getLocalizedPath('/self-host', lang),
+      urls: sectionUrls[2]
     },
     {
       icon: <Handshake className={iconClass} />,
@@ -61,17 +73,15 @@ export default async function Layout({
     }
   ];
 
-  const tabUrls = tab.map((t) => t.url);
 
   const base = baseOptions(lang);
-  const tree = normalizePageTreeSections(
-    source.pageTree[lang] || source.pageTree[i18n.defaultLanguage]
-  );
 
   return (
     <DocsLayout
       {...base}
       tree={tree}
+      nav={{ ...base.nav, component: <MobileNav lang={lang} title={base.nav?.title} /> }}
+      containerProps={{ className: "[--fd-nav-height:56px] md:[--fd-nav-height:0px]" }}
       i18n={false}
       searchToggle={{
         enabled: true,
@@ -100,6 +110,7 @@ export default async function Layout({
             <ThemeToggle
               className="h-8 p-0 [&_svg]:size-8 [&_svg]:p-2"
               mode={base.themeSwitch?.mode}
+              aria-label={lang === 'en' ? 'Toggle theme' : '切换主题'}
             />
             <LanguageSwitcher
               buttonClassName="h-8 max-w-none rounded-xl border bg-white px-2 text-sm text-fd-foreground/80 hover:bg-fd-accent hover:text-fd-foreground data-[open=true]:bg-fd-accent data-[open=true]:text-fd-foreground dark:bg-fd-background"
@@ -110,7 +121,6 @@ export default async function Layout({
       }}
       links={[]}
     >
-      <SidebarKeepOpen tabUrls={tabUrls} />
       <SidebarScrollFix />
       {children}
     </DocsLayout>

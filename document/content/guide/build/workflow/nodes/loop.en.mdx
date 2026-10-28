@@ -1,7 +1,9 @@
 ---
-title: Batch Processing
-description: FastGPT Batch Processing node overview and usage
+title: Batch Processing (legacy)
+description: Historical Batch Processing node introduced in 4.8.11; use Loop for current workflows.
 ---
+
+This page preserves existing Batch Processing workflows. For new workflows on 4.15.0 and later, use the [Loop node](/en/guide/build/workflow/nodes/loop_run).
 
 ## Node Overview
 
@@ -9,7 +11,7 @@ The **Batch Processing** node was introduced in FastGPT V4.8.11. It allows workf
 
 This node is inspired by loop structures in programming languages, presented in a visual format.
 
-![Batch Processing node](/imgs/fastgpt-loop-node.png)
+![Batch Processing node](/imgs/optimized/fastgpt-loop-node.png.webp)
 
 > In programming terms, nodes are like functions or API endpoints -- each one is a **step**. By connecting multiple nodes together, you build a step-by-step process that produces the final AI output.
 
@@ -74,7 +76,7 @@ The **Batch Processing** node requires two core inputs:
 
 ### Loop Body Configuration
 
-![Loop body configuration](/imgs/fastgpt-loop-node-config.webp)
+![Loop body configuration](/imgs/optimized/fastgpt-loop-node-config.webp.webp)
 
 1. Inside the loop body, you can add any type of node:
    - AI Chat node
@@ -97,7 +99,7 @@ Suppose you have an array of texts that each need AI processing. This is the mos
 
 1. Prepare the input array
 
-   ![Prepare input array](/imgs/fastgpt-loop-node-example-1.png)
+   ![Prepare input array](/imgs/optimized/fastgpt-loop-node-example-1.png.webp)
 
    Use a Code Execution node to create a test array of three Chinese sentences to translate:
 
@@ -110,7 +112,7 @@ Suppose you have an array of texts that each need AI processing. This is the mos
 
 2. Configure the Batch Processing node
 
-   ![Configure Batch Processing node](/imgs/fastgpt-loop-node-example-2.png)
+   ![Configure Batch Processing node](/imgs/optimized/fastgpt-loop-node-example-2.png.webp)
    - Array input: Select the `textArray` output from the previous Code Execution node.
    - Add an AI Chat node inside the loop body to process each text. Set the prompt to: `Please translate this text to English`.
    - Add a Specified Reply node to output the translated text.
@@ -118,7 +120,7 @@ Suppose you have an array of texts that each need AI processing. This is the mos
 
 #### Execution Flow
 
-![Execution flow](/imgs/fastgpt-loop-node-example-3.png)
+![Execution flow](/imgs/optimized/fastgpt-loop-node-example-3.png.webp)
 
 1. The Code Execution node runs and generates the test array
 2. The Batch Processing node receives the array and begins iteration
@@ -143,7 +145,7 @@ The **Batch Processing** node handles these well.
 
 1. Text preprocessing and segmentation
 
-   ![Text preprocessing and segmentation](/imgs/fastgpt-loop-node-example-4.png)
+   ![Text preprocessing and segmentation](/imgs/optimized/fastgpt-loop-node-example-4.png.webp)
 
    Use a Code Execution node for text segmentation:
 
@@ -276,7 +278,7 @@ The **Batch Processing** node handles these well.
 
 2. Configure the Batch Processing node
 
-   ![Configure Batch Processing node](/imgs/fastgpt-loop-node-example-5.png)
+   ![Configure Batch Processing node](/imgs/optimized/fastgpt-loop-node-example-5.png.webp)
    - Array input: Select the `chunks` output from the previous Code Execution node.
    - Add a Code Execution node inside the loop body to format the source text.
    - Add a Search Glossary node to look up proper nouns from a terminology Dataset before translation.

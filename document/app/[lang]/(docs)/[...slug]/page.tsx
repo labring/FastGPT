@@ -1,12 +1,12 @@
 import { source } from '@/lib/source';
+import { getBreadcrumbItems, searchPath } from 'fumadocs-core/breadcrumb';
 import { DocsPage, DocsBody, DocsDescription, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
-import NotFound from '@/components/docs/not-found';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/mdx-components';
 import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
-import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
+import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
 import {
   UpgradeVersionTimeline,
@@ -22,19 +22,8 @@ export default async function Page({
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
   const { lang, slug } = await params;
-  let page = source.getPage(slug, lang);
-
-  // If page not found in current language, fallback to default language
-  // This allows showing Chinese content when English translation is not available
-  // while keeping the URL unchanged (e.g., /en/docs/faq shows Chinese content)
-  if (!page || !page.data || !page.file) {
-    page = source.getPage(slug, i18n.defaultLanguage);
-  }
-
-  // If still not found in default language, show 404
-  if (!page || !page.data || !page.file) {
-    return <NotFound />;
-  }
+  const page = source.getPage(slug, lang);
+  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
   const MDXContent = page.data.body;
   const releaseTime = page.data.releaseTime;
@@ -61,20 +50,22 @@ export default async function Page({
   const lastModifiedData = docLastModifiedData as Record<string, string>;
   const lastModified = lastModifiedData[filePath] ?? page.data.lastModified;
 
-  const domain = getFastGPTDocsOrigin();
+  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
 
-  // 生成面包屑导航
+  const tree = source.pageTree[lang];
+  const section = searchPath(tree.children, page.url)?.find(
+    (node) => node.type === 'folder' && node.root
+  );
   const breadcrumbItems = [
-    { name: 'FastGPT', url: domain },
-    { name: 'Docs', url: `${domain}/${lang}` }
+    { name: 'FastGPT', url: `${domain}/${lang}/guide/getting-started` },
+    ...(section?.type === 'folder' && section.index && section.index.url !== page.url
+      ? [{ name: String(section.name), url: `${domain}${section.index.url}` }]
+      : []),
+    ...getBreadcrumbItems(page.url, tree)
+      .filter((item) => item.url && typeof item.name === 'string')
+      .map((item) => ({ name: String(item.name), url: `${domain}${item.url}` }))
   ];
-  if (slug && slug.length > 0) {
-    slug.forEach((segment, index) => {
-      const segmentUrl = `${domain}/${lang}/${slug.slice(0, index + 1).join('/')}`;
-      breadcrumbItems.push({ name: segment, url: segmentUrl });
-    });
-  }
 
   // 生成结构化数据
   const articleSchema = generateArticleSchema({
@@ -148,17 +139,17 @@ export async function generateMetadata(props: {
 }) {
   const { lang, slug } = await props.params;
   const page = source.getPage(slug, lang);
-  if (!page || !page.data) notFound();
+  if (!page?.data || page.data._file.path.endsWith('.en.mdx') !== (lang === 'en')) notFound();
 
-  const domain = getFastGPTDocsOrigin();
+  const domain = getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN');
   const url = `${domain}${page.url}`;
 
   // 构建多语言 alternates
   const languages: Record<string, string> = {};
   i18n.languages.forEach((locale) => {
     const localePage = source.getPage(slug, locale);
-    if (localePage) {
-      languages[locale] = `${domain}/${locale}/${slug?.join('/') || ''}`;
+    if (localePage && localePage.data._file.path.endsWith('.en.mdx') === (locale === 'en')) {
+      languages[locale] = `${getFastGPTDocsOriginForLocale(locale === 'en' ? 'en' : 'zh-CN')}${localePage.url}`;
     }
   });
 

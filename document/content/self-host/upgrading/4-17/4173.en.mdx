@@ -126,7 +126,7 @@ This release adds the following automatic background migrations. They run indepe
 41. Fixed Tool call results being truncated again in chat history and streamed responses. Both now retain the complete Tool results used by the model.
 42. Fixed parsing failures caused by passing too many arguments to a function when filtering empty columns in large CSV files, detecting font sizes or arranging rows in OFD files, and postprocessing PDF text.
 43. External document parsing services can now return `pdfEncrypted` and `pdfCorrupted` errors to display instructions for removing a PDF password or uploading the file again.
-44. Fixed MCP message requests hanging after an SSE session expires. Unknown sessions now return HTTP 404. Message handling errors are caught to prevent them from affecting other sessions.
+44. Fixed MCP SSE sessions hanging on message requests after the session expires. Unknown sessions now return HTTP 404. Message handling errors are caught to prevent them from affecting other sessions.
 45. Fixed Commercial edition team member department paths displaying ancestors out of order or duplicating path segments. Paths now follow the actual ancestor order.
 46. Fixed unnecessary errors when clients cancel S3 multipart uploads. Storage requests are aborted promptly, and errors are no longer written to closed responses.
 47. Fixed Agent chat history token estimates omitting reasoning content from earlier messages. Restoring history and appending messages now use consistent counting rules.

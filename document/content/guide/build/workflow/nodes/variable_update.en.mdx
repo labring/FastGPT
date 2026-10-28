@@ -10,23 +10,21 @@ description: FastGPT Variable Update node overview
 - Trigger-based execution
 - Manual configuration
 
-![Variable Update node in a Workflow](/imgs/variable_update1.png)
+![Features — interface example](/imgs/optimized/current/node-variable-update.png.webp)
 
 ## Function
 
-Choose the node output or global variable to update, and provide its new value. Place the Variable Update node before the downstream nodes that need that value.
+- A single node can update global variables and upstream node outputs together. This configuration applies numeric addition, boolean inversion, array append, and question replacement.
 
-- Update the output value of a specified node
+![Function — interface example](/imgs/optimized/current/variable-update-config.png.webp)
 
-![Select a node output to update](/imgs/variable_update2.png)
+![Function — interface example](/imgs/optimized/current/variable-update-detail.png.webp)
 
-![Configure the replacement output value](/imgs/variable_update3.png)
+- Numeric operators and the resulting values are shown below: the count becomes `3`, the switch becomes `true`, and `second` is appended to the array.
 
-- Update global variables
+![Function — interface example](/imgs/optimized/current/variable-number-operators.png.webp)
 
-![Select a global variable to update](/imgs/variable_update4.png)
-
-![Configure the new global variable value](/imgs/variable_update5.png)
+![Function — interface example](/imgs/optimized/current/variable-update-result.png.webp)
 
 ## Use Cases
 
@@ -34,3 +32,18 @@ Common scenarios include:
 
 - Assign a value to a "Custom Variable" type global variable, so the global variable doesn't require user input
 - Update a workflow node's output upstream of the Variable Update node, so downstream nodes use the new value
+
+## Configuration, order, and boundaries
+
+For each update, select a global variable or node output as the target, then choose a manual value or upstream reference. Manual operations depend on type: numbers support assignment and arithmetic, booleans support setting and negation, and arrays support replacement, appending one item, and clearing. Reference mode assigns the complete referenced value.
+
+Updates within one node run in order; later updates can read earlier changes. The template has no separate data outputs. Downstream nodes reference the updated target, and execution details record update results.
+
+## Example: record processing status
+
+1. Create a string global variable named `status` with the custom-variable type.
+2. Connect Start → Variable Update → Specified Reply.
+3. Select `status` as the update target, choose manual input, and enter `ready`.
+4. Reference global variable `status` in Specified Reply. Debug and expect `ready`, with the same value in execution details.
+
+For an unchanged value, inspect target references and types. Parallel tasks writing the same target produce completion-order-dependent values; use the parallel node's aggregate output for deterministic results. See [Loop](/en/guide/build/workflow/nodes/loop_run) and [Parallel Run](/en/guide/build/workflow/nodes/parallel_run) for container writeback behavior.

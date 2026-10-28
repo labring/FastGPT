@@ -14,8 +14,7 @@ export function GET() {
   const urlEntries = pages
     .map((page) => {
       const filePath = `content/${page.data._file.path}`;
-      // @ts-ignore
-      const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
+      const lastModified = (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
 
       return `  <url>
     <loc>${domain}${page.url}</loc>${lastModified ? `

@@ -1,0 +1,160 @@
+{
+  "type": "flowchart",
+  "title": "配置身份验证后的分享链接流程",
+  "nodes": [
+    {
+      "id": "open",
+      "label": "打开分享链接",
+      "row": 0,
+      "col": 0,
+      "kind": "input",
+      "illustration": "browser"
+    },
+    {
+      "id": "init",
+      "label": "初始化校验",
+      "row": 1,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "/shareAuth/init",
+      "illustration": "user"
+    },
+    {
+      "id": "app",
+      "label": "进入应用",
+      "row": 2,
+      "col": 0,
+      "kind": "backend",
+      "illustration": "core"
+    },
+    {
+      "id": "limits",
+      "label": "提交并检查限制",
+      "row": 3,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "到期 / 用量 / QPM",
+      "illustration": "gauge"
+    },
+    {
+      "id": "start",
+      "label": "对话前校验",
+      "row": 4,
+      "col": 0,
+      "kind": "backend",
+      "shape": "decision",
+      "sub": "/shareAuth/start",
+      "illustration": "shield"
+    },
+    {
+      "id": "chat",
+      "label": "执行对话",
+      "row": 5,
+      "col": 0,
+      "kind": "backend",
+      "focal": true,
+      "illustration": "chat"
+    },
+    {
+      "id": "report",
+      "label": "上报完成结果",
+      "row": 6,
+      "col": 0,
+      "kind": "backend",
+      "sub": "/shareAuth/finish",
+      "illustration": "ready"
+    },
+    {
+      "id": "reject",
+      "label": "拒绝本次操作",
+      "row": 3,
+      "col": 1,
+      "kind": "muted",
+      "shape": "terminal",
+      "illustration": "error"
+    }
+  ],
+  "edges": [
+    [
+      "open",
+      "init",
+      "",
+      "primary"
+    ],
+    [
+      "init",
+      "app",
+      "成功且 uid 有效",
+      "primary"
+    ],
+    [
+      "init",
+      "reject",
+      "失败",
+      "async"
+    ],
+    [
+      "app",
+      "limits",
+      "",
+      "primary"
+    ],
+    [
+      "limits",
+      "start",
+      "通过",
+      "primary"
+    ],
+    [
+      "limits",
+      "reject",
+      "失败",
+      "async"
+    ],
+    [
+      "start",
+      "chat",
+      "success=true",
+      "primary"
+    ],
+    [
+      "start",
+      "reject",
+      "失败",
+      "async"
+    ],
+    [
+      "chat",
+      "report",
+      "完成",
+      "primary"
+    ]
+  ],
+  "evidence": [
+    {
+      "id": "init",
+      "file": "packages/service/support/outLink/runtime/auth.ts",
+      "line": 20
+    },
+    {
+      "id": "limits",
+      "file": "packages/service/support/outLink/runtime/auth.ts",
+      "line": 63
+    },
+    {
+      "id": "report",
+      "file": "packages/service/support/outLink/tools.ts",
+      "line": 198
+    }
+  ],
+  "dir": "TB",
+  "lang": "zh-CN",
+  "eyebrow": "",
+  "legend": false,
+  "motion": "trace",
+  "fonts": "system",
+  "watermark": false,
+  "skin": "light"
+}

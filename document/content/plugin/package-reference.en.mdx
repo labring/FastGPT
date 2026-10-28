@@ -1,0 +1,66 @@
+---
+title: Package and SDK reference
+description: Tool plugin build artifacts, author metadata and schema declarations, and SDK and CLI entry points
+---
+
+This reference explains delivery files and code declarations for tool plugin authors. For commands, see [debugging, packing, and publishing](/en/plugin/debugging-and-publishing). For service capacity and environment variables, see [plugin runtime configuration](/en/plugin/runtime). Model presets use a separate [static configuration contribution workflow](/en/plugin/model-presets).
+
+## Build artifacts
+
+A tool plugin's `index.ts` default export is a `defineTool()` or `defineToolSet()` definition. The CLI build typically produces:
+
+| File                 | Purpose                                         |
+| -------------------- | ----------------------------------------------- |
+| `dist/index.js`      | Executable tool build                           |
+| `dist/manifest.json` | Generated metadata and schemas                  |
+| Icon files           | Main tool icon and optional Toolkit child icons |
+| `README.md`          | Optional plugin documentation                   |
+| `assets/**`          | Optional static resources                       |
+
+The `pack` command generates a `.pkg` installation file. Its output location follows the project's `pack` script or the CLI `--output` option. To update metadata or schemas, edit the source and rebuild the package.
+
+## Metadata and schemas
+
+Authors maintain the following fields in SDK definitions. The CLI and SDK versions determine the generated Manifest structure.
+
+| Declaration                                                              | Purpose                                                                                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `manifest.pluginId`                                                      | Stable identifier shared by the plugin's versions                                                                              |
+| `manifest.version`                                                       | Semantic version used during installation and updates                                                                          |
+| `manifest.name`, `manifest.description`                                  | English and Chinese display names and descriptions                                                                             |
+| `manifest.versionDescription`                                            | Changes in this version                                                                                                        |
+| `manifest.tags`                                                          | Plugin category tags                                                                                                           |
+| `createToolHandler({ inputSchema })`                                     | Input types, constraints, defaults, and UI field descriptions                                                                  |
+| `createToolHandler({ outputSchema })`                                    | Handler return types and field descriptions                                                                                    |
+| `createToolHandler({ secretSchema })`, `defineToolSet({ secretSchema })` | Secret configuration and sensitive field declarations (declared in handler for single tools, shared at top level for Toolkits) |
+| `defineToolSet({ children })`                                            | Toolkit child IDs, names, descriptions, and handlers                                                                           |
+
+Keep child tool IDs stable so configured Workflows can continue to reference them. Declare secrets through `secretSchema` and read them from `ctx.secrets` in handlers. See [icon requirements](/en/plugin/system-tool-development#5-icon-conventions) for icon names.
+
+The CLI uses `tool` and `tool-suite` to select project skeletons. Build artifacts and the plugin service provide the installed tool's type, child relationships, and display data.
+
+## Runtime context capabilities
+
+When executing a handler, the SDK supplies the `ctx` runtime context with the following capabilities:
+
+| Property / Method         | Purpose                                                                                                                    | Typical Use Case                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `ctx.secrets`             | Decrypted secret values configured for the tool                                                                            | Reading API keys, tokens, and trusted upstream endpoints |
+| `ctx.invoke.uploadFile()` | Uploads a file (`{ file, fileName, contentType }`) to the FastGPT host and returns `[result, err]` with `result.accessURL` | Returning generated reports, images, or media artifacts  |
+| `ctx.streamResponse()`    | Streams text answer chunks (`{ type: 'answer' \| 'fastAnswer', content }`) to the caller                                   | Streaming incremental text answers during execution      |
+
+## SDK and CLI entry points
+
+| Component                     | Audience                               | Responsibility                                                       |
+| ----------------------------- | -------------------------------------- | -------------------------------------------------------------------- |
+| `@fastgpt-plugin/sdk-factory` | Plugin authors                         | Define tools, Toolkits, handlers, schemas, and host capability calls |
+| `@fastgpt-plugin/cli`         | Plugin authors                         | Create projects, debug locally and remotely, build, check, and pack  |
+| `@fastgpt-plugin/sdk-client`  | FastGPT service integration developers | Call plugin management and runtime interfaces                        |
+
+Use compatible versions declared by the target project. Consult the matching versions of the [SDK Factory documentation](https://github.com/labring/fastgpt-plugin/blob/main/sdk/factory/README.en.md) and [CLI documentation](https://github.com/labring/fastgpt-plugin/blob/main/apps/cli/README.en.md) for complete interfaces.
+
+## Delivery and installation
+
+- Authors follow the [verification checklist](/en/plugin/debugging-and-publishing#verification-checklist) for builds, input/output behavior, and real calls in a test environment.
+- Team administrators follow the [team installation guide](/en/plugin/team-installation) to install, update, and remove plugins.
+- Root administrators follow the [system tool management guide](/en/guide/build/tools/system-plugins/upload_system_tool) for system-wide delivery.

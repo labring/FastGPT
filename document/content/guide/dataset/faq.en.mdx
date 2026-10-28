@@ -1,82 +1,80 @@
 ---
-title: Dataset Usage
-description: Common Dataset usage questions
+title: "Knowledge Base Troubleshooting"
+description: Comprehensive troubleshooting reference for document parsing, asynchronous training, index building, retrieval recall, and storage errors.
 ---
 
-## File Parsing Fails
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="empty-retrieval-results" />
+<span id="incorrect-answers-or-unsupported-citations" />
+<span id="stale-answers-after-an-update" />
+<span id="file-parsing-fails" />
+<span id="garbled-file-content" />
+<span id="processing-model-vs-embedding-model" />
+<span id="excel-file-import" />
+<span id="token-calculation" />
+<span id="restore-a-rerank-model" />
+<span id="data-retention-after-expiration" />
+<span id="too-many-results-interrupt-answers" />
+<span id="chat-history-context-limits" />
+<span id="knowledge-base-page-flickers" />
+<span id="ask-an-administrator-for-help" />
 
-Check the **Enhanced PDF Parsing** setting when uploading the file. Enhanced parsing also requires a correctly configured OCR module in the Admin console.
+This manual compiles typical issues encountered during knowledge base ingestion, training, retrieval, and runtime execution, along with standardized resolution steps.
 
-## Garbled File Content
+## 1. File Upload and Document Parsing
 
-Re-save the file with UTF-8 encoding.
+### Issue: Parsing fails after uploading PDF or Word files
+- **Diagnostic Focus**: Check whether the document is password-protected or restricted against copying; verify whether the PDF is a scanned image without a text layer.
+- **Actionable Fix**: Decrypt encrypted files prior to upload. For scanned PDFs, run optical character recognition (OCR) locally to embed a searchable text layer before importing.
 
-## Processing Model vs. Embedding model
+### Issue: Table import reports "Missing required column q or a"
+- **Diagnostic Focus**: Spreadsheet headers contain leading or trailing whitespace, typos, or multiple worksheets containing merged cells.
+- **Actionable Fix**: Review [Structured Dataset Template Specifications](/en/guide/dataset/template). Ensure the workbook contains exactly one worksheet, the first two columns in the header row are named `q` and `a`, and no merged cells exist.
 
-- **File Processing Model**: Used for **Enhanced Processing** and **Q&A Splitting** during data ingestion. Enhanced Processing generates related questions and summaries; Q&A Splitting generates question-answer pairs.
-- **Embedding model**: Used for vectorization — it processes and organizes text data into a structure optimized for fast retrieval.
+---
 
-## Excel File Import
+## 2. Background Training and Index Construction
 
-You can upload XLSX files and other supported spreadsheet formats, including CSV.
+### Issue: Collection status remains stuck on "Processing (0%)"
+- **Diagnostic Focus**: Background worker consumers are inactive, Redis task queues are backed up, or model API keys have expired.
+- **Actionable Fix**:
+  1. Check your team's model quota and account balance.
+  2. Verify network connectivity to upstream AI proxies or model providers.
+  3. In self-hosted environments, inspect worker logs for BullMQ consumer health.
 
-## Token Calculation
+### Issue: Training fails with "Lease Expired" and retries repeatedly
+- **Diagnostic Focus**: Chunk batch sizes are too large or remote embedding endpoints exhibit high latency, causing workers to exceed lease windows before committing.
+- **Actionable Fix**: Inspect worker health, model latency, and lease-renewal logs. Reduce supported training concurrency settings when overloaded, then retry failed tasks after recovery.
 
-All token counts use the GPT-3.5 tokenizer as the standard.
+---
 
-## Restore a Rerank Model
+## 3. Retrieval Recall and Answer Quality
 
-![Rerank model selection in Dataset search settings](/imgs/dataset3.png)
+### Issue: Search test returns zero results (empty recall)
+- **Diagnostic Focus**: Similarity thresholds are set too high, collections are not yet in a ready state, or an unmatched tag filter is active.
+- **Actionable Fix**:
+  1. Lower the "Minimum Similarity (Min Score)" slider to 0.1 to probe candidate boundaries.
+  2. Confirm collection status displays a green "Ready" badge and chunk text is readable.
+  3. Check whether tag filters are active; clear tags temporarily and rerun the search.
 
-Add the rerank model configuration in your `config.json` file, then you'll be able to select it again.
+### Issue: Search hits target chunks, but the model answers "Information not mentioned"
+- **Diagnostic Focus**: Search results may be missing from the AI Chat knowledge input, or reference and context budgets may truncate the evidence.
+- **Actionable Fix**: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application). Check the knowledge input and dedicated reference template, then balance reference, history, and output budgets within the model context window.
 
-## Data Retention After Expiration
+---
 
-On the free plan, Dataset data is cleared after 30 days of inactivity (no login). Apps are not affected. Paid plans automatically downgrade to the free plan upon expiration.
-![Plan information and Dataset retention settings](/imgs/dataset4.png)
+## 4. Storage and Infrastructure
 
-## Too Many Results Interrupt Answers
+### Issue: Vector database exhausts connections or times out
+- **Diagnostic Focus**: High-concurrency write batches deplete PGVector or Milvus connection pools.
+- **Actionable Fix**: Increase database connection pool caps and slow query timeout limits in self-hosted settings; consult [Deployment and Operations](/en/self-host).
 
-FastGPT calculates the maximum response length as:
+### Issue: Uploaded source files vanish from object storage
+- **Diagnostic Focus**: S3 / MinIO bucket lifecycle policies enforce aggressive expiration, or persistent volume mounts are missing.
+- **Actionable Fix**: Review bucket retention policies and confirm persistent volume claims map to durable host storage.
 
-Max Response = min(Configured Max Response, Max Context Window - History)
+## Next Steps
 
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
-
-To fix this:
-
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
-
-Where to find the max response setting:
-
-![Maximum response length setting](/imgs/dataset1.png)
-
-![Chat history limit in the Workflow](/imgs/dataset2.png)
-
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
-
-## Chat History Context Limits
-
-FastGPT calculates the maximum response length as:
-
-Max Response = min(Configured Max Response, Max Context Window - History)
-
-For example, with an 18K context model, input + output share the same window. As output grows, available input shrinks.
-
-To fix this:
-
-1. Check your configured max response (response limit) setting.
-2. Reduce input to free up space for output — specifically, reduce the number of chat history turns included in the workflow.
-
-Where to find the max response setting:
-
-![Maximum response length setting](/imgs/dataset1.png)
-
-![Chat history limit in the Workflow](/imgs/dataset2.png)
-
-For self-hosted deployments, you can reserve headroom when configuring model context limits. For example, set a 128K model to 120K — the remaining space will be allocated to output.
-
-## Dataset Page Flickers
-
-Configure an Embedding model for the Dataset to resolve this issue.
+- Holistic overview: Read [Knowledge Base Full Lifecycle](/en/guide/dataset/lifecycle).
+- Practice tuning: Explore [Search Testing and Retrieval Parameters](/en/guide/dataset/test-retrieval).
+- Data maintenance: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

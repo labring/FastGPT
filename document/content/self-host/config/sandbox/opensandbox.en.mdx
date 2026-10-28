@@ -123,7 +123,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 ```
 
-`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point to the apt repository root, not a `dists` path or a specific release directory.
+`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point directly to the apt repository root.
 
 The apt mirror URL is not selected automatically based on the runtime image architecture. Select the corresponding Ubuntu repository path:
 

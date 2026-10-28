@@ -1,5 +1,13 @@
 {
   "root": true,
   "title": "OpenAPI接口文档",
-  "pages": ["intro", "app", "chat", "dataset"]
+  "pages": [
+    "intro",
+    "interactive-and-variables",
+    "app",
+    "chat",
+    "dataset",
+    "identity-proxy",
+    "legacy"
+  ]
 }

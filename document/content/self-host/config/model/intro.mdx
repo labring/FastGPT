@@ -20,7 +20,7 @@ FastGPT 借助 `AI Proxy` 服务，可以连接到不同的模型提供商。同
 
 ### 运行流程图
 
-![alt text](../../../../public/imgs/image-95.png)
+![模型请求与渠道路由](/imgs/diagrams/model-routing.zh-CN.light.svg)
 
 ### 模型类型
 
@@ -45,19 +45,19 @@ FastGPT 借助 `AI Proxy` 服务，可以连接到不同的模型提供商。同
 
 切换到 `模型渠道` 标签页。注意，这里只能增加 `模型配置` 里有的模型，系统仅内置了主流的模型，如果需要增加其他模型，需要先在 `模型配置` 中增加。
 
-![aiproxy1](../../../../public/imgs/aiproxy-1.png)
+![aiproxy1](/imgs/optimized/aiproxy-1.png.webp)
 
 点击右上角的“新增渠道”，即可进入渠道配置页面
 
-![alt text](../../../../public/imgs/image-122.png)
+![1. 创建渠道：界面示例](/imgs/optimized/image-122.png.webp)
 
 以阿里百炼的模型为例，进行如下配置
 
-![alt text](../../../../public/imgs/image-123.png)
+![1. 创建渠道：界面示例](/imgs/optimized/image-123.png.webp)
 
 1. 渠道名：展示在外部的渠道名称，仅作标识;
 2. 协议类型：模型对应的协议类型，一般哪家提供的模型就选对于服务商即可。大多数都提供了 OpenAI 的协议，也可以选择 OpenAI 协议类型。
-3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](./intro.mdx#新增自定义模型);
+3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](/zh-CN/self-host/config/model/intro#新增自定义模型);
 4. 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上。例如：
 
 ```json
@@ -73,21 +73,21 @@ FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4
 
 最后点击“新增”，就能在“模型渠道”下看到刚刚配置的渠道
 
-![aiproxy4](../../../../public/imgs/aiproxy-4.png)
+![aiproxy4](/imgs/optimized/aiproxy-4.png.webp)
 
 ### 2. 渠道测试
 
 然后可以对渠道进行测试，确保配置的模型有效
 
-![aiproxy5](../../../../public/imgs/aiproxy-5.png)
+![aiproxy5](/imgs/optimized/aiproxy-5.png.webp)
 
 点击“模型测试”，可以看到配置的模型列表，点击“开始测试”
 
-![aiproxy6](../../../../public/imgs/aiproxy-6.png)
+![aiproxy6](/imgs/optimized/aiproxy-6.png.webp)
 
 等待模型测试完成后，会输出每个模型的测试结果以及请求时长
 
-![aiproxy7](../../../../public/imgs/aiproxy-7.png)
+![aiproxy7](/imgs/optimized/aiproxy-7.png.webp)
 
 ### 3. 启用模型
 
@@ -97,13 +97,13 @@ FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4
 
 | 启用模型                                          | 模型 ID 映射说明                                   |
 | ------------------------------------------------- | -------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-92.png) | ![alt text](../../../../public/imgs/image-124.png) |
+| ![3. 启用模型：界面示例](/imgs/optimized/image-92.png.webp) | ![3. 启用模型：界面示例](/imgs/optimized/image-124.png.webp) |
 
 ### 4. 测试模型
 
 FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型是否正常工作，会实际按模板发送一个请求。
 
-![alt text](../../../../public/imgs/image-105.png)
+![4. 测试模型：界面示例](/imgs/optimized/image-105.png.webp)
 
 ## 模型配置
 
@@ -113,17 +113,17 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-93.png) | ![alt text](../../../../public/imgs/image-94.png) |
+| ![修改模型配置：界面示例](/imgs/optimized/image-93.png.webp) | ![修改模型配置：界面示例](/imgs/optimized/image-94.png.webp) |
 
 ### 新增自定义模型
 
-如果系统内置的模型无法满足你的需求，你可以添加自定义模型。如果 `模型 ID` 与系统内置的模型 ID 重复，则会被认为是修改系统模型，而不是新增模型。
+如果系统内置的模型无法满足你的需求，你可以添加自定义模型。如果 `模型 ID` 与系统内置的模型 ID 重复，系统将作为修改系统模型处理。
 
 1. **通过表单添加模型**
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-96.png) | ![alt text](../../../../public/imgs/image-97.png) |
+| ![新增自定义模型：界面示例](/imgs/optimized/image-96.png.webp) | ![新增自定义模型：界面示例](/imgs/optimized/image-97.png.webp) |
 
 2. **通过配置文件配置**
 
@@ -131,7 +131,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 |                                                   |                                                   |
 | ------------------------------------------------- | ------------------------------------------------- |
-| ![alt text](../../../../public/imgs/image-98.png) | ![alt text](../../../../public/imgs/image-99.png) |
+| ![新增自定义模型：界面示例](/imgs/optimized/image-98.png.webp) | ![新增自定义模型：界面示例](/imgs/optimized/image-99.png.webp) |
 
 所有 Token 模型的单价与阶梯输入边界均以 M Tokens 为单位；语音合成按每 1M 字符、语音识别按每 60 秒计价。单价最多保留两位小数。
 
@@ -264,7 +264,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启后，系统会周期性地对所有已启用的模型进行可用性测试，生成 48 小时稳定性图表，并在模型发生故障或恢复时通过 Webhook 发送实时告警。
 
-![模型状态监控面板](../../../../public/imgs/model-probe-status.png)
+![模型状态监控面板](/imgs/optimized/model-probe-status.png.webp)
 
 1. **探测范围**：仅针对系统中当前「已启用」的系统模型。未启用的模型不会参与探测，也不会产生历史记录。
 2. **重试机制**：探测请求首次失败后，系统最多自动重试 3 次（即单轮最多尝试 4 次）。只要有一次调用成功即判定为有效；只有 4 次尝试全部失败时，才最终判定为异常，有效防止因网络瞬间抖动导致的误报。
@@ -285,7 +285,7 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
 1. **进入状态面板**：登录管理员账号，点击左侧菜单 **系统模型**，在顶部标签页中切换至 **模型探测**。
 2. **打开探测配置**：点击页面右上角的 **探测配置** 按钮。
 
-![模型探测配置弹窗](../../../../public/imgs/model-probe-config.png)
+![模型探测配置弹窗](/imgs/optimized/model-probe-config.png.webp)
 
 3. **设置探测参数**：
    - **启用自动探测**：开启开关（配置项显示为“启用所有模型自动探测”）。开启后，系统内置定时任务按配置间隔自动调度；未开启时，页面将呈现「未启用自动探测」空状态。
@@ -385,23 +385,23 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
 
 范围 1～100。数值越大，越容易被优先选中。
 
-![aiproxy9](../../../../public/imgs/aiproxy-9.png)
+![aiproxy9](/imgs/optimized/aiproxy-9.png.webp)
 
 ### 启用/禁用渠道
 
 在渠道右侧的控制菜单中，还可以控制渠道的启用或禁用，被禁用的渠道将无法再提供模型服务
 
-![aiproxy10](../../../../public/imgs/aiproxy-10.png)
+![aiproxy10](/imgs/optimized/aiproxy-10.png.webp)
 
 ### 模型调用日志
 
 通过渠道调用的模型，可以在 `调用日志` 页面，会展示发送到模型处的请求记录，包括具体的输入输出 tokens、请求时间、请求耗时、请求地址等等。错误的请求，则会详细的入参和错误信息，方便排查，但仅会保留 1 小时(环境变量里可配置)。
 
-![aiproxy11](../../../../public/imgs/aiproxy-11.png)
+![aiproxy11](/imgs/optimized/aiproxy-11.png.webp)
 
 ### 私有部署模型
 
-[点击查看部署 ReRank 模型教程](../../custom-models/bge-rerank.mdx)
+[点击查看部署 ReRank 模型教程](/zh-CN/self-host/custom-models/bge-rerank)
 
 ### 从 OneAPI 迁移到 AI Proxy
 
@@ -422,4 +422,4 @@ curl --location --request POST '{{host}}/api/channels/import/oneapi' \
 
 执行成功的情况下会返回 "success": true
 
-脚本目前不是完全准，仅是简单的做数据映射，主要是迁移 `代理地址`、`模型` 和 `API 密钥`，建议迁移后再进行手动检查。
+脚本主要执行 `代理地址`、`模型` 与 `API 密钥` 的字段映射迁移，迁移后建议在管理界面复核配置。

@@ -1,0 +1,32 @@
+---
+title: 选择工具与 Skill
+description: 区分系统工具、工作流工具、HTTP 工具、MCP 工具与 Skill 的用途。
+---
+
+FastGPT 提供五类能力扩展机制：**系统工具（插件）**、**工作流工具**、**HTTP 工具集**、**MCP 工具集**与 **Agent Skill**。工具（Tool）是具有明确输入输出 Schema 的可调用函数；技能（Skill）是将指导文档（`SKILL.md`）与脚本文件打包版本化、在沙箱虚拟机中供 Agent 按需加载的资源包。
+
+## 选型决策矩阵
+
+| 扩展形态 | 核心定位 | 配置方式 | 运行位置 | 适用场景与指南入口 |
+| --- | --- | --- | --- | --- |
+| **系统工具 / 团队插件** | 平台预置或插件市场安装的标准化工具包 | 市场一键安装 + 填写激活密钥 | `fastgpt-plugin` 运行时服务 | 网页搜索、文生图、飞书/企微通知、数据库查询；见[团队安装与管理插件](/zh-CN/plugin/team-installation) |
+| **工作流工具** | 将画布多节点流程封装为可复用函数 | 画布配置 `pluginInput` / `pluginOutput` | FastGPT 工作流调度引擎 | 组合多步内部检索、清洗与接口调用；见[创建与复用工作流工具](/zh-CN/guide/build/tools/workflow-tools) |
+| **HTTP 工具集** | 将外部 REST API 批量或单接口转化为工具 | 导入 OpenAPI Schema 或手动填路径 | FastGPT 服务端直连目标 API | 快速对接企业内部 CRM、ERP、工单等 HTTP 接口；见[创建和调试 HTTP 工具](/zh-CN/guide/build/tools/http_tools) |
+| **MCP 工具集** | 接入遵循 Model Context Protocol 的外部服务 | 填写 MCP Endpoint URL 与认证 Header | 外部 MCP Server（Streamable HTTP / SSE） | 复用开源生态或企业统一建设的 MCP 工具服务；见[连接 MCP 工具集](/zh-CN/guide/build/tools/mcp_tools) |
+| **Agent Skill** | 包含指令规范与脚本文件的版本化沙箱能力包 | 编写 `SKILL.md` + 辅助脚本与初始化脚本 | Agent 独立虚拟机沙箱（OpenSandbox / Devbox） | 复杂表格分析、多步文件生成、多命令协同任务；见 [Skill 基础介绍](/zh-CN/guide/build/skill/intro) |
+
+![工具调用与模型交互流程](/imgs/diagrams/tool-call-loop.zh-CN.light.svg)
+
+## 工作流工具
+
+创建[工作流工具](/zh-CN/guide/build/tools/workflow-tools)，在工具输入中声明调用者需要提供的参数及类型，在流程中引用这些参数，再通过工具输出声明返回值。先独立运行一个已知输入，核对输出结构；发布后从其他应用选择该工具，检查参数映射和执行结果。
+
+工具描述帮助模型选择何时调用，参数说明帮助模型填写值。给会产生外部写入的操作写清楚作用，并在正式使用前验证权限与业务确认流程。
+
+## 在应用中使用
+
+- **对话 Agent（标准应用）**：在左侧“工具调用”中添加工具，由主对话模型通过 Function Calling 自动触发；详见[构建对话 Agent](/zh-CN/guide/build/chat-agent)。
+- **对话 Agent V2**：支持同时挂载工具集与 Agent Skill，结合虚拟机沙箱自主规划多步调用；详见[对话 Agent V2 专项配置](/zh-CN/guide/build/agentv2/settings)。
+- **可视化工作流**：既可将工具作为确定性步骤直接连入画布，也可挂载到[工具调用节点](/zh-CN/guide/build/workflow/nodes/tool)或 [Agent 节点](/zh-CN/guide/build/workflow/nodes/agent)由模型动态调度。
+
+[团队工具安装](/zh-CN/plugin/team-installation)说明团队可用工具；[系统工具开发](/zh-CN/plugin/system-tool-development)说明扩展过程；[Skill 集成](/zh-CN/guide/build/skill/integration)说明两种 Agent 集成位置。

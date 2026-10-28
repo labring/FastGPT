@@ -1,7 +1,9 @@
 ---
-title: 使用 Xinference 接入本地模型
+title: 使用 Xinference 接入本地模型（旧版接入示例）
 description: 一站式本地 LLM 私有化部署
 ---
+
+本页保留社区模型服务示例及历史 OneAPI/config.json 接入配置。当前部署请通过[模型配置](/zh-CN/self-host/config/model/intro)登记可访问的模型服务，并核对所用版本的模型类型、接口地址、权限和兼容性。
 
 [Xinference](https://github.com/xorbitsai/inference) 是一款开源模型推理平台，除了支持 LLM，它还可以部署 Embedding 和 ReRank 模型，这在企业级 RAG 构建中非常关键。同时，Xinference 还提供 Function Calling 等高级功能。还支持分布式部署，也就是说，随着未来应用调用量的增长，它可以进行水平扩展。
 
@@ -13,8 +15,8 @@ Xinference 支持多种推理引擎作为后端，以满足不同场景下部署
 
 如果你的目标是在一台 Linux 或者 Window 服务器上部署大模型，可以选择 Transformers 或 vLLM 作为 Xinference 的推理后端：
 
-- [Transformers](https://huggingface.co/docs/transformers/index)：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地 集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。
-- [vLLM](https://vllm.ai/): vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法， 通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。
+- [Transformers](https://huggingface.co/docs/transformers/index)：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。
+- [vLLM](https://vllm.ai/) : vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法，通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。
 
 假设你服务器配备 NVIDIA 显卡，可以参考[这篇文章中的指令来安装 CUDA](https://xorbits.cn/blogs/langchain-streamlit-doc-chat)，从而让 Xinference 最大限度地利用显卡的加速功能。
 
@@ -28,7 +30,7 @@ docker run  -p 9997:9997 --gpus all xprobe/xinference:latest xinference-local -H
 
 #### 直接部署
 
-首先我们需要准备一个 3.9 以上的 Python 环境运行来 Xinference，建议先根据 conda 官网文档安装 conda。 然后使用以下命令来创建 3.11 的 Python 环境：
+首先我们需要准备一个 3.9 以上的 Python 环境运行来 Xinference，建议先根据 conda 官网文档安装 conda。然后使用以下命令来创建 3.11 的 Python 环境：
 
 ```bash
 conda create --name py311 python=3.11
@@ -43,7 +45,7 @@ pip install "xinference[vllm]"
 pip install "xinference[transformers,vllm]" # 同时安装
 ```
 
-PyPi 在 安装 Transformers 和 vLLM 时会自动安装 PyTorch，但自动安装的 CUDA 版本可能与你的环境不匹配，此时你可以根据 PyTorch 官网中的[安装指南](https://pytorch.org/get-started/locally/)来手动安装。
+PyPi 在安装 Transformers 和 vLLM 时会自动安装 PyTorch，但自动安装的 CUDA 版本可能与你的环境不匹配，此时你可以根据 PyTorch 官网中的[安装指南](https://pytorch.org/get-started/locally/)来手动安装。
 
 只需要输入如下命令，就可以在服务上启动 Xinference 服务：
 
@@ -51,13 +53,13 @@ PyPi 在 安装 Transformers 和 vLLM 时会自动安装 PyTorch，但自动安�
 xinference-local -H 0.0.0.0
 ```
 
-Xinference 默认会在本地启动服务，端口默认为 9997。因为这里配置了-H 0.0.0.0参数，非本地客户端也可以通过机器的 IP 地址来访问 Xinference 服务。
+Xinference 默认会在本地启动服务，端口默认为 9997。因为这里配置了 -H 0.0.0.0 参数，非本地客户端也可以通过机器的 IP 地址来访问 Xinference 服务。
 
 ### 2. 个人设备
 
-如果你想在自己的 Macbook 或者个人电脑上部署大模型，推荐安装 CTransformers 作为 Xinference 的推理后端。CTransformers 是用 GGML 实现的 C++ 版本 Transformers。
+如果你想在自己的 MacBook 或者个人电脑上部署大模型，推荐安装 CTransformers 作为 Xinference 的推理后端。CTransformers 是用 GGML 实现的 C++ 版本 Transformers。
 
-[GGML](https://ggml.ai/) 是一个能让大语言模型在[消费级硬件上运行](https://github.com/ggerganov/llama.cpp/discussions/205)的 C++ 库。 GGML 最大的特色在于模型量化。量化一个大语言模型其实就是降低权重表示精度的过程，从而减少使用模型所需的资源。 例如，表示一个高精度浮点数（例如 0.0001）比表示一个低精度浮点数（例如 0.1）需要更多空间。由于 LLM 在推理时需要加载到内存中的，因此你需要花费硬盘空间来存储它们，并且在执行期间有足够大的 RAM 来加载它们，GGML 支持许多不同的量化策略，每种策略在效率和性能之间提供不同的权衡。
+[GGML](https://ggml.ai/) 是一个能让大语言模型在[消费级硬件上运行](https://github.com/ggerganov/llama.cpp/discussions/205)的 C++ 库。GGML 最大的特色在于模型量化。量化一个大语言模型其实就是降低权重表示精度的过程，从而减少使用模型所需的资源。例如，表示一个高精度浮点数（例如 0.0001）比表示一个低精度浮点数（例如 0.1）需要更多空间。由于 LLM 在推理时需要加载到内存中的，因此你需要花费硬盘空间来存储它们，并且在执行期间有足够大的 RAM 来加载它们，GGML 支持许多不同的量化策略，每种策略在效率和性能之间提供不同的权衡。
 
 通过以下命令来安装 CTransformers 作为 Xinference 的推理后端：
 
@@ -80,11 +82,11 @@ pip install ctransformers
 
 Xinference 启动之后，在浏览器中输入: `http://127.0.0.1:9997`，我们可以访问到本地 Xinference 的 Web UI。
 
-打开“Launch Model”标签，搜索到 qwen-chat，选择模型启动的相关参数，然后点击模型卡片左下方的小火箭🚀按钮，就可以部署该模型到 Xinference。 默认 Model UID 是 qwen-chat（后续通过将通过这个 ID 来访问模型）。
+打开“Launch Model”标签，搜索到 qwen-chat，选择模型启动的相关参数，然后点击模型卡片左下方的小火箭🚀按钮，就可以部署该模型到 Xinference 默认 Model UID 是 qwen-chat（后续通过将通过这个 ID 来访问模型）。
 
-![](../../../public/imgs/xinference-launch-model.png)
+![1. WebUI 方式启动模型：界面示例](/imgs/optimized/xinference-launch-model.png.webp)
 
-当你第一次启动 Qwen 模型时，Xinference 会从 HuggingFace 下载模型参数，大概需要几分钟的时间。Xinference 将模型文件缓存在本地，这样之后启动时就不需要重新下载了。 Xinference 还支持从其他模型站点下载模型文件，例如 [modelscope](https://inference.readthedocs.io/en/latest/models/sources/sources.html)。
+当你第一次启动 Qwen 模型时，Xinference 会从 HuggingFace 下载模型参数，大概需要几分钟的时间。Xinference 将模型文件缓存在本地，这样之后启动时就不需要重新下载了。Xinference 还支持从其他模型站点下载模型文件，例如 [modelscope](https://inference.readthedocs.io/en/latest/models/sources/sources.html)。
 
 ### 2. 命令行方式启动模型
 
@@ -94,15 +96,15 @@ Xinference 启动之后，在浏览器中输入: `http://127.0.0.1:9997`，我�
 xinference launch -n qwen-chat -s 14 -f pytorch
 ```
 
-除了 WebUI 和命令行工具， Xinference 还提供了 Python SDK 和 RESTful API 等多种交互方式， 更多用法可以参考 [Xinference 官方文档](https://inference.readthedocs.io/en/latest/getting_started/index.html)。
+除了 WebUI 和命令行工具，Xinference 还提供了 Python SDK 和 RESTful API 等多种交互方式，更多用法可以参考 [Xinference 官方文档](https://inference.readthedocs.io/en/latest/getting_started/index.html)。
 
 ## 将本地模型接入 One API
 
-One API 的部署和接入请参考[这里](../config/model/intro.mdx)。
+One API 的部署和接入请参考[这里](/zh-CN/self-host/config/model/intro)。
 
-为 qwen1.5-chat 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 qwen-chat (模型的 UID) 。
+为 qwen1.5-chat 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 qwen-chat (模型的 UID)。
 
-![](../../../public/imgs/one-api-add-xinference-models.jpg)
+![将本地模型接入 One API：界面示例](/imgs/optimized/one-api-add-xinference-models.jpg.webp)
 
 可以使用以下命令进行测试：
 
@@ -149,6 +151,6 @@ curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
 
 然后重启 FastGPT 就可以在应用配置中选择 Qwen 模型进行对话：
 
-## ![](../../../public/imgs/fastgpt-list-models.png)
+## ![!(../../../public/imgs/fastgpt-list-models.png)：界面示例](/imgs/optimized/fastgpt-list-models.png.webp)
 
 - 参考：[FastGPT + Xinference：一站式本地 LLM 私有化部署和应用开发](https://xorbits.cn/blogs/fastgpt-weather-chat)

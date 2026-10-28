@@ -1,32 +1,39 @@
 ---
-title: Agent Integration
-description: How to bind published skills to AI agents and execute them.
+title: Use Skills in Agents
+description: Associate a published Skill with Chat Agent V2 or a workflow Agent node.
 ---
 
-import { Alert } from '@/components/docs/Alert';
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="how-to-bind-a-skill-to-an-agent" />
+<span id="how-agents-call-skills" />
 
-## How to Bind a Skill to an Agent?
+## Prerequisites
 
-1. Go to the editing page of the **"Agent"** app where you want to integrate this skill (currently, only Agent apps support direct skill binding; simple apps and workflows do not support it).
-2. In the configuration panel on the left, locate the **"Associated Skill"** section.
-3. Click the **"Select"** button on the right, and in the popup list, select your published skill.
+Prepare a published Skill, resource access permissions, a model supporting tool calls, and an available virtual-machine service. Self-hosted installations need a configured execution environment. SaaS license, plan, and quota availability follow the current account interface.
 
-![Associate Skill & VM](/imgs/associated_skills_vm.png)
+## Bind a Skill to an application
 
-<Alert icon="💡" context="warning">
-  **Note:** Skill code needs to execute within a secure and isolated environment. Therefore, when
-  you associate a skill, the system will automatically enable the "Virtual Machine" for you; you
-  cannot disable the virtual machine while a skill remains associated.
-</Alert>
+### Chat Agent V2
 
----
+Open the application editor and select published resources under Associated Skills. Confirm the virtual-machine settings. Associating Skills enables the required virtual machine and keeps that capability enabled while Skills remain associated. Set clear task instructions, save, and debug.
 
-## How Agents Call Skills
+Associate Extract Emails from the [development tutorial](/en/guide/build/skill/development). Instruct the Agent to run the Skill's Python script, then enter `Contact alice@example.com and bob@example.org; CC alice@example.com`. Expect two unique addresses: `alice@example.com` and `bob@example.org`. Expand Processed, then Virtual machine / Execute command to inspect the script input and result.
 
-Once bound, the Agent can use this Skill:
+![Agent with the published Extract Emails Skill returns two unique addresses](/imgs/optimized/current/skill-agent-result.png.webp)
 
-- **Multi-Skill Injection**: An agent can be bound to **multiple different skills** at the same time. When the sandbox (virtual machine) starts, all bound skill codes and configurations are automatically injected and deployed into the sandbox workspace. The skills are isolated from each other and will not conflict.
-- **Automated Invocation**: **Provided that the LLM used is sufficiently intelligent**, you don't need to manually command the agent to run code. The AI will automatically judge whether to trigger the skill based on your input, and execute it securely in the background sandbox.
-- **Virtual Machine File View**: You can click the **"Virtual Machine"** button at the bottom of the chat bubble (or the computer icon in the top right corner) to view all the latest files and code status in the virtual machine directly in the popup sidebar.
+### Workflow Agent node
 
-![Virtual Machine File View](/imgs/agent_chat_vm_files.png)
+Open the workflow canvas, add or select an Agent node, and choose published Skills in its Skill configuration. Confirm the model, user question, and virtual-machine settings. Reference the upstream task in the node input and inspect its output. See [Agent node](/en/guide/build/workflow/nodes/agent).
+
+| Host Carrier | Configuration Entry | Sandbox and Execution Scope | Typical Use Case |
+| --- | --- | --- | --- |
+| **Chat Agent V2** | "Associated Skills" section in the left panel of the application editor | Session-scoped sandbox (`sessions/<chatId>`), preserving workspace files and initialized Skill environments across multi-turn chats | Open-ended multi-turn spreadsheet analysis, interactive report generation, and iterative file processing |
+| **Workflow Agent Node** | Workflow canvas → select Agent node → "Skills" selector | Provisions the sandbox for the workflow session, accepts upstream variables and file URLs, and passes its output to downstream nodes | Embedding an autonomous script-execution or Skill-driven step inside a deterministic business pipeline |
+
+## How Agents use Skills
+
+At runtime, selected Skill versions are prepared in the execution environment. The Agent chooses relevant instructions and tools according to the task and model planning. One Skill resource can include multiple instruction sets and supporting files, and an Agent can use multiple resources.
+
+Debug with an input explicitly supported by the Skill. Inspect execution details, virtual-machine files, and the final result. Once the result satisfies the Skill's instructions, [publish application changes](/en/guide/build/publish/versions) and verify in a new conversation.
+
+For missing Skills, inspect published versions and permissions. For environment startup or dependency failures, inspect [initialization scripts](/en/guide/build/skill/initialization) and virtual-machine logs. Skill publishing and application publishing apply to their respective resources; publish the resource you changed.

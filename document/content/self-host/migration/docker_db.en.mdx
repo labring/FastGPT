@@ -1,20 +1,44 @@
 ---
-title: Docker Database Migration (Simple Method)
-description: FastGPT Docker database backup and migration
+title: Docker data backup and migration
+description: Inventory persistent data, back up during downtime, validate restoration, and switch traffic.
 ---
+
+Directory copying applies to deployments with writes stopped, local persistent directories, and compatible database versions. Rehearse restoration in the target environment before scheduling a production cutover. Use the database vendor's backup and restore procedure for major-version migrations.
+
+## Before migration
+
+Record application and database versions, the actual Compose configuration, environment variables, and persistent mounts. Inspect configuration with `docker compose config`; its output can contain credentials and must be stored securely.
+
+| Data | What to verify |
+| --- | --- |
+| MongoDB | Applications, conversations, knowledge collections, chunks, permissions, and other records; actual mounts or database backup locations |
+| Vector backend | The selected PG, Milvus, or other backend and all its persistent data |
+| Object storage | Files, parsed text, and other objects in public/private buckets; use the applicable self-hosted or managed backup procedure |
+| Other dependencies | Persistent data and restoration requirements for Redis, AI Proxy, and other enabled services |
+| Configuration and credentials | Compose configuration, secrets, model channels, storage buckets, and endpoint settings |
 
 ## 1. Stop Services
 
+Pause external entry points and scheduled tasks. Wait for or manage running writes and file-processing jobs. Stop this Compose project's services from the deployment directory:
+
 ```bash
-docker-compose down
+docker compose down
 ```
 
+The command stops the current Compose project. Coordinate external databases, object storage, and other writers separately so backups share a consistent period with writes paused. Preserve data volumes and confirm clean database shutdown.
 
 ## 2. Copy Directories
 
-Docker-deployed databases mount local directories into containers via volumes. To migrate, simply copy these directories.
+Copy all persistent data using the actual mount inventory, preserving file ownership, permissions, and directory layout. The `pg/data` and `mongo/data` paths from older PG Compose examples are two example directories; use the current configuration to determine the complete scope. Use the appropriate backup and restoration tools for named volumes, managed databases, and external object storage.
 
-`PG data`: pg/data
-`Mongo data`: mongo/data
+After restoring the data, start the target services with compatible versions and corresponding configuration:
 
-Just copy the entire pg and mongo directories to the new location.
+```bash
+docker compose up -d
+```
+
+## Validate and switch traffic
+
+Inspect startup logs and service health. Verify login, existing applications, conversations, original-file access, knowledge retrieval, and one new-file import. Confirm permissions and model channels before switching traffic and resuming scheduled tasks.
+
+Retain the source environment and backups until acceptance is complete. Control write entry points during restoration so business data reaches the selected environment. See [upgrades](/en/self-host/upgrading/upgrade-instruction) and [object-storage configuration](/en/self-host/config/object-storage).

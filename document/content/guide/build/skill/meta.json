@@ -3,9 +3,10 @@
   "root": false,
   "pages": [
     "intro",
-    "development",
     "initialization",
     "version",
-    "integration"
+    "integration",
+    "!development",
+    "package-reference"
   ]
 }

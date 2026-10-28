@@ -1,0 +1,122 @@
+---
+title: 交互挂起恢复与文件传参 API 流程
+description: 通过 OpenAPI 处理工作流交互节点（用户选择 / 表单输入）的挂起、断点恢复，以及全局变量与多模态文件传参。
+---
+
+当工作流包含[用户选择（`userSelect`）](/zh-CN/guide/build/workflow/nodes/user-selection)或[表单输入（`formInput`）](/zh-CN/guide/build/workflow/nodes/form_input)节点，或需要传入前置全局变量、文档与图片链接时，客户端需按以下契约与 `/api/v2/chat/completions`（或 `/api/v1/chat/completions`）交互。
+
+## 一、全局变量与多模态文件传参
+
+### 1. 注入全局变量（`variables`）
+
+在请求体的 `variables` 对象中，按应用声明的[全局变量 Key](/zh-CN/guide/build/workflow/variables) 传入对应类型的值：
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "chatId": "session_20261028_001",
+  "stream": true,
+  "detail": true,
+  "variables": {
+    "department": "财务部",
+    "maxBudget": 5000,
+    "strictMode": true
+  },
+  "messages": [{ "role": "user", "content": "请核对本笔差旅申请" }]
+}
+```
+
+### 2. 传入图片与文档链接（OpenAI 兼容多模态消息格式）
+
+当应用开启了图片理解或文档解析时，`messages[].content` 支持传入结构化数组，分别使用 `image_url` 和 `file_url` 传递 FastGPT 服务端可访问的 URL：
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "chatId": "session_20261028_002",
+  "stream": false,
+  "detail": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "请提取附件合同中的签署日期和总金额" },
+        {
+          "type": "file_url",
+          "name": "contract.pdf",
+          "url": "https://example.com/files/contract.pdf"
+        },
+        {
+          "type": "image_url",
+          "image_url": { "url": "https://example.com/images/receipt.png" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 二、交互挂起（Human-in-the-Loop）与断点恢复流程
+
+当工作流运行至 `userSelect` 或 `formInput` 节点时，服务端会将当前画布运行状态（含容器循环进度与上下文）作为检查点保存在该 `chatId` 下，并向客户端返回 `interactive` 事件。
+
+![工作流交互挂起与继续运行机制](/imgs/diagrams/workflow-interaction.zh-CN.light.svg)
+
+### 步骤 1：解析挂起响应（需开启 `detail: true`）
+
+- **流式模式（`stream: true, detail: true`）**：服务端发送 `event: interactive` 帧，随后发送 `data: [DONE]` 结束本轮流：
+
+```text
+event: interactive
+data: {"interactive":{"type":"userSelect","params":{"description":"请选择处理方式","userSelectOptions":[{"key":"opt_1","value":"确认改写"},{"key":"opt_2","value":"放弃发布"}]}}}
+
+event: answer
+data: [DONE]
+```
+
+- **表单输入节点（工作流节点类型为 `formInput`，响应判别值为 `interactive.type: "userInput"`）**：当工作流在表单输入节点暂停时，返回的 `interactive` 对象使用 `"type": "userInput"`，`params.inputForm` 包含表单字段定义数组（字段 `key`、`label`、`type`、`required`、`list` 选项等）。
+
+### 步骤 2：向同一 `chatId` 提交用户输入以恢复运行
+
+客户端渲染选项按钮或表单控件，待用户提交后，**必须携带完全相同的 `appId` 与 `chatId`** 再次调用 `chat/completions`，且 `messages` 数组只需包含最新一条 `role: "user"` 消息：
+
+1. **恢复“用户选择”节点（`userSelect`）**：将用户选中的选项文本直接作为 `content` 字符串发送：
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "chatId": "session_20261028_001",
+  "stream": true,
+  "detail": true,
+  "messages": [{ "role": "user", "content": "确认改写" }]
+}
+```
+
+2. **恢复“表单输入”节点（`formInput`）**：将用户填写的表单键值对象**序列化为 JSON 字符串**放入 `content`：
+
+```json
+{
+  "appId": "YOUR_APP_ID",
+  "chatId": "session_20261028_001",
+  "stream": true,
+  "detail": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "{\"reason\":\"补充发票说明\",\"amount\":1280}"
+    }
+  ]
+}
+```
+
+服务端检测到该 `chatId` 存在未完成的交互检查点后，会自动从挂起节点继续向下游执行，直至整个工作流完成。
+
+## 常见错误排查
+
+| 现象                                         | 原因与修复方式                                                                                            |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 工作流停在交互节点但客户端未收到选项配置     | 调用时未设置 `detail: true`；开启 `detail: true` 后才能接收 `interactive` 事件或 `responseData`           |
+| 第二次提交后从流程开头重新执行而非从断点恢复 | 第二次请求遗漏了 `chatId` 或传入了新的 `chatId`；必须保持同一 `chatId`                                    |
+| 表单恢复报错或字段为空                       | `formInput` 的恢复消息 `content` 必须是序列化后的 JSON 字符串，且键名需与 `inputForm` 中的字段 `key` 一致 |
+
+下一步：查阅完整的[对话与会话 API 端点字典](/zh-CN/openapi/chat)。

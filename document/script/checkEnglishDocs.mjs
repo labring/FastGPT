@@ -15,7 +15,8 @@ const han = /\p{Script=Han}/u;
 // Preserve the community contributors' original handles from the Chinese sources.
 const contributorNames = {
   'self-host/custom-models/chatglm2-m3e.en.mdx': ['不做了睡大觉'],
-  'self-host/custom-models/m3e.en.mdx': ['睡大觉']
+  'self-host/custom-models/m3e.en.mdx': ['睡大觉'],
+  'guide/version/cloud/terms.en.mdx': ['广州环际云计算有限公司']
 };
 
 /** Extract prose and links while keeping executable examples out of the language scan. */

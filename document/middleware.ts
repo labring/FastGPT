@@ -1,5 +1,6 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
 import { defaultHomePath, i18n } from '@/lib/i18n';
+import { getFastGPTDocsOriginForLocale } from '@/lib/docs-locale';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Old path redirects mapping. Keys/values are POST-strip (no /docs prefix).
@@ -59,7 +60,6 @@ const exactMap: Record<string, string> = {
   // Navbar redirects.
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
-  '/self-host': '/self-host/deploy/docker',
   '/openapi': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
   '/faq': '/faq/chat'
@@ -101,30 +101,45 @@ function normalizePath(path: string) {
 function applyRedirectMaps(path: string): string | null {
   if (path in exactMap) return exactMap[path];
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-    if (path.startsWith(oldPrefix)) {
+    if (path === oldPrefix || path.startsWith(`${oldPrefix}/`)) {
       return newPrefix + path.slice(oldPrefix.length);
     }
   }
   return null;
 }
 
-function createRedirectUrl(target: string, request: NextRequest, lang: string) {
-  if (/^https?:\/\//i.test(target)) {
-    return new URL(target);
+/** Resolve legacy chains before issuing a single permanent redirect. */
+function resolveLegacyPath(path: string): string {
+  let target = path;
+  for (let step = 0; step < 10; step++) {
+    const next = applyRedirectMaps(target);
+    if (next === null || next === target) return target;
+    target = next;
   }
+  return target;
+}
 
-  return new URL(`/${lang}${target || '/'}`, request.url);
+function createRedirectUrl(target: string, request: NextRequest, lang: string) {
+  const host = request.headers.get('host')?.split(':')[0];
+  const origin = host === 'doc.fastgpt.cn' || host === 'doc.fastgpt.io'
+    ? getFastGPTDocsOriginForLocale(lang === 'en' ? 'en' : 'zh-CN')
+    : request.url;
+  const url = new URL(`/${lang}${target || '/'}`, origin);
+  url.search = request.nextUrl.search;
+  return url;
 }
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Extract language from pathname
-  let lang = i18n.defaultLanguage;
+  const host = request.headers.get('host')?.split(':')[0];
+  const hostLocale = host === 'doc.fastgpt.cn' ? 'zh-CN' : host === 'doc.fastgpt.io' ? 'en' : undefined;
+  let lang = hostLocale ?? i18n.defaultLanguage;
   let pathWithoutLang = pathname;
 
   for (const language of i18n.languages) {
-    if (pathname.startsWith(`/${language}`)) {
+    if (pathname === `/${language}` || pathname.startsWith(`/${language}/`)) {
       lang = language;
       pathWithoutLang = pathname.slice(`/${language}`.length);
       break;
@@ -135,17 +150,20 @@ export default function middleware(request: NextRequest) {
   // Always 301 to the canonical (no-/docs) path, even if no map entry matches.
   if (pathWithoutLang === '/docs' || pathWithoutLang.startsWith('/docs/')) {
     const stripped = normalizePath(pathWithoutLang).slice('/docs'.length); // '' for /docs, /foo for /docs/foo
-    const mapped = applyRedirectMaps(stripped);
-    const finalPath = mapped ?? stripped;
+    const finalPath = resolveLegacyPath(stripped);
     return NextResponse.redirect(createRedirectUrl(finalPath, request, lang), 301);
   }
 
   // Non-/docs paths still consult the same maps so that direct hits on old
   // canonical paths (e.g. /upgrading) get redirected to their new home.
   const normalizedPath = normalizePath(pathWithoutLang);
-  const mapped = applyRedirectMaps(normalizedPath);
-  if (mapped !== null && mapped !== pathWithoutLang) {
+  const mapped = resolveLegacyPath(normalizedPath);
+  if (mapped !== normalizedPath) {
     return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
+  }
+
+  if (hostLocale && lang !== hostLocale) {
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, lang), 308);
   }
 
   // Build enhanced request headers so server components (e.g. (docs)/layout)
@@ -174,6 +192,10 @@ export default function middleware(request: NextRequest) {
     return response;
   }
 
+  if (hostLocale) {
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, hostLocale), 308);
+  }
+
   // No language prefix — check cookie for user's language preference
   const cookieLocale = request.cookies.get('FD_LOCALE')?.value;
   if (cookieLocale && i18n.languages.includes(cookieLocale)) {
@@ -189,6 +211,6 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|.*\\.svg|.*\\.png|deploy/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };

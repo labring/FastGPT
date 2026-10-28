@@ -1,184 +1,109 @@
 ---
-title: Dataset Collection Tags
-description: Organize dataset collections with structured tags and filter retrieval scope via manual input or variable reference
+title: "Collection Tag System and Scope Filtering"
+description: Master creating knowledge base tags, assigning multidimensional attributes, and filtering retrieval scopes in applications.
 ---
 
-import { Alert } from '@/components/docs/Alert';
-import { Callout } from 'fumadocs-ui/components/callout';
+{/* Preserve incoming bookmarks for reorganized sections. */}
+<span id="collection-filtering-in-dataset-search" />
+<span id="basic-tag-operations" />
+<span id="collection-filtering-in-knowledge-search" />
+<span id="reproduce-the-finance--support-comparison" />
+<span id="legacy-json-conditions" />
 
-<Alert icon="💡" context="info">
-  **Version Note**: Multi-dimensional typed collection tag management and retrieval condition
-  filtering are officially supported starting from FastGPT **v4.17.1**.
-</Alert>
+In complex knowledge bases containing documentation from different departments, product lines, or sensitivity levels, collection tags enable pre-retrieval filtering, isolating distinct business domains cleanly.
 
-Dataset Collection Tags is a **Commercial Edition** feature in FastGPT. You can attach structured metadata tags (such as **Applicable Department**, **Document Category**, **Security Level**, and **Effective Date**) to collections (files/documents) in a dataset. Beyond quick filtering and batch management inside the dataset, you can **precisely narrow the retrieval scope during Dataset Search** in Chat Agents, Simple Apps, and Workflows using **Manual Input** or **Variable Reference**.
+## Tag Architecture Planning
 
-<Callout type="info">
-  All dataset types except **Website Sync (`websiteDataset`)** support collection tags—including
-  General Datasets and third-party datasets (Feishu, Yuque, API File Library, etc.).
-</Callout>
+Organize orthogonal tag dimensions around organizational governance:
+- **Organizational Structure**: `Finance`, `HR`, `Legal`, `Engineering`.
+- **Product Lines**: `Product-A`, `Product-B`, `Enterprise-Cloud`.
+- **Confidentiality Tiers**: `Public`, `Internal`, `Confidential`.
 
-## Why Use Collection Tags?
+![Assign department tags to processed collections](/imgs/optimized/current/tags-collections.png.webp)
 
-In real-world scenarios, a single dataset often holds hundreds of documents spanning multiple departments, versions, or confidentiality levels. Relying solely on vector or full-text search can lead to:
+## Step 1: Create and Manage Tag Definitions
 
-- **Cross-department noise**: An engineer asking about a "project review process" retrieves a marketing campaign review policy.
-- **Outdated document interference**: Legacy policies and new 2026 policies coexist in the dataset, causing outdated rules to be recalled.
-- **Access & scope isolation**: Multiple user groups or external customers share one Q&A assistant, requiring retrieval scope isolation based on user identity.
+1. Open your target knowledge base and click "Tag Management" in the top navigation (requires Write permission on the knowledge base).
+2. Click "+ Add Tag", enter a tag name (up to 20 characters), and select a tag attribute (the attribute type is fixed once created, while the tag name can be renamed at any time; deleting a tag removes its bound values from all collections in the knowledge base):
 
-With Collection Tags, FastGPT first narrows down candidate collections through **metadata filtering**, and then runs semantic and full-text search strictly within those matched files—significantly improving accuracy and data governance.
+| Tag Attribute | Use Case | Assignment and Limits | Example |
+| :--- | :--- | :--- | :--- |
+| **Option** | Fixed categories or one-to-many classifications | Multiple options per file (up to 64 options per file, up to 256 characters per option) | `Department` (`Finance`, `Support`, `HR`) |
+| **Number** | Quantitative indicators compared by value or range | One numeric value per file (integers or decimals) | `Confidentiality` (`1`, `2`, `3`) |
+| **Date** | Time-sensitive document milestones | One date-time value per file (accurate to `YYYY-MM-DD HH:mm`) | `EffectiveDate` (`2026-01-01 09:00`) |
 
----
-
-## Step 1: Plan and Manage Tags
-
-Open your dataset detail page and click the **Tag Management** button in the top-right corner of the Collection list (requires dataset write permission).
-
-![Tag Management](/imgs/collection-tags-manage.png)
-
-### 1. Choosing Tag Attributes
-
-Click **+ Add Tag** in the bottom-left corner, enter a tag name (up to 20 characters), and choose a tag attribute. FastGPT supports 3 tag attributes:
-
-| Tag Attribute | Best Used For                                                    | Value Format & Limits                                                                  | Examples                                                                      |
-| :------------ | :--------------------------------------------------------------- | :------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
-| **Options**   | Fixed categories or **one-to-many** labels (most common)         | Select multiple options per file (up to 64 options per file, max 256 chars per option) | `Applicable Dept` (All, R&D, Finance)<br/>`Doc Category` (HR Policy, InfoSec) |
-| **Number**    | Quantifiable metrics requiring **numeric or range comparisons**  | Single numeric value per file (integer or decimal)                                     | `Security Level` (`1`, `2`, `3`)<br/>`Grade` (`5`, `6`)                       |
-| **Date**      | Time-sensitive documents requiring **chronological comparisons** | Single date & time per file (`YYYY-MM-DD HH:mm`)                                       | `Effective Date` (`2026-01-01 09:00`)                                         |
-
-<Callout type="warn">
-  - Once a tag is created, its **attribute cannot be changed**, though its name can be renamed at
-  any time. - Deleting a tag removes that tag and its values from all collections in the dataset.
-</Callout>
-
-### 2. Preset and Maintain Options
-
-For **Options** tags, click the gear icon on the right side of the row to open **Option Management**:
-
-![Option Management](/imgs/collection-tags-options.png)
-
-- **Add Preset Options**: Pre-populate standard category values (e.g., department names) so team members can tag files consistently.
-- **Rename Options**: Renaming an option **automatically updates** all collections currently using that option—no manual re-tagging required.
-- **Delete Options**: Deleting an option automatically removes that option value from any collections that had it selected.
-
----
+3. **Option management**: Click the settings icon (`⚙`) on an Option tag row to preset standard option values, rename options (automatically updating all collections assigned that option), or delete options (removing that option value from bound collections). When tagging a file, you can also type a new option name directly and press Enter to create and bind it immediately.
+4. **Shared tag behavior across multiple knowledge bases**: When an application or workflow attaches multiple knowledge bases, the custom tag dropdown displays only tags whose **names and attribute types match exactly** across all selected knowledge bases (the available option values represent the union of options from each knowledge base).
+5. **Legacy tag upgrade**: When upgrading from older versions, legacy string tags are automatically migrated into an Option tag named `default_tag`, preserving all existing tagging associations. You can rename `default_tag` to your preferred business name in Tag Management.
+6. **Rename impact**: Filter conditions match on tag names and option text. When renaming a tag or option, update saved filter configurations in related applications and workflows.
 
 ## Step 2: Assign Tags to Collections
 
-Once your tags are defined, you can assign tag values to collections in three ways:
+1. In the knowledge base collection list, select the target file or folder collection.
+2. Click "Edit Tags" from the collection action menu.
+3. Check the tags applicable to this collection, such as tagging `travel-policy.txt` with `Department: Finance`.
+4. Click "Save". Retrieval uses collection metadata to select eligible chunks.
 
-### 1. Set Tags on a Single Collection
+![Assign Finance tag to travel policy collection](/imgs/optimized/current/tags-finance.png.webp)
 
-Open the **Tag Settings** modal on the target file in the collection list:
+5. **Batch modify tags**: Select multiple files in the collection list and click "Batch Edit Tags" in the bottom floating action bar:
+   - **Batch Add Tags**: Option tags support **Append** (default, keeping existing options on each file and merging the newly selected ones) or **Overwrite** (replacing existing options with the new selection). Number and Date tags store a single value per file and overwrite the existing value directly.
+   - **Batch Remove Tags**: The dialog aggregates all tags currently bound to the selected files. For Option tags, click the delete icon to remove the entire tag, or expand the tag to select and remove specific option values while preserving the rest.
+6. **Filter collections by tag in the list**: Click the "Tags | All" filter button above the collection list header, choose a tag name in the left column (the badge shows the count of selected values), and search or check values in the right column:
+   - **Multiple values within the same tag**: Combined with **OR** logic; files matching any selected value appear.
+   - **Between different tags**: Combined with **AND** logic; only files satisfying all tag conditions appear.
+7. **Import and update via API**: When creating or updating collections through OpenAPI, the request body accepts a structured `tags` array (e.g., `[{"tag": "Department", "value": ["Finance"]}, {"tag": "Confidentiality", "value": 1}, {"tag": "EffectiveDate", "value": 1767229200000}]`), while retaining backward compatibility with string arrays. If an imported tag name does not yet exist in the knowledge base, the system automatically creates the tag definition based on the `value` data shape (string arrays become Option tags, numbers become Number tags).
 
-|                                                                             |                                                                  |
-| --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| ![Open Single Collection Tag Settings](/imgs/collection-tags-set-entry.png) | ![Single Collection Tag Settings](/imgs/collection-tags-set.png) |
+## Step 3: Configure Tag Filtering in Applications
 
-- Click **+ Add Tag** to attach tags to the file and select options, enter a number, or pick a date.
-- **Quick Inline Option Creation**: When assigning values to an **Options** tag, you can type a new option name directly into the input box and press Enter to create and bind the option on the fly.
-- Need a brand-new tag? Click **Tag Management** at the bottom-left of the modal to jump straight to tag creation.
+By scoping searches with tags, applications isolate domain-specific queries accurately:
 
-### 2. Batch Modify Tags
+### 1. Tag Filtering in Chat Agents
 
-To tag or clean up multiple files at once, select the target files in the collection list and click **Batch Modify Tags** in the bottom floating bar:
+In the application editor's Knowledge Base section, click **Parameters** to open the Knowledge Base Search Configuration dialog, then switch to the **Tag Filter** tab. Add a condition row and select the tag, operator, value source, and comparison value (e.g., `Department → contains → Finance`). Combine conditions with AND or OR logic, and provide variable values matching the tag type.
 
-![Batch Modify Tags](/imgs/collection-tags-batch.png)
+![Finance filter admits only travel policy citations](/imgs/optimized/current/tags-finance-result.png.webp)
 
-The batch modal provides two tabs:
+### 2. Dynamic Tag Routing in Workflows
 
-- **Batch Add Tags**:
-  - **Options attribute tags**: Choose between **Append (default)**—which keeps each file's existing options and merges the new ones—or **Overwrite**—which replaces existing options on that tag with the newly selected ones.
-  - **Number / Date attribute tags**: Since each file holds a single value for these attributes, batch adding **overwrites the existing value**.
-- **Batch Remove Tags**:
-  - Aggregates all tags currently bound to the selected files.
-  - For **Options** tags, you can either remove the entire tag or expand the row to **remove only specific option values** while keeping the rest.
+In the workflow canvas, locate the **Dataset Search** node and enable **Tag Filter** to expand the condition builder. Pass a business category from a question classifier into the search node's filter to route topic-specific queries. User identity must come from a trusted backend authentication flow. Enforce sensitive-document access through member authentication and collection permissions; tags describe the retrieval scope.
 
-### 3. Set Tags via OpenAPI When Importing or Updating Collections
+![Support filter admits only customer support material](/imgs/optimized/current/tags-support-result.png.webp)
 
-When calling OpenAPI endpoints to create or update a collection, pass the `tags` field directly in the request body:
+### 3. Filter Combination Logic (Custom Tags + System Tags)
 
-```json
-{
-  "datasetId": "69ddb01e2d241386ca47adbe",
-  "name": "Employee-Attendance-Policy-2026.pdf",
-  "tags": [
-    { "tag": "Applicable Dept", "value": ["All", "HR"] },
-    { "tag": "Security Level", "value": 1 },
-    { "tag": "Effective Date", "value": 1767229200000 }
-  ]
-}
-```
+The tag filter panel is divided into **Custom Tags** and **System Tags**, joined by a fixed **`AND` (all must match)** relationship between the two sections:
 
-- If a tag name does not yet exist in the dataset, FastGPT automatically creates it based on the data format of `value` (string array → `Options`, number → `Number`).
+1. **Custom Tags**: Click "+ Add Filter Condition" to choose a custom tag, comparison operator, and target value (via manual input or variable reference). When multiple custom tag conditions exist, toggle the `AND / OR` button in the upper-left corner (`AND` requires all conditions to match; `OR` matches when any condition is met).
+2. **System Tags**: Filter by built-in collection attributes, with multiple system tag conditions joined by fixed `AND` logic:
+   - **Creation Time**: Filter by when the file was created in the knowledge base using `greater than or equal` (`>=`) and `less than or equal` (`<=`).
+   - **Collection ID**: Fixed to the `in` operator, accepting a variable reference with collection IDs or folder IDs (passing a folder ID recursively includes all child files under that folder).
 
----
+### 4. Supported Operators and Matching Rules
 
-## Step 3: Filter Collections by Tag in the File List
+| Tag Attribute | Supported Operators | Matching Rules |
+| :--- | :--- | :--- |
+| **Option** | `equals`, `not equals`<br/>`contains`, `does not contain`<br/>`in`, `not in`<br/>`is empty`, `is not empty` | - **equals / not equals**: The collection's option set matches / does not match the target option set exactly (order ignored)<br/>- **contains / does not contain**: The collection's options contain all target options / do not contain all target options<br/>- **in / not in**: The collection's options intersect with target options (any match satisfies) / have no intersection |
+| **Number** | `equals`, `not equals`<br/>`greater than`, `less than`<br/>`greater than or equal`, `less than or equal`<br/>`is empty`, `is not empty` | Compared by numeric value. Variable citations accept numbers or numeric strings |
+| **Date** | `equals`, `not equals`<br/>`after`, `before`<br/>`is empty`, `is not empty` | Compared by chronological order. Variable citations accept millisecond timestamps or standard date strings |
 
-Click the **Tag | All** filter button above the collection table header to filter files by tag:
+### 5. Untagged Collection (Empty Value) Matching
 
-![Filter Collections by Tag in List](/imgs/collection-tags-list-filter.png)
+When collections in a knowledge base have not been assigned a particular tag:
+- **Positive matching** (`equals`, `contains`, `in`, `greater than`, `less than`, `greater than or equal`, `less than or equal`, `after`, `before`, `is not empty`): Untagged collections are evaluated as not matching and are not retrieved.
+- **Negative and empty matching** (`is empty`, `not equals`, `does not contain`, `not in`): Untagged collections are evaluated as matching and participate in retrieval.
 
-- Select a tag in the **left column** (the badge shows how many values are selected under that tag), and search/check specific values in the **right column**.
-- **Filtering Logic**:
-  - **Multiple values within the same tag**: Combined with **`OR`** (matches files containing _any_ of the checked values).
-  - **Across different tags**: Combined with **`AND`** (matches files satisfying _all_ selected tag filters simultaneously).
+### 6. Passing JSON Filter Expressions via Variable Reference
 
----
-
-## Step 4: Filter by Tags During Dataset Search
-
-When building an application or workflow, enabling **Tag Filter** restricts retrieval to collections that satisfy your filter rules.
-
-### 1. Where to Configure
-
-- **Workflow**: On the **Dataset Search** node, click **Enable** in the top-right corner of the **Tag Filter** section.
-  ![Workflow Dataset Search Tag Filter](/imgs/collection-tags-workflow-filter.png)
-- **Chat Agent / Simple App**: In the **Dataset** section of the app configuration page, click **Params** to open the **Dataset Search Configuration** modal, and switch to the **Tag Filter** tab.
-  ![Chat Agent Dataset Search Tag Filter](/imgs/collection-tags-agent-filter.png)
-
-### 2. Condition Structure (Custom Tags + System Tags)
-
-The filter builder is divided into two sections, combined with a fixed **`AND`** relationship between them:
-
-1. **Custom Tags**:
-   - Click **+ Add Filter Condition** to select a custom tag, comparison operator, and target value (supports switching between **Manual Input** and **Variable Reference**).
-   - When multiple custom tag conditions exist, click the **`AND / OR`** toggle in the top-left corner of the section to switch whether collections must match **all (`AND`)** or **any (`OR`)** of the custom tag conditions.
-2. **System Tags**:
-   - Filter by built-in collection attributes (multiple system tag conditions are always combined with **`AND`**):
-     - **Creation Time**: Filter by the file's creation time in the dataset using `>=` or `<=`.
-     - **Collection ID**: Uses the `in` operator with a referenced variable containing allowed collection IDs (or folder IDs, which automatically expand to include all descendant collections).
-
-### 3. Supported Operators by Tag Attribute
-
-| Tag Attribute | Supported Operators                                                                                     | Behavior & Matching Rules                                                                                                                                                                                                                                                                                                                         |
-| :------------ | :------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Options**   | `Equals`, `Not Equals`<br/>`Contains`, `Not Contains`<br/>`In`, `Not In`<br/>`Is Empty`, `Is Not Empty` | - **Equals / Not Equals**: The file's option set is identical / not identical to the target set (order-insensitive).<br/>- **Contains / Not Contains**: The file's options include all target options / do not include all target options.<br/>- **In / Not In**: The file's options overlap with at least one target option / have zero overlap. |
-| **Number**    | `Equals`, `Not Equals`<br/>`>`, `<`, `>=`, `<=`<br/>`Is Empty`, `Is Not Empty`                          | Standard numeric comparison. Variable references accept numbers or numeric strings.                                                                                                                                                                                                                                                               |
-| **Date**      | `Equals`, `Not Equals`<br/>`After`, `Before`<br/>`Is Empty`, `Is Not Empty`                             | Chronological comparison. Variable references accept millisecond timestamps or date strings (e.g., `2026-01-01 09:00`).                                                                                                                                                                                                                           |
-
-<Callout type="info" title="How are untagged collections handled?">
-  If a collection in the dataset **has not been assigned a given tag**: - **Positive operators**
-  (`Equals`, `Contains`, `In`, `>`, `<`, `>=`, `<=`, `After`, `Before`, `Is Not Empty`) evaluate to
-  **false**—the untagged collection will **not** be recalled. - **Negative / empty operators** (`Is
-  Empty`, `Not Equals`, `Not Contains`, `Not In`) evaluate to **true**—the untagged collection
-  **will** be included in retrieval.
-</Callout>
-
----
-
-## Advanced: Passing a Complete JSON Filter Expression via Variable Reference
-
-On the Workflow **Dataset Search** node, if you need to construct complex filter expressions programmatically (for example, via an upstream Code Sandbox node), switch the input mode next to the **Tag Filter** header from `Manual Input` to **Variable Reference** and pass a JSON object or JSON string:
+In the workflow Dataset Search node, switch the input mode from manual input to **Variable Reference** to pass a complete JSON filter expression or string:
 
 ```json
 {
   "tags": {
     "$and": [
-      { "Applicable Dept": { "$in": ["All", "R&D"] } },
-      { "Security Level": { "$lte": 2 } },
-      { "Effective Date": { "$gt": "2026-01-01 00:00" } }
+      { "Department": { "$in": ["Finance", "Support"] } },
+      { "Confidentiality": { "$lte": 2 } },
+      { "EffectiveDate": { "$gt": "2026-01-01 00:00" } }
     ]
   },
   "createTime": {
@@ -189,41 +114,44 @@ On the Workflow **Dataset Search** node, if you need to construct complex filter
 }
 ```
 
-### JSON Fields and Operators Reference
+Top-level fields are joined by `AND` logic:
+- `tags`: Custom tag filter conditions containing an array of `$and` (all must match) or `$or` (any can match) rules.
+- `createTime`: Collection creation time bounds supporting `$gte` (greater than or equal) and `$lte` (less than or equal).
+- `collectionIds`: Array of collection IDs (or folder IDs, which recursively include sub-files) to restrict the search.
 
-**1. Top-Level Fields** (always combined with `AND`)
-
-| Field           | Type       | Description                                                                                                        |
-| :-------------- | :--------- | :----------------------------------------------------------------------------------------------------------------- |
-| `tags`          | `Object`   | Custom tag filter conditions, containing either `$and` (match all) or `$or` (match any) array of condition objects |
-| `createTime`    | `Object`   | File creation time range (`$gte`, `$lte`), accepting millisecond timestamps or date strings                        |
-| `collectionIds` | `string[]` | Array of allowed collection IDs or folder IDs                                                                      |
-
-**2. Custom Tag Operators**
-
-| Tag Attribute     | Operator Keys                | Meaning                         | Example                                           |
-| :---------------- | :--------------------------- | :------------------------------ | :------------------------------------------------ |
-| **Options**       | `$is` / `$isNot`             | Equals / Not Equals             | `{"Applicable Dept": {"$is": ["All", "R&D"]}}`    |
-| **Options**       | `$contains` / `$notContains` | Contains / Not Contains         | `{"Applicable Dept": {"$contains": ["R&D"]}}`     |
-| **Options**       | `$in` / `$notIn`             | In / Not In                     | `{"Applicable Dept": {"$in": ["All", "R&D"]}}`    |
-| **Options**       | `$empty` / `$notEmpty`       | Is Empty / Is Not Empty         | `{"Applicable Dept": {"$empty": true}}`           |
-| **Number / Date** | `$eq` / `$ne`                | Equals / Not Equals             | `{"Security Level": {"$eq": 1}}`                  |
-| **Number / Date** | `$gt` / `$lt`                | Greater (After) / Less (Before) | `{"Effective Date": {"$gt": "2026-01-01 00:00"}}` |
-| **Number**        | `$gte` / `$lte`              | `>=` / `<=`                     | `{"Security Level": {"$lte": 2}}`                 |
-| **Number / Date** | `$empty` / `$notEmpty`       | Is Empty / Is Not Empty         | `{"Security Level": {"$notEmpty": true}}`         |
-
----
+| Tag Attribute | JSON Operator | Meaning | Example |
+| :--- | :--- | :--- | :--- |
+| **Option** | `$is` / `$isNot` | Equals / Not equals | `{"Department": {"$is": ["Finance", "Support"]}}` |
+| **Option** | `$contains` / `$notContains` | Contains / Does not contain | `{"Department": {"$contains": ["Finance"]}}` |
+| **Option** | `$in` / `$notIn` | In / Not in | `{"Department": {"$in": ["Finance", "Support"]}}` |
+| **Option** | `$empty` / `$notEmpty` | Is empty / Is not empty | `{"Department": {"$empty": true}}` |
+| **Number / Date** | `$eq` / `$ne` | Equals / Not equals | `{"Confidentiality": {"$eq": 1}}` |
+| **Number / Date** | `$gt` / `$lt` | Greater than (after) / Less than (before) | `{"EffectiveDate": {"$gt": "2026-01-01 00:00"}}` |
+| **Number** | `$gte` / `$lte` | Greater than or equal / Less than or equal | `{"Confidentiality": {"$lte": 2}}` |
+| **Number / Date** | `$empty` / `$notEmpty` | Is empty / Is not empty | `{"Confidentiality": {"$notEmpty": true}}` |
 
 ## FAQ
 
 ### 1. Why is a tag missing from the Tag Filter dropdown?
 
-When an app or workflow node has **multiple datasets associated**, the **Custom Tags** dropdown only displays tags that share the **exact same tag name and tag attribute across all selected datasets** (for `Options` attribute tags, selectable values are the union of options across the datasets). Check that all associated datasets have defined the tag with the same name and attribute.
+When an application or workflow node attaches multiple knowledge bases, the Custom Tag dropdown lists only shared tags whose **names and attribute types match across every selected knowledge base**. Confirm that each attached knowledge base defines the tag with the same name and attribute type.
 
-### 2. What happens to legacy string tags after upgrading from an older version?
+### 2. Where did my legacy string tags go after upgrading?
 
-During upgrade, legacy string tags are automatically migrated into an **Options** attribute tag named `default_tag`, preserving all existing file-tag associations. You can rename `default_tag` in **Tag Management** at any time.
+During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations. Rename `default_tag` in Tag Management to your preferred business label (such as `Category`).
 
-### 3. Does renaming a tag or option affect existing Tag Filter rules?
+### 3. Does renaming a tag or option affect existing Tag Filters?
 
-Tag Filter rules match by **tag name** and **option text**. If you rename a tag or an option in **Tag Management**, remember to update any apps or workflows that reference that tag name or option value in their Tag Filter rules.
+Tag Filters match by tag name and option text. After renaming a tag or option in Tag Management, update the corresponding filter conditions in your applications and workflows.
+
+## Acceptance Checklist
+
+- [ ] Verify collection tag names, types, and assigned values.
+- [ ] Applications configured with a tag filter return chunks belonging exclusively to that tag.
+- [ ] Switch between Finance and Support filters, then verify the returned sources and the application's handling of insufficient evidence.
+
+## Next Steps
+
+- Access permissions: Study [Collection Permission Control](/en/guide/dataset/collection_permission).
+- Connect to chat models: Follow [Connecting Knowledge Bases to Applications](/en/guide/dataset/connect-application).
+- Maintain assets: Review [Data Maintenance and Incremental Updates](/en/guide/dataset/update-data).

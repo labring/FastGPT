@@ -1,0 +1,19 @@
+---
+title: 历史 API 参数与迁移
+description: 定位旧版手写参数，并迁移到团队级密钥、显式应用 ID 与生成参考。
+---
+
+这些归档保存生成参考迁移前的手写文档。每个旧端点的实际可用性按部署版本核对。
+
+- [应用历史参数](/zh-CN/openapi/legacy/app)
+- [对话历史参数](/zh-CN/openapi/legacy/chat)
+- [知识库历史参数](/zh-CN/openapi/legacy/dataset)
+
+## 迁移检查
+
+1. 在部署实例的 `/apidoc/systemopenapi` 查找所用接口，核对方法、路径、鉴权与参数。
+2. 为当前成员创建团队级 API Key；调用应用时显式提供 `body.appId`。
+3. 兼容只能配置密钥的客户端时可使用 `<apiKey>-<appId>`。应用选择优先级为请求体、Bearer 后缀、旧密钥绑定。
+4. 用固定输入验证结果、会话归属及错误处理，再迁移业务流量。
+
+旧应用绑定密钥可以继续提供兼容的应用选择来源。身份代理需要启用该能力的团队级凭证，详见[身份代理](/zh-CN/openapi/identity-proxy)。

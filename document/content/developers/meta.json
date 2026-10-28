@@ -1,0 +1,21 @@
+{
+  "title": "开发者",
+  "root": true,
+  "pages": [
+    "index",
+    "---API 入门---",
+    "../openapi/intro",
+    "../openapi/identity-proxy",
+    "../openapi/interactive-and-variables",
+    "---集成任务---",
+    "../openapi/app",
+    "../openapi/chat",
+    "../openapi/dataset",
+    "../guide/dataset/third-party/third_dataset",
+    "---扩展开发---",
+    "../plugin",
+    "../guide/build/skill/development",
+    "---历史参考---",
+    "../openapi/legacy"
+  ]
+}

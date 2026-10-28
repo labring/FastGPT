@@ -9,16 +9,29 @@ description: FastGPT Conditional node overview
 - Has external inputs
 - Trigger-based execution
 
-![Conditional node routing by Dataset citation count](/imgs/judgement1.png)
+![Features — interface example](/imgs/optimized/current/node-condition.png.webp)
 
 ## Function
 
 Performs an `IF` evaluation on any variable. If the condition is met, the `IF` branch executes; otherwise the `ELSE` branch runs.
 
-In the example above, if the "Dataset Citation" variable has a length of 0, the `IF` branch executes; otherwise the `ELSE` branch runs.
+For example, after configuring the condition, if the "Dataset Citation" variable has a length of 0, the `IF` branch executes; otherwise the `ELSE` branch runs.
 
 You can add more conditions and branches, following the same logic as `IF` statements in programming languages.
 
 ## Use Cases
 
 Common scenarios include: having the LLM make a judgment and then output fixed content, or checking the LLM's response to decide whether to trigger downstream nodes.
+
+## Configuration and branch order
+
+For each condition, select a variable, an operator supported by its type, and a fixed comparison value or variable reference. Use AND within a branch to require all conditions, or OR to require at least one. The system checks branches in order and selects the first match. ELSE runs when all conditions fail. The string **Judgment result** identifies the selected branch.
+
+## Example: handle empty retrieval
+
+1. Connect Dataset search to Conditional.
+2. In the first branch, reference the citation output, choose **Length equals**, and enter `0`.
+3. Connect that branch to Specified Reply containing `Please provide more detail.` Connect ELSE to AI Chat configured with the retrieved citations.
+4. Test one query returning chunks and one returning an empty array. Inspect judgment result and downstream execution in run details.
+
+For unexpected routing, inspect actual variable types and values, then operators and branch order. Numeric comparisons need values convertible to numbers; regular expressions need valid syntax. Continue with [Dataset search](/en/guide/build/workflow/nodes/dataset_search).

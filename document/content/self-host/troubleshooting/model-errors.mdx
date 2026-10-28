@@ -8,10 +8,10 @@ description: FastGPT 私有部署模型问题排查
 
 1. 私有部署模型，先确认部署的模型是否正常。
 2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
-3. 通过 CURL 请求，请求 OneAPI 去测试模型是否正常。
+3. 在模型提供商页面测试 AI Proxy 渠道；若渠道后方连接了 OneAPI 等中转，再分别检查该中转。
 4. 在 FastGPT 中使用该模型进行测试。
 
-下面是几个测试 CURL 示例：
+下面示例直接测试上游服务。将地址、模型与凭证替换为当前渠道支持的值；记录错误时移除凭证。FastGPT 渠道配置见[模型配置](/zh-CN/self-host/config/model/intro)。
 
 <Tabs items={['LLM模型','Embedding模型','Rerank 模型','TTS 模型','语音识别模型']}>
   <Tab value="LLM模型">
@@ -53,9 +53,9 @@ curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "bge-rerank-m3",
-  "query": "导演是谁",
+  "query": "Who is the director?",
   "documents": [
-    "你是谁？\n我是电影《铃芽之旅》助手"
+    "Who are you?\nI am an assistant for the film Suzume."
   ]
 }'
 ```
@@ -88,11 +88,7 @@ curl https://api.openai.com/v1/audio/transcriptions \
 
 ### (2)报错 - 模型响应为空/模型报错
 
-该错误是由于 stream 模式下，oneapi 直接结束了流请求，并且未返回任何内容导致。
-
-4.8.10 版本新增了错误日志，报错时，会在日志中打印出实际发送的 Body 参数，可以复制该参数后，通过 curl 向 oneapi 发起请求测试。
-
-由于 oneapi 在 stream 模式下，无法正确捕获错误，有时候可以设置成 `stream=false` 来获取到精确的错误。
+空响应可能来自上游拒绝请求、参数不兼容或事件流提前结束。检查 FastGPT 模型调用日志，核对实际请求与上游返回。分别验证 JSON 与流式模式；`stream: false` 有时能返回更完整的错误信息。
 
 可能的报错问题：
 
@@ -115,7 +111,7 @@ curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
   "messages": [
     {
       "role": "user",
-      "content": " 你是饿"
+      "content": "Hello"
     }
   ]
 }'
@@ -124,12 +120,14 @@ curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
 
 ### (3)如何测试模型是否支持工具调用
 
-需要模型提供商和 oneapi 同时支持工具调用才可使用，测试方法如下：
+模型和所选渠道均需支持工具调用。先验证普通对话，再验证以下两轮协议。示例中的地址代表支持 OpenAI Chat Completions 的模型服务或中转地址。
 
-##### 1. 通过 `curl` 向 `oneapi` 发起第一轮 stream 模式的 tool 测试。
+<span id="1-通过-curl-向-oneapi-发起第一轮-stream-模式的-tool-测试" />
+
+##### 1. 通过 `curl` 向模型渠道 发起第一轮 stream 模式的 tool 测试。
 
 ```bash
-curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -140,15 +138,15 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
   "messages": [
     {
       "role": "user",
-      "content": "几点了"
+      "content": "What time is it?"
     }
   ],
   "tools": [
     {
       "type": "function",
       "function": {
-        "name": "hCVbIY",
-        "description": "获取用户当前时区的时间。",
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -164,42 +162,35 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 
 ##### 2. 检查响应参数
 
-如果能正常调用工具，会返回对应 `tool_calls` 参数。
+模型决定调用工具时，流式响应中的 `choices[0].delta.tool_calls` 提供调用信息。按索引合并分片中的函数名和参数 JSON，保存实际 `id`。下面是完整片段形状示例：
 
 ```json
 {
-    "id": "chatcmpl-A7kwo1rZ3OHYSeIFgfWYxu8X2koN3",
-    "object": "chat.completion.chunk",
-    "created": 1726412126,
-    "model": "gpt-5",
-    "system_fingerprint": "fp_483d39d857",
-    "choices": [
-        {
-            "index": 0,
-            "id": "call_0n24eiFk8OUyIyrdEbLdirU7",
-            "type": "function",
-            "function": {
-              "name": "mEYIcFl84rYC",
-              "arguments": ""
-            }
-          }
-        ],
-        "refusal": null
-      },
-      "logprobs": null,
-      "finish_reason": null
-    }
-  ],
-  "usage": null
+  "id": "example-chat-id",
+  "object": "chat.completion.chunk",
+  "choices": [{
+    "index": 0,
+    "delta": {
+      "tool_calls": [{
+        "index": 0,
+        "id": "example-call-id",
+        "type": "function",
+        "function": { "name": "get_time", "arguments": "{}" }
+      }]
+    },
+    "finish_reason": null
+  }]
 }
 ```
 
-##### 3. 通过 `curl` 向 `oneapi` 发起第二轮 stream 模式的 tool 测试。
+<span id="3-通过-curl-向-oneapi-发起第二轮-stream-模式的-tool-测试" />
 
-第二轮请求是把工具结果发送给模型。发起后会得到模型回答的结果。
+##### 3. 通过 `curl` 向模型渠道 发起第二轮 stream 模式的 tool 测试。
+
+第二轮把工具结果发送给模型。使用第一轮实际返回的调用 ID、函数名与参数；`example-call-id` 是占位符。预期响应会结合工具结果继续回答；模型也可能继续请求工具。
 
 ```bash
-curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
+curl --location --request POST 'https://model.example.com/v1/chat/completions' \
 --header 'Authorization: Bearer sk-xxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -210,25 +201,25 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
   "messages": [
     {
       "role": "user",
-      "content": "几点了"
+      "content": "What time is it?"
     },
     {
       "role": "assistant",
       "tool_calls": [
         {
-          "id": "kDia9S19c4RO",
+          "id": "example-call-id",
           "type": "function",
           "function": {
-            "name": "hCVbIY",
+            "name": "get_time",
             "arguments": "{}"
           }
         }
       ]
     },
     {
-      "tool_call_id": "kDia9S19c4RO",
+      "tool_call_id": "example-call-id",
       "role": "tool",
-      "name": "hCVbIY",
+      "name": "get_time",
       "content": "{\n  \"time\": \"2024-09-14 22:59:21 Sunday\"\n}"
     }
   ],
@@ -236,8 +227,8 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
     {
       "type": "function",
       "function": {
-        "name": "hCVbIY",
-        "description": "获取用户当前时区的时间。",
+        "name": "get_time",
+        "description": "Get the current time in the user timezone.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -254,22 +245,22 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 
 ### (4)向量检索得分大于 1
 
-由于模型没有归一化导致的。目前仅支持归一化的模型。
+核对向量模型的归一化设置、向量后端使用的相似度度量及是否启用重排。分数含义随后端和模型变化；用固定样本确认排序与阈值，参见[检索参数](/zh-CN/guide/dataset/dataset_engine)。
 
 ---
 
 ### (5) 当前分组上游负载已饱和，请稍后再试
 
-如果在日志或请求中遇到此错误（如 `request id:xxx`），这通常是 OneAPI 渠道的问题，可以换个模型使用或者换一家中转站。
+该报错常来自 OneAPI 等上游中转。检查渠道并发、限流、额度与服务健康；记录请求标识后联系相应服务管理员。切换模型前验证其能力和应用行为。
 
 ---
 
 ### (6) 使用API时在日志中报错 Connection Error 
 
-大概率是 API Key 填写了 OpenAI 的地址，但是部署的服务器在国内，不能访问海外的 API。可以使用中转或者反代的手段解决访问不到的问题。
+从实际发起请求的服务检查 DNS、端口、TLS、代理地址及网络策略，再核对凭证。分别测试上游和 AI Proxy 渠道，确定失败发生在哪一跳。
 
 ---
 
 ### (7) 开启图片索引报 400
 
-需在 `Admin` -> `系统配置` 中正确配置 OCR 模型。
+检查返回的具体错误以及图片处理所需的视觉/OCR 能力、格式、模型配置和额度。按当前部署的系统配置与导入模式确认相应服务可用。

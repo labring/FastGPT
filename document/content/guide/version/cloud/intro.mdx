@@ -11,3 +11,14 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - 国际版：<FastGPTLink campaign="docs_cloud_intro" content="cloud_entry_io" site="io">{'https://fastgpt.io'}</FastGPTLink>
 
 请按需注册，两个版本账号不互通。
+
+## 云服务核心优势与适用场景
+
+FastGPT 官方云服务提供免运维的全托管企业级 AI 基础设施，注册登录即可使用预置的主流对话模型、向量模型、重排模型、PDF 增强解析服务与 Agent 虚拟机沙箱。
+
+| 对比维度 | 中国大陆云服务（`fastgpt.cn`） | 国际云服务（`fastgpt.io`） | 私有化自部署（社区版 / 商业版） |
+| --- | --- | --- | --- |
+| **账号与数据归属** | 独立账号体系，中国境内云基础设施托管 | 独立账号体系，海外云基础设施托管 | 部署在自有服务器或私有云，数据完全自主可控 |
+| **模型与算力接入** | 内置主流大模型与向量/重排服务，按 AI 积分即用即付 | 内置国际与主流模型服务，按 AI 积分计费 | 由运维团队通过 [AIProxy / OneAPI](/zh-CN/self-host/config/model/intro) 或本地 Ollama 自行接入 |
+| **运维与升级成本** | 官方团队负责高可用保障、弹性扩容与平滑升级 | 官方团队负责全托管运维与版本迭代 | 需自行维护 MongoDB、向量库、S3、沙箱及版本升级 |
+| **计费与开票** | 支持人民币订阅、资源包扩容与增值税发票开具；详见[用量与账单](/zh-CN/guide/workspace/usage-and-billing) | 支持国际主流支付方式订阅与账单下载 | 社区版免费开源；企业级能力按[商业版授权](/zh-CN/guide/version/commercial)订阅 |

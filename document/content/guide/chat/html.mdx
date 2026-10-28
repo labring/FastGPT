@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 |        动态交互图表 (ECharts)        |        数学公式排版 (KaTeX)        |       流程图与状态图 (Mermaid)       |
 | :----------------------------------: | :--------------------------------: | :----------------------------------: |
-| ![](/imgs/chat_markdown_echarts.png) | ![](/imgs/chat_markdown_katex.png) | ![](/imgs/chat_markdown_mermaid.png) |
+| ![对话框 HTML 渲染：界面示例](/imgs/optimized/current/rich-echarts.png.webp) | ![对话框 HTML 渲染：界面示例](/imgs/optimized/current/rich-math.png.webp) | ![对话框 HTML 渲染：界面示例](/imgs/optimized/current/rich-mermaid.png.webp) |
 
 FastGPT 对话框全面支持受控原生 HTML 标签与多款自定义增强组件。系统在保障运行安全的前提下，使大模型能够直接输出图表、音视频、数学公式、折叠块及多样化的富文本排版，呈现更生动的交互体验。
 
@@ -26,7 +26,7 @@ FastGPT 对话框全面支持受控原生 HTML 标签与多款自定义增强组
 FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 
 - **废弃 Iframe 隔离**：HTML 标签直接在主 DOM 树中受控解析，自适应上下文容器排版与暗黑模式。
-- **原生多媒体跨源流式播放**：废除全量下载逻辑，全面回归 HTML5 原生播放机制。支持 HTTP Range 分段请求，大体积音视频可边缓冲边播放、自由拖动进度条，且不受第三方服务器 CORS 跨域限制。
+- **原生多媒体跨源流式播放**：废除全量下载逻辑，全面回归 HTML5 原生播放机制。支持 HTTP Range 分段请求，大体积音视频可边缓冲边播放、自由拖动进度条，实际播放和字幕加载仍取决于媒体服务的跨域、Range、鉴权与浏览器策略。
 - **平滑流式输出保护**：大模型逐字打字输出时，系统内置未闭合标签拦截机制（Streaming Guard），防止半截 HTML 标签造成界面频繁突变或提前触发无效网络请求。
 
 #### 1.2 安全机制说明
@@ -71,10 +71,10 @@ FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 对话框内置专业代码高亮渲染器与图片画廊预览：
 
 - **语法高亮代码块**：支持数十种主流编程语言的语法解析，顶部展示语言标识，支持一键复制代码内容、行号高亮与横向平滑滚动。
-- **图片画廊**：支持标准 Markdown 图片语法 `![]()` 及 HTML `<img>` 标签。集成全屏图片预览画廊（PhotoView），支持手势缩放、滚轮放大、多角度旋转与多图快速翻页切换。
+- **图片画廊**：支持标准 Markdown 图片语法 `![3.1 语法高亮代码块与图片画廊 (CodeBlock & Image PhotoView)：界面示例]()` 及 HTML `<img>` 标签。集成全屏图片预览画廊（PhotoView），支持手势缩放、滚轮放大、多角度旋转与多图快速翻页切换。
 - **效果演示**：
 
-![](/imgs/chat_markdown_code_image.png)
+![3.1 语法高亮代码块与图片画廊 (CodeBlock & Image PhotoView)：界面示例](/imgs/optimized/current/rich-code-image.png.webp)
 
 - **Markdown 示例**：
 
@@ -82,7 +82,7 @@ FastGPT 现已全面升级为**原生受控 HTML 流水线**：
 ```typescript
 import { useState, useCallback } from 'react';
 
-// FastGPT 状态控制器
+// FastGPT media state controller
 export const useMediaController = (initialUrl: string) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const handlePlayToggle = useCallback(() => setIsPlaying((prev) => !prev), []);
@@ -90,7 +90,7 @@ export const useMediaController = (initialUrl: string) => {
 };
 ```
 
-![风景演示](/imgs/scenery.jpg)
+<img src="https://cloud.fastgpt.cn/icon/logo.svg" width="120" alt="FastGPT" />
 ````
 
 ---
@@ -102,7 +102,7 @@ export const useMediaController = (initialUrl: string) => {
 - **特性**：自适应对话框容器宽度，鼠标悬停可触发数据悬浮提示（Tooltip），图表支持图例筛选、点击联动，并在数据生成期间提供骨架屏占位与语法容错。
 - **效果演示**：
 
-![](/imgs/chat_markdown_echarts.png)
+![3.2 ECharts 动态交互图表 (echarts 代码块)：界面示例](/imgs/optimized/current/rich-echarts.png.webp)
 
 - **Markdown 示例**：
 
@@ -135,7 +135,7 @@ export const useMediaController = (initialUrl: string) => {
 - **特性**：支持行内公式与多行居中块级公式，即便在流式打字生成中也能保证渲染无闪烁。
 - **效果演示**：
 
-![](/imgs/chat_markdown_katex.png)
+![3.3 KaTeX 数学公式渲染 (Math LaTeX)：界面示例](/imgs/optimized/current/rich-math.png.webp)
 
 - **Markdown 示例**：
 
@@ -163,7 +163,7 @@ $$
 - **特性**：支持流程图（Flowchart）、时序图（Sequence Diagram）、甘特图（Gantt）、状态机（State Diagram）及类图，清晰呈现系统架构与业务逻辑走向。
 - **效果演示**：
 
-![](/imgs/chat_markdown_mermaid.png)
+![3.4 Mermaid 流程图与状态图 (mermaid 代码块)：界面示例](/imgs/optimized/current/rich-mermaid.png.webp)
 
 - **Markdown 示例**：
 
@@ -188,17 +188,17 @@ graph TD
 
 通过原生受控 HTML 标签嵌入音频和视频。
 
-- **特性**：摆脱历史版本 Blob 加载带来的跨域限制，支持外链 MP4、WebM、MP3、WAV 媒体资源分段流式播放与进度拖拽。
+- **特性**：使用原生播放器加载外链 MP4、WebM、MP3、WAV。分段播放与进度拖拽需要媒体服务支持对应格式和 Range 请求；字幕等资源还需满足跨域策略。
 - **效果演示**：
 
-![](/imgs/chat_markdown_media.png)
+![3.5 原生流式多媒体播放 (Video & Audio)：界面示例](/imgs/optimized/current/rich-media.png.webp)
 
 - **HTML 示例**：
 
 ```html
-<video src="https://example.com/oceans.mp4" controls width="100%"></video>
+<video src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" controls width="100%"></video>
 
-<audio src="https://example.com/sample-3s.mp3" controls></audio>
+<audio src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3" controls></audio>
 ```
 
 ---
@@ -211,14 +211,14 @@ graph TD
 - **静态控件**：支持 Checkbox 任务列表、单选框及只读输入展示。
 - **效果演示**：
 
-![](/imgs/chat_markdown_details_input.png)
+![3.6 交互与思维折叠 (Details & Summary) 与静态表单控件：界面示例](/imgs/optimized/current/rich-details.png.webp)
 
 - **HTML 示例**：
 
 ```html
 <details data-think="true">
   <summary>查看思考过程与决策逻辑</summary>
-  大模型在生成答案时的深度推理内容，支持展开收起。
+  此处为折叠组件的演示文本，支持展开收起。
 </details>
 
 <ul>
@@ -239,7 +239,7 @@ graph TD
 - **丰富排版**：支持快捷键按键样式（`<kbd>`）、荧光笔高亮（`<mark>`）、自定义颜色（`<font color="...">`）、化学式上下角标（`<sub>` / `<sup>`）以及术语缩写浮层（`<abbr>`）。
 - **效果演示**：
 
-![](/imgs/chat_markdown_table_progress_text.png)
+![3.7 进度条、复杂表格跨行跨列与丰富排版文本：界面示例](/imgs/optimized/current/rich-text-progress.png.webp)
 
 - **HTML 示例**：
 

@@ -13,7 +13,7 @@ For detailed parameters and internal logic, see: [FastGPT Dataset search](/en/gu
 - Trigger-based execution
 - Core node
 
-![Dataset search node inputs and citation output](/imgs/flow-dataset1.png)
+![Characteristics — interface example](/imgs/optimized/current/node-dataset-search.png.webp)
 
 ## Parameters
 
@@ -28,3 +28,23 @@ Select one or more Datasets using the **same embedding model** for vector search
 ### Output - Referenced Content
 
 Outputs citations as an array with a possible length of 0. This means the output path will still run even when no results are found.
+
+### Input - Search content and tag conditions
+
+The current node accepts search content as a string array. Reference the start node's question or upstream search content and check the input type shown by the editor. The citation limit controls the returned-content budget in **tokens**. Search mode, similarity threshold, reranking, and query expansion are configured in search settings. Selected models and services require access and quota.
+
+Tag conditions narrow collection scope. See [collection tags](/en/guide/dataset/collection_tags) for types and operators. Availability depends on version and commercial capabilities. Confirm that material has finished processing and that the calling identity has the required access.
+
+### Output - Errors and empty results
+
+The citation output is a knowledge-base citation array containing retrieved chunks and source information for AI Chat. An empty array means the search returned no usable chunks. Execution can continue; use a Conditional node to inspect array length and route to clarification or a fixed reply. Inspect error text and execution details for failures.
+
+## Example: retrieve the travel policy
+
+1. Import and process the sample material from [your first knowledge-base Q&A](/en/guide/getting-started/knowledge-qa).
+2. Connect Start → Dataset search → AI Chat in a workflow.
+3. Select the Travel Policy knowledge base, reference the starting user input as search content, and retain default search settings initially.
+4. Reference the starting question in AI Chat and select the search node's citation output for knowledge-base citations. Instruct the model to answer the deadline question from retrieved material.
+5. Debug with “How soon after returning must I submit travel expenses?” Verify that the citations include `15 calendar days`, then check the final answer for the same deadline.
+
+For empty citations, inspect processing status, retrieval scope, tag conditions, and threshold. For correct citations with an incorrect answer, inspect the AI node's citation reference and prompt. Combine multiple search outputs with [Dataset search Merge](/en/guide/build/workflow/nodes/knowledge_base_search_merge) before passing them to AI Chat.

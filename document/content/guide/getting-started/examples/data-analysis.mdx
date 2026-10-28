@@ -1,0 +1,61 @@
+---
+title: "案例四：Agent V2—智能数据分析 Agent"
+description: 上传可复现销售样本，计算产品销量和渠道广告 ROI，检查并下载分析产物。
+---
+
+## 案例四：Agent V2—智能数据分析 Agent
+
+### 4.1 适用场景
+
+Agent V2 根据目标和数据选择处理步骤，适合表格分析、文件处理和需要澄清指标的任务。本例在虚拟机中运行 Python，生成销售汇总和渠道收入图表。
+
+### 4.2 准备内容
+
+下载 [sales.csv](/examples/sales.csv)。它包含四条虚构销售记录，金额采用同一计价单位：
+
+```csv
+product,channel,units,revenue,ad_cost
+A,Search,10,1000,200
+B,Search,5,750,150
+A,Social,8,800,400
+B,Social,12,1800,600
+```
+
+需要应用创建权限、支持工具调用的模型、可用虚拟机服务和模型额度。本例使用 qwen3.8-flash；Python 绘图库等依赖由执行环境提供或安装。网络访问、资源配额与隔离边界由执行服务配置决定。
+
+### 4.3 配置步骤
+
+1. 在工作台创建“对话 Agent V2”，命名为“智能数据分析 Agent”。
+2. 选择支持工具调用的模型，开启“虚拟机”。本例使用虚拟机内置文件和命令工具，关联技能可保持为空。
+3. 填写提示词：
+
+   ```text
+   Use Python in the virtual machine to analyze the uploaded sales CSV. Calculate units by product and revenue, ad_cost, and ROI by channel. ROI = (revenue - ad_cost) / ad_cost. Save channel_summary.csv and a revenue chart as revenue.png. Return download links and concise results.
+   ```
+
+4. 在调试区点击上传文件，选择 `sales.csv`，等待上传完成。输入“请分析附件：按产品汇总销量，按渠道汇总收入、广告费和广告 ROI，并生成汇总 CSV 和收入图表。”。
+5. 展开“已处理”步骤，检查读取文件和执行命令的输入、输出。依赖缺失时检查安装结果或配置[启动脚本](/zh-CN/guide/build/agentv2/vm#虚拟机生命周期)。
+6. 点击调试区右上角“查看虚拟机文件”，检查 `channel_summary.csv` 和 `revenue.png`。图片可在文件面板预览和下载；CSV 可通过回答中的文件链接下载。
+
+![销售分析配置、产品销量与渠道 ROI 结果](/imgs/optimized/current/data-analysis-result.png.webp)
+
+![虚拟机中的分析文件与收入图表预览](/imgs/optimized/current/vm-files.png.webp)
+
+### 4.4 验证效果
+
+| 指标 | 预期值 |
+| --- | --- |
+| A 产品销量 | 18 |
+| B 产品销量 | 17 |
+| Search：收入 / 广告费 / ROI | 1750 / 350 / 4.00（400%） |
+| Social：收入 / 广告费 / ROI | 2600 / 1000 / 1.60（160%） |
+
+ROI 使用 `(revenue - ad_cost) / ad_cost`，仅包含广告成本。Search 的该项效率更高，Social 的收入更高；四行样本用于验证计算，业务决策需要补充样本量和完整成本。广告费为零时应单独报告该组并说明 ROI 无法按此公式计算。
+
+实际测试已核对回复、下载 CSV 和图表：CSV 包含两条渠道汇总，图表两根柱分别为 1750 和 2600。模型的步骤规划和文案可能变化，验收以计算和产物为准。确认后保存并发布，在新对话中重复验证。
+
+### 4.5 业务价值
+
+把同一输入、指标定义和人工预期值保存为回归样本。替换模型、提示词或执行镜像后重复运行，检查文件可读性、计算正确性和产物可用性。
+
+[返回入门路径](/zh-CN/guide/getting-started)

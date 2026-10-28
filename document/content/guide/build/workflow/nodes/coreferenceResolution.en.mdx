@@ -1,6 +1,6 @@
 ---
-title: Query Rewriting
-description: FastGPT Query Rewriting node overview and usage
+title: Query Rewriting (deprecated)
+description: Historical Query Rewriting guidance for existing workflows; use current retrieval settings for new flows.
 ---
 
 > **Deprecated**: The Query Enhancement node can no longer be added to new workflows. Existing nodes remain runnable for compatibility.
@@ -11,7 +11,7 @@ description: FastGPT Query Rewriting node overview and usage
 - Has external input
 - Trigger-based execution
 
-![Query Rewriting node configuration](/imgs/coreferenceResolution1.jpg)
+![Query Rewriting node configuration](/imgs/optimized/coreferenceResolution1.jpg.webp)
 
 ## Background
 
@@ -19,14 +19,16 @@ In RAG, we perform semantic searches against the database based on the input que
 
 During search -- especially in multi-turn conversations -- follow-up questions often fail to retrieve useful results. One reason is that Dataset search only uses the "current" question. Consider this example:
 
-![A follow-up question without enough context for Dataset search](/imgs/coreferenceResolution2.webp)
+![A follow-up question without enough context for Dataset search](/imgs/optimized/coreferenceResolution2.webp.webp)
 
 When the user asks "What is the second point?", the system searches the Dataset for exactly that phrase and finds nothing. The actual intended query is "What is the QA structure?". This is why we need a Query Rewriting node to complete the user's current question so the Dataset search can return relevant results. With query rewriting applied:
 
-![Query rewritten with the preceding conversation context](/imgs/coreferenceResolution3.webp)
+![Query rewritten with the preceding conversation context](/imgs/optimized/coreferenceResolution3.webp.webp)
 
 ## What It Does
 
 Calls an AI model to complete and refine the user's current question. It primarily resolves coreferences (pronouns and vague references), making search queries more complete and reliable. This improves Dataset search accuracy in multi-turn conversations.
 
 The main challenge is that the model may not have a clear understanding of "completion" and often struggles to determine how to properly refine queries with long context.
+
+For new workflows, use the query-expansion settings in [Dataset search](/en/guide/build/workflow/nodes/dataset_search). Existing nodes take a model, background, history, and user question, and return the rewritten query as a string. Verify the rewritten text before passing it to retrieval.

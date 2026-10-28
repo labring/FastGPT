@@ -1,0 +1,50 @@
+---
+title: Call Application and Workflow Tool I/O Nodes
+description: Invoke sub-applications (runApp) inside a workflow, or configure custom inputs (pluginInput), outputs (pluginOutput), and tool parameters (toolParams) for workflow tools.
+---
+
+FastGPT lets you embed published applications or workflow tools inside other workflows for modular orchestration. This reference covers the sub-application node and the three dedicated system nodes used in workflow tools.
+
+## 1. Call Application Node (`appModule` / `runApp`)
+
+Run an existing Chat Agent, Chat Agent V2, or Workflow as a step on your current canvas, or attach it to a [Tool Call](/en/guide/build/workflow/nodes/tool) node for model-driven invocation.
+
+### Inputs, Configuration, and Outputs
+
+| Item | Type | Description |
+| --- | --- | --- |
+| **Target application** | Resource binding | Select a team application you have permission to use (executes its active published version) |
+| **User question** (`userChatInput`) | `String` | Input text passed to the sub-application from fixed text or an upstream variable |
+| **Chat history** (`history`) | `ChatHistory` | Context turns or upstream chat history passed into the sub-application |
+| **File links** (`fileUrlList`) | `Array<string>` | File URLs passed to the sub-application |
+| **Sub-app global variables** | Dynamic fields | Automatically exposes global variables declared by the target application |
+| **AI response** (`answerText`) | `String` | Text response returned by the sub-application |
+| **Updated context** (`history`) | `ChatHistory` | Updated chat history including the sub-application's turn |
+
+## 2. Workflow Tool System Nodes
+
+When building a reusable tool under **Workspace → Tools → Workflow Tool**, the canvas uses **Plugin Input** and **Plugin Output** as its contract boundaries; see [Create and Reuse Workflow Tools](/en/guide/build/tools/workflow-tools).
+
+![Configure parameter variables in a workflow tool](/imgs/optimized/current/tool-variables.png.webp)
+
+### 1. Plugin Input (`pluginInput`)
+
+- **Responsibility**: Declares the input parameter contract (JSON Schema) that callers (a parent workflow, Tool Call node, or Agent) supply when invoking the workflow tool.
+- **Configuration**: Add fields with a `key`, `label`, value type (`String`, `Number`, `Boolean`, `Object`, typed arrays, or `Select Dataset`), tool parameter description (guiding the model on how to populate the value), and required flag.
+- **Outputs**: Each declared input field becomes a matching output handle on the node for downstream nodes to reference.
+
+### 2. Plugin Output (`pluginOutput`)
+
+- **Responsibility**: Collects results from internal workflow nodes and returns structured output fields to the parent caller or language model.
+- **Configuration**: Add output fields with keys, value types, and descriptions, and bind each field to an upstream node output (such as HTTP Request, Code Run, or AI Chat).
+
+### 3. Tool Custom Field Node (`toolParams`)
+
+- **Responsibility**: Declares runtime parameters to be generated dynamically by the language model for a sub-workflow connected to a [Tool Call](/en/guide/build/workflow/nodes/tool) node.
+- **Availability**: Available when the canvas contains a Tool Call node or along a `selectedTools` tool connection. Declared fields are merged into the tool's Function Calling schema and exposed as node outputs at runtime.
+
+## Example: Wrap and Call an Order Lookup Sub-Workflow
+
+1. Create a workflow tool named `Order Status Lookup` and add a required `orderId` (`String`) field in **Plugin Input** with the description `8-digit order number`.
+2. Connect an HTTP Request node to query the order service and bind the returned status to a `statusText` field in **Plugin Output**, then publish the tool.
+3. Add the `Order Status Lookup` node to your main workflow, wire the extracted order ID into `orderId`, and reference `statusText` in downstream nodes.

@@ -1,8 +1,14 @@
 {
-  "title": "Workspace",
+  "title": "Teams and Account",
   "root": false,
   "pages": [
     "team",
-    "customDomain"
+    "models",
+    "usage-and-billing",
+    "customDomain",
+    "../version/cloud/intro",
+    "../version/cloud/faq",
+    "../version/cloud/terms",
+    "../version/cloud/privacy"
   ]
 }

@@ -1,0 +1,172 @@
+---
+title: "Quick start: create your first tool plugin"
+description: Create a greeting tool, validate its inputs and output, and build an installation package
+---
+
+This guide walks you through the complete local workflow of building your first system tool plugin using `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory`.
+
+## Prerequisites
+
+Ensure your local development environment has:
+
+- **Node.js**: Version 20.x or later (Node.js 20 or 22 LTS recommended).
+- **pnpm**: Version 9.x or later.
+- **FastGPT**: v4.15.0 or later running instance.
+- **FastGPT Plugin**: v1.0.0 or later plugin service.
+- **Git**: For version control and code commits.
+
+## Step 1: Create the Plugin Skeleton
+
+Initialize a single-tool plugin using the official CLI:
+
+```bash
+pnpx @fastgpt-plugin/cli create hello-tool --type tool
+```
+
+The command generates the `hello-tool` project in your current directory with standard files:
+
+```text
+hello-tool/
+├── index.ts          # Core plugin logic entrypoint, exports defineTool by default
+├── package.json      # Build and test scripts
+├── tsconfig.json     # TypeScript configuration
+├── vitest.config.ts  # Unit testing configuration
+├── logo.svg          # Plugin icon
+└── README.md         # Plugin documentation
+```
+
+Navigate into the directory and install dependencies:
+
+```bash
+cd hello-tool
+pnpm install
+```
+
+## Step 2: Implement Tool Logic and Schemas
+
+Open `index.ts` to define the tool metadata, input schema, output schema, and execution handler:
+
+```ts
+import {
+  createToolHandler,
+  defineTool,
+  type InputSchemaMetaType,
+  type OutputSchemaMetaType
+} from '@fastgpt-plugin/sdk-factory';
+import z from 'zod';
+
+const handler = createToolHandler({
+  inputSchema: z.object({
+    name: z
+      .string()
+      .min(1)
+      .default('FastGPT')
+      .meta({
+        title: 'User Name',
+        description: 'Name of the user to greet'
+      } satisfies InputSchemaMetaType)
+  }),
+  outputSchema: z.object({
+    greeting: z.string().meta({
+      title: 'Greeting'
+    } satisfies OutputSchemaMetaType)
+  }),
+  handler: async (input) => {
+    return {
+      greeting: `Hello, ${input.name}!`
+    };
+  }
+});
+
+export default defineTool({
+  manifest: {
+    pluginId: 'hello-tool',
+    version: '1.0.0',
+    name: {
+      en: 'Hello Tool',
+      'zh-CN': '问候工具'
+    },
+    description: {
+      en: 'Greet the user with a friendly message',
+      'zh-CN': '输出友好的问候信息'
+    },
+    versionDescription: {
+      en: 'Initial release',
+      'zh-CN': '初始版本'
+    },
+    tags: ['tools']
+  },
+  handler
+});
+```
+
+Key concepts:
+
+- `manifest.pluginId`: Globally unique plugin identifier, recommended in lowercase hyphenated format.
+- `manifest.name` and `manifest.description`: Bilingual text for English and Simplified Chinese, displayed in the FastGPT Studio according to user language preferences.
+- `inputSchema` and `outputSchema`: Zod schemas that declare input and output types, enriched with `.meta()` attributes for UI rendering.
+- `handler`: Business logic implementation whose returned values strictly conform to `outputSchema`.
+
+## Step 3: Validate inputs
+
+<span id="step-3-write-unit-tests" />
+
+Run these commands from the plugin directory to check the default value and the empty-string constraint:
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{}'
+pnpx @fastgpt-plugin/cli debug . --run --input '{"name":""}'
+```
+
+The first call should return a result containing `"greeting": "Hello, FastGPT!"`. The second should report an input validation error because `name` requires at least one character. These cases cover the schema's default and invalid-input behavior.
+
+## Step 4: Run Local Debugging
+
+Use the CLI debug command to simulate inputs and inspect runtime outputs directly:
+
+```bash
+pnpx @fastgpt-plugin/cli debug . --run --input '{"name": "FastGPT User"}'
+```
+
+Check that the debug result contains this output:
+
+```json
+{
+  "greeting": "Hello, FastGPT User!"
+}
+```
+
+## Step 5: Build and Pack
+
+After verification passes, execute the standard build and pack steps:
+
+```bash
+pnpm run build
+pnpx @fastgpt-plugin/cli check --entry . --output ./dist
+pnpm run pack
+```
+
+The commands produce a `.pkg` installation file, located according to the project's `pack` script (typically at `dist/hello-tool.pkg`). See the [package and SDK reference](/en/plugin/package-reference#build-artifacts) for artifact details.
+
+## Step 6: Install and Verify in FastGPT
+
+After generating the `.pkg` package, complete end-to-end acceptance in FastGPT:
+
+1. **Install plugin**: In the FastGPT console, navigate to the Plugins or Tools management page, click "Install Plugin", and upload the generated `dist/hello-tool.pkg` file.
+2. **Configure application**: Open any Workflow or Chat Agent canvas, and add the newly installed "Hello Tool" (`hello-tool`) from the tool list.
+3. **Test input parameters**: In the test run interface, pass `{"name": "FastGPT"}` (or leave it blank to use the default value).
+4. **Verify execution result**: Trigger the run and observe node outputs. A successful response contains:
+
+```json
+{
+  "greeting": "Hello, FastGPT!"
+}
+```
+
+This completes the full delivery lifecycle from scaffolding, schema validation, and packaging to live application invocation.
+
+## Next Steps
+
+- Learn advanced tool specifications and toolkit patterns: [System Tool Development Guide](/en/plugin/system-tool-development)
+- Connect with a live FastGPT instance for remote debugging and distribution: [Debugging, Packing, and Publishing](/en/plugin/debugging-and-publishing)
+- Install the generated `.pkg` package into your team workspace: [Install and Manage Team Plugins](/en/plugin/team-installation)

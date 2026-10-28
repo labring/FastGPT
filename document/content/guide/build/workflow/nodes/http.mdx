@@ -12,7 +12,7 @@ import { Alert } from '@/components/docs/Alert';
 - 触发执行
 - 核中核模块
 
-![](/imgs/http1.jpg)
+![特点：界面示例](/imgs/optimized/current/node-http.png.webp)
 
 ## 介绍
 
@@ -112,7 +112,7 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 ### 如何获取返回值
 
-从图中可以看出，FastGPT 可以添加多个返回值，这个返回值并不代表接口的返回值，而是代表 `如何解析接口返回值`，可以通过 `JSON path` 的语法，来 `提取` 接口响应的值。
+FastGPT 支持添加多个自定义返回值。这些返回值定义了如何解析接口响应，通过 `JSON path` 语法精准提取接口返回数据中的目标字段。
 
 语法可以参考: https://github.com/JSONPath-Plus/JSONPath?tab=readme-ov-file
 
@@ -167,6 +167,10 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 1. 获取 `message` 的内容，那么你可以配置 `message` 的 `key` 为 `message`，这样就可以获取到 `message` 的内容。
 2. 获取 `user的name`，则 `key` 可以为：`data.user.name`。
 3. 获取 list 中第二个元素，则 `key` 可以为：`data.list[1]`，然后输出类型选择字符串，则获自动获取到 `[ { "test": 22 } ]` 的 `json` 字符串。
+
+### 错误响应与排查
+
+当 HTTP 请求节点收到非 2xx 响应时，若响应体未包含 `message` 或 `msg` 字段，节点错误文本中会附加该响应体的截断片段（最多 2000 个字符），便于排查接口失败原因。
 
 ### 自动格式化输出
 

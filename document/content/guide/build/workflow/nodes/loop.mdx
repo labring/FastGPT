@@ -1,7 +1,9 @@
 ---
-title: 批量运行
-description: FastGPT 批量运行节点介绍和使用
+title: 批量运行（历史节点）
+description: 保留 4.8.11 引入的批量运行节点说明，当前工作流请使用循环节点。
 ---
+
+本页保留已有批量运行工作流的维护说明。4.15.0 及以上版本的新工作流请使用[循环节点](/zh-CN/guide/build/workflow/nodes/loop_run)。
 
 ## 节点概述
 
@@ -9,7 +11,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 这个节点的设计灵感来自编程语言中的循环结构，但以可视化的方式呈现。
 
-![批量运行节点](/imgs/fastgpt-loop-node.png)
+![批量运行节点](/imgs/optimized/fastgpt-loop-node.png.webp)
 
 > 在程序中，节点可以理解为一个个 Function 或者接口。可以理解为它就是一个**步骤**。将多个节点一个个拼接起来，即可一步步的去实现最终的 AI 输出。
 
@@ -74,7 +76,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 ### 循环体配置
 
-![循环体配置](/imgs/fastgpt-loop-node-config.webp)
+![循环体配置](/imgs/optimized/fastgpt-loop-node-config.webp.webp)
 
 1. 在循环体内部，可以添加任意类型的节点，如：
    - AI 对话节点
@@ -97,7 +99,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 1. 准备输入数组
    
-   ![准备输入数组](/imgs/fastgpt-loop-node-example-1.png)
+   ![准备输入数组](/imgs/optimized/fastgpt-loop-node-example-1.png.webp)
    
    使用【代码运行】节点创建测试数组：
 
@@ -112,7 +114,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 2. 配置批量运行节点
 
-   ![配置批量运行节点](/imgs/fastgpt-loop-node-example-2.png)
+   ![配置批量运行节点](/imgs/optimized/fastgpt-loop-node-example-2.png.webp)
 
    - 数组输入：选择上一步代码运行节点的输出变量 `textArray`。
    - 循环体内添加一个【AI 对话】节点，用于处理每个文本。这里我们输入的 prompt 为：`请将这段文本翻译成英文`。
@@ -121,7 +123,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 #### 运行流程
 
-![运行流程](/imgs/fastgpt-loop-node-example-3.png)
+![运行流程](/imgs/optimized/fastgpt-loop-node-example-3.png.webp)
 
 1. 【代码运行】节点执行，生成测试数组
 2. 【批量运行】节点接收数组，开始遍历
@@ -146,7 +148,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 1. 文本预处理与分段
    
-   ![文本预处理与分段](/imgs/fastgpt-loop-node-example-4.png)
+   ![文本预处理与分段](/imgs/optimized/fastgpt-loop-node-example-4.png.webp)
    
    使用【代码运行】节点进行文本分段，代码如下：
 
@@ -279,7 +281,7 @@ description: FastGPT 批量运行节点介绍和使用
 
 2. 配置批量运行节点
 
-   ![配置批量运行节点](/imgs/fastgpt-loop-node-example-5.png)
+   ![配置批量运行节点](/imgs/optimized/fastgpt-loop-node-example-5.png.webp)
 
    - 数组输入：选择上一步代码运行节点的输出变量 `chunks`。
    - 循环体内添加一个【代码运行】节点，对源文本进行格式化。

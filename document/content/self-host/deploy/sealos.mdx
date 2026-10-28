@@ -7,21 +7,21 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 部署架构图
 
-![](../../../public/imgs/sealos-fastgpt.webp)
+![FastGPT 核心部署拓扑](/imgs/diagrams/deployment-core.zh-CN.light.svg)
 
 ## 多模型支持
 
-FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI、Azure、国内主流模型和本地模型等。
+当前 FastGPT 通过 AI Proxy 管理模型渠道。模板的组件、默认参数与镜像版本可能随发布调整，部署前在模板页面逐项核对模型、数据库和对象存储配置。
 
-可参考：[Sealos 快速部署 OneAPI](../config/model/intro.mdx)
+可参考：[当前模型配置](/zh-CN/self-host/config/model/intro)
 
 ## 一键部署
 
-使用 Sealos 服务，无需采购服务器、无需域名，支持高并发 & 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。可以根据需求，再下面两个区域选择部署。
+通过 Sealos 模板创建应用及依赖服务。按用户位置、模型服务的网络可达性、资源需求和当前区域报价选择部署区域。下文截图包含旧模板界面，实际组件与字段以所选模板为准。
 
 ### 新加坡区
 
-新加披区的服务器在国外，可以直接访问 OpenAI，但国内用户需要梯子才可以正常访问新加坡区。国际区价格稍贵，点击下面按键即可部署👇
+选择新加坡区域前，验证目标用户和所需模型服务的网络可达性，并核对当前费用。
 
 <a
   href="https://template.cloud.sealos.io/deploy?templateName=fastgpt&uid=fnWRt09fZP"
@@ -36,7 +36,7 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI、Az
 
 ### 北京区
 
-北京区服务提供商为火山云，国内用户可以稳定访问，但无法访问 OpenAI 等境外服务，价格约为新加坡区的 1/4。点击下面按键即可部署👇
+选择北京区域前，验证目标用户和所需模型服务的网络可达性，并核对当前费用。
 
 <a
   href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP"
@@ -53,33 +53,35 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI、Az
 
 由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
-根据提示，输入 `root_password`，和 `openai` / `oneapi` 的地址和密钥。
+核对模板中的管理员初始凭证、数据库、对象存储、AI Proxy 等参数。历史模板可能提供 `root_password`、`openai` / `oneapi` 字段；当前字段以选定模板为准。
 
-![](../../../public/imgs/sealos1.png)
+![1. 开始部署：界面示例](/imgs/optimized/sealos1.png.webp)
 
 点击部署后，会跳转到应用管理页面。可以点击 `fastgpt` 主应用右侧的详情按键（名字为 fastgpt-xxxx），如下图所示。
 
-![](../../../public/imgs/sealos-deploy1.jpg)
+![1. 开始部署：界面示例](/imgs/optimized/sealos-deploy1.jpg.webp)
 
 点击详情后，会跳转到 fastgpt 的部署管理页面，点击外网访问地址中的链接，即可打开 fastgpt 服务。
 
 如需绑定自定义域名、修改部署参数，可以点击右上角变更，根据 sealos 的指引完成。
 
-![](../../../public/imgs/sealos2.png)
+![1. 开始部署：界面示例](/imgs/optimized/sealos2.png.webp)
 
 ### 2. 登录
 
 用户名：`root`
 
-密码是刚刚一键部署时设置的 `root_password`
+密码使用模板中配置的管理员初始密码；旧模板字段名为 `root_password`。
 
 ### 3. 配置模型
 
+登录后在模型提供商页面配置语言模型；知识库检索还需要向量模型。先测试渠道连通性，再测试具体模型。
+
 ### 4. 配置模型
 
-务必先配置至少一组模型，否则系统无法正常使用。
+模型可用后，完成[首个知识库问答](/zh-CN/guide/getting-started/knowledge-qa)，验证文件导入、索引、回答与引用。
 
-[点击查看模型配置教程](../config/model/intro.mdx)
+[点击查看模型配置教程](/zh-CN/self-host/config/model/intro)
 
 ## 收费
 
@@ -89,9 +91,9 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 
 ### 简介
 
-FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数据库，使用多 API Key 时候需要安装 OneAPI（一个应用和一个数据库），总计 3 个应用和 3 个数据库。
+在应用管理与数据库页面核对模板创建的全部服务，记录镜像、持久化存储和依赖关系。商业版通常还包含商业服务；实际组件数量由模板与已启用能力决定。
 
-![](../../../public/imgs/onSealos1.png)
+![简介：界面示例](/imgs/optimized/onSealos1.png.webp)
 
 点击右侧的详情，可以查看对应应用的详细信息。
 
@@ -101,28 +103,27 @@ FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数
 
 在 `应用管理` 中，选中 FastGPT，点击变更，可以看到对应的环境变量和配置文件。
 
-![](../../../public/imgs/fastgptonsealos1.png)
+![修改配置文件和环境变量：界面示例](/imgs/optimized/fastgptonsealos1.png.webp)
 
 <Alert icon="🤖" context="success">
-  在 Sealos 上，FastGPT 一共运行了 1 个服务和 2
-  个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
+  暂停或删除前检查完整依赖与持久化数据清单，先验证备份和恢复流程，再处理各服务。
 </Alert>
 
 ### 如何更新/升级 FastGPT
 
-[升级脚本文档](../upgrading/upgrade-instruction.mdx)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级。
+[升级脚本文档](/zh-CN/self-host/upgrading/upgrade-instruction)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级。
 
 例如，目前是 4.5 版本，要升级到 4.5.1，就先把镜像版本改成 v4.5.1，执行一下升级脚本，等待完成后再继续升级。如果目标版本不需要执行初始化，则可以跳过。
 
 升级步骤：
 
-1. 查看[更新文档](../upgrading/upgrade-instruction.mdx)，确认要升级的版本，避免跨版本升级。
+1. 查看[更新文档](/zh-CN/self-host/upgrading/upgrade-instruction)，确认要升级的版本，避免跨版本升级。
 2. 打开 sealos 的应用管理
-3. 有 2 个应用 fastgpt、fastgpt-pro
+3. 按模板清单找到主服务、商业服务及需要配套升级的依赖
 4. 点击对应应用右边 3 个点，变更。或者点详情后右上角的变更。
 5. 修改镜像的版本号
 
-![](../../../public/imgs/onsealos2.png)
+![如何更新/升级 FastGPT：界面示例](/imgs/optimized/onsealos2.png.webp)
 
 6. 点击变更/重启，会自动拉取最新镜像进行更新
 7. 执行对应版本的初始化脚本(如果有)
@@ -131,21 +132,21 @@ FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数
 
 打开对应的应用，点击外网访问地址。
 
-![](../../../public/imgs/onsealos3.png)
+![如何获取 FastGPT 访问链接：界面示例](/imgs/optimized/onsealos3.png.webp)
 
 ### 配置自定义域名
 
 点击对应应用的变更 ->点击自定义域名 ->填写域名 -> 操作域名 Cname -> 确认 -> 确认变。
 
-![](../../../public/imgs/onsealos4.png)
+![配置自定义域名：界面示例](/imgs/optimized/onsealos4.png.webp)
 
 ### 如何修改环境变量
 
 打开 Sealos 的应用管理 -> 找到对应的应用 -> 变更 -> 修改环境变量 -> 点击右上角确认变。
 
-![](../../../public/imgs/onsealos5.png)
+![如何修改环境变量：界面示例](/imgs/optimized/onsealos5.png.webp)
 
-[环境变量说明](../config/env.mdx)
+[环境变量说明](/zh-CN/self-host/config/env)
 
 ### 修改站点名称以及 favicon
 
@@ -160,15 +161,15 @@ HOME_URL=/dashboard/agent
 
 SYSTEM_FAVICON 可以是一个网络地址
 
-![](../../../public/imgs/onsealos6.png)
+
 
 ### 挂载 logo
 
-目前暂时无法把浏览器上的 logo 替换。仅支持 svg，待后续可视化做了后可以全部替换。新增一个挂载文件，文件名为：/app/projects/app/public/icon/logo.svg，值为 svg 对应的值。
+品牌定制先核对[许可证条件](/zh-CN/guide/version/opensource/license)与当前商业管理界面。以下旧版 SVG 挂载示例仅适用于保留该路径的镜像：`/app/projects/app/public/icon/logo.svg`。
 
-![](../../../public/imgs/onsealos7.png)
+![挂载 logo：界面示例](/imgs/optimized/onsealos7.png.webp)
 
-![](../../../public/imgs/onsealos8.png)
+![挂载 logo：界面示例](/imgs/optimized/onsealos8.png.webp)
 
 ### 商业版镜像配置文件
 
@@ -183,4 +184,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-[参考 OneAPI 使用步骤](../config/model/intro.mdx)
+历史 OneAPI 集成可从[当前模型配置与迁移说明](/zh-CN/self-host/config/model/intro)

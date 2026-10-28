@@ -7,6 +7,8 @@ Model presets are maintained in the `fastgpt-plugin` repository. They provide Fa
 
 This page follows the plugin system code structure for version 1.0 and later. The old `modules/model/*` paths are no longer the primary maintenance entry point.
 
+Contribute this extension by updating static configuration and submitting repository changes. Follow the [validation](#validation) steps on this page.
+
 ## Related Directories
 
 ```text
@@ -299,3 +301,14 @@ pnpm test
 ```
 
 Before submitting, review the diff under `packages/infrastructure/src/static-data/models/` and make sure no unrelated provider models were removed, model types are correct, and the new provider logo or `channel-avatar` file is included.
+
+
+## Loading And End-to-End Verification In FastGPT
+
+After source validation, load and verify the model preset in FastGPT:
+
+1. **Restart plugin service**: Update and restart the `fastgpt-plugin` deployment to load the new static presets. In self-hosted environments, restart the `fastgpt-plugin` container.
+2. **Add model instance**: Log in to the FastGPT admin console, go to "System Settings → Model Configuration", and click "Add Model".
+3. **Select new preset**: Choose the newly added preset from the provider and model dropdowns; FastGPT automatically populates context window and max token limits.
+4. **Configure channel**: Provide the API Key and Base URL, or select the associated AIProxy channel.
+5. **Verify request execution**: Open any Chat Agent or debugging window, select the configured model, and send a test prompt to verify streaming responses.
