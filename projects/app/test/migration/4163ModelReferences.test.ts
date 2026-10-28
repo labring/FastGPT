@@ -407,6 +407,44 @@ describe('4163 dataset model reference migration', () => {
     expect(cacheMocks.clearAllMemberModelsCache).not.toHaveBeenCalled();
   });
 
+  it('preserves the published migration behavior for retired model slots', async () => {
+    const llm = await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
+    const modules = [
+      { flowNodeType: FlowNodeTypeEnum.datasetSearchNode, enabled: true },
+      { flowNodeType: FlowNodeTypeEnum.agent, enabled: true },
+      { flowNodeType: FlowNodeTypeEnum.datasetSearchNode, enabled: false },
+      { flowNodeType: FlowNodeTypeEnum.tool, enabled: true }
+    ].map(({ flowNodeType, enabled }, index) => ({
+      nodeId: `historical-${index}`,
+      name: 'Historical workflow node',
+      flowNodeType,
+      inputs: [
+        { key: 'datasetDeepSearch', value: enabled },
+        {
+          key: 'datasetDeepSearchModel',
+          value: 'gpt-model',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      outputs: []
+    }));
+    const app = await MongoApp.collection.insertOne({ modules });
+
+    await backfillAppModelReferences(createContext().context);
+
+    const document = await MongoApp.collection.findOne({ _id: app.insertedId });
+    for (const node of document!.modules.slice(0, 2)) {
+      expect(node.inputs).toContainEqual(
+        expect.objectContaining({ key: 'datasetDeepSearchModelId', value: String(llm._id) })
+      );
+    }
+    expect(document!.modules.slice(2)).toEqual(modules.slice(2));
+
+    await backfillAppModelReferences(createContext().context);
+    const replay = await MongoApp.collection.findOne({ _id: app.insertedId });
+    expect(replay!.modules).toEqual(document!.modules);
+  });
+
   it('preserves unrelated legacy workflow values while backfilling config and model IDs', async () => {
     const llm = await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
     const app = await MongoApp.collection.insertOne({

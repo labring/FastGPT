@@ -174,10 +174,6 @@ export const summarizeRuntimeNodeResponses = (
     outputTokens?: number;
     toolCallInputTokens?: number;
     toolCallOutputTokens?: number;
-    deepSearchResult?: {
-      inputTokens?: number;
-      outputTokens?: number;
-    };
   };
   // currentSummary 中的 response 已经在之前批次完成 token 归属；后续 parent row
   // 再携带这些 child 时也必须跳过，避免跨 publish 批次重复累计。
@@ -197,7 +193,7 @@ export const summarizeRuntimeNodeResponses = (
    * 读取当前响应自身拥有的 LLM token。
    *
    * childrenResponses/toolDetail/loopDetail 不是通用递归入口：只有知识库节点的
-   * 明确 LLM 子响应，以及 dataset deep search 这个没有独立响应行的调用，才在这里补入。
+   * 明确 LLM 子响应才在这里补入。
    * wrapper 节点的 child workflow token 由 wrapper 读取 child summary 后显式 push。
    */
   const getResponseLLMTokens = (response: ChatHistoryItemResType) => {
@@ -211,9 +207,6 @@ export const summarizeRuntimeNodeResponses = (
     }
 
     if (response.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
-      inputTokens += current.deepSearchResult?.inputTokens || 0;
-      outputTokens += current.deepSearchResult?.outputTokens || 0;
-
       // dataset search 的这些 child 是同一个 nodeResponse 内部创建的 LLM 调用，
       // 只读取直接子项，embedding/rerank 等非 LLM token 不会进入 runtime summary。
       (response.childrenResponses ?? []).forEach((child) => {

@@ -1,5 +1,4 @@
 import type { AxiosRequestConfig, Method } from 'axios';
-import type { DeepRagSearchProps, SearchDatasetDataResponse } from '../../core/dataset/search';
 import type {
   AdminLlmParagraphBody,
   AdminLlmParagraphResponse
@@ -36,9 +35,6 @@ export type CreateParagraphTitleRequest = Omit<AdminLlmParagraphBody, 'modelId'>
 
 export const postCheckCensor = (data: { text: string }) =>
   POST<FastGPTProCensorResponse>('/common/censor/check', data);
-
-export const postDeepRag = (data: DeepRagSearchProps) =>
-  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
 
 export const postCreateUsage = (data: CreateUsageProps) =>
   POST<string>('/support/wallet/usage/createUsage', data);
