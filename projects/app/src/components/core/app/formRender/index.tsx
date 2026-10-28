@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, IconButton, Input, Switch } from '@chakra-ui/react';
-import { getSecretCipherValue, getSecretPlainValue } from '@fastgpt/global/common/secret/utils';
+import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
@@ -91,7 +91,7 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.password) {
-    const isPasswordConfigured = !!getSecretCipherValue(value) || !!getSecretPlainValue(value);
+    const isPasswordConfigured = isSecretValueConfigured(value);
     const val = getSecretPlainValue(value) ?? '';
 
     return !isPasswordConfigured || isPasswordEditing ? (

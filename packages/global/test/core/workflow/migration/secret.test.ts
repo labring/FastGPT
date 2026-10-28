@@ -4,7 +4,10 @@ import {
   migrateWorkflowSecretValues
 } from '@fastgpt/global/core/workflow/migration/secret';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 
 describe('migrateSecretValueToCurrent', () => {
   it('uses non-empty value before legacy secret and keeps canonical branches', () => {
@@ -37,6 +40,7 @@ describe('migrateWorkflowSecretValues', () => {
     const input = {
       nodes: [
         {
+          flowNodeType: FlowNodeTypeEnum.httpRequest468,
           inputs: [
             {
               inputList: [
@@ -107,7 +111,10 @@ describe('migrateWorkflowSecretValues', () => {
                 }
               ]
             }
-          ],
+          ]
+        },
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
           toolConfig: {
             mcpToolSet: {
               headerSecret: { Mcp: { value: 'plain', secret: 'cipher' } },
@@ -124,6 +131,7 @@ describe('migrateWorkflowSecretValues', () => {
 
     const result = migrateWorkflowSecretValues(input);
     expect(result.nodes[0]).toEqual({
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
       inputs: [
         {
           inputList: [
@@ -155,16 +163,16 @@ describe('migrateWorkflowSecretValues', () => {
           value: {
             type: 'manual',
             value: {
-              token: { secret: 'cipher' },
+              token: { value: '', secret: 'cipher' },
               refToken: { ref: ['node-1', 'token'] }
             }
           }
         },
         {
           key: NodeInputKeyEnum.systemInputConfig,
-          value: { type: 'system', value: { token: { value: 'system-plain' } } }
+          value: { type: 'system', value: { token: { value: 'system-plain', secret: 'ignored' } } }
         },
-        { value: { headerSecret: { Legacy: { value: 'plain' } } } },
+        { value: { headerSecret: { Legacy: { value: 'plain', secret: 'cipher' } } } },
         {
           key: NodeInputKeyEnum.selectedTools,
           value: [
@@ -180,13 +188,16 @@ describe('migrateWorkflowSecretValues', () => {
               },
               toolConfig: {
                 httpToolSet: {
-                  headerSecret: { Authorization: { secret: 'cipher' } }
+                  headerSecret: { Authorization: { value: '', secret: 'cipher' } }
                 }
               }
             }
           ]
         }
-      ],
+      ]
+    });
+    expect(result.nodes[1]).toEqual({
+      flowNodeType: FlowNodeTypeEnum.toolSet,
       toolConfig: {
         mcpToolSet: {
           headerSecret: { Mcp: { value: 'plain' } },
@@ -200,4 +211,106 @@ describe('migrateWorkflowSecretValues', () => {
     });
     expect(migrateWorkflowSecretValues(result)).toEqual(result);
   });
+
+  it.each([
+    { flowNodeType: FlowNodeTypeEnum.httpRequest468, shouldMigrate: true },
+    { flowNodeType: FlowNodeTypeEnum.code, shouldMigrate: false },
+    { flowNodeType: undefined, shouldMigrate: false }
+  ])(
+    'only migrates HTTP auth inputs on HTTP nodes: $flowNodeType',
+    ({ flowNodeType, shouldMigrate }) => {
+      const headerSecret = { Authorization: { value: '', secret: 'cipher' } };
+      const workflow = {
+        nodes: [
+          {
+            flowNodeType,
+            inputs: [
+              { key: NodeInputKeyEnum.headerSecret, value: headerSecret },
+              { key: 'payload', value: headerSecret }
+            ]
+          }
+        ]
+      };
+
+      const result = migrateWorkflowSecretValues(workflow);
+
+      expect(result.nodes[0].inputs[0].value).toEqual(
+        shouldMigrate ? { Authorization: { secret: 'cipher' } } : headerSecret
+      );
+      expect(result.nodes[0].inputs[1].value).toEqual(headerSecret);
+      expect(workflow.nodes[0].inputs[0].value).toEqual(headerSecret);
+      expect(migrateWorkflowSecretValues(result)).toEqual(result);
+    }
+  );
+
+  it.each([
+    { flowNodeType: FlowNodeTypeEnum.tool, shouldMigrate: true },
+    { flowNodeType: FlowNodeTypeEnum.toolSet, shouldMigrate: true },
+    { flowNodeType: FlowNodeTypeEnum.pluginModule, shouldMigrate: true },
+    { flowNodeType: FlowNodeTypeEnum.code, shouldMigrate: false }
+  ])(
+    'only migrates system credentials on tool nodes: $flowNodeType',
+    ({ flowNodeType, shouldMigrate }) => {
+      const input = {
+        key: NodeInputKeyEnum.systemInputConfig,
+        value: { type: 'manual', value: { token: { value: '', secret: 'cipher' } } }
+      };
+      const result = migrateWorkflowSecretValues({ nodes: [{ flowNodeType, inputs: [input] }] });
+      expect(result.nodes[0].inputs[0].value).toEqual(
+        shouldMigrate ? { type: 'manual', value: { token: { secret: 'cipher' } } } : input.value
+      );
+    }
+  );
+
+  it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.code])(
+    'only migrates selected tool configurations on Agent nodes: %s',
+    (flowNodeType) => {
+      const headerSecret = { Authorization: { value: '', secret: 'cipher' } };
+      const input = {
+        key: NodeInputKeyEnum.selectedTools,
+        value: [{ toolConfig: { mcpToolSet: { headerSecret } } }]
+      };
+      const result = migrateWorkflowSecretValues({ nodes: [{ flowNodeType, inputs: [input] }] });
+      expect(result.nodes[0].inputs[0].value[0].toolConfig.mcpToolSet.headerSecret).toEqual(
+        flowNodeType === FlowNodeTypeEnum.agent
+          ? { Authorization: { secret: 'cipher' } }
+          : headerSecret
+      );
+    }
+  );
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'only migrates %s from the toolSet node configuration',
+    (toolSetKey) => {
+      const toolConfig = {
+        [toolSetKey]: {
+          headerSecret: { Authorization: { value: '', secret: 'parent-cipher' } },
+          toolList: [{ headerSecret: { 'X-Token': { value: 'token', secret: 'child-cipher' } } }]
+        }
+      };
+      const workflow = {
+        nodes: [
+          {
+            flowNodeType: FlowNodeTypeEnum.toolSet,
+            toolConfig,
+            inputs: [{ key: 'payload', value: { toolConfig } }]
+          },
+          { flowNodeType: FlowNodeTypeEnum.code, toolConfig, inputs: [] }
+        ]
+      };
+
+      const result = migrateWorkflowSecretValues(workflow);
+
+      expect(result.nodes[0].toolConfig).toEqual({
+        [toolSetKey]: {
+          headerSecret: { Authorization: { secret: 'parent-cipher' } },
+          toolList: [{ headerSecret: { 'X-Token': { value: 'token' } } }]
+        }
+      });
+      expect(result.nodes[1].toolConfig).toEqual(toolConfig);
+      expect(result.nodes[0].inputs[0].value).toEqual({ toolConfig });
+      expect(workflow.nodes[0].toolConfig).toEqual(toolConfig);
+      expect(migrateWorkflowSecretValues(result)).toEqual(result);
+    }
+  );
 });

@@ -6,6 +6,8 @@ import type { CanonicalFlowNodeInputItem } from '../../workflow/migration';
 import { getSelectedInputRenderType } from '../../../common/workflow/reference';
 import type { SelectedToolItemType } from './type';
 import { AgentToolInputModeEnum } from '../tool/constants';
+import { isSecretValueConfigured } from '../../../common/secret/utils';
+import { normalizeToolInputValue } from '../tool/systemTool/codec';
 
 const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.input]: true,
@@ -556,6 +558,11 @@ export const isToolInputValueConfigured = ({
   value?: FlowNodeInputItemType['value'];
 }) => {
   const configuredValue = value ?? input.defaultValue;
+  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+    return isSecretValueConfigured(
+      normalizeToolInputValue({ value: configuredValue, inputType: 'secret' })
+    );
+  }
   if (configuredValue === undefined || configuredValue === null || configuredValue === '') {
     return false;
   }

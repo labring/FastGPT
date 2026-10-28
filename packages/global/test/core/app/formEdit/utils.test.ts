@@ -571,6 +571,26 @@ describe('checkNeedsUserConfiguration', () => {
 });
 
 describe('getToolConfigStatus', () => {
+  it.each([
+    [{ value: 'plain' }, 'configured'],
+    [{ secret: 'cipher' }, 'configured'],
+    ['legacy-plain', 'configured'],
+    [{ value: '' }, 'waitingForConfig'],
+    [{ value: 'plain', extra: true }, 'waitingForConfig'],
+    [{ ref: [] }, 'waitingForConfig']
+  ])('uses shared credential validity for password configuration: %j', (value, status) => {
+    const tool = {
+      inputs: [
+        createMockInput({
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          required: true,
+          value
+        })
+      ]
+    };
+    expect(getToolConfigStatus({ tool }).status).toBe(status);
+  });
+
   describe('noConfig status', () => {
     it('should return noConfig for empty inputs', () => {
       const tool = { inputs: [] };

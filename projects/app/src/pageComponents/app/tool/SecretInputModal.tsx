@@ -14,18 +14,14 @@ import type {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import {
-  SecretValueTypeSchema,
   type SecretValueType,
   type StoreSecretValueType
 } from '@fastgpt/global/common/secret/type';
 import {
-  getSecretCipherValue,
-  getSecretPlainValue,
-  getSecretValueField,
-  hasSecretValueField,
-  isSecretReferenceValue
+  getSecretReferenceValue,
+  isSecretValueConfigured
 } from '@fastgpt/global/common/secret/utils';
-import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
@@ -96,11 +92,11 @@ export type SecretReferenceList = {
 }[];
 
 export const isReferenceArrayValue = (value?: SecretInputValue) =>
-  isSecretReferenceValue(value) && Array.isArray(value.ref[0]);
+  Array.isArray(getSecretReferenceValue(value)?.[0]);
 
 export const formatReferenceValue = (value?: SecretInputValue) => {
-  if (!isSecretReferenceValue(value)) return '';
-  const reference = value.ref;
+  const reference = getSecretReferenceValue(value);
+  if (!reference) return '';
   return Array.isArray(reference[0])
     ? (reference as [string, string?][]).map((item) => item.join(' / ')).join(', ')
     : (reference as [string, string?]).join(' / ');
@@ -113,38 +109,15 @@ export const shouldShowSecretInput = ({
   value?: SecretInputValue;
   isEditing?: boolean;
 }) => {
-  const staticValue = isSecretReferenceValue(value) ? undefined : value;
-  const hasCipherValue = !!getSecretCipherValue(staticValue);
-  const hasPlainValue = !!getSecretPlainValue(staticValue);
-  return (!hasCipherValue && !hasPlainValue) || isEditing;
+  return !isSecretValueConfigured(value) || isEditing;
 };
 
+/** 编辑器先复用凭据解析；旧数字/开关配置仅在声明的非密钥字段中转换为字符串。 */
 export const normalizeInputValue = (
   value: unknown,
   inputType: InputConfigType['inputType'] = 'secret'
 ): SecretInputValue => {
-  try {
-    const migratedValue = migrateSecretValueToCurrent(value);
-    const parsedValue = SecretValueTypeSchema.safeParse(migratedValue);
-    if (parsedValue.success) return parsedValue.data;
-  } catch {
-    // Ignore malformed legacy references and let the editor start with an empty value.
-  }
-
-  const rawValue = hasSecretValueField(value, 'value')
-    ? getSecretValueField(value, 'value')
-    : value;
-
-  return {
-    value:
-      inputType === 'secret'
-        ? typeof rawValue === 'string'
-          ? rawValue
-          : ''
-        : rawValue === undefined || rawValue === null
-          ? ''
-          : String(rawValue)
-  };
+  return normalizeToolInputValue({ value, inputType }) ?? { value: '' };
 };
 
 export const formatManualInputValue = (value: unknown) =>
@@ -266,7 +239,7 @@ export const SecretInputForm = ({
   };
 
   const getFieldMode = (key: string, value?: SecretInputValue): FieldMode =>
-    fieldModes[key] || (isSecretReferenceValue(value) ? 'reference' : 'manual');
+    fieldModes[key] || (getSecretReferenceValue(value) ? 'reference' : 'manual');
 
   const changeFieldMode = (key: string, mode: FieldMode) => {
     setFieldModes((prev) => ({ ...prev, [key]: mode }));
@@ -542,9 +515,7 @@ export const SecretInputForm = ({
                                   renderReference && !isReferenceArrayValue(referenceValue) ? (
                                     renderReference({
                                       list: fieldReferenceList,
-                                      value: isSecretReferenceValue(referenceValue)
-                                        ? referenceValue.ref
-                                        : undefined,
+                                      value: getSecretReferenceValue(referenceValue),
                                       onSelect: (ref) => onChange(ref ? { ref } : undefined)
                                     })
                                   ) : (

@@ -4,6 +4,43 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import { isDebugToolSource } from '../utils';
+import { parseSecretValue } from '../../../../common/secret/utils';
+import type { SecretValueType } from '../../../../common/secret/type';
+import type { InputConfigType } from '../../../workflow/type/io';
+
+/**
+ * 将工具配置边界的旧标量/单字段值包装为凭据来源，前端和运行时共用。
+ * 密钥只接受字符串；数字/开关仅在对应非密钥字段中转成持久化字符串，非法对象不算已配置。
+ */
+export const normalizeToolInputValue = ({
+  value,
+  inputType
+}: {
+  value: unknown;
+  inputType: InputConfigType['inputType'];
+}): SecretValueType | undefined => {
+  const secretValue = parseSecretValue(value);
+  if (secretValue) return secretValue;
+
+  const rawValue = (() => {
+    if (
+      inputType !== 'secret' &&
+      typeof value === 'object' &&
+      value !== null &&
+      Object.keys(value).length === 1 &&
+      'value' in value
+    ) {
+      return value.value;
+    }
+    return value;
+  })();
+
+  if (typeof rawValue === 'string') return { value: rawValue };
+  if (inputType !== 'secret' && (typeof rawValue === 'number' || typeof rawValue === 'boolean')) {
+    return { value: String(rawValue) };
+  }
+  return undefined;
+};
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;

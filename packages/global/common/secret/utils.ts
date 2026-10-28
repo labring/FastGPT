@@ -1,67 +1,16 @@
 import z from 'zod';
-import {
-  ReferenceValueSchema,
-  SecretRefValueSchema,
-  SecretValueTypeSchema,
-  type ReferenceValue
-} from './type';
-
-export type SecretValueLike = {
-  value?: unknown;
-  secret?: unknown;
-  ref?: unknown;
-};
-
-export type SecretValueField = keyof SecretValueLike;
+import { SecretValueTypeSchema, type ReferenceValue, type SecretValueType } from './type';
 
 export type SecretValueReferenceResolver = (ref: ReferenceValue) => unknown;
 
-/** 判断值是否是包含 value、secret 或 ref 字段的密钥 wrapper。 */
-export const isSecretValueLike = (value: unknown): value is SecretValueLike =>
-  typeof value === 'object' &&
-  value !== null &&
-  !Array.isArray(value) &&
-  ('value' in value || 'secret' in value || 'ref' in value);
+/**
+ * 仅在已知凭据边界归一化历史 wrapper；非空明文优先，否则保留密文。
+ * 兼容序列化凭据及旧版可选字段，不改写附带业务字段的普通对象。
+ */
+export const normalizeLegacySecretValue = <T>(value: T): T | SecretValueType => {
+  const isRecord = (candidate: unknown): candidate is Record<string, unknown> =>
+    typeof candidate === 'object' && candidate !== null && !Array.isArray(candidate);
 
-/** 判断 wrapper 是否包含指定字段；字段值本身允许为空。 */
-export const hasSecretValueField = <T extends SecretValueField>(
-  value: unknown,
-  field: T
-): value is SecretValueLike & Required<Pick<SecretValueLike, T>> =>
-  isSecretValueLike(value) && field in value;
-
-/** 提取 wrapper 的指定字段，不把普通对象误判为密钥值。 */
-export const getSecretValueField = <T extends SecretValueField>(
-  value: unknown,
-  field: T
-): SecretValueLike[T] | undefined => (hasSecretValueField(value, field) ? value[field] : undefined);
-
-/** 判断是否是合法的结构化引用 wrapper。 */
-export const isSecretReferenceValue = (
-  value: unknown
-): value is SecretValueLike & { ref: ReferenceValue } =>
-  SecretRefValueSchema.safeParse(value).success;
-
-/** 判断 wrapper 是否包含字符串密文；空字符串也属于合法字段形态。 */
-export const isSecretCipherValue = (
-  value: unknown
-): value is SecretValueLike & { secret: string } =>
-  typeof getSecretValueField(value, 'secret') === 'string';
-
-/** 判断 wrapper 是否包含字符串明文；空字符串也属于合法字段形态。 */
-export const isSecretPlainValue = (value: unknown): value is SecretValueLike & { value: string } =>
-  typeof getSecretValueField(value, 'value') === 'string';
-
-/** 提取静态明文值。 */
-export const getSecretPlainValue = (value: unknown): string | undefined => {
-  const plainValue = getSecretValueField(value, 'value');
-  return typeof plainValue === 'string' ? plainValue : undefined;
-};
-
-/** @deprecated Remove after legacy dual-field secret wrappers have been migrated. */
-export const normalizeLegacySecretValue = <T>(
-  value: T
-): T | { secret: string } | { value: string } => {
   let candidate: unknown = value;
   if (typeof value === 'string') {
     try {
@@ -71,26 +20,44 @@ export const normalizeLegacySecretValue = <T>(
     }
   }
 
+  if (!isRecord(candidate)) return value;
+
+  const record = candidate;
+  const keys = Object.keys(record);
   if (
-    hasSecretValueField(candidate, 'value') &&
-    hasSecretValueField(candidate, 'secret') &&
-    Object.keys(candidate).length === 2 &&
-    Object.prototype.hasOwnProperty.call(candidate, 'value') &&
-    Object.prototype.hasOwnProperty.call(candidate, 'secret')
+    keys.length > 0 &&
+    keys.every((key) => key === 'value' || key === 'secret') &&
+    (record.value === undefined || typeof record.value === 'string') &&
+    (record.secret === undefined || typeof record.secret === 'string')
   ) {
-    if (candidate.value === '' && typeof candidate.secret === 'string') {
-      return { secret: candidate.secret };
+    if (typeof record.value === 'string' && record.value !== '') {
+      return { value: record.value };
     }
-    if (
-      typeof candidate.value === 'string' &&
-      candidate.value !== '' &&
-      typeof candidate.secret === 'string'
-    ) {
-      return { value: candidate.value };
-    }
+    if (typeof record.secret === 'string') return { secret: record.secret };
+    if (typeof record.value === 'string') return { value: record.value };
+  }
+
+  // JSON 字符串只在整个对象符合当前协议时解包，不能按单个 ref 字段猜测。
+  if (typeof value === 'string') {
+    const parsed = SecretValueTypeSchema.safeParse(candidate);
+    if (parsed.success) return parsed.data;
   }
 
   return value;
+};
+
+/** 凭据识别的唯一入口：先兼容旧数据，再严格校验整个互斥 wrapper。 */
+export const parseSecretValue = (value: unknown): SecretValueType | undefined => {
+  const parsed = SecretValueTypeSchema.safeParse(normalizeLegacySecretValue(value));
+  return parsed.success ? parsed.data : undefined;
+};
+
+/** 配置状态只看合法来源：空明文/密文未配置，合法引用已绑定；引用可用性由工作流检查。 */
+export const isSecretValueConfigured = (value: unknown): boolean => {
+  const secretValue = parseSecretValue(value);
+  if (!secretValue) return false;
+  if ('ref' in secretValue) return true;
+  return ('value' in secretValue ? secretValue.value : secretValue.secret) !== '';
 };
 
 /** API 入参先归一化历史双字段值，再按当前密钥格式严格校验。 */
@@ -99,15 +66,20 @@ export const StoreSecretValueTypeApiInputSchema = z.record(
   z.preprocess(normalizeLegacySecretValue, SecretValueTypeSchema)
 );
 
-/** 提取密文值。 */
+/** 从统一解析结果中提取明文，空字符串仍保留。 */
+export const getSecretPlainValue = (value: unknown): string | undefined => {
+  const secretValue = parseSecretValue(value);
+  return secretValue && 'value' in secretValue ? secretValue.value : undefined;
+};
+
+/** 从统一解析结果中提取密文，拒绝 ref 与静态值混用。 */
 export const getSecretCipherValue = (value: unknown): string | undefined => {
-  const cipherValue = getSecretValueField(value, 'secret');
-  return typeof cipherValue === 'string' ? cipherValue : undefined;
+  const secretValue = parseSecretValue(value);
+  return secretValue && 'secret' in secretValue ? secretValue.secret : undefined;
 };
 
 /** 提取并校验结构化引用。 */
 export const getSecretReferenceValue = (value: unknown): ReferenceValue | undefined => {
-  const reference = getSecretValueField(value, 'ref');
-  const parsed = ReferenceValueSchema.safeParse(reference);
-  return parsed.success ? parsed.data : undefined;
+  const secretValue = parseSecretValue(value);
+  return secretValue && 'ref' in secretValue ? secretValue.ref : undefined;
 };

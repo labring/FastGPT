@@ -23,9 +23,11 @@ import { hasConfiguredValue } from '../template/defaultValue';
 import { valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
-import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
-import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
+import {
+  getSecretReferenceValue,
+  isSecretValueConfigured
+} from '@fastgpt/global/common/secret/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { getWorkflowInputReferenceDiagnostics } from '../reference/validation';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
 
@@ -141,23 +143,16 @@ export const validateNodeIO = ({
         ? valueTypeFormat(storedValue, input.valueType)
         : getWorkflowInputValueForValidation({ input: normalizedInput, value: storedValue });
     // 兼容历史密码结构后再校验当前格式；引用密钥也视为已配置。
-    const secretValueResult =
+    const shouldValidateSecret =
       selectedType === FlowNodeInputTypeEnum.password &&
       effectiveValue !== undefined &&
-      effectiveValue !== null &&
-      typeof effectiveValue !== 'string'
-        ? SecretValueTypeSchema.safeParse(migrateSecretValueToCurrent(effectiveValue))
-        : undefined;
+      effectiveValue !== null;
+    const secretValue = shouldValidateSecret
+      ? normalizeToolInputValue({ value: effectiveValue, inputType: 'secret' })
+      : undefined;
     const isReference = nodeInputIsReference(normalizedInput);
     const isMissingValue = (() => {
-      if (secretValueResult?.success) {
-        const secretValue = secretValueResult.data;
-        if ('ref' in secretValue) return false;
-        return (
-          !('value' in secretValue && hasConfiguredValue(secretValue.value)) &&
-          !('secret' in secretValue && hasConfiguredValue(secretValue.secret))
-        );
-      }
+      if (secretValue) return !isSecretValueConfigured(secretValue);
       return isReference
         ? isReferenceValueMissing(effectiveValue, !!input.valueType?.startsWith('array'))
         : !hasConfiguredValue(effectiveValue);
@@ -209,31 +204,33 @@ export const validateNodeIO = ({
       });
       continue;
     }
-    if (secretValueResult) {
-      if (!secretValueResult.success) {
+    if (shouldValidateSecret) {
+      if (!secretValue) {
         diagnostics.push({
           code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
           severity: 'error',
           nodeId: node.nodeId,
           inputKey: input.key
         });
-      } else {
-        const reference = getSecretReferenceValue(secretValueResult.data);
-        if (reference) {
-          // TODO: 可能和后面的引用检查 PR 冲突。
-          diagnostics.push(
-            ...getWorkflowInputReferenceDiagnostics({
-              document,
-              nodeId: node.nodeId,
-              input: { ...normalizedInput, value: reference }
-            })
-          );
-        }
+        continue;
       }
-      // 密文无法按明文字符串的类型和 Schema 检查；诊断也不能携带敏感原值。
-      continue;
+      const reference = getSecretReferenceValue(secretValue);
+      if (reference) {
+        diagnostics.push(
+          ...getWorkflowInputReferenceDiagnostics({
+            document,
+            nodeId: node.nodeId,
+            input: { ...normalizedInput, value: reference }
+          })
+        );
+        continue;
+      }
+      // 密文无法按明文字符串检查；明文 wrapper 与历史原始字符串共用下面的校验。
+      if ('secret' in secretValue) continue;
     }
-    if (!hasConfiguredValue(effectiveValue)) continue;
+    const validationValue =
+      secretValue && 'value' in secretValue ? secretValue.value : effectiveValue;
+    if (!hasConfiguredValue(validationValue)) continue;
     // 编辑器变量替换后才能确定 JSON 的最终结构，静态阶段不能按未展开文本拒绝。
     if (isDynamicJson) continue;
 
@@ -242,10 +239,10 @@ export const validateNodeIO = ({
         ...getWorkflowInputReferenceDiagnostics({
           document,
           nodeId: node.nodeId,
-          input: { ...normalizedInput, value: effectiveValue }
+          input: { ...normalizedInput, value: validationValue }
         })
       );
-    } else if (!valueMatchesType(effectiveValue, input.valueType)) {
+    } else if (!valueMatchesType(validationValue, input.valueType)) {
       diagnostics.push({
         code: WorkflowDiagnosticCodeEnum.inputValueTypeInvalid,
         severity: 'error',
@@ -256,7 +253,7 @@ export const validateNodeIO = ({
     } else {
       const valueSchema =
         getInputAutomationMeta(node.flowNodeType, input.key)?.valueSchema ?? input.customJsonSchema;
-      if (valueSchema && !valueMatchesSchema(effectiveValue, valueSchema)) {
+      if (valueSchema && !valueMatchesSchema(validationValue, valueSchema)) {
         diagnostics.push({
           code: WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid,
           severity: 'error',

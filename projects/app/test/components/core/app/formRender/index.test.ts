@@ -6,6 +6,8 @@ import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
+import { useForm } from 'react-hook-form';
 
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
@@ -18,6 +20,21 @@ const PasswordInputHarness = () => {
     value,
     onChange: setValue
   });
+};
+
+const PasswordFormHarness = ({ value, onSubmit }: { value: unknown; onSubmit: () => void }) => {
+  const form = useForm<{ password: unknown }>({ values: { password: value } });
+  return React.createElement(
+    'form',
+    { onSubmit: form.handleSubmit(onSubmit) },
+    React.createElement(LabelAndFormRender, {
+      form,
+      fieldName: 'password',
+      label: 'Password',
+      inputType: InputTypeEnum.password,
+      required: true
+    })
+  );
 };
 
 describe('InputRender password input', () => {
@@ -59,10 +76,36 @@ describe('InputRender password input', () => {
 
     await act(async () => {
       Simulate.focus(input);
-      Simulate.change(input, { target: { value: 'a' } });
+      input.value = 'a';
+      Simulate.change(input);
     });
 
     expect(container.querySelector('input[type="password"]')).not.toBeNull();
     expect(container.querySelector<HTMLInputElement>('input[type="password"]')?.value).toBe('a');
+  });
+
+  it.each([
+    [{ value: 'plain' }, true],
+    [{ secret: 'cipher' }, true],
+    [{ value: '' }, false],
+    [{ value: 'plain', extra: true }, false],
+    [{ ref: ['node', 'token'] }, false]
+  ])('uses shared credential validity in required static forms: %j', async (value, valid) => {
+    const onSubmit = vi.fn();
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(PasswordFormHarness, { value, onSubmit })
+        )
+      );
+    });
+    await act(async () => {
+      container
+        .querySelector('form')
+        ?.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(valid ? 1 : 0);
   });
 });

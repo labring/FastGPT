@@ -60,7 +60,8 @@ import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/typ
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
-import { SecretValueTypeSchema, type SecretValueType } from '@fastgpt/global/common/secret/type';
+import { isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 
 const inputTypeFormKey = (key: string) => `__input_type__${key}`;
 // developerInputType 即全局的 manualRenderType：Agent 配置里“手动输入”实际使用的那个控件。
@@ -288,17 +289,9 @@ const hasToolSetConfig = (tool: FlowNodeTemplateType) =>
   !!tool.toolConfig?.httpToolSet ||
   !!tool.toolConfig?.systemToolSet;
 
-const parseSecretValue = (value: unknown): SecretValueType | undefined => {
-  const parsedValue = SecretValueTypeSchema.safeParse(value);
-  return parsedValue.success ? parsedValue.data : undefined;
-};
-
-const isSecretValueConfigured = (value?: SecretValueType) =>
-  !!value && ('ref' in value || ('value' in value ? value.value !== '' : value.secret !== ''));
-
 const isManualSecretConfigured = (value?: ToolParamsFormType) =>
   value?.type === SystemToolSecretInputTypeEnum.manual &&
-  Object.values(value.value ?? {}).some((item) => isSecretValueConfigured(parseSecretValue(item)));
+  Object.values(value.value ?? {}).some(isSecretValueConfigured);
 
 const getSecretInputInitialExpanded = ({
   value,
@@ -322,14 +315,9 @@ const isSecretInputConfigValid = ({
     if (!item.required) return true;
 
     const fieldValue = value.value?.[item.key];
-    const parsedValue = parseSecretValue(fieldValue);
-    if (!parsedValue) return false;
-
-    if (item.inputType === 'switch') {
-      return 'ref' in parsedValue || 'value' in parsedValue;
-    }
-
-    return isSecretValueConfigured(parsedValue);
+    return isSecretValueConfigured(
+      normalizeToolInputValue({ value: fieldValue, inputType: item.inputType })
+    );
   });
 };
 

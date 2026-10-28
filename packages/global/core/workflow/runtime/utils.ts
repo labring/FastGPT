@@ -19,7 +19,7 @@ import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
-import { SecretValueTypeSchema } from '../../../common/secret/type';
+import { parseSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 /**
@@ -92,12 +92,9 @@ export const valueTypeFormat = (
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
   // `{ value }` 也可能是普通业务对象；仅密码输入按密钥 wrapper 透传。
-  if (
-    isSecretInput &&
-    valueType === WorkflowIOValueTypeEnum.string &&
-    SecretValueTypeSchema.safeParse(value).success
-  ) {
-    return value;
+  if (isSecretInput && valueType === WorkflowIOValueTypeEnum.string) {
+    const secretValue = parseSecretValue(value);
+    if (secretValue) return secretValue;
   }
 
   // 2. 如果值已经符合目标类型，直接返回

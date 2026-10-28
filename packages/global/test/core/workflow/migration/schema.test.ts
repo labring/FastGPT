@@ -48,6 +48,35 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it('preserves ordinary business JSON containing credential-shaped fields', () => {
+    const value = {
+      headerSecret: { Authorization: { value: 'business-value', secret: 'business-secret' } },
+      payload: { value: 'also-business', secret: 'keep' }
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'code',
+          flowNodeType: 'code',
+          name: 'Code',
+          inputs: [
+            {
+              key: 'payload',
+              label: 'Payload',
+              renderTypeList: [FlowNodeInputTypeEnum.JSONEditor],
+              selectedType: FlowNodeInputTypeEnum.JSONEditor,
+              valueType: WorkflowIOValueTypeEnum.object,
+              value
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+    expect(result.nodes[0].inputs[0].value).toEqual(value);
+    expect(migrateWorkflowToCurrent(result)).toEqual(result);
+  });
+
   it('migrates secrets in legacy MCP tool-set values after structure conversion', () => {
     const result = migrateWorkflowToCurrent({
       nodes: [

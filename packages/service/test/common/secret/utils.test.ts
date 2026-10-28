@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { assert, describe, it, expect } from 'vitest';
 import {
   encryptSecretValue,
+  decryptSecretValue,
   resolveSecretValue,
   storeSecretValue,
   getSecretValue,
@@ -8,6 +9,24 @@ import {
 } from '@fastgpt/service/common/secret/utils';
 import { encryptSecret, decryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
+
+describe('decryptSecretValue', () => {
+  it('decodes credentials while preserving reference sources and business objects', () => {
+    expect(decryptSecretValue({ value: 'plain', secret: 'old-cipher' })).toBe('plain');
+    expect(decryptSecretValue({ secret: encryptSecret('encrypted') })).toBe('encrypted');
+    expect(decryptSecretValue({ ref: ['node', 'token'] })).toEqual({ ref: ['node', 'token'] });
+    const business = { value: 'business', extra: true };
+    expect(decryptSecretValue(business)).toBe(business);
+    const mixed = { value: 'plain', ref: ['node', 'token'] };
+    expect(decryptSecretValue(mixed)).toBe(mixed);
+  });
+
+  it('keeps authentication failures visible to callers', () => {
+    const cipher = encryptSecret('plain');
+    const tampered = cipher.slice(0, -1) + (cipher.endsWith('0') ? '1' : '0');
+    expect(() => decryptSecretValue({ secret: tampered })).toThrow();
+  });
+});
 
 describe('encryptSecretValue', () => {
   it('should return non-object value as-is', () => {
@@ -32,6 +51,7 @@ describe('encryptSecretValue', () => {
     const input = { value: 'my-api-key' };
     const result = encryptSecretValue(input);
 
+    assert('secret' in result);
     expect(result.secret).toBeTruthy();
     expect(result.secret).not.toBe('my-api-key');
     // Verify the encrypted secret can be decrypted back
@@ -49,6 +69,7 @@ describe('encryptSecretValue', () => {
     const input = { value: 'p@ss!w0rd#$%^&*()' };
     const result = encryptSecretValue(input);
 
+    assert('secret' in result);
     expect(decryptSecret(result.secret)).toBe('p@ss!w0rd#$%^&*()');
   });
 
@@ -56,6 +77,7 @@ describe('encryptSecretValue', () => {
     const input = { value: '密钥值🔑' };
     const result = encryptSecretValue(input);
 
+    assert('secret' in result);
     expect(decryptSecret(result.secret)).toBe('密钥值🔑');
   });
 
@@ -82,6 +104,8 @@ describe('storeSecretValue', () => {
     };
     const result = storeSecretValue(input);
 
+    assert('secret' in result['X-Api-Key']);
+    assert('secret' in result['X-Token']);
     expect(decryptSecret(result['X-Api-Key'].secret)).toBe('key-123');
     expect(decryptSecret(result['X-Token'].secret)).toBe('token-456');
   });
@@ -102,6 +126,7 @@ describe('storeSecretValue', () => {
     };
     const result = storeSecretValue(input);
 
+    assert('secret' in result['X-Api-Key']);
     expect(decryptSecret(result['X-Api-Key'].secret)).toBe('new-key');
     expect(result['X-Token']).toEqual({ secret: 'already-encrypted' });
   });
@@ -206,7 +231,7 @@ describe('getSecretValue', () => {
     expect(result).toEqual({});
   });
 
-  it('should skip non-object values', () => {
+  it('should skip values that are not recognized credential wrappers', () => {
     const result = getSecretValue({
       storeSecret: {
         // @ts-expect-error - testing runtime behavior
@@ -215,6 +240,17 @@ describe('getSecretValue', () => {
     });
 
     expect(result).toEqual({});
+  });
+
+  it('uses the shared parser for encoded legacy header credentials', () => {
+    expect(
+      getSecretValue({
+        storeSecret: {
+          // @ts-expect-error - historical transport encoding is normalized at runtime
+          'X-Token': JSON.stringify({ value: '', secret: encryptSecret('legacy') })
+        }
+      })
+    ).toEqual({ 'X-Token': 'legacy' });
   });
 
   it('should handle multiple entries with mixed types', () => {

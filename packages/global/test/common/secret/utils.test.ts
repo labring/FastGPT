@@ -3,48 +3,108 @@ import {
   getSecretCipherValue,
   getSecretPlainValue,
   getSecretReferenceValue,
-  getSecretValueField,
-  hasSecretValueField,
-  isSecretCipherValue,
-  isSecretPlainValue,
-  isSecretReferenceValue,
-  isSecretValueLike
+  isSecretValueConfigured,
+  normalizeLegacySecretValue,
+  parseSecretValue,
+  StoreSecretValueTypeApiInputSchema
 } from '@fastgpt/global/common/secret/utils';
 
-describe('isSecretValueLike', () => {
-  it('recognizes canonical static and reference wrappers', () => {
-    expect(isSecretValueLike({ value: '' })).toBe(true);
-    expect(isSecretValueLike({ secret: '' })).toBe(true);
-    expect(isSecretValueLike({ ref: ['node-1', 'token'] })).toBe(true);
+describe('normalizeLegacySecretValue', () => {
+  it.each([
+    [{ value: 'plain', secret: 'cipher' }, { value: 'plain' }],
+    [{ value: '', secret: 'cipher' }, { secret: 'cipher' }],
+    [{ value: undefined, secret: 'cipher' }, { secret: 'cipher' }],
+    [{ value: 'plain', secret: undefined }, { value: 'plain' }],
+    [{ value: '' }, { value: '' }],
+    ['{"value":"","secret":"cipher"}', { secret: 'cipher' }],
+    ['{"ref":["node","token"]}', { ref: ['node', 'token'] }]
+  ])('normalizes known credential storage values: %j', (value, expected) => {
+    expect(normalizeLegacySecretValue(value)).toEqual(expected);
   });
 
-  it('rejects non-wrapper values', () => {
-    const cases = [null, undefined, 'secret', 1, false, {}, [], ['node-1', 'token']];
-    cases.forEach((val) => expect(isSecretValueLike(val)).toBe(false));
+  it.each([
+    undefined,
+    null,
+    false,
+    0,
+    [],
+    'plain',
+    '42',
+    'null',
+    '{invalid',
+    '{"payload":true}',
+    { value: undefined },
+    { value: 1 },
+    { secret: false },
+    { value: 'plain', secret: 'cipher', business: true }
+  ])('preserves unrelated or malformed values: %j', (value) => {
+    expect(normalizeLegacySecretValue(value)).toEqual(value);
   });
 });
 
-describe('secret value helpers', () => {
-  it('reads wrapper fields without confusing ordinary objects', () => {
-    const value = { value: 'plain', secret: 'cipher' };
-
-    expect(hasSecretValueField(value, 'value')).toBe(true);
-    expect(hasSecretValueField(value, 'secret')).toBe(true);
-    expect(getSecretValueField(value, 'value')).toBe('plain');
-    expect(getSecretPlainValue(value)).toBe('plain');
-    expect(getSecretCipherValue(value)).toBe('cipher');
-    expect(isSecretPlainValue(value)).toBe(true);
-    expect(isSecretCipherValue(value)).toBe(true);
-    expect(getSecretPlainValue({ value: 1 })).toBeUndefined();
-    expect(getSecretValueField({ other: 'value' }, 'value')).toBeUndefined();
+describe('parseSecretValue', () => {
+  it.each([
+    { value: '' },
+    { secret: 'cipher' },
+    { ref: ['node', 'token'] },
+    {
+      ref: [
+        ['node', 'token'],
+        ['other', 'token']
+      ]
+    }
+  ])('accepts canonical wrappers: %j', (value) => {
+    expect(parseSecretValue(value)).toEqual(value);
   });
 
-  it('validates and extracts reference wrappers', () => {
-    const value = { ref: ['node-1', 'token'] as [string, string] };
+  it.each([
+    {},
+    'plain',
+    { ref: [] },
+    { ref: ['node'] },
+    { ref: ['', 'token'] },
+    { ref: ['node', 'token'], value: 'plain' },
+    { ref: ['node', 'token'], secret: 'cipher' },
+    { value: 'plain', business: true }
+  ])('rejects invalid wrappers consistently across all getters: %j', (value) => {
+    expect(parseSecretValue(value)).toBeUndefined();
+    expect(getSecretPlainValue(value)).toBeUndefined();
+    expect(getSecretCipherValue(value)).toBeUndefined();
+    expect(getSecretReferenceValue(value)).toBeUndefined();
+    expect(isSecretValueConfigured(value)).toBe(false);
+  });
 
-    expect(isSecretReferenceValue(value)).toBe(true);
-    expect(getSecretReferenceValue(value)).toEqual(['node-1', 'token']);
-    expect(isSecretReferenceValue({ ref: [] })).toBe(false);
-    expect(getSecretReferenceValue({ ref: [] })).toBeUndefined();
+  it('uses the same legacy precedence at API boundaries and in field getters', () => {
+    const legacy = { value: 'plain', secret: 'cipher' };
+    expect(parseSecretValue(legacy)).toEqual({ value: 'plain' });
+    expect(getSecretPlainValue(legacy)).toBe('plain');
+    expect(getSecretCipherValue(legacy)).toBeUndefined();
+    expect(StoreSecretValueTypeApiInputSchema.parse({ token: legacy })).toEqual({
+      token: parseSecretValue(legacy)
+    });
+  });
+});
+
+describe('isSecretValueConfigured', () => {
+  it.each([
+    [{ value: '' }, false],
+    [{ secret: '' }, false],
+    [{ value: 'plain' }, true],
+    [{ secret: 'cipher' }, true],
+    [{ ref: ['node', 'token'] }, true],
+    [{ value: '', secret: 'cipher' }, true]
+  ])('judges configured sources without decrypting them: %j', (value, expected) => {
+    expect(isSecretValueConfigured(value)).toBe(expected);
+  });
+});
+
+describe('credential field getters', () => {
+  it('only exposes the field selected by the shared parser', () => {
+    expect(getSecretPlainValue({ value: '' })).toBe('');
+    expect(getSecretCipherValue({ secret: '' })).toBe('');
+    expect(getSecretPlainValue({ secret: 'cipher' })).toBeUndefined();
+    expect(getSecretCipherValue({ value: 'plain' })).toBeUndefined();
+    expect(getSecretReferenceValue({ value: 'plain' })).toBeUndefined();
+    expect(getSecretReferenceValue({ ref: ['node', 'token'] })).toEqual(['node', 'token']);
   });
 });

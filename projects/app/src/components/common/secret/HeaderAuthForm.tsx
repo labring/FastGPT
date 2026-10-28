@@ -4,9 +4,9 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, HStack, IconButton, Input, type ButtonProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getSecretCipherValue,
   getSecretPlainValue,
-  getSecretReferenceValue
+  getSecretReferenceValue,
+  isSecretValueConfigured
 } from '@fastgpt/global/common/secret/utils';
 import type { HeaderSecretConfigType, HeaderSecretValueType } from './HeaderAuthConfig';
 import { HeaderSecretTypeEnum } from '@fastgpt/global/common/secret/constants';
@@ -48,11 +48,9 @@ export const getShowInput = ({
   editingIndex?: number;
   index: number;
 }) => {
-  const hasSecret = !!getSecretCipherValue(secretValue);
-  const hasValue = !!getSecretPlainValue(secretValue);
   const isEditing = editingIndex === index;
 
-  return (!hasSecret && !hasValue) || isEditing;
+  return !isSecretValueConfigured(secretValue) || isEditing;
 };
 
 export type SecretReferenceRenderer = (params: {

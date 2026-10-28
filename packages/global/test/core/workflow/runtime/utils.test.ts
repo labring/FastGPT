@@ -289,7 +289,7 @@ describe('valueTypeFormat', () => {
   it('should preserve secret wrappers only for explicit secret inputs', () => {
     const secretVal = { secret: 'cipher' };
     expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string)).toBe('{"secret":"cipher"}');
-    expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string, true)).toBe(secretVal);
+    expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string, true)).toEqual(secretVal);
     expect(valueTypeFormat({ value: 'plain' }, WorkflowIOValueTypeEnum.string, true)).toEqual({
       value: 'plain'
     });

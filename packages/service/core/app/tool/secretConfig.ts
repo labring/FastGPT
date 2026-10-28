@@ -1,7 +1,9 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  type FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import {
   encryptSecretValue,
@@ -10,6 +12,8 @@ import {
 } from '../../../common/secret/utils';
 import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
 
 const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
   input: WorkflowIOValueTypeEnum.string,
@@ -34,7 +38,12 @@ export const resolveToolInputValues = ({
   return Object.fromEntries(
     Object.entries(value).map(([key, rawValue]) => {
       const input = inputList?.find((item) => item.key === key);
-      const resolvedValue = resolveSecretValue({ value: rawValue, resolveReference });
+      const resolvedValue = resolveSecretValue({
+        value: input
+          ? (normalizeToolInputValue({ value: rawValue, inputType: input.inputType }) ?? rawValue)
+          : rawValue,
+        resolveReference
+      });
       if (!input) return [key, resolvedValue];
 
       const valueType = inputTypeValueTypeMap[input.inputType];
@@ -55,11 +64,19 @@ export const resolveToolInputValues = ({
 /**
  * 格式化工具输入中的敏感值。
  * 保存和详情读取都经过这里，确保 Agent 嵌套工具与普通工具使用一致的密钥规则。
+ * 系统容器必须匹配节点类型和系统 key，普通业务中的同名参数保持原样。
  */
-export const formatToolInputSecrets = ({ inputs }: { inputs: FlowNodeInputItemType[] }) => {
+export const formatToolInputSecrets = ({
+  inputs,
+  flowNodeType
+}: {
+  inputs: Pick<FlowNodeInputItemType, 'key' | 'value' | 'renderTypeList' | 'inputList'>[];
+  flowNodeType: FlowNodeTypeEnum;
+}) => {
   inputs.forEach((input) => {
+    const secretInputKind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
     if (
-      input.key === NodeInputKeyEnum.systemInputConfig &&
+      secretInputKind === 'systemConfig' &&
       typeof input.value === 'object' &&
       input.value !== null
     ) {
@@ -78,7 +95,7 @@ export const formatToolInputSecrets = ({ inputs }: { inputs: FlowNodeInputItemTy
       }
     }
 
-    if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
+    if (secretInputKind === 'headers' && typeof input.value === 'object' && input.value !== null) {
       input.value = storeSecretValue(input.value);
     }
 

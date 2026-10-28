@@ -1,7 +1,7 @@
-import { SecretRefValueSchema } from '../../../common/secret/type';
-import { normalizeLegacySecretValue } from '../../../common/secret/utils';
+import { parseSecretValue } from '../../../common/secret/utils';
+import { getWorkflowSecretInputKind } from '../../../common/workflow/input';
 import { NodeInputKeyEnum } from '../constants';
-import { FlowNodeInputTypeEnum } from '../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
 
 type RecordValue = Record<string, unknown>;
 
@@ -15,34 +15,11 @@ const isRecord = (value: unknown): value is RecordValue =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** 将单个旧密钥值收敛为唯一的明文、密文或引用分支。 */
-export const migrateSecretValueToCurrent = (value: unknown): unknown => {
-  const normalizedValue = normalizeLegacySecretValue(value);
-  if (!isRecord(normalizedValue)) return normalizedValue;
+export const migrateSecretValueToCurrent = (value: unknown): unknown =>
+  parseSecretValue(value) ?? value;
 
-  const reference = SecretRefValueSchema.safeParse(normalizedValue);
-  if (reference.success) return reference.data;
-
-  if (!('value' in normalizedValue) && !('secret' in normalizedValue)) return normalizedValue;
-
-  const keys = Object.keys(normalizedValue);
-  if (keys.some((key) => key !== 'value' && key !== 'secret')) return normalizedValue;
-  if (normalizedValue.value !== undefined && typeof normalizedValue.value !== 'string') {
-    return normalizedValue;
-  }
-  if (normalizedValue.secret !== undefined && typeof normalizedValue.secret !== 'string') {
-    return normalizedValue;
-  }
-
-  if (typeof normalizedValue.value === 'string' && normalizedValue.value.length > 0) {
-    return { value: normalizedValue.value };
-  }
-  if (typeof normalizedValue.secret === 'string') return { secret: normalizedValue.secret };
-  if (typeof normalizedValue.value === 'string') return { value: normalizedValue.value };
-
-  return normalizedValue;
-};
-
-const migrateSecretStoreToCurrent = (value: unknown): unknown => {
+/** 迁移已确认属于鉴权配置的凭据表；普通业务对象不进入此入口。 */
+export const migrateSecretStoreToCurrent = (value: unknown): unknown => {
   if (!isRecord(value)) return value;
 
   return Object.fromEntries(
@@ -102,10 +79,12 @@ const migrateSelectedToolsSecrets = (value: unknown): unknown => {
   });
 };
 
-const migrateInputSecrets = (value: unknown): unknown => {
+/** 按显式密钥声明和共享字段身份迁移输入；Agent 工具配置只从专用容器读取。 */
+const migrateInputSecrets = (value: unknown, flowNodeType: unknown): unknown => {
   if (!isRecord(value)) return value;
 
   const input = { ...value };
+  const secretInputKind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
   if (Array.isArray(input.inputList)) {
     input.inputList = input.inputList.map((item) => {
       if (!isRecord(item) || item.inputType !== 'secret' || !('value' in item)) return item;
@@ -119,20 +98,14 @@ const migrateInputSecrets = (value: unknown): unknown => {
   ) {
     input.value = migrateSecretValueToCurrent(input.value);
   }
-  if (input.key === NodeInputKeyEnum.headerSecret && 'value' in input) {
+  if (secretInputKind === 'headers' && 'value' in input) {
     input.value = migrateSecretStoreToCurrent(input.value);
   }
-  if (input.key === NodeInputKeyEnum.systemInputConfig && isRecord(input.value)) {
+  if (secretInputKind === 'systemConfig' && isRecord(input.value)) {
     input.value = migrateSystemInputConfigSecrets(input.value);
   }
-  if (input.key === NodeInputKeyEnum.selectedTools) {
+  if (flowNodeType === FlowNodeTypeEnum.agent && input.key === NodeInputKeyEnum.selectedTools) {
     input.value = migrateSelectedToolsSecrets(input.value);
-  }
-  if (isRecord(input.value) && 'headerSecret' in input.value) {
-    input.value = {
-      ...input.value,
-      headerSecret: migrateSecretStoreToCurrent(input.value.headerSecret)
-    };
   }
 
   return input;
@@ -143,9 +116,10 @@ const migrateNodeSecrets = (value: unknown): unknown => {
 
   const node = { ...value };
   if (Array.isArray(node.inputs)) {
-    node.inputs = node.inputs.map(migrateInputSecrets);
+    node.inputs = node.inputs.map((input) => migrateInputSecrets(input, node.flowNodeType));
   }
-  if (isRecord(node.toolConfig)) {
+  // 当前工具集配置只从 toolSet 节点的专用路径读取，不按业务对象的字段形状推断。
+  if (node.flowNodeType === FlowNodeTypeEnum.toolSet && isRecord(node.toolConfig)) {
     node.toolConfig = migrateNodeToolConfigSecrets(node.toolConfig);
   }
 
