@@ -324,26 +324,29 @@ describe('handleS3ProxyUploadPart', () => {
     });
   });
 
-  it('does not write a response when the client aborts the upload', () => {
-    const res = {
-      destroyed: false,
-      closed: false,
-      headersSent: false,
-      status: vi.fn(),
-      json: vi.fn(),
-      end: vi.fn()
-    };
+  it.each(['Multipart upload request aborted', 'Upload request aborted'])(
+    'does not write a response for an aborted upload (%s)',
+    (message) => {
+      const res = {
+        destroyed: false,
+        closed: false,
+        headersSent: false,
+        status: vi.fn(),
+        json: vi.fn(),
+        end: vi.fn()
+      };
 
-    expect(
-      handleS3ProxyRouteError({
-        res: res as any,
-        error: new Error('Multipart upload request aborted')
-      })
-    ).toBeUndefined();
-    expect(res.status).not.toHaveBeenCalled();
-    expect(res.json).not.toHaveBeenCalled();
-    expect(res.end).not.toHaveBeenCalled();
-  });
+      expect(
+        handleS3ProxyRouteError({
+          res: res as any,
+          error: new Error(message)
+        })
+      ).toBeUndefined();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+      expect(res.end).not.toHaveBeenCalled();
+    }
+  );
 
   it('does not write errors after the response has closed', () => {
     const res = {
@@ -414,5 +417,45 @@ describe('handleS3ProxyUpload', () => {
         contentDisposition: expect.stringContaining("filename*=UTF-8''%E6%96%87%E6%A1%A3.txt")
       })
     );
+  });
+
+  it('settles the upload and destroys the guard stream when the client disconnects', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '100' },
+      aborted: false
+    });
+    const uploadObject = vi.fn();
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/file.txt',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'file.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.write(Buffer.from('partial'));
+    await vi.waitFor(() => expect(req.listenerCount('close')).toBeGreaterThan(0));
+    req.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadObject).not.toHaveBeenCalled();
+    expect(req.listenerCount('aborted')).toBe(0);
+    expect(req.listenerCount('close')).toBe(0);
   });
 });
