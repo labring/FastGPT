@@ -1,3 +1,5 @@
+import type { AgentLoopPause } from '../../../domain/result';
+import type { AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
@@ -60,7 +62,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
     assistantMessage?: ChatCompletionMessageParam;
-  }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
+  }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse | AgentAskInteractive>>;
   // 返回 false 的工具会按 toolCalls 顺序串行执行，用于 plan/ask_user 这类有状态内部工具。
   canBatchTool?: (call: ChatCompletionMessageToolCall) => boolean;
   // 每次 createLLMResponse 的生命周期回调。
@@ -96,6 +98,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     seconds: number;
     usages?: AgentLoopUsage[];
     metadata?: unknown;
+    interactive?: TChildrenResponse | AgentAskInteractive;
     toolResponseCompress?: {
       response: string;
       modelName: string;
@@ -117,10 +120,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   error?: any;
   completeMessages: ChatCompletionMessageParam[]; // Loop request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Loop assistant response messages
-  toolChildPause?: {
-    childrenResponse: TChildrenResponse;
-    toolCallId: string;
-  };
+  pause?: AgentLoopPause<TChildrenResponse>;
 
   // Usage
   model: string;
@@ -228,12 +228,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   const modelData = model;
 
   let runTimes = 0;
-  let toolChildPause:
-    | {
-        childrenResponse: TChildrenResponse;
-        toolCallId: string;
-      }
-    | undefined;
+  let pause: AgentLoopPause<TChildrenResponse> | undefined;
 
   // Init messages
   // 本轮产生的 assistantMessages，包括 tool 内产生的
@@ -331,7 +326,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
-      metadata
+      metadata,
+      interactive
     });
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
@@ -354,13 +350,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
-      toolChildPause = {
-        childrenResponse: interactive,
+      pause = {
+        interactive,
         toolCallId: childrenInteractiveParams.toolParams.toolCallId
       };
     }
 
-    if (toolChildPause || stop) {
+    if (pause || stop) {
       return {
         requestIds: [],
         model: modelData.model,
@@ -369,7 +365,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         llmTotalPoints: 0,
         completeMessages: requestMessages,
         assistantMessages,
-        toolChildPause,
+        pause,
         finish_reason: 'stop'
       };
     }
@@ -538,7 +534,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // 3. Call tools
       type ToolRunResult = {
         tool: ChatCompletionMessageToolCall;
-        interactive?: TChildrenResponse;
+        interactive?: TChildrenResponse | AgentAskInteractive;
         stopLoop?: boolean;
         toolMessage: ChatCompletionMessageParam;
         toolAssistantMessages: ChatCompletionMessageParam[];
@@ -630,7 +626,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           usages: [...toolUsages, ...(toolResponseCompress ? [toolResponseCompress.usage] : [])],
           toolResponseCompress,
           metadata,
-          hideInUI
+          hideInUI,
+          interactive
         });
 
         return {
@@ -656,8 +653,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolAssistantMessages
         } of toolRunResults) {
           if (interactive) {
-            toolChildPause = {
-              childrenResponse: interactive,
+            pause = {
+              interactive,
               toolCallId: tool.id
             };
           }
@@ -688,7 +685,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
           // 交互或 stop 工具已经决定暂停当前 loop，不能再执行同一轮中排在后面的工具，
           // 否则会在用户回答前产生额外副作用，且恢复上下文无法准确反映实际执行顺序。
-          if (toolChildPause || stopAgentLoop || isAborted?.()) {
+          if (pause || stopAgentLoop || isAborted?.()) {
             break;
           }
           continue;
@@ -716,7 +713,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         await appendToolRunResults(toolRunResults);
 
         // 同一并发批次已经启动的工具无法撤回，但后续批次不应在暂停信号后继续调度。
-        if (toolChildPause || stopAgentLoop || isAborted?.()) {
+        if (pause || stopAgentLoop || isAborted?.()) {
           break;
         }
       }
@@ -737,7 +734,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     // 暂停、工具显式停止和取消优先于业务完成判断。
-    if (toolChildPause || stopAgentLoop || isAborted?.()) {
+    if (pause || stopAgentLoop || isAborted?.()) {
       break;
     }
     if (toolCalls.length > 0) {
@@ -781,7 +778,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     contextCheckpoint,
     completeMessages: requestMessages,
     assistantMessages,
-    toolChildPause,
+    pause,
     finish_reason
   };
 };

@@ -931,9 +931,8 @@ describe('runPiAgentLoop', () => {
     expect(result).toMatchObject({
       status: 'paused',
       pause: {
-        type: 'tool_child',
         toolCallId: 'call_search',
-        childrenResponse: {
+        interactive: {
           type: 'userSelect'
         }
       }

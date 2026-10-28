@@ -8,7 +8,7 @@ import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
-import { AgentAskArgumentsSchema } from '../../../../ai/agent/type';
+import { AgentAskInteractiveSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -175,20 +175,6 @@ export const UserInputInteractiveSchema = z.object({
   })
 });
 export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
-
-export const AgentAskInteractiveSchema = z.object({
-  type: z.literal('agentAsk'),
-  params: z.object({
-    askId: z.string().min(1),
-    arguments: z
-      .string()
-      .refine((value) => AgentAskArgumentsSchema.safeParse(value).success, {
-        message: 'Invalid Ask tool arguments'
-      })
-      .meta({ description: '模型原始工具参数 JSON 字符串，保存及恢复时不重新序列化' })
-  })
-});
-export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;
 
 // 欠费暂停交互
 export const PaymentPauseInteractiveSchema = z.object({

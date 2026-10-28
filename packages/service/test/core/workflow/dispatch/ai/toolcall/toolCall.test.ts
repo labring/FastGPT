@@ -470,7 +470,13 @@ describe('runToolCall compression node responses', () => {
       return {
         ...createLoopResult({ usages: [] }),
         status: 'paused',
-        pause: { type: 'tool_child', childrenResponse, toolCallId: 'call_child' }
+        pause: {
+          toolCallId: 'call_child',
+          interactive: {
+            type: 'toolChildrenInteractive',
+            params: { childrenResponse, toolParams: { toolCallId: 'call_child' } }
+          }
+        }
       };
     });
 

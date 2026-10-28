@@ -1,4 +1,4 @@
-import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import {
   extractDeepestInteractive,
   isAgentAskInteractive

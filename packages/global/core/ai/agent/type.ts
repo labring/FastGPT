@@ -66,6 +66,25 @@ export const AgentAskArgumentsSchema = z
   })
   .pipe(AgentAskPayloadSchema);
 
+/** 交互工具仅保存原调用 ID 和原始 JSON；展示参数由各自 Schema 校验。 */
+export const InteractiveToolParamsSchema = z.object({
+  toolCallId: z.string().min(1).meta({ description: '模型返回的原始 tool call ID' }),
+  arguments: z.string().meta({ description: '模型原始工具参数 JSON 字符串' })
+});
+
+export const AgentAskInteractiveSchema = z.object({
+  type: z.literal('agentAsk'),
+  params: InteractiveToolParamsSchema.extend({
+    arguments: z
+      .string()
+      .refine((value) => AgentAskArgumentsSchema.safeParse(value).success, {
+        message: 'Invalid Ask tool arguments'
+      })
+      .meta({ description: '模型原始工具参数 JSON 字符串，保存及恢复时不重新序列化' })
+  })
+});
+export type AgentAskInteractive = z.infer<typeof AgentAskInteractiveSchema>;
+
 export const AgentAskAnswerPayloadSchema = z.object({
   answers: z.array(z.string())
 });

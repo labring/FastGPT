@@ -333,8 +333,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       return {
         status: 'paused',
         pause: {
-          type: 'tool_child',
-          childrenResponse: result.interactive,
+          interactive: result.interactive,
           toolCallId: call.id
         },
         activePlan,
@@ -789,9 +788,18 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     return {
       status: 'paused',
       pause: {
-        type: 'ask',
-        ask: pendingAsk,
-        askId: resolvedPendingAskId
+        toolCallId: resolvedPendingAskId,
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: resolvedPendingAskId,
+            arguments: resolveInteractiveToolCall({
+              toolCallId: resolvedPendingAskId,
+              messages: completeMessages,
+              piMessages: agent.state.messages
+            }).function.arguments
+          }
+        }
       },
       activePlan,
       providerState: nextProviderState,
@@ -808,8 +816,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     return {
       status: 'paused',
       pause: {
-        type: 'tool_child',
-        ...pendingToolChild
+        toolCallId: pendingToolChild.toolCallId,
+        interactive: pendingToolChild.childrenResponse
       },
       activePlan,
       providerState: nextProviderState,

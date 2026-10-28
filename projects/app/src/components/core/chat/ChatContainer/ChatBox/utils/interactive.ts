@@ -9,7 +9,7 @@ import type {
   UserInputInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

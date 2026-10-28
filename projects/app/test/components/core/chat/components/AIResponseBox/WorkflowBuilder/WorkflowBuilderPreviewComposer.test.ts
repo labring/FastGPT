@@ -32,8 +32,9 @@ vi.mock('@/components/core/chat/ChatContainer/context/chatInstanceActionsContext
 
 const interactive: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
-  previewId: 'preview-1',
+
   params: {
+    toolCallId: 'preview-1',
     arguments: JSON.stringify({
       title: '确认工作流方案',
       mermaid: 'flowchart LR; A --> B',

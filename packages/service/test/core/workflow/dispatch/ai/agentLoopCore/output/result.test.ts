@@ -139,9 +139,11 @@ describe('summarizeAgentLoopCoreResult', () => {
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'ask',
-          ask,
-          askId: 'call_ask'
+          toolCallId: 'call_ask',
+          interactive: {
+            type: 'agentAsk',
+            params: { toolCallId: 'call_ask', arguments: argumentsText }
+          }
         },
         providerState
       })
@@ -152,13 +154,13 @@ describe('summarizeAgentLoopCoreResult', () => {
         interactive: {
           type: 'agentAsk',
 
-          params: { askId: 'call_ask', arguments: argumentsText }
+          params: { toolCallId: 'call_ask', arguments: argumentsText }
         }
       })
     );
   });
 
-  it('normalizes tool child pause to unified interactive', () => {
+  it('passes explicitly wrapped workflow state through without adding a wrapper', () => {
     const childrenResponse = {
       type: 'userSelect'
     };
@@ -173,9 +175,11 @@ describe('summarizeAgentLoopCoreResult', () => {
         finishReason: 'stop',
         usages: [],
         pause: {
-          type: 'tool_child',
-          childrenResponse,
-          toolCallId: 'call_tool'
+          toolCallId: 'call_tool',
+          interactive: {
+            type: 'toolChildrenInteractive',
+            params: { childrenResponse, toolParams: { toolCallId: 'call_tool' } }
+          }
         }
       })
     ).toEqual(

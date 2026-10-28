@@ -1,3 +1,4 @@
+import { AgentAskInteractiveSchema } from '../../ai/agent/type';
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
@@ -10,12 +11,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  AgentAskInteractiveSchema,
-  type WorkflowInteractiveResponseType
-} from '../template/system/interactive/type';
+import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '../builder/type';
-import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../builder/constants';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
@@ -452,7 +449,7 @@ export function rewriteNodeOutputByHistories(
   });
 }
 
-/** 补齐交互续跑包装；成功 Preview 接管原工具所属 value，避免参数和等待结果重复存储。 */
+/** 补齐交互的工作流恢复字段，按调用 ID 更新唯一 value，不回写历史 AI。 */
 export const appendWorkflowInteractiveValue = ({
   values,
   interactive
@@ -466,30 +463,14 @@ export const appendWorkflowInteractiveValue = ({
       if (value.displayOnly || !value.interactive) return false;
       const current = extractDeepestInteractive(value.interactive);
       return isAgentAskInteractive(latest)
-        ? !!latest.params?.askId &&
+        ? !!latest.params?.toolCallId &&
             isAgentAskInteractive(current) &&
-            current.params?.askId === latest.params.askId
-        : current?.type === 'workflowBuilderPreview' && current.previewId === latest.previewId;
+            current.params?.toolCallId === latest.params.toolCallId
+        : current?.type === 'workflowBuilderPreview' &&
+            current.params.toolCallId === latest.params.toolCallId;
     });
     if (existing) {
       existing.interactive = interactive;
-      return;
-    }
-  }
-  if (latest.type === 'workflowBuilderPreview' && interactive.type === 'toolChildrenInteractive') {
-    const callId = interactive.params.toolParams.toolCallId;
-    const group = values.find(
-      (value) =>
-        !value.displayOnly &&
-        value.tools?.some(
-          (tool) => tool.id === callId && tool.functionName === WORKFLOW_BUILDER_PREVIEW_TOOL_NAME
-        )
-    );
-    if (group) {
-      group.tools = group.tools?.filter((tool) => tool.id !== callId);
-      if (!group.tools?.length) delete group.tools;
-      group.interactive = interactive;
-      group.hideInUI = false;
       return;
     }
   }

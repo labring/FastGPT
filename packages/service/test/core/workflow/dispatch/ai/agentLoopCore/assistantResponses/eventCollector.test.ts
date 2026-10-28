@@ -46,26 +46,35 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     }
   );
 
-  it('keeps Preview decisions exclusively in Human records', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector();
-    collector.emitEvent({
-      type: 'tool_run_end',
-      resumed: true,
-      call: call('preview', WORKFLOW_BUILDER_PREVIEW_TOOL_NAME),
-      response: '{"decision":"confirm"}',
-      seconds: 0
-    });
-    expect(collector.assistantResponses).toEqual([]);
-  });
-
   it.each([undefined, 'missing-arguments'])(
     'ignores Ask events without original call data: %s',
     (id) => {
       const collector = createAgentLoopCoreAssistantEventCollector();
       collector.emitEvent({
-        type: 'ask_start',
-        id,
-        ask: { reason: 'Legacy input', blockerType: 'user_choice', questions: [] }
+        type: 'tool_interactive',
+        call: {
+          id: id,
+          type: 'function',
+          function: {
+            name: 'ask_user',
+            arguments: JSON.stringify({
+              reason: 'Legacy input',
+              blockerType: 'user_choice',
+              questions: []
+            })
+          }
+        },
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: id,
+            arguments: JSON.stringify({
+              reason: 'Legacy input',
+              blockerType: 'user_choice',
+              questions: []
+            })
+          }
+        }
       });
       expect(collector.assistantResponses).toEqual([]);
     }
@@ -220,10 +229,13 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       originalCall.function.arguments = argumentsText;
       collector.emitEvent(end('ask-response', [originalCall]));
       collector.emitEvent({
-        type: 'ask_start',
-        id: 'ask',
-        ask: JSON.parse(argumentsText),
-        ...(explicitParams ? { params: argumentsText } : {})
+        type: 'tool_interactive',
+        call: {
+          id: 'ask',
+          type: 'function',
+          function: { name: 'ask_user', arguments: argumentsText }
+        },
+        interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
       });
       collector.emitEvent({
         type: 'tool_run_end',
@@ -233,7 +245,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       });
       expect(collector.assistantResponses).toHaveLength(1);
       expect(collector.assistantResponses[0]).toMatchObject({
-        interactive: { type: 'agentAsk', params: { askId: 'ask', arguments: argumentsText } }
+        interactive: { type: 'agentAsk', params: { toolCallId: 'ask', arguments: argumentsText } }
       });
       expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
       expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');

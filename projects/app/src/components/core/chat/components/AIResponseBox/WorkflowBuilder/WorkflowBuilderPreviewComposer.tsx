@@ -58,7 +58,7 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
 
   return (
     <AgentAskComposer
-      key={interactive.previewId}
+      key={interactive.params.toolCallId}
       questions={[question]}
       customOptionLabel={reviseLabel}
       customOptionPlaceholder={t('workflow:workflow_builder_preview_revise_placeholder')}

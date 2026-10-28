@@ -1052,7 +1052,7 @@ describe('useUserContext', () => {
                   type: 'agentAsk',
 
                   params: {
-                    askId: 'ask_1',
+                    toolCallId: 'ask_1',
                     arguments: JSON.stringify({
                       reason: 'Choose one',
                       blockerType: 'user_choice',

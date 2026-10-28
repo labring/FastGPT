@@ -28,7 +28,7 @@ import {
 } from '../workflow/builder/utils';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../workflow/builder/constants';
 import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
-import { AgentAskInteractiveSchema } from '../workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '../ai/agent/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import {
   formatAgentAskAnswers,
@@ -435,26 +435,9 @@ export const chats2GPTMessages = ({
     const interactive = item.value.findLast(
       (value) => !value.displayOnly && value.interactive
     )?.interactive;
-    // 子工具内部的预览不属于父模型，不能把其调用恢复为父模型工具。
-    if (
-      interactive?.type === 'toolChildrenInteractive' &&
-      interactive.params.childrenResponse?.type !== 'workflowBuilderPreview'
-    )
-      return;
-    const toolCallId =
-      interactive?.type === 'toolChildrenInteractive'
-        ? interactive.params.toolParams.toolCallId
-        : undefined;
-    const tool = item.value
-      .flatMap((value) => value.tools ?? (value.tool ? [value.tool] : []))
-      .findLast(
-        (tool) =>
-          tool.functionName === WORKFLOW_BUILDER_PREVIEW_TOOL_NAME &&
-          (!toolCallId || tool.id === toolCallId) &&
-          normalizeChatToolContext(tool)
-      );
-    const id = toolCallId ?? tool?.id;
-    return id ? { preview, toolCallId: id } : undefined;
+    // 真正子工作流内的预览由父工具恢复，不能伪造为父模型直接调用。
+    if (getParentInteractiveToolId(interactive)) return;
+    return { preview, toolCallId: preview.params.toolCallId };
   };
 
   sourceMessages.forEach((item, index) => {
@@ -662,7 +645,7 @@ export const chats2GPTMessages = ({
                       : {
                           ok: true,
                           state: 'awaiting_confirmation',
-                          previewId: valuePreview.previewId,
+                          previewId: valuePreview.params.toolCallId,
                           taskComplete: false
                         }
                   )
@@ -681,7 +664,7 @@ export const chats2GPTMessages = ({
             if (response !== undefined)
               contexts.push({
                 toolCall: {
-                  id: currentAsk.params.askId,
+                  id: currentAsk.params.toolCallId,
                   type: 'function',
                   function: {
                     name: 'ask_user',
@@ -690,7 +673,7 @@ export const chats2GPTMessages = ({
                 },
                 toolResponse: {
                   role: ChatCompletionRequestMessageRoleEnum.Tool,
-                  tool_call_id: currentAsk.params.askId,
+                  tool_call_id: currentAsk.params.toolCallId,
                   content: response
                 }
               });
@@ -785,11 +768,11 @@ export const chats2GPTMessages = ({
           const response = ask ? getAskResponse(ask, next) : undefined;
           if (ask && response !== undefined) {
             appendAssistantToolCall({
-              id: ask.params.askId,
+              id: ask.params.toolCallId,
               functionName: 'ask_user',
               params: ask.params.arguments
             });
-            appendToolMessage({ id: ask.params.askId, response });
+            appendToolMessage({ id: ask.params.toolCallId, response });
           }
         }
 

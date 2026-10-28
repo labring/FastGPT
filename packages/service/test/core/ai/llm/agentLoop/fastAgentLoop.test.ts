@@ -1,3 +1,4 @@
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
@@ -354,6 +355,34 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
   });
 
+  it('pauses for an opaque runtime interactive without classifying or wrapping it', async () => {
+    const interactive = { type: 'future-interaction', params: { display: 'Choose' } };
+    const emitEvent = vi.fn();
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({ id: 'runtime-call', name: 'search', args: {} })
+    ]);
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        emitEvent,
+        executeTool: vi.fn(async () => ({
+          response: 'Waiting',
+          interactive,
+          assistantMessages: [],
+          usages: []
+        }))
+      }),
+      input: { messages: [{ role: 'user', content: 'Start' }] }
+    });
+    expect(result.status).toBe('paused');
+    expect(result.pause).toEqual({ toolCallId: 'runtime-call', interactive });
+    expect(emitEvent).toHaveBeenCalledWith({
+      type: 'tool_interactive',
+      call: expect.objectContaining({ id: 'runtime-call' }),
+      interactive
+    });
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+  });
+
   it.each([false, true])('passes child responses through tool end (resume: %s)', async (resume) => {
     const emitEvent = vi.fn();
     const childResponses = [{ text: { content: 'child output' }, hideReason: true }];
@@ -591,19 +620,22 @@ describe('runFastAgentMainLoop', () => {
     });
 
     expect(result.status).toBe('paused');
-    expect(result.pause?.type).toBe('ask');
-    expect(result.pause?.type === 'ask' ? result.pause.ask.questions : undefined).toEqual([
-      {
-        question: 'Which repository should I inspect?',
-        options: [
-          { summary: 'Current workspace', value: 'Use the current workspace' },
-          { summary: 'Repository path', value: 'I will provide a repository path' },
-          { summary: 'Skip inspection', value: 'Skip repository inspection' }
-        ]
-      }
-    ]);
+    const parsed = AgentAskInteractiveSchema.safeParse(result.pause?.interactive);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success ? JSON.parse(parsed.data.params.arguments).questions : undefined).toEqual(
+      [
+        {
+          question: 'Which repository should I inspect?',
+          options: [
+            { summary: 'Current workspace', value: 'Use the current workspace' },
+            { summary: 'Repository path', value: 'I will provide a repository path' },
+            { summary: 'Skip inspection', value: 'Skip repository inspection' }
+          ]
+        }
+      ]
+    );
     expect(result).not.toHaveProperty('pendingMainContext');
-    expect(result.pause).toMatchObject({ askId: 'call_ask' });
+    expect(result.pause).toMatchObject({ toolCallId: 'call_ask' });
     expect(compressToolResponseMock).not.toHaveBeenCalled();
   });
 
@@ -672,8 +704,11 @@ describe('runFastAgentMainLoop', () => {
     expect(result.status).toBe('paused');
     expect(result.pause).toEqual(
       expect.objectContaining({
-        type: 'ask',
-        askId: 'call_ask_first'
+        toolCallId: 'call_ask_first',
+        interactive: {
+          type: 'agentAsk',
+          params: { toolCallId: 'call_ask_first', arguments: expect.any(String) }
+        }
       })
     );
     expect(executeTool).not.toHaveBeenCalled();

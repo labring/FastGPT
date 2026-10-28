@@ -1,3 +1,5 @@
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
 import { runFastAgentMainLoop } from './loop';
 import type {
   AgentLoopInput,
@@ -123,7 +125,8 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     }
   });
 
-  const askPause = result.pause?.type === 'ask' ? result.pause : undefined;
+  const askPause = AgentAskInteractiveSchema.safeParse(result.pause?.interactive);
+  const ask = askPause.success ? parseAgentAskArguments(askPause.data.params.arguments) : undefined;
 
   if (input.userAnswer !== undefined) {
     runtime.emitEvent?.({
@@ -132,10 +135,10 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     });
   }
 
-  if (askPause) {
+  if (ask) {
     runtime.emitEvent?.({
       type: 'ask',
-      ask: askPause.ask,
+      ask,
       providerState: undefined
     });
   }

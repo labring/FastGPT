@@ -98,7 +98,7 @@ describe('isAgentAskInteractive', () => {
           type: 'agentAsk',
 
           params: {
-            askId: 'ask-1',
+            toolCallId: 'ask-1',
             arguments: JSON.stringify({ reason: '', blockerType: 'user_choice', questions: [] })
           }
         }
@@ -876,7 +876,7 @@ describe('getLastInteractiveValue', () => {
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        askId: 'ask-1',
+        toolCallId: 'ask-1',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',
@@ -961,7 +961,7 @@ describe('getLastInteractiveValue', () => {
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        askId: 'call_ask',
+        toolCallId: 'call_ask',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',
@@ -989,7 +989,7 @@ describe('getLastInteractiveValue', () => {
       type: 'agentAsk',
 
       params: {
-        askId: 'call_ask',
+        toolCallId: 'call_ask',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',
@@ -1023,11 +1023,12 @@ describe('getLastInteractiveValue', () => {
     (answered) => {
       const interactive: WorkflowInteractiveResponseType = {
         type: 'workflowBuilderPreview',
-        previewId: 'preview-1',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
+          toolCallId: 'preview-1',
           arguments: JSON.stringify({
             title: 'Confirm?',
             mermaid: 'flowchart LR; A --> B',

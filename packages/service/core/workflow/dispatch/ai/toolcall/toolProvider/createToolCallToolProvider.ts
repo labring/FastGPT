@@ -1,3 +1,4 @@
+import { createWorkflowToolInteractive } from '../../agentLoopCore/adapter/interactive/child';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../ai/llm/agentLoop/interface';
 import type { DispatchToolModuleProps } from '../type';
@@ -112,10 +113,28 @@ export const createToolCallToolProvider = async ({
     finalMessages,
     buildRuntimeTools: () => tools,
     getToolInfo,
-    executeTool: runTool,
-    executeInteractiveTool: (
+    executeTool: async (params) => {
+      const result = await runTool(params);
+      return {
+        ...result,
+        interactive: createWorkflowToolInteractive({
+          interactive: result.interactive,
+          toolCallId: params.call.id
+        })
+      };
+    },
+    executeInteractiveTool: async (
       params: AgentLoopInteractiveToolExecuteParams<WorkflowInteractiveResponseType>
-    ) => runInteractiveTool(params),
+    ) => {
+      const result = await runInteractiveTool(params);
+      return {
+        ...result,
+        interactive: createWorkflowToolInteractive({
+          interactive: result.interactive,
+          toolCallId: params.toolParams.toolCallId
+        })
+      };
+    },
     readFileExecutor,
     readFileMaxFileAmount,
     datasetSearchExecutor:

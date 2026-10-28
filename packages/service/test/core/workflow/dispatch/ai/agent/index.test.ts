@@ -981,7 +981,7 @@ describe('dispatchRunAgent user context', () => {
       type: 'agentAsk',
 
       params: {
-        askId: 'legacy-plan',
+        toolCallId: 'legacy-plan',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',
@@ -1048,7 +1048,7 @@ describe('dispatchRunAgent user context', () => {
       type: 'agentAsk',
 
       params: {
-        askId: 'call_ask',
+        toolCallId: 'call_ask',
         arguments: JSON.stringify({
           reason: 'Need confirmation',
           blockerType: 'user_choice',
@@ -1135,7 +1135,7 @@ describe('dispatchRunAgent user context', () => {
       type: 'agentAsk',
 
       params: {
-        askId: 'call_ask_1',
+        toolCallId: 'call_ask_1',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',
@@ -1174,20 +1174,25 @@ describe('dispatchRunAgent user context', () => {
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'paused',
       pause: {
-        type: 'ask',
-        askId: 'call_ask_2',
-        ask: {
-          reason: 'Need another confirmation',
-          blockerType: 'missing_required_input',
-          questions: [
-            {
-              question: 'Confirm again?',
-              options: [
-                { summary: 'Yes', value: 'Yes' },
-                { summary: 'No', value: 'No' }
+        toolCallId: 'call_ask_2',
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: 'call_ask_2',
+            arguments: JSON.stringify({
+              reason: 'Need another confirmation',
+              blockerType: 'missing_required_input',
+              questions: [
+                {
+                  question: 'Confirm again?',
+                  options: [
+                    { summary: 'Yes', value: 'Yes' },
+                    { summary: 'No', value: 'No' }
+                  ]
+                }
               ]
-            }
-          ]
+            })
+          }
         }
       },
       providerState: {
@@ -1302,7 +1307,7 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
       expect.objectContaining({
-        params: expect.objectContaining({ askId: 'call_ask_2' })
+        params: expect.objectContaining({ toolCallId: 'call_ask_2' })
       })
     );
   });

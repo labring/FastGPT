@@ -10,8 +10,8 @@ type AgentLoopCoreAssistantMetaEventNames = {
   askToolName?: string;
 };
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
-import { createAgentLoopCoreAskInteractive } from '../interactive/ask';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
+import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   assistantResponses?: AIChatItemValueItemType[];
@@ -37,7 +37,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
   const completedCalls = new Set<string>();
   const checkpoints = new Set<string>();
   const childValues = new Map<string, AIChatItemValueItemType[]>();
-  const askIds = new Set<string>();
+  const interactiveCallIds = new Set<string>();
 
   const createGroup = (responseId = getNanoid()) => {
     const group: AIChatItemValueItemType = { modelResponseId: responseId };
@@ -161,8 +161,6 @@ export const createAgentLoopCoreAssistantEventCollector = ({
       }
       case 'tool_run_end': {
         if (event.resumed) {
-          // Preview 的结果可完全由紧邻 Human 推导，不保存第二份决策。
-          if (event.call.function.name === WORKFLOW_BUILDER_PREVIEW_TOOL_NAME) return;
           assistantResponses.push({
             toolResponses: [{ id: event.call.id, response: event.response }],
             hideInUI: true
@@ -172,8 +170,8 @@ export const createAgentLoopCoreAssistantEventCollector = ({
           );
           return;
         }
-        // 有效 Ask 由 interactive 唯一保存，等待占位不再写第二份 tool。
-        if (askIds.has(event.call.id) || completedCalls.has(event.call.id)) return;
+        // 有效 Ask/Preview 由 interactive 唯一保存，等待占位不再写第二份 tool。
+        if (interactiveCallIds.has(event.call.id) || completedCalls.has(event.call.id)) return;
         completedCalls.add(event.call.id);
         const { group, tool } = ensureTool(event.call);
         tool.params = event.call.function.arguments;
@@ -201,23 +199,18 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         );
         return;
       }
-      case 'ask_start': {
-        if (!event.id) return;
-        const existingGroup = groupsByCall.get(event.id);
-        const argumentsText =
-          event.params ?? existingGroup?.tools?.find((tool) => tool.id === event.id)?.params;
-        if (typeof argumentsText !== 'string') return;
-        const group = existingGroup ?? ensureCurrent();
-        askIds.add(event.id);
-        group.tools = group.tools?.filter((tool) => tool.id !== event.id);
+      case 'tool_interactive': {
+        // 只接管当前模型直接产生的交互；子工作流包装保留其父工具记录。
+        const ask = AgentAskInteractiveSchema.safeParse(event.interactive);
+        const preview = WorkflowBuilderPreviewInteractiveSchema.safeParse(event.interactive);
+        const interactive = ask.success ? ask.data : preview.success ? preview.data : undefined;
+        if (!interactive || interactive.params.toolCallId !== event.call.id) return;
+        const group = groupsByCall.get(event.call.id) ?? ensureCurrent();
+        interactiveCallIds.add(event.call.id);
+        group.tools = group.tools?.filter((tool) => tool.id !== event.call.id);
         if (!group.tools?.length) delete group.tools;
-        group.interactive = {
-          ...createAgentLoopCoreAskInteractive({ askId: event.id, arguments: argumentsText }),
-          entryNodeIds: [],
-          memoryEdges: [],
-          nodeOutputs: []
-        };
-        group.toolCallIds ??= [event.id];
+        group.interactive = { ...interactive, entryNodeIds: [], memoryEdges: [], nodeOutputs: [] };
+        group.toolCallIds ??= [event.call.id];
         refreshVisibility(group);
         return;
       }

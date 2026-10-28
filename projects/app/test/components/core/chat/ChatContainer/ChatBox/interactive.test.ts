@@ -125,7 +125,7 @@ describe('getInteractiveByHistories', () => {
         type: 'agentAsk',
 
         params: {
-          askId: 'ask-1',
+          toolCallId: 'ask-1',
           arguments: JSON.stringify({
             reason: '',
             blockerType: 'user_choice',
@@ -185,8 +185,9 @@ describe('getInteractiveByHistories', () => {
     const interactive = {
       ...baseInteractive,
       type: 'workflowBuilderPreview',
-      previewId: 'preview-1',
+
       params: {
+        toolCallId: 'preview-1',
         arguments: JSON.stringify({
           title: 'Confirm workflow',
           mermaid: 'flowchart LR\n  A --> B',
@@ -214,7 +215,7 @@ describe('isPendingAgentAsk', () => {
         type: 'agentAsk',
 
         params: {
-          askId: 'ask-1',
+          toolCallId: 'ask-1',
           arguments: JSON.stringify({
             reason: 'Need input',
             blockerType: 'user_choice',
@@ -326,7 +327,7 @@ describe('resolveInteractiveResponseChatItemId', () => {
       type: 'agentAsk',
 
       params: {
-        askId: 'ask-1',
+        toolCallId: 'ask-1',
         arguments: JSON.stringify({
           reason: 'Need input',
           blockerType: 'user_choice',
@@ -371,49 +372,43 @@ describe('Ask and Preview immutable questions', () => {
   it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
     'keeps the original %s and the new structured user round unchanged',
     (type) => {
-      const interactive =
-        type === 'agentAsk'
-          ? {
-              ...baseInteractive,
-              type,
-              askId: 'ask-1',
-              params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'Choose?',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' }
-                    ]
-                  }
-                ]
-              }
-            }
-          : {
-              ...baseInteractive,
-              type,
-              previewId: 'preview-1',
-              params: {
-                title: 'Confirm?',
-                mermaid: 'flowchart LR; A --> B',
-                sections: [],
-                actions: [
-                  { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
-                  { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
-                  { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
-                ]
-              }
-            };
+      const interactive = {
+        ...baseInteractive,
+        type,
+        params: {
+          toolCallId: 'interactive-call',
+          arguments: JSON.stringify(
+            type === 'agentAsk'
+              ? {
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose?',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' }
+                      ]
+                    }
+                  ]
+                }
+              : {
+                  title: 'Confirm?',
+                  mermaid: 'flowchart LR; A --> B',
+                  sections: [{ title: 'Goal', content: 'Build' }]
+                }
+          )
+        }
+      };
       const human: ChatSiteItemType = {
         ...createHumanRecord(),
         obj: ChatRoleEnum.Human,
         value: [
           {
-            select: {
-              type,
-              questions: [{ question: 'Choose?', value: type === 'agentAsk' ? 'A' : 'confirm' }]
-            }
+            select:
+              type === 'agentAsk'
+                ? { type, questions: [{ question: 'Choose?', value: 'A' }] }
+                : { type, action: 'confirm' }
           }
         ]
       };

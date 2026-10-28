@@ -31,7 +31,7 @@ describe('softDeleteChatItems', () => {
               ...runtime,
               type,
               params: {
-                askId: 'ask-1',
+                toolCallId: 'ask-1',
                 arguments: JSON.stringify({
                   reason: '',
                   blockerType: 'user_choice',
@@ -50,8 +50,8 @@ describe('softDeleteChatItems', () => {
           : {
               ...runtime,
               type,
-              previewId: 'preview-1',
               params: {
+                toolCallId: 'preview-1',
                 arguments: JSON.stringify({
                   title: 'Confirm?',
                   mermaid: 'flowchart LR; A --> B',

@@ -1,9 +1,11 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  InteractiveNodeResponseTypeSchema,
+  type InteractiveNodeResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { AgentUsageModuleName } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreResult } from '../../domain/result';
-import { createAgentLoopCoreAskInteractive } from '../../adapter/interactive/ask';
 import { agentLoopUsagesToChatNodeUsages } from '../../adapter/usage';
 import {
   getAgentLoopCoreFinalMessageReasoning,
@@ -57,27 +59,8 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   // 工具和压缩积分由各自 nodeResponse/tool detail 汇总，避免 ToolCall 父节点重复计分。
   const usages = agentLoopUsagesToChatNodeUsages(result.usages);
   const usageSummary = summarizeAgentCallUsages(usages);
-  const askPause = result.pause?.type === 'ask' ? result.pause : undefined;
-  const toolChildPause = result.pause?.type === 'tool_child' ? result.pause : undefined;
-  const ask = askPause?.ask;
-  const askId = askPause?.askId;
-  // 从真实调用取原始字符串，不能从已解析的 ask 对象重新序列化。
-  const askArguments = askId
-    ? result.completeMessages
-        .flatMap((message) => (message.role === 'assistant' ? (message.tool_calls ?? []) : []))
-        .findLast((call) => call.id === askId)?.function.arguments
-    : undefined;
-  const toolChildInteractive = toolChildPause
-    ? {
-        type: 'toolChildrenInteractive' as const,
-        params: {
-          childrenResponse: toolChildPause.childrenResponse,
-          toolParams: {
-            toolCallId: toolChildPause.toolCallId
-          }
-        }
-      }
-    : undefined;
+  // 交互已由工具业务层组织；这里只验证并透传，不再自动套子流程包装。
+  const parsedInteractive = InteractiveNodeResponseTypeSchema.safeParse(result.pause?.interactive);
   // abort 既用于用户主动停止，也可能是 provider 结束暂停轮次的控制信号，不应展示为错误。
   const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
 
@@ -96,12 +79,6 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
     finalText: getAgentLoopCoreFinalMessageText(result.assistantMessages) || errorText,
     reasoningText: getAgentLoopCoreFinalMessageReasoning(result.assistantMessages),
     providerState: result.providerState,
-    interactive:
-      ask && askId && askArguments !== undefined
-        ? createAgentLoopCoreAskInteractive({
-            askId,
-            arguments: askArguments
-          })
-        : toolChildInteractive
+    interactive: parsedInteractive.success ? parsedInteractive.data : undefined
   };
 };

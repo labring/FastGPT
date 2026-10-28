@@ -72,7 +72,7 @@ describe('resolveResponseChatItemId', () => {
           memoryEdges: [],
           nodeOutputs: [],
           params: {
-            askId: 'call_ask',
+            toolCallId: 'call_ask',
             arguments: JSON.stringify({
               reason: '',
               blockerType: 'user_choice',
@@ -121,7 +121,7 @@ describe('resolveResponseChatItemId', () => {
               type: 'agentAsk',
 
               params: {
-                askId: 'call_ask',
+                toolCallId: 'call_ask',
                 arguments: JSON.stringify({
                   reason: '',
                   blockerType: 'user_choice',

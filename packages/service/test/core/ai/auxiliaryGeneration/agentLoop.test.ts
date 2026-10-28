@@ -27,20 +27,25 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       return {
         status: 'paused',
         pause: {
-          type: 'ask',
-          askId: 'ask_2',
-          ask: {
-            reason: '需要选择',
-            blockerType: 'user_choice',
-            questions: [
-              {
-                question: '选择范围？',
-                options: [
-                  { summary: '小', value: '小范围' },
-                  { summary: '大', value: '大范围' }
+          toolCallId: 'ask_2',
+          interactive: {
+            type: 'agentAsk',
+            params: {
+              toolCallId: 'ask_2',
+              arguments: JSON.stringify({
+                reason: '需要选择',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: '选择范围？',
+                    options: [
+                      { summary: '小', value: '小范围' },
+                      { summary: '大', value: '大范围' }
+                    ]
+                  }
                 ]
-              }
-            ]
+              })
+            }
           }
         },
         providerState: nextProviderState,
@@ -101,7 +106,7 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
     expect(result).toEqual(
       expect.objectContaining({
         status: 'paused',
-        pause: expect.objectContaining({ askId: 'ask_2' }),
+        pause: expect.objectContaining({ toolCallId: 'ask_2' }),
         providerState: nextProviderState,
         answerText: '处理中',
         reasoningText: '分析中'

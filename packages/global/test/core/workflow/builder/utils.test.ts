@@ -97,8 +97,9 @@ describe('getWorkflowBuilderErrorLog', () => {
 
 const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
-  previewId: 'preview',
+
   params: {
+    toolCallId: 'preview',
     arguments: JSON.stringify({
       title: 'Plan',
       mermaid: 'flowchart TD\n A-->B',
@@ -111,7 +112,9 @@ describe('getWorkflowBuilderPreview', () => {
   it('accepts only valid preview display values from the latest interactive', () => {
     expect(getWorkflowBuilderPreview([])).toBeUndefined();
     expect(
-      getWorkflowBuilderPreview([{ interactive: { ...preview, previewId: '' } }])
+      getWorkflowBuilderPreview([
+        { interactive: { ...preview, params: { ...preview.params, toolCallId: '' } } }
+      ])
     ).toBeUndefined();
     expect(
       getWorkflowBuilderPreview([
@@ -121,7 +124,7 @@ describe('getWorkflowBuilderPreview', () => {
             type: 'agentAsk',
 
             params: {
-              askId: 'ask',
+              toolCallId: 'ask',
               arguments: JSON.stringify({ reason: '', blockerType: 'user_choice', questions: [] })
             },
             entryNodeIds: [],
@@ -178,7 +181,7 @@ describe('getWorkflowBuilderPreviewDecision', () => {
           }
         })
       ).toEqual({
-        previewId: preview.previewId,
+        previewId: preview.params.toolCallId,
         action,
         ...(action === 'revise' ? { feedback: 'Add review' } : {})
       });
@@ -202,13 +205,13 @@ describe('getWorkflowBuilderPreviewDecision', () => {
           ]
         }
       })
-    ).toEqual({ previewId: preview.previewId, action: 'revise', feedback: 'Add a review' });
+    ).toEqual({ previewId: preview.params.toolCallId, action: 'revise', feedback: 'Add a review' });
     expect(
       getWorkflowBuilderPreviewDecision({
         preview,
         userContent: { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Confirm' } }] }
       })
-    ).toEqual({ previewId: preview.previewId, action: 'revise', feedback: 'Confirm' });
+    ).toEqual({ previewId: preview.params.toolCallId, action: 'revise', feedback: 'Confirm' });
   });
 });
 

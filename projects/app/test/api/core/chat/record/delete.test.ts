@@ -141,7 +141,7 @@ describe('delete chat record api', () => {
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        askId: 'ask-1',
+        toolCallId: 'ask-1',
         arguments: JSON.stringify({
           reason: '',
           blockerType: 'user_choice',

@@ -87,7 +87,7 @@ describe('persisted Agent context boundaries', () => {
               interactive: {
                 type: 'agentAsk',
                 params: {
-                  askId: 'standalone-ask',
+                  toolCallId: 'standalone-ask',
                   arguments: JSON.stringify({
                     reason: 'Need format',
                     blockerType: 'user_choice',
@@ -1968,7 +1968,7 @@ describe('chats2GPTMessages', () => {
               type: 'agentAsk',
 
               params: {
-                askId: 'call_ask',
+                toolCallId: 'call_ask',
                 arguments: JSON.stringify({
                   reason: '',
                   blockerType: 'user_choice',
@@ -3406,7 +3406,7 @@ describe('GPTMessages2Chats', () => {
           type: 'agentAsk',
 
           params: {
-            askId: 'call_ask',
+            toolCallId: 'call_ask',
             arguments: JSON.stringify({
               reason: '',
               blockerType: 'user_choice',
@@ -3694,7 +3694,7 @@ describe('structured user answers', () => {
           memoryEdges: [],
           nodeOutputs: [],
           params: {
-            askId: askId,
+            toolCallId: askId,
             arguments: JSON.stringify({
               reason: '',
               blockerType: 'user_choice',
@@ -3814,8 +3814,9 @@ describe('structured user answers', () => {
 describe('workflow preview answers', () => {
   const preview: WorkflowBuilderPreviewInteractive = {
     type: 'workflowBuilderPreview',
-    previewId: 'preview-1',
+
     params: {
+      toolCallId: 'preview-call',
       arguments: JSON.stringify({
         title: 'Build workflow',
         mermaid: 'flowchart TD\n A-->B',
@@ -3843,17 +3844,17 @@ describe('workflow preview answers', () => {
             functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
             params: preview.params.arguments,
             response:
-              '{"ok":true,"state":"awaiting_confirmation","previewId":"preview-1","taskComplete":false}'
+              '{"ok":true,"state":"awaiting_confirmation","previewId":"preview-call","taskComplete":false}'
           }
         ]
       },
       {
         interactive: {
-          type: 'toolChildrenInteractive',
+          ...preview,
           entryNodeIds: [],
           memoryEdges: [],
           nodeOutputs: [],
-          params: { childrenResponse: preview, toolParams: { toolCallId: id } }
+          params: { ...preview.params, toolCallId: id }
         }
       }
     ]
@@ -3885,14 +3886,11 @@ describe('workflow preview answers', () => {
               ? { modelResponseId: 'preview-response', toolCallIds: ['preview-call'] }
               : {}),
             interactive: {
-              type: 'toolChildrenInteractive',
+              ...preview,
               entryNodeIds: [],
               memoryEdges: [],
               nodeOutputs: [],
-              params: {
-                childrenResponse: { ...preview, params: { arguments: rawArguments } },
-                toolParams: { toolCallId: 'preview-call' }
-              }
+              params: { toolCallId: 'preview-call', arguments: rawArguments }
             }
           }
         ]
@@ -3919,14 +3917,14 @@ describe('workflow preview answers', () => {
           JSON.stringify(
             replied
               ? getWorkflowBuilderPreviewToolResponse({
-                  previewId: 'preview-1',
+                  previewId: 'preview-call',
                   action: 'revise',
                   feedback: 'Add review'
                 })
               : {
                   ok: true,
                   state: 'awaiting_confirmation',
-                  previewId: 'preview-1',
+                  previewId: 'preview-call',
                   taskComplete: false
                 }
           )
@@ -3959,7 +3957,7 @@ describe('workflow preview answers', () => {
         ok: true,
         state,
         decision,
-        previewId: 'preview-1',
+        previewId: 'preview-call',
         taskComplete
       });
       if (decision === 'revise') expect(JSON.parse(String(response?.content)).feedback).toBe(value);
@@ -3990,7 +3988,7 @@ describe('workflow preview answers', () => {
     expect(response?.content).toBe(
       JSON.stringify(
         getWorkflowBuilderPreviewToolResponse({
-          previewId: 'preview-1',
+          previewId: 'preview-call',
           action: 'revise',
           feedback: 'Add review'
         })
@@ -4057,7 +4055,7 @@ describe('workflow preview answers', () => {
       expect(JSON.parse(String(response?.content))).toEqual({
         ok: true,
         state: 'awaiting_confirmation',
-        previewId: 'preview-1',
+        previewId: 'preview-call',
         taskComplete: false
       });
       if (scenario !== 'missing') expect(result.at(-1)?.role).toBe('user');

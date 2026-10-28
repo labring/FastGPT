@@ -4,7 +4,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
 import { parseAgentAskToolCall } from '../../../domain/systemTool/ask';
-import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
+import type { AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import { applyPlanUpdate, applySetPlan } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
@@ -115,13 +115,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     ...runtime,
     toolCatalog: normalized
   };
-
-  let pendingAsk:
-    | {
-        ask: AgentAskPayload;
-        askId: string;
-      }
-    | undefined;
 
   // FastAgent 完全使用 ChatItem 重建后的消息；旧 providerState 不参与恢复。
   const messages = buildInitialMessages({ input });
@@ -284,9 +277,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       toolResponseCompress,
       metadata,
       hideInUI,
-      resumed
+      resumed,
+      interactive
     }) => {
       pushAgentLoopUsages(runtime, usages);
+      if (interactive) emitAgentLoopEvent(runtime, { type: 'tool_interactive', call, interactive });
       emitAgentLoopEvent(runtime, {
         type: 'tool_run_end',
         resumed,
@@ -315,20 +310,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(validationError, { skipResponseCompress: true });
         }
 
-        emitAgentLoopEvent(runtime, {
-          type: 'ask_start',
-          ask: parsed.ask,
-          id: call.id,
-          params: call.function.arguments,
-          seconds: 0
-        });
-        pendingAsk = {
-          ask: parsed.ask,
-          askId: call.id
-        };
-
-        return createToolResponse('Waiting for user answer.', {
-          stop: true,
+        return createToolResponse<AgentAskInteractive>('Waiting for user answer.', {
+          interactive: {
+            type: 'agentAsk',
+            params: { toolCallId: call.id, arguments: call.function.arguments }
+          },
           skipResponseCompress: true
         });
       }
@@ -457,27 +443,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     }
   });
 
-  // 触发了 ask 模式
-  if (pendingAsk) {
-    return {
-      status: 'paused',
-      pause: {
-        type: 'ask',
-        ask: pendingAsk.ask,
-        askId: pendingAsk.askId
-      },
-      activePlan,
-      completeMessages: result.completeMessages,
-      assistantMessages: result.assistantMessages,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      llmTotalPoints: result.llmTotalPoints,
-      finishReason: result.finish_reason,
-      requestIds: result.requestIds,
-      contextCheckpoint: result.contextCheckpoint
-    };
-  }
-
   // 用户 abort
   if (runtime.checkIsStopping?.()) {
     return {
@@ -494,14 +459,10 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     };
   }
 
-  if (result.toolChildPause) {
+  if (result.pause) {
     return {
       status: 'paused',
-      pause: {
-        type: 'tool_child',
-        childrenResponse: result.toolChildPause.childrenResponse,
-        toolCallId: result.toolChildPause.toolCallId
-      },
+      pause: result.pause,
       activePlan,
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,

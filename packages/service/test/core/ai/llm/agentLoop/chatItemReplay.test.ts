@@ -1,3 +1,4 @@
+import { createWorkflowToolInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive/child';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 import type {
@@ -161,9 +162,12 @@ describe('FastAgent ChatItem replay', () => {
     const interactive = values.find((value) => value.interactive)!;
     expect(interactive.interactive).toMatchObject({
       type: 'agentAsk',
-      params: { askId: 'ask', arguments: rawArguments }
+      params: { toolCallId: 'ask', arguments: rawArguments }
     });
-    expect(Object.keys(interactive.interactive!.params).sort()).toEqual(['arguments', 'askId']);
+    expect(Object.keys(interactive.interactive!.params).sort()).toEqual([
+      'arguments',
+      'toolCallId'
+    ]);
     expect(originalAsk.function.arguments).toBe(rawArguments);
     expect(interactive).not.toHaveProperty('agentAsk');
     expect(interactive.interactive).not.toHaveProperty('askId');
@@ -243,13 +247,16 @@ describe('FastAgent ChatItem replay', () => {
       '\n';
     const preview = {
       type: 'workflowBuilderPreview' as const,
-      previewId: 'preview-1',
-      params: { arguments: rawArguments }
+
+      params: {
+        toolCallId: 'preview-call',
+        arguments: rawArguments
+      }
     };
     const response = JSON.stringify({
       ok: true,
       state: 'awaiting_confirmation',
-      previewId: preview.previewId,
+      previewId: preview.params.toolCallId,
       taskComplete: false
     });
     mockCreateLLMResponseQueue(mocks.llm, [
@@ -299,7 +306,7 @@ describe('FastAgent ChatItem replay', () => {
     const history: ChatItemMiniType[] = [initial, { obj: ChatRoleEnum.AI, value: values }];
     expect(transcript(rebuild(history))).toEqual(transcript(result.completeMessages));
     const decision = {
-      previewId: preview.previewId,
+      previewId: preview.params.toolCallId,
       action: 'revise' as const,
       feedback: 'Add review'
     };
@@ -376,11 +383,11 @@ describe('FastAgent ChatItem replay', () => {
     ]);
   });
 
-  it('restores the actual parent result after a child Ask without duplicating its tool call', async () => {
+  it('restores the actual parent result after two child pauses without duplicating its tool call', async () => {
     const child = {
       type: 'agentAsk' as const,
       params: {
-        askId: 'child-ask',
+        toolCallId: 'child-ask',
         arguments: JSON.stringify({
           reason: ask.reason,
           blockerType: ask.blockerType,
@@ -402,7 +409,10 @@ describe('FastAgent ChatItem replay', () => {
       runtime: runtime({
         executeTool: async () => ({
           response: 'Waiting for child',
-          interactive: child,
+          interactive: createWorkflowToolInteractive({
+            interactive: child,
+            toolCallId: 'parent-call'
+          }),
           assistantMessages: [],
           usages: []
         })
@@ -418,13 +428,47 @@ describe('FastAgent ChatItem replay', () => {
         params: { childrenResponse: child, toolParams: { toolCallId: 'parent-call' } }
       }
     });
-    mockCreateLLMResponseQueue(mocks.llm, [text({ content: 'Parent finished' })]);
-    const second = await runAgentLoopCore({
+    const nextChild = { ...child, params: { ...child.params, toolCallId: 'next-child-ask' } };
+    const middle = await runAgentLoopCoreWithSummary({
       provider: 'fastAgent',
       input: {
         messages: first.completeMessages,
         childrenInteractiveParams: {
           childrenResponse: child,
+          toolParams: { toolCallId: 'parent-call' }
+        }
+      },
+      runtime: runtime({
+        executeInteractiveTool: async () => ({
+          response: 'Waiting for next child',
+          interactive: createWorkflowToolInteractive({
+            interactive: nextChild,
+            toolCallId: 'parent-call'
+          }),
+          assistantMessages: [],
+          usages: []
+        })
+      })
+    });
+    expect(middle.summary.status).toBe('interactive');
+    expect(middle.summary.interactive?.type).toBe('toolChildrenInteractive');
+    expect(mocks.llm).toHaveBeenCalledTimes(1);
+    appendWorkflowInteractiveValue({
+      values: middle.result.assistantResponses,
+      interactive: {
+        ...middle.summary.interactive!,
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      }
+    });
+    mockCreateLLMResponseQueue(mocks.llm, [text({ content: 'Parent finished' })]);
+    const second = await runAgentLoopCore({
+      provider: 'fastAgent',
+      input: {
+        messages: middle.result.completeMessages,
+        childrenInteractiveParams: {
+          childrenResponse: nextChild,
           toolParams: {
             toolCallId: 'parent-call',
             memoryRequestMessages: [{ role: 'user', content: 'Obsolete snapshot' }]
@@ -450,6 +494,18 @@ describe('FastAgent ChatItem replay', () => {
             select: {
               type: 'agentAsk',
               questions: [{ question: 'Format?', value: 'Keep it brief' }]
+            }
+          }
+        ]
+      },
+      { obj: ChatRoleEnum.AI, value: middle.result.assistantResponses },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            select: {
+              type: 'agentAsk',
+              questions: [{ question: 'Format?', value: 'Full details' }]
             }
           }
         ]

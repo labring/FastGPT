@@ -57,7 +57,7 @@ const answeredAsk: Extract<ChatSiteItemType, { obj: ChatRoleEnum.AI }> = {
         type: 'agentAsk',
 
         params: {
-          askId: 'ask-1',
+          toolCallId: 'ask-1',
           arguments: JSON.stringify({
             reason: '',
             blockerType: 'user_choice',
@@ -218,8 +218,9 @@ describe('ChatItem interactive replies', () => {
     (response) => {
       const preview: WorkflowBuilderPreviewInteractive = {
         type: 'workflowBuilderPreview',
-        previewId: 'preview-1',
+
         params: {
+          toolCallId: 'preview-1',
           arguments: JSON.stringify({
             title: '确认工作流方案？',
             mermaid: 'flowchart LR\n  A --> B',

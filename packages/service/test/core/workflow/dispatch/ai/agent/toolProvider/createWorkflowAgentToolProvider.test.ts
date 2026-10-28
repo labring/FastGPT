@@ -240,7 +240,13 @@ describe('createWorkflowAgentToolProvider', () => {
       })
     ).resolves.toEqual({
       response: 'waiting again',
-      interactive: nextInteractive
+      interactive: {
+        type: 'toolChildrenInteractive',
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: { childrenResponse: nextInteractive, toolParams: { toolCallId: 'call_search' } }
+      }
     });
     expect(executeToolMock).toHaveBeenCalledWith({
       callId: 'call_search',

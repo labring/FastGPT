@@ -162,7 +162,7 @@ Provider 通过 `AgentLoopEvent` 报告模型请求、流式文本、工具运�
 
 ### ask
 
-1. 有效 Ask 只保存 `value.interactive`，`params` 内保存 `askId`、`blockerType`、`description`、`questions`；通过交互类型映射 `ask_user`。
+1. 有效 Ask 只保存 `value.interactive`，`params` 内保存原调用 `toolCallId` 和原始 JSON 字符串 `arguments`；`blockerType`、`description`、`questions` 均保留在原参数中，通过交互类型映射 `ask_user`。
 2. Human 独立保存问题快照和答案，原 AI 不回写。适配消息时读取紧邻 Human，按原问题和选项还原 tool response；没有有效新交互的旧回答降级为普通输入。
 3. FastAgent 不再读取或保存 `pendingMainContext`，运行与恢复使用同一套 ChatItem 记录。`activePlan` 从最新 `value.plan` 读取，保留 `null` 终止语义；历史从最新压缩点连续恢复。
 4. Pi 的 `pendingMainContext` 与 `piMessages` 原生契约暂时保留，本次不迁移。
@@ -180,10 +180,11 @@ Provider 通过 `AgentLoopEvent` 报告模型请求、流式文本、工具运�
 
 ### 子工具交互
 
-1. 工具执行返回 interactive children response。
-2. Agent Loop 返回 `pause.type: tool_child` 和 toolCallId。
-3. 恢复时调用方通过 `childrenInteractiveParams` 回传子流程结果。
-4. Provider 把结果补到原工具调用上下文后继续。
+1. 工具返回业务 interactive，Agent Loop 统一返回 `pause: { toolCallId, interactive }`，不再分类 ask/tool_child，也不自动套工作流包装。
+2. Ask 与 Preview 均保存 `interactive: { type, params: { toolCallId, arguments } }`；ID 使用原模型调用 ID，arguments 保留原始 JSON。Preview 不再另造 previewId，任务引用沿用原调用 ID。
+3. Ask/Preview 的回答只在紧邻 Human，adapt 重建原调用和 tool response；Preview 不使用子工具恢复回调，cancel 由 Builder 业务层直接结束。
+4. 只有真正的工作流工具由业务适配层显式构造 toolChildrenInteractive。用户选择与表单的协议及保存方式保持原样，恢复回调继续运行子流程，再将真实结果补到父工具。
+5. 通用 tool_interactive 事件负责接管成功的直接交互 value；失败调用仍保存完整隐藏工具结果。同轮正文、reasoning 和其他工具的分组及顺序保持不变。
 
 FastAgent 的 Workflow Agent、Workflow Builder 和辅助生成入口均停止读写 provider memory，从 ChatItem 恢复。Pi 的原生 providerState 和 piMessages 暂时保留。
 

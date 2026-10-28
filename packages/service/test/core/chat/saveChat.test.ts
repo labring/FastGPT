@@ -882,32 +882,36 @@ describe('pushChatRecords', () => {
     it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
       'does not persist or reject an ephemeral %s reply',
       async (type) => {
-        const interactive: WorkflowInteractiveResponseType =
-          type === 'agentAsk'
-            ? {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                askId: 'ask-1',
-                params: {
-                  description: '',
-                  questions: [{ question: 'Question', options: [] }]
-                }
-              }
-            : {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                previewId: 'preview-1',
-                params: {
-                  title: 'Confirm?',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: []
-                }
-              };
+        const interactive: WorkflowInteractiveResponseType = {
+          type,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            toolCallId: 'interactive-call',
+            arguments: JSON.stringify(
+              type === 'agentAsk'
+                ? {
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Question',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' }
+                        ]
+                      }
+                    ]
+                  }
+                : {
+                    title: 'Confirm?',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build' }]
+                  }
+            )
+          }
+        };
         const props = createMockProps(
           { chatId: 'NO_RECORD_HISTORIES' },
           { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1353,7 +1357,7 @@ describe('pushChatRecords', () => {
               type: 'agentAsk' as const,
 
               params: {
-                askId: 'call_ask_agent',
+                toolCallId: 'call_ask_agent',
                 arguments: JSON.stringify({
                   reason: '需要用户明确任务目标',
                   blockerType: 'user_choice',
@@ -1395,7 +1399,7 @@ describe('pushChatRecords', () => {
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          askId: 'call_ask_agent',
+          toolCallId: 'call_ask_agent',
           arguments: JSON.stringify({
             reason: '需要用户明确任务目标',
             blockerType: 'user_choice',
@@ -1429,7 +1433,7 @@ describe('pushChatRecords', () => {
                 type: 'agentAsk',
 
                 params: {
-                  askId: 'ask-1',
+                  toolCallId: 'ask-1',
                   arguments: JSON.stringify({
                     reason: '',
                     blockerType: 'user_choice',
@@ -1448,8 +1452,9 @@ describe('pushChatRecords', () => {
             : {
                 ...runtime,
                 type: 'workflowBuilderPreview',
-                previewId: 'preview-1',
+
                 params: {
+                  toolCallId: 'preview-1',
                   arguments: JSON.stringify({
                     title: '确认方案？',
                     mermaid: 'flowchart LR; A --> B',

@@ -140,11 +140,12 @@ export const contentProps = (
 export const confirmedPreview: AIChatItemValueItemType = {
   interactive: {
     type: 'workflowBuilderPreview',
-    previewId: 'preview-1',
+
     entryNodeIds: [],
     memoryEdges: [],
     nodeOutputs: [],
     params: {
+      toolCallId: 'preview-1',
       arguments: JSON.stringify({
         title: 'Preview',
         mermaid: 'flowchart LR',

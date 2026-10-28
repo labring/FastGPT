@@ -1,18 +1,18 @@
-import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 
 /**
  * 将 Ask 原始调用封装为 interactive；展示字段在消费时解析，不重复保存或序列化。
  */
 export const createAgentLoopCoreAskInteractive = ({
-  askId,
+  toolCallId,
   arguments: argumentsText
 }: {
-  askId: string;
+  toolCallId: string;
   arguments: string;
 }): AgentAskInteractive => ({
   type: 'agentAsk',
   params: {
-    askId,
+    toolCallId,
     arguments: argumentsText
   }
 });

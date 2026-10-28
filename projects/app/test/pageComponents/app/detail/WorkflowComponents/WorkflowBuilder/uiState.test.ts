@@ -19,11 +19,12 @@ const createPreviewInteractive = (
   previewId = 'preview-1'
 ): Extract<WorkflowInteractiveResponseType, { type: 'workflowBuilderPreview' }> => ({
   type: 'workflowBuilderPreview',
-  previewId,
+
   entryNodeIds: [],
   memoryEdges: [],
   nodeOutputs: [],
   params: {
+    toolCallId: previewId,
     arguments: JSON.stringify({
       title: '方案预览',
       mermaid: 'flowchart LR\nA --> B',

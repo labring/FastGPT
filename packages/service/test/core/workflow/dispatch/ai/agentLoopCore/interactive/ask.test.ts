@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
 import { createAgentLoopCoreAskInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive/ask';
 
@@ -18,12 +18,12 @@ describe('createAgentLoopCoreAskInteractive', () => {
     };
     const argumentsText = ` \n${JSON.stringify(payload, null, 2)}\n`;
     const interactive = createAgentLoopCoreAskInteractive({
-      askId: 'call_ask',
+      toolCallId: 'call_ask',
       arguments: argumentsText
     });
     expect(interactive).toEqual({
       type: 'agentAsk',
-      params: { askId: 'call_ask', arguments: argumentsText }
+      params: { toolCallId: 'call_ask', arguments: argumentsText }
     });
     expect(AgentAskInteractiveSchema.safeParse(interactive).success).toBe(true);
     expect(parseAgentAskArguments(interactive.params.arguments)).toEqual(payload);
@@ -35,7 +35,7 @@ describe('createAgentLoopCoreAskInteractive', () => {
       expect(
         AgentAskInteractiveSchema.safeParse({
           type: 'agentAsk',
-          params: { askId: 'call_ask', arguments: argumentsText }
+          params: { toolCallId: 'call_ask', arguments: argumentsText }
         }).success
       ).toBe(false);
     }

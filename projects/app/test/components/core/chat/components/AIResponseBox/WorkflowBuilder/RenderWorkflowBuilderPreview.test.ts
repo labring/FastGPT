@@ -16,8 +16,9 @@ vi.mock('@/components/Markdown', () => ({
 
 const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
-  previewId: 'preview-1',
+
   params: {
+    toolCallId: 'preview-1',
     arguments: JSON.stringify({
       title: 'Workflow plan',
       mermaid: 'flowchart LR\n  Start --> Answer',

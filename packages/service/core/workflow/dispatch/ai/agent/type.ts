@@ -15,7 +15,7 @@ export type DispatchSubAppResponse = {
   assistantMessages?: ChatCompletionMessageParam[];
   usages?: ChatNodeUsageType[];
   nodeSummary?: NodeSummary;
-  /** 子工作流暂停时的交互快照，交回 agent-loop 形成 tool_child pause。 */
+  /** 子工作流暂停时的交互快照，由工作流工具适配层包装后交回 Loop 透传暂停。 */
   interactive?: WorkflowInteractiveResponseType;
   /**
    * 工具自身的运行详情。显式 totalPoints 表示当前响应自身费用；省略时由外层按 usages 计算。

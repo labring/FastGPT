@@ -429,7 +429,7 @@ describe('useChatGenerate.sendPrompt', () => {
               type: 'agentAsk',
 
               params: {
-                askId: 'ask-1',
+                toolCallId: 'ask-1',
                 arguments: JSON.stringify({
                   reason: '',
                   blockerType: 'user_choice',
@@ -448,8 +448,9 @@ describe('useChatGenerate.sendPrompt', () => {
           : {
               ...runtime,
               type: 'workflowBuilderPreview',
-              previewId: 'preview-1',
+
               params: {
+                toolCallId: 'preview-1',
                 arguments: JSON.stringify({
                   title: 'Confirm workflow?',
                   mermaid: 'flowchart LR; A --> B',

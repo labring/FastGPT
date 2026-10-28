@@ -340,7 +340,7 @@ describe('mergeResumeCompletedChatRecords', () => {
             entryNodeIds: ['same-node'],
             usageId: 'same-usage',
             params: {
-              askId: id,
+              toolCallId: id,
               arguments: JSON.stringify({
                 reason: '',
                 blockerType: 'user_choice',
@@ -353,13 +353,15 @@ describe('mergeResumeCompletedChatRecords', () => {
           type,
           memoryEdges: [],
           nodeOutputs: [],
-          previewId: id,
           entryNodeIds: ['same-node'],
           usageId: 'same-usage',
           params: {
-            title: 'Confirm?',
-            mermaid: '',
-            sections: []
+            toolCallId: id,
+            arguments: JSON.stringify({
+              title: 'Confirm?',
+              mermaid: 'flowchart TD; A-->B',
+              sections: [{ title: 'Goal', content: 'Build' }]
+            })
           }
         };
       };

@@ -125,11 +125,10 @@ export type AgentLoopEvent =
     }
   | AgentLoopPlanOperationEvent
   | {
-      type: 'ask_start';
-      ask: AgentAskPayload;
-      id?: string;
-      params?: string;
-      seconds?: number;
+      type: 'tool_interactive';
+      call: ChatCompletionMessageToolCall;
+      /** 由业务适配层解释的交互结构，Loop 不依赖 workflow schema。 */
+      interactive: unknown;
     }
   | {
       type: 'ask';

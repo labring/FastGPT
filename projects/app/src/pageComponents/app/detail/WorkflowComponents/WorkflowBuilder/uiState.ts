@@ -197,9 +197,9 @@ export const getWorkflowBuilderPendingInteractiveKey = (
 
   const interactiveId =
     finalInteractive.type === 'workflowBuilderPreview'
-      ? finalInteractive.previewId
+      ? finalInteractive.params.toolCallId
       : finalInteractive.type === 'agentAsk'
-        ? finalInteractive.params.askId
+        ? finalInteractive.params.toolCallId
         : (pendingInteractive.interactiveId ?? '');
 
   return [

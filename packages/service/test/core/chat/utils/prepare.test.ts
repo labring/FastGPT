@@ -346,7 +346,7 @@ describe('prepare chat round', () => {
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          askId: 'chat-agent-helper-ask',
+          toolCallId: 'chat-agent-helper-ask',
           arguments: JSON.stringify({
             reason: 'Collect requirements',
             blockerType: 'user_choice',
@@ -449,7 +449,7 @@ describe('prepare chat round', () => {
         type: 'agentAsk',
 
         params: {
-          askId: 'call_ask',
+          toolCallId: 'call_ask',
           arguments: JSON.stringify({
             reason: '',
             blockerType: 'user_choice',
@@ -493,7 +493,7 @@ describe('prepare chat round', () => {
             type: 'agentAsk',
 
             params: {
-              askId: 'call_ask',
+              toolCallId: 'call_ask',
               arguments: JSON.stringify({
                 reason: '',
                 blockerType: 'user_choice',

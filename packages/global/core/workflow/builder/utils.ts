@@ -89,7 +89,7 @@ export const getWorkflowBuilderPreviewDecision = ({
     if (select.type !== 'workflowBuilderPreview') return;
     const feedback = select.action === 'revise' ? select.reviseText : undefined;
     return {
-      previewId: preview.previewId,
+      previewId: preview.params.toolCallId,
       action: select.action,
       ...(feedback ? { feedback } : {})
     };
@@ -100,7 +100,7 @@ export const getWorkflowBuilderPreviewDecision = ({
     .trim();
   if (!text) return;
   return {
-    previewId: preview.previewId,
+    previewId: preview.params.toolCallId,
     action: 'revise',
     feedback: text
   };

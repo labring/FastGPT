@@ -374,7 +374,7 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
             interactive: {
               type: 'agentAsk',
               params: {
-                askId: 'ask-1',
+                toolCallId: 'ask-1',
                 arguments: JSON.stringify({
                   reason: '需要确认查询范围后继续。',
                   blockerType: 'user_choice',

@@ -491,9 +491,11 @@ describe('runAgentLoopCore', () => {
     runAgentLoopMock.mockResolvedValue({
       status: 'paused',
       pause: {
-        type: 'ask',
-        ask,
-        askId: 'call_ask'
+        toolCallId: 'call_ask',
+        interactive: {
+          type: 'agentAsk',
+          params: { toolCallId: 'call_ask', arguments: JSON.stringify(ask) }
+        }
       },
       completeMessages: [],
       assistantMessages: [],
@@ -519,9 +521,11 @@ describe('runAgentLoopCore', () => {
 
     expect(result.status).toBe('interactive');
     expect(result.pause).toEqual({
-      type: 'ask',
-      ask,
-      askId: 'call_ask'
+      toolCallId: 'call_ask',
+      interactive: {
+        type: 'agentAsk',
+        params: { toolCallId: 'call_ask', arguments: JSON.stringify(ask) }
+      }
     });
   });
 
@@ -661,7 +665,18 @@ describe('Agent Loop summary ownership', () => {
           usages: [childUsage],
           ...(status === 'error' ? { error: 'failed' } : {}),
           ...(status === 'paused'
-            ? { pause: { type: 'ask', ask: { reason: 'continue?', questions: [] }, askId: 'ask' } }
+            ? {
+                pause: {
+                  toolCallId: 'ask',
+                  interactive: {
+                    type: 'agentAsk',
+                    params: {
+                      toolCallId: 'ask',
+                      arguments: JSON.stringify({ reason: 'continue?', questions: [] })
+                    }
+                  }
+                }
+              }
             : {})
         };
       });

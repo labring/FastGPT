@@ -1,5 +1,6 @@
 import { IntSchema } from '../../../common/zod';
 import { z } from 'zod';
+import { InteractiveToolParamsSchema } from '../../ai/agent/type';
 
 export const WorkflowChecksumSchema = z
   .string()
@@ -107,8 +108,7 @@ export const WorkflowBuilderPreviewArgumentsSchema = z
  */
 export const WorkflowBuilderPreviewInteractiveSchema = z.object({
   type: z.literal('workflowBuilderPreview'),
-  previewId: z.string().min(1),
-  params: z.object({
+  params: InteractiveToolParamsSchema.extend({
     arguments: z
       .string()
       .refine((value) => WorkflowBuilderPreviewArgumentsSchema.safeParse(value).success, {

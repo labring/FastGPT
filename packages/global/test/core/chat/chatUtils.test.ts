@@ -643,11 +643,12 @@ describe('checkInteractiveResponseStatus', () => {
   it('creates a new message round for workflow preview decisions, including nested previews', () => {
     const preview = {
       type: 'workflowBuilderPreview' as const,
-      previewId: 'preview-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
+        toolCallId: 'preview-1',
         arguments: JSON.stringify({
           title: 'Confirm workflow?',
           mermaid: 'flowchart LR\n A --> B',
@@ -677,7 +678,7 @@ describe('checkInteractiveResponseStatus', () => {
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        askId: 'call_ask',
+        toolCallId: 'call_ask',
         arguments: JSON.stringify({
           reason: 'Need input',
           blockerType: 'user_choice',
@@ -719,7 +720,7 @@ describe('checkInteractiveResponseStatus', () => {
                 type: 'agentAsk',
 
                 params: {
-                  askId: 'ask_1',
+                  toolCallId: 'ask_1',
                   arguments: JSON.stringify({
                     reason: '',
                     blockerType: 'user_choice',

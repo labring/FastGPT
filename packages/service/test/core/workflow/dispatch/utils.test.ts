@@ -576,7 +576,7 @@ describe('getHistories', () => {
               type: 'agentAsk',
 
               params: {
-                askId: 'ask_1',
+                toolCallId: 'ask_1',
                 arguments: JSON.stringify({
                   reason: 'Choose one',
                   blockerType: 'user_choice',
@@ -647,7 +647,7 @@ describe('getHistories', () => {
               type: 'agentAsk',
 
               params: {
-                askId: 'ask_1',
+                toolCallId: 'ask_1',
                 arguments: JSON.stringify({
                   reason: '',
                   blockerType: 'user_choice',
@@ -717,7 +717,7 @@ describe('getHistories', () => {
             memoryEdges: [],
             nodeOutputs: [],
             params: {
-              askId: 'ask-1',
+              toolCallId: 'ask-1',
               arguments: JSON.stringify({
                 reason: '',
                 blockerType: 'user_choice',

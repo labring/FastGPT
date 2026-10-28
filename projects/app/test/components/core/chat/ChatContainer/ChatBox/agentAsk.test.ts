@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 import { getAIChatDisplayGroups } from '@/components/core/chat/ChatContainer/ChatBox/utils/agentAsk';
 
@@ -8,7 +8,7 @@ const ask: AgentAskInteractive = {
   type: 'agentAsk',
 
   params: {
-    askId: 'ask-1',
+    toolCallId: 'ask-1',
     arguments: JSON.stringify({
       reason: 'Choose a direction',
       blockerType: 'user_choice',
@@ -23,8 +23,9 @@ const before: AIChatItemValueItemType = { text: { content: 'Before ask' } };
 const after: AIChatItemValueItemType = { text: { content: 'After ask' } };
 const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
-  previewId: 'preview-1',
+
   params: {
+    toolCallId: 'preview-1',
     arguments: JSON.stringify({
       title: 'Confirm this workflow?',
       mermaid: 'flowchart LR\n  A --> B',

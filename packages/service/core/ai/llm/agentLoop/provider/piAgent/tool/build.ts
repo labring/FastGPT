@@ -122,6 +122,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
     pushAgentLoopUsages(runtime, usages);
+    if (result.interactive)
+      runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
@@ -251,11 +253,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
 
         setPendingAsk(parsed.data, callId);
         runtime.emitEvent?.({
-          type: 'ask_start',
-          ask: parsed.data,
-          id: callId,
-          params,
-          seconds: 0
+          type: 'tool_interactive',
+          call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+          interactive: { type: 'agentAsk', params: { toolCallId: callId, arguments: params } }
         });
         onToolResult({
           call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
