@@ -27,9 +27,7 @@ export const migrateSecretStoreToCurrent = (value: unknown): unknown => {
   );
 };
 
-const migrateToolSetSecrets = (value: unknown): unknown => {
-  if (!isRecord(value)) return value;
-
+const migrateToolSetSecrets = (value: RecordValue): RecordValue => {
   const toolSet = { ...value };
   if ('headerSecret' in toolSet) {
     toolSet.headerSecret = migrateSecretStoreToCurrent(toolSet.headerSecret);
@@ -47,9 +45,7 @@ const migrateToolSetSecrets = (value: unknown): unknown => {
   return toolSet;
 };
 
-const migrateNodeToolConfigSecrets = (value: unknown): unknown => {
-  if (!isRecord(value)) return value;
-
+const migrateNodeToolConfigSecrets = (value: RecordValue): RecordValue => {
   return {
     ...value,
     ...(isRecord(value.mcpToolSet) ? { mcpToolSet: migrateToolSetSecrets(value.mcpToolSet) } : {}),
@@ -60,8 +56,7 @@ const migrateNodeToolConfigSecrets = (value: unknown): unknown => {
 };
 
 /** 迁移 system_input_config 的手工密钥表；system 分支历史上也可能带有 value。 */
-const migrateSystemInputConfigSecrets = (value: unknown): unknown => {
-  if (!isRecord(value)) return value;
+const migrateSystemInputConfigSecrets = (value: RecordValue): RecordValue => {
   if (!isRecord(value.value)) return value;
 
   return {

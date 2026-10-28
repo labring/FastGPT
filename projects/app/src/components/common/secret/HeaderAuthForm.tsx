@@ -4,6 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, HStack, IconButton, Input, type ButtonProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
+  formatSecretReference,
   getSecretPlainValue,
   getSecretReferenceValue,
   isSecretValueConfigured
@@ -15,13 +16,12 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
+/** 选择器只编辑单个引用；历史引用数组保留为只读摘要。 */
 export const getSingleReference = (
   value?: HeaderSecretValueType
 ): ReferenceItemValueType | undefined => {
   const reference = getSecretReferenceValue(value);
-  return Array.isArray(reference) &&
-    typeof reference[0] === 'string' &&
-    typeof reference[1] === 'string'
+  return reference && typeof reference[0] === 'string'
     ? (reference as ReferenceItemValueType)
     : undefined;
 };
@@ -30,14 +30,6 @@ const toSecretReference = (value?: ReferenceItemValueType): [string, string] | u
   value && typeof value[0] === 'string' && typeof value[1] === 'string'
     ? [value[0], value[1]]
     : undefined;
-
-export const formatReferenceValue = (value?: HeaderSecretValueType) => {
-  const reference = getSecretReferenceValue(value);
-  if (!reference) return '';
-  return Array.isArray(reference[0])
-    ? (reference as [string, string?][]).map((item) => item.join(' / ')).join(', ')
-    : (reference as [string, string?]).join(' / ');
-};
 
 export const getShowInput = ({
   secretValue,
@@ -208,7 +200,7 @@ const AuthValueDisplay = ({
               textOverflow={'ellipsis'}
               whiteSpace={'nowrap'}
             >
-              {formatReferenceValue(secretValue) || t('common:core.workflow.inputType.Reference')}
+              {formatSecretReference(secretValue) || t('common:core.workflow.inputType.Reference')}
             </Box>
           ) : showInput ? (
             <Input

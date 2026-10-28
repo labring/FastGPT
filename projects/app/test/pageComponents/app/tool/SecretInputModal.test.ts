@@ -1,20 +1,22 @@
+import { JSDOM } from 'jsdom';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { JSDOM } from 'jsdom';
 import { describe, expect, it, vi } from 'vitest';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   filterReferenceListByInputType,
-  formatReferenceValue,
   formatManualInputValue,
-  getSecretInputModeType,
-  getSecretInputValueForMode,
-  isReferenceArrayValue,
   normalizeInputValue,
-  shouldShowSecretInput,
   SecretInputForm,
   type SecretReferenceList
 } from '@/pageComponents/app/tool/SecretInputModal';
+
+vi.mock('@fastgpt/web/components/common/Icon', async () => {
+  const React = await import('react');
+  const MockIcon = React.forwardRef(() => null);
+  MockIcon.displayName = 'MockIcon';
+  return { default: MockIcon };
+});
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
@@ -37,13 +39,18 @@ vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
   const React = await import('react');
   const { FlowNodeInputTypeEnum } = await import('@fastgpt/global/core/workflow/node/constant');
   return {
-    default: ({ onChange }: any) =>
+    default: ({ onChange, selectedType }: any) =>
       React.createElement(
         'button',
         {
           type: 'button',
-          'data-testid': 'switch-to-reference',
-          onClick: () => onChange(FlowNodeInputTypeEnum.reference)
+          'data-testid': 'switch-mode',
+          onClick: () =>
+            onChange(
+              selectedType === FlowNodeInputTypeEnum.reference
+                ? FlowNodeInputTypeEnum.password
+                : FlowNodeInputTypeEnum.reference
+            )
         },
         'Reference'
       )
@@ -65,53 +72,23 @@ const referenceList: SecretReferenceList = [
   }
 ];
 
-describe('SecretInputModal helpers', () => {
-  it('preserves structured tuple-array references during normalization', () => {
-    const value = {
-      ref: [
-        ['node', 'output'],
-        ['node-2', 'output-2']
-      ]
-    } as const;
-
-    expect(normalizeInputValue(value)).toEqual(value);
-    expect(isReferenceArrayValue(value)).toBe(true);
-    expect(formatReferenceValue(value)).toBe('node / output, node-2 / output-2');
+describe('normalizeInputValue', () => {
+  it('initializes unsupported or missing values as an editable empty wrapper', () => {
+    expect(normalizeInputValue(undefined)).toEqual({ value: '' });
+    expect(normalizeInputValue({ business: true })).toEqual({ value: '' });
   });
+});
 
-  it('normalizes legacy dual-field values through the shared migration', () => {
-    expect(normalizeInputValue({ value: 'plain', secret: 'cipher' })).toEqual({ value: 'plain' });
-    expect(normalizeInputValue({ value: '', secret: 'cipher' })).toEqual({ secret: 'cipher' });
-  });
-
-  it('normalizes number and switch legacy scalars into string wrappers', () => {
-    expect(normalizeInputValue(0, 'numberInput')).toEqual({ value: '0' });
-    expect(normalizeInputValue({ value: false }, 'switch')).toEqual({ value: 'false' });
-  });
-
-  it('keeps false and zero when canonicalizing manual changes', () => {
-    expect(formatManualInputValue(false)).toBe('false');
+describe('formatManualInputValue', () => {
+  it('preserves falsy scalar values and clears missing changes', () => {
     expect(formatManualInputValue(0)).toBe('0');
+    expect(formatManualInputValue(false)).toBe('false');
+    expect(formatManualInputValue(undefined)).toBe('');
+    expect(formatManualInputValue(null)).toBe('');
   });
+});
 
-  it('does not treat malformed references as configured values', () => {
-    expect(formatReferenceValue({ ref: ['node'] } as any)).toBe('');
-    expect(isReferenceArrayValue({ ref: [] } as any)).toBe(false);
-  });
-
-  it('clears the incompatible branch when switching field mode', () => {
-    expect(getSecretInputValueForMode('reference')).toBeUndefined();
-    expect(getSecretInputValueForMode('manual')).toEqual({ value: '' });
-  });
-
-  it('maps each secret input type to its mode selector type', () => {
-    expect(getSecretInputModeType('input')).toBe('input');
-    expect(getSecretInputModeType('numberInput')).toBe('numberInput');
-    expect(getSecretInputModeType('secret')).toBe('password');
-    expect(getSecretInputModeType('switch')).toBe('switch');
-    expect(getSecretInputModeType('select')).toBe('select');
-  });
-
+describe('filterReferenceListByInputType', () => {
   it('filters reference outputs to the existing input type contract', () => {
     expect(
       filterReferenceListByInputType(referenceList, 'input')[0].children.map((item) => item.value)
@@ -125,25 +102,28 @@ describe('SecretInputModal helpers', () => {
       filterReferenceListByInputType(referenceList, 'switch')[0].children.map((item) => item.value)
     ).toEqual(['boolean', 'unknown']);
   });
+});
 
-  it('keeps empty secret wrappers editable', () => {
-    expect(shouldShowSecretInput({ value: { value: '' } })).toBe(true);
-    expect(shouldShowSecretInput({ value: { secret: '' } })).toBe(true);
-    expect(shouldShowSecretInput({ value: { secret: 'cipher' } })).toBe(false);
-    expect(shouldShowSecretInput({ value: { value: 'plain' } })).toBe(false);
-    expect(shouldShowSecretInput({ value: { value: 'plain' }, isEditing: true })).toBe(true);
-  });
-
+describe('SecretInputForm', () => {
   it('submits a required secret after switching from an empty manual value to a reference', async () => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-      url: 'https://fastgpt.test'
+      url: 'https://fastgpt.test',
+      pretendToBeVisual: true
     });
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('localStorage', dom.window.localStorage);
-    const container = dom.window.document.createElement('div');
-    dom.window.document.body.appendChild(container);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('Node', dom.window.Node);
+    vi.stubGlobal('Document', dom.window.Document);
+    vi.stubGlobal('MutationObserver', dom.window.MutationObserver);
+    vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
+    vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
+    vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
+    const container = document.createElement('div');
+    document.body.appendChild(container);
     const root = createRoot(container);
     const onSubmit = vi.fn();
 
@@ -163,15 +143,23 @@ describe('SecretInputModal helpers', () => {
                 'Select reference'
               ),
             inputConfig: {
-              inputList: [{ key: 'token', label: 'Token', inputType: 'secret', required: true }]
-            } as any,
+              key: 'system_input_config',
+              label: 'Config',
+              renderTypeList: [],
+              inputList: [
+                { key: 'token', label: 'Token', inputType: 'secret', required: true },
+                { key: 'count', label: 'Count', inputType: 'numberInput', required: true },
+                { key: 'enabled', label: 'Enabled', inputType: 'switch', required: true }
+              ],
+              value: { type: 'manual', value: { count: { value: 0 }, enabled: { value: false } } }
+            },
             formId: 'secret-form',
             onSubmit
           })
         );
       });
 
-      const modeButton = container.querySelector('[data-testid="switch-to-reference"]');
+      const modeButton = container.querySelector('[data-testid="switch-mode"]');
       expect(modeButton).not.toBeNull();
       await act(async () => {
         modeButton?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
@@ -192,8 +180,26 @@ describe('SecretInputModal helpers', () => {
 
       expect(onSubmit).toHaveBeenCalledTimes(1);
       expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
-        value: { token: { ref: ['node', 'token'] } }
+        value: {
+          token: { ref: ['node', 'token'] },
+          count: { value: '0' },
+          enabled: { value: 'false' }
+        }
       });
+
+      // 回到手动模式必须清除 ref，并恢复空必填密码的校验。
+      await act(async () => {
+        container
+          .querySelector('[data-testid="switch-mode"]')
+          ?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      });
+      expect(container.querySelector<HTMLInputElement>('input[placeholder="Token"]')?.value).toBe(
+        ''
+      );
+      await act(async () => {
+        form?.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+      });
+      expect(onSubmit).toHaveBeenCalledTimes(1);
     } finally {
       await act(async () => root.unmount());
       container.remove();

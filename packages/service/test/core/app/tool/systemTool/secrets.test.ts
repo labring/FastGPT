@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from 'vitest';
 import { SystemToolSecretMaskedValue } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { decryptSecret, encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import {
   decryptSystemToolSecrets,
   encryptSystemToolSecrets,
@@ -10,171 +10,112 @@ import {
 
 const secretKeys = new Set(['apiKey']);
 
-describe('system tool secrets', () => {
-  it('encrypts new secret values and leaves non-secret config values unchanged', () => {
+describe('getSystemToolSecretKeys', () => {
+  it('selects secret declarations and accepts missing input lists', () => {
+    expect(
+      getSystemToolSecretKeys([
+        { key: 'apiKey', label: 'API key', inputType: 'secret' },
+        { key: 'region', label: 'Region', inputType: 'select' }
+      ])
+    ).toEqual(secretKeys);
+    expect(getSystemToolSecretKeys()).toEqual(new Set());
+  });
+});
+
+describe('encryptSystemToolSecrets', () => {
+  it.each(['cipher', 'plain', 'replacement'] as const)(
+    'masks, reads, and resaves legacy %s wrappers with the same precedence',
+    (kind) => {
+      const cipher = encryptSecret('cipher-key');
+      const legacy = {
+        value: kind === 'cipher' ? '' : 'plain-key',
+        secret: kind === 'plain' ? '' : cipher
+      };
+      const expected = kind === 'cipher' ? 'cipher-key' : 'plain-key';
+      for (const value of [legacy, JSON.stringify(legacy)]) {
+        const existingSecretsVal = { apiKey: value };
+        expect(decryptSystemToolSecrets(existingSecretsVal)).toEqual({ apiKey: expected });
+        const masked = maskSystemToolSecrets({ secretsVal: existingSecretsVal, secretKeys });
+        expect(masked).toEqual({ apiKey: SystemToolSecretMaskedValue });
+        for (const submitted of [existingSecretsVal, masked]) {
+          const stored = encryptSystemToolSecrets({
+            secretsVal: submitted,
+            existingSecretsVal,
+            secretKeys
+          });
+          assert(stored);
+          expect(stored).toEqual({ apiKey: { secret: expect.any(String) } });
+          expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: expected });
+          if (kind === 'cipher') expect(stored.apiKey).toEqual({ secret: cipher });
+        }
+      }
+    }
+  );
+
+  it('merges patches and encrypts omitted plaintext while preserving non-secret fields', () => {
     const stored = encryptSystemToolSecrets({
-      secretsVal: { apiKey: 'new-api-key', region: 'us' },
+      secretsVal: { region: 'us' },
+      existingSecretsVal: { apiKey: 'legacy-plain', unchanged: false },
       secretKeys
     });
     assert(stored);
-
-    expect(stored).toMatchObject({
+    expect(stored).toEqual({
       apiKey: { secret: expect.any(String) },
-      region: 'us'
+      region: 'us',
+      unchanged: false
     });
-    expect(stored.apiKey).not.toBe('new-api-key');
     expect(decryptSystemToolSecrets(stored)).toEqual({
-      apiKey: 'new-api-key',
-      region: 'us'
+      apiKey: 'legacy-plain',
+      region: 'us',
+      unchanged: false
+    });
+    expect(encryptSystemToolSecrets({ secretsVal: { apiKey: 'new-key' }, secretKeys })).toEqual({
+      apiKey: { secret: expect.any(String) }
     });
   });
 
-  it('preserves an unedited masked value', () => {
+  it('distinguishes clearing a submitted value from omitting or saving an empty wrapper', () => {
+    const existingSecretsVal = { apiKey: { secret: encryptSecret('old') } };
+    for (const value of ['', null, undefined]) {
+      expect(
+        encryptSystemToolSecrets({ secretsVal: { apiKey: value }, existingSecretsVal, secretKeys })
+      ).toEqual({});
+    }
     const stored = encryptSystemToolSecrets({
-      secretsVal: { apiKey: SystemToolSecretMaskedValue },
-      existingSecretsVal: { apiKey: { secret: encryptSecret('api-key') } },
+      secretsVal: { apiKey: { value: '' } },
+      existingSecretsVal,
       secretKeys
     });
     assert(stored);
-
-    expect(stored.apiKey).toMatchObject({ secret: expect.any(String) });
-    expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('api-key');
+    expect(stored).toEqual({ apiKey: { value: '' } });
+    expect(maskSystemToolSecrets({ secretsVal: stored, secretKeys })).toEqual(stored);
+    expect(
+      encryptSystemToolSecrets({ secretsVal: {}, existingSecretsVal: { apiKey: '' }, secretKeys })
+    ).toEqual({ apiKey: { value: '' } });
+    expect(
+      encryptSystemToolSecrets({ secretsVal: null, existingSecretsVal, secretKeys })
+    ).toBeNull();
+    expect(encryptSystemToolSecrets({ existingSecretsVal, secretKeys })).toBeUndefined();
   });
 
-  it('recognizes, masks, preserves, and decrypts deprecated legacy values', () => {
-    const legacyValue = { value: '', secret: encryptSecret('legacy-api-key') };
-    const legacyJson = JSON.stringify(legacyValue);
-
-    expect(decryptSystemToolSecrets({ apiKey: legacyValue })).toEqual({ apiKey: 'legacy-api-key' });
-    expect(decryptSystemToolSecrets({ apiKey: legacyJson })).toEqual({ apiKey: 'legacy-api-key' });
-    expect(
-      maskSystemToolSecrets({
-        secretsVal: { apiKey: legacyValue },
-        secretKeys
-      })
-    ).toEqual({ apiKey: SystemToolSecretMaskedValue });
-    expect(
-      maskSystemToolSecrets({
-        secretsVal: { apiKey: legacyJson },
-        secretKeys
-      })
-    ).toEqual({ apiKey: SystemToolSecretMaskedValue });
-
-    for (const existingValue of [legacyValue, legacyJson]) {
+  it('preserves configured masked credentials and drops missing, empty, or invalid ones', () => {
+    const reference = { ref: ['node', 'token'] as [string, string] };
+    for (const value of [{ secret: encryptSecret('old') }, reference]) {
       expect(
         encryptSystemToolSecrets({
           secretsVal: { apiKey: SystemToolSecretMaskedValue },
-          existingSecretsVal: { apiKey: existingValue },
+          existingSecretsVal: { apiKey: value },
           secretKeys
         })
-      ).toEqual({ apiKey: { secret: legacyValue.secret } });
+      ).toEqual({ apiKey: value });
     }
-  });
-
-  it('recognizes, masks, and re-encrypts deprecated plaintext wrappers', () => {
-    const legacyValue = { value: 'legacy-api-key', secret: '' };
-    const legacyJson = JSON.stringify(legacyValue);
-
-    for (const existingValue of [legacyValue, legacyJson]) {
-      expect(decryptSystemToolSecrets({ apiKey: existingValue })).toEqual({
-        apiKey: 'legacy-api-key'
-      });
-      expect(
-        maskSystemToolSecrets({
-          secretsVal: { apiKey: existingValue },
-          secretKeys
-        })
-      ).toEqual({ apiKey: SystemToolSecretMaskedValue });
-
-      const submitted = encryptSystemToolSecrets({
-        secretsVal: { apiKey: existingValue },
-        secretKeys
-      });
-      assert(submitted);
-      expect(submitted).toMatchObject({ apiKey: { secret: expect.any(String) } });
-      expect(decryptSystemToolSecrets(submitted)).toEqual({ apiKey: 'legacy-api-key' });
-
-      const stored = encryptSystemToolSecrets({
-        secretsVal: { apiKey: SystemToolSecretMaskedValue },
-        existingSecretsVal: { apiKey: existingValue },
-        secretKeys
-      });
-      assert(stored);
-
-      expect(stored).toMatchObject({ apiKey: { secret: expect.any(String) } });
-      expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: 'legacy-api-key' });
-    }
-  });
-
-  it('prefers the plaintext value when both legacy fields are populated', () => {
-    const legacyValue = { value: 'plain-api-key', secret: encryptSecret('cipher-api-key') };
-
-    for (const value of [legacyValue, JSON.stringify(legacyValue)]) {
-      expect(decryptSystemToolSecrets({ apiKey: value })).toEqual({ apiKey: 'plain-api-key' });
-      expect(
-        maskSystemToolSecrets({
-          secretsVal: { apiKey: value },
-          secretKeys
-        })
-      ).toEqual({ apiKey: SystemToolSecretMaskedValue });
-
-      const submitted = encryptSystemToolSecrets({
-        secretsVal: { apiKey: value },
-        secretKeys
-      });
-      assert(submitted);
-      expect(decryptSystemToolSecrets(submitted)).toEqual({ apiKey: 'plain-api-key' });
-
-      const stored = encryptSystemToolSecrets({
-        secretsVal: { apiKey: SystemToolSecretMaskedValue },
-        existingSecretsVal: { apiKey: value },
-        secretKeys
-      });
-      assert(stored);
-      expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: 'plain-api-key' });
-    }
-  });
-
-  it('encrypts a plain secret wrapper and clears an edited empty value', () => {
-    const stored = encryptSystemToolSecrets({
-      secretsVal: { apiKey: { value: 'new-api-key' } },
-      secretKeys
-    });
-    assert(stored);
-
-    expect(stored.apiKey).toMatchObject({ secret: expect.any(String) });
-    expect(decryptSecret((stored.apiKey as { secret: string }).secret)).toBe('new-api-key');
-    expect(
-      encryptSystemToolSecrets({
-        secretsVal: { apiKey: '' },
-        existingSecretsVal: stored,
-        secretKeys
-      })
-    ).toEqual({});
-  });
-
-  it('keeps an empty secret wrapper unconfigured after saving', () => {
-    const stored = encryptSystemToolSecrets({
-      secretsVal: { apiKey: { value: '' } },
-      existingSecretsVal: { apiKey: { secret: encryptSecret('old-api-key') } },
-      secretKeys
-    });
-    assert(stored);
-
-    expect(stored).toEqual({ apiKey: { value: '' } });
-    expect(maskSystemToolSecrets({ secretsVal: stored, secretKeys })).toEqual({
-      apiKey: { value: '' }
-    });
-    expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: '' });
-  });
-
-  it.each([{ ref: [] }, { ref: ['node', 'token'], value: 'plain' }])(
-    'does not preserve or mark invalid wrappers as configured: %j',
-    (value) => {
-      expect(encryptSystemToolSecrets({ secretsVal: { apiKey: value }, secretKeys })).toEqual({});
-      expect(maskSystemToolSecrets({ secretsVal: { apiKey: value }, secretKeys })).toEqual({
-        apiKey: ''
-      });
+    for (const value of [
+      undefined,
+      SystemToolSecretMaskedValue,
+      { value: '' },
+      { ref: [] },
+      { ref: ['node', 'token'], value: 'plain' }
+    ]) {
       expect(
         encryptSystemToolSecrets({
           secretsVal: { apiKey: SystemToolSecretMaskedValue },
@@ -183,65 +124,58 @@ describe('system tool secrets', () => {
         })
       ).toEqual({});
     }
-  );
-
-  it('encrypts omitted legacy plaintext through the common save path', () => {
-    const stored = encryptSystemToolSecrets({
-      secretsVal: { region: 'us' },
-      existingSecretsVal: { apiKey: 'legacy-plain' },
-      secretKeys
-    });
-    assert(stored);
-    expect(stored.apiKey).toEqual({ secret: expect.any(String) });
-    expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: 'legacy-plain', region: 'us' });
-  });
-
-  it('keeps system credential error policy around the shared decoder', () => {
-    const cipher = encryptSecret('plain');
-    const tampered = cipher.slice(0, -1) + (cipher.endsWith('0') ? '1' : '0');
-    expect(decryptSystemToolSecrets({ apiKey: { secret: tampered } })).toEqual({ apiKey: '' });
-  });
-
-  it('preserves an existing reference when the field is omitted or masked', () => {
-    const existing = { ref: ['node-1', 'token'] as [string, string] };
-
+    expect(encryptSystemToolSecrets({ secretsVal: { apiKey: { ref: [] } }, secretKeys })).toEqual(
+      {}
+    );
     expect(
       encryptSystemToolSecrets({
-        secretsVal: { region: 'us' },
-        existingSecretsVal: { apiKey: existing },
+        secretsVal: {},
+        existingSecretsVal: { apiKey: reference },
         secretKeys
       })
-    ).toEqual({ apiKey: existing, region: 'us' });
-    expect(
-      encryptSystemToolSecrets({
-        secretsVal: { apiKey: SystemToolSecretMaskedValue },
-        existingSecretsVal: { apiKey: existing },
-        secretKeys
-      })
-    ).toEqual({ apiKey: existing });
+    ).toEqual({ apiKey: reference });
   });
+});
 
-  it('masks only configured secret schema fields', () => {
-    const masked = maskSystemToolSecrets({
-      secretsVal: {
-        apiKey: { secret: encryptSecret('api-key') },
-        region: 'us'
-      },
-      secretKeys
-    });
-
-    expect(masked).toEqual({
+describe('maskSystemToolSecrets', () => {
+  it('masks only configured static secrets and preserves reference and empty states', () => {
+    const secretsVal = {
+      apiKey: { secret: encryptSecret('key') },
+      reference: { ref: ['node', 'token'] },
+      empty: { value: '' },
+      invalid: { ref: [] },
+      sentinel: SystemToolSecretMaskedValue,
+      region: 'us'
+    };
+    expect(
+      maskSystemToolSecrets({
+        secretsVal,
+        secretKeys: new Set(['apiKey', 'reference', 'empty', 'invalid', 'sentinel'])
+      })
+    ).toEqual({
       apiKey: SystemToolSecretMaskedValue,
+      reference: secretsVal.reference,
+      empty: { value: '' },
+      invalid: '',
+      sentinel: '',
       region: 'us'
     });
+    expect(maskSystemToolSecrets({ secretKeys })).toBeUndefined();
   });
+});
 
-  it('derives secret keys from secret input schema entries', () => {
+describe('decryptSystemToolSecrets', () => {
+  it('keeps its error policy and omits the admin mask sentinel', () => {
+    const cipher = encryptSecret('plain');
+    const tampered = cipher.slice(0, -1) + (cipher.endsWith('0') ? '1' : '0');
     expect(
-      getSystemToolSecretKeys([
-        { key: 'apiKey', label: 'API key', inputType: 'secret' },
-        { key: 'region', label: 'Region', inputType: 'select' }
-      ])
-    ).toEqual(new Set(['apiKey']));
+      decryptSystemToolSecrets({
+        apiKey: { secret: tampered },
+        masked: SystemToolSecretMaskedValue,
+        plain: { value: 'new' },
+        region: 'us'
+      })
+    ).toEqual({ apiKey: '', plain: 'new', region: 'us' });
+    expect(decryptSystemToolSecrets()).toBeUndefined();
   });
 });

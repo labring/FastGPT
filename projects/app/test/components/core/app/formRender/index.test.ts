@@ -9,6 +9,13 @@ import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
 import { useForm } from 'react-hook-form';
 
+vi.mock('@fastgpt/web/components/common/Icon', async () => {
+  const React = await import('react');
+  const MockIcon = React.forwardRef(() => null);
+  MockIcon.displayName = 'MockIcon';
+  return { default: MockIcon };
+});
+
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key })
 }));

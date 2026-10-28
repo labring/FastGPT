@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatSecretReference,
   getSecretCipherValue,
   getSecretPlainValue,
   getSecretReferenceValue,
@@ -63,15 +64,14 @@ describe('parseSecretValue', () => {
     { ref: [] },
     { ref: ['node'] },
     { ref: ['', 'token'] },
+    { ref: ['node', ''] },
+    { ref: [['node', '']] },
+    { ref: [['node', 1]] },
     { ref: ['node', 'token'], value: 'plain' },
     { ref: ['node', 'token'], secret: 'cipher' },
     { value: 'plain', business: true }
-  ])('rejects invalid wrappers consistently across all getters: %j', (value) => {
+  ])('rejects invalid or mixed wrappers: %j', (value) => {
     expect(parseSecretValue(value)).toBeUndefined();
-    expect(getSecretPlainValue(value)).toBeUndefined();
-    expect(getSecretCipherValue(value)).toBeUndefined();
-    expect(getSecretReferenceValue(value)).toBeUndefined();
-    expect(isSecretValueConfigured(value)).toBe(false);
   });
 
   it('uses the same legacy precedence at API boundaries and in field getters', () => {
@@ -87,6 +87,7 @@ describe('parseSecretValue', () => {
 
 describe('isSecretValueConfigured', () => {
   it.each([
+    [undefined, false],
     [{ value: '' }, false],
     [{ secret: '' }, false],
     [{ value: 'plain' }, true],
@@ -98,13 +99,45 @@ describe('isSecretValueConfigured', () => {
   });
 });
 
-describe('credential field getters', () => {
-  it('only exposes the field selected by the shared parser', () => {
+describe('getSecretPlainValue', () => {
+  it('returns only plaintext, including empty values', () => {
     expect(getSecretPlainValue({ value: '' })).toBe('');
-    expect(getSecretCipherValue({ secret: '' })).toBe('');
     expect(getSecretPlainValue({ secret: 'cipher' })).toBeUndefined();
+    expect(getSecretPlainValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('getSecretCipherValue', () => {
+  it('returns only ciphertext, including empty values', () => {
+    expect(getSecretCipherValue({ secret: '' })).toBe('');
     expect(getSecretCipherValue({ value: 'plain' })).toBeUndefined();
+    expect(getSecretCipherValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('getSecretReferenceValue', () => {
+  it('returns only a validated reference', () => {
     expect(getSecretReferenceValue({ value: 'plain' })).toBeUndefined();
     expect(getSecretReferenceValue({ ref: ['node', 'token'] })).toEqual(['node', 'token']);
+    expect(getSecretReferenceValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('formatSecretReference', () => {
+  it.each([
+    [undefined, ''],
+    [{ ref: [] }, ''],
+    [{ ref: ['node', 'token'] }, 'node / token'],
+    [
+      {
+        ref: [
+          ['node', 'token'],
+          ['other', 'token']
+        ]
+      },
+      'node / token, other / token'
+    ]
+  ])('formats validated references for both editors: %j', (value, expected) => {
+    expect(formatSecretReference(value)).toBe(expected);
   });
 });

@@ -18,6 +18,7 @@ import {
   type StoreSecretValueType
 } from '@fastgpt/global/common/secret/type';
 import {
+  formatSecretReference,
   getSecretReferenceValue,
   isSecretValueConfigured
 } from '@fastgpt/global/common/secret/utils';
@@ -76,9 +77,6 @@ const secretInputModeTypeMap = {
   select: FlowNodeInputTypeEnum.select
 } satisfies Record<InputConfigType['inputType'], FlowNodeInputTypeEnum>;
 
-export const getSecretInputModeType = (inputType: InputConfigType['inputType']) =>
-  secretInputModeTypeMap[inputType];
-
 export type SecretReferenceList = {
   label: string | React.ReactNode;
   value: string;
@@ -91,27 +89,6 @@ export type SecretReferenceList = {
   }[];
 }[];
 
-export const isReferenceArrayValue = (value?: SecretInputValue) =>
-  Array.isArray(getSecretReferenceValue(value)?.[0]);
-
-export const formatReferenceValue = (value?: SecretInputValue) => {
-  const reference = getSecretReferenceValue(value);
-  if (!reference) return '';
-  return Array.isArray(reference[0])
-    ? (reference as [string, string?][]).map((item) => item.join(' / ')).join(', ')
-    : (reference as [string, string?]).join(' / ');
-};
-
-export const shouldShowSecretInput = ({
-  value,
-  isEditing = false
-}: {
-  value?: SecretInputValue;
-  isEditing?: boolean;
-}) => {
-  return !isSecretValueConfigured(value) || isEditing;
-};
-
 /** 编辑器先复用凭据解析；旧数字/开关配置仅在声明的非密钥字段中转换为字符串。 */
 export const normalizeInputValue = (
   value: unknown,
@@ -122,9 +99,6 @@ export const normalizeInputValue = (
 
 export const formatManualInputValue = (value: unknown) =>
   value === undefined || value === null ? '' : String(value);
-
-export const getSecretInputValueForMode = (mode: FieldMode) =>
-  mode === 'reference' ? undefined : { value: '' };
 
 export const filterReferenceListByInputType = (
   referenceList: SecretReferenceList,
@@ -246,12 +220,10 @@ export const SecretInputForm = ({
     const fieldPath = `value.${key}` as any;
     const fieldValuePath = `value.${key}.value` as any;
     unregister(fieldValuePath);
-    setValue(fieldValuePath, undefined);
     setValue(fieldPath, undefined);
 
-    const nextValue = getSecretInputValueForMode(mode);
-    if (nextValue) {
-      setValue(fieldValuePath, nextValue.value);
+    if (mode === 'manual') {
+      setValue(fieldValuePath, '');
     }
   };
 
@@ -461,15 +433,12 @@ export const SecretInputForm = ({
                         const inputKey = `value.${item.key}.value` as any;
                         const value = getValues(`value.${item.key}`);
                         const fieldMode = getFieldMode(item.key, value);
-                        const manualInputType = getSecretInputModeType(item.inputType);
+                        const manualInputType = secretInputModeTypeMap[item.inputType];
                         const fieldReferenceList = filterReferenceListByInputType(
                           referenceList,
                           item.inputType
                         );
-                        const showInput = shouldShowSecretInput({
-                          value,
-                          isEditing: editIndex === i
-                        });
+                        const showInput = !isSecretValueConfigured(value) || editIndex === i;
                         const fieldLabel = item.label;
 
                         return (
@@ -512,7 +481,8 @@ export const SecretInputForm = ({
                                   required: item.required
                                 }}
                                 render={({ field: { value: referenceValue, onChange } }) =>
-                                  renderReference && !isReferenceArrayValue(referenceValue) ? (
+                                  renderReference &&
+                                  !Array.isArray(getSecretReferenceValue(referenceValue)?.[0]) ? (
                                     renderReference({
                                       list: fieldReferenceList,
                                       value: getSecretReferenceValue(referenceValue),
@@ -529,7 +499,7 @@ export const SecretInputForm = ({
                                       display={'flex'}
                                       alignItems={'center'}
                                     >
-                                      {formatReferenceValue(referenceValue) ||
+                                      {formatSecretReference(referenceValue) ||
                                         t('common:core.workflow.inputType.Reference')}
                                     </Box>
                                   )

@@ -52,9 +52,69 @@ describe('formatToolInputSecrets', () => {
     expect(inputs[0].value).toBe(value);
     expect(inputs[1].value).toEqual({ secret: expect.any(String) });
   });
+
+  it('encrypts only declared manual secrets and drops inactive configuration values', () => {
+    const reference = { ref: ['node', 'token'] };
+    const inputs: FlowNodeInputItemType[] = [
+      {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: 'Manual',
+        renderTypeList: [],
+        inputList: [
+          { key: 'token', label: 'Token', inputType: 'secret' },
+          { key: 'reference', label: 'Reference', inputType: 'secret' },
+          { key: 'count', label: 'Count', inputType: 'numberInput' }
+        ],
+        value: { type: 'manual', value: { token: { value: 'plain' }, reference, count: 0 } }
+      },
+      {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: 'System',
+        renderTypeList: [],
+        value: { type: 'system', value: { token: { value: 'unused' } } }
+      }
+    ];
+    formatToolInputSecrets({ flowNodeType: FlowNodeTypeEnum.tool, inputs });
+    expect(inputs.map((input) => input.value)).toEqual([
+      { type: 'manual', value: { token: { secret: expect.any(String) }, reference, count: 0 } },
+      { type: 'system' }
+    ]);
+  });
+
+  it('preserves missing containers and manual values without secret declarations', () => {
+    for (const value of [
+      null,
+      'raw',
+      { type: 'manual' },
+      { type: 'manual', value: [] },
+      { type: 'manual', value: { token: { value: 'plain' } } }
+    ]) {
+      const inputs: FlowNodeInputItemType[] = [
+        { key: NodeInputKeyEnum.systemInputConfig, label: 'Config', renderTypeList: [], value }
+      ];
+      formatToolInputSecrets({ flowNodeType: FlowNodeTypeEnum.tool, inputs });
+      expect(inputs[0].value).toBe(value);
+    }
+    const inputs = [{ key: NodeInputKeyEnum.headerSecret, value: null }];
+    // @ts-expect-error - exercise historical runtime input without editor metadata
+    formatToolInputSecrets({ flowNodeType: FlowNodeTypeEnum.httpRequest468, inputs });
+    expect(inputs[0].value).toBeNull();
+  });
 });
 
 describe('resolveToolInputValues', () => {
+  it('preserves missing values and undeclared parameters while rejecting declared object inputs', () => {
+    expect(resolveToolInputValues({})).toBeUndefined();
+    expect(resolveToolInputValues({ value: {} })).toEqual({});
+    expect(resolveToolInputValues({ value: { text: { value: 'plain' } } })).toEqual({
+      text: 'plain'
+    });
+    const inputList = [{ key: 'token', label: 'Token', inputType: 'secret' as const }];
+    expect(resolveToolInputValues({ value: { token: null }, inputList })).toEqual({ token: null });
+    expect(() =>
+      resolveToolInputValues({ value: { token: { business: true } }, inputList })
+    ).toThrow('must resolve to a scalar');
+  });
   it('resolves refs and preserves input type conversion', () => {
     const result = resolveToolInputValues({
       value: {

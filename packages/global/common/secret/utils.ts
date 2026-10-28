@@ -83,3 +83,12 @@ export const getSecretReferenceValue = (value: unknown): ReferenceValue | undefi
   const secretValue = parseSecretValue(value);
   return secretValue && 'ref' in secretValue ? secretValue.ref : undefined;
 };
+
+/** 两个凭据编辑器共用引用摘要；历史引用数组保持逐项展示，非法值显示为空。 */
+export const formatSecretReference = (value: unknown): string => {
+  const reference = getSecretReferenceValue(value);
+  if (!reference) return '';
+  return Array.isArray(reference[0])
+    ? (reference as [string, string][]).map((item) => item.join(' / ')).join(', ')
+    : reference.join(' / ');
+};

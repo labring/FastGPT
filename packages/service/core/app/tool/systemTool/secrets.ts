@@ -33,38 +33,16 @@ export const encryptSystemToolSecrets = ({
 }) => {
   if (secretsVal === null || secretsVal === undefined) return secretsVal;
 
-  const result: SecretsVal = { ...existingSecretsVal };
-
-  Object.entries(secretsVal).forEach(([key, submittedValue]) => {
-    if (!secretKeys.has(key)) {
-      result[key] = submittedValue;
-      return;
-    }
-
-    if (isMaskedValue(submittedValue)) {
-      const existingValue = normalizeSystemToolSecret(result[key]);
-      if (isSecretValueConfigured(existingValue)) {
-        result[key] = existingValue;
-      } else {
-        delete result[key];
-      }
-      return;
-    }
-
-    if (submittedValue === undefined || submittedValue === null || submittedValue === '') {
-      delete result[key];
-      return;
-    }
-
-    result[key] = submittedValue;
-  });
-
-  // 合并完成后统一保存，未编辑的历史明文也使用同一加密规则。
+  // 合并补丁后逐项处理；masked 读取旧值，每项只归一化一次，省略的历史明文也会加密。
   return Object.fromEntries(
-    Object.entries(result).flatMap(([key, value]) => {
+    Object.entries({ ...existingSecretsVal, ...secretsVal }).flatMap(([key, value]) => {
       if (!secretKeys.has(key)) return [[key, value]];
-      const secretValue = normalizeSystemToolSecret(value);
-      return secretValue ? [[key, encryptSecretValue(secretValue)]] : [];
+      if (value === '' && Object.hasOwn(secretsVal, key)) return [];
+
+      const isMasked = isMaskedValue(value);
+      const secretValue = normalizeSystemToolSecret(isMasked ? existingSecretsVal?.[key] : value);
+      if (!secretValue || (isMasked && !isSecretValueConfigured(secretValue))) return [];
+      return [[key, encryptSecretValue(secretValue)]];
     })
   );
 };
