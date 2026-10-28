@@ -45,7 +45,7 @@ type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
-  loadMyApps: () => Promise<void>;
+  loadMyApps: (options?: { silent?: boolean; resourceId?: string }) => Promise<void>;
   isFetchingApps: boolean;
   isEmpty: boolean;
   ScrollData: ScrollListType;
@@ -110,7 +110,7 @@ export const AppListContext = createContext<AppListContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50,
+  pageSize: 20,
 
   isBatchMode: false,
   setIsBatchMode: function (): void {
@@ -196,38 +196,38 @@ const AppListContextProvider = ({
   const { columnCount, pageSize } = useResponsiveGridPageSize(
     parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
   );
+  const listParams = {
+    type: resolveDashboardAppListTypes({ pathname: router.pathname, type: appType }),
+    searchKey,
+    sort,
+    tmbIds: persistedTmbIds,
+    withRelatedAppCount: listScene === 'agent' || listScene === 'tool' ? true : undefined
+  };
 
   const {
     data: myApps = [],
     isLoading: isFetchingApps,
     isEmpty,
     ScrollData,
-    fetchData
+    fetchData,
+    refreshItems
   } = useScrollPagination(
-    async ({ offset = 0, pageSize = 50 }) => {
-      const formatType = resolveDashboardAppListTypes({
-        pathname: router.pathname,
-        type: appType
-      });
-      const scene = getDashboardAppListScene(router.pathname);
-      const withRelatedAppCount = scene === 'agent' || scene === 'tool' ? true : undefined;
-      const fetchApps = (tmbIds?: string[]) =>
-        getMyAppsV2(
-          buildAppListRequest({
-            parentId,
-            type: formatType,
-            searchKey,
-            offset,
-            pageSize: getGridRequestPageSize(pageSize, offset),
-            sort,
-            tmbIds,
-            withRelatedAppCount
-          })
-        );
-
-      return fetchApps(persistedTmbIds);
-    },
+    ({ offset = 0, pageSize = 20 }, cancelToken) =>
+      getMyAppsV2(
+        buildAppListRequest({
+          ...listParams,
+          parentId,
+          offset,
+          pageSize: getGridRequestPageSize(pageSize, offset)
+        }),
+        cancelToken
+      ),
     {
+      refreshByIds: {
+        getId: (item) => item._id,
+        api: (appIds, cancelToken) =>
+          getMyAppsV2({ ...listParams, appIds }, cancelToken).then(({ list }) => list)
+      },
       refreshDeps: [
         searchKey,
         parentId,
@@ -244,7 +244,14 @@ const AppListContextProvider = ({
       showPaginationTip
     }
   );
-  const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);
+  /** 列表卡片（含文件夹）按 ID 同步；侧栏权限变更等未指定 ID 的刷新从首屏重新分页。 */
+  const loadMyApps = useCallback(
+    ({ silent = false, resourceId }: { silent?: boolean; resourceId?: string } = {}) => {
+      if (resourceId) return refreshItems([resourceId]);
+      return fetchData({ init: true, silent });
+    },
+    [fetchData, refreshItems]
+  );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),

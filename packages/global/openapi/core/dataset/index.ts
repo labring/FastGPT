@@ -28,6 +28,7 @@ import {
   DisableCollectionPermissionResponseSchema,
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
+  SearchDatasetTestResponseSchema,
   ExportDatasetQuerySchema,
   GetDatasetPermissionQuerySchema,
   ChangeDatasetOwnerBodySchema,
@@ -99,8 +100,10 @@ export const DatasetPath: OpenAPIPath = {
   },
   '/core/dataset/list': {
     post: {
+      deprecated: true,
       summary: '获取知识库列表',
-      description: '获取当前用户有权限访问的知识库列表,支持按类型和关键词筛选',
+      description:
+        '已弃用，请使用 POST /core/dataset/listV2。旧接口保留兼容，返回当前用户有权限访问的知识库数组，支持按类型和关键词筛选；V2 返回分页结构 { list, total }',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
       requestBody: {
         content: {
@@ -123,8 +126,9 @@ export const DatasetPath: OpenAPIPath = {
   },
   '/core/dataset/listV2': {
     post: {
-      summary: '分页获取知识库列表',
-      description: '分页获取当前用户有权限访问的知识库列表',
+      summary: '获取知识库列表 V2',
+      description:
+        '分页获取或按 datasetIds 精确查询当前用户有权限访问的知识库；提供 datasetIds 时优先按 ID 查询，解析时过滤 parentId 和分页参数，保留公共筛选字段',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
       requestBody: {
         content: {
@@ -135,7 +139,7 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回分页知识库列表',
+          description: '成功返回知识库列表',
           content: {
             'application/json': {
               schema: GetDatasetListV2ResponseSchema
@@ -373,8 +377,12 @@ export const DatasetPath: OpenAPIPath = {
   '/core/dataset/searchTest': {
     post: {
       summary: '搜索测试',
-      description:
-        '对知识库执行搜索测试，支持多种搜索模式、重排序、问题扩展和临时图片 key 检索。图片检索需先调用 /core/dataset/file/presignSearchTestImage 获取预签名上传 URL 和 temp/${teamId}/... key',
+      description: `对单个知识库执行文本、图片或图文检索，返回命中片段、实际检索配置和耗时。支持 API Key 或登录态鉴权，需要知识库读取权限，结果仅包含当前调用者可读的集合。
+
+- 输入格式：选择“文本检索”或“图片检索”；至少提供非空白的 \`text\` 或一张 \`queryImageUrls\` 图片，也可以两者同时传入。
+- 图片上传：先调用 \`/core/dataset/file/presignSearchTestImage\`，按返回的预签名信息上传图片，再将 \`temp/\${teamId}/...\` key 传入 \`queryImageUrls\`。最多 10 张，仅接受当前团队的临时 key，不支持公网 URL、dataset key 或 chat key。
+- 检索配置：支持向量、全文和混合检索，以及文本重排序和问题扩展；纯图片输入不执行文本扩展。
+- \`limit\` 是召回内容的 token 预算，并非结果条数；默认 5000，超过 20000 时按 20000 处理。`,
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.datasetOther],
       requestBody: {
         content: {
@@ -385,7 +393,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回搜索结果列表及耗时信息'
+          description: '成功返回搜索结果列表、实际检索配置及耗时信息',
+          content: {
+            'application/json': {
+              schema: SearchDatasetTestResponseSchema
+            }
+          }
         }
       }
     }

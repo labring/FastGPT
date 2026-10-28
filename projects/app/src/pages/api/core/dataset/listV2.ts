@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -43,27 +44,19 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
 /**
- * 分页读取可见知识库，仅为当前页按需计算文件数和应用引用数。
- * 文件数不按 collection 权限过滤；应用引用数仍仅返回给 Owner。
+ * 分页或按 ID 列出可读知识库，仍受团队、权限及公共筛选条件约束。
+ * 仅为返回的资源按需计算文件数和应用引用数；文件数不按集合权限过滤，引用数仅返回给 Owner。
  */
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
 ): Promise<GetDatasetListV2Response> {
-  const {
-    parentId,
-    type,
-    searchKey,
-    sort,
-    tmbIds,
-    pageNum = 1,
-    pageSize = 50,
-    offset,
-    withAppCount,
-    withFileCount
-  } = parseApiInput({
-    req,
-    bodySchema: GetDatasetListV2BodySchema
-  }).body;
+  const body = parseApiInput({ req, bodySchema: GetDatasetListV2BodySchema }).body;
+  const { datasetIds, type, searchKey, sort, tmbIds, withAppCount, withFileCount } = body;
+  const pagination = body.datasetIds === undefined ? body : undefined;
+  const parentId = pagination?.parentId;
+  const { pageSize, offset } = normalizePagination(pagination ?? {});
+  const isDatasetIdsQuery = datasetIds !== undefined;
+
   const currentFolderId = normalizeParentId(parentId);
 
   const {
@@ -103,7 +96,7 @@ async function handler(
   })();
 
   const folderScope =
-    parentId || !teamPer.isOwner || searchKey
+    !isDatasetIdsQuery && (parentId || !teamPer.isOwner || searchKey)
       ? await getDatasetFolderListScope({ teamId, currentFolderId })
       : { folders: [], folderIds: [] };
   if (parentId) {
@@ -152,8 +145,10 @@ async function handler(
     ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
     ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
   };
-  const isMergedList = !teamPer.isOwner && !searchKey;
+  const isMergedList = !isDatasetIdsQuery && !teamPer.isOwner && !searchKey;
   const parentScopeQuery = (() => {
+    // ID 查询不参与目录导航，保留 ACL 与请求 ID 的交集。
+    if (isDatasetIdsQuery) return { _id: { $in: datasetIds } };
     if (!searchKey && teamPer.isOwner) return parseParentIdInMongo(parentId);
     if (parentId) return { parentId: { $in: folderScope.folderIds } };
     return {
@@ -167,7 +162,6 @@ async function handler(
     $and: [baseQuery, parentScopeQuery, ...(searchMatch ? [searchMatch] : [])]
   };
 
-  const skip = offset ?? (pageNum - 1) * pageSize;
   const datasetSort = ((): Record<string, 1 | -1> => {
     if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
     if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
@@ -215,10 +209,14 @@ async function handler(
       return comparison ? comparison * direction : String(a._id).localeCompare(String(b._id));
     });
     total = visibleDatasets.length;
-    myDatasets = visibleDatasets.slice(skip, skip + pageSize);
+    myDatasets = visibleDatasets.slice(offset, offset + pageSize);
   } else {
     const [datasets, count] = await Promise.all([
-      MongoDataset.find(findDatasetQuery).sort(datasetSort).skip(skip).limit(pageSize).lean(),
+      MongoDataset.find(findDatasetQuery)
+        .sort(datasetSort)
+        .skip(offset)
+        .limit(isDatasetIdsQuery ? datasetIds.length : pageSize)
+        .lean(),
       MongoDataset.countDocuments(findDatasetQuery)
     ]);
     myDatasets = datasets;

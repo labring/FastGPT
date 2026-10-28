@@ -5,6 +5,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
   authAppByTmbIdMock,
@@ -446,6 +447,14 @@ describe('dispatchTool runtime toolset auth', () => {
       tmbId: 'caller-tmb',
       uId: 'uid',
       appId: 'app-id'
+    });
+    expect(pushTrack.runSystemTool).toHaveBeenCalledWith({
+      teamId: 'caller-team',
+      tmbId: 'caller-tmb',
+      toolId: 'search',
+      result: 1,
+      usagePoint: 0,
+      msg: undefined
     });
   });
 

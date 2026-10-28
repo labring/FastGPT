@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NotFound } from '@aws-sdk/client-s3';
 import {
   createMinioTimeoutTransport,
   MinioS3NotFound,
@@ -6,6 +7,10 @@ import {
 } from '../../../src/adapters/minio.adapter';
 
 describe('createMinioTimeoutTransport', () => {
+  it('exports the AWS SDK named NotFound constructor', () => {
+    expect(MinioS3NotFound).toBe(NotFound);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

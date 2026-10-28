@@ -20,6 +20,16 @@ vi.mock('react', async () => {
 vi.mock('reactflow', () => ({
   Position: { Right: 'right' }
 }));
+vi.mock(
+  '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/useNodeHandleDrag',
+  () => ({
+    useNodeHandleDrag: () => ({
+      onBeforeCapture: vi.fn(),
+      onDragEnd: vi.fn(),
+      draggingHandle: null
+    })
+  })
+);
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));

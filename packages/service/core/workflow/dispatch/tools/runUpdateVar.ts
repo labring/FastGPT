@@ -74,7 +74,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   const nodeIds = Array.from(runtimeNodesMap.keys());
 
   // 顺序执行：同一节点多条 update 依次写入，后一条读到前一条的新值
-  const result = [];
+  const result: unknown[] = [];
 
   for (const item of updateList) {
     const variable = item.variable;

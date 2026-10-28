@@ -2,7 +2,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { formatHttpError } from '../../common/api/httpError';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -209,7 +209,8 @@ export const runHTTPTool = async ({
     return { data };
   } catch (error) {
     logger.warn('HTTP tool request failed', { error });
-    return { errorMsg: getErrText(error) };
+    // 与 HTTP 节点保持一致：非 2xx 时把响应体中的具体原因附加到错误文本，避免只剩状态行。
+    return { errorMsg: formatHttpError(error).rawText };
   }
 };
 

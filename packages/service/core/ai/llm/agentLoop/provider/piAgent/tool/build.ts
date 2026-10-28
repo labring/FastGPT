@@ -128,7 +128,6 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
       assistantResponses: result.assistantResponses,

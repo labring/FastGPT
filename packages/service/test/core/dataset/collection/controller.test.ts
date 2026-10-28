@@ -18,6 +18,7 @@ import type {
 const {
   mockInsertMany,
   mockFind,
+  mockFindOne,
   mockBulkWrite,
   mockCreateTrainingUsage,
   mockTrainingInsertMany,
@@ -29,6 +30,7 @@ const {
 } = vi.hoisted(() => ({
   mockInsertMany: vi.fn(),
   mockFind: vi.fn(),
+  mockFindOne: vi.fn(),
   mockBulkWrite: vi.fn(),
   mockCreateTrainingUsage: vi.fn(),
   mockTrainingInsertMany: vi.fn(),
@@ -83,6 +85,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/schema', async (importOriginal
       ...actual.MongoDatasetCollection,
       insertMany: mockInsertMany,
       find: mockFind,
+      findOne: mockFindOne,
       bulkWrite: mockBulkWrite
     }
   };
@@ -196,6 +199,21 @@ const makeFile = (
 });
 const collectionParams = { teamId, tmbId, datasetId, type: DatasetCollectionTypeEnum.apiFile };
 
+/** 批量写入测试的父目录已存在；真实目录归属和深度边界由 API/权限集成测试覆盖。 */
+const mockParentFolder = (id: string) => {
+  mockFindOne.mockReturnValue({
+    session: () => ({
+      lean: async () => ({
+        _id: id,
+        teamId,
+        datasetId,
+        parentId: null,
+        type: DatasetCollectionTypeEnum.folder
+      })
+    })
+  });
+};
+
 describe('bulkInsertFolderCollections', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -206,6 +224,7 @@ describe('bulkInsertFolderCollections', () => {
   it('600 条按批大小分两批写入并全部计入成功', async () => {
     const docs = makeDocs(600);
     docs[0].parentId = new Types.ObjectId();
+    mockParentFolder(String(docs[0].parentId));
     mockInsertMany.mockResolvedValue([]);
 
     const result = await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
@@ -611,6 +630,7 @@ describe('createApiFileCollectionsBatch', () => {
   });
 
   it('200 个同父级文件复用模型、标签和 ACL 计算，并将结果整批写入集合与队列', async () => {
+    mockParentFolder('parent');
     const resolvedTags = [{ tagId: 'tag-id-1', value: ['t-1'] }];
     mockCreateOrGetCollectionTags.mockResolvedValue(resolvedTags);
     mockPermissionEnabled.mockResolvedValue(true);
@@ -628,6 +648,7 @@ describe('createApiFileCollectionsBatch', () => {
       session: {} as ClientSession
     });
     expect(result.collectionIds).toHaveLength(200);
+    expect(mockFindOne).toHaveBeenCalledTimes(1);
     expect(getTeamModelHandle).toHaveBeenCalledExactlyOnceWith({ teamId });
     expect(mockCreateOrGetCollectionTags).toHaveBeenCalledTimes(1);
     expect(mockCreateOrGetCollectionTags.mock.calls[0][0]).toMatchObject({ tags: ['t-1'] });

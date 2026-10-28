@@ -1,9 +1,12 @@
 import { POST } from '@/web/common/api/request';
-import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
+import { ClientTrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
+import type {
+  PushTrackBodyType,
+  PushTrackDataType
+} from '@fastgpt/global/openapi/common/other/api';
 import { useSystemStore } from '../../system/useSystemStore';
-import type { WorkflowDemoTrackData } from './workflowDemoTrack';
 
-const createTrack = ({ event, data }: { event: TrackEnum; data: any }) => {
+const createTrack = ({ event, data }: PushTrackBodyType) => {
   if (!useSystemStore.getState()?.feConfigs?.isPlus) return;
 
   return POST('/common/tracks/push', {
@@ -13,39 +16,42 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: any }) => {
 };
 
 export const webPushTrack = {
-  useAppTemplate: (data: { id: string; name: string }) => {
+  workflowBuilderClick: () => createTrack({ event: ClientTrackEnum.workflowBuilderClick }),
+  useAppTemplate: (data: PushTrackDataType<typeof ClientTrackEnum.useAppTemplate>) => {
     return createTrack({
-      event: TrackEnum.useAppTemplate,
+      event: ClientTrackEnum.useAppTemplate,
       data
     });
   },
-  readSystemAnnouncement: (data: { announcementId: string }) => {
+  readSystemAnnouncement: (
+    data: PushTrackDataType<typeof ClientTrackEnum.readSystemAnnouncement>
+  ) => {
     return createTrack({
-      event: TrackEnum.readSystemAnnouncement,
+      event: ClientTrackEnum.readSystemAnnouncement,
       data
     });
   },
-  clickOperationalAd: (data: { adId: string; adLink: string }) => {
+  clickOperationalAd: (data: PushTrackDataType<typeof ClientTrackEnum.clickOperationalAd>) => {
     return createTrack({
-      event: TrackEnum.clickOperationalAd,
+      event: ClientTrackEnum.clickOperationalAd,
       data
     });
   },
-  closeOperationalAd: (data: { adId: string }) => {
+  closeOperationalAd: (data: PushTrackDataType<typeof ClientTrackEnum.closeOperationalAd>) => {
     return createTrack({
-      event: TrackEnum.closeOperationalAd,
+      event: ClientTrackEnum.closeOperationalAd,
       data
     });
   },
-  clientError: (data: { route: string; log: string }) => {
+  clientError: (data: PushTrackDataType<typeof ClientTrackEnum.clientError>) => {
     return createTrack({
-      event: TrackEnum.clientError,
+      event: ClientTrackEnum.clientError,
       data
     });
   },
-  workflowDemoMode: (data: WorkflowDemoTrackData) => {
+  workflowDemoMode: (data: PushTrackDataType<typeof ClientTrackEnum.workflowDemoMode>) => {
     return createTrack({
-      event: TrackEnum.workflowDemoMode,
+      event: ClientTrackEnum.workflowDemoMode,
       data
     });
   }

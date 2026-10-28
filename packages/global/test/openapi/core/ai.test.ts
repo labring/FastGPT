@@ -171,9 +171,7 @@ describe('AI OpenAPI contracts', () => {
         DevApiTagsMap.skillVersion
       ]
     });
-    expect(openAPIDocument.paths?.['/core/ai/skill/list']?.post?.tags).toEqual([
-      DevApiTagsMap.skillBasic
-    ]);
+    expect(openAPIDocument.paths).not.toHaveProperty('/core/ai/skill/list');
     expect(openAPIDocument.paths?.['/core/ai/skill/listV2']?.post?.tags).toEqual([
       DevApiTagsMap.skillBasic
     ]);

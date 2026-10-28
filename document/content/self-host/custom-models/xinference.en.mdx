@@ -133,7 +133,7 @@ Add the qwen-chat model to the `llmModels` section of FastGPT's `config.json`:
       "maxResponse": 4000, // Max response length
       "quoteMaxToken": 120000, // Max citation content tokens
       "maxTemperature": 1.2, // Max temperature
-      "charsPointsPrice": 0, // n points/1k tokens (Commercial Edition)
+      "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Points per M Tokens (Commercial Edition)
       "censor": false, // Enable content moderation (Commercial Edition)
       "vision": true, // Supports image input
       "toolChoice": true, // Supports tool choice (used in classification, extraction, tool calling)

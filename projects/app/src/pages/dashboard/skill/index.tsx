@@ -240,7 +240,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <CreateSkillModal
           parentId={parentId}
           onClose={() => setShowCreateModal(false)}
-          onSuccess={refreshSkills}
+          onSuccess={() => refreshSkills()}
         />
       )}
 
@@ -248,7 +248,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <ImportSkillModal
           parentId={parentId}
           onClose={() => setShowImportModal(false)}
-          onSuccess={refreshSkills}
+          onSuccess={() => refreshSkills()}
         />
       )}
 

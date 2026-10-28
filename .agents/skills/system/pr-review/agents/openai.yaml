@@ -1,0 +1,7 @@
+interface:
+  display_name: 'PR Review'
+  short_description: '在含 pro 的独立 worktree 中审查需求、范围、质量与风格'
+  default_prompt: 'Use $pr-review to review this PR in a worktree, including pro; report findings without posting comments.'
+
+policy:
+  allow_implicit_invocation: false

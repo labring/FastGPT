@@ -225,7 +225,7 @@ describe('useChatGenerate.sendPrompt', () => {
       sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app' },
       sourceKey,
       chatId,
-      outLinkAuthData: {},
+      outLinkAuthData: undefined,
       fileUploadMode: 'runtime' as const,
       fileUploading: false,
       setFileUploadingCount: () => {}

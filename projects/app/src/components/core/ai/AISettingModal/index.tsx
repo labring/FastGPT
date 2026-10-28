@@ -347,7 +347,7 @@ const AIChatSettingsModal = ({
                       {!!selectedModel && (
                         <PriceLine
                           config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
                           priceKey={'input'}
                           fontSize={'mini'}
                         />
@@ -369,7 +369,7 @@ const AIChatSettingsModal = ({
                       {!!selectedModel && (
                         <PriceLine
                           config={selectedModel}
-                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
                           priceKey={'output'}
                           fontSize={'mini'}
                         />

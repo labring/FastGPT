@@ -28,6 +28,7 @@ import { MongoApp } from '../../../core/app/schema';
 import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
+import { UserError } from '../../../common/error';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -612,6 +613,39 @@ describe('MCPClient', () => {
       const result = await (mcpClient as any).getConnection();
       expect(client.connect).toHaveBeenCalledTimes(1);
       expect(result).toBe(client);
+    });
+
+    it('should convert ZodError to UserError when MCP server returns invalid JSON-RPC response', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      // 模拟 MCP SDK 在收到不合规响应时抛出的 ZodError
+      const zodError = new Error('Invalid input: unrecognized_keys: "status", "info", "infocode"');
+      zodError.name = 'ZodError';
+      client.connect = vi.fn().mockRejectedValue(zodError);
+
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'UserError',
+        message: 'MCP server returned invalid response',
+        displayMessage: expect.stringContaining('JSON-RPC 2.0')
+      });
+      expect(client.connect).toHaveBeenCalledTimes(1);
+    });
+
+    it('should convert protocol error in SSE fallback to UserError', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      // Streamable HTTP 失败但 fallback 条件满足
+      const httpError = new StreamableHTTPError(405, 'Method Not Allowed');
+      // SSE fallback 也遇到协议错误
+      const zodError = new Error('Invalid input: invalid_union');
+      zodError.name = 'ZodError';
+      client.connect = vi.fn().mockRejectedValueOnce(httpError).mockRejectedValueOnce(zodError);
+
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'UserError',
+        message: 'MCP server returned invalid response'
+      });
+      expect(client.connect).toHaveBeenCalledTimes(2);
     });
   });
 });

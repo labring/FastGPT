@@ -126,7 +126,8 @@ const getAssistantCallText = (message: ChatCompletionMessageParam) => {
 /**
  * 在 token worker 内同步统计 Chat messages token 数。
  *
- * 这里保持旧实现的消息常数近似规则，只替换为更快的 GPT tokenizer。
+ * 按传入消息逐条计入正文、reasoning 和工具调用，避免恢复历史时漏算旧思考，
+ * 并保证整段统计与追加消息的增量统计一致；供应商实际用量仍以 usage 为准。
  * 主线程只通过 worker 调用该函数，避免主进程加载 tokenizer rank 常驻内存。
  */
 export const countGptMessagesTokensInWorker = ({
@@ -135,9 +136,8 @@ export const countGptMessagesTokensInWorker = ({
   functionCall
 }: CountGptMessagesTokensParams) => {
   return (
-    messages.reduce((sum, item, index) => {
-      // 只有最后一条消息的 reasoning_content 会继续影响后续上下文预算。
-      const reasoningText = index === messages.length - 1 ? item.reasoning_content || '' : '';
+    messages.reduce((sum, item) => {
+      const reasoningText = item.reasoning_content ?? '';
       const contentPrompt = contentToText(item.content);
       const callPrompt = getAssistantCallText(item);
 

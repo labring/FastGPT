@@ -1,13 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Flex, VStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import {
-  batchMoveApps,
-  delAppById,
-  putAppById,
-  resumeInheritPer,
-  changeOwner
-} from '@/web/core/app/api';
+import { batchMoveApps, delAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -138,12 +132,6 @@ const List = () => {
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
 
-  const { runAsync: onPutAppById } = useRequest(putAppById, {
-    onSuccess() {
-      loadMyApps();
-    }
-  });
-
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
@@ -194,15 +182,14 @@ const List = () => {
   });
 
   const { runAsync: onResumeInheritPermission } = useRequest(
-    () => {
-      return resumeInheritPer(editPerApp!._id);
+    async (appId: string) => {
+      await resumeInheritPer(appId);
+      // 保存期间可能切换目录或关闭弹窗，始终按发起操作时的 ID 同步。
+      await loadMyApps({ silent: true, resourceId: appId });
     },
     {
       manual: true,
-      errorToast: t('common:permission.Resume InheritPermission Failed'),
-      onSuccess() {
-        loadMyApps();
-      }
+      errorToast: t('common:permission.Resume InheritPermission Failed')
     }
   );
   const renderAppCard = (app: (typeof myApps)[number]) => {
@@ -567,11 +554,11 @@ const List = () => {
                 changeOwner({
                   appId: editPerApp._id,
                   ownerId: tmbId
-                }).then(() => loadMyApps())
+                }).then(() => loadMyApps({ silent: true, resourceId: editPerApp._id }))
             })}
-            refetchResource={loadMyApps}
+            refetchResource={() => loadMyApps({ silent: true, resourceId: editPerApp._id })}
             hasParent={Boolean(parentId)}
-            resumeInheritPermission={onResumeInheritPermission}
+            resumeInheritPermission={() => onResumeInheritPermission(editPerApp._id)}
             isInheritPermission={editPerApp.inheritPermission}
             avatar={editPerApp.avatar}
             name={editPerApp.name}

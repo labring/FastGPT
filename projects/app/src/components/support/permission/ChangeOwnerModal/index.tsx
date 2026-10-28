@@ -27,7 +27,7 @@ export function ChangeOwnerModal({
   const [inputValue, setInputValue] = React.useState('');
 
   const { data: teamMembers, ScrollData } = useScrollPagination(getTeamMembers, {
-    pageSize: 15
+    pageSize: 20
   });
 
   const { data: searchedData } = useRequest(

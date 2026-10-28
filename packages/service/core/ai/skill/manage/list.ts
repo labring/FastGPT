@@ -19,8 +19,9 @@ import { addSourceMember } from '../../../../support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
+import type { ListSkillsV2Query } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { normalizePagination } from '../../../../common/api/pagination';
 import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
 import { getSkillFolderListScope } from './folder';
 
@@ -127,33 +128,35 @@ export const getAgentSkillFolderAccess = async ({
  *
  * 这里集中维护 Skill 列表 API 和 ChatAgentHelper 共用的权限过滤规则：
  * owner 可读团队内资源；普通成员按成员、用户组、组织授权计算，目录只负责层级过滤。
+ * 默认统计有权限查看的引用数量；选择器和辅助生成可传 withAppCount=false 跳过聚合。
  */
-export const listReadableAgentSkills = async ({
-  teamId,
-  tmbId,
-  teamPer,
-  parentId,
-  source,
-  searchKey,
-  category,
-  type,
-  skillIds,
-  offset,
-  page,
-  pageSize,
-  withAppCount,
-  sort,
-  tmbIds,
-  creationStatus,
-  withSourceMember = true,
-  withCurrentRuntimeSkills = false,
-  browseDescendants
-}: ListReadableAgentSkillsParams) => {
+export const listReadableAgentSkills = async (params: ListReadableAgentSkillsParams) => {
+  const {
+    teamId,
+    tmbId,
+    teamPer,
+    source,
+    searchKey,
+    category,
+    type,
+    skillIds,
+    withAppCount,
+    sort,
+    tmbIds,
+    creationStatus,
+    withSourceMember = true,
+    withCurrentRuntimeSkills = false,
+    browseDescendants
+  } = params;
+  const pagination = params.skillIds === undefined ? params : undefined;
+  const parentId = pagination?.parentId;
+  const offset = pagination?.offset;
+  const page = pagination?.page;
+  const pageSize = pagination?.pageSize;
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
     return { list: [], total: 0 };
   }
-  const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
-  const isSkillIdsQuery = selectedSkillIds.length > 0;
+  const isSkillIdsQuery = skillIds !== undefined;
 
   const [groups, orgSet] = await Promise.all([
     getGroupsByTmbId({ tmbId, teamId }),
@@ -230,7 +233,7 @@ export const listReadableAgentSkills = async ({
         teamPer.isOwner || source === 'store' ? {} : { _id: { $in: readableResourceIds } };
 
       return mergeMongoAndQuery(baseQuery, scopeQuery, readPermissionQuery, {
-        _id: { $in: selectedSkillIds },
+        _id: { $in: skillIds },
         ...searchMatch
       });
     }
@@ -254,11 +257,11 @@ export const listReadableAgentSkills = async ({
   })();
 
   const paged = offset !== undefined || (page !== undefined && pageSize !== undefined);
-  const skip = paged ? (offset ?? (page! - 1) * pageSize!) : 0;
+  const skip = paged ? normalizePagination({ offset, pageNum: page, pageSize }).offset : 0;
   const skillQuery = MongoAgentSkills.find(findSkillQuery)
     .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
     .skip(paged && !shouldMergeNavigationFolders ? skip : 0);
-  if (paged && !shouldMergeNavigationFolders) skillQuery.limit(pageSize!);
+  if (paged && !shouldMergeNavigationFolders && pageSize !== undefined) skillQuery.limit(pageSize);
   const [mySkills, dbTotal] = await Promise.all([
     skillQuery.lean(),
     paged && !shouldMergeNavigationFolders

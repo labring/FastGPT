@@ -12,7 +12,7 @@ export const AdminSystemMigrationsPath: OpenAPIPath = {
   '/admin/migrations/list': {
     get: {
       summary: '获取升级脚本列表',
-      description: '获取所有升级脚本的有序注册信息及最新运行状态',
+      description: '获取所有升级脚本的有序注册信息、有效启动阻塞模式及最新运行状态',
       tags: [DevApiTagsMap.adminSystemMigration],
       responses: {
         200: {
@@ -48,8 +48,9 @@ export const AdminSystemMigrationsPath: OpenAPIPath = {
   },
   '/admin/migrations/retry': {
     post: {
-      summary: '重试非阻塞升级脚本',
-      description: '将失败的非阻塞升级脚本恢复为待执行状态，由 Runner 重新竞争 lease',
+      summary: '重试升级脚本',
+      description:
+        '将失败的后台升级脚本恢复为待执行状态，由 Runner 重新竞争 lease；启动链任务须通过日志排障并重启持有租约的 App 节点恢复',
       tags: [DevApiTagsMap.adminSystemMigration],
       requestBody: {
         required: true,

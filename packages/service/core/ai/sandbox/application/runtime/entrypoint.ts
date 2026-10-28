@@ -27,7 +27,7 @@ import {
 } from './state';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const leaseCache = new LeaseCache({ logger });
+const leaseCache = new LeaseCache();
 
 /**
  * 保护同一个 sandbox 的运行态初始化流程。

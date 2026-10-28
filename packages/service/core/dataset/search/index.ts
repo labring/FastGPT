@@ -1,8 +1,4 @@
-import type {
-  DeepRagSearchProps,
-  DefaultSearchDatasetDataProps,
-  SearchDatasetDataResponse
-} from './type';
+import type { DefaultSearchDatasetDataProps, SearchDatasetDataResponse } from './type';
 import { searchDatasetData } from './defaultRecall';
 import { datasetSearchQueryExtension } from './utils';
 
@@ -65,9 +61,3 @@ export const defaultSearchDatasetData = async ({
       : undefined
   };
 };
-
-/**
- * Deep RAG 搜索入口由搜索分发层统一暴露，避免具体 recall 实现持有全局 handler 适配。
- */
-export const deepRagSearch = (data: DeepRagSearchProps): Promise<SearchDatasetDataResponse> =>
-  global.deepRagHandler(data);

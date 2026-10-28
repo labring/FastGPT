@@ -83,6 +83,58 @@ describe('validateWorkflow', () => {
     expect(codes).toContain(WorkflowDiagnosticCodeEnum.requiredInputMissing);
   });
 
+  it('reports serial cycles and accepts conditional or error feedback without deleting edges', () => {
+    const document = makeDocument();
+    document.nodes.push({ ...document.nodes[1], nodeId: 'downstream' });
+    document.executionEdges.push(
+      {
+        source: { kind: 'next', nodeId: 'target' },
+        target: { kind: 'target', nodeId: 'downstream' }
+      },
+      {
+        source: { kind: 'next', nodeId: 'downstream' },
+        target: { kind: 'target', nodeId: 'target' }
+      }
+    );
+    const before = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toHaveLength(2);
+    expect(document).toEqual(before);
+
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.ifElseNode;
+    document.executionEdges[1].source = { kind: 'branch', nodeId: 'target', branchKey: 'ELSE' };
+    const branched = structuredClone(document);
+    expect(
+      validateWorkflow(document, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(document).toEqual(branched);
+
+    const withCatch = structuredClone(before);
+    withCatch.nodes[1].catchError = true;
+    withCatch.executionEdges[1].source = { kind: 'catch', nodeId: 'target' };
+    const caught = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(caught);
+
+    withCatch.executionEdges[1].source = { kind: 'next', nodeId: 'target' };
+    const successful = structuredClone(withCatch);
+    expect(
+      validateWorkflow(withCatch, { invalidReferencePolicy: 'error' }).filter(
+        (issue) => issue.code === WorkflowDiagnosticCodeEnum.edgeCreatesCycle
+      )
+    ).toEqual([]);
+    expect(withCatch).toEqual(successful);
+  });
+
   it('reports incomplete variable update rows', async () => {
     const dependencies = { templateProvider: builtinTemplateProvider, locale: 'en' };
     const start = await applyWorkflowCommand({

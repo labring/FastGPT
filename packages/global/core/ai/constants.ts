@@ -32,7 +32,7 @@ export const defaultQAModels: LLMModelDataType[] = [
     name: 'gpt-5',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { tiers: [] },
     config: {
       maxContext: 16000,
       maxResponse: 16000,
@@ -56,7 +56,7 @@ export const defaultVectorModels: EmbeddingModelDataType[] = [
     name: 'Embedding-2',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { unitPrice: 0 },
     config: {
       defaultToken: 500,
       maxToken: 3000,
@@ -73,7 +73,7 @@ export const defaultSTTModels: STTModelDataType[] = [
     name: 'gpt-transcribe',
     modelId: '',
     scope: ModelScopeEnum.system,
-    charsPointsPrice: 0,
+    pricing: { unitPrice: 0 },
     config: {}
   }
 ];

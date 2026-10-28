@@ -186,8 +186,7 @@ export const pushWhisperUsage = async ({
 
   const { totalPoints, modelId } = formatModelChars2Points({
     model: whisperModel,
-    inputTokens: duration,
-    multiple: 60
+    inputTokens: duration
   });
 
   const name = i18nT('common:support.wallet.usage.Whisper');

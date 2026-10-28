@@ -442,7 +442,7 @@ export const DatasetListItemSchema = z.object({
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
   appCount: IntSchema.optional().meta({
-    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    description: '被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回',
     example: 0
   }),
   fileCount: IntSchema.optional().meta({
@@ -636,7 +636,11 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
         })
       )
       .meta({ description: '评分列表' }),
-    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })
+    metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' }),
+    synonymMappings: z
+      .record(z.string(), z.string())
+      .optional()
+      .meta({ description: '分块实际命中的原词到标准词映射' })
   })
   .meta({ description: '搜索数据响应项' });
 export type SearchDataResponseItemType = z.infer<typeof SearchDataResponseItemSchema>;

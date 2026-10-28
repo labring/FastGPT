@@ -10,7 +10,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 
 const logger = getLogger(LogCategories.SYSTEM);
-const systemUserLease = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
+const systemUserLease = new LeaseCache();
 
 const SYSTEM_USER_INIT_LEASE_KEY = 'system-user-init';
 const LEASE_TTL_MS = 60 * 1000;

@@ -13,8 +13,8 @@ import {
   countTeamAppsByPublishedResourceGroups,
   getAppPublishedResourceType
 } from '@fastgpt/service/core/app/resourceLookup';
-import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -38,24 +38,17 @@ import {
 import { Types } from '@fastgpt/service/common/mongo';
 import { getAppFolderListScope, hasReadableAppFolderChild } from '@/service/core/app/visibleList';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 
+/** 分页或按 ID 列出可读应用；解析时优先保留 ID 查询字段，仍受团队、权限及公共筛选条件约束。 */
 async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListAppV2ResponseType> {
-  const {
-    parentId,
-    type,
-    searchKey,
-    sort,
-    tmbIds,
-    pinnedFirst,
-    excludeAppId,
-    pageNum = 1,
-    pageSize = 50,
-    offset,
-    withRelatedAppCount
-  } = parseApiInput({
-    req,
-    bodySchema: ListAppV2BodySchema
-  }).body;
+  const body = parseApiInput({ req, bodySchema: ListAppV2BodySchema }).body;
+  const { appIds, type, searchKey, sort, tmbIds, pinnedFirst, excludeAppId, withRelatedAppCount } =
+    body;
+  const pagination = body.appIds === undefined ? body : undefined;
+  const parentId = pagination?.parentId;
+  const { pageSize, offset } = normalizePagination(pagination ?? {});
+  const isAppIdsQuery = appIds !== undefined;
   const currentFolderId = normalizeParentId(parentId);
 
   const {
@@ -96,7 +89,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   })();
 
   const folderScope =
-    parentId || !teamPer.isOwner || searchKey
+    !isAppIdsQuery && (parentId || !teamPer.isOwner || searchKey)
       ? await getAppFolderListScope({ teamId, currentFolderId })
       : { folders: [], folderIds: [] };
   if (parentId) {
@@ -151,8 +144,10 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     ...permissionQuery,
     ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
   };
-  const isMergedList = !teamPer.isOwner && !searchKey;
+  const isMergedList = !isAppIdsQuery && !teamPer.isOwner && !searchKey;
   const parentScopeQuery = (() => {
+    // ID 查询不参与目录导航，保留 ACL 与请求 ID 的交集。
+    if (isAppIdsQuery) return { _id: { $in: appIds } };
     if (!searchKey && teamPer.isOwner) return parseParentIdInMongo(parentId);
     if (parentId) return { parentId: { $in: folderScope.folderIds } };
     return {
@@ -173,7 +168,6 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const fields = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
     pinnedFirst ? ' isPinned pinnedAt' : ''
   }`;
-  const skip = offset ?? (pageNum - 1) * pageSize;
   let myApps: Awaited<ReturnType<typeof findAppsPage>>['list'];
   let total: number;
   const folderAccessModeMap = new Map<string, 'read' | 'navigate'>();
@@ -245,15 +239,15 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       return String(a._id).localeCompare(String(b._id));
     });
     total = visibleApps.length;
-    myApps = visibleApps.slice(skip, skip + pageSize);
+    myApps = visibleApps.slice(offset, offset + pageSize);
   } else {
     const result = await findAppsPage({
       filter: findAppsQuery,
       fields,
       sort,
       pinnedFirst,
-      offset: skip,
-      limit: pageSize
+      offset,
+      limit: isAppIdsQuery ? appIds.length : pageSize
     });
     myApps = result.list;
     total = result.total;

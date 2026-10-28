@@ -42,7 +42,6 @@ export {
   type CreateAgentLoopCoreWorkflowToolRunnerParams
 } from '../application/runtime/workflowToolRunner';
 
-export { filterAgentLoopCoreToolResponseToPreview } from '../adapter/assistantResponses/preview';
 export { createAgentLoopCoreChildInteractiveParams } from '../adapter/interactive/child';
 export {
   buildAgentLoopCoreDoneMemories,

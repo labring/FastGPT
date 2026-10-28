@@ -28,7 +28,11 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   type NodeGradients,
   AppNodeFlowNodeTypeMap,
@@ -73,6 +77,7 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
+import { useNodeHandleLayout } from './Handle/useNodeHandleLayout';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 import { useReference } from './RenderInput/templates/Reference';
 
@@ -116,7 +121,7 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
 };
 
 const NodeCard = (props: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     children,
     avatar = LOGO_ICON,
@@ -146,6 +151,12 @@ const NodeCard = (props: Props) => {
   } = props;
 
   useNodeOutputValidity(nodeId);
+  const toolConnected = useContextSelector(WorkflowBufferDataContext, (v) =>
+    v.edges.some(
+      (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+    )
+  );
+  useNodeHandleLayout({ node: props, toolConnected, language: i18n.language });
 
   const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
     WorkflowBufferDataContext,

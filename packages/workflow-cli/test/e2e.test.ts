@@ -760,6 +760,15 @@ describe('PR1 through PR4 CLI end to end', () => {
     const { invoke } = await createHarness();
     expect((await invoke(['--help'])).stdout[0]).toContain('Commands:');
     expect((await invoke(['--version'])).stdout).toEqual(['0.3.0-beta.1']);
+    // 全局选项可以与其他参数共存：--version 不应要求命令，也不能继续执行命令。
+    const versionWithOptions = await invoke(['--version', '--format', 'json']);
+    expect(versionWithOptions.exitCode).toBe(0);
+    expect(versionWithOptions.stdout).toEqual(['0.3.0-beta.1']);
+    expect(versionWithOptions.stderr).toEqual([]);
+    const versionAfterCommand = await invoke(['node', 'show', '--version']);
+    expect(versionAfterCommand.exitCode).toBe(0);
+    expect(versionAfterCommand.stdout).toEqual(['0.3.0-beta.1']);
+    expect(versionAfterCommand.stderr).toEqual([]);
     const commandHelp = await invoke(['node', 'show', '--help']);
     expect(commandHelp.exitCode).toBe(0);
     expect(commandHelp.stdout[0]).toContain('Usage: fastgpt-workflow node show');

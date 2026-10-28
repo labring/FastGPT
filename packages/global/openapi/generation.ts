@@ -14,13 +14,27 @@ const isObjectIdInput = (schema: z.core.$ZodType): boolean => {
   return schema instanceof z.ZodPipe && schema.out === ObjectIdSchema.out;
 };
 
-/** 仅在文档生成时修正 ObjectId preprocess 的必填标记，不修改共享 Zod Schema。 */
+/** 仅在文档生成时隐藏 never 字段并修正 ObjectId 入参必填标记，不修改共享 Zod Schema。 */
 export const openApiDocumentOptions: CreateDocumentOptions = {
   override: ({ jsonSchema, zodSchema, io }) => {
-    if (io !== 'input' || !(zodSchema instanceof z.ZodObject)) return;
+    if (!(zodSchema instanceof z.ZodObject)) return;
+
+    /** 剥离 optional/catch；nullable(never) 仍允许 null，不能作为禁用字段隐藏。 */
+    const isNeverProperty = (schema: z.core.$ZodType): boolean => {
+      if (schema instanceof z.ZodOptional || schema instanceof z.ZodCatch) {
+        return isNeverProperty(schema.unwrap());
+      }
+      return schema instanceof z.ZodNever;
+    };
+
     const required = new Set(jsonSchema.required ?? []);
     for (const [key, schema] of Object.entries(zodSchema.shape)) {
-      if (!isObjectIdInput(schema)) continue;
+      if (isNeverProperty(schema)) {
+        delete jsonSchema.properties?.[key];
+        required.delete(key);
+        continue;
+      }
+      if (io !== 'input' || !isObjectIdInput(schema)) continue;
       if (schema.safeParse(undefined).success) {
         required.delete(key);
       } else {

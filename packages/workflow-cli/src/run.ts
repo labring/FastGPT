@@ -49,7 +49,8 @@ export const runCli = async ({
       stdout(renderHelp());
       return 0;
     }
-    if (argv.length === 1 && argv[0] === '--version') {
+    // 全局 --version 与 --help 一样不依赖命令，允许与 --format/--dir 等其它参数共存。
+    if (argv.includes('--version')) {
       stdout(CLI_VERSION);
       return 0;
     }

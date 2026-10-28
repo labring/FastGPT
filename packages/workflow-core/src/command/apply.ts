@@ -1,5 +1,5 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { assertExecutionEdge, getDefaultExecutionSourcePort } from '../edge/validation';
+import { getExecutionBranchKeys, getDefaultExecutionSourcePort } from '../edge/validation';
 import { getWorkflowChecksum } from '../domain/checksum';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { type WorkflowDiagnostic, WorkflowCommandError } from '../domain/diagnostic';
@@ -94,6 +94,7 @@ export const applyWorkflowCommand = async ({
 
   if (command.type === 'input.set') {
     const inputNode = getDocumentNode(nextDocument, command.nodeId);
+    const previousBranchKeys = getExecutionBranchKeys(inputNode);
     const shouldSyncFormInputOutputs =
       inputNode.flowNodeType === FlowNodeTypeEnum.formInput &&
       command.inputKey === NodeInputKeyEnum.userInputForms;
@@ -140,16 +141,19 @@ export const applyWorkflowCommand = async ({
       });
     });
 
+    // 只清理此次配置修改确实删除的端口，不因其他连接诊断或历史无效端口隐式删边。
+    const nextBranchKeys = new Set(getExecutionBranchKeys(inputNode));
+    const removedBranchKeys = new Set(previousBranchKeys.filter((key) => !nextBranchKeys.has(key)));
     let removedBranchEdgeCount = 0;
     nextDocument.executionEdges = nextDocument.executionEdges.filter((edge) => {
-      if (edge.source.kind !== 'branch' || edge.source.nodeId !== command.nodeId) return true;
-      try {
-        assertExecutionEdge(nextDocument, edge);
+      if (
+        edge.source.kind !== 'branch' ||
+        edge.source.nodeId !== command.nodeId ||
+        !removedBranchKeys.has(edge.source.branchKey)
+      )
         return true;
-      } catch {
-        removedBranchEdgeCount += 1;
-        return false;
-      }
+      removedBranchEdgeCount += 1;
+      return false;
     });
     if (removedBranchEdgeCount > 0) {
       warnings.push({

@@ -1,20 +1,32 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
-import { WorkflowCommandError } from '../domain/diagnostic';
-import { compileExecutionEdge } from './compiler';
+import { WorkflowCommandError, type WorkflowDiagnostic } from '../domain/diagnostic';
+import { compileExecutionEdge, decompileStoreEdge, decompileStoreSourcePort } from './compiler';
 import {
   type WorkflowExecutionEdge,
   type ExecutionSourcePortRef
 } from '@fastgpt/global/core/workflow/type/edge';
 
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { isToolWorkflowConnectionAllowed } from '@fastgpt/global/common/workflow/connection';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import {
+  buildNodeTemplateContext,
+  getNodeContainerCheckError,
+  isTemplateVisible
+} from '@fastgpt/global/core/workflow/template/context';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import {
   NODE_TYPES_WITHOUT_NEXT_PORT,
   NODE_TYPES_WITHOUT_TARGET_PORT,
@@ -61,9 +73,16 @@ export const getDefaultExecutionSourcePort = (
   return { kind: 'next', nodeId };
 };
 
-const assertBranchKey = (document: WorkflowDocument, edge: WorkflowExecutionEdge) => {
-  if (edge.source.kind !== 'branch') return;
-  const node = getDocumentNode(document, edge.source.nodeId);
+/** 返回节点当前配置实际声明的分支端口，供连接校验和显式删除端口的边清理共用。 */
+export const getExecutionBranchKeys = (node: StoreNodeItemType): string[] => {
+  if (
+    ![
+      FlowNodeTypeEnum.ifElseNode,
+      FlowNodeTypeEnum.userSelect,
+      FlowNodeTypeEnum.classifyQuestion
+    ].includes(node.flowNodeType)
+  )
+    return [];
   const inputKey =
     node.flowNodeType === FlowNodeTypeEnum.ifElseNode
       ? NodeInputKeyEnum.ifElseList
@@ -71,40 +90,193 @@ const assertBranchKey = (document: WorkflowDocument, edge: WorkflowExecutionEdge
         ? NodeInputKeyEnum.userSelectOptions
         : NodeInputKeyEnum.agents;
   const input = node.inputs.find((item) => item.key === inputKey);
-  const value = input?.value;
-  const keys = (() => {
-    if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input)) {
-      return [USER_SELECT_REFERENCE_HANDLE_KEY];
+  if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input))
+    return [USER_SELECT_REFERENCE_HANDLE_KEY];
+  const value = Array.isArray(input?.value) ? input.value : [];
+  if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode)
+    return [
+      ...value.map((item, index) => getIfElseBranchHandleKey(item as IfElseListItemType, index)),
+      IfElseResultEnum.ELSE
+    ];
+  return value
+    .map((item) => (item && typeof item === 'object' ? (item as { key?: unknown }).key : undefined))
+    .filter((key): key is string => typeof key === 'string');
+};
+
+/**
+ * 根据真实执行出口识别可受控的回流路径，不推测条件值或模型的选择结果。
+ * 报错捕获开启后，成功出口与异常出口互斥：失败会跳过所有成功出口，成功会跳过异常出口。
+ * 工具挂载不是同层执行分支；失效的历史出口也不能凭节点类型获得回环豁免。
+ */
+const isConditionalExecutionSource = ({
+  node,
+  source
+}: {
+  node: StoreNodeItemType;
+  source: ExecutionSourcePortRef;
+}) => {
+  if (source.kind === 'selectedTools') return false;
+  if (source.kind === 'branch') return getExecutionBranchKeys(node).includes(source.branchKey);
+  if (source.kind === 'next' && NODE_TYPES_WITHOUT_NEXT_PORT.has(node.flowNodeType)) return false;
+  if (
+    source.kind === 'sourceOutput' &&
+    !node.outputs.some(
+      (output) =>
+        output.key === source.outputKey &&
+        output.type === FlowNodeOutputTypeEnum.source &&
+        output.invalid !== true
+    )
+  )
+    return false;
+  return node.catchError === true;
+};
+
+type ConnectionCandidate = {
+  source?: string | null;
+  target?: string | null;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
+
+type ConnectionGraphEdge = {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
+
+/** 仅用于校验的拓扑信息；条件出口由真实端口和节点配置推导，不写回连线。 */
+type ConnectionTopologyEdge = ConnectionGraphEdge & { conditional: boolean };
+
+export type ExecutionConnectionResult =
+  | { allowed: true }
+  | { allowed: false; reason: WorkflowDiagnostic };
+
+/**
+ * 唯一的执行连线判定入口：画布显隐、提交、Core 命令和整图检查共用。
+ * 同时接受画布 handle 和语义端口；历史边只提取拓扑和条件出口，避免无关旧 handle 阻断编辑。
+ * 默认检查重复边；检查文档中已有边时关闭该项，其余规则完全一致。检查不修改节点或连线。
+ */
+export const checkExecutionConnection = ({
+  connection,
+  edges,
+  getNodeById,
+  checkDuplicate = true
+}: {
+  connection: ConnectionCandidate | WorkflowExecutionEdge;
+  edges: (ConnectionGraphEdge | WorkflowExecutionEdge)[];
+  getNodeById: (nodeId: string) => StoreNodeItemType | undefined;
+  checkDuplicate?: boolean;
+}): ExecutionConnectionResult => {
+  try {
+    /** 两种端口表示只在边界归一化，后面的规则只处理语义端口。 */
+    const isExecutionEdge = (
+      item: ConnectionCandidate | WorkflowExecutionEdge
+    ): item is WorkflowExecutionEdge => typeof item.source === 'object' && item.source !== null;
+    const sourceId = isExecutionEdge(connection) ? connection.source.nodeId : connection.source;
+    const targetId = isExecutionEdge(connection) ? connection.target.nodeId : connection.target;
+    const sourceNode = sourceId ? getNodeById(sourceId) : undefined;
+    const targetNode = targetId ? getNodeById(targetId) : undefined;
+    if (!sourceNode || !targetNode) {
+      throw new WorkflowCommandError([
+        {
+          code: WorkflowDiagnosticCodeEnum.nodeNotFound,
+          severity: 'error',
+          nodeId: (!sourceNode ? sourceId : targetId) ?? undefined
+        }
+      ]);
     }
-    if (!Array.isArray(value)) return [];
-    if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-      return [
-        ...value.map((item, index) => getIfElseBranchHandleKey(item as IfElseListItemType, index)),
-        IfElseResultEnum.ELSE
-      ];
-    }
-    return value
-      .map((item) =>
-        item && typeof item === 'object' ? (item as { key?: unknown }).key : undefined
-      )
-      .filter((item): item is string => typeof item === 'string');
-  })();
-  if (!keys.includes(edge.source.branchKey)) {
-    throw new WorkflowCommandError([
-      {
-        code: WorkflowDiagnosticCodeEnum.branchKeyNotFound,
-        severity: 'error',
-        nodeId: edge.source.nodeId,
-        params: { branchKey: edge.source.branchKey }
+    const document = { nodes: [sourceNode, targetNode] };
+    const edge = (() => {
+      if (isExecutionEdge(connection)) return connection;
+      const candidate = connection;
+      if (!candidate.sourceHandle || !candidate.targetHandle) {
+        throw new WorkflowCommandError([
+          { code: WorkflowDiagnosticCodeEnum.edgeHandleUnsupported, severity: 'error' }
+        ]);
       }
-    ]);
+      return decompileStoreEdge(
+        {
+          source: sourceNode.nodeId,
+          target: targetNode.nodeId,
+          sourceHandle: candidate.sourceHandle,
+          targetHandle: candidate.targetHandle
+        },
+        document
+      );
+    })();
+    const graphEdges = edges.map((item): ConnectionTopologyEdge => {
+      const topology = isExecutionEdge(item)
+        ? {
+            source: item.source.nodeId,
+            target: item.target.nodeId,
+            targetHandle:
+              item.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
+          }
+        : item;
+      const node = getNodeById(topology.source);
+      const conditional = (() => {
+        if (!node) return false;
+        if (isExecutionEdge(item))
+          return isConditionalExecutionSource({ node, source: item.source });
+        if (!item.sourceHandle) return false;
+        try {
+          const source = decompileStoreSourcePort({
+            edge: { source: item.source, sourceHandle: item.sourceHandle },
+            document: { nodes: [node] }
+          });
+          return isConditionalExecutionSource({ node, source });
+        } catch (error) {
+          // 旧图中无关的未知 handle 不阻断编辑，但也不能作为条件分支绕过回环限制。
+          if (error instanceof WorkflowCommandError) return false;
+          throw error;
+        }
+      })();
+      return { ...topology, conditional };
+    });
+    const compiled = assertExecutionEdgeRules({ document, edge, graphEdges, getNodeById });
+
+    // 普通入口的历史左右 handle 等价；工具出口 ID 全局相同，必须同时比较 source 节点。
+    const duplicated =
+      checkDuplicate &&
+      edges.some((item) => {
+        if (isExecutionEdge(item)) return executionEdgesEqual(item, edge);
+        const existing = item;
+        return (
+          existing.source === compiled.source &&
+          existing.target === compiled.target &&
+          existing.sourceHandle === compiled.sourceHandle &&
+          (existing.targetHandle === compiled.targetHandle ||
+            (edge.target.kind === 'target' &&
+              existing.targetHandle === getHandleId(existing.target, 'target', 'right')))
+        );
+      });
+    if (duplicated) {
+      throw new WorkflowCommandError([
+        { code: WorkflowDiagnosticCodeEnum.edgeDuplicated, severity: 'error', params: { edge } }
+      ]);
+    }
+    return { allowed: true };
+  } catch (error) {
+    if (error instanceof WorkflowCommandError)
+      return { allowed: false, reason: error.diagnostics[0] };
+    throw error;
   }
 };
 
-/** 校验复杂执行边的端口配对、作用域和节点能力。 */
-export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowExecutionEdge) => {
-  const sourceNode = getDocumentNode(document, edge.source.nodeId);
-  const targetNode = getDocumentNode(document, edge.target.nodeId);
+/** 规则只在此处定义；对外通过 checkExecutionConnection 返回拒绝原因。 */
+const assertExecutionEdgeRules = ({
+  document,
+  edge,
+  graphEdges,
+  getNodeById
+}: {
+  document: Pick<WorkflowDocument, 'nodes'>;
+  edge: WorkflowExecutionEdge;
+  graphEdges: ConnectionTopologyEdge[];
+  getNodeById: (nodeId: string) => StoreNodeItemType | undefined;
+}) => {
+  const [sourceNode, targetNode] = document.nodes;
   if (sourceNode.nodeId === targetNode.nodeId) {
     throw new WorkflowCommandError([
       {
@@ -178,11 +350,141 @@ export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowEx
       }
     ]);
   }
-  assertBranchKey(document, edge);
-  compileExecutionEdge(edge, document);
+  if (
+    edge.source.kind === 'branch' &&
+    !getExecutionBranchKeys(sourceNode).includes(edge.source.branchKey)
+  ) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.branchKeyNotFound,
+        severity: 'error',
+        nodeId: sourceNode.nodeId,
+        params: { branchKey: edge.source.branchKey }
+      }
+    ]);
+  }
+  const compiled = compileExecutionEdge(edge, document);
+
+  const incoming = graphEdges.filter((item) => item.target === targetNode.nodeId);
+  if (
+    sourceIsTool &&
+    incoming.some((item) => item.targetHandle !== NodeOutputKeyEnum.selectedTools)
+  ) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.toolTargetHasNormalEdges,
+        severity: 'error',
+        nodeId: targetNode.nodeId
+      }
+    ]);
+  }
+  const otherOwner =
+    sourceIsTool &&
+    incoming.find(
+      (item) =>
+        item.targetHandle === NodeOutputKeyEnum.selectedTools && item.source !== sourceNode.nodeId
+    );
+  if (otherOwner) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.toolTargetAlreadyAttached,
+        severity: 'error',
+        nodeId: targetNode.nodeId,
+        params: { ownerNodeId: otherOwner.source }
+      }
+    ]);
+  }
+  if (
+    !sourceIsTool &&
+    incoming.some((item) => item.targetHandle === NodeOutputKeyEnum.selectedTools)
+  ) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.normalTargetHasToolEdges,
+        severity: 'error',
+        nodeId: targetNode.nodeId
+      }
+    ]);
+  }
+  if (
+    !isToolWorkflowConnectionAllowed({
+      source: sourceNode.nodeId,
+      target: targetNode.nodeId,
+      isToolConnection: sourceIsTool,
+      edges: graphEdges,
+      getNodeById
+    })
+  ) {
+    throw new WorkflowCommandError([
+      { code: WorkflowDiagnosticCodeEnum.edgeCrossScope, severity: 'error', params: { edge } }
+    ]);
+  }
+
+  // 只禁止不经过条件出口的串行回环：条件分支、捕获错误后的成功/异常出口都受运行结果控制。
+  // 从图中排除这些出口后，若 target 仍能走回 source，就存在绕过条件的串行环。
+  // 候选边本身也是条件出口时允许回流；自连和跨工具边界仍由前面的规则独立限制。
+  const executionTargets = new Map<string, string[]>();
+  for (const item of graphEdges) {
+    if (item.conditional) continue;
+    const targets = executionTargets.get(item.source) ?? [];
+    targets.push(item.target);
+    executionTargets.set(item.source, targets);
+  }
+  const visited = new Set<string>();
+  const pending = isConditionalExecutionSource({ node: sourceNode, source: edge.source })
+    ? []
+    : [targetNode.nodeId];
+  while (pending.length) {
+    const nodeId = pending.pop()!;
+    if (visited.has(nodeId)) continue;
+    visited.add(nodeId);
+    if (nodeId === sourceNode.nodeId) {
+      throw new WorkflowCommandError([
+        { code: WorkflowDiagnosticCodeEnum.edgeCreatesCycle, severity: 'error', params: { edge } }
+      ]);
+    }
+    pending.push(...(executionTargets.get(nodeId) ?? []));
+  }
+
+  const targetTemplate = moduleTemplatesFlat.find(
+    (item) => item.flowNodeType === targetNode.flowNodeType
+  );
+  const context = buildNodeTemplateContext({
+    sourceNode,
+    edges: graphEdges,
+    handleId: sourceIsTool ? NodeOutputKeyEnum.selectedTools : compiled.sourceHandle,
+    getNodeById: (nodeId) => (nodeId ? getNodeById(nodeId) : undefined)
+  });
+  if (targetTemplate && context) {
+    const containerError = getNodeContainerCheckError({ node: targetTemplate, context });
+    if (containerError || !isTemplateVisible(targetTemplate, context)) {
+      throw new WorkflowCommandError([
+        {
+          code: containerError
+            ? WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer
+            : WorkflowDiagnosticCodeEnum.templateUnavailable,
+          severity: 'error',
+          nodeId: targetNode.nodeId,
+          params: { reason: containerError ?? 'connection-context' }
+        }
+      ]);
+    }
+  }
+  return compiled;
 };
 
-/** 校验新连线且不写入文档，供同步 Web 回调和内部写入命令共用。 */
+/** 整图检查已有边时不把自身当作重复边，其余规则与拖线完全相同。 */
+export const assertExecutionEdge = (document: WorkflowDocument, edge: WorkflowExecutionEdge) => {
+  const result = checkExecutionConnection({
+    connection: edge,
+    edges: document.executionEdges,
+    getNodeById: (nodeId) => document.nodes.find((node) => node.nodeId === nodeId),
+    checkDuplicate: false
+  });
+  if (!result.allowed) throw new WorkflowCommandError([result.reason]);
+};
+
+/** 命令写入前复用相同判定，只把拒绝结果转换为领域异常。 */
 export const assertExecutionConnection = ({
   document,
   edge
@@ -190,10 +492,10 @@ export const assertExecutionConnection = ({
   document: WorkflowDocument;
   edge: WorkflowExecutionEdge;
 }) => {
-  assertExecutionEdge(document, edge);
-  if (document.executionEdges.some((item) => executionEdgesEqual(item, edge))) {
-    throw new WorkflowCommandError([
-      { code: WorkflowDiagnosticCodeEnum.edgeDuplicated, severity: 'error', params: { edge } }
-    ]);
-  }
+  const result = checkExecutionConnection({
+    connection: edge,
+    edges: document.executionEdges,
+    getNodeById: (nodeId) => document.nodes.find((node) => node.nodeId === nodeId)
+  });
+  if (!result.allowed) throw new WorkflowCommandError([result.reason]);
 };

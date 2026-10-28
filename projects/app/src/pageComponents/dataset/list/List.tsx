@@ -533,13 +533,15 @@ function List() {
               postChangeOwner({
                 datasetId: editPerDataset._id,
                 ownerId: tmbId
-              }).then(() => loadMyDatasets())
+              }).then(() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id }))
             }
             hasParent={!!parentId}
-            refetchResource={loadMyDatasets}
+            refetchResource={() => loadMyDatasets({ silent: true, resourceId: editPerDataset._id })}
             isInheritPermission={editPerDataset.inheritPermission}
             resumeInheritPermission={() =>
-              resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
+              resumeInheritPer(editPerDataset._id).then(() =>
+                loadMyDatasets({ silent: true, resourceId: editPerDataset._id })
+              )
             }
             avatar={editPerDataset.avatar}
             name={editPerDataset.name}

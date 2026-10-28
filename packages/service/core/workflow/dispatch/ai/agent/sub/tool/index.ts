@@ -250,7 +250,6 @@ export const dispatchTool = async ({
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: tool.id,
         result: 1,
         usagePoint: usagePoints,
@@ -387,7 +386,6 @@ export const dispatchTool = async ({
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: toolConfig.systemTool.toolId,
         result: 0,
         msg: getErrText(error)

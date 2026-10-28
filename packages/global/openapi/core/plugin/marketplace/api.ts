@@ -1,6 +1,6 @@
 import z from 'zod';
 import { IntSchema } from '../../../../common/zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { PluginTextSchema, PluginToolTagSchema } from '../../../../core/plugin/type';
 import { LanguageSchema } from '../../../../common/i18n/type';
 import { PluginPermissionListSchema } from '../../../../sdk/fastgpt-plugin';
@@ -177,7 +177,7 @@ export const MarketplaceToolDetailSchema = z.object({
  * Tags: ['系统工具', 'Read']
  * ============================================================================ */
 
-export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
+export const GetMarketplaceToolsBodySchema = createPaginationSchema({
   searchKey: z.string().optional().meta({
     example: 'search',
     description: '按工具名称、简介或 ID 搜索'

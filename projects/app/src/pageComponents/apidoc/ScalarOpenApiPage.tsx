@@ -1,6 +1,9 @@
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/reference';
+import { useRef } from 'react';
+import { CompletionResponseExamples } from './CompletionResponseExamples';
+import { CompletionEventExamples } from './CompletionEventExamples';
 
 // 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
 // (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
@@ -236,22 +239,28 @@ export const ScalarOpenApiPage = ({
   tagNameAliases?: Record<string, string>;
   nestedTagNames?: Record<string, string[]>;
   nestedTagGroups?: Record<string, string[]>;
-}) => (
-  <Box w="100vw" h="100vh" overflow="auto">
-    <ApiReferenceReact
-      configuration={getScalarOpenApiReferenceConfig(documentUrl, {
-        defaultOpenAllTags,
-        onLoaded:
-          flattenedTagNames?.length || tagNameAliases || nestedTagNames || nestedTagGroups
-            ? () =>
-                transformScalarNavigationTags({
-                  flattenedTagNames: flattenedTagNames ?? [],
-                  tagNameAliases: tagNameAliases ?? {},
-                  nestedTagNames: nestedTagNames ?? {},
-                  nestedTagGroups: nestedTagGroups ?? {}
-                })
-            : undefined
-      })}
-    />
-  </Box>
-);
+}) => {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <Box ref={rootRef} w="100vw" h="100vh" overflow="auto">
+      <ApiReferenceReact
+        configuration={getScalarOpenApiReferenceConfig(documentUrl, {
+          defaultOpenAllTags,
+          onLoaded:
+            flattenedTagNames?.length || tagNameAliases || nestedTagNames || nestedTagGroups
+              ? () =>
+                  transformScalarNavigationTags({
+                    flattenedTagNames: flattenedTagNames ?? [],
+                    tagNameAliases: tagNameAliases ?? {},
+                    nestedTagNames: nestedTagNames ?? {},
+                    nestedTagGroups: nestedTagGroups ?? {}
+                  })
+              : undefined
+        })}
+      />
+      <CompletionResponseExamples rootRef={rootRef} />
+      <CompletionEventExamples rootRef={rootRef} />
+    </Box>
+  );
+};

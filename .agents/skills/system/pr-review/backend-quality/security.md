@@ -33,11 +33,13 @@ await db.collection.updateOne(
 **修复方案**：
 ```typescript
 // ✅ 方案1：zod schema 严格校验（推荐）
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+
 const LoginSchema = z.object({
   username: z.string().min(1).max(50),
   password: z.string().min(1).max(100)
 });
-const { username, password } = LoginSchema.parse(req.body);
+const { body: { username, password } } = parseApiInput({ req, bodySchema: LoginSchema });
 
 // ✅ 方案2：动态查询使用字段白名单
 const ALLOWED_FIELDS = ['status', 'type', 'teamId'] as const;
@@ -55,7 +57,7 @@ await db.collection.findOne({ _id: new Types.ObjectId(id) });
 ```
 
 **检查清单**：
-- [ ] 接口入参经过 zod schema 校验
+- [ ] API 边界使用 `parseApiInput` 和 zod schema 校验入参；内部数据仍使用普通 schema 校验
 - [ ] 查询条件字段均为原始类型（`string`/`number`/`boolean`）
 - [ ] `req.body` 对象字段未直接传入 MongoDB 操作符位置
 - [ ] `_id` 字段使用 `new Types.ObjectId(id)` 转换
@@ -78,9 +80,12 @@ execFile('convert', [sanitizedFilename, 'output.png']);
 
 // ✅ 校验路径在允许目录内
 const resolved = path.resolve('/uploads', req.body.path);
-if (!resolved.startsWith(path.resolve('/uploads'))) {
+const relative = path.relative(path.resolve('/uploads'), resolved);
+if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
   throw new Error('Invalid path');
 }
+// 不用字符串 startsWith 判断目录边界，否则 /uploads-backup 也会通过。
+// 若目录内允许符号链接，还需校验 realpath 后的实际落点。
 ```
 
 ---
@@ -173,3 +178,9 @@ addLog.info('User login', safeUser);
 const { password: _, ...safeResponse } = userData;
 res.json(safeResponse);
 ```
+
+## 6. 权限与租户隔离 🔴
+
+- 从真实 API、worker 或工作流入口追踪用户、API key、teamId 与资源权限的来源，确认下游没有使用客户端传入的归属字段绕过校验。
+- 对批量资源、子资源、文件和间接引用同时检查资源所属团队及操作权限，不能因入口调用了某个鉴权函数就假定所有后续资源均已授权。
+- 验证无权限路径既不返回敏感字段，也不会先产生写入、扣费或队列任务等副作用；对新增或修改的权限行为检查对应正常与越权路径。

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, Checkbox } from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Box, Grid, IconButton, HStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -580,13 +580,15 @@ const List = ({
               postChangeSkillOwner({
                 skillId: selectedSkill._id,
                 ownerId: tmbId
-              }).then(() => refreshSkills())
+              }).then(() => refreshSkills({ silent: true, resourceId: selectedSkill._id }))
             }
             hasParent={!!selectedSkill.parentId}
-            refetchResource={refreshSkills}
+            refetchResource={() => refreshSkills({ silent: true, resourceId: selectedSkill._id })}
             isInheritPermission={selectedSkill.inheritPermission}
             resumeInheritPermission={() =>
-              resumeInheritPer(selectedSkill._id).then(() => refreshSkills())
+              resumeInheritPer(selectedSkill._id).then(() =>
+                refreshSkills({ silent: true, resourceId: selectedSkill._id })
+              )
             }
             avatar={selectedSkill.avatar}
             name={selectedSkill.name}

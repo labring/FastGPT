@@ -1,12 +1,12 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   getDescendantFolderIds,
+  defaultSubtreeMaxDepth,
   defaultSubtreeMaxNodes
 } from '@fastgpt/global/common/parentFolder/subtree';
 import { getFolderPathIndex } from '@fastgpt/global/common/parentFolder/tree';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { Types } from '@fastgpt/service/common/mongo';
-import { serviceEnv } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const appPathFolderTypes = [AppTypeEnum.folder, AppTypeEnum.toolFolder] as const;
@@ -75,7 +75,7 @@ export const getAppFolderListScope = async ({
           ).lean(),
           getDescendantFolderIds({
             rootIds: [currentFolderId],
-            maxDepth: serviceEnv.MAX_FOLDER_DEPTH,
+            maxDepth: defaultSubtreeMaxDepth,
             maxNodes: defaultSubtreeMaxNodes,
             findChildFolders: async (parentIds) => {
               const children = await MongoApp.find(
@@ -110,7 +110,8 @@ export const getAppFolderListScope = async ({
     const typePaths = getFolderPathIndex({
       folders: folderNodes.filter((folder) => folder.type === type),
       currentFolderId,
-      maxDepth: serviceEnv.MAX_FOLDER_DEPTH
+      // 展示路径只用于定位文件夹，不施加“新建文件夹”的策略上限，否则深层历史目录会被直接过滤掉。
+      maxDepth: defaultSubtreeMaxDepth
     });
     typePaths.forEach((path, id) => folderPaths.set(id, path));
   }

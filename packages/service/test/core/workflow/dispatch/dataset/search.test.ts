@@ -14,7 +14,6 @@ import * as modelGetters from '../../../../../core/ai/model/catalog/service';
 
 const {
   defaultSearchDatasetDataMock,
-  deepRagSearchMock,
   loadWorkflowDatasetResourceMock,
   findDatasetMock,
   getDatasetSearchVlmModelMock,
@@ -23,7 +22,6 @@ const {
   mockLogger
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
-  deepRagSearchMock: vi.fn(),
   loadWorkflowDatasetResourceMock: vi.fn(),
   findDatasetMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
@@ -43,8 +41,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
-  defaultSearchDatasetData: defaultSearchDatasetDataMock,
-  deepRagSearch: deepRagSearchMock
+  defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
@@ -130,6 +127,7 @@ import {
   dispatchDatasetSearch,
   isDatasetResourceMissingError
 } from '../../../../../core/workflow/dispatch/dataset/search';
+import { serviceEnv } from '../../../../../env';
 
 describe('dispatchDatasetSearch', () => {
   const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
@@ -162,6 +160,42 @@ describe('dispatchDatasetSearch', () => {
       () => runSearch()
     );
   };
+
+  it('preserves mappings across quoteQA, node response and tool cites', async () => {
+    const rawRecall = {
+      id: 'chunk',
+      q: 'alias',
+      a: '',
+      sourceName: 'source'
+    };
+    const quote = {
+      ...rawRecall,
+      synonymMappings: { alias: 'standard' }
+    };
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [quote],
+      retrievalResults: [rawRecall],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false
+    });
+    const previous = serviceEnv.DATASET_SYNONYM_ENABLED;
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+    let result;
+    try {
+      result = await runSearch();
+    } finally {
+      serviceEnv.DATASET_SYNONYM_ENABLED = previous;
+    }
+    expect(result.data?.quoteQA[0]).toMatchObject(quote);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
+    expect(
+      result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.[0]
+    ).not.toHaveProperty('synonymMappings');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
+      cites: [{ synonymMappings: { alias: 'standard' } }]
+    });
+  });
 
   it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
     vi.mocked((await modelGetters.getSystemModelHandle()).getLLMModelData).mockImplementationOnce(
@@ -551,7 +585,7 @@ describe('dispatchDatasetSearch', () => {
     );
   });
 
-  it('uses default recall for image-only input even when deep search is enabled', async () => {
+  it('uses default recall for image-only input', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 4,
@@ -577,14 +611,12 @@ describe('dispatchDatasetSearch', () => {
         embeddingWeight: 0.5,
         usingReRank: false,
         rerankWeight: 0.5,
-        datasetSearchUsingExtensionQuery: false,
-        datasetDeepSearch: true
+        datasetSearchUsingExtensionQuery: false
       },
       nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
-    expect(deepRagSearchMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         textQueries: [],
@@ -593,6 +625,38 @@ describe('dispatchDatasetSearch', () => {
     );
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.datasetQueries).toEqual([
       'https://files.example.com/query.png'
+    ]);
+  });
+
+  it('ignores retired search options and bills ordinary recall', async () => {
+    const quotes = [{ id: 'ordinary', q: 'question', a: 'answer', sourceName: 'doc.md' }];
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: quotes,
+      embeddingTokens: 10,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: false,
+      usingReRank: false
+    });
+
+    const result = await runSearch({
+      datasetDeepSearch: true,
+      datasetDeepSearchModelId: 'deleted-model',
+      datasetDeepSearchModel: 'deleted-model',
+      datasetDeepSearchMaxTimes: 3,
+      datasetDeepSearchBg: 'old settings'
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.data?.quoteQA).toEqual(quotes);
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: ['question'] })
+    );
+    expect((await modelGetters.getSystemModelHandle()).getModelData).not.toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'deleted-model' }),
+      expect.anything()
+    );
+    expect(usagePushMock).toHaveBeenCalledWith([
+      expect.objectContaining({ inputTokens: 10, totalPoints: 0.1 })
     ]);
   });
 
@@ -666,24 +730,6 @@ describe('dispatchDatasetSearch', () => {
       });
 
       const result = await runSearch({ usingReRank: true });
-
-      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
-        'retrievalResults'
-      );
-    });
-
-    it('omits the field on the deep search path, which does not produce it', async () => {
-      await useRerankModel();
-      deepRagSearchMock.mockResolvedValue({
-        searchRes: reranked,
-        embeddingTokens: 10,
-        reRankInputTokens: 5,
-        usingSimilarityFilter: false,
-        usingReRank: true
-      });
-
-      const result = await runSearch({ usingReRank: true, datasetDeepSearch: true });
-      expect(deepRagSearchMock).toHaveBeenCalled();
 
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
         'retrievalResults'

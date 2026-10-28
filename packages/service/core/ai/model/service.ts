@@ -1,6 +1,7 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 import type {
   CreateModelBody,
   CreateModelsFromTemplatesBody,
@@ -85,10 +86,13 @@ export const updateModel = async ({
       }).session(session))
     )
       throw new UserError(ModelErrEnum.alreadyExists);
+    const normalizedModelData = normalizeModelPricingForSave({ ...modelData, model: newModel });
     await MongoAIModel.updateOne(
       { _id: modelId, ...filter },
       getModelConfigUpdate(
-        context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(modelData) : modelData
+        context.scope === ModelScopeEnum.team
+          ? sanitizeTeamModelData(normalizedModelData)
+          : normalizedModelData
       ),
       { session }
     );
@@ -142,7 +146,12 @@ export const createModel = async ({
   ...owner
 }: Pick<CreateModelBody, 'modelData' | 'channelIds'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
-  const { tmbId: _tmbId, teamId: _teamId, scope: _scope, ...data } = modelData;
+  const {
+    tmbId: _tmbId,
+    teamId: _teamId,
+    scope: _scope,
+    ...data
+  } = normalizeModelPricingForSave(modelData);
   const [model] = await runModelTransaction(context, async (session) => {
     if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
       throw new UserError(ModelErrEnum.alreadyExists);
@@ -180,7 +189,7 @@ export const createModelsFromTemplates = async ({
         const key = `${reference.type}:${reference.model}`;
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-        return [template.model, template] as const;
+        return [template.model, normalizeModelPricingForSave(template)] as const;
       })
     ).values()
   );

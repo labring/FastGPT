@@ -29,15 +29,6 @@ export const workflowSystemModelSlots = [
     feature: 'query_extension',
     featureKey: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
     defaultWhenEmpty: true
-  },
-  {
-    legacyKey: NodeInputKeyEnum.datasetDeepSearchModel,
-    modelIdKey: NodeInputKeyEnum.datasetDeepSearchModelId,
-    label: i18nT('common:deep_rag_search'),
-    type: ModelTypeEnum.llm,
-    feature: 'node_model',
-    featureKey: NodeInputKeyEnum.datasetDeepSearch,
-    defaultWhenEmpty: false
   }
 ] as const;
 

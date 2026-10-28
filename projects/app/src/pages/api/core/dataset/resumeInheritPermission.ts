@@ -18,6 +18,7 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { calculateInheritedResourceCollaborators } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 
 async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
   const { datasetId } = parseApiInput({
@@ -37,12 +38,33 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
   const parentResourceName = parentDataset?.name;
   if (dataset.parentId) {
     await mongoSessionRun(async (session) => {
-      // 恢复继承会重算 dataset 自身快照（旧独立快照 → merge(父级, 自身) 全量快照），
-      // 同一事务内读取变更前后有效 clbs 并跨树重物化其下 collection 快照。
-      const oldEffectiveClbs = await getResourceOwnedClbs({
+      const [parentClbs, oldEffectiveClbs] = await Promise.all([
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: String(dataset.parentId),
+          resourceType: PerResourceTypeEnum.dataset,
+          session
+        }),
+        getResourceOwnedClbs({
+          teamId,
+          resourceId: datasetId,
+          resourceType: PerResourceTypeEnum.dataset,
+          session
+        })
+      ]);
+      // 与 resumeResourcePermissionInheritance 内部重算公式一致：merge(父级, 自身独有位)
+      const newEffectiveClbs = calculateInheritedResourceCollaborators({
+        oldParentCollaborators: parentClbs,
+        newParentCollaborators: parentClbs,
+        childCollaborators: oldEffectiveClbs
+      });
+
+      // 先同步 collection 再写 dataset 树：syncDatasetToCollections 依赖后代 dataset 的变更前快照。
+      await syncDatasetToCollections({
         teamId,
-        resourceId: datasetId,
-        resourceType: PerResourceTypeEnum.dataset,
+        datasetId: String(dataset._id),
+        oldEffectiveClbs,
+        newEffectiveClbs,
         session
       });
       await resumeInheritPermission({
@@ -50,19 +72,6 @@ async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>)
         folderTypeList: [DatasetTypeEnum.folder],
         resourceType: PerResourceTypeEnum.dataset,
         resourceModel: MongoDataset,
-        session
-      });
-      const newEffectiveClbs = await getResourceOwnedClbs({
-        teamId,
-        resourceId: datasetId,
-        resourceType: PerResourceTypeEnum.dataset,
-        session
-      });
-      await syncDatasetToCollections({
-        teamId,
-        datasetId: String(dataset._id),
-        oldEffectiveClbs,
-        newEffectiveClbs,
         session
       });
     });

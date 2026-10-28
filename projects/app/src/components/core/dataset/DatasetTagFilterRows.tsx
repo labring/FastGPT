@@ -230,11 +230,13 @@ const TagFilterValueCell = ({
   condition,
   option,
   referenceList,
+  usePortal,
   onChange
 }: {
   condition: DatasetTagFilterCondition;
   option?: WorkflowTagFilterOption;
   referenceList: TagFilterReferenceList;
+  usePortal?: boolean;
   onChange: (patch: Partial<DatasetTagFilterCondition>) => void;
 }) => {
   const { t } = useTranslation();
@@ -286,6 +288,7 @@ const TagFilterValueCell = ({
       return (
         <DateTimeTagInput
           joined
+          usePortal={usePortal}
           value={typeof condition.value === 'number' ? condition.value : ''}
           placeholder={t('workflow:tag_filter_select_time')}
           onChange={(val) => onChange({ value: val })}
@@ -295,6 +298,7 @@ const TagFilterValueCell = ({
     return (
       <ArrayTagSelect
         joined
+        usePortal={usePortal}
         allowCreate={false}
         options={option?.options ?? []}
         placeholder={t('workflow:tag_filter_select_option')}
@@ -430,6 +434,7 @@ const TagFilterConditionRow = ({
   options,
   referenceList,
   isSystem = false,
+  usePortal,
   onChange,
   onRemove
 }: {
@@ -437,6 +442,7 @@ const TagFilterConditionRow = ({
   options: WorkflowTagFilterOption[];
   referenceList: TagFilterReferenceList;
   isSystem?: boolean;
+  usePortal?: boolean;
   onChange: (patch: Partial<DatasetTagFilterCondition>) => void;
   onRemove: () => void;
 }) => {
@@ -463,23 +469,30 @@ const TagFilterConditionRow = ({
     <Flex gap={1} alignItems={'center'} w={'100%'}>
       <Flex flex={1} minW={0} gap={2} alignItems={'center'} h={'36px'}>
         {isSystem ? (
-          <TagFilterAttrSelect condition={condition} onChange={handleFieldChange} />
+          <TagFilterAttrSelect
+            condition={condition}
+            usePortal={usePortal}
+            onChange={handleFieldChange}
+          />
         ) : (
           <TagFilterFieldSelect
             condition={condition}
             options={options}
+            usePortal={usePortal}
             onChange={handleFieldChange}
           />
         )}
         <TagFilterOpSelect
           value={condition.op || undefined}
           list={ops}
+          usePortal={usePortal}
           onChange={(op) => onChange({ op, value: undefined })}
         />
         <TagFilterValueCell
           condition={condition}
           option={option}
           referenceList={referenceList}
+          usePortal={usePortal}
           onChange={onChange}
         />
       </Flex>
@@ -569,12 +582,14 @@ const DatasetTagFilterRows = ({
   value,
   onChange,
   datasetIds,
-  referenceList
+  referenceList,
+  usePortal = false
 }: {
   value: unknown;
   onChange: (value: DatasetTagFilterValue) => void;
   datasetIds: string[];
   referenceList: TagFilterReferenceList;
+  usePortal?: boolean;
 }) => {
   const { t } = useTranslation();
   const filterValue = isDatasetTagFilterValue(value) ? value : createEmptyTagFilterValue();
@@ -635,6 +650,7 @@ const DatasetTagFilterRows = ({
                 options={options}
                 referenceList={referenceList}
                 isSystem={isSystem}
+                usePortal={usePortal}
                 onChange={(patch) => {
                   const nextCondition = { ...condition, ...patch };
                   if (isPending) {

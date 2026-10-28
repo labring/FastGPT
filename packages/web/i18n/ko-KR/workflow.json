@@ -1,4 +1,6 @@
 {
+  "tool_target_already_attached": "이 노드는 이미 다른 도구 호출에 연결되어 있습니다. 기존 도구 연결을 먼저 삭제하세요.",
+  "tool_connection_has_normal_edges": "이 노드에는 이미 일반 입력 연결이 있습니다. 도구로 연결하려면 먼저 기존 연결을 삭제하세요.",
   "Array_element": "배열 요소",
   "Array_element_index": "인덱스",
   "Click": "클릭 ",

@@ -1,6 +1,5 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -13,7 +12,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { resolveReadableCollectionIds } from '../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getTeamModelHandle } from '../../../ai/model/catalog/service';
-import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
+import { defaultSearchDatasetData } from '../../../dataset/search';
 import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
@@ -28,6 +27,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
+import { formatDatasetSearchToolResponse } from './toolResponse';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -52,12 +52,6 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchExtensionModelId]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]: string;
-
-  [NodeInputKeyEnum.datasetDeepSearch]?: boolean;
-  [NodeInputKeyEnum.datasetDeepSearchModelId]?: string;
-  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
-  [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
-  [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
@@ -109,13 +103,7 @@ export const dispatchDatasetSearch = async (
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModelId,
       datasetSearchExtensionModel,
-      datasetSearchExtensionBg,
-
-      datasetDeepSearch,
-      datasetDeepSearchModelId,
-      datasetDeepSearchModel,
-      datasetDeepSearchMaxTimes,
-      datasetDeepSearchBg
+      datasetSearchExtensionBg
     }
   } = props as DatasetSearchProps;
   const { tmbId } = runningUserInfo;
@@ -211,15 +199,6 @@ export const dispatchDatasetSearch = async (
           modelHandle
         })
       : undefined;
-    const deepSearchModelData = datasetDeepSearch
-      ? await loadWorkflowModelResource({
-          appTeamId: teamId,
-          userInfo,
-          modelId: datasetDeepSearchModelId,
-          model: datasetDeepSearchModel,
-          modelHandle
-        })
-      : undefined;
 
     // start search
     const searchData = {
@@ -241,7 +220,6 @@ export const dispatchDatasetSearch = async (
       collectionFilterMatch,
       readableCollectionIdList
     };
-    const useDeepSearch = datasetDeepSearch && textQueries.length > 0;
     const {
       searchRes,
       embeddingTokens,
@@ -250,22 +228,14 @@ export const dispatchDatasetSearch = async (
       usingReRank: searchUsingReRank,
       retrievalResults,
       queryExtensionResult,
-      imageCaptionResult,
-      deepSearchResult
-    } = useDeepSearch
-      ? await deepRagSearch({
-          ...searchData,
-          datasetDeepSearchModel: deepSearchModelData,
-          datasetDeepSearchMaxTimes,
-          datasetDeepSearchBg
-        })
-      : await defaultSearchDatasetData({
-          ...searchData,
-          datasetSearchUsingExtensionQuery,
-          datasetSearchExtensionModel: extensionModelData,
-          datasetSearchExtensionBg,
-          userKey: externalProvider.openaiAccount
-        });
+      imageCaptionResult
+    } = await defaultSearchDatasetData({
+      ...searchData,
+      datasetSearchUsingExtensionQuery,
+      datasetSearchExtensionModel: extensionModelData,
+      datasetSearchExtensionBg,
+      userKey: externalProvider.openaiAccount
+    });
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];
@@ -362,21 +332,6 @@ export const dispatchDatasetSearch = async (
           })
         );
       }
-      // 5. Deep search
-      if (deepSearchResult) {
-        const { totalPoints } = formatModelChars2Points({
-          model: deepSearchModelData!,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens
-        });
-        nodeUsages.push({
-          totalPoints,
-          moduleName: i18nT('common:deep_rag_search'),
-          modelId: deepSearchModelData?.modelId,
-          inputTokens: deepSearchResult.inputTokens,
-          outputTokens: deepSearchResult.outputTokens
-        });
-      }
     }
     // 子 LLM 响应已经分别记录积分，父知识库响应只保留自身检索消耗。
     const totalPoints =
@@ -404,7 +359,6 @@ export const dispatchDatasetSearch = async (
           reRankInputTokens
         }),
         searchUsingReRank,
-        deepSearchResult,
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
         // Results
         quoteList: searchRes,
@@ -412,17 +366,7 @@ export const dispatchDatasetSearch = async (
         ...(retrievalResults?.length ? { retrievalResults } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
-        searchRes.length > 0
-          ? {
-              prompt: getDatasetSearchToolResponsePrompt(),
-              cites: searchRes.map((item) => ({
-                id: item.id,
-                sourceName: item.sourceName,
-                updateTime: item.updateTime,
-                content: `${item.q}\n${item.a}`.trim()
-              }))
-            }
-          : 'No results'
+        searchRes.length > 0 ? formatDatasetSearchToolResponse(searchRes) : 'No results'
     };
   } catch (error) {
     if (isDatasetResourceMissingError(error)) {

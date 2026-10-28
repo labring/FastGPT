@@ -1,5 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';
+import { serviceEnv } from '../../env';
 
 type FolderPathDoc = {
   _id: unknown;
@@ -31,11 +32,11 @@ export const getFolderParentPathItems = async ({
   return paths.reverse();
 };
 
-/** 根据权威 parentId 链解析祖先路径；调用方必须将 findFolder 限定在单一团队和目录树中。 */
+/** 解析写入用的祖先路径，预留当前文件夹的一层；查询必须限定在同一团队和目录树。 */
 export const getFolderAncestorIdsFromParentId = async ({
   parentId,
   findFolder,
-  maxDepth = defaultSubtreeMaxDepth
+  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
 }: {
   parentId: string | null;
   findFolder: (id: string) => Promise<FolderPathDoc | null>;
@@ -60,13 +61,16 @@ export const getFolderAncestorIdsFromParentId = async ({
   return path.reverse();
 };
 
-/** 按有界的广度优先批次，根据 parentId 链路重建所有后代文件夹路径。 */
+/**
+ * 按 parentId 重建后代文件夹路径，写入后的绝对层级不得超过 maxDepth，包含根节点的祖先。
+ * 调用方应在同一事务中写入，使后续发现超深或成环时能回滚此前批次。
+ */
 export const rewriteFolderSubtreeAncestorIds = async ({
   rootId,
   rootAncestorIds,
   findChildFolders,
   writeAncestorIds,
-  maxDepth = defaultSubtreeMaxDepth
+  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
 }: {
   rootId: string;
   rootAncestorIds: string[];
@@ -74,13 +78,16 @@ export const rewriteFolderSubtreeAncestorIds = async ({
   writeAncestorIds: (updates: Array<{ id: string; ancestorIds: string[] }>) => Promise<void>;
   maxDepth?: number;
 }): Promise<void> => {
+  const rootDepth = rootAncestorIds.length + 1;
+  if (rootDepth > maxDepth) throw CommonErrEnum.folderMoveDepthLimit;
+
   let frontier = [{ id: rootId, path: [...rootAncestorIds, rootId] }];
   const visited = new Set([rootId]);
 
   for (let depth = 1; frontier.length > 0; depth++) {
     const children = await findChildFolders(frontier.map(({ id }) => id));
     if (children.length === 0) break;
-    if (depth >= maxDepth) throw CommonErrEnum.folderMoveDepthLimit;
+    if (rootDepth + depth > maxDepth) throw CommonErrEnum.folderMoveDepthLimit;
 
     const parentsById = new Map(frontier.map((folder) => [folder.id, folder.path]));
     const updates = children.map((child) => {

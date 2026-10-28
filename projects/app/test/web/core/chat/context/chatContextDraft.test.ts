@@ -65,7 +65,7 @@ describe('history deletion draft ownership', () => {
     useUserStore.persist?.setOptions({ storage: createJSONStorage(() => dom.window.localStorage) });
     vi.clearAllMocks();
     clearChatInputDrafts();
-    useChatStore.setState({ chatId: 'A', outLinkAuthData: {} });
+    useChatStore.setState({ chatId: 'A', outLinkAuthData: undefined });
     root = createRoot(document.getElementById('root')!);
   });
   afterEach(async () => {

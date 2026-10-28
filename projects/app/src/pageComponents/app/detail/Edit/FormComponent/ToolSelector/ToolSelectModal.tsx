@@ -108,7 +108,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentType: parentId ? parentType : undefined,
       excludeAppId: appDetail._id
     },
-    pageSize: 50,
+    pageSize: 20,
     disabled: !isTeamTemplate,
     refreshDeps: [isTeamTemplate, templateType, parentId, searchKey, appDetail._id]
   });
