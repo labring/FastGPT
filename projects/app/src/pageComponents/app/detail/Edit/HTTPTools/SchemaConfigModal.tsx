@@ -43,6 +43,7 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm, { AuthValueDisplay } from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import { buildWorkflowCustomHeaders } from './utils';
 
 export type HttpToolsType = {
   id?: string;
@@ -161,28 +162,18 @@ const SchemaConfigModal = ({
   );
   const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest(
     async (data: HttpToolsType) => {
-      const requestHeaderSecret = customHeaders.reduce<StoreSecretValueType>(
-        (result, { key, value, secretKey, edited }) => {
-          if (!key) return result;
-          if (value) {
-            result[key] = { value, secret: '' };
-          } else if (!edited && secretKey && data.headerSecret?.[secretKey]) {
-            result[key] = data.headerSecret[secretKey];
-          }
-          return result;
-        },
-        {}
-      );
+      const requestHeaderConfig = buildWorkflowCustomHeaders({
+        headers: customHeaders,
+        storedSecrets: data.headerSecret ?? {}
+      });
       // Bearer/Basic 会映射为 Authorization，保留鉴权配置优先级。
       const nextHeaderSecret = {
-        ...requestHeaderSecret,
+        ...requestHeaderConfig.headerSecret,
         ...Object.fromEntries(
           Object.entries(data.headerSecret ?? {}).filter(([key]) => !requestHeaderKeys.has(key))
         )
       };
-      const nextCustomHeaders = stringifyCustomHeaders(
-        customHeaders.map(({ key }) => ({ key, value: '' }))
-      );
+      const nextCustomHeaders = requestHeaderConfig.customHeaders;
 
       const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);
