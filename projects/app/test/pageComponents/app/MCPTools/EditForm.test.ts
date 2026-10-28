@@ -62,14 +62,21 @@ describe('MCP per-tool request metadata configuration', () => {
   let container: HTMLDivElement;
   const setToolList = vi.fn();
   const setCurrentTool = vi.fn();
+  const setToolSourceUrl = vi.fn();
   const requestMeta = { 'example/context': { locale: 'zh-CN' } };
   const tool = { name: 'search', description: 'Search', requestMeta };
-  const render = async (url = 'https://example.com/mcp', tools: McpToolConfigType[] = [tool]) => {
+  const render = async (
+    url = 'https://example.com/mcp',
+    tools: McpToolConfigType[] = [tool],
+    toolSourceUrl = 'https://example.com/mcp'
+  ) => {
     await act(async () => {
       root.render(
         React.createElement(EditForm, {
           url,
           setUrl: vi.fn(),
+          toolSourceUrl,
+          setToolSourceUrl,
           toolList: tools,
           setToolList,
           currentTool: tools[0],
@@ -193,7 +200,7 @@ describe('MCP per-tool request metadata configuration', () => {
     const freshTool = { name: 'search', description: 'Other server definition' };
     await act(async () => mocks.onParsed!([freshTool], [{ url: 'https://other.example.com/mcp' }]));
     const parsedTools = setToolList.mock.calls.at(-1)![0];
-    await render('https://other.example.com/mcp', parsedTools);
+    await render('https://other.example.com/mcp', parsedTools, 'https://other.example.com/mcp');
     expect(container.textContent).not.toContain('common:Confirm');
     expect(parsedTools).toEqual([freshTool]);
     await click('details');

@@ -33,6 +33,8 @@ import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/json
 const EditForm = ({
   url,
   setUrl,
+  toolSourceUrl,
+  setToolSourceUrl,
   toolList,
   setToolList,
   currentTool,
@@ -42,6 +44,8 @@ const EditForm = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
+  toolSourceUrl: string;
+  setToolSourceUrl: (url: string) => void;
   toolList: McpToolConfigType[];
   setToolList: (toolList: McpToolConfigType[]) => void;
   currentTool?: McpToolConfigType;
@@ -56,7 +60,6 @@ const EditForm = ({
     sourceUrl: string;
     revision: number;
   } | null>(null);
-  const metadataSourceUrl = useRef(url);
   const parseRevision = useRef(0);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest(
@@ -68,8 +71,7 @@ const EditForm = ({
         parseRevision.current += 1;
         setToolDetail(null);
         // 只在重新解析同一服务时按名称保留配置，避免把元数据带到另一个服务。
-        const preserveMetadata = metadataSourceUrl.current === data.url;
-        metadataSourceUrl.current = data.url;
+        const preserveMetadata = toolSourceUrl === data.url;
         const tools = res.map((tool) => {
           const requestMeta = preserveMetadata
             ? toolList.find((item) => item.name === tool.name)?.requestMeta
@@ -78,6 +80,7 @@ const EditForm = ({
         });
         setToolList(tools);
         setCurrentTool(tools.find((tool) => tool.name === currentTool?.name) ?? tools[0]);
+        setToolSourceUrl(data.url);
       },
       errorToast: t('app:MCP_tools_parse_failed')
     }
@@ -122,6 +125,12 @@ const EditForm = ({
             {t('common:Parse')}
           </Button>
         </Flex>
+
+        {toolSourceUrl !== url && (
+          <Box mt={2} fontSize="12px" color="myGray.600">
+            {t('app:MCP_tools_parse_required')}
+          </Box>
+        )}
 
         <Flex alignItems={'center'} mt={6}>
           <MyIcon name={'common/list'} w={'20px'} color={'primary.600'} />
@@ -213,7 +222,7 @@ const EditForm = ({
                     tip={t('app:MCP_tools_detail')}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (metadataSourceUrl.current !== url) return;
+                      if (toolSourceUrl !== url) return;
                       setToolDetail({ tool, sourceUrl: url, revision: parseRevision.current });
                     }}
                   />

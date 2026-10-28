@@ -17,6 +17,7 @@
   "MCP_tools_list": "工具列表",
   "MCP_tools_list_with_number": "工具列表: {{total}}",
   "MCP_tools_parse_failed": "解析 MCP 地址失敗",
+  "MCP_tools_parse_required": "請先成功解析新的 MCP 位址，再儲存或執行工具。",
   "MCP_tools_request_meta": "請求中繼資料（_meta）",
   "MCP_tools_request_meta_description": "隨此工具呼叫傳送的選填 JSON 物件，留空則不傳送。驗證憑證請使用請求標頭設定。",
   "MCP_tools_request_meta_invalid": "請輸入有效的 JSON 物件。",
