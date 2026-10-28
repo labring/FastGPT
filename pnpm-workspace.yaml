@@ -88,7 +88,7 @@ catalog:
   proxy-addr: 2.0.7
   proxy-agent: ^6
 
-  qs: ^6.16.0
+  qs: ^6.16.1
   react: ^18
   react-dom: ^18
   react-hook-form: 7.43.1
