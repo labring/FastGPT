@@ -12,7 +12,13 @@ const mocks = vi.hoisted(() => ({
   pushDataListToTrainingQueue: vi.fn(),
   preCreateDatasetDataAndPushToTrainingQueue: vi.fn(),
   createTrainingUsage: vi.fn(),
+  uploadImage2S3Bucket: vi.fn(),
   mongoSessionRun: vi.fn((fn: any) => fn({}))
+}));
+
+vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/s3/utils')>()),
+  uploadImage2S3Bucket: mocks.uploadImage2S3Bucket
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -66,6 +72,7 @@ describe('pushData imageId authorization', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.uploadImage2S3Bucket.mockImplementation(async (_bucket, { uploadKey }) => uploadKey);
     mocks.authDatasetCollection.mockResolvedValue({
       teamId: 'team-a',
       tmbId: 'tmb-a',
@@ -124,6 +131,72 @@ describe('pushData imageId authorization', () => {
     const res = await (handler as any)({} as any);
     expect(res).toEqual({ insertLen: 1, dataIds: ['507f1f77bcf86cd799439031'] });
     expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalled();
+  });
+
+  it.each(['index', 'qa'])('normalizes inline images before %s training', async (mode) => {
+    const image =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk1kAAAAASUVORK5CYII=';
+    const data = [
+      { q: `question ![pixel](${image})`, a: `answer ![pixel](${image})`, chunkIndex: 7 }
+    ];
+    mocks.getTrainingModeByCollection.mockReturnValue(mode);
+    mocks.parseApiInput.mockReturnValue({ body: { collectionId, data } });
+
+    await (handler as any)({});
+
+    const queue =
+      mode === 'qa'
+        ? mocks.pushDataListToTrainingQueue
+        : mocks.preCreateDatasetDataAndPushToTrainingQueue;
+    const queuedData = queue.mock.calls[0][0].data;
+    expect(queuedData).toHaveLength(1);
+    expect(queuedData[0].chunkIndex).toBe(7);
+    expect(queuedData[0].q).not.toContain('base64,');
+    expect(queuedData[0].a).not.toContain('base64,');
+    expect(queuedData[0].q).toContain(`dataset/${datasetId}/`);
+    expect(mocks.uploadImage2S3Bucket).toHaveBeenCalledTimes(1);
+    expect(data[0].q).toContain('base64,');
+  });
+
+  it('does not upload images before authorization and quota checks pass', async () => {
+    mocks.parseApiInput.mockReturnValue({ body: { collectionId, data: [{ q: 'q' }] } });
+    mocks.authDatasetCollection.mockRejectedValueOnce(new Error('unauthorized'));
+    await expect((handler as any)({})).rejects.toThrow('unauthorized');
+    expect(mocks.uploadImage2S3Bucket).not.toHaveBeenCalled();
+
+    mocks.checkDatasetIndexLimit.mockRejectedValueOnce(new Error('quota exceeded'));
+    await expect((handler as any)({})).rejects.toThrow('quota exceeded');
+    expect(mocks.uploadImage2S3Bucket).not.toHaveBeenCalled();
+  });
+
+  it('reuses converted data when the training transaction is retried', async () => {
+    const image =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk1kAAAAASUVORK5CYII=';
+    mocks.parseApiInput.mockReturnValue({
+      body: { collectionId, data: [{ q: `q ![pixel](${image})` }] }
+    });
+    mocks.mongoSessionRun.mockImplementationOnce(async (fn) => {
+      await fn({});
+      return fn({});
+    });
+    await (handler as any)({});
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalledTimes(2);
+    expect(mocks.uploadImage2S3Bucket).toHaveBeenCalledTimes(1);
+    const calls = mocks.preCreateDatasetDataAndPushToTrainingQueue.mock.calls;
+    expect(calls[0][0].data).toEqual(calls[1][0].data);
+  });
+
+  it('does not create training usage or queue entries when image upload fails', async () => {
+    const image =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jk1kAAAAASUVORK5CYII=';
+    mocks.parseApiInput.mockReturnValue({
+      body: { collectionId, data: [{ q: `q ![pixel](${image})` }] }
+    });
+    mocks.uploadImage2S3Bucket.mockRejectedValueOnce(new Error('upload failed'));
+    await expect((handler as any)({})).rejects.toThrow('upload failed');
+    expect(mocks.createTrainingUsage).not.toHaveBeenCalled();
+    expect(mocks.preCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
+    expect(mocks.pushDataListToTrainingQueue).not.toHaveBeenCalled();
   });
 
   it('rejects data with imageId belonging to another dataset', async () => {

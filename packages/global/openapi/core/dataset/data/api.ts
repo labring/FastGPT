@@ -256,7 +256,8 @@ export const PushDataBodySchema = z.object({
     description: '集合 ID'
   }),
   data: z.array(PushDataChunkSchema).max(200).meta({
-    description: '数据列表，最多 200 条'
+    description:
+      '数据列表，最多 200 条；q/a 中的内嵌 base64 图片会转存到知识库图片存储，保留传入的分块边界'
   }),
   trainingType: z.enum(DatasetCollectionDataProcessModeEnum).optional().meta({
     description: '训练类型'

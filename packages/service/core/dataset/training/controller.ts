@@ -23,6 +23,7 @@ import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
+import { persistDatasetDataImages } from '../data/inlineImages/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -309,6 +310,8 @@ export const pushDataListToTrainingQueue = async ({
 
       // ordered: true 模式下,成功必定等于批次大小
       insertedCount += result.insertedCount;
+
+      await persistDatasetDataImages({ datasetId, data: batch, session });
 
       logger.debug('Training data insert progress', {
         insertedCount,
