@@ -10,7 +10,10 @@ import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
@@ -33,7 +36,11 @@ export const getWorkflowNodeRunParams = ({
     // Format plugin input to object
     return node.inputs.reduce<Record<string, any>>((acc, item) => {
       // 内部变量不从工具参数进入，缺少 runtime value 时使用节点声明的默认值。
-      acc[item.key] = valueTypeFormat(item.value ?? item.defaultValue, item.valueType);
+      acc[item.key] = valueTypeFormat(
+        item.value ?? item.defaultValue,
+        item.valueType,
+        getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.password
+      );
       return acc;
     }, {});
   }
@@ -72,6 +79,7 @@ export const getWorkflowNodeRunParams = ({
 
     const rawValue = input.value;
     const isReferenceInput = nodeInputIsReference(input);
+    const isSecretInput = getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password;
     const needsTextReplace = typeof rawValue === 'string' && rawValue.includes('{{');
     let value = rawValue;
 
@@ -143,9 +151,9 @@ export const getWorkflowNodeRunParams = ({
 
     // Dynamic input is stored in the dynamic key
     if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
-      params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+      params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType, isSecretInput);
     }
-    params[input.key] = valueTypeFormat(value, input.valueType);
+    params[input.key] = valueTypeFormat(value, input.valueType, isSecretInput);
   });
 
   return params;

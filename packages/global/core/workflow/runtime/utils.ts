@@ -70,8 +70,12 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-/* value type format */
-export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum) => {
+/** 按目标 workflow 类型转换运行时值；只有密码输入会保留合法 secret wrapper。 */
+export const valueTypeFormat = (
+  value: any,
+  valueType?: WorkflowIOValueTypeEnum,
+  isSecretInput = false
+) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -87,8 +91,9 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (value === undefined || value === null) return value;
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
-  // Password check
+  // `{ value }` 也可能是普通业务对象；仅密码输入按密钥 wrapper 透传。
   if (
+    isSecretInput &&
     valueType === WorkflowIOValueTypeEnum.string &&
     SecretValueTypeSchema.safeParse(value).success
   ) {

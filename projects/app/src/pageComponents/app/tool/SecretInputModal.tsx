@@ -198,7 +198,7 @@ export const SecretInputForm = ({
   const inputList = inputConfig?.inputList || [];
   const [fieldModes, setFieldModes] = useState<Record<string, FieldMode>>({});
 
-  const { register, setValue, getValues, handleSubmit, control } = useForm<ToolParamsFormType>({
+  const form = useForm<ToolParamsFormType>({
     defaultValues: (() => {
       const defaultValue = inputConfig.value as ToolParamsFormType | undefined;
       const defaultFields = defaultValue?.value;
@@ -235,6 +235,7 @@ export const SecretInputForm = ({
           };
     })()
   });
+  const { register, unregister, setValue, getValues, handleSubmit, control } = form;
   const configType = useWatch({ control, name: 'type' });
   const formValues = useWatch({ control });
 
@@ -264,6 +265,7 @@ export const SecretInputForm = ({
     setFieldModes((prev) => ({ ...prev, [key]: mode }));
     const fieldPath = `value.${key}` as any;
     const fieldValuePath = `value.${key}.value` as any;
+    unregister(fieldValuePath);
     setValue(fieldValuePath, undefined);
     setValue(fieldPath, undefined);
 

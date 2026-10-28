@@ -524,6 +524,22 @@ const HeaderAuthForm = ({
                           _hover={{ color: 'red.500' }}
                           isDisabled={customHeaders.length <= 1}
                           onClick={() => {
+                            setValueModes((prev) => {
+                              const next: Record<string, ValueMode> = {};
+                              Object.entries(prev).forEach(([key, mode]) => {
+                                if (!key.startsWith('custom-')) {
+                                  next[key] = mode;
+                                  return;
+                                }
+
+                                const modeIndex = Number(key.slice('custom-'.length));
+                                if (modeIndex !== index) {
+                                  next[`custom-${modeIndex > index ? modeIndex - 1 : modeIndex}`] =
+                                    mode;
+                                }
+                              });
+                              return next;
+                            });
                             onChange({
                               customs: headerSecretValue.customs?.filter((_, i) => i !== index)
                             });

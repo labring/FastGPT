@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { JSDOM } from 'jsdom';
+import { describe, expect, it, vi } from 'vitest';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   filterReferenceListByInputType,
@@ -9,8 +12,64 @@ import {
   isReferenceArrayValue,
   normalizeInputValue,
   shouldShowSecretInput,
+  SecretInputForm,
   type SecretReferenceList
 } from '@/pageComponents/app/tool/SecretInputModal';
+
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
+}));
+
+vi.mock('@fastgpt/web/components/common/Radio/LeftRadio', async () => {
+  const React = await import('react');
+  const MockLeftRadio = React.forwardRef(({ list, value }: any, ref: any) =>
+    React.createElement(
+      React.Fragment,
+      null,
+      React.createElement('div', { ref }, list.find((item: any) => item.value === value)?.children)
+    )
+  );
+  MockLeftRadio.displayName = 'MockLeftRadio';
+  return { default: MockLeftRadio };
+});
+
+vi.mock('@fastgpt/web/components/core/workflow/NodeInputSelect', async () => {
+  const React = await import('react');
+  const { FlowNodeInputTypeEnum } = await import('@fastgpt/global/core/workflow/node/constant');
+  return {
+    default: ({ onChange }: any) =>
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          'data-testid': 'switch-to-reference',
+          onClick: () => onChange(FlowNodeInputTypeEnum.reference)
+        },
+        'Reference'
+      )
+  };
+});
+
+vi.mock(
+  '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference',
+  async () => {
+    const React = await import('react');
+    return {
+      ReferSelector: ({ onSelect }: any) =>
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            'data-testid': 'select-reference',
+            onClick: () => onSelect(['node', 'token'])
+          },
+          'Select reference'
+        )
+    };
+  }
+);
+
+vi.mock('@fastgpt/web/hooks/useRequest', () => ({ useRequest: () => ({ data: [] }) }));
 
 const referenceList: SecretReferenceList = [
   {
@@ -92,5 +151,64 @@ describe('SecretInputModal helpers', () => {
     expect(shouldShowSecretInput({ value: { secret: 'cipher' } })).toBe(false);
     expect(shouldShowSecretInput({ value: { value: 'plain' } })).toBe(false);
     expect(shouldShowSecretInput({ value: { value: 'plain' }, isEditing: true })).toBe(true);
+  });
+
+  it('submits a required secret after switching from an empty manual value to a reference', async () => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://fastgpt.test'
+    });
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('localStorage', dom.window.localStorage);
+    const container = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(container);
+    const root = createRoot(container);
+    const onSubmit = vi.fn();
+
+    try {
+      await act(async () => {
+        root.render(
+          createElement(SecretInputForm, {
+            nodeId: 'node',
+            referenceList,
+            inputConfig: {
+              inputList: [{ key: 'token', label: 'Token', inputType: 'secret', required: true }]
+            } as any,
+            formId: 'secret-form',
+            onSubmit
+          })
+        );
+      });
+
+      const modeButton = container.querySelector('[data-testid="switch-to-reference"]');
+      expect(modeButton).not.toBeNull();
+      await act(async () => {
+        modeButton?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      });
+
+      const referenceButton = container.querySelector('[data-testid="select-reference"]');
+      expect(referenceButton).not.toBeNull();
+      await act(async () => {
+        referenceButton?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      });
+
+      const form = container.querySelector('form');
+      expect(form).not.toBeNull();
+      await act(async () => {
+        form?.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+        value: { token: { ref: ['node', 'token'] } }
+      });
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      dom.window.close();
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -486,6 +486,35 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(0);
   });
 
+  it('普通 value 对象转成 JSON，密码输入保留 secret wrapper', () => {
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'plainValue',
+        label: 'Plain value',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        value: { value: 'hello' },
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'secretValue',
+        label: 'Secret value',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        value: { value: 'token' },
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState().state
+    });
+
+    expect(params.plainValue).toBe('{"value":"hello"}');
+    expect(params.secretValue).toEqual({ value: 'token' });
+  });
+
   it('普通变量模板按需构造 runtimeVariables 并完成替换', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);

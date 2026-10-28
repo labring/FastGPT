@@ -318,7 +318,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       return value;
     }
 
-    const runtimeValue = valueTypeFormat(value, config?.valueType);
+    const runtimeValue = valueTypeFormat(
+      value,
+      config?.valueType,
+      config?.type === VariableInputEnum.password
+    );
     this.state.set(key, {
       key,
       config,
