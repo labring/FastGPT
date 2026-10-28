@@ -21,6 +21,14 @@ description: Master enabling independent collection permissions, directory inher
 
 Collection-level permissions are a commercial capability. They control individual files and folders within a knowledge base. Access requires both knowledge base read permission and the applicable collection permission.
 
+## Terminology Mapping
+
+| Concept | UI and Documentation Term | Description |
+| --- | --- | --- |
+| `dataset` | Knowledge base | Resource type `dataset` in the permission model; knowledge base Read permission is the prerequisite gate for accessing any internal collection |
+| `collection` | File / Folder / Collection | A single file or folder inside a knowledge base, represented as resource type `collection` |
+| Collection permission | Dataset permission configuration / File-level permission | Fine-grained collaborator access control for individual files and folders inside a knowledge base |
+
 ## Permission Inheritance
 
 With collection permissions disabled, files and folders use knowledge base permissions. Enabling the feature materializes permission snapshots for existing collections. Inheriting collections follow their parent; independently configured collections retain their own permissions.
@@ -37,6 +45,11 @@ The knowledge base information panel provides a disable action. Disabling delete
 
 ## Step 2: Configure Collaborators
 
+Open collaborator settings for a single file or folder from any of three equivalent entry points:
+1. Knowledge base file list → target row's `···` menu → **Permissions**;
+2. Right information panel after opening a file → **Collaborators**;
+3. Right information panel after entering a folder → **Collaborators**.
+
 Choose members, groups, or organizations and assign roles:
 
 | Role | Scope |
@@ -50,12 +63,45 @@ Renaming, disabling, or otherwise changing the knowledge base or collection itse
 
 ![Configure file and folder collaborators](/imgs/optimized/current/collection-collaborators.png.webp)
 
+### Inherited and Independent States
+
+- **Inherited State (Default)**: A file or folder derives its permissions from its parent (the parent folder, or the knowledge base when at the root) and automatically tracks parent collaborator changes.
+- **Independent State**: When you modify or remove collaborators inherited from the parent, the system prompts for conflict confirmation; once confirmed, the node switches to independent state and preserves its own permissions and subtree boundary.
+- **Restore Inheritance**: An independent node can restore inheritance from the permissions dialog, retaining grants unique to that node while synchronizing its descendant subtree (any nested independent branches within the subtree preserve their own permissions).
+
+### Permission Requirements by Operation
+
+| Operation | Required Permissions and Rules |
+| --- | --- |
+| **View file list / details** | Knowledge base `Read` + file `Read`; lists filter and paginate by readable files, and parent folders appear as navigation entries when a member only has access to child files |
+| **Modify collection content (sync / training params / chunks)** | File `Write` permission |
+| **Modify collection metadata (rename / tags / disabled state)** | File `Manage` permission |
+| **Move file / folder** | `Manage` on both source and destination, plus team dataset creation permission when moving between root and a folder; `Manage` on the file is also required if metadata is updated in the same request |
+| **Configure collaborators / restore inheritance** | File `Manage` permission, with collection permissions enabled on the knowledge base |
+| **Delete file / folder** | Collection `Creator` only; batch deletion skips items owned by other members with a notice |
+| **Collection ownership transfer** | Collection `Creator` only; transfers ownership to another member in the same team and cascades to child folders |
+| **Knowledge base ownership transfer** | Cascades ownership of all files and folders in the knowledge base held by the previous owner |
+
 ## Step 3: Verify Retrieval Identity and File Access
 
 1. **Member-authenticated retrieval**: Search tests and application search configured to authenticate the current member compute readable collections and intersect them with metadata filters.
 2. **Application-selected knowledge**: A workflow using preselected knowledge bases with `authTmbId: false` follows application access settings and skips member-specific collection filtering. Configure member authentication and a trusted identity mapping when enforcing per-user document access.
 3. **Special identities**: Team owners and authorized system-root operations have elevated access. Team administrators still follow resource collaborator permissions.
 4. **Source file links**: Download and preview links use the storage service's authorization and signing rules. Signed links can grant access to their holders until expiry; handle them as sensitive credentials.
+
+## FAQ
+
+### 1. Why is the "Permissions" entry missing from the file row menu?
+
+The entry is visible only to members with `Manage` permission on that file. Ask the file creator or knowledge base administrator to grant Manage permission.
+
+### 2. Why does the system prompt that dataset permissions are not enabled?
+
+The knowledge base is still in its default disabled state. A knowledge base administrator must enable collection permissions from a row's `··· → Permissions` menu as described in Step 1.
+
+### 3. Are custom permissions preserved after turning collection permissions off?
+
+Turning the switch off deletes all collection-level collaborator records in that knowledge base and reverts every collection to knowledge base inheritance. Re-enabling generates fresh inherited snapshots from the current knowledge base collaborators, so record custom grants before disabling.
 
 ## Acceptance Checklist
 

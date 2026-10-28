@@ -15,6 +15,15 @@ Before publishing a Chat Agent V2 to production channels, use the "Debug Preview
 
 ![Knowledge retrieval debug results and source citations](/imgs/optimized/current/agent-answer.png.webp)
 
+## Assisted Generation (AI Collaboration Assistant)
+
+In the "Assisted Generation" tab of the left configuration panel, the Commercial and Cloud editions provide an AI collaboration assistant tailored for Chat Agent V2:
+
+1. **Smart Analysis and Interactive Clarification**: The assistant reads your currently selected model, knowledge bases, and candidate tools. Describe your target scenario in natural language (for example: `Build an assistant that analyzes uploaded Excel sales reports and generates charts`). When details need clarification, the assistant presents structured interactive question cards (Agent Ask) and saves both questions and answers in the conversation history.
+2. **Automatic Configuration Apply**: Once the plan is confirmed, the system automatically populates the generated System Prompt, recommended tools, associated knowledge bases, and virtual machine toggle into the left configuration panel so you can test immediately in the Debug Preview drawer.
+
+---
+
 ## Step 1: Initiate Interactive Testing and Session Management
 
 1. Open your target Chat Agent V2 workspace; the right-hand panel provides a real-time conversational test environment.
@@ -46,6 +55,8 @@ Beneath each generated AI message bubble, click "Execution Details" to review th
    Examine raw responses returned by tools or sandbox commands, confirming that outputs provide complete, valid factual evidence.
 4. **Performance and Quota Auditing**:
    Inspect available model, latency, and usage fields. Record the request identifier when present and reconcile cost with usage records.
+5. **Pre-Rerank Retrieval Candidate Snapshot (`retrievalResults`)**:
+   When an Agent's knowledge base search enables reranking (`usingReRank`) with a positive candidate limit, the execution details expose both the pre-rerank recall snapshot (`retrievalResults`) and the post-rerank citation list (`quoteList`), enabling side-by-side comparison between initial recall and reranking.
 
 ---
 

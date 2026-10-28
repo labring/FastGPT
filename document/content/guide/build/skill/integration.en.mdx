@@ -25,6 +25,11 @@ Associate Extract Emails from the [development tutorial](/en/guide/build/skill/d
 
 Open the workflow canvas, add or select an Agent node, and choose published Skills in its Skill configuration. Confirm the model, user question, and virtual-machine settings. Reference the upstream task in the node input and inspect its output. See [Agent node](/en/guide/build/workflow/nodes/agent).
 
+| Host Carrier | Configuration Entry | Sandbox and Execution Scope | Typical Use Case |
+| --- | --- | --- | --- |
+| **Chat Agent V2** | "Associated Skills" section in the left panel of the application editor | Session-scoped sandbox (`sessions/<chatId>`), preserving workspace files and initialized Skill environments across multi-turn chats | Open-ended multi-turn spreadsheet analysis, interactive report generation, and iterative file processing |
+| **Workflow Agent Node** | Workflow canvas → select Agent node → "Skills" selector | Provisions the sandbox for the workflow session, accepts upstream variables and file URLs, and passes its output to downstream nodes | Embedding an autonomous script-execution or Skill-driven step inside a deterministic business pipeline |
+
 ## How Agents use Skills
 
 At runtime, selected Skill versions are prepared in the execution environment. The Agent chooses relevant instructions and tools according to the task and model planning. One Skill resource can include multiple instruction sets and supporting files, and an Agent can use multiple resources.

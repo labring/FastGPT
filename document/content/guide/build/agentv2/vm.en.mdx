@@ -49,7 +49,9 @@ The platform isolates virtual machine files by tenant, application, and session 
 ```
 
 - **Session-Level Isolation**: Each conversation uses a dedicated workspace path `sessions/<chatId>`, where user-uploaded files mount automatically.
+- **Automatic Dialog File Injection**: Files uploaded in the chat input box are automatically synchronized into the session workspace's `user_files/` directory before execution begins, allowing the Agent to read and process them via local paths.
 - **State Persistence and Reset**: The same `chatId` reuses its session directory. Sandbox instances are scoped by source, application, and user. Restarting a chat changes its context and directory; sandbox lifecycle policies govern instance recycling and volume retention.
+- **Security Isolation and Command Encoding**: Containers enforce CPU, memory, disk I/O, and network boundaries, and all executed commands are Base64-encoded before decoding inside the container to prevent shell injection.
 
 ---
 
@@ -63,8 +65,12 @@ During environment initialization and execution, the platform manages the sandbo
 
 ### Startup Scripts and Dependency Management
 The application "Startup Script" runs after runtime acquisition, the initialization lock, and configuration and file preparation. It can install Python packages (e.g., `pip install matplotlib pandas`) or system binaries:
-- **Deduplication Mechanism**: Upon successful execution, the platform records the script content hash in `~/.fastgpt/runtime/state.json`. The same sandbox instance reuses completed initialization when the hash matches; the session identifier selects the current working directory.
-- **Update Triggers**: Modifying startup script content updates the recorded hash, triggering a clean execution on the next turn.
+- **Two-Stage Execution Order and Atomic Deployment**:
+  1. **Application Startup Script**: Runs first inside the virtual machine workspace directory (such as `/workspace`) using the shell commands configured in the application panel.
+  2. **Skill Entrypoint Script**: When published Skills are attached, each Skill bundle extracts into a temporary staging directory (`.tmp-<versionId>-<random>`) and atomically swaps into `projects/<versionId>` upon completion, after which its initialization script (such as `entrypoint.sh`) executes inside that Skill's directory.
+- **Dual-Key State Deduplication (`~/.fastgpt/runtime/state.json`)**:
+  - **Application Startup Script (SHA-256 Hash Deduplication)**: The runtime computes the SHA-256 hash of the startup script text and compares it against `~/.fastgpt/runtime/state.json`. Subsequent warm turns skip execution when the hash matches, and re-run automatically when the script text changes or the sandbox is rebuilt.
+  - **Skill Entrypoint Script (Version ID Deduplication)**: Skill entrypoints deduplicate by immutable **Skill Version ID**, ensuring each published Skill version initializes once per sandbox instance lifecycle.
 
 <span id="execution-constraints--fault-tolerance" />
 

@@ -10,7 +10,7 @@ description: 面向私有化部署与商业版 Root 管理员，全面管理平�
 | 模块名称 | 路由地址 | 核心管理职责 |
 | --- | --- | --- |
 | **全局数据看板** | `/admin/dashboard` | 查看全平台注册用户趋势、活跃团队数、新增应用与知识库总量、全局对话轮次与积分消耗时序图 |
-| **用户管理** | `/admin/users` | 检索全平台用户账号、新建/禁用用户、重置用户登录密码、查看用户所属团队与登录状态 |
+| **用户管理** | `/admin/users` | 按状态（全部、活跃、禁用、注销）与用户名组合检索账号，新建/禁用用户、重置密码、查看所属团队 |
 | **团队管理** | `/admin/teams` | 管理所有租户团队、修改团队套餐配额、转移团队拥有者、配置团队专属成员或资源上限 |
 | **全局应用监管** | `/admin/apps` | 跨团队检索全平台创建的应用（对话 Agent、Agent V2、工作流、工具），排查异常应用或转移所有者 |
 | **全局知识库监管** | `/admin/datasets` | 跨团队查看知识库容量、集合数量，并监控全平台向量化与 QA 抽取训练队列堆积情况 |
@@ -21,7 +21,7 @@ description: 面向私有化部署与商业版 Root 管理员，全面管理平�
 
 通过 5 个子视图统一管理全平台模型底座（详细配置流程见 [模型配置说明](/zh-CN/self-host/config/model/intro)）：
 
-- **模型配置（`modelTab=config`）**：从内置预设启用或自定义添加语言模型、向量模型、重排模型、语音合成（TTS）与语音识别（STT）模型，设置上下文窗口、功能标签与千 Token 积分单价。
+- **模型配置（`modelTab=config`）**：从内置预设启用或自定义添加语言模型、向量模型、重排模型、语音合成（TTS）与语音识别（STT）模型，设置上下文窗口、功能标签与 `pricing` 计费标准（Token 模型按 M Tokens、TTS 按每百万字符、STT 按每 60 秒计价）。
 - **模型渠道（`modelTab=channel`）**：配置对接各模型供应商的 API 端点、密钥列表、模型映射表与渠道优先级权重。
 - **渠道调用日志（`modelTab=channel_log`）**：按请求 ID、渠道名称、模型名称或状态码检索底层模型调用耗时与报错详情。
 - **提供商监控与测试（`modelTab=account_model` / `status`）**：批量发起渠道连通性测试，配置定时健康探测间隔与异常告警 Webhook。
@@ -49,7 +49,7 @@ description: 面向私有化部署与商业版 Root 管理员，全面管理平�
 ### 1. 系统参数设置（`/admin/settings/*`）
 
 - **基础设置（`/admin/settings/basic`）**：配置站点名称、Logo、备案信息、帮助文档链接与版权声明。
-- **功能开关（`/admin/settings/feature`）**：控制团队模型开关（`enable_team_model`）、用户注册方式、同步任务开关等全局特性。
+- **功能开关与并发控制（`/admin/settings/feature`）**：控制团队模型开关（`enable_team_model`）、用户注册方式、同步任务开关及全局向量检索最大并发数（`systemEnv.vectorRecallConcurrency`，取值 `0–1000`，默认 `0` 表示无限制）。
 - **模型默认设置（`/admin/settings/model`）**：指定平台默认的对话模型、向量模型、文本理解模型与 PDF 解析服务（如 MinerU / Marker / Doc2x）。
 - **支付渠道（`/admin/settings/pay`）**：配置微信支付、支付宝或 Stripe 商户凭证。
 - **第三方与用户登录（`/admin/settings/thirdParty` / `user`）**：配置短信/邮件验证码网关、OAuth2 / OIDC / SAML 单点登录与企业通讯录同步参数（详见 [SSO 与外部成员同步](/zh-CN/guide/admin/sso) 与 [团队模式说明](/zh-CN/guide/admin/teamMode)）。

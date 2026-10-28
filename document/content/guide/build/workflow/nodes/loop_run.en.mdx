@@ -65,7 +65,9 @@ The Loop Node provides two running modes.
 2. **Returns the Final Iteration Only**
    - The custom outputs on the Loop Node only hold the values from the **last iteration** when the loop exits (it no longer aggregates all outputs into a single array).
    - **How to aggregate results from all iterations?**  
-     If you need to collect and aggregate data from all runs into a list, declare an array variable **outside** the Loop Node as a global variable, and use a **Variable Update** node **inside** the loop body to append the result of each iteration into that global array.
+     To collect data from every iteration into a list, declare an array global variable **outside** the Loop Node and update it **inside** the loop body based on the element type:
+     1. **String array**: In the **Variable Update** node inside the loop body, select the array global variable, switch the value mode to **Manual Input**, choose **Append**, and type `/` in the input box to insert the current iteration's result (**Variable Citation** mode replaces the entire array with the referenced array).
+     2. **Object array**: The append box for an object array accepts JSON text. To append a dynamic object output by an upstream node, add a **Code Run** node inside the loop body that combines the existing global array and the current object into a new array, then update the global array variable in the **Variable Update** node using **Variable Citation**.
 3. **Variable and External Output Writeback**
    - After each successful iteration, global variable changes made inside the loop body are written back to the main flow. If a Variable Update node changes an output on a node outside the loop container, that output is also written back after that iteration succeeds.
    - Failed iterations do not commit variable or external output changes from that iteration. When an interactive node pauses execution, the completed changes before the pause are kept as a resumable checkpoint so the loop can continue after the user submits input.

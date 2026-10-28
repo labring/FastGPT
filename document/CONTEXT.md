@@ -93,6 +93,15 @@ A checkpoint mechanism where a workflow pauses at a user-selection (`userSelect`
 **System OpenAPI (系统开放接口)**:
 The subset of FastGPT OpenAPI operations (`/apidoc/systemopenapi`) explicitly authorized for team or application API key authentication, distinct from the internal full-surface `Dev API` (`/apidoc/devapi`).
 
+**Model pricing (模型计费配置)**:
+The system-model billing configuration stored under `pricing`. LLMs use `pricing.tiers` (`inputPrice`, `outputPrice`, and optional `maxInputTokens` in M Tokens), while Embedding/Rerank (per M Tokens), TTS (per 1M characters), and STT (per 60 seconds) use `pricing.unitPrice`. Team-configured models are free of platform points.
+
+**Inherited permission & Independent permission (继承态权限与独立态权限)**:
+The two authorization states of a folder, knowledge base, or collection. An inherited resource automatically follows its parent's collaborator changes; an independent resource keeps its own collaborator list and subtree rules until inheritance is restored.
+
+**Startup migration & Background migration (启动迁移与后台迁移)**:
+The two categories of automatic system upgrade tasks. Startup migrations complete their full prerequisite dependency chain and reload models before the service accepts traffic; background migrations run asynchronously with bounded cluster concurrency and can be retried from the platform administration console.
+
 **Documentation site**:
 The collection of product guides, deployment instructions, handwritten API references, navigation, and discovery interfaces published together as FastGPT's official documentation. Linked video, solution, and application-generated reference sites are separate content surfaces.
 

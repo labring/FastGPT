@@ -15,8 +15,9 @@ As your team scales its Chat Agents, Agent V2 apps, and Workflows, use the Templ
 ## Filter Applications and Organize Folders
 
 1. **Filter and sort**: At the top of **My Applications** (`/dashboard/agent`), filter by application type (Chat Agent, Chat Agent V2, Workflow), search by name, or change the sort order.
-2. **Create folders**: Click **New Folder** in the top-right corner to organize applications by department, project, or lifecycle stage.
-3. **Permission inheritance**: Collaborator roles (Read, Write, Manage) assigned to a folder are inherited by child folders and applications inside it; individual applications can also add specific collaborators. See [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
+2. **Create folders**: Click **New Folder** in the top-right corner, enter a name and description, and choose whether to inherit parent folder permissions to organize applications by department, project, or lifecycle stage.
+3. **Permission inheritance and parent owner boundary**: Collaborator roles (Can Use, Can Edit, Can Manage) assigned to a folder are inherited by child folders and resources inside it; a parent folder's Owner inherits **Can Manage (`manage`)** permission on child resources while each child resource retains its own single Owner.
+4. **Ancestor path navigation**: When a member has access only to a descendant application, tool, skill, or dataset inside a folder hierarchy, ancestor folders appear as read-only navigation entries (hiding folder metadata and management menus and disabling drag-and-drop), allowing the member to follow breadcrumbs into the authorized subtree and search within it. See [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
 
 ## Batch Move and Batch Delete
 

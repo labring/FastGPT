@@ -143,6 +143,10 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Add a Custom Model — interface example](/imgs/optimized/image-98.png.webp) | ![Add a Custom Model — interface example](/imgs/optimized/image-99.png.webp) |
 
+Token model prices and tier boundaries use M Tokens. Text-to-speech is priced per 1M characters; speech-to-text remains per 60 seconds. Unit prices support up to two decimal places.
+
+Only system models use these prices; team models are free. Pricing is stored under `pricing`: LLMs use `tiers` with `inputPrice`, `outputPrice`, and an optional `maxInputTokens` upper limit in M Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use `unitPrice`: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Legacy root-level prices are read only by the migration and ignored by the new runtime. Missing `pricing` is free until migration completes.
+
 <Accordions>
 <Accordion title="Language Model Fields">
 ```json
@@ -158,7 +162,7 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
     "maxResponse": 16000, // Maximum response length
     "quoteMaxToken": 120000, // Maximum citation content tokens
     "maxTemperature": 1.2, // Maximum temperature
-    "charsPointsPrice": 0, // Points per 1k tokens (commercial edition)
+    "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // Points per M Tokens (commercial edition)
     "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
     "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
@@ -184,7 +188,7 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
     "provider": "OpenAI", // Model provider
     "model": "text-embedding-3-small", // Model ID
     "name": "text-embedding-3-small", // Display name
-    "charsPointsPrice": 0, // Points per 1k tokens
+    "pricing": { "unitPrice": 0 }, // Points per M Tokens
     "defaultToken": 512, // Default token count for text splitting
     "maxToken": 3000 // Maximum token count
   }
@@ -236,7 +240,7 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
         "value": "fishaudio/fish-speech-1.5:anna" // Voice ID
       }
     ],
-    "charsPointsPrice": 0 // Points per 1k tokens
+    "pricing": { "unitPrice": 0 } // Points per 1M characters
   }
 }
 ```
@@ -254,7 +258,7 @@ Click `Configuration File` in the top-right corner of `Model Configuration` to o
     "provider": "OpenAI", // Model provider
     "model": "gpt-transcribe", // Model ID
     "name": "gpt-transcribe", // Display name
-    "charsPointsPrice": 0, // Points per 1k tokens
+    "pricing": { "unitPrice": 0 }, // Points per 60 seconds
     "type": "stt" // Model type
   }
 }

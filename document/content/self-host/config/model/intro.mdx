@@ -133,6 +133,10 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![新增自定义模型：界面示例](/imgs/optimized/image-98.png.webp) | ![新增自定义模型：界面示例](/imgs/optimized/image-99.png.webp) |
 
+所有 Token 模型的单价与阶梯输入边界均以 M Tokens 为单位；语音合成按每 1M 字符、语音识别按每 60 秒计价。单价最多保留两位小数。
+
+仅系统模型按此价格计费，团队模型免费。价格统一放在 `pricing` 中：LLM 使用 `tiers`，每档包含 `inputPrice`、`outputPrice` 和可选的 `maxInputTokens`（上限，单位 M Tokens）；下限由上一档上限推导，最后一档省略上限表示无限。其他模型使用 `unitPrice`：Embedding/Rerank 每百万 Tokens、TTS 每百万字符、STT 每 60 秒。旧版根级计价字段仅供自动迁移读取，新版运行期不再使用；缺失 `pricing` 的模型在迁移完成前免费。
+
 <Accordions>
 <Accordion title="语言模型字段说明">
 ```json
@@ -148,7 +152,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "maxResponse": 16000, // 最大回复
     "quoteMaxToken": 120000, // 最大引用内容
     "maxTemperature": 1.2, // 最大温度
-    "charsPointsPrice": 0, // n积分/1k token（商业版）
+    "pricing": { "tiers": [{ "inputPrice": 0, "outputPrice": 0 }] }, // 积分 / M Tokens（商业版）
     "censor": false, // 是否开启敏感校验（商业版）
     "vision": true, // 是否支持图片输入
     "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）
@@ -174,7 +178,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "provider": "OpenAI", // 模型提供商
     "model": "text-embedding-3-small", // 模型ID
     "name": "text-embedding-3-small", // 模型别名
-    "charsPointsPrice": 0, // n积分/1k token
+    "pricing": { "unitPrice": 0 }, // 积分 / M Tokens
     "defaultToken": 512, // 默认文本分割时候的 token
     "maxToken": 3000 // 最大 token
   }
@@ -226,7 +230,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
         "value": "fishaudio/fish-speech-1.5:anna" // 音色ID
       }
     ],
-    "charsPointsPrice": 0 // n积分/1k token
+    "pricing": { "unitPrice": 0 } // 积分 / 1M 字符
   }
 }
 ```
@@ -244,7 +248,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
     "provider": "OpenAI", // 模型提供商
     "model": "gpt-transcribe", // 模型ID
     "name": "gpt-transcribe", // 模型别名
-    "charsPointsPrice": 0, // n积分/1k token
+    "pricing": { "unitPrice": 0 }, // 积分 / 60 秒
     "type": "stt" // 模型类型
   }
 }

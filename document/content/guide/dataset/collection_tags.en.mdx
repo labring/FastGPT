@@ -24,11 +24,15 @@ Organize orthogonal tag dimensions around organizational governance:
 ## Step 1: Create and Manage Tag Definitions
 
 1. Open your target knowledge base and click "Tag Management" in the top navigation (requires Write permission on the knowledge base).
-2. Click "+ Add Tag", enter a tag name (up to 20 characters), and select a tag attribute:
-   - **Option**: Suitable for fixed categories or one-to-many classifications (e.g., departments, document categories). A single collection can have multiple options selected.
-   - **Number**: Suitable for quantitative comparisons (e.g., confidentiality tier, employee rank). A single collection holds one number, supporting numeric range comparisons.
-   - **Date**: Suitable for time-sensitive milestones (e.g., effective date). A single collection holds one date and time.
-3. For Option tags, preset standard options in Tag Management or type them directly when tagging collections. Renaming an option automatically updates all collections assigned that option.
+2. Click "+ Add Tag", enter a tag name (up to 20 characters), and select a tag attribute (the attribute type is fixed once created, while the tag name can be renamed at any time; deleting a tag removes its bound values from all collections in the knowledge base):
+
+| Tag Attribute | Use Case | Assignment and Limits | Example |
+| :--- | :--- | :--- | :--- |
+| **Option** | Fixed categories or one-to-many classifications | Multiple options per file (up to 64 options per file, up to 256 characters per option) | `Department` (`Finance`, `Support`, `HR`) |
+| **Number** | Quantitative indicators compared by value or range | One numeric value per file (integers or decimals) | `Confidentiality` (`1`, `2`, `3`) |
+| **Date** | Time-sensitive document milestones | One date-time value per file (accurate to `YYYY-MM-DD HH:mm`) | `EffectiveDate` (`2026-01-01 09:00`) |
+
+3. **Option management**: Click the settings icon (`⚙`) on an Option tag row to preset standard option values, rename options (automatically updating all collections assigned that option), or delete options (removing that option value from bound collections). When tagging a file, you can also type a new option name directly and press Enter to create and bind it immediately.
 4. **Shared tag behavior across multiple knowledge bases**: When an application or workflow attaches multiple knowledge bases, the custom tag dropdown displays only tags whose **names and attribute types match exactly** across all selected knowledge bases (the available option values represent the union of options from each knowledge base).
 5. **Legacy tag upgrade**: When upgrading from older versions, legacy string tags are automatically migrated into an Option tag named `default_tag`, preserving all existing tagging associations. You can rename `default_tag` to your preferred business name in Tag Management.
 6. **Rename impact**: Filter conditions match on tag names and option text. When renaming a tag or option, update saved filter configurations in related applications and workflows.
@@ -42,10 +46,13 @@ Organize orthogonal tag dimensions around organizational governance:
 
 ![Assign Finance tag to travel policy collection](/imgs/optimized/current/tags-finance.png.webp)
 
-5. **Filter collections by tag in the list**: Click the tag filter button above the collection list header to narrow files quickly:
+5. **Batch modify tags**: Select multiple files in the collection list and click "Batch Edit Tags" in the bottom floating action bar:
+   - **Batch Add Tags**: Option tags support **Append** (default, keeping existing options on each file and merging the newly selected ones) or **Overwrite** (replacing existing options with the new selection). Number and Date tags store a single value per file and overwrite the existing value directly.
+   - **Batch Remove Tags**: The dialog aggregates all tags currently bound to the selected files. For Option tags, click the delete icon to remove the entire tag, or expand the tag to select and remove specific option values while preserving the rest.
+6. **Filter collections by tag in the list**: Click the "Tags | All" filter button above the collection list header, choose a tag name in the left column (the badge shows the count of selected values), and search or check values in the right column:
    - **Multiple values within the same tag**: Combined with **OR** logic; files matching any selected value appear.
    - **Between different tags**: Combined with **AND** logic; only files satisfying all tag conditions appear.
-6. **Import and update via API**: When creating or updating collections through OpenAPI, the request body accepts a structured `tags` array (e.g., `[{"tag": "Department", "value": ["Finance"]}, {"tag": "Confidentiality", "value": 1}]`), while retaining backward compatibility with string arrays. If an imported tag name does not yet exist in the knowledge base, the system automatically creates the tag definition based on the `value` data shape (arrays become Option tags, numbers become Number tags).
+7. **Import and update via API**: When creating or updating collections through OpenAPI, the request body accepts a structured `tags` array (e.g., `[{"tag": "Department", "value": ["Finance"]}, {"tag": "Confidentiality", "value": 1}, {"tag": "EffectiveDate", "value": 1767229200000}]`), while retaining backward compatibility with string arrays. If an imported tag name does not yet exist in the knowledge base, the system automatically creates the tag definition based on the `value` data shape (string arrays become Option tags, numbers become Number tags).
 
 ## Step 3: Configure Tag Filtering in Applications
 
@@ -63,7 +70,16 @@ In the workflow canvas, locate the **Dataset Search** node and enable **Tag Filt
 
 ![Support filter admits only customer support material](/imgs/optimized/current/tags-support-result.png.webp)
 
-### 3. Supported Operators and Matching Rules
+### 3. Filter Combination Logic (Custom Tags + System Tags)
+
+The tag filter panel is divided into **Custom Tags** and **System Tags**, joined by a fixed **`AND` (all must match)** relationship between the two sections:
+
+1. **Custom Tags**: Click "+ Add Filter Condition" to choose a custom tag, comparison operator, and target value (via manual input or variable reference). When multiple custom tag conditions exist, toggle the `AND / OR` button in the upper-left corner (`AND` requires all conditions to match; `OR` matches when any condition is met).
+2. **System Tags**: Filter by built-in collection attributes, with multiple system tag conditions joined by fixed `AND` logic:
+   - **Creation Time**: Filter by when the file was created in the knowledge base using `greater than or equal` (`>=`) and `less than or equal` (`<=`).
+   - **Collection ID**: Fixed to the `in` operator, accepting a variable reference with collection IDs or folder IDs (passing a folder ID recursively includes all child files under that folder).
+
+### 4. Supported Operators and Matching Rules
 
 | Tag Attribute | Supported Operators | Matching Rules |
 | :--- | :--- | :--- |
@@ -71,13 +87,13 @@ In the workflow canvas, locate the **Dataset Search** node and enable **Tag Filt
 | **Number** | `equals`, `not equals`<br/>`greater than`, `less than`<br/>`greater than or equal`, `less than or equal`<br/>`is empty`, `is not empty` | Compared by numeric value. Variable citations accept numbers or numeric strings |
 | **Date** | `equals`, `not equals`<br/>`after`, `before`<br/>`is empty`, `is not empty` | Compared by chronological order. Variable citations accept millisecond timestamps or standard date strings |
 
-### 4. Untagged Collection (Empty Value) Matching
+### 5. Untagged Collection (Empty Value) Matching
 
 When collections in a knowledge base have not been assigned a particular tag:
 - **Positive matching** (`equals`, `contains`, `in`, `greater than`, `less than`, `greater than or equal`, `less than or equal`, `after`, `before`, `is not empty`): Untagged collections are evaluated as not matching and are not retrieved.
 - **Negative and empty matching** (`is empty`, `not equals`, `does not contain`, `not in`): Untagged collections are evaluated as matching and participate in retrieval.
 
-### 5. Passing JSON Filter Expressions via Variable Reference
+### 6. Passing JSON Filter Expressions via Variable Reference
 
 In the workflow Dataset Search node, switch the input mode from manual input to **Variable Reference** to pass a complete JSON filter expression or string:
 
@@ -102,6 +118,31 @@ Top-level fields are joined by `AND` logic:
 - `tags`: Custom tag filter conditions containing an array of `$and` (all must match) or `$or` (any can match) rules.
 - `createTime`: Collection creation time bounds supporting `$gte` (greater than or equal) and `$lte` (less than or equal).
 - `collectionIds`: Array of collection IDs (or folder IDs, which recursively include sub-files) to restrict the search.
+
+| Tag Attribute | JSON Operator | Meaning | Example |
+| :--- | :--- | :--- | :--- |
+| **Option** | `$is` / `$isNot` | Equals / Not equals | `{"Department": {"$is": ["Finance", "Support"]}}` |
+| **Option** | `$contains` / `$notContains` | Contains / Does not contain | `{"Department": {"$contains": ["Finance"]}}` |
+| **Option** | `$in` / `$notIn` | In / Not in | `{"Department": {"$in": ["Finance", "Support"]}}` |
+| **Option** | `$empty` / `$notEmpty` | Is empty / Is not empty | `{"Department": {"$empty": true}}` |
+| **Number / Date** | `$eq` / `$ne` | Equals / Not equals | `{"Confidentiality": {"$eq": 1}}` |
+| **Number / Date** | `$gt` / `$lt` | Greater than (after) / Less than (before) | `{"EffectiveDate": {"$gt": "2026-01-01 00:00"}}` |
+| **Number** | `$gte` / `$lte` | Greater than or equal / Less than or equal | `{"Confidentiality": {"$lte": 2}}` |
+| **Number / Date** | `$empty` / `$notEmpty` | Is empty / Is not empty | `{"Confidentiality": {"$notEmpty": true}}` |
+
+## FAQ
+
+### 1. Why is a tag missing from the Tag Filter dropdown?
+
+When an application or workflow node attaches multiple knowledge bases, the Custom Tag dropdown lists only shared tags whose **names and attribute types match across every selected knowledge base**. Confirm that each attached knowledge base defines the tag with the same name and attribute type.
+
+### 2. Where did my legacy string tags go after upgrading?
+
+During upgrade, legacy string tags are migrated without data loss into an **Option** tag named `default_tag`, preserving all existing file associations. Rename `default_tag` in Tag Management to your preferred business label (such as `Category`).
+
+### 3. Does renaming a tag or option affect existing Tag Filters?
+
+Tag Filters match by tag name and option text. After renaming a tag or option in Tag Management, update the corresponding filter conditions in your applications and workflows.
 
 ## Acceptance Checklist
 

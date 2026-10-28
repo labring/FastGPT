@@ -178,3 +178,12 @@ After you switch from Milvus to pgvector, the vectors stored in Milvus are not m
 3. After all knowledge bases have been rebuilt and search tests pass, stop the old Milvus. Back up its data before you do.
 
 ---
+
+### How do I collect the result of every iteration of the Loop Node into an array?
+
+The Loop Node added in 4.15.0 keeps only the value of the last iteration in its custom output (the old loop node collects the results of all iterations automatically). To collect the result of every iteration, declare an array global variable outside the loop and append to it from a Variable Update node inside the loop body.
+
+1. In the Variable Update node, select the array variable, switch the value to Manual Input, and choose Append. In the input box of a string array, type `/` to insert the result of the current iteration. Variable Citation replaces the whole array with the referenced array and has no append option.
+2. The append box of an object array is a JSON input. To append an object output by an upstream node, add a Code run node in the loop body that combines the existing array and the current object into a new array, then update the variable with Variable Citation.
+
+---

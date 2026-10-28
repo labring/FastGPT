@@ -363,3 +363,16 @@ FastGPT 文档首页
 - [x] **Batch 3（工具与技能、发布与监控评测）**：新增 `tools/workflow-tools`，大幅扩写 `tools/overview`、`tools/http_tools`、`publish/portal`、`build/logs`。
 - [x] **Batch 4（团队账户与开发者 OpenAPI 全端点参考）**：新增 `workspace/usage-and-billing` 与 `openapi/interactive-and-variables`，扩写 `workspace/models`，并在 `openapi/app`、`openapi/chat`、`openapi/dataset` 中补齐全部 49 个 System OpenAPI 端点的完整请求/响应契约参考。
 - [x] **Batch 5（部署运维、Root 平台运营后台与全站门禁验收）**：新增 `guide/admin/platform-console`，扩写 `self-host/design/dataset`、`self-host/troubleshooting/methods`、`version/cloud/intro` 与 `version/opensource/intro`，完成目录生成、`check:docs`（604 篇 MDX / 302 对页面 / 838 条英文链接）、`test:checks`（25/25 通过）、`typecheck` 与 `build` 门禁验收。
+
+## Upstream 最新基线（`623bc2b48`）与 Diátaxis 专页深度融合（2026-10-28）
+
+### 1. 已确认设计决策（Q1–Q6）
+
+1. **三层全量覆盖与三批次双语交付（Q1、Q6）**：同步 `upstream/main`（`749809070..623bc2b48`）全部增量事实，融合 `collection_tags`、`collection_permission`、`dataset_engine`、`agentv2/vm` 四篇专页的 Reference/Explanation 表格与 FAQ，并补齐已上线代码特性与轻量指南。
+2. **任务主线与参考字典融合（Q2–Q5）**：保留当前分支已验证的 SaaS 高清截图、SVG 图表与兼容锚点，模块化嵌入批量操作、系统标签规则、JSON 操作符表、7 类操作权限矩阵（同步将集合属性修改更新为 `manage` 权限）、图片检索矩阵、8 类调参表及基于 `~/.fastgpt/runtime/state.json` 的双维脚本去重机制；企微 WebSocket 仅在 `4173.mdx` 记录底层数据模型进展。
+
+### 2. 实施待办（Batch A–C）
+
+- [x] **Batch A（Upstream 最新提交与 V4.17.3 事实同步）**：在 `CONTEXT.md` 增补 3 组领域术语；更新 `4173`（启动迁移依赖链、3 个后台自动升级脚本、分页 `offset` 优先级、`vectorRecallConcurrency`、`pricing` 迁移、`manage` 权限收紧及全部新增/优化/修复条目）、`config/model/intro`、`custom-models/xinference`、`openapi/legacy/dataset`、`admin/platform-console`、`config/env`（`MARKETPLACE_URL` v3）与 `troubleshooting/faq`（循环节点汇总数组问答）。
+- [x] **Batch B（知识库与虚拟机 4 篇核心专页深度融合）**：扩充 `collection_tags`（选项管理、批量修改、自定义+系统标签双区规则、JSON 操作符表、3 项 FAQ）、`collection_permission`（术语对照、3 个入口、继承态与独立态、7 类操作权限矩阵、3 项 FAQ）、`dataset_engine`（多向量映射、Milvus BM25 `lingua`/`whatlang`、图片检索双路径与 4×3 矩阵、8 类检索调参表）与 `agentv2/vm`（`user_files/` 自动注入、双层脚本执行顺序与 `.tmp` 原子部署、`~/.fastgpt/runtime/state.json` 哈希与版本 ID 双维去重）。
+- [x] **Batch C（最新代码特性补齐与轻量页面扩充）**：在 `workspace/models` 新增团队失效模型引用批量替换指南；在 `templates-and-folders` 与 `team_roles_permissions` 补充目录祖先路径只读导航、父目录 Owner 继承为 `manage` 权限及知识库/集合自身属性修改要求 `manage` 权限；在 `agentv2/debug` 补齐“辅助生成（AI 协作助手）”与 `retrievalResults` 重排前候选快照；在 `workflow/nodes/loop_run`、`tools/http_tools`、`publish/versions`、`tools/mcp_tools`、`skill/integration` 补齐数组聚合步骤、非 2xx 响应体错误透出与配置对照表。

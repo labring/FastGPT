@@ -87,11 +87,11 @@ The table below shows the manageable permissions for different resources.
     </tr>
     <tr>
       <td>Can Edit</td>
-      <td>Modify Dataset content</td>
+      <td>Modify Dataset content (import data, sync, adjust training parameters)</td>
     </tr>
     <tr>
       <td>Can Manage</td>
-      <td>Add or remove collaborators</td>
+      <td>Modify Dataset basic info and model settings, add or remove collaborators</td>
     </tr>
     <tr>
       <td rowSpan="3">
@@ -110,7 +110,7 @@ The table below shows the manageable permissions for different resources.
     </tr>
     <tr>
       <td>Can Manage</td>
-      <td>Add or remove collaborators; deletion is Owner-only</td>
+      <td>Modify file/folder metadata (rename, tags, disabled state), add or remove collaborators; deletion is Owner-only</td>
     </tr>
   </tbody>
 </table>
@@ -138,6 +138,7 @@ Admins primarily manage resource collaboration relationships, with these limitat
 ### Owner Permissions
 
 Each resource has a unique Owner with the highest permissions for that resource. Owners can transfer ownership, but will lose all permissions to the resource after transfer.
+In folder hierarchies, a parent folder's Owner inherits `Can Manage` (`manage`) permission on child resources while each child resource keeps its own single Owner; when a member is granted access only to a descendant resource, ancestor folders appear as read-only navigation entries.
 
 ### Root Permissions
 

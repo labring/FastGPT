@@ -13,12 +13,12 @@ Open **Account → Model Services** (`/account/model`) to inspect the active mod
 
 | Model Category | Where It Is Used | Key Attributes to Verify |
 | --- | --- | --- |
-| **Language Model (LLM)** | Chat Agent, Agent V2, Workflow AI Chat / Question Classification / Content Extraction / Query Extension | Max context window, max output tokens, Function Calling support, vision/audio badges, and reasoning support |
-| **Embedding Model** | Vector index building and semantic search in knowledge bases | Vector dimensions, chunk token limit, and pricing (fixed once a knowledge base is created) |
-| **Rerank Model** | Second-stage relevance reranking during knowledge retrieval | Context window and per-1K-token point rate |
-| **Speech Model (STT / TTS)** | Microphone speech-to-text and assistant voice synthesis | Supported languages and voice presets |
+| **Language Model (LLM)** | Chat Agent, Agent V2, Workflow AI Chat / Question Classification / Content Extraction / Query Extension | Max context window, max output tokens, Function Calling support, vision/audio badges, reasoning support, and tiered M-Token `pricing.tiers` rates |
+| **Embedding Model** | Vector index building and semantic search in knowledge bases | Vector dimensions, chunk token limit, and per-M-Token `pricing.unitPrice` (fixed once a knowledge base is created) |
+| **Rerank Model** | Second-stage relevance reranking during knowledge retrieval | Context window and per-M-Token `pricing.unitPrice` |
+| **Speech Model (STT / TTS)** | Microphone speech-to-text and assistant voice synthesis | Supported languages, voice presets, and `pricing.unitPrice` (per 1M characters for TTS, per 60 seconds for STT) |
 
-Display names, model instance identifiers, and provider model names serve different purposes. Use the exact identifier required by an API or configuration contract. Pricing and provider support follow the current environment.
+Display names, model instance identifiers, and provider model names serve different purposes. Use the exact identifier required by an API or configuration contract. Pricing and provider support follow the current environment. System models charge points according to `pricing`, while team-configured models are free of platform points.
 
 ## Team and platform configuration
 
@@ -28,3 +28,11 @@ Members with model-installation permission can configure team models through the
 - **Team & Platform Model Administration (when `feConfigs.enable_team_model` is enabled or under `/admin/resources/model`)**: Exposes **Model Config** (`config`), **Channels** (`channel`), **Channel Logs** (`channel_log`), and **Provider Health Monitoring** (`account_model`) tabs for AIProxy routing, connectivity tests, and webhook alerts.
 
 If a listed model fails during execution, inspect the selected instance, member permissions, channel credentials, provider status, and quota. Test configuration updates before verifying dependent applications.
+
+## Bulk Replace Invalid Team Model References
+
+When a model is retired or its identifier changes, a **Team Owner** can click **Replace unavailable models** in the filter bar of **Account → Model Services** (`/account/model`) to repair unavailable static model references across team assets:
+
+1. **Select Replacement Models**: Choose the target **Language Model (LLM)**, **Text-to-Speech Model (TTS)**, and **Rerank Model** in the modal.
+2. **Scan and Replacement Scope**: Upon confirmation, the system scans the current team's **Datasets**, **Apps**, and **all historical App versions** (including custom model selector fields), replacing unavailable static model references with the selected targets and updating valid resource snapshots. Empty values, dynamic variable references, and Embedding models are skipped (changing an Embedding model requires an index rebuild in the knowledge base settings).
+3. **Inspect Counts and Retry**: After execution, the modal reports **Records scanned**, **References replaced**, **References skipped**, **Conflicts**, and **Failed records** per resource type (`Dataset`, `App`, `App version`) along with failure samples. If concurrent edits or interruptions occur, click **Run again** with the same mapping to process remaining unavailable references.

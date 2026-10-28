@@ -42,6 +42,7 @@ Add the tool through the application's tool selector and describe when to use it
 | --- | --- |
 | 401 / 403 | Authentication value, service authorization scope, and expiration |
 | 404 | Service address, path, and request method |
+| Non-2xx status code (e.g., 400 / 422 / 500) | The system includes the downstream HTTP response body in the tool error text; expand the execution details to inspect the upstream error code and message directly |
 | Timeout or network failure | DNS, egress, TLS, and target service status from the FastGPT server |
 | Argument or schema failure | Types, required values, body format, and actual response structure |
 

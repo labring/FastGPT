@@ -13,6 +13,12 @@ Creating an application creates its initial published version. The editor saves 
 
 The published snapshot contains workflow nodes, edges, and chat configuration. Current application metadata, such as its name and avatar, updates independently. Existing conversations also carry message history, variables, and execution state. Start a new conversation to assess the behavior of newly published configuration clearly.
 
+| Configuration State | Accessed By | Included Scope | When Changes Take Effect |
+| --- | --- | --- | --- |
+| **Editor Draft** | Application editor canvas and the right-hand Debug Preview drawer | Current canvas nodes, edges, AI parameters, prompts, and tool bindings | Takes effect immediately in editor debugging after auto-save or clicking **Save Only** |
+| **Published Version** | Portal (`/chat`), share links, API (`/v1/chat/completions`), MCP services, WeCom/Feishu/DingTalk/WeChat channels, and scheduled triggers | Workflow topology, system configuration, and resource snapshot captured at publish time | Takes effect across all external channels immediately after clicking **Save → Save and Publish** |
+| **Version History** | "Version History" drawer in the top-right corner of the editor | Version names, timestamps, and snapshots of previous releases | Restoring a historical version updates the editor draft; click **Save and Publish** again to make it the live version |
+
 ## Publish a change
 
 1. Debug a known input in the editor and check output and citations.

@@ -38,8 +38,11 @@ Select the set to make multiple related operations available. Ensure description
 
 ## Troubleshoot connections
 
-- Parsing failure: verify the MCP endpoint, authentication headers, and reachability from the server.
-- Tools appear but execution fails: inspect arguments, external permissions, and the actual error.
-- Timeout: inspect provider status and the network path, then retry with a small input.
+| Symptom | Cause and Troubleshooting Steps |
+| --- | --- |
+| **Parse failure or invalid response format error** | Verify the MCP endpoint URL, authentication headers, and network reachability from the FastGPT server; non-compliant JSON-RPC 2.0 responses from the external server return an explicit format error hint |
+| **SSE session returns HTTP 404** | The external MCP server's SSE session expired or restarted; initiate a fresh request to establish a new session |
+| **Tools appear in the list but execution fails** | Expand execution details to read the error text returned by the MCP tool (such as rate limits, parameter validation errors, or permission denials); model-generated arguments are passed through with configured fixed arguments taking precedence |
+| **Request timeout** | Check external MCP service latency and network connectivity, and test with a minimal input in the tool set debug panel first |
 
 Store credentials in controlled configuration. Check external business permissions and FastGPT resource permissions separately.
