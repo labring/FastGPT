@@ -665,16 +665,10 @@ export const chats2GPTMessages = ({
           }
           contexts.forEach(({ toolCall, toolResponse }) => {
             if (previewDecision && toolCall.id === previewContext?.toolCallId) {
-              let original: Record<string, unknown> = {};
-              try {
-                const parsed = JSON.parse(String(toolResponse.content));
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-                  original = parsed;
-              } catch {}
-              toolResponse.content = JSON.stringify({
-                ...original,
-                ...getWorkflowBuilderPreviewToolResponse(previewDecision)
-              });
+              // 与续跑执行器使用相同的完整结果，避免合并等待占位改变 JSON 字段顺序。
+              toolResponse.content = JSON.stringify(
+                getWorkflowBuilderPreviewToolResponse(previewDecision)
+              );
             }
             aiResults.push({ ...toolResponse, dataId });
           });
@@ -771,22 +765,9 @@ export const chats2GPTMessages = ({
             const toolResponse = normalizedToolContexts.map(({ toolCall, toolResponse }) => {
               if (!previewDecision || toolCall.id !== previewContext?.toolCallId)
                 return toolResponse;
-              const originalResponse = (() => {
-                try {
-                  const parsed = JSON.parse(String(toolResponse.content));
-                  return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-                    ? parsed
-                    : {};
-                } catch {
-                  return {};
-                }
-              })();
               return {
                 ...toolResponse,
-                content: JSON.stringify({
-                  ...originalResponse,
-                  ...getWorkflowBuilderPreviewToolResponse(previewDecision)
-                })
+                content: JSON.stringify(getWorkflowBuilderPreviewToolResponse(previewDecision))
               };
             });
 

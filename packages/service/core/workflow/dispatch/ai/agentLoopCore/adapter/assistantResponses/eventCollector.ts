@@ -76,13 +76,15 @@ export const createAgentLoopCoreAssistantEventCollector = ({
   };
   /** 只有整个 value 都是隐藏工具时隐藏气泡；混合正文或计划仍按原样展示。 */
   const refreshVisibility = (group: AIChatItemValueItemType) => {
-    group.hideInUI =
+    // 逻辑与可能返回 hideReason 的 undefined；Mixed 字段落库前必须收敛为 boolean。
+    group.hideInUI = Boolean(
       !group.text?.content &&
       (!group.reasoning?.content || group.hideReason) &&
       !group.plan &&
       !group.interactive &&
       !!group.tools?.length &&
-      group.tools.every((tool) => tool.hideInUI);
+      group.tools.every((tool) => tool.hideInUI)
+    );
   };
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {

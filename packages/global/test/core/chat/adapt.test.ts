@@ -20,6 +20,90 @@ import type {
   WorkflowBuilderPreviewAction
 } from '@fastgpt/global/core/workflow/builder/type';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
+import { getWorkflowBuilderPreviewToolResponse } from '@fastgpt/global/core/workflow/builder/utils';
+
+describe('persisted Agent context boundaries', () => {
+  it('restores prepared input and hidden server continuations without resetting history', () => {
+    const messages: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Raw input' } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelResponseId: 'first',
+            inputContext: { content: 'Prepared input' },
+            text: { content: 'First answer' }
+          },
+          {
+            userMessage: { content: 'Continue until delivered', source: 'server' },
+            hideInUI: true
+          },
+          { modelResponseId: 'second', text: { content: 'Delivered' } }
+        ]
+      }
+    ];
+    const before = structuredClone(messages);
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+    expect(result.map((item) => [item.role, item.content, !!item.hideInUI])).toEqual([
+      ['user', 'Prepared input', false],
+      ['assistant', 'First answer', false],
+      ['user', 'Continue until delivered', true],
+      ['assistant', 'Delivered', false]
+    ]);
+    expect(messages).toEqual(before);
+  });
+
+  it.each([false, true])(
+    'pairs valid standalone interactive Ask without response metadata: answered=%s',
+    (answered) => {
+      const messages: ChatItemMiniType[] = [
+        { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Choose format' } }] },
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              interactive: {
+                type: 'agentAsk',
+                params: {
+                  askId: 'standalone-ask',
+                  blockerType: 'user_choice',
+                  description: 'Need format',
+                  questions: [
+                    {
+                      question: 'Format?',
+                      options: [
+                        { summary: 'Brief', value: 'Brief' },
+                        { summary: 'Full', value: 'Full' }
+                      ]
+                    }
+                  ]
+                },
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: []
+              }
+            }
+          ]
+        },
+        ...(answered
+          ? [{ obj: ChatRoleEnum.Human as const, value: [{ text: { content: 'Full' } }] }]
+          : [])
+      ];
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      expect(result.find((item) => item.role === 'assistant')?.tool_calls).toEqual([
+        expect.objectContaining({
+          id: 'standalone-ask',
+          function: expect.objectContaining({ name: 'ask_user' })
+        })
+      ]);
+      expect(result.find((item) => item.role === 'tool')).toMatchObject({
+        tool_call_id: 'standalone-ask',
+        content: answered ? expect.stringContaining('Full') : 'Waiting for user answer.'
+      });
+      expect(result.filter((item) => item.role === 'user')).toHaveLength(1);
+    }
+  );
+});
 
 describe('GPT2Chat mapping', () => {
   it('should map GPT roles to Chat roles correctly', () => {
@@ -3720,7 +3804,8 @@ describe('workflow preview answers', () => {
             toolAvatar: '',
             functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
             params: JSON.stringify(preview.params),
-            response: '{"ok":true,"state":"awaiting_confirmation","sentinel":"preserved"}'
+            response:
+              '{"ok":true,"state":"awaiting_confirmation","previewId":"preview-1","taskComplete":false}'
           }
         ]
       },
@@ -3773,8 +3858,7 @@ describe('workflow preview answers', () => {
         state,
         decision,
         previewId: 'preview-1',
-        taskComplete,
-        sentinel: 'preserved'
+        taskComplete
       });
       if (decision === 'revise') expect(JSON.parse(String(response?.content)).feedback).toBe(value);
       expect(
@@ -3785,6 +3869,32 @@ describe('workflow preview answers', () => {
       expect(messages).toEqual(before);
     }
   );
+
+  it.each([false, true])('replays the exact runtime response string for grouped=%s', (grouped) => {
+    const ai = makePreview();
+    if (ai.obj !== ChatRoleEnum.AI) throw new Error('Expected AI preview');
+    if (grouped) {
+      ai.value[0].modelResponseId = 'preview-response';
+      ai.value[0].toolCallIds = ['failed-preview', 'preview-call'];
+    }
+    const result = chats2GPTMessages({
+      messages: [ai, answer('Add review', 'revise')],
+      reserveId: false,
+      reserveTool: true
+    });
+    const response = result.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(response?.content).toBe(
+      JSON.stringify(
+        getWorkflowBuilderPreviewToolResponse({
+          previewId: 'preview-1',
+          action: 'revise',
+          feedback: 'Add review'
+        })
+      )
+    );
+  });
 
   it('treats plain confirmation text as revision feedback and preserves attached files', () => {
     const result = chats2GPTMessages({
@@ -3845,7 +3955,8 @@ describe('workflow preview answers', () => {
       expect(JSON.parse(String(response?.content))).toEqual({
         ok: true,
         state: 'awaiting_confirmation',
-        sentinel: 'preserved'
+        previewId: 'preview-1',
+        taskComplete: false
       });
       if (scenario !== 'missing') expect(result.at(-1)?.role).toBe('user');
     }

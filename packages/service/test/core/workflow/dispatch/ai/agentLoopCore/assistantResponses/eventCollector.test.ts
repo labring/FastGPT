@@ -1,6 +1,7 @@
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
+import { AIChatItemValueSchema } from '@fastgpt/global/core/chat/type';
 
 const call = (id: string, name = 'search', args = '{}') => ({
   id,
@@ -23,6 +24,28 @@ const plan = {
 };
 
 describe('createAgentLoopCoreAssistantEventCollector', () => {
+  it.each([true, false])(
+    'persists boolean visibility for reasoning responses: %s',
+    (showReasoning) => {
+      const collector = createAgentLoopCoreAssistantEventCollector({ showReasoning });
+      collector.emitEvent({
+        ...end('reasoning', [call('hidden')]),
+        reasoningText: 'Reasoning stays visible unless explicitly hidden'
+      });
+      collector.emitEvent({
+        type: 'tool_run_end',
+        call: call('hidden'),
+        response: 'Internal result',
+        hideInUI: true,
+        seconds: 0
+      });
+      const [value] = collector.assistantResponses;
+      // Mixed 字段中的 undefined 在 Mongo 写入时可能变成 null，必须保存明确的布尔值。
+      expect(value.hideInUI).toBe(!showReasoning);
+      expect(AIChatItemValueSchema.safeParse(value).success).toBe(true);
+    }
+  );
+
   it('keeps Preview decisions exclusively in Human records', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();
     collector.emitEvent({
