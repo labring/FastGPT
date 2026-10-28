@@ -20,6 +20,7 @@ import {
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getWorkflowFileContext } from '../../../utils/context';
 
 type ResponseType = {
   requestIds: string[];
@@ -120,6 +121,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       }),
       runtime: createAgentLoopCoreRuntimeWithEnvironment({
         teamId: workflowProps.runningUserInfo.teamId,
+        fileContext: getWorkflowFileContext(),
         environment: runtimeEnvironment,
         llmParams: {
           model: toolModel,

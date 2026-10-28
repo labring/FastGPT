@@ -447,6 +447,8 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
 
     const secondLLMCall = createLLMResponseMock.mock.calls[1][0];
+    expect(createLLMResponseMock.mock.calls[0][0].fileContext).toBeDefined();
+    expect(secondLLMCall.fileContext).toBe(createLLMResponseMock.mock.calls[0][0].fileContext);
     expect(secondLLMCall.body.messages).toContainEqual({
       role: 'tool',
       tool_call_id: 'call_search',

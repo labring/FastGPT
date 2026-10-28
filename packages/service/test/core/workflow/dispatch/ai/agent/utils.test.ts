@@ -29,6 +29,10 @@ describe('Agent read_files tool protocol', () => {
     const readFileTool = createReadFilesTool({ maxFileAmount: 3 });
 
     expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
+    expect(readFileTool.function.description).toContain('document files');
+    expect(readFileTool.function.description).toContain(
+      'Do not call this tool on images, audio, video'
+    );
     expect(readFileTool.function.parameters).toEqual({
       type: 'object',
       properties: {

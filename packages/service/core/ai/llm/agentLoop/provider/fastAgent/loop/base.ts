@@ -27,11 +27,16 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  createFileClassificationContext,
+  type FileClassificationContext
+} from '../../../../../../../common/file/classification';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
   completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
+  fileContext?: FileClassificationContext;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
     temperature?: number;
@@ -201,6 +206,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
   completionPolicy,
   batchToolSize = 1,
+  // 同次 Agent 运行的各轮模型请求共享分类缓存，支持上层传入已有上下文（如 WorkflowFileContext）。
+  fileContext = createFileClassificationContext(),
   body: { model, messages, max_tokens, ...body },
 
   userKey,
@@ -436,6 +443,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       error
     } = await createLLMResponse({
       throwError: false,
+      fileContext,
       body: {
         ...body,
         max_tokens,

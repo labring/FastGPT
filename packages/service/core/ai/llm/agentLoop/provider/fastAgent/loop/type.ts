@@ -6,6 +6,7 @@ import type {
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import type { FileClassificationContext } from '../../../../../../../common/file/classification';
 import type { CreateLLMResponseProps } from '../../../../request';
 import type { SandboxClient } from '../../../../../sandbox/application/runtime/client';
 import type { SandboxToolCallValidator } from '../../../../../sandbox/application/toolCall/type';
@@ -49,6 +50,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   useAudio?: boolean;
   useVideo?: boolean;
   extractFiles?: boolean;
+  fileContext?: FileClassificationContext;
   lang?: localeType;
   maxRunAgentTimes?: number;
   completionPolicy?: AgentLoopCompletionPolicy;

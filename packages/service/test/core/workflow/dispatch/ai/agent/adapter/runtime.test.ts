@@ -115,6 +115,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
       retainDatasetCite: undefined
     });
     expect(runtime.lang).toBe('zh-CN');
+    expect(runtime.fileContext).toEqual({
+      limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+    });
     expect(runtime.systemTools).toMatchObject({
       plan: { enabled: true },
       ask: { enabled: true }

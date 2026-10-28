@@ -15,6 +15,7 @@ import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { AIApiRequestMeta } from '../../config';
 import type { ToolCallEventType } from '../toolCall/type';
+import type { FileClassificationContext } from '../../../../common/file/classification';
 
 export type ResponseEvents = ToolCallEventType & {
   // 普通回答文本增量。非 stream 响应也会在解析完成后触发一次，保持上层处理一致。
@@ -61,6 +62,8 @@ export type CreateLLMResponseProps<
   throwError?: boolean;
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
+  /** 仅在服务端复用媒体分类结果，不进入模型请求体。 */
+  fileContext?: FileClassificationContext;
   // 上层中断时返回 true。底层会 abort stream 并用 finish_reason=close 表达正常关闭。
   isAborted?: () => boolean | undefined | null;
   custonHeaders?: Record<string, string>;

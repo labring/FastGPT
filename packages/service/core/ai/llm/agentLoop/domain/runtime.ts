@@ -1,6 +1,7 @@
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/llm/type';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { FileClassificationContext } from '../../../../../common/file/classification';
 import type { CreateLLMResponseProps } from '../../request';
 import type { AgentLoopEvent } from './event';
 import type { AgentLoopInteractiveToolExecuteParams } from './interactive';
@@ -48,6 +49,7 @@ export type AgentLoopCompletionPolicy = (context: {
 export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   teamId: string;
   llmParams: AgentLoopLLMParams;
+  fileContext?: FileClassificationContext;
   responseParams?: AgentLoopResponseParams;
   lang?: localeType;
   systemTools?: AgentLoopSystemTools;

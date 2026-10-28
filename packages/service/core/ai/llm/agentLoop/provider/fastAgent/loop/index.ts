@@ -148,6 +148,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     maxRunAgentTimes: runtime.maxRunAgentTimes ?? 100,
     completionPolicy: runtime.completionPolicy,
     batchToolSize: runtime.batchToolSize ?? 5,
+    fileContext: runtime.fileContext,
     childrenInteractiveParams: input.childrenInteractiveParams,
     body: {
       model: runtime.model,
