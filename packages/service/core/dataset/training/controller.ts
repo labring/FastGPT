@@ -311,7 +311,7 @@ export const pushDataListToTrainingQueue = async ({
       // ordered: true 模式下,成功必定等于批次大小
       insertedCount += result.insertedCount;
 
-      await persistDatasetDataImages({ datasetId, data: batch, session });
+      await persistDatasetDataImages({ teamId: String(teamId), datasetId, data: batch, session });
 
       logger.debug('Training data insert progress', {
         insertedCount,

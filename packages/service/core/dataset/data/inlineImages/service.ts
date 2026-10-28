@@ -8,24 +8,26 @@ import type { ClientSession } from '../../../../common/mongo';
 import { MongoS3TTL } from '../../../../common/s3/models/ttl';
 import { S3Buckets } from '../../../../common/s3/config/constants';
 import { createOpaqueS3FileKey } from '../../../../common/s3/opaqueKey';
-import { removeS3TTL, uploadImage2S3Bucket } from '../../../../common/s3/utils';
+import { uploadImage2S3Bucket } from '../../../../common/s3/utils';
 import { normalizeMimeType, resolveMimeExtension } from '../../../../common/s3/utils/mime';
-import { isAuthorizedDatasetFileS3Key } from '../../../../common/s3/sources/dataset/key';
 import { isValidImageContentType } from '../../../../common/file/image/utils';
 import {
   detectUploadFileEvidence,
   resolveUploadFile
 } from '../../../../common/s3/uploadPolicy/service';
+import { getDatasetInlineImageOwner } from './entity';
 
 /**
  * 将已鉴权 API 分块中的内嵌图片转存到所属知识库；只替换图片地址，保留正文和分块边界。
- * 每个请求内复用相同 data URL。上传在训练事务外执行，先登记临时 TTL，入库失败或分块
- * 被过滤时由既有清理任务回收；上传错误向调用方传播，不能静默删除用户图片。
+ * 每个请求内复用相同 data URL。上传在训练事务外执行，先登记持久归属与引用检查记录，
+ * 后续定时检查最后引用并回收；上传错误向调用方传播，不能静默删除用户图片。
  */
 export const normalizeDatasetDataImages = async <T extends { q?: string; a?: string }>({
+  teamId,
   datasetId,
   data
 }: {
+  teamId: string;
   datasetId: string;
   data: T[];
 }): Promise<T[]> => {
@@ -62,7 +64,7 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
           evidence
         });
         const { objectKey } = createOpaqueS3FileKey({
-          prefix: ['dataset', datasetId],
+          prefix: ['dataset', datasetId, 'inline-images'],
           filename: file.filename
         });
 
@@ -70,7 +72,8 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
         await MongoS3TTL.create({
           minioKey: objectKey,
           bucketName: S3Buckets.private,
-          expiredTime: addHours(new Date(), 3)
+          expiredTime: addHours(new Date(), 3),
+          datasetInlineImage: { teamId, datasetId }
         });
         key = await uploadImage2S3Bucket('private', {
           uploadKey: objectKey,
@@ -100,30 +103,45 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
 };
 
 /**
- * 仅为实际进入训练队列的分块保留图片，TTL 删除与队列写入使用同一事务。
- * 同知识库之外的 key 不参与持久化，过滤掉的分块和失败事务继续保留到期清理记录。
+ * 写入引用时同事务更新图片归属记录，和回收事务竞争同一文档锁。
+ * 待删除或已回收的图片不能重新引用；持久记录会在最后一个分块/历史/任务引用消失后回收。
  */
 export const persistDatasetDataImages = async ({
+  teamId,
   datasetId,
   data,
   session
 }: {
+  teamId: string;
   datasetId: string;
-  data: Array<{ q?: string; a?: string }>;
+  data: Array<{ q?: string; a?: string; imageId?: string }>;
   session: ClientSession;
 }) => {
   const keys = new Set(
-    data.flatMap(({ q, a }) =>
-      [q ?? '', a ?? ''].flatMap((text) =>
-        matchDocumentImages(text)
-          .map((image) =>
+    data.flatMap(({ q, a, imageId }) =>
+      [
+        imageId ?? '',
+        ...[q ?? '', a ?? ''].flatMap((text) =>
+          matchDocumentImages(text).map((image) =>
             image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url
           )
-          .filter((key) => isAuthorizedDatasetFileS3Key({ key, datasetId }))
-      )
+        )
+      ].filter((key) => getDatasetInlineImageOwner(key) === String(datasetId))
     )
   );
   if (keys.size > 0) {
-    await removeS3TTL({ key: [...keys], bucketName: 'private', session });
+    const renewed = await MongoS3TTL.updateMany(
+      {
+        minioKey: { $in: [...keys] },
+        bucketName: S3Buckets.private,
+        'datasetInlineImage.teamId': teamId,
+        'datasetInlineImage.datasetId': datasetId,
+        'datasetInlineImage.cleanupPending': { $ne: true }
+      },
+      { $set: { expiredTime: addHours(new Date(), 3) } },
+      { session }
+    );
+    if (renewed.matchedCount !== keys.size)
+      throw new UserError('Inline image is no longer available');
   }
 };

@@ -85,6 +85,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
 
   // 在事务重试之外转存图片；长度检查和实际训练都使用替换后的正文。
   const normalizedData = await normalizeDatasetDataImages({
+    teamId: String(teamId),
     datasetId: String(collection.datasetId),
     data
   });

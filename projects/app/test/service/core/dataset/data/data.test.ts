@@ -198,6 +198,77 @@ describe('Dataset data service', () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 
+  describe('managed inline image references', () => {
+    it.each([false, true])(
+      'only creates references to available images (cleanup pending: %s)',
+      async (pending) => {
+        const { root, dataset, collection } = await createDatasetContext();
+        const key = `dataset/${dataset._id}/inline-images/file/${'a'.repeat(32)}.png`;
+        await MongoS3TTL.create({
+          bucketName: S3Buckets.private,
+          minioKey: key,
+          expiredTime: new Date(Date.now() + 3600000),
+          datasetInlineImage: {
+            teamId: String(root.teamId),
+            datasetId: String(dataset._id),
+            cleanupPending: pending
+          }
+        });
+        const create = createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: `![image](${key})`,
+          embeddingModel
+        });
+        if (pending) {
+          await expect(create).rejects.toThrow('Inline image is no longer available');
+          expect(await MongoDatasetData.countDocuments({ datasetId: dataset._id })).toBe(0);
+        } else {
+          await expect(create).resolves.toHaveProperty('insertId');
+        }
+        expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(1);
+      }
+    );
+
+    it.each(
+      (['full', 'system'] as const).flatMap((kind) =>
+        [false, true].map((pending) => ({ kind, pending }))
+      )
+    )(
+      'only edits references to available images on $kind save (pending: $pending)',
+      async ({ kind, pending }) => {
+        const { data, root, dataset } = await createMongoData();
+        const key = `dataset/${dataset._id}/inline-images/file/${'a'.repeat(32)}.png`;
+        await MongoS3TTL.create({
+          bucketName: S3Buckets.private,
+          minioKey: key,
+          expiredTime: new Date(Date.now() + 3600000),
+          datasetInlineImage: {
+            teamId: String(root.teamId),
+            datasetId: String(dataset._id),
+            cleanupPending: pending
+          }
+        });
+        const q = `![image](${key})`;
+        const props = { dataId: String(data._id), q, a: '', model: embeddingModel };
+        const update =
+          kind === 'full'
+            ? updateDatasetDataByIndexes({ ...props, indexes: [] })
+            : updateDatasetDataSystemIndexes(props);
+        if (pending) {
+          await expect(update).rejects.toThrow('Inline image is no longer available');
+          expect((await MongoDatasetData.findById(data._id).lean())?.q).toBe('old question');
+        } else {
+          await expect(update).resolves.toHaveProperty('tokens');
+          expect((await MongoDatasetData.findById(data._id).lean())?.q).toBe(q);
+        }
+        expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(1);
+      }
+    );
+  });
+
   describe('manual repair of failed data', () => {
     const cases = [
       {

@@ -37,12 +37,24 @@ const S3TTLSchema = new Schema({
     type: Date,
     required: true
   },
+  datasetInlineImage: {
+    type: new Schema(
+      {
+        teamId: { type: String, required: true },
+        datasetId: { type: Schema.Types.ObjectId, required: true },
+        cleanupPending: { type: Boolean, default: false }
+      },
+      { _id: false }
+    ),
+    required: false
+  },
   multipart: {
     type: S3MultipartTTLSchema,
     required: false
   }
 });
 
+// 图片归属查询复用过期扫描和 bucket/key 索引。
 defineIndex(S3TTLSchema, { key: { expiredTime: 1 } });
 defineIndex(S3TTLSchema, { key: { bucketName: 1, minioKey: 1 } });
 

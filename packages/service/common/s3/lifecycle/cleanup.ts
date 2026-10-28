@@ -3,6 +3,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { setCron } from '../../system/cron';
 import { checkTimerLock } from '../../system/timerLock/utils';
 import { TimerIdEnum } from '../../system/timerLock/constants';
+import { claimDatasetInlineImageCleanup } from '../../../core/dataset/data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -31,6 +32,14 @@ export async function clearExpiredMinioFiles() {
         const bucket = global.s3BucketMap[bucketName];
         const multipartUploadId = file.multipart?.uploadId?.trim();
         const hasMultipartMarker = file.multipart !== undefined && file.multipart !== null;
+
+        // 内嵌图片保留归属记录，直到最后引用消失并由 worker 完成物理删除。
+        if (file.datasetInlineImage) {
+          if (bucket && (await claimDatasetInlineImageCleanup(file))) {
+            await bucket.addDeleteJob({ key: file.minioKey });
+          }
+          continue;
+        }
 
         if (bucket) {
           if (hasMultipartMarker) {

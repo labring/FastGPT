@@ -13,6 +13,10 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getModelTestDefaults } from '@test/modelCache';
 import { getRootUser } from '@test/datas/users';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { clearExpiredMinioFiles } from '@fastgpt/service/common/s3/lifecycle/cleanup';
+import * as datasetS3 from '@fastgpt/service/common/s3/sources/dataset';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -41,14 +45,18 @@ describe('API dataset inline images', () => {
       },
       { q: 'next', a: `<table><tr><td><img alt="two" src="${image}" width="12"></td></tr></table>` }
     ];
-    const normalized = await normalizeDatasetDataImages({ datasetId, data });
+    const normalized = await normalizeDatasetDataImages({
+      teamId: '507f1f77bcf86cd799439013',
+      datasetId,
+      data
+    });
     const key = vi.mocked(s3Utils.uploadImage2S3Bucket).mock.calls[0][1].uploadKey;
 
     expect(normalized[0]).toEqual({ ...data[0], q: data[0].q.replace(image, key) });
     expect(normalized[1]).toEqual({ ...data[1], a: data[1].a!.replace(image, key) });
     expect(normalized[0].q).toContain(external);
     expect(data[0].q).toContain(image);
-    expect(key).toMatch(new RegExp(`^dataset/${datasetId}/file/[a-f0-9]{32}\\.png$`));
+    expect(key).toMatch(new RegExp(`^dataset/${datasetId}/inline-images/file/[a-f0-9]{32}\\.png$`));
     expect(s3Utils.uploadImage2S3Bucket).toHaveBeenCalledTimes(1);
     expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
@@ -58,13 +66,16 @@ describe('API dataset inline images', () => {
       { q: '  text\n\n\n\\[literal\\]', a: `![stored](dataset/${datasetId}/file.png)` },
       {}
     ];
-    expect(await normalizeDatasetDataImages({ datasetId, data })).toEqual(data);
+    expect(
+      await normalizeDatasetDataImages({ teamId: '507f1f77bcf86cd799439013', datasetId, data })
+    ).toEqual(data);
     expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
   });
 
   it('passes decoded image bytes and MIME to the upload helper', async () => {
     const data = await normalizeDatasetDataImages({
+      teamId: '507f1f77bcf86cd799439013',
       datasetId,
       data: [{ q: `![pixel](${image})` }]
     });
@@ -73,7 +84,7 @@ describe('API dataset inline images', () => {
       expect.objectContaining({
         buffer: Buffer.from(image.split(',')[1], 'base64'),
         mimetype: 'image/png',
-        uploadKey: expect.stringContaining(`dataset/${datasetId}/file/`)
+        uploadKey: expect.stringContaining(`dataset/${datasetId}/inline-images/file/`)
       })
     );
     expect(data[0].q).not.toContain('base64,');
@@ -83,6 +94,7 @@ describe('API dataset inline images', () => {
   it('retains earlier uploaded images for cleanup if a later image is invalid', async () => {
     await expect(
       normalizeDatasetDataImages({
+        teamId: '507f1f77bcf86cd799439013',
         datasetId,
         data: [{ q: `![valid](${image})` }, { q: '![invalid](data:image/png;base64,not-valid!)' }]
       })
@@ -100,7 +112,11 @@ describe('API dataset inline images', () => {
     image.replace('image/png', 'image/jpeg')
   ])('rejects malformed or mismatched image content before uploading: %s', async (url) => {
     await expect(
-      normalizeDatasetDataImages({ datasetId, data: [{ q: `![bad](${url})` }] })
+      normalizeDatasetDataImages({
+        teamId: '507f1f77bcf86cd799439013',
+        datasetId,
+        data: [{ q: `![bad](${url})` }]
+      })
     ).rejects.toThrow();
     expect(s3Utils.uploadImage2S3Bucket).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(0);
@@ -109,7 +125,11 @@ describe('API dataset inline images', () => {
   it('propagates storage failures and retains the cleanup record', async () => {
     vi.mocked(s3Utils.uploadImage2S3Bucket).mockRejectedValueOnce(new Error('storage unavailable'));
     await expect(
-      normalizeDatasetDataImages({ datasetId, data: [{ q: `![one](${image})` }] })
+      normalizeDatasetDataImages({
+        teamId: '507f1f77bcf86cd799439013',
+        datasetId,
+        data: [{ q: `![one](${image})` }]
+      })
     ).rejects.toThrow('storage unavailable');
     expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
@@ -119,6 +139,7 @@ describe('API dataset inline images', () => {
     async (mode) => {
       const root = await getRootUser();
       const data = await normalizeDatasetDataImages({
+        teamId: String(root.teamId),
         datasetId,
         data: [{ q: `q ![one](${image})`, chunkIndex: 9 }]
       });
@@ -140,7 +161,9 @@ describe('API dataset inline images', () => {
           : preCreateDatasetDataAndPushToTrainingQueue(props);
       });
       expect(result.insertLen).toBe(1);
-      expect(await MongoS3TTL.countDocuments()).toBe(0);
+      expect(await MongoS3TTL.findOne({}).lean()).toMatchObject({
+        datasetInlineImage: { teamId: String(root.teamId), cleanupPending: false }
+      });
       expect(await MongoDatasetTraining.findOne({ datasetId }).lean()).toMatchObject({
         q: data[0].q,
         chunkIndex: 9
@@ -157,6 +180,7 @@ describe('API dataset inline images', () => {
   it('keeps TTL records when the training transaction rolls back', async () => {
     const root = await getRootUser();
     const data = await normalizeDatasetDataImages({
+      teamId: String(root.teamId),
       datasetId,
       data: [{ q: `q ![one](${image})` }]
     });
@@ -183,6 +207,7 @@ describe('API dataset inline images', () => {
   it('retains cleanup records for filtered chunks and foreign dataset references', async () => {
     const root = await getRootUser();
     const data = await normalizeDatasetDataImages({
+      teamId: String(root.teamId),
       datasetId,
       data: [{ q: `q ![one](${image})` }]
     });
@@ -217,5 +242,61 @@ describe('API dataset inline images', () => {
     expect(await MongoS3TTL.find({}).distinct('minioKey')).toEqual(
       expect.arrayContaining([key, foreignKey])
     );
+  });
+
+  it('reclaims persisted inline images after a source-less collection is deleted', async () => {
+    vi.spyOn(datasetS3, 'getS3DatasetSource').mockReturnValue({
+      deleteDatasetFilesByKeys: vi.fn().mockResolvedValue(undefined)
+    } as any);
+    const root = await getRootUser();
+    const collection = await MongoDatasetCollection.create({
+      _id: collectionId,
+      datasetId,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      name: 'API chunks',
+      type: 'virtual'
+    });
+    const data = await normalizeDatasetDataImages({
+      teamId: String(root.teamId),
+      datasetId,
+      data: [{ q: `q ![one](${image})` }]
+    });
+    const key = vi.mocked(s3Utils.uploadImage2S3Bucket).mock.calls[0][1].uploadKey;
+    await mongoSessionRun((session) =>
+      preCreateDatasetDataAndPushToTrainingQueue({
+        datasetId,
+        collectionId,
+        data,
+        session,
+        mode: TrainingModeEnum.index,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        billId: 'test',
+        vectorModel: getModelTestDefaults().embedding!
+      })
+    );
+    await mongoSessionRun((session) =>
+      delCollection({
+        collections: [collection.toObject()],
+        session,
+        delImg: true,
+        delFile: true
+      })
+    );
+    expect(await MongoDatasetCollection.countDocuments()).toBe(0);
+    expect(await MongoDatasetData.countDocuments()).toBe(0);
+    expect(await MongoDatasetTraining.countDocuments()).toBe(0);
+
+    const previousBuckets = global.s3BucketMap;
+    const addDeleteJob = vi.fn().mockResolvedValue(undefined);
+    global.s3BucketMap = { [S3Buckets.private]: { addDeleteJob } } as any;
+    try {
+      await MongoS3TTL.updateMany({}, { expiredTime: new Date(0) });
+      await clearExpiredMinioFiles();
+      expect(addDeleteJob).toHaveBeenCalledWith({ key });
+    } finally {
+      global.s3BucketMap = previousBuckets;
+    }
   });
 });

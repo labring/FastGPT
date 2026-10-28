@@ -122,6 +122,7 @@ export function truncateFilename(
   return truncatedName + extension;
 }
 
+/** 普通上传完成后移除临时 TTL；内嵌图片的归属记录由引用回收流程管理。 */
 export function removeS3TTL({
   key,
   bucketName,
@@ -137,6 +138,7 @@ export function removeS3TTL({
     return MongoS3TTL.deleteMany(
       {
         minioKey: { $in: key },
+        datasetInlineImage: { $exists: false },
         bucketName: S3Buckets[bucketName]
       },
       { session }
@@ -147,6 +149,7 @@ export function removeS3TTL({
     return MongoS3TTL.deleteOne(
       {
         minioKey: key,
+        datasetInlineImage: { $exists: false },
         bucketName: S3Buckets[bucketName]
       },
       { session }
