@@ -206,21 +206,6 @@ const mergeNodeResponse = (
     };
   }
 
-  const deepSearchModel = incoming.deepSearchResult?.model || current.deepSearchResult?.model;
-  if (deepSearchModel) {
-    merged.deepSearchResult = {
-      ...(current.deepSearchResult || {}),
-      ...(incoming.deepSearchResult || {}),
-      model: deepSearchModel,
-      inputTokens:
-        (current.deepSearchResult?.inputTokens || 0) +
-        (incoming.deepSearchResult?.inputTokens || 0),
-      outputTokens:
-        (current.deepSearchResult?.outputTokens || 0) +
-        (incoming.deepSearchResult?.outputTokens || 0)
-    };
-  }
-
   return merged;
 };
 

@@ -119,9 +119,7 @@ describe('extractAppResources', () => {
             createInput(NodeInputKeyEnum.datasetSearchUsingReRank, true),
             createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank-model-id'),
             createInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true),
-            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id'),
-            createInput(NodeInputKeyEnum.datasetDeepSearch, true),
-            createInput(NodeInputKeyEnum.datasetDeepSearchModelId, 'deep-search-model-id')
+            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id')
           ]
         }),
         createNode({
