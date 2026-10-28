@@ -88,7 +88,7 @@ export async function getInitConfig() {
 const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
-  openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
+  openAPIDocUrl: 'https://doc.fastgpt.io/en/openapi/intro',
   enable_team_plugin_upload: false,
   enable_team_model: false,
   appTemplateCourse:

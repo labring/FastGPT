@@ -46,7 +46,7 @@ test('production language URLs redirect to their owning host', async () => {
       resolve(response);
     }).on('error', reject);
   });
-  assert.equal(response.statusCode, 308);
+  assert.equal(response.statusCode, 301);
   assert.equal(response.headers.location, 'https://doc.fastgpt.io/en/openapi/intro?source=language');
 });
 
@@ -62,9 +62,30 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     assert.ok(html.includes('<link rel="alternate" hrefLang="x-default" href="https://doc.fastgpt.io/en/openapi/intro"'));
     assert.ok(html.includes('"@type":"TechArticle"'));
     assert.ok(html.includes(`https://${host}/favicon/favicon.svg`));
+    assert.ok(html.includes(`https://${host}/og-image.png`));
     assert.ok(html.includes('/og-image.png'));
     const filename = locale === 'en' ? 'intro.en.mdx' : 'intro.mdx';
     assert.ok(html.includes(`https://github.com/labring/FastGPT/blob/main/document/content/openapi/${filename}`));
+  });
+
+  test(`${locale} getting-started breadcrumb list deduplicates URLs and utility/deprecated pages emit noindex`, async () => {
+    const homeResponse = await fetch(`${origin}/${locale}/guide/getting-started`);
+    assert.equal(homeResponse.status, 200);
+    const homeHtml = await homeResponse.text();
+    const ldScripts = [...homeHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
+      JSON.parse(m[1])
+    );
+    const breadcrumb = ldScripts.find((item) => item['@type'] === 'BreadcrumbList');
+    assert.ok(breadcrumb, 'BreadcrumbList JSON-LD present');
+    const urls = breadcrumb.itemListElement.map((item) => item.item);
+    assert.equal(new Set(urls).size, urls.length, 'BreadcrumbList URLs are unique');
+
+    for (const noindexRoute of [`/${locale}/toc`, `/${locale}/guide/chat/htmlRendering`]) {
+      const res = await fetch(`${origin}${noindexRoute}`);
+      assert.equal(res.status, 200, noindexRoute);
+      const body = await res.text();
+      assert.ok(body.includes('noindex'), `Expected noindex on ${noindexRoute}`);
+    }
   });
 
   test(`${locale} unknown topic returns HTTP 404`, async () => {
@@ -98,7 +119,7 @@ test('legacy prefix redirects match path segments and retain encoded query value
     ['/zh-CN/self-host/config/json', '/zh-CN/self-host/config/env'],
     ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
     ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
-    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started/examples']
+    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started']
   ]) {
     const query = '?source=bookmark&value=a%2Fb%20c';
     const response = await fetch(`${origin}${legacy}${query}`, { redirect: 'manual' });
@@ -106,6 +127,8 @@ test('legacy prefix redirects match path segments and retain encoded query value
     const destination = new URL(response.headers.get('location'), origin);
     assert.equal(destination.pathname, target);
     assert.deepEqual([...destination.searchParams], [...new URLSearchParams(query)]);
+    const targetResponse = await fetch(`${origin}${destination.pathname}`, { redirect: 'manual' });
+    assert.equal(targetResponse.status, 200, `Redirect target must return 200: ${destination.pathname}`);
   }
   for (const path of ['/en/FAQish', '/english/openapi/intro']) {
     const response = await fetch(`${origin}${path}`, { redirect: 'manual' });
@@ -117,4 +140,16 @@ test('legacy prefix redirects match path segments and retain encoded query value
       assert.equal(response.status, 404);
     }
   }
+});
+
+test('social preview image and static search export satisfy discovery contracts', async () => {
+  const ogResponse = await fetch(`${origin}/og-image.png`);
+  assert.equal(ogResponse.status, 200);
+  assert.match(ogResponse.headers.get('content-type') ?? '', /image\/png/);
+
+  const staticResponse = await fetch(`${origin}/static.json`);
+  assert.equal(staticResponse.status, 200);
+  const records = await staticResponse.json();
+  assert.ok(Array.isArray(records) && records.length > 0);
+  assert.ok(records.every((record) => !/\/toc$/.test(record.url)));
 });

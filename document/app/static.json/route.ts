@@ -5,10 +5,12 @@ import { source } from '@/lib/source';
 
 export const revalidate = false;
 
+/** Export canonical search records while excluding the directory index page. */
 export function GET() {
   const results: DocumentRecord[] = [];
 
   for (const page of source.getPages(getFastGPTDocsLocale())) {
+    if (/^toc(?:\.en)?\.mdx$/.test(page.data._file.path)) continue;
     results.push({
       _id: page.url,
       structured: page.data.structuredData,

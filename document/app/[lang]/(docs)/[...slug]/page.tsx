@@ -8,6 +8,7 @@ import { i18n } from '@/lib/i18n';
 import { generateArticleSchema, generateBreadcrumbSchema } from '@/lib/schema';
 import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { CalendarDays } from 'lucide-react';
+import { LocalizedLink } from '@/components/docs/LocalizedLink';
 import {
   UpgradeVersionTimeline,
   type UpgradeVersionTimelineItem
@@ -57,15 +58,24 @@ export default async function Page({
   const section = searchPath(tree.children, page.url)?.find(
     (node) => node.type === 'folder' && node.root
   );
+  const seenBreadcrumbUrls = new Set<string>();
   const breadcrumbItems = [
-    { name: 'FastGPT', url: `${domain}/${lang}/guide/getting-started` },
-    ...(section?.type === 'folder' && section.index && section.index.url !== page.url
-      ? [{ name: String(section.name), url: `${domain}${section.index.url}` }]
-      : []),
+    section?.type === 'folder' && page.url !== `/${lang}/guide/getting-started`
+      ? {
+          name: String(section.name),
+          url: section.index
+            ? `${domain}${section.index.url}`
+            : `${domain}/${lang}/guide/getting-started`
+        }
+      : { name: 'FastGPT', url: `${domain}/${lang}/guide/getting-started` },
     ...getBreadcrumbItems(page.url, tree)
       .filter((item) => item.url && typeof item.name === 'string')
       .map((item) => ({ name: String(item.name), url: `${domain}${item.url}` }))
-  ];
+  ].filter((item) => {
+    if (seenBreadcrumbUrls.has(item.url)) return false;
+    seenBreadcrumbUrls.add(item.url);
+    return true;
+  });
 
   // 生成结构化数据
   const articleSchema = generateArticleSchema({
@@ -118,7 +128,7 @@ export default async function Page({
         <DocsBody>
           <MDXContent
             components={getMDXComponents({
-              a: createRelativeLink(source, page)
+              a: createRelativeLink(source, page, LocalizedLink)
             })}
           />
           {isUpgradeTimeline && (
@@ -158,10 +168,13 @@ export async function generateMetadata(props: {
   if (languages.en) {
     languages['x-default'] = languages.en;
   }
+  const shouldNoIndex =
+    page.data.deprecated || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path);
 
   return {
     title: page.data.title,
     description: page.data.description,
+    ...(shouldNoIndex ? { robots: { index: false, follow: true } } : {}),
     alternates: {
       canonical: url,
       languages

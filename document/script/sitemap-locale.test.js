@@ -157,6 +157,7 @@ test('generateArticleSchema emits TechArticle with host-aligned favicon logo', (
   });
   assert.equal(schema['@type'], 'TechArticle');
   assert.equal(schema.publisher.logo.url, 'https://doc.fastgpt.cn/favicon/favicon.svg');
+  assert.equal(schema.image, 'https://doc.fastgpt.cn/og-image.png');
 });
 
 test('middleware resolves section landings, language roots, and historical paths to single-hop 301 targets', () => {
@@ -179,33 +180,53 @@ test('middleware resolves section landings, language roots, and historical paths
     ['/en/plugin', '/en/plugin/intro'],
     ['/zh-CN/faq/app', '/zh-CN/guide/build/faq'],
     ['/zh-CN/faq/dataset', '/zh-CN/guide/dataset/faq'],
-    ['/zh-CN/faq/external_channel_integration', '/zh-CN/guide/build/publish'],
+    ['/zh-CN/faq/external_channel_integration', '/zh-CN/guide/build/publish/versions'],
+    ['/zh-CN/use-cases/external-integration', '/zh-CN/guide/build/publish/versions'],
     ['/zh-CN/faq/other', '/zh-CN/guide/version/cloud/faq'],
     ['/zh-CN/faq/points_consumption', '/zh-CN/guide/version/cloud/faq'],
+    ['/zh-CN/faq/attention', '/zh-CN/self-host/troubleshooting/attention'],
+    ['/zh-CN/shopping_cart/intro', '/zh-CN/guide/version/commercial'],
     ['/zh-CN/docs/introduction/FAQ/chat', '/zh-CN/faq/chat'],
     ['/zh-CN/docs/introduction/FAQ/app', '/zh-CN/guide/build/faq'],
     ['/zh-CN/docs/introduction/FAQ/docker', '/zh-CN/self-host/troubleshooting/faq'],
     ['/zh-CN/self-host/config/json', '/zh-CN/self-host/config/env'],
+    ['/zh-CN/self-host/config/sandbox/common', '/zh-CN/self-host/config/sandbox/opensandbox'],
     ['/zh-CN/docs/introduction/development/configuration', '/zh-CN/self-host/config/env'],
+    ['/zh-CN/docs/introduction/development/signoz', '/zh-CN/self-host/config/signoz'],
     ['/zh-CN/docs/introduction/development/modelConfig/intro', '/zh-CN/self-host/config/model/intro'],
     ['/zh-CN/docs/introduction/development/modelConfig/one-api', '/zh-CN/self-host/config/model/intro'],
     ['/zh-CN/self-host/config/model/ai-proxy', '/zh-CN/self-host/config/model/intro'],
     ['/zh-CN/self-host/config/model/ppio', '/zh-CN/self-host/config/model/intro'],
+    ['/zh-CN/development/docker', '/zh-CN/self-host/deploy/docker'],
     ['/zh-CN/docs/introduction/development/proxy/nginx', '/zh-CN/self-host/deploy/docker'],
     ['/zh-CN/self-host/upgrading/4-15/4150', '/zh-CN/self-host/upgrading/4-15/41500'],
+    ['/zh-CN/self-host/upgrading/4-16/4163', '/zh-CN/self-host/upgrading/4-17/4170'],
     ['/zh-CN/docs/introduction/development/upgrading/48', '/zh-CN/self-host/upgrading/outdated/48'],
     ['/zh-CN/docs/introduction/development/upgrading/4110', '/zh-CN/self-host/upgrading/outdated/4110'],
+    ['/zh-CN/upgrading/4-8/48', '/zh-CN/self-host/upgrading/outdated/48'],
+    ['/zh-CN/upgrading/4-10/4100', '/zh-CN/self-host/upgrading/outdated/4100'],
+    ['/zh-CN/guide/build/agentv2/startup', '/zh-CN/guide/build/agentv2/vm'],
     ['/zh-CN/guide/build/workflow/nodes/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
     ['/zh-CN/docs/introduction/guide/dashboard/workflow/sandbox', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
+    ['/zh-CN/guide/dashboard/workflow/ai_chat', '/zh-CN/guide/build/workflow/nodes/ai_chat'],
     ['/zh-CN/guide/build/workflow/nodes/laf', '/zh-CN/guide/build/workflow/nodes/sandbox-v2'],
     ['/zh-CN/guide/build/tools/system-plugins/bing_search_plugin', '/zh-CN/plugin/team-installation'],
-    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started/examples'],
+    ['/zh-CN/use-cases/app-cases/dalle3', '/zh-CN/guide/getting-started'],
     ['/zh-CN/docs/introduction/guide/team_permissions/customDomain', '/zh-CN/guide/workspace/customDomain'],
     ['/zh-CN/docs/introduction/guide/course/collection_tags', '/zh-CN/guide/dataset/collection_tags'],
     ['/zh-CN/docs/introduction/guide/course/welcomeText', '/zh-CN/guide/build/general/welcomeText'],
-    ['/zh-CN/docs/introduction/guide/course/voiceInput', '/zh-CN/guide/build/general/voiceInput']
+    ['/zh-CN/docs/introduction/guide/course/voiceInput', '/zh-CN/guide/build/general/voiceInput'],
+    ['/zh-cn/docs/openapi/intro', '/zh-CN/openapi/intro'],
+    ['/zh-CN/openapi/intro/', '/zh-CN/openapi/intro'],
+    ['/zh-CN/guide/getting-started/index', '/zh-CN/guide/getting-started'],
+    ['/zh-CN/guide/knowledge_base', '/zh-CN/guide/dataset/rag'],
+    ['/zh-CN/guide/plugins', '/zh-CN/plugin/team-installation'],
+    ['/zh-CN/guide/DialogBoxes', '/zh-CN/guide/chat/html'],
+    ['/zh-CN/guide/team_permissions', '/zh-CN/guide/workspace/team/team_roles_permissions'],
+    ['/zh-CN/development/modelConfig', '/zh-CN/self-host/config/model/intro']
   ];
 
+  const contentRoot = path.join(__dirname, '../content');
   for (const [input, expected] of cases) {
     const request = new NextRequest(`http://localhost:3210${input}?ref=legacy`);
     const response = middleware(request);
@@ -213,5 +234,13 @@ test('middleware resolves section landings, language roots, and historical paths
     const location = new URL(response.headers.get('location'));
     assert.equal(location.pathname, expected, `${input} pathname`);
     assert.equal(location.search, '?ref=legacy', `${input} query`);
+
+    const [, locale, ...slugParts] = expected.split('/');
+    const relativeSlug = slugParts.join('/');
+    const ext = locale === 'en' ? '.en.mdx' : '.mdx';
+    const targetExists =
+      fs.existsSync(path.join(contentRoot, `${relativeSlug}${ext}`)) ||
+      fs.existsSync(path.join(contentRoot, relativeSlug, `index${ext}`));
+    assert.ok(targetExists, `Redirect target must exist in content/: ${expected}`);
   }
 });

@@ -14,6 +14,10 @@ const files = fs.readdirSync(root, { recursive: true })
       const { data, content } = matter(raw);
       const bodyWithoutFences = content.replace(/```[\s\S]*?```/g, '');
       assert.ok(!/^#\s+/m.test(bodyWithoutFences), `In-body H1 heading in ${name}`);
+      assert.ok(
+        !/!\[(?:\s*)\]\(/.test(bodyWithoutFences),
+        `Empty image alt text in ${name}`
+      );
       if (!/^toc(?:\.en)?\.mdx$/.test(name)) {
         const minDescLength = name.endsWith('.en.mdx') ? 40 : 20;
         assert.ok(
@@ -33,6 +37,7 @@ for (const locale of ['zh-CN', 'en']) {
   const counts = new Map();
   const owners = new Map();
   const titles = new Map();
+  const descriptions = new Map();
   // Fumadocs uses the nearest root for the sidebar and adjacent-page navigation.
   const visit = (node, parentRoot) => {
     const sectionRoot = node.root ? node : parentRoot;
@@ -51,6 +56,10 @@ for (const locale of ['zh-CN', 'en']) {
     const previousUrl = titles.get(page.data.title);
     assert.equal(previousUrl, undefined, `Duplicate ${locale} title "${page.data.title}": ${previousUrl} and ${page.url}`);
     titles.set(page.data.title, page.url);
+    const desc = String(page.data.description ?? '').trim();
+    const previousDescUrl = descriptions.get(desc);
+    assert.equal(previousDescUrl, undefined, `Duplicate ${locale} description "${desc}": ${previousDescUrl} and ${page.url}`);
+    descriptions.set(desc, page.url);
   }
   for (const topic of ['intro', 'quick-start', 'system-tool-development', 'model-presets', 'debugging-and-publishing', 'package-reference']) {
     assert.equal(owners.get(`/${locale}/plugin/${topic}`), tree.children[1], `Plugin author topic belongs to Developers: ${topic}`);

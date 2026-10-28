@@ -59,7 +59,7 @@ dry-run 中的迁移预览基于清理前的当前权限数据；如果 `cleanup
 - 旧 Milvus `modeldata` 集合存在且有数据：调用 `GET /api/admin/4162/milvus`，将旧向量和 MongoDB 中的索引文本合并迁移到 `modeldata_v2`，无需重新生成嵌入。
 - 使用 PG、OceanBase、SeekDB 或 openGauss 时无需执行此步骤，全文检索仍使用 MongoDB `$text`。
 
-备份、Milvus 镜像升级、dry-run、断点续跑、结果校验、旧表清理和回滚步骤请严格按照 [Milvus BM25 全文检索配置与迁移](/self-host/milvus-bm25) 执行。
+备份、Milvus 镜像升级、dry-run、断点续跑、结果校验、旧表清理和回滚步骤请严格按照 [Milvus BM25 全文检索配置与迁移](/zh-CN/self-host/milvus-bm25) 执行。
 
 ## 🚀 新增内容
 

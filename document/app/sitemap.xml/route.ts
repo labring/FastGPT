@@ -26,9 +26,11 @@ export function GET() {
       const rawLastModified =
         (docLastModifiedData as Record<string, string>)[filePath] ?? page.data.lastModified;
       const lastModified =
-        typeof rawLastModified === 'number' || rawLastModified instanceof Date
-          ? new Date(rawLastModified).toISOString()
-          : rawLastModified;
+        typeof rawLastModified === 'string'
+          ? rawLastModified
+          : rawLastModified
+            ? new Date(rawLastModified).toISOString()
+            : undefined;
       const routePath = page.url.replace(/^\/(?:zh-CN|en)/, '');
       const zhUrl = `${zhOrigin}/zh-CN${routePath}`;
       const enUrl = `${enOrigin}/en${routePath}`;

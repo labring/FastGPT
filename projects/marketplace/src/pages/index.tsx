@@ -415,7 +415,7 @@ const ToolkitMarketplace = () => {
             <I18nLngSelector />
             <Button
               onClick={() => {
-                window.open('https://doc.fastgpt.cn/plugin/system-tool-development', '_blank');
+                window.open('https://doc.fastgpt.cn/zh-CN/plugin/system-tool-development', '_blank');
               }}
             >
               {t('marketplace:plugin_development')}

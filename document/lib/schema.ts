@@ -18,6 +18,7 @@ export function generateArticleSchema(params: {
     headline: title,
     description,
     url,
+    image: `${origin}/og-image.png`,
     inLanguage: lang,
     datePublished: datePublished?.toISOString(),
     dateModified: dateModified?.toISOString(),

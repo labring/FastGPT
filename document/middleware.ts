@@ -12,10 +12,13 @@ const exactMap: Record<string, string> = {
 
   // Version / home.
   '/commercial/intro': '/guide/version/commercial',
+  '/shopping_cart/intro': '/guide/version/commercial',
   '/introduction': defaultHomePath,
   '/introduction/community': defaultHomePath,
   '/introduction/shopping_cart/intro': '/guide/version/commercial',
   '/introduction/cloud': '/guide/version/cloud/intro',
+  '/introduction/opensource': '/guide/version/opensource/intro',
+  '/introduction/version': '/guide/version/commercial',
   '/protocol/terms': '/guide/version/cloud/terms',
   '/protocol/privacy': '/guide/version/cloud/privacy',
 
@@ -27,50 +30,66 @@ const exactMap: Record<string, string> = {
   '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/self-host/upgrading/4-15/4150': '/self-host/upgrading/4-15/41500',
-  '/introduction/development/docker': '/self-host/deploy/docker',
-  '/introduction/development/sealos': '/self-host/deploy/sealos',
-  '/introduction/development/intro': '/self-host/dev',
-  '/introduction/development/object-storage': '/self-host/config/object-storage',
-  '/introduction/development/configuration': '/self-host/config/env',
+  '/self-host/upgrading/4-16/4163': '/self-host/upgrading/4-17/4170',
+  '/development/docker': '/self-host/deploy/docker',
+  '/development/sealos': '/self-host/deploy/sealos',
+  '/development/intro': '/self-host/dev',
+  '/self-host/object-storage': '/self-host/config/object-storage',
   '/self-host/configuration': '/self-host/config/env',
+  '/self-host/signoz': '/self-host/config/signoz',
   '/self-host/config/json': '/self-host/config/env',
+  '/self-host/config/sandbox/common': '/self-host/config/sandbox/opensandbox',
   '/self-host/config/model/ai-proxy': '/self-host/config/model/intro',
   '/self-host/config/model/one-api': '/self-host/config/model/intro',
+  '/development/one-api': '/self-host/config/model/intro',
+  '/development/modelConfig': '/self-host/config/model/intro',
+  '/self-host/modelConfig': '/self-host/config/model/intro',
+  '/self-host/config/model': '/self-host/config/model/intro',
   '/self-host/config/model/ppio': '/self-host/config/model/intro',
   '/self-host/design/design_plugin': '/plugin/intro',
   '/self-host/faq': '/self-host/troubleshooting/faq',
 
   // General config / getting started.
-  '/introduction/guide/course/quick-start': '/guide/getting-started/quick-start',
-  '/introduction/guide/course/ai_settings': '/guide/build/general/ai_settings',
-  '/introduction/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
-  '/introduction/guide/course/fileinput': '/guide/build/general/fileInput',
-  '/introduction/guide/course/fileInput': '/guide/build/general/fileInput',
-  '/introduction/guide/course/welcomeText': '/guide/build/general/welcomeText',
-  '/introduction/guide/course/voiceInput': '/guide/build/general/voiceInput',
-  '/introduction/guide/course/collection_tags': '/guide/dataset/collection_tags',
+  '/guide/course': '/guide/getting-started/quick-start',
+  '/guide/course/quick-start': '/guide/getting-started/quick-start',
+  '/guide/course/ai_settings': '/guide/build/general/ai_settings',
+  '/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
+  '/guide/course/fileinput': '/guide/build/general/fileInput',
+  '/guide/course/fileInput': '/guide/build/general/fileInput',
+  '/guide/course/welcomeText': '/guide/build/general/welcomeText',
+  '/guide/course/voiceInput': '/guide/build/general/voiceInput',
+  '/guide/course/collection_tags': '/guide/dataset/collection_tags',
 
   // Knowledge base third-party pages moved under dataset/third-party.
-  '/introduction/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
-  '/introduction/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
-  '/introduction/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
-  '/introduction/guide/knowledge_base/yuque_dataset':
-    '/guide/dataset/third-party/yuque_dataset',
-  '/introduction/guide/knowledge_base/dingtalk_dataset':
-    '/guide/dataset/third-party/dingtalk_dataset',
-  '/introduction/guide/knowledge_base/third_dataset':
-    '/guide/dataset/third-party/third_dataset',
-  '/introduction/guide/knowledge_base/RAG': '/guide/dataset/rag',
+  '/guide/knowledge_base': '/guide/dataset/rag',
+  '/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
+  '/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/guide/knowledge_base/yuque_dataset': '/guide/dataset/third-party/yuque_dataset',
+  '/guide/knowledge_base/dingtalk_dataset': '/guide/dataset/third-party/dingtalk_dataset',
+  '/guide/knowledge_base/third_dataset': '/guide/dataset/third-party/third_dataset',
+  '/guide/knowledge_base/RAG': '/guide/dataset/rag',
 
   // Dashboard pages that moved to different build sub-sections.
-  '/introduction/guide/dashboard/evaluation': '/guide/build/evaluation',
-  '/introduction/guide/dashboard/intro': '/guide/build/workflow/intro',
-  '/introduction/guide/dashboard/basic-mode': '/guide/build/chat-agent',
-  '/introduction/guide/dashboard/gapier': '/guide/build/tools/http_tools',
-  '/introduction/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
-  '/introduction/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/dashboard': '/guide/build/workflow/intro',
+  '/guide/workbench': '/guide/build/workflow/intro',
+  '/guide/dashboard/workflow': '/guide/build/workflow/intro',
+  '/guide/workbench/workflow': '/guide/build/workflow/intro',
+  '/guide/dashboard/evaluation': '/guide/build/evaluation',
+  '/guide/dashboard/intro': '/guide/build/workflow/intro',
+  '/guide/workbench/intro': '/guide/build/workflow/intro',
+  '/guide/dashboard/basic-mode': '/guide/build/chat-agent',
+  '/guide/workbench/basic-mode': '/guide/build/chat-agent',
+  '/guide/dashboard/gapier': '/guide/build/tools/http_tools',
+  '/guide/workbench/gapier': '/guide/build/tools/http_tools',
+  '/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
+  '/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+  '/guide/build/agentv2/startup': '/guide/build/agentv2/vm',
   '/guide/build/workflow/nodes/sandbox': '/guide/build/workflow/nodes/sandbox-v2',
   '/guide/build/workflow/nodes/laf': '/guide/build/workflow/nodes/sandbox-v2',
+  '/guide/plugins': '/plugin/team-installation',
+  '/guide/plugins/design_plugin': '/plugin/intro',
+  '/guide/plugins/dev_system_tool': '/plugin/system-tool-development',
   '/guide/build/tools/system-plugins/dev_system_tool': '/plugin/system-tool-development',
   '/guide/build/tools/system-plugins/bing_search_plugin': '/plugin/team-installation',
   '/guide/build/tools/system-plugins/doc2x_plugin_guide': '/plugin/team-installation',
@@ -79,15 +98,19 @@ const exactMap: Record<string, string> = {
 
   // Workspace.
   '/introduction/commercial': '/guide/version/commercial',
-  '/introduction/guide/team_permissions/customDomain': '/guide/workspace/customDomain',
+  '/guide/team_permissions': '/guide/workspace/team/team_roles_permissions',
   '/guide/workspace/team/customDomain': '/guide/workspace/customDomain',
+  '/guide/DialogBoxes': '/guide/chat/html',
+  '/guide/admin': '/guide/admin/platform-console',
 
   // Historical FAQ subpages.
   '/faq/app': '/guide/build/faq',
   '/faq/dataset': '/guide/dataset/faq',
-  '/faq/external_channel_integration': '/guide/build/publish',
+  '/faq/external_channel_integration': '/guide/build/publish/versions',
+  '/use-cases/external-integration': '/guide/build/publish/versions',
   '/faq/other': '/guide/version/cloud/faq',
   '/faq/points_consumption': '/guide/version/cloud/faq',
+  '/faq/attention': '/self-host/troubleshooting/attention',
   '/faq/docker': '/self-host/troubleshooting/faq',
   '/faq/error': '/self-host/troubleshooting/faq',
   '/faq/privateDeploy': '/self-host/troubleshooting/faq',
@@ -107,23 +130,24 @@ const prefixMap: Record<string, string> = {
   '/FAQ': '/faq',
   '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
+  '/introduction/guide': '/guide',
+  '/introduction/development': '/development',
+  '/development/openapi': '/openapi',
+  '/development/modelConfig': '/self-host/config/model',
   '/development': '/self-host',
 
   // Project code in PR 6880 changed these three old groups.
   '/use-cases/external-integration': '/guide/build/publish',
-  '/introduction/guide/dashboard/workflow': '/guide/build/workflow/nodes',
-  '/introduction/guide/knowledge_base': '/guide/dataset',
+  '/guide/dashboard/workflow': '/guide/build/workflow/nodes',
+  '/guide/workbench/workflow': '/guide/build/workflow/nodes',
+  '/guide/knowledge_base': '/guide/dataset',
 
   // Other moved documentation groups.
-  '/introduction/guide/plugins': '/guide/build/tools/system-plugins',
-  '/introduction/guide/team_permissions': '/guide/workspace/team',
-  '/introduction/guide/DialogBoxes': '/guide/chat',
-  '/introduction/guide/admin': '/guide/admin',
+  '/guide/plugins': '/guide/build/tools/system-plugins',
+  '/guide/team_permissions': '/guide/workspace/team',
+  '/guide/DialogBoxes': '/guide/chat',
 
-  '/introduction/development/openapi': '/openapi',
-  '/introduction/development/modelConfig': '/self-host/config/model',
   '/self-host/modelConfig': '/self-host/config/model',
-  '/introduction/development': '/self-host',
   '/introduction/version': '/guide/version',
   '/introduction/cloud': '/guide/version/cloud',
   '/introduction/opensource': '/guide/version/opensource',
@@ -133,18 +157,23 @@ const prefixMap: Record<string, string> = {
 const i18nMiddleware = createI18nMiddleware(i18n);
 const documentCacheControl = 'public, max-age=0, must-revalidate';
 
+/** Strip trailing slashes and /index suffixes from non-root paths. */
 function normalizePath(path: string) {
-  return path.length > 1 ? path.replace(/\/+$/, '') : path;
+  if (path.length <= 1) return path;
+  const trimmed = path.replace(/\/+$/, '');
+  return trimmed.endsWith('/index') ? trimmed.slice(0, -'/index'.length) || '/' : trimmed;
 }
 
 function applyRedirectMaps(path: string): string | null {
   const matchesPrefix = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
   if (path in exactMap) return exactMap[path];
-  if (matchesPrefix('/use-cases/app-cases')) return '/guide/getting-started/examples';
+  if (matchesPrefix('/use-cases/app-cases')) return '/guide/getting-started';
   if (matchesPrefix('/introduction/development/proxy') || matchesPrefix('/self-host/proxy')) {
     return '/self-host/deploy/docker';
   }
-  const outdatedUpgradeMatch = path.match(/^\/self-host\/upgrading\/(4(?:[0-9]|1[01])\d*)$/);
+  const outdatedUpgradeMatch = path.match(
+    /^\/self-host\/upgrading\/(?:4-(?:8|9|10|11)\/)?(4(?:[0-9]|1[01])\d*)$/
+  );
   if (outdatedUpgradeMatch) {
     return `/self-host/upgrading/outdated/${outdatedUpgradeMatch[1]}`;
   }
@@ -185,12 +214,21 @@ export default function middleware(request: NextRequest) {
   const hostLocale = host === 'doc.fastgpt.cn' ? 'zh-CN' : host === 'doc.fastgpt.io' ? 'en' : undefined;
   let lang = hostLocale ?? i18n.defaultLanguage;
   let pathWithoutLang = pathname;
+  let hasLegacyLocalePrefix = false;
 
   for (const language of i18n.languages) {
     if (pathname === `/${language}` || pathname.startsWith(`/${language}/`)) {
       lang = language;
       pathWithoutLang = pathname.slice(`/${language}`.length);
       break;
+    }
+  }
+  if (pathWithoutLang === pathname) {
+    const legacyZhMatch = pathname.match(/^\/(?:zh-cn|zh)(?=\/|$)(.*)$/i);
+    if (legacyZhMatch) {
+      lang = 'zh-CN';
+      pathWithoutLang = legacyZhMatch[1];
+      hasLegacyLocalePrefix = true;
     }
   }
 
@@ -206,12 +244,12 @@ export default function middleware(request: NextRequest) {
   // canonical paths (e.g. /upgrading) get redirected to their new home.
   const normalizedPath = normalizePath(pathWithoutLang);
   const mapped = resolveLegacyPath(normalizedPath);
-  if (mapped !== normalizedPath) {
+  if (mapped !== pathWithoutLang || hasLegacyLocalePrefix) {
     return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
   }
 
   if (hostLocale && lang !== hostLocale) {
-    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, lang), 308);
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, lang), 301);
   }
 
   // Build enhanced request headers so server components (e.g. (docs)/layout)
@@ -241,7 +279,7 @@ export default function middleware(request: NextRequest) {
   }
 
   if (hostLocale) {
-    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, hostLocale), 308);
+    return NextResponse.redirect(createRedirectUrl(normalizedPath, request, hostLocale), 301);
   }
 
   // No language prefix — check cookie for user's language preference
@@ -249,7 +287,7 @@ export default function middleware(request: NextRequest) {
   if (cookieLocale && i18n.languages.includes(cookieLocale)) {
     const newUrl = new URL(`/${cookieLocale}${pathname}`, request.url);
     newUrl.search = request.nextUrl.search;
-    return NextResponse.redirect(newUrl);
+    return NextResponse.redirect(newUrl, 301);
   }
 
   // Fall back to fumadocs i18n (Accept-Language detection / redirect)
@@ -259,6 +297,6 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
+    '/((?!api|_next/static|_next/image|favicon(?:\\.ico|/)|robots\\.txt|sitemap.*\\.xml|static\\.json|.*\\.(?:svg|png|jpe?g|webp)|deploy/.*|examples/.*).*)'
   ]
 };
