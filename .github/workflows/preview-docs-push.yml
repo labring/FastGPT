@@ -1,16 +1,13 @@
 name: Preview Docs Image — Push
 
 on:
+  pull_request_target:
+    types: [closed]
   workflow_run:
     workflows: ['Preview Docs Image — Build']
     types: [completed]
   issue_comment:
     types: [created]
-
-# A newer automatic preview cancels an older deployment; untrusted comments cannot cancel a running publish.
-concurrency:
-  group: 'preview-docs-push'
-  cancel-in-progress: ${{ github.event_name == 'workflow_run' }}
 
 permissions:
   contents: read
@@ -21,6 +18,7 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-24.04
+    if: ${{ github.event_name != 'pull_request_target' }}
     permissions:
       contents: read
       actions: read
@@ -188,6 +186,10 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: prNumber
               });
+              if (pullRequest.state !== 'open') {
+                core.info(`Skipping closed pull request #${prNumber}.`);
+                return;
+              }
               sha = pullRequest.head.sha;
               const buildRun = await findBuildRun(sha);
 
@@ -216,6 +218,10 @@ jobs:
     needs: prepare
     if: ${{ needs.prepare.outputs.should_publish == 'true' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: 'preview-docs-deploy-${{ needs.prepare.outputs.number }}'
+      cancel-in-progress: true
     permissions:
       contents: read
       packages: write
@@ -249,21 +255,212 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${SHA}
           docker push ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${SHA}
 
-      - name: Update deployment image
+      - name: Deploy isolated docs preview
+        id: deploy
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_CN }}
           IMAGE: ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.prepare.outputs.sha }}
+          PR_NUMBER: ${{ needs.prepare.outputs.number }}
         run: |
+          set -euo pipefail
+
+          BASE_NAME="fastgpt-doc-preview"
+          RESOURCE_NAME="${BASE_NAME}-pr-${PR_NUMBER}"
+          PREVIEW_HOST="${RESOURCE_NAME}.sealoshzh.site"
+          WORK_DIR=$(mktemp -d)
           KUBECONFIG_FILE=$(mktemp)
-          trap "rm -f $KUBECONFIG_FILE" EXIT
-          echo "$KUBE_CONFIG" > "$KUBECONFIG_FILE"
+          trap 'rm -rf "$WORK_DIR"; rm -f "$KUBECONFIG_FILE"' EXIT
+          printf '%s' "$KUBE_CONFIG" > "$KUBECONFIG_FILE"
           chmod 600 "$KUBECONFIG_FILE"
+          export KUBECONFIG="$KUBECONFIG_FILE"
 
-          kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-doc-preview \
-            fastgpt-doc-preview="$IMAGE"
+          # Clone the trusted preview workload so cluster-specific pod and ingress
+          # settings stay centralized in the existing base resources.
+          kubectl get deployment "$BASE_NAME" -o json > "$WORK_DIR/base-deployment.json"
+          if kubectl get service "$BASE_NAME" -o json > "$WORK_DIR/base-service.json" 2>/dev/null; then
+            BASE_SERVICE="$BASE_NAME"
+          else
+            BASE_LABELS=$(jq -c '.spec.template.metadata.labels // {}' "$WORK_DIR/base-deployment.json")
+            BASE_SERVICE=$(
+              kubectl get services -o json |
+                jq -r --argjson labels "$BASE_LABELS" '
+                  [
+                    .items[]
+                    | select(.spec.selector != null)
+                    | select((.spec.selector | to_entries | all(. as $entry | $labels[$entry.key] == $entry.value)))
+                    | .metadata.name
+                  ]
+                  | first // empty
+                '
+            )
+            if [[ -z "$BASE_SERVICE" ]]; then
+              echo "::error::Unable to find the base docs preview Service." >&2
+              exit 1
+            fi
+            kubectl get service "$BASE_SERVICE" -o json > "$WORK_DIR/base-service.json"
+          fi
 
-          kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-doc-preview \
-            originImageName="$IMAGE" --overwrite
+          BASE_INGRESS=$(
+            kubectl get ingress -o json |
+              jq -r --arg service "$BASE_SERVICE" '
+                [
+                  .items[]
+                  | select(
+                      .spec.defaultBackend.service.name? == $service
+                      or any(.spec.rules[]?.http.paths[]?; .backend.service.name == $service)
+                    )
+                  | .metadata.name
+                ]
+                | first // empty
+              '
+          )
+          if [[ -z "$BASE_INGRESS" ]]; then
+            echo "::error::Unable to find the base docs preview Ingress." >&2
+            exit 1
+          fi
+          kubectl get ingress "$BASE_INGRESS" -o json > "$WORK_DIR/base-ingress.json"
+
+          # Give every selected label a PR-specific value so the base Service cannot
+          # route traffic to an isolated PR workload.
+          SELECTOR=$(
+            jq -cn \
+              --argjson deployment "$(jq -c '.spec.selector.matchLabels // {}' "$WORK_DIR/base-deployment.json")" \
+              --argjson service "$(jq -c '.spec.selector // {}' "$WORK_DIR/base-service.json")" \
+              --arg value "pr-${PR_NUMBER}" \
+              --arg pr "$PR_NUMBER" \
+              '$deployment + $service | with_entries(.value = $value) + {"fastgpt.io/preview-pr": $pr}'
+          )
+
+          jq \
+            --arg name "$RESOURCE_NAME" \
+            --arg image "$IMAGE" \
+            --arg pr "$PR_NUMBER" \
+            --argjson selector "$SELECTOR" '
+              .metadata.name = $name
+              | del(
+                  .metadata.creationTimestamp,
+                  .metadata.generation,
+                  .metadata.managedFields,
+                  .metadata.ownerReferences,
+                  .metadata.resourceVersion,
+                  .metadata.uid,
+                  .status
+                )
+              | .metadata.labels = ((.metadata.labels // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | .metadata.annotations = ((.metadata.annotations // {}) + {
+                  "fastgpt.io/preview-pr": $pr,
+                  "originImageName": $image
+                })
+              | del(
+                  .metadata.annotations["deployment.kubernetes.io/revision"],
+                  .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"]
+                )
+              | .spec.replicas = 1
+              | .spec.selector.matchLabels = $selector
+              | .spec.template.metadata.labels = ((.spec.template.metadata.labels // {}) + $selector)
+              | .spec.template.metadata.annotations = ((.spec.template.metadata.annotations // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | .spec.template.spec.containers[0].image = $image
+            ' "$WORK_DIR/base-deployment.json" > "$WORK_DIR/deployment.json"
+
+          jq \
+            --arg name "$RESOURCE_NAME" \
+            --arg pr "$PR_NUMBER" \
+            --argjson selector "$SELECTOR" '
+              .metadata.name = $name
+              | del(
+                  .metadata.creationTimestamp,
+                  .metadata.generation,
+                  .metadata.managedFields,
+                  .metadata.ownerReferences,
+                  .metadata.resourceVersion,
+                  .metadata.uid,
+                  .spec.clusterIP,
+                  .spec.clusterIPs,
+                  .spec.healthCheckNodePort,
+                  .spec.ipFamilies,
+                  .spec.ipFamilyPolicy,
+                  .status
+                )
+              | .metadata.labels = ((.metadata.labels // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | .metadata.annotations = ((.metadata.annotations // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | del(
+                  .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"],
+                  .spec.allocateLoadBalancerNodePorts,
+                  .spec.externalTrafficPolicy,
+                  .spec.loadBalancerClass,
+                  .spec.loadBalancerIP,
+                  .spec.loadBalancerSourceRanges
+                )
+              | .spec.type = "ClusterIP"
+              | .spec.selector = $selector
+              | .spec.ports |= map(del(.nodePort))
+            ' "$WORK_DIR/base-service.json" > "$WORK_DIR/service.json"
+
+          jq \
+            --arg name "$RESOURCE_NAME" \
+            --arg host "$PREVIEW_HOST" \
+            --arg service "$RESOURCE_NAME" \
+            --arg pr "$PR_NUMBER" '
+              .metadata.name = $name
+              | del(
+                  .metadata.creationTimestamp,
+                  .metadata.generation,
+                  .metadata.managedFields,
+                  .metadata.ownerReferences,
+                  .metadata.resourceVersion,
+                  .metadata.uid,
+                  .status
+                )
+              | .metadata.labels = ((.metadata.labels // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | .metadata.annotations = ((.metadata.annotations // {}) + {
+                  "fastgpt.io/preview-pr": $pr
+                })
+              | del(.metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"])
+              | if .metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]? != null
+                then .metadata.annotations["external-dns.alpha.kubernetes.io/hostname"] = $host
+                else . end
+              | .spec.rules = ((.spec.rules // []) | map(
+                  .host = $host
+                  | if .http != null
+                    then .http.paths |= map(
+                      if .backend.service != null
+                      then .backend.service.name = $service
+                      else . end
+                    )
+                    else . end
+                ))
+              | if .spec.defaultBackend.service.name? != null
+                then .spec.defaultBackend.service.name = $service
+                else . end
+              | if (.spec.tls // [] | length) > 0
+                then .spec.tls |= map(.hosts = [$host])
+                else . end
+            ' "$WORK_DIR/base-ingress.json" > "$WORK_DIR/ingress.json"
+
+          kubectl apply \
+            -f "$WORK_DIR/deployment.json" \
+            -f "$WORK_DIR/service.json" \
+            -f "$WORK_DIR/ingress.json"
+
+          kubectl rollout status "deployment/$RESOURCE_NAME" --timeout=180s
+          curl --fail --silent --show-error \
+            --retry 12 \
+            --retry-delay 5 \
+            --retry-connrefused \
+            --retry-all-errors \
+            -o /dev/null "https://$PREVIEW_HOST"
+
+          echo "preview_url=https://$PREVIEW_HOST" >> "$GITHUB_OUTPUT"
 
       - name: Format preview timestamp
         id: preview_time
@@ -288,7 +485,7 @@ jobs:
             const commentBody = `${marker}
             ✅ **${mode}**
 
-            🔗 [👀 Click here to visit preview](https://xcldnthwehkh.sealoshzh.site)
+            🔗 [👀 Click here to visit preview](${{ steps.deploy.outputs.preview_url }})
 
             \`\`\`
             ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${{ needs.prepare.outputs.sha }}
@@ -311,3 +508,32 @@ jobs:
                 body: commentBody
               });
             }
+
+  cleanup:
+    if: ${{ github.event_name == 'pull_request_target' && github.event.action == 'closed' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: 'preview-docs-deploy-${{ github.event.pull_request.number }}'
+      cancel-in-progress: true
+    permissions:
+      contents: read
+
+    steps:
+      - name: Remove isolated docs preview
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_CN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          KUBECONFIG_FILE=$(mktemp)
+          trap 'rm -f "$KUBECONFIG_FILE"' EXIT
+          printf '%s' "$KUBE_CONFIG" > "$KUBECONFIG_FILE"
+          chmod 600 "$KUBECONFIG_FILE"
+
+          kubectl --kubeconfig "$KUBECONFIG_FILE" delete \
+            deployment,service,ingress \
+            -l "fastgpt.io/preview-pr=$PR_NUMBER" \
+            --ignore-not-found \
+            --wait=false
