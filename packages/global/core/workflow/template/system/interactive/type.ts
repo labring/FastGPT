@@ -7,7 +7,6 @@ import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
-import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
 import { AgentAskInteractiveSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
@@ -51,17 +50,32 @@ export type ChildrenInteractive = InteractiveNodeType & {
 
 export const ToolCallChildrenInteractiveSchema = z.object({
   type: z.literal('toolChildrenInteractive'),
-  params: z.object({
-    childrenResponse: z.any().meta({
-      ...OpenObjectOpenApiMeta,
-      description: '子工作流交互响应'
-    }),
-    toolParams: z.object({
-      // 兼容旧历史：新交互不再持久化完整 messages 快照，恢复时由 chat history 重建。
-      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema).optional(),
-      toolCallId: z.string() // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
+  params: z.preprocess(
+    (value) => {
+      // 旧包装只在读取边界提取 ID；快照和 toolParams 不进入新结构。
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !('toolCallId' in value) &&
+        'toolParams' in value &&
+        typeof value.toolParams === 'object' &&
+        value.toolParams !== null &&
+        'toolCallId' in value.toolParams
+      ) {
+        return { ...value, toolCallId: value.toolParams.toolCallId };
+      }
+      return value;
+    },
+    z.object({
+      toolCallId: z.string().min(1).meta({
+        description: '父模型的原始工具调用 ID，子流程续跑结果回填到此调用'
+      }),
+      childrenResponse: z.any().meta({
+        ...OpenObjectOpenApiMeta,
+        description: '子工作流交互响应'
+      })
     })
-  })
+  )
 });
 export type ToolCallChildrenInteractive = InteractiveNodeType &
   z.infer<typeof ToolCallChildrenInteractiveSchema>;

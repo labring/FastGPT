@@ -405,7 +405,7 @@ describe('runFastAgentMainLoop', () => {
           ? {
               childrenInteractiveParams: {
                 childrenResponse: { type: 'userSelect' },
-                toolParams: { toolCallId: 'call_child' }
+                toolCallId: 'call_child'
               }
             }
           : {})

@@ -234,9 +234,7 @@ describe('createWorkflowAgentToolProvider', () => {
         } as any,
         messages: [{ role: 'user', content: 'search FastGPT' }],
         childrenResponse: previousInteractive as any,
-        toolParams: {
-          toolCallId: 'call_search'
-        }
+        toolCallId: 'call_search'
       })
     ).resolves.toEqual({
       response: 'waiting again',
@@ -245,7 +243,7 @@ describe('createWorkflowAgentToolProvider', () => {
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
-        params: { childrenResponse: nextInteractive, toolParams: { toolCallId: 'call_search' } }
+        params: { childrenResponse: nextInteractive, toolCallId: 'call_search' }
       }
     });
     expect(executeToolMock).toHaveBeenCalledWith({

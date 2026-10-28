@@ -276,7 +276,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
 
     const call = resolveInteractiveToolCall({
-      toolCallId: input.childrenInteractiveParams.toolParams.toolCallId,
+      toolCallId: input.childrenInteractiveParams.toolCallId,
       messages: input.messages,
       piMessages: initialPiMessages
     });

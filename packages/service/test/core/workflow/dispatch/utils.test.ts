@@ -613,9 +613,7 @@ describe('getHistories', () => {
             interactive: {
               type: 'toolChildrenInteractive',
               params: {
-                toolParams: {
-                  toolCallId: 'tool_1'
-                },
+                toolCallId: 'tool_1',
                 childrenResponse: {
                   type: 'userSelect',
                   params: {

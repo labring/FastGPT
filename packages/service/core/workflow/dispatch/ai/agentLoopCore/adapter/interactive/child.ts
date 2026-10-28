@@ -1,9 +1,12 @@
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  ToolCallChildrenInteractiveSchema,
+  type WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../../../ai/llm/agentLoop/interface';
 
 /**
  * 将 workflow `toolChildrenInteractive` 恢复为 agent-loop 的 child interactive 入参。
- * 只读取 toolCallId，完整 messages 从 ChatItem 重建；旧快照字段安全忽略。
+ * 新旧包装在 Schema 边界统一为 toolCallId；无效旧记录跳过，完整 messages 从 ChatItem 重建。
  */
 export const createAgentLoopCoreChildInteractiveParams = <
   TChildrenResponse = WorkflowInteractiveResponseType
@@ -13,11 +16,11 @@ export const createAgentLoopCoreChildInteractiveParams = <
   lastInteractive?: WorkflowInteractiveResponseType;
 }): AgentLoopChildrenInteractiveParams<TChildrenResponse> | undefined => {
   if (lastInteractive?.type !== 'toolChildrenInteractive') return;
+  const parsed = ToolCallChildrenInteractiveSchema.safeParse(lastInteractive);
+  if (!parsed.success) return;
   return {
-    childrenResponse: lastInteractive.params.childrenResponse as TChildrenResponse,
-    toolParams: {
-      toolCallId: lastInteractive.params.toolParams.toolCallId
-    }
+    childrenResponse: parsed.data.params.childrenResponse as TChildrenResponse,
+    toolCallId: parsed.data.params.toolCallId
   };
 };
 
@@ -32,7 +35,7 @@ export const createWorkflowToolInteractive = ({
   interactive
     ? {
         type: 'toolChildrenInteractive',
-        params: { childrenResponse: interactive, toolParams: { toolCallId } },
+        params: { childrenResponse: interactive, toolCallId },
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: []

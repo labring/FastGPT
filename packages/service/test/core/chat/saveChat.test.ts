@@ -1584,9 +1584,7 @@ describe('pushChatRecords', () => {
                   memoryEdges: [],
                   nodeOutputs: []
                 },
-                toolParams: {
-                  toolCallId: 'call_select_1'
-                }
+                toolCallId: 'call_select_1'
               }
             }
           }
@@ -1659,9 +1657,7 @@ describe('pushChatRecords', () => {
             memoryEdges: [],
             nodeOutputs: []
           },
-          toolParams: {
-            toolCallId: 'call_select_1'
-          }
+          toolCallId: 'call_select_1'
         },
         entryNodeIds: [],
         memoryEdges: [],

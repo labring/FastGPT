@@ -279,10 +279,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           ? message.tool_calls || []
           : []
       )
-      .find((call) => call.id === childrenInteractiveParams.toolParams.toolCallId) ||
+      .find((call) => call.id === childrenInteractiveParams.toolCallId) ||
       // 兼容缺少 assistant tool_call 的旧交互快照；callId 仍能用于回填原工具卡片。
       {
-        id: childrenInteractiveParams.toolParams.toolCallId,
+        id: childrenInteractiveParams.toolCallId,
         type: 'function' as const,
         function: {
           name: '',
@@ -332,7 +332,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // FastAgent 只使用 ChatItem 重建的上下文，旧交互中的 memory 快照不再参与恢复。
     requestMessages = requestMessages.map((item) =>
-      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
+      item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolCallId
         ? {
             ...item,
             content: normalizeToolResponseContent(response)
@@ -344,7 +344,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 放进本轮 transcript，外层才能回填旧工具卡并保证后续 history 重建使用真实结果。
     assistantMessages.push({
       role: ChatCompletionRequestMessageRoleEnum.Tool,
-      tool_call_id: childrenInteractiveParams.toolParams.toolCallId,
+      tool_call_id: childrenInteractiveParams.toolCallId,
       content: response
     });
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
@@ -352,7 +352,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     if (interactive) {
       pause = {
         interactive,
-        toolCallId: childrenInteractiveParams.toolParams.toolCallId
+        toolCallId: childrenInteractiveParams.toolCallId
       };
     }
 

@@ -425,7 +425,7 @@ describe('FastAgent ChatItem replay', () => {
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
-        params: { childrenResponse: child, toolParams: { toolCallId: 'parent-call' } }
+        params: { childrenResponse: child, toolCallId: 'parent-call' }
       }
     });
     const nextChild = { ...child, params: { ...child.params, toolCallId: 'next-child-ask' } };
@@ -435,7 +435,7 @@ describe('FastAgent ChatItem replay', () => {
         messages: first.completeMessages,
         childrenInteractiveParams: {
           childrenResponse: child,
-          toolParams: { toolCallId: 'parent-call' }
+          toolCallId: 'parent-call'
         }
       },
       runtime: runtime({
@@ -469,10 +469,7 @@ describe('FastAgent ChatItem replay', () => {
         messages: middle.result.completeMessages,
         childrenInteractiveParams: {
           childrenResponse: nextChild,
-          toolParams: {
-            toolCallId: 'parent-call',
-            memoryRequestMessages: [{ role: 'user', content: 'Obsolete snapshot' }]
-          }
+          toolCallId: 'parent-call'
         }
       },
       runtime: runtime({

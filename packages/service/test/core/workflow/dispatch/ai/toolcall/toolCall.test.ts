@@ -474,7 +474,7 @@ describe('runToolCall compression node responses', () => {
           toolCallId: 'call_child',
           interactive: {
             type: 'toolChildrenInteractive',
-            params: { childrenResponse, toolParams: { toolCallId: 'call_child' } }
+            params: { childrenResponse, toolCallId: 'call_child' }
           }
         }
       };
@@ -486,9 +486,7 @@ describe('runToolCall compression node responses', () => {
       type: 'toolChildrenInteractive',
       params: {
         childrenResponse,
-        toolParams: {
-          toolCallId: 'call_child'
-        }
+        toolCallId: 'call_child'
       }
     });
     expect(result.assistantResponses).toEqual([

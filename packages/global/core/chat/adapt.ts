@@ -29,6 +29,7 @@ import {
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../workflow/builder/constants';
 import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
 import { AgentAskInteractiveSchema } from '../ai/agent/type';
+import { ToolCallChildrenInteractiveSchema } from '../workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import {
   formatAgentAskAnswers,
@@ -330,10 +331,16 @@ export const chats2GPTMessages = ({
     });
 
   /** toolChildrenInteractive 属于父工具续跑，不能把子 Ask 伪造为父模型的 ask_user 调用。 */
-  const getParentInteractiveToolId = (interactive?: AIChatItemValueItemType['interactive']) => {
+  const getParentInteractiveToolContext = (
+    interactive?: AIChatItemValueItemType['interactive']
+  ) => {
     let current = interactive;
     for (let depth = 0; current && depth < 100; depth++) {
-      if (current.type === 'toolChildrenInteractive') return current.params?.toolParams?.toolCallId;
+      if (current.type === 'toolChildrenInteractive') {
+        const parsed = ToolCallChildrenInteractiveSchema.safeParse(current);
+        // 无效旧包装也属于子流程，不能降级成父模型直接调用的 Ask/Preview。
+        return { toolCallId: parsed.success ? parsed.data.params.toolCallId : undefined };
+      }
       if (!current.params || !('childrenResponse' in current.params)) return;
       current = current.params.childrenResponse;
     }
@@ -346,7 +353,7 @@ export const chats2GPTMessages = ({
       (value) => !value.displayOnly && value.interactive
     )?.interactive;
     if (!interactive) return;
-    if (getParentInteractiveToolId(interactive)) return;
+    if (getParentInteractiveToolContext(interactive)) return;
     const parsed = AgentAskInteractiveSchema.safeParse(extractDeepestInteractive(interactive));
     return parsed.success ? parsed.data : undefined;
   };
@@ -436,7 +443,7 @@ export const chats2GPTMessages = ({
       (value) => !value.displayOnly && value.interactive
     )?.interactive;
     // 真正子工作流内的预览由父工具恢复，不能伪造为父模型直接调用。
-    if (getParentInteractiveToolId(interactive)) return;
+    if (getParentInteractiveToolContext(interactive)) return;
     return { preview, toolCallId: preview.params.toolCallId };
   };
 
@@ -476,10 +483,10 @@ export const chats2GPTMessages = ({
         getWorkflowBuilderPreviewDecision({ preview: previousPreview.preview, userContent: item });
       const parentToolId =
         previous?.obj === ChatRoleEnum.AI
-          ? getParentInteractiveToolId(
+          ? getParentInteractiveToolContext(
               previous.value.findLast((value) => !value.displayOnly && value.interactive)
                 ?.interactive
-            )
+            )?.toolCallId
           : undefined;
       const isChildToolReply =
         !reserveSelect && reserveTool && parentToolId && resumedToolResponses.has(parentToolId);

@@ -131,7 +131,7 @@ export const createToolCallToolProvider = async ({
         ...result,
         interactive: createWorkflowToolInteractive({
           interactive: result.interactive,
-          toolCallId: params.toolParams.toolCallId
+          toolCallId: params.toolCallId
         })
       };
     },

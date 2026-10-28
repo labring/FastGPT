@@ -709,9 +709,7 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'childrenInteractive',
             params: {
@@ -752,9 +750,7 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'userSelect',
             params: {

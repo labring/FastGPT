@@ -23,6 +23,95 @@ import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflo
 import { getWorkflowBuilderPreviewToolResponse } from '@fastgpt/global/core/workflow/builder/utils';
 
 describe('persisted Agent context boundaries', () => {
+  it.each(['flat', 'legacy', 'invalid'] as const)(
+    'restores only the parent tool for a %s child wrapper',
+    (format) => {
+      const messages: ChatItemMiniType[] = [
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              modelResponseId: 'parent-response',
+              tools: [
+                {
+                  id: 'parent-call',
+                  functionName: 'workflow_tool',
+                  toolName: 'Workflow',
+                  toolAvatar: '',
+                  params: '{}',
+                  response: 'Waiting for child'
+                }
+              ]
+            },
+            {
+              interactive: {
+                type: 'toolChildrenInteractive',
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: [],
+                params: {
+                  ...(format === 'flat'
+                    ? { toolCallId: 'parent-call' }
+                    : { toolParams: { toolCallId: format === 'legacy' ? 'parent-call' : '' } }),
+                  childrenResponse: {
+                    type: 'agentAsk',
+                    params: {
+                      toolCallId: 'child-ask',
+                      arguments: JSON.stringify({
+                        reason: 'Choose',
+                        blockerType: 'user_choice',
+                        questions: [
+                          {
+                            question: 'Format?',
+                            options: [
+                              { summary: 'Brief', value: 'Brief' },
+                              { summary: 'Full', value: 'Full' }
+                            ]
+                          }
+                        ]
+                      })
+                    }
+                  }
+                }
+              } as any
+            }
+          ]
+        },
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { select: { type: 'agentAsk', questions: [{ question: 'Format?', value: 'Brief' }] } }
+          ]
+        },
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              toolResponses: [{ id: 'parent-call', response: 'Actual child result' }],
+              hideInUI: true
+            }
+          ]
+        }
+      ];
+      const before = structuredClone(messages);
+      const result = chats2GPTMessages({ messages, reserveTool: true, reserveId: false });
+      expect(
+        result.flatMap((item) =>
+          item.role === 'assistant' ? (item.tool_calls ?? []).map((call) => call.id) : []
+        )
+      ).toEqual(['parent-call']);
+      expect(result.find((item) => item.role === 'tool')).toMatchObject({
+        tool_call_id: 'parent-call',
+        content: 'Actual child result'
+      });
+      // 无效包装保留普通 Human；新旧有效包装只消费父工具的最终结果。
+      expect(result.filter((item) => item.role === 'user')).toHaveLength(
+        format === 'invalid' ? 1 : 0
+      );
+      expect(messages).toEqual(before);
+    }
+  );
+
   it.each([
     { reserveTool: false, reserveSelect: false },
     { reserveTool: true, reserveSelect: true }

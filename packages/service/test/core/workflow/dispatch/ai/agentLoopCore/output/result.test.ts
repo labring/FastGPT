@@ -178,7 +178,7 @@ describe('summarizeAgentLoopCoreResult', () => {
           toolCallId: 'call_tool',
           interactive: {
             type: 'toolChildrenInteractive',
-            params: { childrenResponse, toolParams: { toolCallId: 'call_tool' } }
+            params: { childrenResponse, toolCallId: 'call_tool' }
           }
         }
       })
@@ -188,9 +188,7 @@ describe('summarizeAgentLoopCoreResult', () => {
           type: 'toolChildrenInteractive',
           params: {
             childrenResponse,
-            toolParams: {
-              toolCallId: 'call_tool'
-            }
+            toolCallId: 'call_tool'
           }
         }
       })

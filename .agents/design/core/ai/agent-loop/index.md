@@ -183,7 +183,7 @@ Provider 通过 `AgentLoopEvent` 报告模型请求、流式文本、工具运�
 1. 工具返回业务 interactive，Agent Loop 统一返回 `pause: { toolCallId, interactive }`，不再分类 ask/tool_child，也不自动套工作流包装。
 2. Ask 与 Preview 均保存 `interactive: { type, params: { toolCallId, arguments } }`；ID 使用原模型调用 ID，arguments 保留原始 JSON。Preview 不再另造 previewId，任务引用沿用原调用 ID。
 3. Ask/Preview 的回答只在紧邻 Human，adapt 重建原调用和 tool response；Preview 不使用子工具恢复回调，cancel 由 Builder 业务层直接结束。
-4. 只有真正的工作流工具由业务适配层显式构造 toolChildrenInteractive。用户选择与表单的协议及保存方式保持原样，恢复回调继续运行子流程，再将真实结果补到父工具。
+4. 只有真正的工作流工具由业务适配层显式构造 `toolChildrenInteractive`，其 params 为 `{ toolCallId, childrenResponse }`，不再嵌套 toolParams；旧包装仅在读取边界提取 ID，消息快照丢弃。用户选择与表单的协议及保存方式保持原样，恢复回调继续运行子流程，再将真实结果补到父工具。
 5. 通用 tool_interactive 事件负责接管成功的直接交互 value；失败调用仍保存完整隐藏工具结果。同轮正文、reasoning 和其他工具的分组及顺序保持不变。
 
 FastAgent 的 Workflow Agent、Workflow Builder 和辅助生成入口均停止读写 provider memory，从 ChatItem 恢复。Pi 的原生 providerState 和 piMessages 暂时保留。

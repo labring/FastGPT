@@ -999,10 +999,7 @@ describe('runWorkflow node response persistence', () => {
               userSelectOptions: []
             }
           },
-          toolParams: {
-            memoryRequestMessages: [],
-            toolCallId: 'call_search'
-          }
+          toolCallId: 'call_search'
         }
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {

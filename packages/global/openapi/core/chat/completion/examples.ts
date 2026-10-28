@@ -417,7 +417,7 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
               type: 'toolChildrenInteractive',
               params: {
                 childrenResponse: userInputInteractive,
-                toolParams: { toolCallId: tool.id }
+                toolCallId: tool.id
               }
             }
           }

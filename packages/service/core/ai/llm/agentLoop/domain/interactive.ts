@@ -7,12 +7,8 @@ import type {
 // 调用方可通过泛型把 childrenResponse 收敛成自己的固定类型，例如 workflow 使用
 // WorkflowInteractiveResponseType。
 export type AgentLoopChildrenInteractiveParams<TChildrenResponse = unknown> = {
+  toolCallId: string;
   childrenResponse: TChildrenResponse;
-  toolParams: {
-    /** @deprecated 旧交互字段，仅允许旧载荷容错，不参与上下文恢复。 */
-    memoryRequestMessages?: ChatCompletionMessageParam[];
-    toolCallId: string;
-  };
 };
 
 /**

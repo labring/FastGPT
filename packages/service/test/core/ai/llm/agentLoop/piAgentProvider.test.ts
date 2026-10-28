@@ -1218,9 +1218,7 @@ describe('runPiAgentLoop', () => {
             type: 'userSelect',
             entryNodeIds: ['select_1']
           },
-          toolParams: {
-            toolCallId: 'call_search'
-          }
+          toolCallId: 'call_search'
         }
       },
       runtime: {
@@ -1299,7 +1297,7 @@ describe('runPiAgentLoop', () => {
         },
         childrenInteractiveParams: {
           childrenResponse: { type: 'userSelect' },
-          toolParams: { toolCallId: 'call_search' }
+          toolCallId: 'call_search'
         }
       },
       runtime: {
@@ -1375,7 +1373,7 @@ describe('runPiAgentLoop', () => {
         },
         childrenInteractiveParams: {
           childrenResponse: { type: 'userSelect' },
-          toolParams: { toolCallId: 'call_search' }
+          toolCallId: 'call_search'
         }
       },
       runtime: {
