@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getWorkflowStepStatus } from '@fastgpt/service/core/workflow/dispatch/utils/trace';
 
 const createResult = (result: Record<string, any>) =>
@@ -44,7 +44,7 @@ describe('getWorkflowStepStatus', () => {
     expect(
       getWorkflowStepStatus(
         createResult({
-          error: new UserError('Invalid MCP configuration', undefined, { type: 'config' })
+          error: new UserConfigError('Invalid MCP configuration')
         })
       )
     ).toBe('user_error');
@@ -59,8 +59,7 @@ describe('getWorkflowStepStatus', () => {
           },
           error: {
             errorText: 'Invalid MCP configuration',
-            name: 'UserError',
-            type: 'config'
+            name: 'UserConfigError'
           }
         })
       )

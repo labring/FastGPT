@@ -13,7 +13,7 @@ import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/t
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import {
   createNodeSummary,
   createWorkflowRuntimeSummary,
@@ -679,7 +679,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   });
 
   it('preserves the original exception from the current child workflow', async () => {
-    const error = new UserError('Invalid MCP URL', undefined, { type: 'config' });
+    const error = new UserConfigError('Invalid MCP URL');
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         error,
@@ -703,8 +703,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result.data).toMatchObject({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
     expect(result.error).toMatchObject({
       message: 'Invalid MCP URL',
-      name: 'UserError',
-      type: 'config'
+      name: 'UserConfigError'
     });
   });
 

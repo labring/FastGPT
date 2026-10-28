@@ -46,7 +46,7 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
 });
 
 import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -142,7 +142,7 @@ describe('dispatchParallelRun', () => {
     'reports task-local exceptions before returning, config=%s',
     async (isConfigError) => {
       const error = isConfigError
-        ? new UserError('invalid task input', undefined, { type: 'config' })
+        ? new UserConfigError('invalid task input')
         : new Error('task state clone failed');
       const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
       warn.mockClear();
@@ -153,7 +153,8 @@ describe('dispatchParallelRun', () => {
       });
       try {
         await dispatchParallelRun(props);
-        expect(warn).toHaveBeenCalledTimes(isConfigError ? 0 : 2);
+        // 调度层提交所有原始 Error；用户配置错误由真实 logger 统一降级。
+        expect(warn).toHaveBeenCalledTimes(2);
         expect(props.nodeSummary.error).toBe(error);
         expect(runWorkflowMock).not.toHaveBeenCalled();
       } finally {
@@ -165,7 +166,7 @@ describe('dispatchParallelRun', () => {
   it.each([false, true])(
     'keeps a failed task raw exception in the current collector only: fails=%s',
     async (fails) => {
-      const error = new UserError('Invalid key', undefined, { type: 'config' });
+      const error = new UserConfigError('Invalid key');
       runWorkflowMock.mockResolvedValueOnce(
         makeDispatchFlowResponse({
           error,

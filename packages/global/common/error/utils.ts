@@ -96,37 +96,41 @@ export const getErrResponse = (err: any): any => {
 
 /**
  * 可直接展示给用户的预期业务错误。
- * type 仅补充错误分类；配置错误用于日志降噪，未指定时沿用普通业务错误的处理。
- * 保留既有 message/displayMessage 参数，并通过 options 同时接收分类和原始 cause。
+ * message/displayMessage 分别保留业务原因和展示文案，options 可携带原始 cause。
  */
 export class UserError extends Error {
-  readonly type?: 'config';
-
   constructor(
     message: string,
     readonly displayMessage?: string,
-    options?: ErrorOptions & { type?: UserError['type'] }
+    options?: ErrorOptions
   ) {
     super(message, options);
     this.name = 'UserError';
-    this.type = options?.type;
   }
 }
 
 /**
- * 识别 UserError 的配置错误分类，兼容跨构建产物和工作流序列化后的普通对象。
- * 必须同时保留用户错误身份和 config 分类，避免把普通业务错误或系统异常一并降级。
+ * 预期的用户配置错误；构造参数与 UserError 保持一致，供日志和工作流统一降级。
+ */
+export class UserConfigError extends UserError {
+  constructor(message: string, displayMessage?: string, options?: ErrorOptions) {
+    super(message, displayMessage, options);
+    this.name = 'UserConfigError';
+  }
+}
+
+/**
+ * 按类身份识别配置错误，兼容跨构建产物和序列化后仅保留 name 的错误记录。
+ * 不沿 cause 分类，普通 UserError 和包含配置错误的系统异常仍保留原有语义。
  */
 export const isUserConfigError = (
   error: unknown
-): error is
-  | (UserError & { type: 'config' })
-  | { name: 'UserError'; type: 'config'; displayMessage?: string } =>
-  typeof error === 'object' &&
-  error !== null &&
-  'type' in error &&
-  error.type === 'config' &&
-  (error instanceof UserError || ('name' in error && error.name === 'UserError'));
+): error is UserConfigError | { name: 'UserConfigError'; displayMessage?: string } =>
+  error instanceof UserConfigError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'UserConfigError');
 
 /**
  * 表示错误提示已经由业务侧自行展示，通用请求层应跳过重复 toast。

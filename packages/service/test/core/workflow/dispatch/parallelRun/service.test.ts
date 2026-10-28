@@ -16,7 +16,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -386,10 +386,7 @@ describe('parallelRun/service', () => {
     });
 
     it('将用户异常转换为展示文本，不复制分类', () => {
-      const result = parseTaskError(
-        3,
-        new UserError('Invalid MCP URL', undefined, { type: 'config' })
-      );
+      const result = parseTaskError(3, new UserConfigError('Invalid MCP URL'));
 
       expect(result).toMatchObject({
         success: false,

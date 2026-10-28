@@ -10,7 +10,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -801,7 +801,7 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'error',
-      error: new UserError('Invalid API key', undefined, { type: 'config' }),
+      error: new UserConfigError('Invalid API key'),
       completeMessages: [],
       assistantMessages: [],
       requestIds: [],
@@ -827,8 +827,7 @@ describe('dispatchRunAgent user context', () => {
 
     expect(result.error).toMatchObject({
       message: 'Invalid API key',
-      name: 'UserError',
-      type: 'config'
+      name: 'UserConfigError'
     });
   });
 

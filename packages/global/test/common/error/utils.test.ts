@@ -4,7 +4,8 @@ import {
   getErrText,
   isUserConfigError,
   ToastHandledError,
-  UserError
+  UserError,
+  UserConfigError
 } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -123,37 +124,52 @@ describe('UserError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
-    expect(err.type).toBeUndefined();
+    expect(err).not.toHaveProperty('type');
   });
+});
 
-  it('preserves the config type, display message and original cause on UserError', () => {
+describe('UserConfigError', () => {
+  it('uses the same constructor parameters and inherits UserError', () => {
     const cause = new Error('upstream rejected the key');
-    const error = new UserError('invalid key', '请检查密钥', { type: 'config', cause });
+    const error = new UserConfigError('invalid key', '请检查密钥', { cause });
 
+    expect(error).toBeInstanceOf(UserConfigError);
     expect(error).toBeInstanceOf(UserError);
+    expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({
-      name: 'UserError',
+      name: 'UserConfigError',
       message: 'invalid key',
       displayMessage: '请检查密钥',
-      type: 'config',
       cause
     });
+    expect(error.cause).toBe(cause);
+    expect(error).not.toHaveProperty('type');
     expect(getErrText(error)).toBe('请检查密钥');
+  });
+
+  it('accepts a message without extra configuration arguments', () => {
+    const error = new UserConfigError('MCP tool set is missing');
+
+    expect(error.name).toBe('UserConfigError');
+    expect(error.message).toBe('MCP tool set is missing');
+    expect(error.displayMessage).toBeUndefined();
+    expect(error.cause).toBeUndefined();
   });
 });
 
 describe('isUserConfigError', () => {
-  it('recognizes the config type before and after serialization', () => {
-    const error = new UserError('invalid key', undefined, { type: 'config' });
+  it('recognizes the class identity before and after serialization', () => {
+    const error = new UserConfigError('invalid key');
 
     expect(isUserConfigError(error)).toBe(true);
     expect(isUserConfigError(JSON.parse(JSON.stringify(error)))).toBe(true);
-    expect(isUserConfigError({ name: 'UserError', type: 'config' })).toBe(true);
+    expect(isUserConfigError({ name: 'UserConfigError' })).toBe(true);
   });
 
   it.each([
     new UserError('ordinary business error'),
     new Error('system error'),
+    new Error('internal wrapper', { cause: new UserConfigError('invalid key') }),
     Object.assign(new Error('system error'), { type: 'config' }),
     { name: 'UserError' },
     { name: 'UserError', type: 'other' },

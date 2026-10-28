@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -99,7 +99,7 @@ describe('processError zod logging', () => {
 
   it('does not log expected user config errors', () => {
     const processed = processError({
-      error: new UserError('Invalid MCP URL', undefined, { type: 'config' }),
+      error: new UserConfigError('Invalid MCP URL'),
       url: '/api/test',
       defaultCode: 400
     });
@@ -115,8 +115,7 @@ describe('processError zod logging', () => {
   it('falls back safely when a serialized user config error has a non-string display message', () => {
     const processed = processError({
       error: {
-        name: 'UserError',
-        type: 'config',
+        name: 'UserConfigError',
         message: 'Invalid API key',
         displayMessage: { text: 'unexpected object' }
       } as any,
@@ -171,7 +170,7 @@ describe('processError HTTP status mapping', () => {
     expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
   });
   it('maps a config UserError to HTTP 400 even when defaultCode is 500', () => {
-    const error = new UserError('MCP protocol mismatch', undefined, { type: 'config' });
+    const error = new UserConfigError('MCP protocol mismatch');
     const processed = processError({ error, defaultCode: 500 });
     expect(processed.httpStatus).toBe(400);
     expect(processed.code).toBe(400);

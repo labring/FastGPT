@@ -5,7 +5,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
@@ -629,7 +629,7 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(result.response).toBeTruthy();
   });
 
-  it('should return MCP user config errors without logging them as system errors', async () => {
+  it('should preserve MCP user config errors for centralized log classification', async () => {
     const tool = {
       name: 'search',
       description: 'Search',
@@ -663,9 +663,7 @@ describe('dispatchTool runtime toolset auth', () => {
       ]
     });
     getMCPChildrenMock.mockResolvedValueOnce([tool]);
-    mcpToolCallMock.mockRejectedValueOnce(
-      new UserError('Invalid MCP URL', undefined, { type: 'config' })
-    );
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
 
     const result = await dispatchTool(
       createDispatchToolProps({
@@ -676,6 +674,8 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(result.response).toBe('Invalid MCP URL');
-    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith('Call tool error', {
+      error: expect.objectContaining({ name: 'UserConfigError' })
+    });
   });
 });

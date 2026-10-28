@@ -100,11 +100,11 @@ try {
 
 如确需记录用于调试:
 - 做脱敏或截断。
-- 可添加 `fastgpt` 属性，避免 OTEL 导出（由 `sensitiveProperties` 过滤）。
+- 可添加 `otel: false`，显式关闭该条日志的 OTEL 导出，本地输出不受影响。
 
 ```ts
 logger.warn('Payload truncated for debug', {
-  fastgpt: true,
+  otel: false,
   payloadPreview: payload.slice(0, 200)
 });
 ```

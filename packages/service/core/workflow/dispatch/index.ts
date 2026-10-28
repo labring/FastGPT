@@ -798,7 +798,7 @@ export class WorkflowQueue {
           if (runningNodePromises.size > 0) {
             // 当上一个节点运行结束时，立即运行下一轮
             await Promise.race(runningNodePromises).catch((error) => {
-              if (error instanceof Error && !isUserConfigError(error)) {
+              if (error instanceof Error) {
                 logger.error('Workflow race error', { chatId: this.data.chatId, error });
               }
             });
@@ -848,7 +848,7 @@ export class WorkflowQueue {
     if (skipItem) {
       this.skipNodeQueue.delete(skipItem.node.nodeId);
       await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).catch((error) => {
-        if (error instanceof Error && !isUserConfigError(error)) {
+        if (error instanceof Error) {
           logger.error('Workflow skip node run error', { error, nodeName: skipItem.node.name });
         }
       });
@@ -1118,7 +1118,7 @@ export class WorkflowQueue {
       }
 
       // 统一日志只读取节点返回的原始 Error；responseData 的文本仅用于展示和流程控制。
-      if (hasDispatchError && dispatchRes.error instanceof Error && !isUserConfigFailure) {
+      if (hasDispatchError && dispatchRes.error instanceof Error) {
         logger.warn('Workflow node returned error', { error: dispatchRes.error });
       }
 
@@ -1790,7 +1790,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     }
   )
     .catch((error) => {
-      if (error instanceof Error && !isUserConfigError(error)) {
+      if (error instanceof Error) {
         logger.error('Workflow run failed', { error });
       }
       throw error;

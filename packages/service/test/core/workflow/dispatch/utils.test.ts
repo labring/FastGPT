@@ -27,7 +27,7 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -1909,7 +1909,7 @@ describe('getNodeErrResponse', () => {
   });
 
   it('keeps classification on the raw exception and excludes it from display details', () => {
-    const error = new UserError('Invalid MCP URL', undefined, { type: 'config' });
+    const error = new UserConfigError('Invalid MCP URL');
     const result = getNodeErrResponse({ error });
 
     expect(result.error).toBe(error);
@@ -2316,7 +2316,7 @@ describe('stripNodeSummaryErrorFields', () => {
         llmOutputTokens: 4,
         totalPoints: 2,
         citeCollectionIds: ['collection-1'],
-        error: new UserError('tool failure', undefined, { type: 'config' }),
+        error: new UserConfigError('tool failure'),
         errorCount: 1,
         errorText: 'tool failed'
       })
@@ -2411,7 +2411,7 @@ describe('mergeWorkflowRuntimeSummary', () => {
 });
 
 describe('createNodeSummary', () => {
-  const configError = new UserError('invalid key', undefined, { type: 'config' });
+  const configError = new UserConfigError('invalid key');
   const systemError = new Error('database unavailable');
   it.each([
     { errors: [configError, systemError], expectedError: systemError },

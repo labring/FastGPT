@@ -13,8 +13,7 @@ export async function configureLogger(options: { serviceName?: string } = {}) {
   await configureLoggerFromEnv({
     env: process.env,
     defaultCategory: LogCategories.MODULE.SANDBOX.SERVER,
-    defaultServiceName: options.serviceName || 'fastgpt-code-sandbox',
-    sensitiveProperties: ['fastgpt']
+    defaultServiceName: options.serviceName || 'fastgpt-code-sandbox'
   });
 }
 

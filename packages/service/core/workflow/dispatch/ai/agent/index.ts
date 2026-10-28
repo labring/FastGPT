@@ -17,7 +17,6 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
@@ -389,12 +388,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
   } catch (error) {
     // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
-    const isUserConfigFailure = isUserConfigError(error);
-    if (!isUserConfigFailure) {
-      getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
-        error
-      });
-    }
+    getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
+      error
+    });
     return {
       ...getNodeErrResponse({ error }),
       ...(provider === 'piAgent' && {

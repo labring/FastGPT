@@ -26,7 +26,7 @@ import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/t
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
@@ -1495,7 +1495,7 @@ describe('Workflow runtime LLM token summary', () => {
 describe('Workflow runtime error summary', () => {
   it('keeps container exceptions within the current run without changing its data route', async () => {
     const original = callbackMap[FlowNodeTypeEnum.parallelRun];
-    const error = new UserError('Invalid task key', undefined, { type: 'config' });
+    const error = new UserConfigError('Invalid task key');
     const runRound = async (fails: boolean) => {
       const source = createNode('container', FlowNodeTypeEnum.parallelRun);
       source.isEntry = true;
@@ -1573,8 +1573,7 @@ describe('Workflow runtime error summary', () => {
     }
   });
 
-  const configError = new UserError('Invalid key', undefined, {
-    type: 'config',
+  const configError = new UserConfigError('Invalid key', undefined, {
     cause: new Error('private-cause')
   });
   const systemError = new Error('Database unavailable', { cause: new Error('private-cause') });
@@ -1637,9 +1636,8 @@ describe('Workflow runtime error summary', () => {
 
         expect(Object.hasOwn(result, 'error')).toBe(true);
         expect(result.error).toBe(expectedError);
-        const loggedErrors = errors.filter(
-          (error) => error instanceof Error && !isUserConfigError(error)
-        );
+        // 此处 logger 被 mock，只验证调度层提交原始 Error；日志降级由 logger 自身测例覆盖。
+        const loggedErrors = errors.filter((error) => error instanceof Error);
         expect(warn).toHaveBeenCalledTimes(loggedErrors.length);
         for (const error of loggedErrors) {
           expect(warn).toHaveBeenCalledWith('Workflow node returned error', { error });
@@ -1729,7 +1727,7 @@ describe('Workflow runtime error summary', () => {
     const node = createNode('tool-node', FlowNodeTypeEnum.tool);
     node.isEntry = true;
     callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => ({
-      error: new UserError('invalid API key', undefined, { type: 'config' }),
+      error: new UserConfigError('invalid API key'),
       data: { system_error_text: 'invalid API key' },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         error: 'invalid API key'
@@ -1769,7 +1767,9 @@ describe('Workflow runtime error summary', () => {
         errorCount: 0
       });
       expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
-      expect(warn).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
+      expect(warn).toHaveBeenCalledWith('Workflow node returned error', {
+        error: expect.objectContaining({ name: 'UserConfigError' })
+      });
     } finally {
       callbackMap[FlowNodeTypeEnum.tool] = original;
     }

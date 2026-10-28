@@ -1,7 +1,7 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createToolSchema } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
@@ -795,13 +795,13 @@ describe('runToolCall compression node responses', () => {
     runAgentLoopMock.mockResolvedValue({
       ...createLoopResult({ usages: [] }),
       status: 'error',
-      error: new UserError('Invalid API key', undefined, { type: 'config' }),
+      error: new UserConfigError('Invalid API key'),
       finishReason: 'error'
     });
 
     const result = await runToolCall(createProps());
 
-    expect(result.error).toMatchObject({ name: 'UserError', type: 'config' });
+    expect(result.error).toMatchObject({ name: 'UserConfigError' });
   });
 
   it('does not publish a generic tool wrapper response', async () => {

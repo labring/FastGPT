@@ -18,7 +18,7 @@ import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migra
 import { parseSecretValue } from '@fastgpt/global/common/secret/utils';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
-import { isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ZodError } from 'zod';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -605,7 +605,7 @@ const logMcpUserConfigError = ({
     urlHost: getMcpLogHost(url),
     errorCode: getMcpErrorCode(error),
     error: getErrorMessage(error),
-    fastgpt: true
+    otel: false
   });
 };
 
@@ -614,7 +614,7 @@ const normalizeMcpClientError = (error: unknown) => {
     return error;
   }
   if (isMcpExternalFailure(error)) {
-    return new UserError(getErrorMessage(error), undefined, { type: 'config', cause: error });
+    return new UserConfigError(getErrorMessage(error), undefined, { cause: error });
   }
   return error;
 };
@@ -623,10 +623,9 @@ const normalizeMcpClientError = (error: unknown) => {
  * 将 MCP 协议格式错误转换为用户友好的错误提示。
  */
 const toMcpProtocolUserError = (): UserError => {
-  return new UserError(
+  return new UserConfigError(
     'MCP server returned invalid response',
-    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确',
-    { type: 'config' }
+    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确'
   );
 };
 
@@ -712,7 +711,7 @@ export class MCPClient {
           )}; SSE: ${getErrorMessage(sseError)}`;
           // HTTP 探测未命中只触发协议回退，最终分类仅取决于 SSE 异常，避免探测 4xx 掩盖内部故障。
           if (isMcpExternalFailure(sseError)) {
-            throw new UserError(message, undefined, { type: 'config', cause: sseError });
+            throw new UserConfigError(message, undefined, { cause: sseError });
           }
 
           logger.info('SSE error', sseError);

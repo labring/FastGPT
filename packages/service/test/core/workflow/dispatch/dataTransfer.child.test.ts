@@ -3,7 +3,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
@@ -160,7 +160,7 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
   it.each([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule])(
     '%s exposes its own resource-load failure through the catch branch',
     async (type) => {
-      const error = new UserError('child resource is unavailable', undefined, { type: 'config' });
+      const error = new UserConfigError('child resource is unavailable');
       loadChild.mockRejectedValue(error);
       const source = graphNode({
         id: 'source',

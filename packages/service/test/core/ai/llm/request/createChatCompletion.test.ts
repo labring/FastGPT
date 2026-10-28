@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import OpenAI from '@fastgpt/global/core/ai';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 
@@ -186,51 +187,63 @@ describe('createChatCompletion', () => {
       } as any
     });
 
-    await expect(request).rejects.toMatchObject({ name: 'UserError', type: 'config' });
+    await expect(request).rejects.toMatchObject({ name: 'UserConfigError' });
     await expect(request).rejects.toMatchObject({
       message: expect.stringContaining('您的 OpenAI key 出错了'),
       cause: upstreamError
     });
     expect(mockLogger.error).not.toHaveBeenCalled();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+    expect(mockLogger.info).toHaveBeenCalledExactlyOnceWith(
       'User AI API error',
       expect.objectContaining({
-        status: 404,
-        fastgpt: true
+        otel: false
       })
     );
   });
 
-  it.each([429, 500])('should keep user key upstream status %s observable', async (status) => {
-    const upstreamError = Object.assign(new Error(`upstream ${status}`), { status });
-    const create = vi.fn().mockRejectedValue(upstreamError);
-    mockApi({
-      create,
-      usedUserOpenAIKey: true,
-      baseUrl: 'https://api.openai.com/v1'
-    });
+  it.each([401, 403, 429, 500, 503, undefined])(
+    'should log user key errors as info and wrap them regardless of status %s',
+    async (status) => {
+      const upstreamError = Object.assign(
+        new Error(status === undefined ? 'network failed' : `upstream ${status}`),
+        { status }
+      );
+      const create = vi.fn().mockRejectedValue(upstreamError);
+      mockApi({
+        create,
+        usedUserOpenAIKey: true,
+        baseUrl: 'https://api.openai.com/v1'
+      });
 
-    await expect(
-      createChatCompletion({
+      const request = createChatCompletion({
         modelData: createModel(),
         body: createBody(),
         userKey: {
           key: 'user-key'
         } as any
-      })
-    ).rejects.toContain('您的 OpenAI key 出错了');
+      });
 
-    expect(mockLogger.warn).not.toHaveBeenCalled();
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      'User AI API error',
-      expect.objectContaining({
-        status,
-        error: expect.objectContaining({
-          message: `upstream ${status}`
+      await expect(request).rejects.toBeInstanceOf(UserError);
+      await expect(request).rejects.toMatchObject({
+        message: expect.stringContaining('您的 OpenAI key 出错了'),
+        cause: upstreamError,
+        name: 'UserConfigError'
+      });
+
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledExactlyOnceWith(
+        'User AI API error',
+        expect.objectContaining({
+          otel: false,
+          error: expect.objectContaining({
+            message: upstreamError.message
+          })
         })
-      })
-    );
-  });
+      );
+    }
+  );
 
   it('should reject when model config is missing', async () => {
     const create = vi.fn();
@@ -270,17 +283,25 @@ describe('createChatCompletion', () => {
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
-  it('should still log real upstream errors as error', async () => {
-    const create = vi.fn().mockRejectedValue(new Error('upstream 500'));
-    mockApi({ create });
+  it.each([401, 403, 404, 429, 500, undefined])(
+    'should keep platform key status %s as an error',
+    async (status) => {
+      const upstreamError = Object.assign(new Error('upstream failed'), { status });
+      const create = vi.fn().mockRejectedValue(upstreamError);
+      mockApi({ create });
 
-    await expect(
-      createChatCompletion({ modelData: createModel(), body: createBody() })
-    ).rejects.toBeTruthy();
+      await expect(
+        createChatCompletion({ modelData: createModel(), body: createBody() })
+      ).rejects.toBe(upstreamError);
 
-    expect(mockLogger.error).toHaveBeenCalledWith('LLM response error', expect.anything());
-    expect(mockLogger.warn).not.toHaveBeenCalled();
-  });
+      expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith(
+        'LLM response error',
+        expect.anything()
+      );
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(mockLogger.info).not.toHaveBeenCalled();
+    }
+  );
 
   it.each([
     { usedUserOpenAIKey: false, status: undefined },
@@ -310,11 +331,8 @@ describe('createChatCompletion', () => {
       const create = vi.fn().mockRejectedValue(error);
       mockApi({ create, usedUserOpenAIKey });
       const request = createChatCompletion({ modelData: createModel(), body });
-      const isUserConfigFailure = usedUserOpenAIKey && status === 401;
-      if (isUserConfigFailure) {
-        await expect(request).rejects.toMatchObject({ name: 'UserError', type: 'config' });
-      } else if (usedUserOpenAIKey) {
-        await expect(request).rejects.toContain('您的 OpenAI key 出错了');
+      if (usedUserOpenAIKey) {
+        await expect(request).rejects.toMatchObject({ name: 'UserConfigError' });
       } else {
         await expect(request).rejects.toBe(error);
       }
@@ -331,12 +349,11 @@ describe('createChatCompletion', () => {
           ]
         }
       ];
-      const log = isUserConfigFailure ? mockLogger.warn : mockLogger.error;
+      const log = usedUserOpenAIKey ? mockLogger.info : mockLogger.error;
       expect(log).toHaveBeenCalledExactlyOnceWith(
         usedUserOpenAIKey ? 'User AI API error' : 'LLM response error',
         expect.objectContaining({
-          ...(status !== undefined && { status }),
-          ...(isUserConfigFailure && { fastgpt: true }),
+          ...(usedUserOpenAIKey && { otel: false }),
           request: { ...body, messages },
           error: expect.objectContaining({
             message: 'upstream failed',
@@ -346,7 +363,8 @@ describe('createChatCompletion', () => {
         })
       );
       expect(JSON.stringify(log.mock.calls)).not.toContain(base64);
-      if (isUserConfigFailure) {
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+      if (usedUserOpenAIKey) {
         expect(mockLogger.error).not.toHaveBeenCalled();
       }
       expect(body.messages).toEqual(originalMessages);
@@ -373,17 +391,20 @@ describe('createChatCompletion', () => {
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
-  it('should not report an aborted user-key request as a key error', async () => {
-    const create = vi.fn().mockRejectedValue(new OpenAI.APIUserAbortError());
+  it('should also wrap aborted user-key requests and log them only as info', async () => {
+    const upstreamError = new OpenAI.APIUserAbortError();
+    const create = vi.fn().mockRejectedValue(upstreamError);
     mockApi({ create, usedUserOpenAIKey: true, baseUrl: 'https://api.openai.com/v1' });
 
-    // 用户 key 配置错误会被包装；中断路径应原样透传 Error 对象
     await expect(
       createChatCompletion({
         modelData: createModel(),
         body: createBody(),
         userKey: { key: 'user-key' } as any
       })
-    ).rejects.not.toMatchObject({ name: 'UserError', type: 'config' });
+    ).rejects.toMatchObject({ name: 'UserConfigError', cause: upstreamError });
+    expect(mockLogger.info).toHaveBeenCalledExactlyOnceWith('User AI API error', expect.anything());
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 });

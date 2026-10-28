@@ -12,7 +12,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
@@ -198,10 +198,9 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     expect(result.error).toMatchObject({
       message: 'Invalid MCP tool id: invalid-id',
-      name: 'UserError',
-      type: 'config'
+      name: 'UserConfigError'
     });
-    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.error });
   });
 
   it.each(['mcp', 'http'] as const)(
@@ -534,7 +533,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
-  it('should return MCP user config errors without logging them as system errors', async () => {
+  it('should preserve MCP user config errors for centralized log classification', async () => {
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -563,16 +562,14 @@ describe('dispatchRunTool runtime toolset auth', () => {
         inputSchema: { type: 'object', properties: {} }
       }
     ]);
-    mcpToolCallMock.mockRejectedValueOnce(
-      new UserError('Invalid MCP URL', undefined, { type: 'config' })
-    );
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
 
     const result = await dispatchRunTool(
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
     );
 
     expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
-    expect(mockLogger.error).not.toHaveBeenCalled();
+    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.error });
   });
 
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {

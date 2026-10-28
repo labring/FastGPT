@@ -1,7 +1,7 @@
 import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -256,7 +256,7 @@ describe('dispatchRunTools', () => {
       completeMessages: [],
       assistantResponses: [],
       finish_reason: 'error',
-      error: new UserError('Invalid API key', undefined, { type: 'config' }),
+      error: new UserConfigError('Invalid API key'),
       requestIds: []
     });
 
@@ -269,8 +269,7 @@ describe('dispatchRunTools', () => {
 
     expect(result.error).toMatchObject({
       message: 'Invalid API key',
-      name: 'UserError',
-      type: 'config'
+      name: 'UserConfigError'
     });
     expect(result.responseData).toMatchObject({ errorText: 'Invalid API key' });
     expect(result.responseData).not.toHaveProperty('errorType');

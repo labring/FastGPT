@@ -14,7 +14,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   graphNode,
@@ -409,7 +409,7 @@ describe('real code and HTTP node error routes', () => {
     'stops both downstream routes without catch: returned error=%s',
     async (asConfig) => {
       const error = asConfig
-        ? new UserError('invalid sandbox configuration', undefined, { type: 'config' })
+        ? new UserConfigError('invalid sandbox configuration')
         : new Error('sandbox unavailable');
       vi.mocked(codeSandbox.runCode).mockRejectedValueOnce(error);
       const source = graphNode({
@@ -433,7 +433,8 @@ describe('real code and HTTP node error routes', () => {
       expect(result.error).toBe(error);
       expect(result.workflowRuntimeSummary.errorCount).toBe(1);
       expect(responses.map((response) => response.nodeId)).toEqual(['code']);
-      expect(warn).toHaveBeenCalledTimes(asConfig ? 0 : 1);
+      // mock logger 只验证原始异常的提交，配置错误的降级由 logger 自身测例验证。
+      expect(warn).toHaveBeenCalledExactlyOnceWith('Workflow node returned error', { error });
     }
   );
 
