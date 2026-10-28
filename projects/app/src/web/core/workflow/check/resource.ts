@@ -7,7 +7,11 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { isToolInputValueConfigured } from '@fastgpt/global/core/app/formEdit/utils';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
+  type FlowNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowBindingRequirement } from '@fastgpt/workflow-core/binding/type';
 import type { WorkflowRuleIssue } from '../type';
 import { resolvePluginDataErrorIssueCode } from './error';
@@ -23,13 +27,13 @@ export const checkWorkflowNodeResourceRules = ({
   const issues: WorkflowRuleIssue[] = [];
   const inputs = new Map(data.inputs.map((input) => [input.key, input]));
   if (data.flowNodeType === FlowNodeTypeEnum.toolSet && !data.pluginId) {
-    const mcpToolSet = data.toolConfig?.mcpToolSet;
-    const httpToolSet = data.toolConfig?.httpToolSet;
+    const mcpToolSet = McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
+    const httpToolSet = HttpToolSetNodeConfigSchema.safeParse(data.toolConfig?.httpToolSet).data;
     if (
-      (mcpToolSet && 'toolList' in mcpToolSet && !mcpToolSet.toolList?.length) ||
-      (httpToolSet && 'toolList' in httpToolSet && !httpToolSet.toolList?.length)
+      (mcpToolSet && (!mcpToolSet.url.trim() || !mcpToolSet.toolList.length)) ||
+      (httpToolSet && (!httpToolSet.apiSchemaUrl?.trim() || !httpToolSet.toolList.length))
     ) {
-      issues.push({ code: 'tool_set_not_configured' });
+      issues.push({ code: WorkflowCheckIssueCodeEnum.toolSetNotConfigured });
     }
   }
   if ((data.status ?? data.pluginData?.status) === PluginStatusEnum.Offline) {

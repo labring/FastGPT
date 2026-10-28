@@ -26,14 +26,12 @@ const ToolSetList = ({
   toolList,
   title,
   onSaveDescription,
-  onOpenTool,
   emptyText,
   emptyMinH
 }: {
   toolList: ToolSetListItemType[];
   title?: React.ReactNode;
-  onSaveDescription?: (index: number, description: string) => void;
-  onOpenTool?: (index: number) => void;
+  onSaveDescription: (index: number, description: string) => void;
   emptyText?: string;
   emptyMinH?: string;
 }) => {
@@ -45,7 +43,7 @@ const ToolSetList = ({
 
   const handleSave = useCallback(() => {
     if (!editingItem) return;
-    onSaveDescription?.(editingItem.index, editingItem.description);
+    onSaveDescription(editingItem.index, editingItem.description);
     setEditingItem(null);
   }, [editingItem, onSaveDescription]);
   const handleCancel = useCallback(() => {
@@ -81,9 +79,6 @@ const ToolSetList = ({
                 whiteSpace="nowrap"
                 overflow="hidden"
                 textOverflow="ellipsis"
-                _hover={onOpenTool ? { color: 'primary.600' } : undefined}
-                cursor={onOpenTool ? 'pointer' : undefined}
-                onClick={() => onOpenTool?.(index)}
               >
                 {tool.name}
               </Box>
@@ -103,28 +98,22 @@ const ToolSetList = ({
                   }
                   maxW={'400px'}
                 >
-                  <Box width={'full'} fontSize={'12px'} color={'myGray.500'} noOfLines={3}>
+                  <Box width={'392px'} fontSize={'12px'} color={'myGray.500'} noOfLines={3}>
                     {tool.description || t('app:tools_no_description')}
                   </Box>
                 </MyTooltip>
-                {(onSaveDescription || onOpenTool) && (
-                  <MyIconButton
-                    size={'3'}
-                    width={'20px'}
-                    height={'20px'}
-                    flex={0}
-                    alignSelf={'center'}
-                    icon={'edit'}
-                    tip={t('common:Edit')}
-                    onClick={() => {
-                      if (onOpenTool) {
-                        onOpenTool(index);
-                      } else {
-                        setEditingItem({ index, description: tool.description ?? '' });
-                      }
-                    }}
-                  />
-                )}
+                <MyIconButton
+                  size={'3'}
+                  width={'20px'}
+                  height={'20px'}
+                  flex={0}
+                  alignSelf={'center'}
+                  icon={'edit'}
+                  tip={t('common:Edit')}
+                  onClick={() => {
+                    setEditingItem({ index, description: tool.description ?? '' });
+                  }}
+                />
               </Flex>
             </Box>
           </Flex>

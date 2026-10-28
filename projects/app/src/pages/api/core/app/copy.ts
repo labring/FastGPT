@@ -51,7 +51,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const draftWorkflow = await getAppDraftWorkflow(app._id);
+    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
     const storageNodes = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
         return encodeMcpToolSetNodesForStorage(draftWorkflow.nodes);

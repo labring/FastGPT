@@ -1,42 +1,39 @@
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useCallback, useMemo, useState } from 'react';
-import { type NodeProps } from 'reactflow';
-import NodeCard from './render/NodeCard';
-import Container from '../components/Container';
-import IOTitle from '../components/IOTitle';
-import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
-import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
-import HttpSchemaConfigModal from '@/pageComponents/app/detail/Edit/HTTPTools/SchemaConfigModal';
-import { HttpToolDetailModal } from '@/pageComponents/app/detail/Edit/HTTPTools/EditForm';
-import { McpToolDetailModal } from '@/pageComponents/app/detail/Edit/MCPTools/EditForm';
-import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getMCPTools } from '@/web/core/app/api/mcpTools';
-import type {
-  HttpToolSetRuntimeConfigType,
-  McpToolSetRuntimeConfigType
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
+  type FlowNodeItemType,
+  type HttpToolSetNodeConfigType,
+  type McpToolSetNodeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback, useState } from 'react';
+import { type NodeProps } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import Container from '../components/Container';
+import IOTitle from '../components/IOTitle';
+import SchemaConfigModal from '@/pageComponents/app/detail/Edit/HTTPTools/SchemaConfigModal';
+import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
+import NodeCard from './render/NodeCard';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [toolDetailIndex, setToolDetailIndex] = useState<number | null>(null);
-  const mcpToolSet = data.toolConfig?.mcpToolSet;
-  const httpToolSet = data.toolConfig?.httpToolSet;
-  const localMcpToolSet =
-    !data.pluginId && mcpToolSet && 'url' in mcpToolSet ? mcpToolSet : undefined;
-  const localHttpToolSet =
-    !data.pluginId && httpToolSet && !('toolId' in httpToolSet) ? httpToolSet : undefined;
-  const toolDetail = toolDetailIndex === null ? undefined : toolList[toolDetailIndex];
+  const localMcpToolSet = data.pluginId
+    ? undefined
+    : McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
+  const localHttpToolSet = data.pluginId
+    ? undefined
+    : HttpToolSetNodeConfigSchema.safeParse(data.toolConfig?.httpToolSet).data;
+
   const updateToolConfig = useCallback(
     (toolConfig: FlowNodeItemType['toolConfig']) => {
       if (!toolConfig) return;
@@ -73,76 +70,40 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     },
     [data.toolConfig, updateToolConfig]
   );
-  const onParseMcpTools = useCallback(
-    (config: McpToolSetRuntimeConfigType) => {
-      if (!localMcpToolSet || !data.toolConfig) return;
-
-      updateToolConfig({ mcpToolSet: config });
-    },
-    [data.toolConfig, localMcpToolSet, updateToolConfig]
-  );
-  const onSaveHttpToolList = useCallback(
-    (nextToolList: HttpToolConfigType[]) => {
-      if (!localHttpToolSet || !data.toolConfig) return;
-
-      updateToolConfig({
-        httpToolSet: {
-          ...localHttpToolSet,
-          toolList: nextToolList.map(({ headerSecret: _headerSecret, ...tool }) => tool)
-        }
-      });
-    },
-    [data.toolConfig, localHttpToolSet, updateToolConfig]
-  );
-  const onSaveMcpToolList = useCallback(
-    (nextToolList: McpToolConfigType[]) => {
-      if (!localMcpToolSet || !data.toolConfig) return;
-
-      updateToolConfig({
-        mcpToolSet: {
-          ...localMcpToolSet,
-          toolList: nextToolList
-        }
-      });
-    },
-    [data.toolConfig, localMcpToolSet, updateToolConfig]
+  const onSaveMcpToolSet = useCallback(
+    (config: McpToolSetNodeConfigType) => updateToolConfig({ mcpToolSet: config }),
+    [updateToolConfig]
   );
   const onSaveHttpToolSet = useCallback(
-    (config: HttpToolSetRuntimeConfigType) => {
-      updateToolConfig({ httpToolSet: config });
-      setIsConfigOpen(false);
-    },
-    [data.toolConfig, updateToolConfig]
+    (config: HttpToolSetNodeConfigType) => updateToolConfig({ httpToolSet: config }),
+    [updateToolConfig]
   );
 
-  const title = useMemo(
-    () => (
-      <Flex alignItems={'center'} justifyContent={'space-between'} minW={0}>
-        <IOTitle
-          text={t('app:MCP_tools_list')}
-          nodeId={data.nodeId}
-          inputs={data.inputs}
-          mb={0}
-          minW={0}
-        />
-        {localHttpToolSet && (
-          <Button
-            size={'sm'}
-            variant={'primary'}
-            ml={3}
-            leftIcon={<MyIcon name={'common/setting'} w={'16px'} />}
-            onClick={() => setIsConfigOpen(true)}
-          >
-            {t('app:toolset_config')}
-          </Button>
-        )}
-      </Flex>
-    ),
-    [data, localHttpToolSet, t]
+  const title = (
+    <Flex alignItems={'center'} justifyContent={'space-between'} minW={0}>
+      <IOTitle
+        text={t('app:MCP_tools_list')}
+        nodeId={data.nodeId}
+        inputs={data.inputs}
+        mb={0}
+        minW={0}
+      />
+      {localHttpToolSet && (
+        <Button
+          size={'sm'}
+          variant={'primary'}
+          ml={3}
+          leftIcon={<MyIcon name={'common/setting'} w={'16px'} />}
+          onClick={() => setIsConfigOpen(true)}
+        >
+          {t('app:toolset_config')}
+        </Button>
+      )}
+    </Flex>
   );
 
   return (
-    <NodeCard minW={'524px'} maxW={'524px'} selected={selected} {...data}>
+    <NodeCard minW={'524px'} selected={selected} {...data}>
       <Container>
         {localHttpToolSet && toolList.length === 0 ? (
           <Flex
@@ -162,50 +123,23 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         ) : (
           <>
             {localMcpToolSet && (
-              <McpToolSetForm initialConfig={localMcpToolSet} onParse={onParseMcpTools} />
+              <McpToolSetForm initialConfig={localMcpToolSet} onUpdateConfig={onSaveMcpToolSet} />
             )}
             <ToolSetList
               toolList={toolList}
-              onSaveDescription={data.pluginId ? onSaveDescription : undefined}
-              onOpenTool={
-                localMcpToolSet || localHttpToolSet
-                  ? (index) => setToolDetailIndex(index)
-                  : undefined
-              }
-              emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : t('app:tools_no_data')}
-              emptyMinH={localMcpToolSet ? '160px' : '120px'}
+              onSaveDescription={onSaveDescription}
+              emptyText={localMcpToolSet ? t('app:MCP_tools_empty') : undefined}
+              emptyMinH={localMcpToolSet ? '160px' : undefined}
               title={title}
             />
           </>
         )}
       </Container>
       {isConfigOpen && localHttpToolSet && (
-        <HttpSchemaConfigModal
+        <SchemaConfigModal
           initialConfig={localHttpToolSet}
           onClose={() => setIsConfigOpen(false)}
           onSaveConfig={onSaveHttpToolSet}
-        />
-      )}
-      {toolDetail && localHttpToolSet && (
-        <HttpToolDetailModal
-          tool={toolDetail as HttpToolConfigType}
-          toolList={localHttpToolSet.toolList}
-          baseUrl={localHttpToolSet.baseUrl || ''}
-          apiSchemaStr={localHttpToolSet.apiSchemaStr || ''}
-          headerSecret={localHttpToolSet.headerSecret || {}}
-          customHeaders={localHttpToolSet.customHeaders || '{}'}
-          isCustomToolSet
-          onClose={() => setToolDetailIndex(null)}
-          onSaveToolList={onSaveHttpToolList}
-        />
-      )}
-      {toolDetail && localMcpToolSet && (
-        <McpToolDetailModal
-          tool={toolDetail as McpToolConfigType}
-          showIcon={false}
-          toolList={localMcpToolSet.toolList ?? []}
-          onSaveToolList={onSaveMcpToolList}
-          onClose={() => setToolDetailIndex(null)}
         />
       )}
     </NodeCard>
@@ -216,10 +150,10 @@ export default React.memo(NodeToolSet);
 
 const McpToolSetForm = ({
   initialConfig,
-  onParse
+  onUpdateConfig
 }: {
-  initialConfig: McpToolSetRuntimeConfigType;
-  onParse: (config: McpToolSetRuntimeConfigType) => void;
+  initialConfig: McpToolSetNodeConfigType;
+  onUpdateConfig: (config: McpToolSetNodeConfigType) => void;
 }) => {
   const { t } = useTranslation();
   const [url, setUrl] = useState(initialConfig.url);
@@ -227,14 +161,36 @@ const McpToolSetForm = ({
     initialConfig.headerSecret ?? {}
   );
   const { runAsync: parseTools, loading } = useRequest(
-    async ({ url, headerSecret }: { url: string; headerSecret: StoreSecretValueType }) =>
-      await getMCPTools({ url, headerSecret }),
+    async () =>
+      getMCPTools({
+        url: url.trim(),
+        headerSecret
+      }),
     {
       manual: true,
-      onSuccess: (toolList, [config]) => onParse({ ...config, toolList }),
+      onSuccess: (tools) => {
+        const savedDescriptions = new Map(
+          initialConfig.toolList.map((tool) => [tool.name, tool.description])
+        );
+        onUpdateConfig({
+          ...initialConfig,
+          url: url.trim(),
+          headerSecret,
+          toolList: tools.map(({ name, description }) => ({
+            name,
+            description: savedDescriptions.has(name)
+              ? (savedDescriptions.get(name) ?? '')
+              : (description ?? '')
+          }))
+        });
+      },
       errorToast: t('app:MCP_tools_parse_failed')
     }
   );
+  const onUpdateHeaderSecret = (nextHeaderSecret: StoreSecretValueType) => {
+    setHeaderSecret(nextHeaderSecret);
+    onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret: nextHeaderSecret });
+  };
 
   return (
     <Box mb={4} className={'nodrag nowheel'}>
@@ -245,7 +201,7 @@ const McpToolSetForm = ({
         </Box>
         <HeaderAuthConfig
           storeHeaderSecretConfig={headerSecret}
-          onUpdate={setHeaderSecret}
+          onUpdate={onUpdateHeaderSecret}
           buttonProps={{ size: 'sm', variant: 'primary' }}
         />
       </Flex>
@@ -255,13 +211,14 @@ const McpToolSetForm = ({
           placeholder={t('app:MCP_tools_url_placeholder')}
           value={url}
           onChange={(event) => setUrl(event.target.value)}
+          onBlur={() => onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret })}
         />
         <Button
           size={'sm'}
           variant={'whitePrimary'}
           flexShrink={0}
           isLoading={loading}
-          onClick={() => parseTools({ url, headerSecret })}
+          onClick={() => parseTools()}
         >
           {t('common:Parse')}
         </Button>

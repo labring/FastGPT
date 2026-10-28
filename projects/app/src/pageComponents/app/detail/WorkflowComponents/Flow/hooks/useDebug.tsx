@@ -48,7 +48,15 @@ import {
   getWorkflowStartDebugQuery,
   isDebugFileUrlInput
 } from './useDebugInput';
-import { getToolSetDebugRuntimeNode } from './toolSetDebug';
+import {
+  getToolSetDebugData,
+  getToolSetDebugRuntimeNode,
+  type ToolSetDebugData
+} from './toolSetDebug';
+import {
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema
+} from '@fastgpt/global/core/workflow/type/node';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -225,6 +233,11 @@ export const useDebug = () => {
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
     const [hasFileError, setHasFileError] = useState(false);
     const [toolIndex, setToolIndex] = useState(0);
+    const [toolSetDebugData, setToolSetDebugData] = useState<{
+      nodeId: string;
+      data: ToolSetDebugData;
+    }>();
+    const [isLoadingToolSet, setIsLoadingToolSet] = useState(false);
     const [toolPreview, setToolPreview] = useState<{
       id: string;
       node: Awaited<ReturnType<typeof getClientToolPreviewNode>>;
@@ -236,7 +249,23 @@ export const useDebug = () => {
     const httpToolSet = runtimeNode?.toolConfig?.httpToolSet;
     const isToolSet =
       runtimeNode?.flowNodeType === FlowNodeTypeEnum.toolSet && !!(mcpToolSet || httpToolSet);
-    const toolList = mcpToolSet?.toolList ?? httpToolSet?.toolList ?? [];
+    const isIndependentToolSet = Boolean(
+      isToolSet &&
+      runtimeNode &&
+      !runtimeNode.pluginId &&
+      (McpToolSetNodeConfigSchema.safeParse(mcpToolSet).success ||
+        HttpToolSetNodeConfigSchema.safeParse(httpToolSet).success)
+    );
+    const hasToolSetSummary = Boolean(
+      mcpToolSet?.toolList?.length || httpToolSet?.toolList?.length
+    );
+    const currentToolSetDebugData =
+      toolSetDebugData && toolSetDebugData.nodeId === runtimeNode?.nodeId
+        ? toolSetDebugData.data
+        : undefined;
+    const toolList = isIndependentToolSet
+      ? (currentToolSetDebugData?.toolList ?? [])
+      : (mcpToolSet?.toolList ?? httpToolSet?.toolList ?? []);
     const selectedTool = toolList[toolIndex];
     const toolPreviewId = (() => {
       if (!runtimeNode?.pluginId || !selectedTool) return;
@@ -263,15 +292,43 @@ export const useDebug = () => {
       };
     }, [toolPreviewId]);
 
+    useEffect(() => {
+      if (!runtimeNode || !isIndependentToolSet || !hasToolSetSummary) {
+        setIsLoadingToolSet(false);
+        setToolSetDebugData(undefined);
+        return;
+      }
+      let cancelled = false;
+      setIsLoadingToolSet(true);
+      setToolSetDebugData(undefined);
+      getToolSetDebugData(runtimeNode)
+        .then((data) => {
+          if (cancelled) return;
+          setToolIndex(0);
+          setToolSetDebugData({ nodeId: runtimeNode.nodeId, data });
+        })
+        .catch((error) => {
+          if (!cancelled) toast({ status: 'error', title: getErrText(error) });
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingToolSet(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [runtimeNode, isIndependentToolSet, hasToolSetSummary, toast]);
+
     const debugNode = useMemo(() => {
       if (!runtimeNode) return;
       if (!isToolSet) return runtimeNode;
       return getToolSetDebugRuntimeNode({
         toolSetNode: runtimeNode,
         toolIndex,
+        debugData: currentToolSetDebugData,
         previewNode: toolPreview && toolPreview.id === toolPreviewId ? toolPreview.node : undefined
       });
-    }, [runtimeNode, isToolSet, toolIndex, toolPreview, toolPreviewId]);
+    }, [runtimeNode, isToolSet, toolIndex, currentToolSetDebugData, toolPreview, toolPreviewId]);
 
     const referenceSourceNodes = useMemo(
       () =>
@@ -464,7 +521,9 @@ export const useDebug = () => {
                 />
               );
             })}
-            {isToolSet && toolList.length === 0 && <Box>{t('app:tools_no_data')}</Box>}
+            {isToolSet && toolList.length === 0 && (
+              <Box>{isLoadingToolSet ? t('common:Loading') : t('app:tools_no_data')}</Box>
+            )}
             {isToolSet && debugNode && renderInputs.length === 0 && (
               <Box>{t('app:this_tool_requires_no_input')}</Box>
             )}
@@ -513,7 +572,9 @@ export const useDebug = () => {
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
           <Button
-            isDisabled={fileUploading || hasFileError || (isToolSet && !debugNode)}
+            isDisabled={
+              fileUploading || hasFileError || (isToolSet && (!debugNode || isLoadingToolSet))
+            }
             onClick={handleSubmit(onClickRun, onCheckRunError)}
           >
             {t('common:Run')}

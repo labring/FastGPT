@@ -17,10 +17,44 @@ describe('workflow node-local toolset checks', () => {
       name: 'Local toolset',
       inputs: [],
       outputs: [],
-      toolConfig: { [toolSetKey]: { toolList: [] } }
+      toolConfig: {
+        [toolSetKey]: {
+          ...(toolSetKey === 'mcpToolSet' ? { url: '' } : { apiSchemaUrl: '' }),
+          toolList: []
+        }
+      }
     });
 
     expect(issues).toContainEqual({ code: 'tool_set_not_configured' });
+  });
+
+  it('warns when a node has tool summaries but no source URL', () => {
+    const mcpIssues = getResourceIssues({
+      nodeId: 'mcp-set',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'Local MCP',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpToolSet: { url: ' ', toolList: [{ name: 'search', description: 'Search' }] }
+      }
+    });
+    const httpIssues = getResourceIssues({
+      nodeId: 'http-set',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'Local HTTP',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        httpToolSet: {
+          apiSchemaUrl: ' ',
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }
+    });
+
+    expect(mcpIssues).toContainEqual({ code: 'tool_set_not_configured' });
+    expect(httpIssues).toContainEqual({ code: 'tool_set_not_configured' });
   });
 
   it('does not warn for configured or externally referenced toolsets', () => {

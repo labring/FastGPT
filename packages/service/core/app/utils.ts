@@ -45,7 +45,10 @@ import type {
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
 import { encryptSecretValue } from '../../common/secret/utils';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
+import {
+  StoreSecretValueTypeSchema,
+  type SecretValueType
+} from '@fastgpt/global/common/secret/type';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
@@ -667,6 +670,19 @@ export async function rewriteAppWorkflowToDetail({
     Object.fromEntries(
       Object.entries(value).map(([key, secret]) => [key, encryptSecretValue(secret)])
     );
+  const encryptToolHeaderSecret = (tool: unknown) => {
+    if (
+      !isRecord(tool) ||
+      !('headerSecret' in tool) ||
+      tool.headerSecret === null ||
+      tool.headerSecret === undefined
+    ) {
+      return tool;
+    }
+    const headerSecret = StoreSecretValueTypeSchema.safeParse(tool.headerSecret);
+    if (!headerSecret.success) return stripHeaderSecret(tool);
+    return { ...tool, headerSecret: encryptHeaderSecret(headerSecret.data) };
+  };
   const projectToolSetSummary = (toolSet: Record<string, unknown>, toolId?: string) => ({
     ...(toolId ? { toolId } : {}),
     ...(Array.isArray(toolSet.toolList)
@@ -708,7 +724,7 @@ export async function rewriteAppWorkflowToDetail({
       }
       const sanitizedToolSet = { ...toolSet };
       if (Array.isArray(toolSet.toolList)) {
-        sanitizedToolSet.toolList = toolSet.toolList.map(stripHeaderSecret);
+        sanitizedToolSet.toolList = toolSet.toolList.map(encryptToolHeaderSecret);
       }
       toolConfig[key] = sanitizedToolSet;
     });

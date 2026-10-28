@@ -50,7 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
   // 兼容未传 chatConfig 的旧客户端；App 主表不再保存工作流配置，默认值从草稿 Version 读取。
-  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId)).chatConfig;
+  const workflowChatConfig = chatConfig ?? (await getAppDraftWorkflow(appId, app)).chatConfig;
 
   const interactive = getLastInteractiveValue(history);
   const newUsageId = usageId

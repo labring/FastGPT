@@ -25,16 +25,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  isHttpToolInputAgentGenerated,
-  pathData2ToolList,
-  updateHttpToolInputProperty
-} from '@fastgpt/global/core/app/tool/httpTool/utils';
-import {
-  getHttpToolSetConfigError,
-  getNodeHttpToolListForSave
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/toolSetUtils';
-import type { HttpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
+import { pathData2ToolList } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import {
@@ -43,23 +34,21 @@ import {
 } from '@/components/common/secret/HeaderAuthConfig';
 import HeaderAuthForm, { AuthValueDisplay } from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { buildWorkflowCustomHeaders } from './utils';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  type HttpToolSetNodeConfigType
+} from '@fastgpt/global/core/workflow/type/node';
+import { buildWorkflowCustomHeaders, type CustomHeaderItem } from './utils';
 
 export type HttpToolsType = {
   id?: string;
   avatar: string;
   name: string;
   intro?: string;
+  baseUrl?: string;
   apiSchemaStr?: string;
   customHeaders?: string;
   headerSecret?: StoreSecretValueType;
-};
-
-type CustomHeaderItem = {
-  key: string;
-  value: string;
-  secretKey?: string;
-  edited?: boolean;
 };
 
 const SchemaConfigModal = ({
@@ -68,15 +57,18 @@ const SchemaConfigModal = ({
   onSaveConfig
 }: {
   onClose: () => void;
-  initialConfig?: HttpToolSetRuntimeConfigType;
-  onSaveConfig?: (config: HttpToolSetRuntimeConfigType) => void;
+  initialConfig?: HttpToolSetNodeConfigType;
+  onSaveConfig?: (config: HttpToolSetNodeConfigType) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
   const [schemaUrl, setSchemaUrl] = useState<string>('');
+  const [apiSchemaUrl, setApiSchemaUrl] = useState(initialConfig?.apiSchemaUrl ?? '');
+  const [toolList, setToolList] = useState(initialConfig?.toolList ?? []);
+  const [workflowApiSchemaStr, setWorkflowApiSchemaStr] = useState('');
   const [updateTrigger, setUpdateTrigger] = useState<boolean>(false);
-  const [isExplicitApiSchemaImport, setIsExplicitApiSchemaImport] = useState(false);
+  const isWorkflowNodeConfig = Boolean(onSaveConfig);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const reloadApp = useContextSelector(AppContext, (v) => v.reloadApp);
@@ -88,31 +80,37 @@ const SchemaConfigModal = ({
     return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.nodes]);
 
-  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
-  const currentConfig = initialConfig ?? editableToolSetData;
-  const isWorkflowNodeConfig = Boolean(onSaveConfig);
+  const editableToolSetData =
+    toolSetData && !('toolId' in toolSetData)
+      ? HttpToolSetRuntimeConfigSchema.safeParse(toolSetData).data
+      : undefined;
+  const editableApiSchemaStr =
+    editableToolSetData && 'apiSchemaStr' in editableToolSetData
+      ? editableToolSetData.apiSchemaStr
+      : undefined;
 
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
     defaultValues: {
       avatar: '',
       name: appDetail?.name || '',
       intro: '',
-      apiSchemaStr: currentConfig?.apiSchemaStr || '',
-      customHeaders:
-        currentConfig?.customHeaders ||
-        (isWorkflowNodeConfig ? '{}' : '{"Authorization":"Bearer"}'),
-      headerSecret: currentConfig?.headerSecret || {}
+      baseUrl: initialConfig?.baseUrl ?? editableToolSetData?.baseUrl ?? '',
+      apiSchemaStr: editableApiSchemaStr || '',
+      customHeaders: initialConfig
+        ? (initialConfig.customHeaders ?? '{}')
+        : editableToolSetData?.customHeaders || '{"Authorization":"Bearer"}',
+      headerSecret: initialConfig?.headerSecret ?? editableToolSetData?.headerSecret ?? {}
     }
   });
 
+  const watchedCustomHeaders = watch('customHeaders');
   const [initialRequestHeaderKeys] = useState(() => {
     try {
-      return Object.keys(JSON.parse(currentConfig?.customHeaders || '{}'));
+      return Object.keys(JSON.parse(watchedCustomHeaders || '{}'));
     } catch {
       return [];
     }
   });
-  const watchedCustomHeaders = watch('customHeaders');
   const [customHeaders, setCustomHeaders] = useState<CustomHeaderItem[]>(() => {
     try {
       const keyValue = JSON.parse(watchedCustomHeaders || '{}');
@@ -127,20 +125,28 @@ const SchemaConfigModal = ({
     }
   });
   const [editingHeaderIndex, setEditingHeaderIndex] = useState<number>();
-  const headerSecret = watch('headerSecret');
+  const headerSecret = watch('headerSecret') ?? {};
   const apiSchemaStr = watch('apiSchemaStr');
-  const requestHeaderKeys = new Set<string>(initialRequestHeaderKeys);
-  customHeaders.forEach(({ key, value, secretKey, edited }) => {
+  const requestHeaderKeys = new Set(initialRequestHeaderKeys);
+  customHeaders.forEach(({ key, secretKey }) => {
     if (secretKey) requestHeaderKeys.add(secretKey);
-    if (key && (secretKey || value || edited)) {
-      requestHeaderKeys.add(key);
-    }
+    if (key) requestHeaderKeys.add(key);
   });
-  const authHeaderSecret = Object.fromEntries(
-    Object.entries(headerSecret ?? {}).filter(([key]) => !requestHeaderKeys.has(key))
-  );
+  const authHeaderSecret = isWorkflowNodeConfig
+    ? Object.fromEntries(
+        Object.entries(headerSecret).filter(([key]) => !requestHeaderKeys.has(key))
+      )
+    : headerSecret;
   const stringifyCustomHeaders = (headers: CustomHeaderItem[]) =>
-    JSON.stringify(Object.fromEntries(headers.map(({ key, value }) => [key, value])), null, 2);
+    JSON.stringify(
+      Object.fromEntries(
+        headers
+          .filter(({ key }) => key)
+          .map(({ key, value }) => [key, isWorkflowNodeConfig ? '' : value])
+      ),
+      null,
+      2
+    );
 
   const { runAsync: onClickUrlLoadApi, loading: isLoadingUrlApi } = useRequest(
     async () => {
@@ -153,100 +159,50 @@ const SchemaConfigModal = ({
 
       const schema = await getApiSchemaByUrl(schemaUrl);
       setValue('apiSchemaStr', JSON.stringify(schema, null, 2));
-      setIsExplicitApiSchemaImport(true);
     },
     {
       manual: true,
       errorToast: t('common:plugin.Invalid Schema')
     }
   );
+  // workflow 节点只在用户手动刷新时读取远端定义，并将其压成工具摘要。
+  const { runAsync: onRefreshWorkflowTools, loading: isRefreshingWorkflowTools } = useRequest(
+    async (url: string) => {
+      const schema = await getApiSchemaByUrl(url);
+      const schemaStr = JSON.stringify(schema, null, 2);
+      const { pathData } = await str2OpenApiSchema(schemaStr);
+      const tools = await pathData2ToolList(pathData);
+      setWorkflowApiSchemaStr(schemaStr);
+      return tools;
+    },
+    {
+      manual: true,
+      onSuccess: (tools) => {
+        const savedDescriptions = new Map(toolList.map((tool) => [tool.name, tool.description]));
+        setToolList(
+          tools.map(({ name, description }) => ({
+            name,
+            description: savedDescriptions.has(name)
+              ? (savedDescriptions.get(name) ?? '')
+              : (description ?? '')
+          }))
+        );
+      },
+      errorToast: t('common:plugin.Invalid Schema')
+    }
+  );
   const { runAsync: onUpdateHttpTool, loading: isUpdatingHttpTool } = useRequest(
     async (data: HttpToolsType) => {
-      const requestHeaderConfig = buildWorkflowCustomHeaders({
-        headers: customHeaders,
-        storedSecrets: data.headerSecret ?? {}
-      });
-      // Bearer/Basic 会映射为 Authorization，保留鉴权配置优先级。
-      const nextHeaderSecret = {
-        ...requestHeaderConfig.headerSecret,
-        ...Object.fromEntries(
-          Object.entries(data.headerSecret ?? {}).filter(([key]) => !requestHeaderKeys.has(key))
-        )
-      };
-      const nextCustomHeaders = requestHeaderConfig.customHeaders;
-
       const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);
-      const baseUrl = apiData.serverPath;
-
-      if (onSaveConfig) {
-        const previousToolByOperation = new Map(
-          (initialConfig?.toolList ?? []).map((tool) => [
-            `${tool.method.toUpperCase()} ${tool.path}`,
-            tool
-          ])
-        );
-        const importedToolList = toolList.map((tool) => {
-          const previousTool = previousToolByOperation.get(
-            `${tool.method.toUpperCase()} ${tool.path}`
-          );
-          if (!previousTool?.inputSchema?.properties || !tool.inputSchema?.properties) return tool;
-
-          return {
-            ...tool,
-            inputSchema: {
-              ...tool.inputSchema,
-              properties: Object.fromEntries(
-                Object.entries(tool.inputSchema.properties).map(([key, property]) => {
-                  const previousProperty = previousTool.inputSchema?.properties?.[key];
-                  return [
-                    key,
-                    previousProperty
-                      ? updateHttpToolInputProperty({
-                          key,
-                          property,
-                          enabled: isHttpToolInputAgentGenerated(previousProperty)
-                        })
-                      : property
-                  ];
-                })
-              )
-            }
-          };
-        });
-        const toolListToSave = getNodeHttpToolListForSave({
-          currentToolList: currentConfig?.toolList ?? [],
-          importedToolList,
-          currentApiSchemaStr: currentConfig?.apiSchemaStr ?? '',
-          nextApiSchemaStr: data.apiSchemaStr || '',
-          isExplicitImport: isExplicitApiSchemaImport
-        });
-        const configError = await getHttpToolSetConfigError({
-          baseUrl,
-          apiSchemaStr: data.apiSchemaStr || '',
-          customHeaders: data.customHeaders || '{}',
-          toolList: toolListToSave,
-          allowToolSubset: true
-        });
-        if (configError) throw new Error(configError);
-
-        onSaveConfig({
-          baseUrl,
-          apiSchemaStr: data.apiSchemaStr || '',
-          customHeaders: nextCustomHeaders,
-          headerSecret: nextHeaderSecret,
-          toolList: toolListToSave.map(({ headerSecret: _headerSecret, ...tool }) => tool)
-        });
-        return;
-      }
 
       return putUpdateHttpTool({
         appId: appDetail._id,
-        baseUrl,
+        baseUrl: apiData.serverPath,
         toolList,
         apiSchemaStr: data.apiSchemaStr || '',
-        headerSecret: nextHeaderSecret,
-        customHeaders: nextCustomHeaders
+        headerSecret: data.headerSecret || {},
+        customHeaders: data.customHeaders || '{}'
       });
     },
     {
@@ -256,11 +212,62 @@ const SchemaConfigModal = ({
           status: 'success'
         });
         onClose();
-        if (!onSaveConfig) reloadApp();
-      },
-      errorToast: t('common:plugin.Invalid Schema')
+        reloadApp();
+      }
     }
   );
+
+  const onClickWorkflowRefresh = () => {
+    const url = apiSchemaUrl.trim();
+    if (!url.startsWith('https://') && !url.startsWith('http://')) {
+      toast({ title: t('common:plugin.Invalid URL'), status: 'warning' });
+      return;
+    }
+    onRefreshWorkflowTools(url);
+  };
+
+  /** workflow 节点保存远端定义地址和本地请求配置；OpenAPI 正文仍在执行期动态读取。 */
+  const onSaveWorkflowConfig = (data: HttpToolsType) => {
+    const url = apiSchemaUrl.trim();
+    const baseUrl = data.baseUrl?.trim();
+    if (!url.startsWith('https://') && !url.startsWith('http://')) {
+      toast({ title: t('common:plugin.Invalid URL'), status: 'warning' });
+      return;
+    }
+
+    const customHeadersStr = data.customHeaders || '{}';
+    try {
+      const headers: unknown = JSON.parse(customHeadersStr);
+      if (
+        !headers ||
+        typeof headers !== 'object' ||
+        Array.isArray(headers) ||
+        Object.values(headers).some((value) => typeof value !== 'string')
+      ) {
+        throw new Error('Invalid headers');
+      }
+    } catch {
+      toast({ title: t('common:plugin.Invalid Schema'), status: 'warning' });
+      return;
+    }
+
+    const requestHeaderConfig = buildWorkflowCustomHeaders({
+      headers: customHeaders,
+      storedSecrets: data.headerSecret ?? {}
+    });
+    const authHeaderSecrets = Object.fromEntries(
+      Object.entries(data.headerSecret ?? {}).filter(([key]) => !requestHeaderKeys.has(key))
+    );
+
+    onSaveConfig?.({
+      apiSchemaUrl: url,
+      ...(baseUrl ? { baseUrl } : {}),
+      customHeaders: requestHeaderConfig.customHeaders,
+      headerSecret: { ...requestHeaderConfig.headerSecret, ...authHeaderSecrets },
+      toolList
+    });
+    onClose();
+  };
 
   return (
     <MyModal
@@ -268,52 +275,106 @@ const SchemaConfigModal = ({
       onClose={onClose}
       iconSrc={'common/setting'}
       iconColor={'primary.600'}
-      title={t('app:Params_config')}
+      title={t(isWorkflowNodeConfig ? 'app:toolset_config' : 'app:Params_config')}
       w={600}
     >
       <ModalBody px={9}>
-        <Box mt={2}>
-          <Box
-            color={'myGray.800'}
-            fontWeight={'bold'}
-            justifyContent={'space-between'}
-            display={'flex'}
-          >
-            <Box my={'auto'} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
-              OpenAPI Schema
-            </Box>
-
-            <Box>
-              <Flex alignItems={'center'}>
-                <Input
-                  mr={2}
-                  placeholder={t('common:plugin.Import from URL')}
-                  h={'30px'}
-                  w={['150px', '250px']}
-                  fontSize={'sm'}
-                  onBlur={(e) => setSchemaUrl(e.target.value)}
-                />
+        {isWorkflowNodeConfig ? (
+          <>
+            <Box mt={2}>
+              <Flex mb={2} alignItems={'center'} justifyContent={'space-between'}>
+                <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
+                  OpenAPI Schema URL
+                </Box>
                 <Button
                   size={'sm'}
                   variant={'whitePrimary'}
-                  isLoading={isLoadingUrlApi}
-                  onClick={onClickUrlLoadApi}
+                  isLoading={isRefreshingWorkflowTools}
+                  onClick={onClickWorkflowRefresh}
                 >
-                  {t('common:Import')}
+                  {t('common:Parse')}
                 </Button>
               </Flex>
+              <Input
+                className="nodrag"
+                value={apiSchemaUrl}
+                placeholder={t('common:plugin.Import from URL')}
+                onChange={(event) => {
+                  setApiSchemaUrl(event.target.value);
+                  setWorkflowApiSchemaStr('');
+                }}
+              />
             </Box>
+            <Box mt={4}>
+              <Box mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
+                {t('common:support.openapi.Api baseurl')}
+              </Box>
+              <Input
+                {...register('baseUrl')}
+                className="nodrag"
+                aria-label={t('common:support.openapi.Api baseurl')}
+              />
+            </Box>
+            {workflowApiSchemaStr && (
+              <Box mt={4}>
+                <Box mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
+                  OpenAPI Schema
+                </Box>
+                <Textarea
+                  className="nodrag"
+                  value={workflowApiSchemaStr}
+                  isReadOnly
+                  bg={'myWhite.600'}
+                  rows={10}
+                  minH={40}
+                />
+              </Box>
+            )}
+          </>
+        ) : (
+          <Box mt={2}>
+            <Box
+              color={'myGray.800'}
+              fontWeight={'bold'}
+              justifyContent={'space-between'}
+              display={'flex'}
+            >
+              <Box my={'auto'} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
+                OpenAPI Schema
+              </Box>
+
+              <Box>
+                <Flex alignItems={'center'}>
+                  <Input
+                    mr={2}
+                    placeholder={t('common:plugin.Import from URL')}
+                    h={'30px'}
+                    w={['150px', '250px']}
+                    fontSize={'sm'}
+                    onBlur={(e) => setSchemaUrl(e.target.value)}
+                  />
+                  <Button
+                    size={'sm'}
+                    variant={'whitePrimary'}
+                    isLoading={isLoadingUrlApi}
+                    onClick={onClickUrlLoadApi}
+                  >
+                    {t('common:Import')}
+                  </Button>
+                </Flex>
+              </Box>
+            </Box>
+            <Textarea
+              {...register('apiSchemaStr', {
+                required: true
+              })}
+              bg={'myWhite.600'}
+              rows={10}
+              minH={40}
+              mt={3}
+            />
           </Box>
-          <Textarea
-            {...register('apiSchemaStr', {
-              required: true
-            })}
-            bg={'myWhite.600'}
-            rows={10}
-            minH={40}
-            mt={3}
-          />
-        </Box>
+        )}
 
         <Box mt={6} mb={2} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
           {t('common:auth_config')}
@@ -322,10 +383,15 @@ const SchemaConfigModal = ({
           <HeaderAuthForm
             headerSecretValue={storeHeader2HeaderValue(authHeaderSecret)}
             onChange={(data) => {
-              const requestSecrets = Object.fromEntries(
-                Object.entries(headerSecret ?? {}).filter(([key]) => requestHeaderKeys.has(key))
-              );
-              setValue('headerSecret', { ...requestSecrets, ...headerValue2StoreHeader(data) });
+              const requestHeaderSecrets = isWorkflowNodeConfig
+                ? Object.fromEntries(
+                    Object.entries(headerSecret).filter(([key]) => requestHeaderKeys.has(key))
+                  )
+                : {};
+              setValue('headerSecret', {
+                ...requestHeaderSecrets,
+                ...headerValue2StoreHeader(data)
+              });
             }}
             fontWeight="normal"
           />
@@ -355,10 +421,10 @@ const SchemaConfigModal = ({
               </Thead>
               <Tbody>
                 {customHeaders?.map((item, index) => {
-                  const secretValue = headerSecret?.[item.secretKey ?? item.key];
+                  const storedValue = headerSecret[item.secretKey ?? item.key];
                   const hasValue = item.edited
                     ? Boolean(item.value)
-                    : Boolean(secretValue?.secret || secretValue?.value || item.value);
+                    : Boolean(storedValue?.secret || storedValue?.value || item.value);
 
                   return (
                     <Tr key={`${index}`}>
@@ -371,8 +437,7 @@ const SchemaConfigModal = ({
                               const newHeaders = prev.map((h, i) =>
                                 i === index ? { ...h, key: val } : h
                               );
-                              const json = stringifyCustomHeaders(newHeaders);
-                              setValue('customHeaders', json);
+                              setValue('customHeaders', stringifyCustomHeaders(newHeaders));
                               return newHeaders;
                             });
                           }}
@@ -381,22 +446,38 @@ const SchemaConfigModal = ({
                       </Td>
                       <Td p={0}>
                         <Box display={'flex'} alignItems={'center'}>
-                          <AuthValueDisplay
-                            showInput={editingHeaderIndex === index || !hasValue}
-                            index={index}
-                            onEdit={setEditingHeaderIndex}
-                            value={item.edited ? item.value : ''}
-                            onChange={(value) =>
-                              setCustomHeaders((prev) => {
-                                const newHeaders = prev.map((h, i) =>
-                                  i === index ? { ...h, value, edited: true } : h
-                                );
-                                setValue('customHeaders', stringifyCustomHeaders(newHeaders));
-                                return newHeaders;
-                              })
-                            }
-                            bg="myWhite.600"
-                          />
+                          {isWorkflowNodeConfig ? (
+                            <AuthValueDisplay
+                              showInput={editingHeaderIndex === index || !hasValue}
+                              index={index}
+                              onEdit={setEditingHeaderIndex}
+                              value={item.edited ? item.value : ''}
+                              onChange={(value) =>
+                                setCustomHeaders((prev) => {
+                                  const newHeaders = prev.map((h, i) =>
+                                    i === index ? { ...h, value, edited: true } : h
+                                  );
+                                  setValue('customHeaders', stringifyCustomHeaders(newHeaders));
+                                  return newHeaders;
+                                })
+                              }
+                              bg="myWhite.600"
+                            />
+                          ) : (
+                            <HttpInput
+                              placeholder={t('common:core.module.http.Props value')}
+                              value={item.value}
+                              onBlur={(val) =>
+                                setCustomHeaders((prev) => {
+                                  const newHeaders = prev.map((h, i) =>
+                                    i === index ? { ...h, value: val } : h
+                                  );
+                                  setValue('customHeaders', stringifyCustomHeaders(newHeaders));
+                                  return newHeaders;
+                                })
+                              }
+                            />
+                          )}
                           <MyIcon
                             name={'delete'}
                             cursor={'pointer'}
@@ -405,8 +486,7 @@ const SchemaConfigModal = ({
                             onClick={() =>
                               setCustomHeaders((prev) => {
                                 const newHeaders = prev.filter((h) => h.key !== item.key);
-                                const json = stringifyCustomHeaders(newHeaders);
-                                setValue('customHeaders', json);
+                                setValue('customHeaders', stringifyCustomHeaders(newHeaders));
                                 return newHeaders;
                               })
                             }
@@ -426,8 +506,7 @@ const SchemaConfigModal = ({
                         if (!val) return;
                         setCustomHeaders((prev) => {
                           const newHeaders = [...prev, { key: val, value: '' }];
-                          const json = stringifyCustomHeaders(newHeaders);
-                          setValue('customHeaders', json);
+                          setValue('customHeaders', stringifyCustomHeaders(newHeaders));
                           return newHeaders;
                         });
                         setUpdateTrigger((prev) => !prev);
@@ -435,15 +514,8 @@ const SchemaConfigModal = ({
                     />
                   </Td>
                   <Td p={0}>
-                    <Box
-                      minH={10}
-                      px={2}
-                      py={3}
-                      color={'myGray.500'}
-                      fontSize={'xs'}
-                      userSelect={'none'}
-                    >
-                      {t('common:core.module.http.Add_props_value')}
+                    <Box display={'flex'} alignItems={'center'}>
+                      <HttpInput placeholder={t('common:core.module.http.Add_props_value')} />
                     </Box>
                   </Td>
                 </Tr>
@@ -459,8 +531,10 @@ const SchemaConfigModal = ({
             {t('common:Close')}
           </Button>
           <Button
-            isDisabled={!apiSchemaStr}
-            onClick={handleSubmit((data) => onUpdateHttpTool(data))}
+            isDisabled={isWorkflowNodeConfig ? !apiSchemaUrl.trim() : !apiSchemaStr}
+            onClick={handleSubmit((data) =>
+              isWorkflowNodeConfig ? onSaveWorkflowConfig(data) : onUpdateHttpTool(data)
+            )}
             isLoading={isUpdatingHttpTool}
           >
             {t('common:Save')}

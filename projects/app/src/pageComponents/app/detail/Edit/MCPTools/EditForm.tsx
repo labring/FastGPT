@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -188,34 +188,21 @@ const EditForm = ({
         </Box>
       </Box>
 
-      {toolDetail && <McpToolDetailModal tool={toolDetail} onClose={() => setToolDetail(null)} />}
+      {toolDetail && <ToolDetailModal tool={toolDetail} onClose={() => setToolDetail(null)} />}
     </>
   );
 };
 
 export default React.memo(EditForm);
 
-export const McpToolDetailModal = ({
-  tool,
-  onClose,
-  showIcon = true,
-  toolList,
-  onSaveToolList
-}: {
-  tool: McpToolConfigType;
-  onClose: () => void;
-  showIcon?: boolean;
-  toolList?: McpToolConfigType[];
-  onSaveToolList?: (toolList: McpToolConfigType[]) => void;
-}) => {
+const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const [description, setDescription] = useState(tool.description ?? '');
 
   return (
     <MyModal
       isOpen={true}
-      iconSrc={showIcon ? 'common/detail' : undefined}
+      iconSrc="common/detail"
       iconColor={'primary.600'}
       title={t('app:tool_detail')}
       onClose={onClose}
@@ -228,25 +215,14 @@ export const McpToolDetailModal = ({
           borderColor={'myGray.200'}
           alignItems={'flex-start'}
         >
-          <Box ml={'14px'} flex={1} minW={0}>
+          <Avatar src={appDetail.avatar} borderRadius={'md'} w={'40px'} />
+          <Box ml={'14px'}>
             <Box fontSize={'16px'} color={'myGray.900'}>
               {tool.name}
             </Box>
-            {onSaveToolList ? (
-              <Textarea
-                mt={1}
-                rows={3}
-                resize={'vertical'}
-                fontSize={'12px'}
-                value={description}
-                placeholder={t('app:tools_no_description')}
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            ) : (
-              <Box fontSize={'12px'} color={'myGray.500'} maxH={'100px'} overflow={'auto'}>
-                {tool.description}
-              </Box>
-            )}
+            <Box fontSize={'12px'} color={'myGray.500'} maxH={'100px'} overflow={'auto'}>
+              {tool.description}
+            </Box>
           </Box>
         </Flex>
 
@@ -295,17 +271,7 @@ export const McpToolDetailModal = ({
         </Box>
       </ModalBody>
       <ModalFooter>
-        <Button
-          size={'md'}
-          onClick={() => {
-            if (toolList && onSaveToolList) {
-              onSaveToolList(
-                toolList.map((item) => (item.name === tool.name ? { ...item, description } : item))
-              );
-            }
-            onClose();
-          }}
-        >
+        <Button size={'md'} onClick={onClose}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>

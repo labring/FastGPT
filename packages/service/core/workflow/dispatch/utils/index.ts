@@ -22,17 +22,18 @@ import {
 import {
   getHTTPToolRuntimeSchemas,
   getHTTPToolRuntimeNode,
-  parseHttpToolConfig
+  parseHttpToolConfig,
+  pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getMCPChildren } from '../../../app/mcp';
+import { getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import {
-  HttpToolSetRuntimeConfigSchema,
-  McpToolSetRuntimeConfigSchema,
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
   type McpToolSetRuntimeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -42,14 +43,21 @@ import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
 import { filterWorkflowToolList } from '../../resource/context';
 import { loadWorkflowAppResource } from '../../resource/service';
+import { axios } from '../../../../common/api/axios';
+import { getSecretValue } from '../../../../common/secret/utils';
+import { checkUrlSafety } from '../../../../common/system/utils';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
   initToolInputsTypeByDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
+import { jsonSchema2NodeInput, str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
+import {
+  bundleOpenAPISchema,
+  parseOpenAPISchemaString
+} from '@fastgpt/global/common/string/swagger';
 
 /**
  * 构造 workflow SSE 写入函数。
@@ -430,6 +438,23 @@ export const rewriteRuntimeWorkFlow = async ({
       ? toolSet.toolId
       : pluginId;
 
+  /** 本地摘要仅覆盖同名远端工具的描述，不能限制远端当前工具列表。 */
+  const mergeToolSetChildDescriptions = <T extends { name: string; description?: string }>({
+    toolList,
+    summaries
+  }: {
+    toolList: T[];
+    summaries: { name: string; description?: string }[];
+  }) => {
+    const descriptionMap = new Map(
+      summaries.map(({ name, description }) => [name, description] as const)
+    );
+    return toolList.map((tool) => ({
+      ...tool,
+      description: getToolSetChildDescription(descriptionMap.get(tool.name), tool.description)
+    }));
+  };
+
   type RuntimeMcpTool = McpToolConfigType & {
     url?: string;
     headerSecret?: McpToolSetRuntimeConfigType['headerSecret'];
@@ -478,10 +503,17 @@ export const rewriteRuntimeWorkFlow = async ({
           });
         } else if (mcpToolsetVal) {
           if (!toolSetNode.pluginId) {
-            const mcpToolSet = McpToolSetRuntimeConfigSchema.parse(mcpToolsetVal);
-            if (!mcpToolSet.toolList.length) continue;
+            const mcpToolSet = McpToolSetNodeConfigSchema.parse(mcpToolsetVal);
+            const remoteToolList = await new MCPClient({
+              url: mcpToolSet.url,
+              headers: getSecretValue({ storeSecret: mcpToolSet.headerSecret ?? undefined })
+            }).getTools();
+            const toolList = mergeToolSetChildDescriptions({
+              toolList: remoteToolList,
+              summaries: mcpToolSet.toolList
+            });
 
-            mcpToolSet.toolList.forEach((tool, index) => {
+            toolList.forEach((tool, index) => {
               const newToolNode = initToolSetChildNode(
                 getMCPToolRuntimeNode({
                   nodeId: `${toolSetNode.nodeId}${index}`,
@@ -531,10 +563,33 @@ export const rewriteRuntimeWorkFlow = async ({
           }
         } else if (httpToolsetVal) {
           if (!toolSetNode.pluginId) {
-            const httpToolSet = HttpToolSetRuntimeConfigSchema.parse(httpToolsetVal);
-            if (!httpToolSet.toolList.length) continue;
+            const httpToolSet = HttpToolSetNodeConfigSchema.parse(httpToolsetVal);
+            if (!httpToolSet.apiSchemaUrl) throw new Error('HTTP tool set schema URL is missing');
 
-            httpToolSet.toolList.forEach((tool, index) => {
+            await checkUrlSafety(httpToolSet.apiSchemaUrl, 'OpenAPI Schema URL');
+            const { data: downloadedSchema } = await axios.get<string>(httpToolSet.apiSchemaUrl, {
+              responseType: 'text',
+              maxRedirects: 0,
+              timeout: 30000,
+              transformResponse: (value) => value
+            });
+            const bundledSchema = await bundleOpenAPISchema(
+              parseOpenAPISchemaString(downloadedSchema)
+            );
+            const apiSchemaStr = JSON.stringify(bundledSchema);
+            if (!apiSchemaStr) throw new Error('Failed to serialize HTTP tool schema');
+
+            const apiSchema = await str2OpenApiSchema(apiSchemaStr);
+            const parsedToolList = await pathData2ToolList(apiSchema.pathData);
+            if (parsedToolList.length !== apiSchema.pathData.length) {
+              throw new Error('Failed to parse HTTP tool schema');
+            }
+            const toolList = mergeToolSetChildDescriptions({
+              toolList: parsedToolList,
+              summaries: httpToolSet.toolList
+            });
+
+            toolList.forEach((tool, index) => {
               const runtimeNode = getHTTPToolRuntimeNode({
                 tool,
                 nodeId: `${toolSetNode.nodeId}${index}`,
@@ -547,8 +602,8 @@ export const rewriteRuntimeWorkFlow = async ({
                 ...runtimeNode.toolConfig,
                 httpTool: {
                   ...toolWithoutHeaderSecret,
-                  baseUrl: httpToolSet.baseUrl,
-                  apiSchemaStr: httpToolSet.apiSchemaStr,
+                  baseUrl: httpToolSet.baseUrl?.trim() || apiSchema.serverPath,
+                  apiSchemaStr,
                   customHeaders: httpToolSet.customHeaders,
                   headerSecret: httpToolSet.headerSecret ?? undefined
                 }

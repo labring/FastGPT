@@ -30,7 +30,7 @@ async function handler(
     authToken: true,
     per: OwnerPermissionVal
   });
-  const draftWorkflow = await getAppDraftWorkflow(app._id);
+  const draftWorkflow = await getAppDraftWorkflow(app._id, app);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar

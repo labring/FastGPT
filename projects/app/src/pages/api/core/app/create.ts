@@ -39,6 +39,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -182,11 +183,15 @@ export const onCreateApp = async ({
   }
 
   // Copy 和 Transition 会传入历史数据库记录；写入前统一转换为 canonical 并格式化敏感字段。
-  const normalizedWorkflow = migrateWorkflowToCurrent({
+  const workflowInput = {
     nodes: nodes ?? [],
     edges: edges ?? [],
     chatConfig
-  });
+  };
+  const normalizedWorkflow =
+    type === AppTypeEnum.mcpToolSet || type === AppTypeEnum.httpToolSet
+      ? normalizeAppWorkflow(workflowInput, type)
+      : migrateWorkflowToCurrent(workflowInput);
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },

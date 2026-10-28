@@ -11,7 +11,10 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  HttpToolSetRuntimeConfigSchema,
+  type StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -50,7 +53,10 @@ describe('beforeUpdateAppFormat', () => {
             [toolSetKey]: {
               ...(toolSetKey === 'mcpToolSet'
                 ? { url: 'https://mcp.example.com' }
-                : { baseUrl: 'https://api.example.com', customHeaders: '{}' }),
+                : {
+                    apiSchemaUrl: 'https://api.example.com/openapi.json',
+                    customHeaders: '{}'
+                  }),
               headerSecret: { 'X-API-Key': { value: 'temporary-secret', secret: '' } },
               toolList: []
             }
@@ -64,6 +70,7 @@ describe('beforeUpdateAppFormat', () => {
       if (!toolSet) throw new Error('Toolset config is missing');
       const encryptedValue = toolSet.headerSecret?.['X-API-Key'];
       expect(encryptedValue).toMatchObject({ value: '', secret: expect.any(String) });
+      expect(JSON.stringify(nodes)).not.toContain('temporary-secret');
       expect(getSecretValue({ storeSecret: toolSet.headerSecret ?? undefined })).toEqual({
         'X-API-Key': 'temporary-secret'
       });
@@ -75,6 +82,63 @@ describe('beforeUpdateAppFormat', () => {
       expect(savedAgain.headerSecret?.['X-API-Key']?.secret).toBe(encryptedValue?.secret);
     }
   );
+
+  it('encrypts HTTP per-tool secrets only for complete runtime configs', async () => {
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          httpToolSet: {
+            apiSchemaUrl: 'https://api.example.com/openapi.json',
+            customHeaders: '{}',
+            headerSecret: { 'X-API-Key': { value: 'summary-secret', secret: '' } },
+            toolList: [{ name: 'search', description: 'Summary only' }]
+          }
+        }
+      },
+      {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        inputs: [],
+        toolConfig: {
+          httpToolSet: {
+            customHeaders: '{}',
+            headerSecret: { 'X-API-Key': { value: 'collection-secret', secret: '' } },
+            toolList: [
+              {
+                name: 'search',
+                description: 'Runtime tool',
+                path: '/search',
+                method: 'GET',
+                headerSecret: { Authorization: { value: 'tool-secret', secret: '' } }
+              }
+            ]
+          }
+        }
+      }
+    ] as StoreNodeItemType[];
+
+    await beforeUpdateAppFormat({ nodes });
+
+    const summaryConfig = nodes[0].toolConfig?.httpToolSet;
+    if (!summaryConfig || 'toolId' in summaryConfig) throw new Error('HTTP summary config missing');
+    expect(summaryConfig.toolList).toEqual([{ name: 'search', description: 'Summary only' }]);
+    expect(getSecretValue({ storeSecret: summaryConfig.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'summary-secret'
+    });
+
+    const runtimeConfig = HttpToolSetRuntimeConfigSchema.safeParse(
+      nodes[1].toolConfig?.httpToolSet
+    );
+    expect(runtimeConfig.success).toBe(true);
+    if (!runtimeConfig.success) throw new Error('HTTP runtime config missing');
+    expect(getSecretValue({ storeSecret: runtimeConfig.data.headerSecret ?? undefined })).toEqual({
+      'X-API-Key': 'collection-secret'
+    });
+    expect(
+      getSecretValue({ storeSecret: runtimeConfig.data.toolList[0].headerSecret ?? undefined })
+    ).toEqual({ Authorization: 'tool-secret' });
+  });
 
   it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
     '保存前清理 %s 类型中的临时密钥值',

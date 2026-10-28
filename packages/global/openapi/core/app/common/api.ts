@@ -17,6 +17,7 @@ import type { StoreNodeItemType } from '../../../../core/workflow/type/node';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
+  OpenAPIStoreNodeItemTypeSchema,
   PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
@@ -473,10 +474,7 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '创建应用时使用的模板 ID'
   }),
   updateTime: z.coerce.date().meta({ description: '最后更新时间' }),
-  nodes: z
-    .array(PersistedOpenAPIStoreNodeItemTypeSchema)
-    .default([])
-    .meta({ description: '应用节点配置' }),
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).default([]).meta({ description: '应用节点配置' }),
   edges: z.array(StoreEdgeItemTypeSchema).default([]).meta({
     description: '应用连线'
   }),

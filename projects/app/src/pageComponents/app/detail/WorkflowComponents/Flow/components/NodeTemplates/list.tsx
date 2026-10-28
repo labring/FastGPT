@@ -78,26 +78,6 @@ export type TemplateListProps = {
   ScrollData?: ScrollListType;
 };
 
-/** 内置 MCP/HTTP 节点可从侧栏创建；工具选择器继续允许直接添加所有工具集引用。 */
-export const canDirectAddToolSet = ({
-  template,
-  isPopover,
-  isToolSelector
-}: {
-  template: Pick<NodeTemplateListItemType, 'id' | 'flowNodeType' | 'templateType'>;
-  isPopover?: boolean;
-  isToolSelector: boolean;
-}) => {
-  const isLocalToolSet =
-    template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
-    (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
-
-  return (
-    template.flowNodeType === FlowNodeTypeEnum.toolSet &&
-    (isToolSelector || (!isPopover && isLocalToolSet))
-  );
-};
-
 const NodeTemplateListItem = ({
   template,
   templateType,
@@ -122,17 +102,10 @@ const NodeTemplateListItem = ({
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const isLocalToolSet = canDirectAddToolSet({
-    template,
-    isPopover: false,
-    isToolSelector: false
-  });
-  // 外部工具集在侧栏中下钻选择子工具；内置 MCP 节点则创建为本地工具集。
-  const allowDirectAddToolSet = canDirectAddToolSet({
-    template,
-    isPopover,
-    isToolSelector
-  });
+  const isLocalToolSet =
+    template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
+    (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
+  const allowDirectAddToolSet = isToolSet && (isToolSelector || (!isPopover && isLocalToolSet));
   const canDragCreateNode =
     !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
   const showExpandArrow = (template.isFolder || isToolSet) && !isLocalToolSet;
@@ -305,11 +278,8 @@ const NodeTemplateList = ({
         const templateNode = await (async () => {
           try {
             const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
-            const isLocalToolSet = canDirectAddToolSet({
-              template,
-              isPopover: false,
-              isToolSelector: false
-            });
+            const isLocalToolSet =
+              template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id;
             if (isLocalToolSet && baseTemplate) return { ...baseTemplate };
 
             const shouldLoadPreviewNode = [
