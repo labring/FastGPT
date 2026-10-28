@@ -585,40 +585,69 @@ describe('MCPClient', () => {
       );
     });
 
-    it('should keep logging 404 after the connection is established', async () => {
+    it('classifies 404 after the connection is established as a user config error without error logging', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
       const errorLog = vi.spyOn(logger, 'error');
+      const warnLog = vi.spyOn(logger, 'warn');
       client.callTool.mockRejectedValue(new StreamableHTTPError(404, 'Session not found'));
 
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toThrow(
-        'Session not found'
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
+        UserConfigError
       );
 
-      expect(errorLog).toHaveBeenCalledWith(
-        'MCP client tool call failed',
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledWith(
+        'MCP client user config error',
         expect.objectContaining({
-          urlHost: 'example.com',
-          error: expect.any(StreamableHTTPError)
+          operation: 'toolCall',
+          errorCode: 404,
+          fastgpt: true
         })
       );
     });
 
-    it('does not treat an arbitrary numeric error code as an MCP HTTP status', async () => {
+    it('classifies MCP JSON-RPC protocol errors (like -32003 version mismatch) as user config error', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
       const errorLog = vi.spyOn(logger, 'error');
-      const error = Object.assign(new Error('JSON-RPC unauthorized'), {
+      const warnLog = vi.spyOn(logger, 'warn');
+      const error = Object.assign(new Error('MCP error -32003: 不支持的协议版本[2025-11-25]'), {
         name: 'McpError',
-        code: 401
+        code: -32003
       });
+      client.callTool.mockRejectedValue(error);
+
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
+        UserConfigError
+      );
+
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledWith(
+        'MCP client user config error',
+        expect.objectContaining({
+          operation: 'toolCall',
+          errorCode: -32003,
+          fastgpt: true
+        })
+      );
+    });
+
+    it('treats unexpected internal error without MCP codes as system error without double error logging', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = stubConnection(mcpClient);
+      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+      const errorLog = vi.spyOn(logger, 'error');
+      const warnLog = vi.spyOn(logger, 'warn');
+      const error = new Error('unexpected internal runtime bug');
       client.callTool.mockRejectedValue(error);
 
       await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBe(error);
 
-      expect(errorLog).toHaveBeenCalledWith(
+      expect(errorLog).not.toHaveBeenCalled();
+      expect(warnLog).toHaveBeenCalledWith(
         'MCP client tool call failed',
         expect.objectContaining({
           urlHost: 'example.com',
@@ -694,7 +723,7 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(1);
     });
 
-    it('should surface both errors when the SSE fallback also fails', async () => {
+    it('surfaces both errors as user config error when SSE fallback also fails with handshake error', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       client.connect = vi
@@ -702,19 +731,16 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'))
         .mockRejectedValueOnce(new Error('SSE handshake failed'));
 
-      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
-      const infoLog = vi.spyOn(logger, 'info');
       const request = (mcpClient as any).getConnection();
 
-      await expect(request).rejects.not.toBeInstanceOf(UserConfigError);
+      await expect(request).rejects.toBeInstanceOf(UserConfigError);
       await expect(request).rejects.toThrow(
         /Streamable HTTP:.*Not Found.*SSE:.*SSE handshake failed/s
       );
       expect(client.connect).toHaveBeenCalledTimes(2);
-      expect(infoLog).toHaveBeenCalledWith('SSE error', expect.any(Error));
     });
 
-    it('keeps the final SSE failure as a system error after an initial auth failure', async () => {
+    it('classifies network unreachable SSE failure as a user config error', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       client.connect = vi
@@ -722,7 +748,21 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'))
         .mockRejectedValueOnce(new Error('SSE network unreachable'));
 
-      await expect((mcpClient as any).getConnection()).rejects.not.toBeInstanceOf(UserConfigError);
+      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      expect(client.connect).toHaveBeenCalledTimes(2);
+    });
+
+    it('classifies HTTP 405 Method Not Allowed as a user config error', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(405, 'Method Not Allowed'))
+        .mockRejectedValueOnce(
+          new Error('SSE error: Invalid content type, expected "text/event-stream"')
+        );
+
+      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
 

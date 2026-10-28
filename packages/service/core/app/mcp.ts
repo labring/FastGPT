@@ -4,6 +4,7 @@ import {
   StreamableHTTPClientTransport,
   StreamableHTTPError
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import {
@@ -47,9 +48,26 @@ type McpChildToolType = McpToolConfigType & {
 const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
-const MCP_CONNECT_USER_CONFIG_ERROR_CODES = new Set([401, 403, 404, 410]);
-// 404 在已建立连接后通常表示 Session 过期，应按连接故障处理而不是用户配置错误。
-const MCP_ACTIVE_SESSION_USER_CONFIG_ERROR_CODES = new Set([401, 403, 410]);
+const MCP_USER_CONFIG_HTTP_ERROR_CODES = new Set([
+  400, 401, 403, 404, 405, 410, 422, 429, 502, 503, 504
+]);
+
+const MCP_NETWORK_ERROR_CODES = new Set([
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'ECONNABORTED',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_SOCKET',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'CERT_HAS_EXPIRED',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'ERR_TLS_CERT_ALTNAME_INVALID'
+]);
 
 type McpRequestInit = RequestInit & {
   dispatcher?: Dispatcher;
@@ -402,25 +420,6 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
 };
 
 /**
- * 检查错误是否是 MCP 协议格式错误（通常是外部 MCP server 返回了不符合 JSON-RPC 2.0 规范的响应）
- * 这类错误应该作为用户侧问题（UserError）抛出，而不是系统错误
- */
-const isMcpProtocolError = (error: unknown): boolean => {
-  // ZodError 通常表示响应格式不符合 JSON-RPC 2.0 规范
-  if (error instanceof ZodError) {
-    return true;
-  }
-
-  // 检查错误消息中是否包含 Zod 验证相关的关键词
-  const errorMessage = getErrorMessage(error);
-  return (
-    errorMessage.includes('invalid_union') ||
-    errorMessage.includes('unrecognized_keys') ||
-    errorMessage.includes('Invalid input')
-  );
-};
-
-/**
  * 将 MCP 协议错误转换为用户友好的 UserError
  */
 const toMcpProtocolUserError = (error: unknown): UserError => {
@@ -431,11 +430,14 @@ const toMcpProtocolUserError = (error: unknown): UserError => {
 };
 
 /**
- * 提取 MCP SDK 或 fetch 错误中的 HTTP 状态码。
+ * 提取 MCP SDK、协议响应或 fetch 错误中的状态码或错误代号。
  *
  * UserConfigError 只保存 cause，需要沿 cause 继续读取状态码用于本地诊断。
  */
-const getMcpErrorCode = (error: unknown, visited = new Set<unknown>()): number | undefined => {
+const getMcpErrorCode = (
+  error: unknown,
+  visited = new Set<unknown>()
+): number | string | undefined => {
   if (typeof error !== 'object' || error === null || visited.has(error)) {
     return;
   }
@@ -444,9 +446,22 @@ const getMcpErrorCode = (error: unknown, visited = new Set<unknown>()): number |
   if (
     error instanceof StreamableHTTPError ||
     error instanceof McpHttpStatusError ||
-    error instanceof SseError
+    error instanceof SseError ||
+    error instanceof McpError ||
+    (typeof error === 'object' && error !== null && 'name' in error && error.name === 'McpError')
   ) {
+    if ('code' in error && (typeof error.code === 'number' || typeof error.code === 'string')) {
+      return error.code;
+    }
+  }
+  if ('code' in error && typeof error.code === 'string') {
     return error.code;
+  }
+  if ('message' in error && typeof error.message === 'string') {
+    const statusMatch = error.message.match(/Non-200 status code \((\d{3})\)/);
+    if (statusMatch?.[1]) {
+      return Number(statusMatch[1]);
+    }
   }
   if ('cause' in error) {
     return getMcpErrorCode(error.cause, visited);
@@ -456,6 +471,87 @@ const getMcpErrorCode = (error: unknown, visited = new Set<unknown>()): number |
 const isMcpUserConfigCode = (error: unknown, codes: Set<number>) => {
   const code = getMcpErrorCode(error);
   return typeof code === 'number' && codes.has(code);
+};
+
+/**
+ * 校验是否属于 MCP JSON-RPC 协议错误（如 -32003 协议版本协商不兼容或远端工具报错）。
+ */
+const isMcpProtocolError = (error: unknown, visited = new Set<unknown>()): boolean => {
+  if (typeof error !== 'object' || error === null || visited.has(error)) {
+    return false;
+  }
+  visited.add(error);
+
+  if (
+    error instanceof McpError ||
+    (typeof error === 'object' && error !== null && 'name' in error && error.name === 'McpError')
+  ) {
+    return true;
+  }
+  if (
+    'message' in error &&
+    typeof error.message === 'string' &&
+    error.message.startsWith('MCP error ')
+  ) {
+    return true;
+  }
+  if ('cause' in error) {
+    return isMcpProtocolError(error.cause, visited);
+  }
+  return false;
+};
+
+/**
+ * 校验向外部 MCP 端点发起请求时是否发生网络不可达或传输层异常。
+ */
+const isMcpNetworkFailure = (error: unknown, visited = new Set<unknown>()): boolean => {
+  if (typeof error !== 'object' || error === null || visited.has(error)) {
+    return false;
+  }
+  visited.add(error);
+
+  if (
+    'code' in error &&
+    typeof error.code === 'string' &&
+    MCP_NETWORK_ERROR_CODES.has(error.code)
+  ) {
+    return true;
+  }
+  if ('name' in error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+    return true;
+  }
+  if ('message' in error && typeof error.message === 'string') {
+    const msg = error.message;
+    if (
+      msg.includes('network unreachable') ||
+      msg.includes('handshake failed') ||
+      msg.includes('Invalid content type') ||
+      msg.includes('Non-200 status code') ||
+      msg.includes(PRIVATE_URL_TEXT) ||
+      msg.includes('Maximum MCP redirects exceeded') ||
+      msg.includes('connect ECONNREFUSED') ||
+      msg.includes('connect ETIMEDOUT') ||
+      msg.includes('getaddrinfo ENOTFOUND') ||
+      msg.includes('fetch failed')
+    ) {
+      return true;
+    }
+  }
+  if ('cause' in error) {
+    return isMcpNetworkFailure(error.cause, visited);
+  }
+  return false;
+};
+
+/**
+ * 综合判定当前错误是否属于用户配置或外部 MCP 服务不可用/协议错误。
+ */
+const isMcpExternalFailure = (error: unknown): boolean => {
+  if (isUserConfigError(error)) return true;
+  if (isMcpProtocolError(error)) return true;
+  if (isMcpUserConfigCode(error, MCP_USER_CONFIG_HTTP_ERROR_CODES)) return true;
+  if (isMcpNetworkFailure(error)) return true;
+  return false;
 };
 
 /** 仅提取 host，避免把可能包含临时 token 的完整 MCP 地址写入日志。 */
@@ -488,15 +584,14 @@ const logMcpUserConfigError = ({
   });
 };
 
-const normalizeMcpActiveSessionError = (error: unknown) => {
-  if (
-    isUserConfigError(error) ||
-    !isMcpUserConfigCode(error, MCP_ACTIVE_SESSION_USER_CONFIG_ERROR_CODES)
-  ) {
+const normalizeMcpClientError = (error: unknown) => {
+  if (isUserConfigError(error)) {
     return error;
   }
-
-  return new UserConfigError(getErrorMessage(error), undefined, { cause: error });
+  if (isMcpExternalFailure(error)) {
+    return new UserConfigError(getErrorMessage(error), undefined, { cause: error });
+  }
+  return error;
 };
 
 export class MCPClient {
@@ -586,7 +681,7 @@ export class MCPClient {
           const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
             streamableError
           )}; SSE: ${getErrorMessage(sseError)}`;
-          const isUserConfigFailure = isMcpUserConfigCode(sseError, MCP_CONNECT_USER_CONFIG_ERROR_CODES);
+          const isUserConfigFailure = isMcpExternalFailure(sseError) || isMcpExternalFailure(streamableError);
           if (isUserConfigFailure) {
             throw new UserConfigError(message, undefined, { cause: sseError });
           }
@@ -598,8 +693,8 @@ export class MCPClient {
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
       if (error?.message?.includes('SSE stream: Not Found')) return;
-      // 地址失效或鉴权失败属于用户配置问题，仅保留本地诊断日志。
-      if (isMcpUserConfigCode(error, MCP_ACTIVE_SESSION_USER_CONFIG_ERROR_CODES)) {
+      // 外部服务连接、协议或网络错误属于用户配置/外部服务问题，仅保留本地诊断日志。
+      if (isMcpExternalFailure(error)) {
         logMcpUserConfigError({
           operation: 'connection',
           url: this.url,
@@ -707,9 +802,9 @@ export class MCPClient {
       // @ts-ignore
       return tools;
     } catch (error) {
-      const normalizedError = normalizeMcpActiveSessionError(error);
+      const normalizedError = normalizeMcpClientError(error);
       if (!isUserConfigError(normalizedError)) {
-        logger.error('MCP client failed to get tools', {
+        logger.warn('MCP client failed to get tools', {
           urlHost: getMcpLogHost(this.url),
           error: normalizedError
         });
@@ -762,9 +857,9 @@ export class MCPClient {
         )
       );
     } catch (error) {
-      const normalizedError = normalizeMcpActiveSessionError(error);
+      const normalizedError = normalizeMcpClientError(error);
       if (!isUserConfigError(normalizedError)) {
-        logger.error('MCP client tool call failed', {
+        logger.warn('MCP client tool call failed', {
           urlHost: getMcpLogHost(this.url),
           toolName,
           error: normalizedError

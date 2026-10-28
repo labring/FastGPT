@@ -40,6 +40,10 @@ function resolveHttpStatusForApiError(
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
 
+  if (isUserConfigError(error)) {
+    return 400;
+  }
+
   if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
     return bc;
   }
@@ -146,13 +150,15 @@ export function processError(params: {
     logger.error('System unexpected error', { url, message: msg, error });
   }
 
+  const defaultResolvedCode = isUserConfigError(error) ? 400 : defaultCode;
+
   // 4. 返回处理后的错误信息
   return {
-    code: defaultCode,
+    code: defaultResolvedCode,
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
-    httpStatus: defaultCode,
+    httpStatus: defaultResolvedCode,
     zodError
   };
 }

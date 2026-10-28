@@ -8,6 +8,7 @@ import { getClientIpFromRequest } from '../security/clientIp';
 import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
 import { withHttpRequestProfile } from './requestProfile';
 import { markProfileError } from '../profiling';
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 
 export type ApiHandler<
   T = any,
@@ -218,6 +219,11 @@ export const createApiEntry = <
                     error,
                     url: logUrl
                   });
+                }
+
+                if (isUserConfigError(error)) {
+                  span.setAttribute('http.response.status_code', 400);
+                  return jsonRes(res, { code: 400, error, url: logUrl });
                 }
 
                 const response = jsonRes(res, {

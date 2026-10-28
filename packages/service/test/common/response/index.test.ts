@@ -169,6 +169,25 @@ describe('processError HTTP status mapping', () => {
     ).toBe('Model type mismatch: https://xxx');
     expect(processError({ error: new UserError('custom', '具体提示') }).message).toBe('具体提示');
   });
+  it('maps UserConfigError to HTTP 400 even when defaultCode is 500', () => {
+    const error = new UserConfigError('MCP protocol mismatch');
+    const processed = processError({ error, defaultCode: 500 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.code).toBe(400);
+
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Parameters<
+      typeof jsonRes
+    >[0];
+    jsonRes(res, { error, code: 500 });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 400,
+        message: 'MCP protocol mismatch'
+      })
+    );
+  });
+
   it('maps a missing file to HTTP 404', () => {
     const processed = processError({
       error: CommonErrEnum.fileNotFound
