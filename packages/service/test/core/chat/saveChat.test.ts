@@ -40,6 +40,16 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 const axiosPostMock = vi.hoisted(() => vi.fn());
 
+const profileMocks = vi.hoisted(() => ({ markProfileError: vi.fn() }));
+
+vi.mock('@fastgpt/service/common/profiling', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/common/profiling')>();
+  return {
+    ...actual,
+    markProfileError: profileMocks.markProfileError
+  };
+});
+
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
   return {
@@ -875,6 +885,149 @@ describe('pushChatRecords', () => {
       });
       expect(aiItem?.value).toEqual([]);
       expect(aiItem?.errorMsg).toContain('stream failed');
+    });
+
+    it('marks the request profile as failed when the finalized summary reports an error', async () => {
+      const responseChatItemId = 'prepared-ai-summary-error';
+      const props = createMockProps(
+        {
+          userContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: [{ text: { content: 'question' } }]
+          },
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [{ text: { content: 'answer' } }]
+          },
+          // 工作流正常返回，只是内部节点失败；入口以 HTTP 200 收尾，只能靠 summary 判定
+          workflowRuntimeSummary: {
+            responseIds: [],
+            finishedNodeIds: [],
+            hasError: true,
+            errorText: 'node failed',
+            errorCount: 1,
+            hasLoopRunBreak: false,
+            hasToolStop: false,
+            hasNestedEnd: false,
+            citeCollectionIds: [],
+            llmInputTokens: 0,
+            llmOutputTokens: 0
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false
+      });
+      await MongoChatItem.create([
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.Human,
+          value: []
+        },
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: []
+        }
+      ]);
+
+      profileMocks.markProfileError.mockClear();
+      await finalizeChatRound(props);
+
+      // 只影响采集口径，落库行为保持不变
+      expect(profileMocks.markProfileError).toHaveBeenCalledWith('node failed');
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
+    });
+
+    it('does not mark the request profile when the finalized summary has no error', async () => {
+      const responseChatItemId = 'prepared-ai-summary-ok';
+      const props = createMockProps(
+        {
+          userContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: [{ text: { content: 'question' } }]
+          },
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [{ text: { content: 'answer' } }]
+          },
+          workflowRuntimeSummary: {
+            responseIds: [],
+            finishedNodeIds: [],
+            hasError: false,
+            errorCount: 0,
+            hasLoopRunBreak: false,
+            hasToolStop: false,
+            hasNestedEnd: false,
+            citeCollectionIds: [],
+            llmInputTokens: 0,
+            llmOutputTokens: 0
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: props.source,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false
+      });
+      await MongoChatItem.create([
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.Human,
+          value: []
+        },
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: []
+        }
+      ]);
+
+      profileMocks.markProfileError.mockClear();
+      await finalizeChatRound(props);
+
+      expect(profileMocks.markProfileError).not.toHaveBeenCalled();
     });
   });
 
