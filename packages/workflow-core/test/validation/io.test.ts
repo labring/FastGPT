@@ -838,6 +838,8 @@ describe('validateNodeIO', () => {
       const node = makeNode({ flowNodeType: FlowNodeTypeEnum.tool, inputs: [input] });
       for (const value of [
         { type: 'system' },
+        { type: 'system', value: { apiKey: { secret: '', value: '' } } },
+        { type: 'system', value: { apiKey: { value: 'unused-manual-credential' } } },
         { type: 'manual', value: {} },
         { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext', value: '' } } }
       ]) {

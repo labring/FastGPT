@@ -138,10 +138,13 @@ export const validateNodeIO = ({
       typeof storedValue === 'string' &&
       storedValue.includes('{{');
     // JSON 编辑器持久化文本，和执行时一样按目标类型转换；不改写画布或文档中的原值。
-    const effectiveValue =
-      selectedType === FlowNodeInputTypeEnum.JSONEditor && !isDynamicJson
-        ? valueTypeFormat(storedValue, input.valueType)
-        : getWorkflowInputValueForValidation({ input: normalizedInput, value: storedValue });
+    const effectiveValue = getWorkflowInputValueForValidation({
+      input: normalizedInput,
+      value:
+        selectedType === FlowNodeInputTypeEnum.JSONEditor && !isDynamicJson
+          ? valueTypeFormat(storedValue, input.valueType)
+          : storedValue
+    });
     // 兼容历史密码结构后再校验当前格式；引用密钥也视为已配置。
     const shouldValidateSecret =
       selectedType === FlowNodeInputTypeEnum.password &&

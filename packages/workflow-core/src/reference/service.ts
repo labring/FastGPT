@@ -1,5 +1,9 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
@@ -158,7 +162,7 @@ const setSelectedInputRenderType = (
   input.selectedType = selectedType;
 };
 
-/** 更新固定值并同步 Web 输入模式；按输入的实际协议检查，保留标签过滤等编辑器的原始存储结构。 */
+/** 更新固定值并同步 Web 输入模式；授权写入规范化结果，标签过滤等编辑器保留原始存储结构。 */
 export const setInputValue = ({
   document,
   nodeId,
@@ -204,7 +208,9 @@ export const setInputValue = ({
   if (valueSchema)
     assertValueSchema({ value: effectiveValue, schema: valueSchema, nodeId, inputKey });
 
-  input.value = structuredClone(value);
+  input.value = structuredClone(
+    input.key === NodeInputKeyEnum.systemInputConfig ? effectiveValue : value
+  );
   setSelectedInputRenderType(input, literalType);
 };
 

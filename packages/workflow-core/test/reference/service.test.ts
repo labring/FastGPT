@@ -65,7 +65,13 @@ describe('input mutation services', () => {
       setInputReference({ ...params, ref: { nodeId: 'start', outputKey: 'userChatInput' } })
     ).toThrow(WorkflowDiagnosticCodeEnum.inputModeNotAllowed);
 
-    setInputValue({ ...params, value: { type: 'system' } });
+    setInputValue({ ...params, value: { type: 'system', value: replacement.value } });
+    expect(input.value).toEqual({ type: 'system' });
+    expect(replacement.value.appSecret.value).toBe('replacement-secret');
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+    expect(() =>
+      setInputValue({ ...params, value: { type: 'system', unknown: 'unsupported' } })
+    ).toThrow(WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid);
     expect(input.value).toEqual({ type: 'system' });
   });
 

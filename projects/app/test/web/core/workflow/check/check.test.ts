@@ -1077,6 +1077,24 @@ describe('checkWorkflowNodeIssues', () => {
   it.each([
     { name: 'system secret', config: { value: { type: SystemToolSecretInputTypeEnum.system } } },
     {
+      name: 'legacy system secret with an empty manual placeholder',
+      config: {
+        value: {
+          type: SystemToolSecretInputTypeEnum.system,
+          value: { apiKey: { secret: '', value: '' } }
+        }
+      }
+    },
+    {
+      name: 'legacy default system secret with an empty manual placeholder',
+      config: {
+        defaultValue: {
+          type: SystemToolSecretInputTypeEnum.system,
+          value: { apiKey: { secret: '', value: '' } }
+        }
+      }
+    },
+    {
       name: 'manual secret',
       config: {
         value: {
