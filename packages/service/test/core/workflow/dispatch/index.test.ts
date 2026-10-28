@@ -1561,7 +1561,7 @@ describe('Workflow runtime error summary', () => {
       expect(target.outputs[0].value).toBe('still returned');
       expect(Object.hasOwn(result, 'error')).toBe(fails);
       if (fails) expect(result.error).toBe(error);
-      expect((result.workflowRuntimeSummary.errorCount ?? 0) > 0).toBe(fails);
+      expect(!!result.workflowRuntimeSummary.errorCount).toBe(fails);
       expect(result.workflowRuntimeSummary).not.toHaveProperty('error');
       expect(result.workflowRuntimeSummary).not.toHaveProperty('hasUserConfigError');
     };

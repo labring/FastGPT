@@ -184,23 +184,52 @@ describe('dispatchRunTool runtime toolset auth', () => {
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
   });
 
-  it('classifies invalid selected MCP tool ids as user configuration errors', async () => {
-    const result = await dispatchRunTool(
-      createRunToolProps({
-        mcpTool: { toolId: 'invalid-id' }
-      })
-    );
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.tool,
-      result,
-      expectedData: result.data ?? {}
+  it.each([
+    { source: 'mcp', failure: 'id', message: 'Invalid MCP tool id: invalid-id' },
+    { source: 'mcp', failure: 'set', message: 'MCP tool set is missing' },
+    { source: 'mcp', failure: 'tool', message: 'MCP tool missing not found' },
+    { source: 'mcp', failure: 'url', message: 'MCP tool set URL is missing' },
+    { source: 'http', failure: 'id', message: 'Invalid HTTP tool id: invalid-id' },
+    { source: 'http', failure: 'set', message: 'HTTP tool set not found' },
+    { source: 'http', failure: 'tool', message: 'HTTP tool missing not found' }
+  ])('reports $source $failure failures as system errors', async ({ source, failure, message }) => {
+    const tool = { name: 'available', description: 'Tool', path: '/search', method: 'GET' };
+    getAppVersionByIdMock.mockResolvedValue({
+      nodes:
+        failure === 'set'
+          ? []
+          : [
+              {
+                toolConfig: {
+                  mcpToolSet: {
+                    url: failure === 'url' ? '' : 'https://example.com/mcp',
+                    toolList: [tool]
+                  },
+                  httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+                }
+              }
+            ]
     });
+    getMCPChildrenMock.mockResolvedValue([tool]);
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    const toolId =
+      failure === 'id'
+        ? 'invalid-id'
+        : `${source}-victim-toolset/${failure === 'tool' ? 'missing' : 'available'}`;
 
-    expect(result.error).toMatchObject({
-      message: 'Invalid MCP tool id: invalid-id',
-      name: 'UserConfigError'
+    const result = await dispatchRunTool(
+      createRunToolProps({ [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId } })
+    );
+
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error).not.toBeInstanceOf(UserConfigError);
+    expect(result.error).toMatchObject({ name: 'Error', message });
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(message);
+    expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith('Tool Run Error', {
+      error: result.error
     });
-    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.error });
+    expect(mcpToolCallMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
   });
 
   it.each(['mcp', 'http'] as const)(

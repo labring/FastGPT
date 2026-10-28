@@ -279,7 +279,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    if ((iterationSummary.errorCount ?? 0) > 0) {
+    if (!!iterationSummary.errorCount) {
       const errText = getErrText(iterationSummary.errorText);
       loopFailure = Object.hasOwn(response, 'error')
         ? { error: response.error }

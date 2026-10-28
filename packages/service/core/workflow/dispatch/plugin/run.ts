@@ -334,11 +334,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
-      error: (runtimeSummary.errorCount ?? 0) > 0 || !pluginOutput || !!pluginOutputError
+      error: !!runtimeSummary.errorCount || !pluginOutput || !!pluginOutputError
     });
     const ownUsagePoints = getAppToolOwnUsage({
       plugin: workflowTool,
-      error: (runtimeSummary.errorCount ?? 0) > 0 || !pluginOutput || !!pluginOutputError
+      error: !!runtimeSummary.errorCount || !pluginOutput || !!pluginOutputError
     });
     props.nodeSummary.mergeNodeSummary({
       ...(shouldStoreChildNodeResponses

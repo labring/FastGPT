@@ -180,7 +180,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   // 仅通过 response/nodeResponse/usage/interactive 返回，避免 child answer 被重复拼入最终回答。
   return {
     response: text,
-    ...((runtimeSummary.errorCount ?? 0) > 0
+    ...(!!runtimeSummary.errorCount
       ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
       : {}),
     usages: flowUsages,
@@ -441,12 +441,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     : workflowInteractiveResponse
       ? assistantText
       : 'Run workflow tool failed';
-  const errorMessage =
-    (runtimeSummary.errorCount ?? 0) > 0
-      ? runtimeSummary.errorText || 'Run workflow tool failed'
-      : !pluginOutput
-        ? 'Run workflow tool failed'
-        : pluginOutputError;
+  const errorMessage = !!runtimeSummary.errorCount
+    ? runtimeSummary.errorText || 'Run workflow tool failed'
+    : !pluginOutput
+      ? 'Run workflow tool failed'
+      : pluginOutputError;
   const usagePoints = billingTool
     ? await computedAppToolUsage({
         plugin: billingTool,
