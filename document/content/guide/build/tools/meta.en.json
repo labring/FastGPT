@@ -3,6 +3,7 @@
   "description": "MCP tools and system plugins for app building.",
   "pages": [
     "overview",
+    "workflow-tools",
     "http_tools",
     "mcp_tools",
     "system-plugins"

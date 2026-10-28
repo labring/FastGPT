@@ -5,6 +5,8 @@ description: Understand collections, MongoDB data chunks, object-storage files, 
 
 This page explains current knowledge storage relationships for import and migration troubleshooting. For everyday operations, see [create and maintain a knowledge base](/en/guide/dataset/lifecycle).
 
+![Knowledge base hierarchy and underlying storage architecture](/imgs/diagrams/knowledge-hierarchy.en.light.svg)
+
 ## Relationship Between Files and Data
 
 - A **knowledge base** stores model and processing configuration and contains collections.
@@ -12,6 +14,13 @@ This page explains current knowledge storage relationships for import and migrat
 - **Data chunks** store text, Q&A content, metadata, and index associations in MongoDB's `dataset_datas`, linked through `datasetId` and `collectionId`.
 - **Original files and parsed text** use object-storage services. The current file-reading path accepts S3 object keys and retains compatibility with legacy GridFS identifiers.
 - **Retrieval indexes** use the vector backend selected for the deployment, with PG among the supported choices. Identifiers connect chunks to indexes; physical storage depends on the backend.
+
+| Storage Layer | Primary Collections / Tables / Buckets | Stored Data | Impact of Loss or Drift |
+| --- | --- | --- | --- |
+| **MongoDB** | `datasets`, `dataset_collections`, `dataset_datas`, `dataset_trainings` | Dataset settings, collection hierarchy, chunk text (`q`/`a`), full-text tokens, and training queues | Knowledge bases, chunk text, and citation reader content become unavailable |
+| **VectorDB (PG / Milvus / OceanBase / SeekDB / OpenGauss)** | `modeldata` / `modeldata_v2` | Embedding vectors, team/dataset/collection filter scalars, and index IDs (`dataId`) | Semantic and hybrid search return no vector hits until indexes are rebuilt |
+| **S3 Object Storage (MinIO / Cloud S3)** | Private and Public Buckets | Uploaded source documents (PDF, DOCX, XLSX) and extracted document images | Source file downloads or embedded chunk images fail to load |
+| **Redis** | BullMQ queues and cache keys | Async deletion jobs, sync schedules, and distributed locks | Background jobs pause until Redis connectivity is restored |
 
 Earlier documentation describing PG `file_id` and the special `manual` and `mark` values refers to an older storage design. Investigate current deployments using the collection, chunk, and index identifiers of the installed version.
 

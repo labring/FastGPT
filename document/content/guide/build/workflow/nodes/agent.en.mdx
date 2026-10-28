@@ -3,29 +3,39 @@ title: Agent node
 description: Configure autonomous planning, knowledge retrieval, tools, and Skills inside a workflow.
 ---
 
-An Agent node delegates a task requiring autonomous planning within a workflow. Its template is marked version 4.17.0. Your deployment must provide the node, a model supporting tool calls, and permission to use the selected resources.
+The Agent node (`agent`) embeds a ReAct-based autonomous planning loop inside a deterministic workflow canvas, letting your workflow maintain strict outer routing while delegating an open-ended sub-task to an Agent equipped with tools, knowledge bases, a virtual machine sandbox, and Skills.
 
 In the captured SaaS interface, Add node → Agent lists existing applications. Availability of the standalone Agent node depends on the node list exposed by your deployment. Confirm that it is available before following this guide. To try autonomous tasks and Skills, start with [your first Agent task](/en/guide/getting-started/first-agent) in Chat Agent V2.
 
 ## Inputs and configuration
 
-| Setting | Purpose |
-| --- | --- |
-| Model and instructions | Select the model and define task, output requirements, and tool-use boundaries |
-| User question | Reference the task from the start node or an upstream node |
-| File links | Supply files accessible to the current task |
-| Tools | Select callable operations and verify arguments and permissions |
-| Knowledge bases | Select retrievable material and retrieval parameters |
-| Skills and virtual machine | Associate published Skills; execution requires configured services and available quota |
-| Response text | Control whether the result appears directly in the conversation |
+| Setting | Internal Key | Type | Purpose |
+| --- | --- | --- | --- |
+| **Model and instructions** | `modelId` / `systemPrompt` | Model + `String` | Select a tool-calling model and define task goals, output format, and tool-use boundaries |
+| **User question** | `userChatInput` | `String` | Reference the sub-task instruction from the start node or an upstream node |
+| **Chat history** | `history` | `ChatHistory` | Configure context turns or reference an upstream chat-history array |
+| **File links** | `fileUrlList` | `Array<string>` | Supply document or image URLs accessible to the current task |
+| **Knowledge bases** | `agent_datasetParams` | Dataset list + params | Bind knowledge bases, search modes, reranking, and tag filters for on-demand Agent retrieval |
+| **Tools** | `agent_selectedTools` | Tool list | Attach system tools, HTTP tools, MCP tools, or workflow tools |
+| **Skills and virtual machine** | `skills` / `useAgentSandbox` | Skill list + `Boolean` | Associate published [Agent Skills](/en/guide/build/skill/integration) and run scripts inside the virtual machine sandbox |
+| **Stream response text** | `isResponseAnswerText` | `Boolean` | Control whether the Agent's final response streams directly to the conversation |
 
 ## Outputs and connections
 
-The primary output is AI response content as a string. The error output supports error handling. Reference the response in downstream text, branch, or reply nodes. Execution connections control order; value references carry content.
+| Output Port | Internal Key | Value Type | Description |
+| --- | --- | --- | --- |
+| **AI response content** | `answerText` | `String` | Final conclusion text synthesized after multi-step reasoning and tool calls |
+| **Updated context** | `history` | `ChatHistory` | Conversation history including the current Agent turn |
+| **Error message** | `error` | `String` | Diagnostic error details when model or sandbox execution fails |
+
+Execution connections control run order; value references pass `answerText` to downstream conditional, text-concatenation, or reply nodes.
 
 ## Example: policy checklist
 
-Connect the start node to an Agent node, reference the starting user input as its question, and associate the Travel Policy knowledge base. Instruct the Agent to retrieve the policy and list required documents and deadlines. Ask “Prepare a travel expense checklist” and inspect the returned documents, deadlines, and retrieved evidence. See [your first Agent task](/en/guide/getting-started/first-agent) for material and expected results.
+1. Connect **Workflow Start** to the **Agent node** and reference `userChatInput` as its **User question**.
+2. Associate the `Travel Policy` knowledge base and instruct the Agent: `Retrieve the travel policy first, then list submission deadlines, required receipts, and finance review timelines.`
+3. Reference `AI response content` in a downstream archiving or Specified Reply node.
+4. Debug with `Prepare a travel expense checklist` and expand the Agent node in run details to verify its retrieval call, returned documents, and deadlines. See [your first Agent task](/en/guide/getting-started/first-agent) for sample material.
 
 Put steps with a required order in workflow connections. Tool selection inside the node depends on model planning. External write operations need clear permissions and confirmation requirements. Investigate failures through execution details, model tool support, resource permissions, and virtual-machine status.
 

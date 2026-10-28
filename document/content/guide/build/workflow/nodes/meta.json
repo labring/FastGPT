@@ -13,6 +13,7 @@
     "---工具---",
     "http",
     "tool",
+    "run_app",
     "---逻辑---",
     "tfswitch",
     "loop",

@@ -2,6 +2,8 @@
   "title": "构建应用",
   "root": false,
   "pages": [
+    "chat-agent",
+    "templates-and-folders",
     "general",
     "scheduled-triggers",
     "agentv2",

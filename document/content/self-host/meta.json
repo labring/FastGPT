@@ -13,6 +13,7 @@
     "custom-models",
     "design",
     "---平台管理---",
+    "../guide/admin/platform-console",
     "../guide/admin/sso",
     "../guide/admin/teamMode",
     "../guide/version/commercial",

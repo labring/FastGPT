@@ -33,7 +33,28 @@ description: 选择应用、调用发布版本，并验证输入输出和资源�
 
 ## 运行与管理
 
-需要会话复用和流式内容时阅读[对话集成](/zh-CN/openapi/chat)。需要应用统计或日志管理时，在生成参考中确认相应接口的开放范围、版本和授权条件，再调用目标接口。
+需要会话复用和流式内容时阅读[对话集成](/zh-CN/openapi/chat)；需要处理交互节点挂起与文件传参时阅读[交互挂起恢复与文件传参](/zh-CN/openapi/interactive-and-variables)。
+
+## 开放接口端点参考（System OpenAPI—应用日志与模型）
+
+以下端点均支持团队级 `Authorization: Bearer <apiKey>` 鉴权（商业版统计接口以 `/api/proApi/` 为前缀）：
+
+### 1. 应用日志与统计接口（`appLog`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求参数（Query / Body） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/app/logs/list` | 分页获取应用对话日志列表 | Body: `appId`（必填）、`dateStart`、`dateEnd`、`sources`、`logUser`、`errorFilter`、`unreadOnly`、`offset` / `pageNum`、`pageSize` |
+| `POST` | `/api/core/app/logs/getUsers` | 获取应用日志中的活跃用户列表 | Body: `appId`（必填）、`dateStart`、`dateEnd`、`searchKey` |
+| `GET` | `/api/proApi/core/app/logs/getTotalData` | 获取应用总体统计数据（总用户数、总对话数、总积分消耗） | Query: `appId`（必填） |
+| `POST` | `/api/proApi/core/app/logs/getChartData` | 获取应用时序图表统计数据（用户、对话、效果与消耗趋势） | Body: `appId`（必填）、`dateStart`、`dateEnd`、`source` |
+
+### 2. 可用模型查询接口（`model`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求参数与返回值 |
+| --- | --- | --- | --- |
+| `GET` | `/api/core/ai/model/list` | 获取公开系统模型列表与计费标准 | 无需额外参数；返回激活模型的 `model`、`name`、`type`（`llm` / `embedding` / `rerank` / `tts` / `stt`）及输入输出价格 |
+| `GET` | `/api/core/ai/model/catalog` | 获取当前成员完整可用模型目录与默认模型 | Query: `version`（可选，内容版本协商）；返回可用模型清单、Provider 信息与有效默认模型 ID |
+| `POST` | `/api/core/ai/model/summary` | 批量获取指定模型标识的展示详情与可用状态 | Body: `modelIds`（字符串数组）、`appId`（可选）；返回模型名称、图标、类型及当前状态 |
 
 [历史应用参数](/zh-CN/openapi/legacy/app)保留旧日志接口说明，供维护已有集成时对照。
 

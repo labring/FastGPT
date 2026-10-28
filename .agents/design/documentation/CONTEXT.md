@@ -69,3 +69,26 @@ _Avoid_: Using team management and platform administration interchangeably.
 
 **Identity proxy (身份代理)**:
 An enabled delegation mode that lets an integration execute as a specified active member of the same team. The selected member's application and conversation permissions determine access.
+
+**Portal (门户)**:
+The authenticated conversation workspace (`/chat`) where signed-in team members access their own applications, team applications, favorites, and conversation history.
+_Avoid_: Confusing the authenticated portal with an unauthenticated share link (`/chat/share`).
+
+**Start node (开始节点)**:
+The entry node of a workflow canvas that provides the current user question (`userChatInput`) and uploaded file links (`userFiles`) to downstream nodes.
+_Avoid_: Confusing the start node with a workflow tool's custom input node (`pluginInput`).
+
+**Global variable (全局变量)**:
+An application-level variable shared across workflow steps and initialized through pre-chat forms, URL parameters, or API `variables`.
+
+**System variable (系统变量)**:
+A read-only runtime attribute injected automatically by the workflow engine (`userId`, `appId`, `chatId`, `responseChatItemId`, `histories`, `cTime`).
+
+**Container node (嵌套容器节点)**:
+A parent control node (`loopRun` or `parallelRun`) that manages an isolated inner sub-canvas with built-in child start and end nodes.
+
+**Interactive suspension (交互挂起)**:
+A checkpoint mechanism where a workflow pauses at a user-selection (`userSelect`) or form-input (`formInput`) node and resumes when the caller submits the interactive payload with the same `chatId`.
+
+**System OpenAPI (系统开放接口)**:
+The subset of FastGPT OpenAPI operations (`/apidoc/systemopenapi`) explicitly authorized for team or application API key authentication, distinct from the internal full-surface `Dev API` (`/apidoc/devapi`).

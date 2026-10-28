@@ -1,0 +1,62 @@
+---
+title: Root Platform Administration Console Guide
+description: Complete reference for root administrators managing global dashboards, users, teams, model channels, tool marketplaces, billing, audit logs, and system migrations.
+---
+
+In self-hosted Commercial Edition deployments, signing in with the `root` administrator account grants access to the **Platform Administration Console** (`/admin/*`) for centralized governance of tenants, system resources, model routing, billing, and system upgrade migrations.
+
+## 1. Global Overview and Tenant Governance
+
+| Module | Route | Responsibilities |
+| --- | --- | --- |
+| **Global Dashboard** | `/admin/dashboard` | Monitor platform-wide user growth, active teams, total applications and knowledge bases, conversation turns, and AI point consumption trends |
+| **User Management** | `/admin/users` | Search user accounts across the platform, create or disable accounts, reset passwords, and inspect team memberships |
+| **Team Management** | `/admin/teams` | Manage tenant teams, adjust team plan quotas, transfer team ownership, and configure custom member or resource caps |
+| **Application Governance** | `/admin/apps` | Search applications (Chat Agents, Agent V2, Workflows, Tools) across all teams for troubleshooting or ownership transfer |
+| **Dataset Governance** | `/admin/datasets` | Inspect knowledge base sizes and collections across teams and monitor global embedding and QA training queue depth |
+
+## 2. System Resources and Model Channel Center (`/admin/resources/*`)
+
+### 1. System Models and AIProxy Channels (`/admin/resources/model`)
+
+Manage platform-wide model infrastructure across five sub-tabs (see [Model Configuration](/en/self-host/config/model/intro) for setup procedures):
+
+- **Model Config (`modelTab=config`)**: Enable models from presets or add custom LLM, Embedding, Rerank, TTS, and STT models, configuring context windows, capability tags, and per-1K-token point prices.
+- **Model Channels (`modelTab=channel`)**: Configure provider endpoints, API keys, model mappings, and channel routing priority weights.
+- **Channel Logs (`modelTab=channel_log`)**: Search underlying model requests by request ID, channel, model name, or HTTP status to inspect latency and error payloads.
+- **Provider Health Monitoring (`modelTab=account_model` / `status`)**: Run batch connectivity tests and configure automated health probes and alert webhooks.
+
+### 2. System Tools and Template Marketplace
+
+| Module | Route | Key Operations |
+| --- | --- | --- |
+| **System Tool Repository** | `/admin/resources/tool` | Upload `.pkg` plugin archives, manage tool tags, configure platform-wide tool secrets, toggle availability, and set tool point costs |
+| **Application Templates** | `/admin/resources/app_template` | Maintain template categories and featured templates displayed in the workspace Template Marketplace |
+
+## 3. Commercial Billing, Announcements, and Compliance Auditing
+
+| Module | Route | Responsibilities |
+| --- | --- | --- |
+| **Plans & Resource Packs** | `/admin/plans` | Configure standard subscription tiers (pricing, billing cycle, quotas) and extra AI point or knowledge index add-on packs |
+| **Payments & Coupons** | `/admin/pays` | Inspect payment orders and generate batch redemption codes or discount coupons |
+| **Invoice Management** | `/admin/invoice` | Review team invoice requests, verify tax headers, and upload issued PDF invoices |
+| **System Announcements** | `/admin/inform` | Publish global banner announcements or send targeted in-app and email notifications |
+| **Platform Audit Logs** | `/admin/audit` | Query platform-wide administrative and operational audit events by actor, team, event type, and time range |
+| **Commercial License** | `/admin/license` | Inspect the Instance ID, upload or renew Commercial Edition license keys, and verify licensed capabilities and expiration dates |
+
+## 4. System Settings and Automated Upgrade Migrations
+
+### 1. System Settings (`/admin/settings/*`)
+
+- **Basic Settings (`/admin/settings/basic`)**: Configure site title, branding logos, help links, and compliance notices.
+- **Feature Flags (`/admin/settings/feature`)**: Toggle team model management (`enable_team_model`), registration policies, and background sync features.
+- **Default Models (`/admin/settings/model`)**: Select platform default models for chat, embedding, text understanding, and enhanced PDF parsing (MinerU, Marker, Doc2x).
+- **Payment Gateways (`/admin/settings/pay`)**: Configure WeChat Pay, Alipay, or Stripe merchant credentials.
+- **Third-Party & Auth Settings (`/admin/settings/thirdParty` / `user`)**: Configure SMS/email gateways, OAuth2/OIDC/SAML SSO, and directory sync (see [SSO & External Member Sync](/en/guide/admin/sso) and [Team Mode](/en/guide/admin/teamMode)).
+
+### 2. System Upgrade Migrations (`/admin/migration`)
+
+After upgrading container images across versions, open **`/admin/migration`** to inspect registered automated migration tasks:
+
+1. Check each migration task's status (pending, running, completed, failed), progress counters, and saved checkpoints.
+2. Trigger or resume migrations after confirming database backups, and verify completion alongside container logs. See [Upgrade Instructions](/en/self-host/upgrading/upgrade-instruction) for the standard upgrade workflow.

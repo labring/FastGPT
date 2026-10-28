@@ -1,0 +1,36 @@
+---
+title: Template Marketplace, App Folders, and Batch Management
+description: Create applications from templates and organize team applications with folders, batch actions, JSON import/export, and inherited permissions.
+---
+
+As your team scales its Chat Agents, Agent V2 apps, and Workflows, use the Template Marketplace to start from proven patterns and manage assets through folders, batch operations, and JSON configuration portability.
+
+## Create Applications from the Template Marketplace
+
+1. Click **Template Marketplace** (`/dashboard/templateMarket`) in the left sidebar, or browse recommended templates on the **Applications** page.
+2. Filter templates by category (such as customer support, document analysis, content creation, or productivity) or search by keyword.
+3. Click a template card to review its architecture and prerequisites, then click **Use Template** to create an application instance in your current directory.
+4. Open the created application, bind your team's active models, knowledge bases, and tool credentials, and run a test in the debug preview pane.
+
+## Filter Applications and Organize Folders
+
+1. **Filter and sort**: At the top of **My Applications** (`/dashboard/agent`), filter by application type (Chat Agent, Chat Agent V2, Workflow), search by name, or change the sort order.
+2. **Create folders**: Click **New Folder** in the top-right corner to organize applications by department, project, or lifecycle stage.
+3. **Permission inheritance**: Collaborator roles (Read, Write, Manage) assigned to a folder are inherited by child folders and applications inside it; individual applications can also add specific collaborators. See [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).
+
+## Batch Move and Batch Delete
+
+1. Click **Batch Management** in the top-right corner of the application list to enter multi-select mode.
+2. Select one or more applications or folders.
+3. **Batch move**: Click **Move** and choose the destination folder or root directory. Moved resources inherit the destination folder's collaborator permissions.
+4. **Batch delete**: Click **Delete**, verify the listed resources in the confirmation dialog, and enter the confirmation phrase to submit. Deleting an application removes its conversation history, evaluation tasks, and share links; export critical configurations beforehand.
+
+## Import and Export JSON Configurations
+
+Workflows and Agents support portable JSON DSL files for cross-environment migration, backup, and sharing:
+
+1. **Export configuration**: Open the application editor, click the dropdown menu next to the application name in the top-left corner, and select **Export Configuration** to download or copy the `.json` definition (sensitive credentials are excluded).
+2. **Import configuration**: In a target workflow editor, open the top-left menu, select **Import Configuration**, upload a `.json` file or paste the JSON payload, and save to replace the current canvas draft.
+3. **Post-import checklist**: After importing a configuration across teams or environments, re-select valid team models, knowledge bases, and tools before publishing.
+
+Next: Learn about [Published Versions and Publishing Channels](/en/guide/build/publish/versions) or configure [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions).

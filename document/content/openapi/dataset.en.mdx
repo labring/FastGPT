@@ -50,6 +50,54 @@ Repeated imports, deletions, and replacements change material available to appli
 
 See [third-party knowledge sources](/en/guide/dataset/third-party/third_dataset) for synchronization contracts. [Historical knowledge-base parameters](/en/openapi/legacy/dataset) preserve old fields and examples for migration comparisons.
 
+## System OpenAPI Endpoint Reference (Knowledge Bases, Collections, Chunks, and Search)
+
+The 24 endpoints below form the Knowledge Base OpenAPI surface and authenticate via `Authorization: Bearer <apiKey>`:
+
+### 1. Knowledge Base Management (`dataset`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/create` | Create a knowledge base or folder | Body: `name` (required), `type` (`dataset`/`folder`/`websiteDataset`/`externalFile`), `vectorModel`, `agentModel`, `vlmModel`, `parentId`, `intro` |
+| `POST` | `/api/core/dataset/list` | List accessible knowledge bases | Body: `parentId`, `type`, `searchKey` |
+| `POST` | `/api/core/dataset/listV2` | List paginated knowledge bases (includes non-folder file counts) | Body: `parentId`, `type`, `searchKey`, `offset`/`pageNum`, `pageSize` |
+| `GET` | `/api/core/dataset/detail` | Get knowledge base details (models, permissions, sync status) | Query: `id` (knowledge base ID, required) |
+| `DELETE` | `/api/core/dataset/delete` | Delete a knowledge base and child resources (owner only) | Query: `id` (knowledge base ID, required) |
+| `POST` | `/api/core/dataset/batch/move` | Batch-move knowledge bases to a target folder | Body: `ids` (ID array), `parentId` (target folder ID or empty) |
+| `POST` | `/api/core/dataset/batch/delete` | Batch-delete multiple knowledge bases | Body: `ids` (ID array) |
+
+### 2. Collection Creation and Ingestion (`datasetCollectionCreate`)
+
+| Method | Path | Summary | Key Parameters (Body / Form) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/collection/create` | Create an empty collection or folder | Body: `datasetId` (required), `name` (required), `type` (`folder`/`virtual`), `parentId`, `tags`, `metadata` |
+| `POST` | `/api/core/dataset/collection/create/localFile` | Upload a local file to create a collection and start training | `multipart/form-data`: `file` (binary) + `data` (JSON string with `datasetId`, `trainingType`, `chunkSize`, `tags`) |
+| `POST` | `/api/core/dataset/collection/create/text` | Create a collection from raw text and start training | Body: `datasetId` (required), `name` (required), `text` (required), `trainingType`, `chunkSettingMode`, `tags` |
+| `POST` | `/api/core/dataset/collection/create/link` | Crawl a web URL to create a collection and start training | Body: `datasetId` (required), `link` (required), `trainingType`, `metadata` (`webPageSelector`) |
+| `POST` | `/api/core/dataset/collection/create/apiCollection` | Create a collection from an external API dataset file | Body: `datasetId` (required), `name` (required), `apiFileId` (required), `trainingType` |
+
+### 3. Collection Query, Update, and Archive Download (`datasetCollection`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/collection/listV2` | List paginated collections (supports search and `tagFilters`) | Body: `datasetId` (required), `parentId`, `searchText`, `tagFilters`, `selectFolder`, `pageSize` (max 100) |
+| `GET` | `/api/core/dataset/collection/detail` | Get collection details (index count, training status, file metadata) | Query: `id` (collection ID, required) |
+| `POST` | `/api/core/dataset/collection/update` | Update collection name, parent folder, enabled state, or tags | Body: `id` (or `datasetId` + `externalFileId`), `name`, `parentId`, `forbid`, `tags` |
+| `POST` | `/api/core/dataset/collection/delete` | Delete one or more collections (collection owner only) | Query: `id` or Body: `collectionIds` (string array) |
+| `POST` | `/api/core/dataset/collection/getDownloadTicket` | Request a short-lived ticket for batch collection ZIP download | Body: `datasetId` (required), `collectionIds`, `parentId`, `searchText` |
+| `GET` | `/api/core/dataset/collection/batchDownload` | Stream a ZIP archive of collection source files using a ticket | Query: `ticket` (required) |
+
+### 4. Data Chunk Maintenance and Search Test (`datasetData` / `datasetOther`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/data/pushData` | Push data chunks to the training queue in batch (up to 200 items) | Body: `collectionId` (required), `data` (`{ q, a, indexes }[]` array, required), `trainingType` |
+| `POST` | `/api/core/dataset/data/v2/list` | List paginated data chunks inside a collection | Body: `collectionId` (required), `searchText`, `offset`/`pageNum`, `pageSize` |
+| `GET` | `/api/core/dataset/data/detail` | Get a single data chunk and its vector indexes | Query: `id` (data chunk ID, required) |
+| `PUT` | `/api/core/dataset/data/update` | Update a chunk's `q`, `a`, or `indexes` and re-embed | Body: `dataId` (required), `q`, `a`, `indexes` |
+| `DELETE` | `/api/core/dataset/data/delete` | Delete a single data chunk and its indexes | Query: `id` (data chunk ID, required) |
+| `POST` | `/api/core/dataset/searchTest` | Run a retrieval test (semantic/full-text/hybrid, rerank, tag filter) | Body: `datasetId` (required), `text`, `limit` (max tokens), `similarity`, `searchMode`, `usingReRank`, `collectionFilterMatch` |
+
 <details>
 <summary>Earlier section links</summary>
 

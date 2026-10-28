@@ -331,3 +331,35 @@ FastGPT 文档首页
 - 弹窗截图明确标注生成链接前状态。调试链接生成、CLI 连接与插件执行保持运行验证限制；截图中未显示 connection key。剩余资源计数为 213，其中 9 个示意图/图标、36 个历史版本资源、168 个需对应环境或原图的资源，继续等待来源补充。
 - [x] 文档引用、英文和导航检查通过；生产构建生成 571 个静态输出，12 项站点回归通过。两语各完成桌面/手机检查，共 8 个图片实例加载、比例与横向布局正常；英文手机图片放大及 Escape 关闭通过。
 - [x] 新图与两份媒体清单及原生捕获文件的哈希一致；Standards 与 Spec 两轴复核发现均为 0，本批提交至当前分支。
+
+## Dify × Diátaxis 全量深化重构方案（2026-10-28）
+
+### 1. 已确认设计决策（Q1–Q9）
+
+1. **信息架构与 URL 策略（Q1、Q2）**：保持 `使用 FastGPT`、`开发者`、`部署与运维` 三大顶层角色入口与既有有效 URL，采用“生命周期主轴 + 模块内 Diátaxis 四象限（Explanation → Tutorial → How-to → Reference）”组织导航，并把 4 个综合案例升级为渐进式《工作流与 Agent 101 实战课》。
+2. **产品表面与截图全覆盖（Q3、Q6、Q8）**：基于 `/Users/longnv/bin/repo/FastGPT-SaaS-UI-20261015`（899 张截图、60 个前端路由）与仓库源码，新增 9 对核心双语专题页，并将所有 20–35 行骨架短文扩写为包含界面路径、参数契约表、可复现示例与故障排查的完整指南；关键入口与复杂配置面板精选高分截图并通过 `prepareScreenshots.mjs` 生成 `<=200KB` WebP 资源。
+3. **站内权威 OpenAPI 契约（Q4、Q7）**：以 `packages/global/openapi/provider/systemopenapi.ts` 暴露的 36 个 API Key 开放接口及 Zod Schema 为唯一事实源，在 `openapi/app.mdx`、`openapi/chat.mdx`、`openapi/dataset.mdx` 中采用“上半部分集成任务（How-to）+ 下半部分完整端点字典（Reference）”结构，同时新增 `openapi/interactive-and-variables.mdx` 专讲交互挂起（`userSelect` / `formInput`）恢复与文件传参。
+4. **双语同步与五批次渐进交付（Q5、Q9）**：中英文 `.mdx` / `.en.mdx` 与 `meta.json` / `meta.en.json` 全程成对编写，按 5 个内聚批次推进并在每批通过 `check:docs` 与 `test:checks`。
+
+### 2. 新增 9 对双语核心专题清单
+
+| 路径 | 所属入口与分组 | Diátaxis 类型 | 核心覆盖范围（源码与截图锚点） |
+| --- | --- | --- | --- |
+| `guide/build/chat-agent.mdx` | 使用 FastGPT / 构建应用 | How-to | 对话 Agent（标准应用）完整编排：模型参数、提示词 `@` 资源引用、关联知识库与工具、一键转工作流（`SIMPLE-001..080`、`APP-027..031`） |
+| `guide/build/templates-and-folders.mdx` | 使用 FastGPT / 构建应用 | How-to | 模板市场筛选与创建、应用文件夹层级、批量移动、导入导出 JSON DSL 与权限继承（`TPL-001..007`、`APP-001..037`） |
+| `guide/build/workflow/variables.mdx` | 使用 FastGPT / 构建应用 / 工作流 | Reference | 开始节点输入输出、全局变量 8 种控件类型、运行时只读系统变量（`userId`、`appId`、`chatId`、`responseChatItemId`、`histories`、`cTime`）（`FLOW-038..078`） |
+| `guide/build/workflow/debug-and-error-handling.mdx` | 使用 FastGPT / 构建应用 / 工作流 | How-to | 单步调试、变量检查、异常捕获分支（`catchError`）、草稿自动保存与历史版本回滚对比（`FLOW-120..169`） |
+| `guide/build/workflow/nodes/run_app.mdx` | 使用 FastGPT / 工作流节点参考 / 工具 | Reference | 应用调用节点（`runApp`）、工作流工具自定义输入（`pluginInput`）、自定义输出（`pluginOutput`）与工具参数配置（`toolParams`）（`TOOL-004..030`、`FLOW-080..086`） |
+| `guide/build/tools/workflow-tools.mdx` | 使用 FastGPT / 工具与技能 | How-to | 创建工作流工具、声明输入输出 Schema、独立运行调试、发布版本与跨应用挂载调用（`TOOL-004..030`） |
+| `guide/workspace/usage-and-billing.mdx` | 使用 FastGPT / 团队与账号 | How-to | 用量看板与明细导出、账单与发票抬头管理、套餐对比与额外资源包、优惠券/兑换码、个人设置与企业认证（`ACCT-001..039`、`BILL-001..007`、`PRICE-001..008`） |
+| `openapi/interactive-and-variables.mdx` | 开发者 / API 入门 | How-to | 工作流交互节点（`userSelect` / `formInput`）SSE 挂起事件解析、同 `chatId` 断点恢复提交、全局变量与 `files` 多模态文件数组传参 |
+| `guide/admin/platform-console.mdx` | 部署与运维 / 平台管理 | How-to + Reference | Root 运营后台（`/admin/*` 21 个路由）：全局数据看板、用户/团队/应用/知识库治理、系统模型渠道探测、工具与模板管理、套餐/支付/发票/通知、审计日志、License 与系统迁移（`/admin/migration`） |
+
+### 3. 2026-10-28 实施待办（5 Batches）
+
+- [x] 更新 `document/CONTEXT.md` 与 `.agents/design/documentation/CONTEXT.md`，增补 7 项核心领域术语。
+- [x] **Batch 1（基础导航、开始使用与 101 实战课）**：重构 `guide/getting-started/*` 与 `examples/*`（升级为渐进式 4 课实战教程），更新全站 `meta.json` / `meta.en.json`。
+- [x] **Batch 2（构建应用与工作流全节点字典）**：新增 `chat-agent`、`templates-and-folders`、`workflow/variables`、`workflow/debug-and-error-handling`、`workflow/nodes/run_app`，并扩写 `scheduled-triggers`、`workflow/nodes/agent`、`knowledge_base_search_merge` 等节点参考页。
+- [x] **Batch 3（工具与技能、发布与监控评测）**：新增 `tools/workflow-tools`，大幅扩写 `tools/overview`、`tools/http_tools`、`publish/portal`、`build/logs`。
+- [x] **Batch 4（团队账户与开发者 OpenAPI 全端点参考）**：新增 `workspace/usage-and-billing` 与 `openapi/interactive-and-variables`，扩写 `workspace/models`，并在 `openapi/app`、`openapi/chat`、`openapi/dataset` 中补齐全部 49 个 System OpenAPI 端点的完整请求/响应契约参考。
+- [x] **Batch 5（部署运维、Root 平台运营后台与全站门禁验收）**：新增 `guide/admin/platform-console`，扩写 `self-host/design/dataset`、`self-host/troubleshooting/methods`、`version/cloud/intro` 与 `version/opensource/intro`，完成目录生成、`check:docs`（604 篇 MDX / 302 对页面 / 838 条英文链接）、`test:checks`（25/25 通过）、`typecheck` 与 `build` 门禁验收。

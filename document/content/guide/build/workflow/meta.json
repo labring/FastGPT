@@ -3,7 +3,9 @@
   "description": "FastGPT 工作流介绍和节点说明。",
   "pages": [
     "intro",
+    "variables",
     "rules",
+    "debug-and-error-handling",
     "assisted-generation",
     "nodes"
   ]

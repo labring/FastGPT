@@ -4,6 +4,7 @@
   "pages": [
     "team",
     "models",
+    "usage-and-billing",
     "customDomain",
     "../version/cloud/intro",
     "../version/cloud/faq",

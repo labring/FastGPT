@@ -3,17 +3,34 @@ title: Create and debug HTTP tools
 description: Turn an HTTP service into a callable tool and verify authentication, input, and response.
 ---
 
-You need tool creation or editing permission and an API reachable from the FastGPT server. Obtain the provider's contract and credentials. Start with a read-only endpoint.
+HTTP tools convert internal REST services or third-party HTTP APIs into callable tools for Chat Agents, Agent V2 apps, and Workflows using either **batch OpenAPI Schema import** or **manual single-endpoint configuration**.
+
+## Prerequisites and Creation Modes
+
+You need tool creation permission in the active team and network reachability from the FastGPT server to the target API.
+
+| Creation Mode | Best For | Key Characteristics |
+| --- | --- | --- |
+| **HTTP Tool Set (Batch / Schema Import)** | A service exposing multiple related endpoints (such as order lookup, creation, and cancellation) | Shares a common Base URL and auth headers; parses OpenAPI 3.0 / Swagger JSON or YAML into child tools automatically |
+| **Single HTTP Tool (Manual)** | Connecting one standalone endpoint | Directly configures HTTP method (`GET`/`POST`/`PUT`/`DELETE`/`PATCH`), URL, query parameters, and body template |
 
 ## Configure
 
 1. Create an HTTP tool set in the workspace. Add a tool manually or use the API Schema configuration offered by the interface.
 2. Enter the service address, tool name, and description. In manual mode, set method and path; in Schema mode, inspect the parsed tool list.
-3. Configure authentication headers, keeping fixed credentials in authentication settings. Define caller-supplied arguments, types, descriptions, and required fields.
+3. Configure authentication headers (None, `Bearer Token`, `Basic Auth`, or custom Header key-value pairs), keeping fixed credentials in authentication settings. Define caller-supplied arguments, types, descriptions, and required fields.
 4. Inspect request parameters, body, and output structure, then save.
 5. Select a tool, supply known arguments in its debug panel, run it, and inspect the response or error.
 
 For example, configure the read-only `GET /status` endpoint of your own test service. Expect the status fields defined by that service's contract. First verify server access with the same credential, then compare the FastGPT debug result.
+
+## Authentication and Parameter Mapping
+
+| Section | Description | Recommendation |
+| --- | --- | --- |
+| **Authentication (Header Secret)** | Supports `Authorization: Bearer <token>`, `Basic`, or custom headers | Store static tokens in authentication settings rather than exposing them as model-populated input arguments |
+| **Path & Query Parameters** | Path placeholders in the URL or entries in the Params table | Declare accurate types (`string`/`number`/`boolean`) and clear descriptions so models supply valid values |
+| **Request Body** | Supports `application/json`, `form-data`, `x-www-form-urlencoded`, `xml`, and `raw-text` | Bind declared input parameters into the JSON body template |
 
 ## Connect an application
 

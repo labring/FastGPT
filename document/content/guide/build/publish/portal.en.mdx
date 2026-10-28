@@ -3,9 +3,19 @@ title: Use applications through the portal
 description: Configure portal access and response visibility, then verify the experience as a user.
 ---
 
-The portal provides application access for signed-in users. Availability depends on the deployment's portal capability, license, plan, and resource permissions. Application publishing controls runtime content; portal visibility settings control the information users can see.
+The conversation portal (`/chat`) is the unified workspace for signed-in team members, bringing together New Conversation, My Applications, Team Applications, Favorites, and conversation history. The published application version governs runtime logic, while portal visibility settings control how much execution detail and source citation depth members can inspect.
 
 ![Portal visibility controls](/imgs/optimized/current/portal-visibility.png.webp)
+
+## Portal Visibility Settings Reference
+
+| Visibility Toggle | Visible to Signed-In Members When Enabled | When to Disable |
+| --- | --- | --- |
+| **Show running status** | Live node progress, tool invocations, and Agent plan cards during generation | Present only the final response text without exposing workflow steps |
+| **View full response** | Access to the **Full Response** drawer showing per-node inputs, outputs, and latency | Hide intermediate prompts and internal node payloads from ordinary users |
+| **Show citation excerpts** | Citation badges and matched chunk snippets below the answer | Deliver answers without displaying retrieved chunk cards |
+| **View full citation text** | Access to the chunk reader showing the full collection text with highlighted matches | Allow snippet verification while restricting access to surrounding document sections |
+| **Download source document** | Signed download link for the original uploaded file (such as PDF, DOCX, or XLSX) | Keep confidential source files view-only online without raw file downloads |
 
 ## Configure and verify
 
@@ -14,7 +24,11 @@ The portal provides application access for signed-in users. Availability depends
 3. After publishing application configuration changes, open the link as a test member with application access and start a new conversation.
 4. Check the answer and the execution and citation information visible to that member against your settings.
 
-The portal home provides New Conversation and All Applications entrances. Available applications and models depend on the account and team configuration. For access errors, inspect login identity, team, application collaborator permissions, and portal licensing. For citations, also inspect knowledge-base and source access.
+## Portal Navigation and Deep Links
+
+- **Workspace navigation**: Switch between Recent Chats, My Applications, Team Applications, and Favorites in the left pane, and bookmark frequently used team apps.
+- **Direct URL parameters**: Open a specific application directly via `/chat?appId=<appId>`, or pass the `pane` query parameter to open the team application directory.
+- **Permission checks**: When a member encounters an access error, verify the active team, application collaborator permissions ([Team Permissions](/en/guide/workspace/team/team_roles_permissions)), and [collection-level permissions](/en/guide/dataset/collection_permission) on referenced knowledge bases.
 
 Next: [published versions](/en/guide/build/publish/versions), [team permissions](/en/guide/workspace/team/team_roles_permissions), and [conversation logs](/en/guide/build/logs).
 

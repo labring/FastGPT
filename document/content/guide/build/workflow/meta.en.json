@@ -3,7 +3,9 @@
   "description": "FastGPT workflow introduction and node guides.",
   "pages": [
     "intro",
+    "variables",
     "rules",
+    "debug-and-error-handling",
     "assisted-generation",
     "nodes"
   ]

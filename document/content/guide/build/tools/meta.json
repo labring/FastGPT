@@ -3,6 +3,7 @@
   "description": "应用构建中的 MCP 工具和系统插件。",
   "pages": [
     "overview",
+    "workflow-tools",
     "http_tools",
     "mcp_tools",
     "system-plugins"

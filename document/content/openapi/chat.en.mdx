@@ -55,6 +55,48 @@ Model calls and tools can incur charges or external effects. Check whether the p
 
 Use the same input to verify JSON and streaming outputs satisfy application rules. Test an invalid application ID and confirm the client displays a useful error. Interrupt a connection and confirm that the UI marks the result incomplete. Then connect [log observation](/en/guide/build/logs).
 
+## System OpenAPI Endpoint Reference (Chat, Sessions, Records, and Feedback)
+
+Aside from `/api/v1/chat/completions` and `/api/v2/chat/completions` (which also accept `Bearer <apiKey>-<appId>`), all session, record, and feedback endpoints require **`appId` to be passed explicitly** in the request body or query string.
+
+### 1. Chat Generation and Execution Control (`chatController`)
+
+| Method | Path | Summary | Key Request Fields |
+| --- | --- | --- | --- |
+| `POST` | `/api/v2/chat/completions` | Create a chat completion v2 (recommended, OpenAI-compatible) | Body: `appId`, `chatId`, `stream`, `detail`, `messages`, `variables`, `responseChatItemId` |
+| `POST` | `/api/v1/chat/completions` | Create a chat completion v1 (legacy stream/response format) | Body: `appId`, `chatId`, `stream`, `detail`, `messages`, `variables` |
+| `POST` | `/api/v2/chat/stop` | Stop an in-progress conversation run | Body: `appId` (required), `chatId` (required), `outLinkAuthData` (optional); halts workflow scheduling at the next safe checkpoint |
+
+### 2. Session History Management (`chatHistory`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `GET` | `/api/core/chat/init` | Initialize chat session metadata (welcome text, pre-chat variables) | Query: `appId` (required), `chatId` (optional) |
+| `POST` | `/api/core/chat/history/getHistories` | List paginated conversation sessions for an application | Body: `appId` (required), `offset`/`pageNum`, `pageSize`, `source` |
+| `POST` | `/api/core/chat/history/getHistoryStatus` | Batch-poll session generation and read statuses | Body: `appId` (required), `chatIds` (string array); returns `chatGenerateStatus`, `hasBeenRead`, `updateTime` |
+| `POST` | `/api/core/chat/history/markRead` | Mark a conversation session as read | Body: `appId` (required), `chatId` (required) |
+| `PUT` | `/api/core/chat/history/updateHistory` | Rename a session or toggle its pinned status | Body: `appId` (required), `chatId` (required), `title`, `customTitle`, `top` (boolean) |
+| `DELETE` | `/api/core/chat/history/delHistory` | Soft-delete a single conversation session | Query: `appId` (required), `chatId` (required) |
+| `DELETE` | `/api/core/chat/history/clearHistories` | Soft-delete all sessions under an application | Query: `appId` (required) |
+| `POST` | `/api/core/chat/history/batchDelete` | Permanently delete multiple sessions in batch | Body: `appId` (required), `chatIds` (non-empty string array) |
+
+### 3. Message Records and Citation Lookup (`chat`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/chat/record/getPaginationRecords` | List paginated message records in a session | Body: `appId` (required), `chatId` (required), `offset`/`pageNum`, `pageSize`, `loadCustomFeedbacks` |
+| `POST` | `/api/core/chat/record/getRecords_v2` | Fetch message records around a cursor anchor | Body: `appId` (required), `chatId` (required), `pageSize`, `initialId`, `prevId`, `nextId` |
+| `GET` | `/api/core/chat/record/getResData` | Fetch full node execution details (`responseData`) for a message | Query: `appId` (required), `chatId` (required), `dataId` (message record ID, required) |
+| `POST` | `/api/core/chat/record/getQuote` | Fetch cited knowledge chunks by chunk ID list | Body: `appId` (required), `chatId` (required), `chatItemDataId` (required), `datasetDataIdList` |
+| `POST` | `/api/core/chat/record/getCollectionQuote` | Fetch paginated collection chunks for the full-text citation reader | Body: `appId` (required), `chatId` (required), `chatItemDataId` (required), `collectionId` (required), `pageSize` |
+| `DELETE` | `/api/core/chat/record/delete` | Delete a single message record | Query: `appId` (required), `chatId` (required), `contentId` (required) |
+
+### 4. Message Feedback (`chatFeedback`)
+
+| Method | Path | Summary | Key Request Fields |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/chat/feedback/updateUserFeedback` | Add, update, or clear thumbs-up / thumbs-down feedback on a message | Body: `appId` (required), `chatId` (required), `dataId` (required), `userGoodFeedback`, `userBadFeedback` |
+
 [Historical conversation parameters](/en/openapi/legacy/chat) preserve earlier handwritten fields and examples.
 
 <details>

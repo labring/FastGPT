@@ -3,6 +3,7 @@
   "title": "OpenAPI接口文档",
   "pages": [
     "intro",
+    "interactive-and-variables",
     "app",
     "chat",
     "dataset",

@@ -6,6 +6,7 @@
     "---API 入门---",
     "../openapi/intro",
     "../openapi/identity-proxy",
+    "../openapi/interactive-and-variables",
     "---集成任务---",
     "../openapi/app",
     "../openapi/chat",

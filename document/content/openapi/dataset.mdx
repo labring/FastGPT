@@ -50,6 +50,54 @@ EOF
 
 外部来源的同步契约见[第三方知识库](/zh-CN/guide/dataset/third-party/third_dataset)。[历史知识库参数](/zh-CN/openapi/legacy/dataset)保存旧字段和示例，用于版本迁移对照。
 
+## 开放接口端点参考（System OpenAPI—知识库、集合、数据块与检索）
+
+以下 24 个端点组成知识库开放 API 体系，均支持 `Authorization: Bearer <apiKey>` 鉴权：
+
+### 1. 知识库管理（`dataset`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/create` | 创建知识库或知识库文件夹 | Body: `name`（必填）、`type`（`dataset` / `folder` / `websiteDataset` / `externalFile` 等）、`vectorModel`、`agentModel`、`vlmModel`、`parentId`、`intro` |
+| `POST` | `/api/core/dataset/list` | 获取当前成员可访问的知识库列表 | Body: `parentId`、`type`、`searchKey` |
+| `POST` | `/api/core/dataset/listV2` | 分页获取知识库列表（含不含文件夹的文件数统计） | Body: `parentId`、`type`、`searchKey`、`offset` / `pageNum`、`pageSize` |
+| `GET` | `/api/core/dataset/detail` | 获取知识库详情（模型配置、权限、同步状态） | Query: `id`（知识库 ID，必填） |
+| `DELETE` | `/api/core/dataset/delete` | 删除知识库及其子资源（需所有者权限） | Query: `id`（知识库 ID，必填） |
+| `POST` | `/api/core/dataset/batch/move` | 批量移动知识库到指定目录 | Body: `ids`（知识库 ID 数组）、`parentId`（目标目录 ID 或空） |
+| `POST` | `/api/core/dataset/batch/delete` | 批量删除多个知识库 | Body: `ids`（知识库 ID 数组） |
+
+### 2. 集合创建与文件导入（`datasetCollectionCreate`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Body / Form） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/collection/create` | 创建空集合或子文件夹 | Body: `datasetId`（必填）、`name`（必填）、`type`（`folder` / `virtual`）、`parentId`、`tags`、`metadata` |
+| `POST` | `/api/core/dataset/collection/create/localFile` | 上传本地文件创建集合并触发异步训练 | `multipart/form-data` : `file`（二进制文件）+ `data`（JSON 字符串，含 `datasetId`、`trainingType`、`chunkSize`、`tags` 等） |
+| `POST` | `/api/core/dataset/collection/create/text` | 通过纯文本创建集合并触发异步训练 | Body: `datasetId`（必填）、`name`（必填）、`text`（必填）、`trainingType`、`chunkSettingMode`、`tags` |
+| `POST` | `/api/core/dataset/collection/create/link` | 抓取指定网页 URL 创建集合并触发训练 | Body: `datasetId`（必填）、`link`（必填）、`trainingType`、`metadata`（含 `webPageSelector`） |
+| `POST` | `/api/core/dataset/collection/create/apiCollection` | 从第三方 API 文件库拉取单文件创建集合 | Body: `datasetId`（必填）、`name`（必填）、`apiFileId`（必填）、`trainingType` |
+
+### 3. 集合查询、维护与批量下载（`datasetCollection`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/collection/listV2` | 分页获取集合列表（支持关键词与结构化标签过滤） | Body: `datasetId`（必填）、`parentId`、`searchText`、`tagFilters`、`selectFolder`、`pageSize`（上限 100） |
+| `GET` | `/api/core/dataset/collection/detail` | 获取集合详情（索引数量、训练队列状态、文件元数据） | Query: `id`（集合 ID，必填） |
+| `POST` | `/api/core/dataset/collection/update` | 更新集合名称、父目录、启用状态或集合标签 | Body: `id`（或 `datasetId` + `externalFileId`）、`name`、`parentId`、`forbid`、`tags` |
+| `POST` | `/api/core/dataset/collection/delete` | 删除一个或多个集合（需集合所有者权限） | Query: `id` 或 Body: `collectionIds`（字符串数组） |
+| `POST` | `/api/core/dataset/collection/getDownloadTicket` | 申请集合原文件批量打包下载的短效一次性凭证 | Body: `datasetId`（必填）、`collectionIds`、`parentId`、`searchText` |
+| `GET` | `/api/core/dataset/collection/batchDownload` | 凭短效 `ticket` 流式下载集合原文件 ZIP 归档 | Query: `ticket`（必填） |
+
+### 4. 数据块（Chunk）维护与检索测试（`datasetData` / `datasetOther`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/dataset/data/pushData` | 批量推送结构化数据块到训练队列（单次上限 200 条） | Body: `collectionId`（必填）、`data`（`{ q, a, indexes }[]` 数组，必填）、`trainingType` |
+| `POST` | `/api/core/dataset/data/v2/list` | 分页获取集合内的数据块列表 | Body: `collectionId`（必填）、`searchText`、`offset` / `pageNum`、`pageSize` |
+| `GET` | `/api/core/dataset/data/detail` | 获取单条数据块详情及其关联的向量索引列表 | Query: `id`（数据块 ID，必填） |
+| `PUT` | `/api/core/dataset/data/update` | 更新单条数据块的 `q`、`a` 或 `indexes` 并重新向量化 | Body: `dataId`（必填）、`q`、`a`、`indexes` |
+| `DELETE` | `/api/core/dataset/data/delete` | 删除单条数据块及其检索索引 | Query: `id`（数据块 ID，必填） |
+| `POST` | `/api/core/dataset/searchTest` | 对知识库执行检索测试（支持语义/全文/混合、重排与标签过滤） | Body: `datasetId`（必填）、`text`、`limit`（最大 Token）、`similarity`、`searchMode`、`usingReRank`、`collectionFilterMatch` |
+
 <details>
 <summary>原有章节入口</summary>
 
@@ -79,7 +127,7 @@ EOF
 
 <span id="通用创建参数说明必看" />
 
-[通用创建参数说明（必看） ](/zh-CN/openapi/legacy/dataset#通用创建参数说明必看)
+[通用创建参数说明（必看）](/zh-CN/openapi/legacy/dataset#通用创建参数说明必看)
 
 <span id="创建空集合目录" />
 
@@ -99,11 +147,11 @@ EOF
 
 <span id="通过-api-数据集创建集合v1" />
 
-[通过 API 数据集创建集合（V1） ](/zh-CN/openapi/legacy/dataset#通过-api-数据集创建集合v1)
+[通过 API 数据集创建集合（V1）](/zh-CN/openapi/legacy/dataset#通过-api-数据集创建集合v1)
 
 <span id="创建一个外部文件库集合商业版" />
 
-[创建一个外部文件库集合（商业版） ](/zh-CN/openapi/legacy/dataset#创建一个外部文件库集合商业版)
+[创建一个外部文件库集合（商业版）](/zh-CN/openapi/legacy/dataset#创建一个外部文件库集合商业版)
 
 <span id="获取集合列表" />
 

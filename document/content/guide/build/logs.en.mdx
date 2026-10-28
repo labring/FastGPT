@@ -3,7 +3,28 @@ title: Inspect conversation logs and execution details
 description: Trace user feedback to retrieval, node inputs and outputs, and runtime errors.
 ---
 
-You need permission to view the application's logs. Open Logs in application details, locate the conversation using available filters, and inspect conversation and execution details. Filtering, statistics, feedback, and retention depend on the version and plan available in your environment.
+The **Conversation Logs** tab (`/app/detail?appId=<id>&currentTab=logs`) in application details provides an **Analytics Dashboard** and a **Log Details** inspector to monitor live traffic, AI point consumption, user feedback, and node-by-node execution traces.
+
+## Analytics Dashboard
+
+Switch to the **Dashboard** view and select a date range to monitor operational metrics:
+
+| Metric Category | Key Indicators | Operational Use |
+| --- | --- | --- |
+| **Users & Sessions** | Active users, new conversations, and channel breakdown (Portal, Share Link, API, IM bots) | Track adoption and peak traffic across publishing channels |
+| **Turns & Errors** | Total turns, average turns per session, and node error counts | Detect error spikes caused by upstream API timeouts or model rate limits |
+| **Feedback & Latency** | Thumbs-up/down counts, custom feedback entries, and average response duration | Identify slow runs and negative feedback samples for prompt or RAG tuning |
+| **Resource Usage** | Consumed AI points and input/output token trends | Monitor per-application cost and right-size model selection or context limits |
+
+## Filter, Customize Columns, and Export Logs
+
+In the **Log Details** view, narrow down target conversations using the filter bar:
+
+1. **Multi-dimensional filters**: Filter by **Source channel** (Debug, Portal, Share Link, API, Feishu/WeCom/DingTalk/WeChat, Scheduled Trigger), **Date range**, **User or Chat ID**, **Feedback status** (thumbs-up, thumbs-down, unread feedback, custom feedback), and **Error count**.
+2. **Customizable columns**: Click the column settings icon to toggle session title, source, user, message count, feedback badges, custom feedback, error count, client IP, and published version name.
+3. **Export to CSV**: Click **Export** and confirm the matched conversation count (up to 100 messages per conversation) to download a CSV for offline review or [Agent Evaluation](/en/guide/build/evaluation) dataset preparation.
+
+![Conversation log list showing user and custom feedback columns](/imgs/optimized/current/feedback-log.png.webp)
 
 ## Investigate one problem
 
@@ -12,6 +33,8 @@ You need permission to view the application's logs. Open Logs in application det
 3. Expand execution details and follow node inputs, tool calls, retrieved material, model output, and errors in execution order.
 4. Debug the same input in the editor and record differences between the draft and published version.
 5. Change the configuration closest to the cause, verify, publish, and repeat through actual access.
+
+![Expand conversation run details to inspect node inputs, outputs, and feedback](/imgs/optimized/current/feedback-run-detail.png.webp)
 
 | Observation | Next check |
 | --- | --- |

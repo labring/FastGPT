@@ -3,19 +3,33 @@ title: Configure scheduled triggers
 description: Set execution time, timezone, and default input, then verify the published schedule.
 ---
 
-Scheduled triggers start application tasks according to a plan. You need editing and publishing permissions, a supported environment, and model/tool access and quota. Debug the same input manually first.
+Scheduled triggers start a Chat Agent, Chat Agent V2, or Workflow automatically according to a recurring schedule, timezone, and default prompt—ideal for daily briefings, periodic inspections, and automated reporting.
+
+## Prerequisites and Activation Rules
+
+- **Permissions**: Application editing and publishing permissions, plus access to the associated models, knowledge bases, and tools.
+- **Quota**: Each scheduled execution consumes team AI points according to actual model token and tool usage.
+- **Publication boundary**: Schedules are bound to the **Published version**. Changing the schedule in a draft takes effect only after you click **Save and Publish**, which recalculates and registers the next execution timestamp (`nextTime`).
 
 ## Configure and publish
 
-1. Open scheduled-trigger settings in application configuration and enable scheduled execution.
-2. Set the schedule, timezone, and default prompt. Explicitly select the business timezone and inspect the displayed time.
-3. Save and publish application changes. The current implementation updates the plan and next execution time on publishing.
-4. After the expected time, inspect conversation logs for input, tool calls, and output.
+1. Open scheduled-trigger settings in the application editor (**AI Settings → Scheduled Trigger** in a Chat Agent, or **System Config → Scheduled Trigger** in a Workflow) and enable scheduled execution.
+2. Configure the schedule parameters:
+   - **Interval / Cron expression**: Choose hourly, daily, weekly, or monthly presets, or enter a 5-field Cron expression (`minute hour day month weekday`).
+   - **Timezone**: Select the target business timezone (such as `Asia/Shanghai` or `UTC`) and verify the previewed next run time.
+   - **Default prompt**: Enter the instruction text passed into `userChatInput` when the schedule fires (for example, `Summarize new support tickets from the past 24 hours`).
+3. Run the same default prompt manually in the debug preview pane first to confirm model output and tool calls.
+4. Click **Save and Publish** in the top-right corner to activate the schedule.
+5. After the scheduled time, open **Conversation Logs**, filter by scheduled runs, and inspect the input, tool calls, and output.
 
 To disable it, switch scheduled execution off and publish that configuration, then verify that the plan was removed. Scheduled tool calls can have real external effects; verify timing and output with a read-only task first.
 
 ## Troubleshoot
 
-For missing runs, check published configuration, timezone, schedule, scheduling services, and quota. For execution failures, inspect model and tool errors. Account for daylight-saving changes where relevant and verify actual trigger times before making business processes depend on the result.
+| Symptom | Check and Resolution |
+| --- | --- |
+| Task did not fire at the expected time | Confirm the schedule change was published with **Save and Publish**, verify the selected timezone, and check team AI point balance |
+| Scheduled run started but failed mid-flow | Ensure any required global variables have default values, as unattended runs have no pre-chat user form |
+| Duplicate external writes or notifications | Check Cron frequency, node retry settings, and idempotency handling on the external API |
 
 Next: [log troubleshooting](/en/guide/build/logs) and [published versions](/en/guide/build/publish/versions).

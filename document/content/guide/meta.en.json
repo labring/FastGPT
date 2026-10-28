@@ -10,6 +10,7 @@
     "...dataset",
     "---Tools and Skills---",
     "build/tools/overview",
+    "build/tools/workflow-tools",
     "build/tools/http_tools",
     "build/tools/mcp_tools",
     "../plugin/team-installation",

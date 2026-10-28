@@ -1,0 +1,74 @@
+---
+title: 开始节点、全局变量与系统变量字典
+description: 全面掌握工作流开始节点输出、12 种全局变量配置、只读系统变量与节点间数据类型映射。
+---
+
+在 FastGPT 工作流中，数据通过三类变量源在画布上流转：**流程开始节点输出**、**应用级全局变量**以及**运行时只读系统变量**。
+
+## 一、流程开始节点（`workflowStart`）
+
+每个主工作流画布有且仅有一个**流程开始**节点，作为对话请求进入画布的唯一入口。
+
+| 输出字段 | 内部 Key | 数据类型 | 说明 |
+| --- | --- | --- | --- |
+| **用户问题** | `userChatInput` | `String` | 用户在本轮对话输入框发送的文本内容 |
+| **文档链接** | `userFiles` | `Array<string>` | 开启[文件输入](/zh-CN/guide/build/general/fileInput)后，用户本轮上传的文件与图片临时签名 URL 数组 |
+
+## 二、全局变量（Global Variables）
+
+全局变量在工作流左上角“系统配置 → 变量”或对话 Agent 的“变量”面板中声明，可在全画布任意节点通过变量选择器引用，也可通过[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)在运行中修改。
+
+### 1. 表单交互变量（对话前由用户填写）
+
+开启后，用户在对话窗口或分享链接开始新会话前会看到对应的表单控件：
+
+| 变量类型 | 枚举标识 | 默认值类型 | 典型用途 |
+| --- | --- | --- | --- |
+| **文本输入** | `input` / `textarea` | `String`（可选 `Object` 或各类数组） | 填入姓名、单号、背景描述或结构化参数 |
+| **密码框** | `password` | `String` | 填入需要掩码显示的临时访问口令 |
+| **数字输入** | `numberInput` | `Number` | 控制生成条数、预算上限、阈值参数 |
+| **单选框** | `select` | `String` | 选择业务类型、输出语言、报告风格 |
+| **多选框** | `multipleSelect` | `Array<string>` | 勾选多个核查维度或目标渠道 |
+| **开关** | `switch` | `Boolean` | 控制是否启用联网、深度分析或严格审核分支 |
+| **时间点选择** | `timePointSelect` | `String` | 选择指定截止时间或查询时间戳 |
+| **时间范围选择** | `timeRangeSelect` | `Array<string>` | 选择起止时间区间（起止两个时间字符串） |
+| **模型选择** | `llmSelect` | `String` | 允许使用者在指定范围内切换底层对话模型 |
+| **文件上传** | `file` | `Array<string>` | 对话开始前要求用户上传前置附件材料 |
+
+### 2. 隐藏与状态变量（后台传参或内部流转）
+
+| 变量类型 | 枚举标识 | 可见性 | 传值与修改方式 |
+| --- | --- | --- | --- |
+| **外部变量（Custom）** | `custom` | 对终端用户隐藏 | 由嵌入页面 URL 参数、分享鉴权回调或 OpenAPI 请求体 `variables` 传入 |
+| **内部变量（Internal）** | `internal` | 对终端用户和外部 API 均隐藏 | 仅在工作流内部使用默认值初始化，通过[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)跨节点、跨循环读写状态 |
+
+![配置数字类型全局变量与比较操作](/imgs/optimized/current/variable-number-operators.png.webp)
+
+## 三、运行时系统变量（System Variables）
+
+系统变量由工作流引擎在每次运行时自动注入，无需手动声明，可在变量选择器中直接选用：
+
+| 系统变量 | 内部 Key | 数据类型 | 含义与常见用途 |
+| --- | --- | --- | --- |
+| **用户 ID** | `userId` | `String` | 当前触发会话的终端用户标识或 `customUid`，常用于传给 HTTP 节点查询业务库权限 |
+| **应用 ID** | `appId` | `String` | 当前运行应用的唯一标识 |
+| **会话 ID** | `chatId` | `String` | 当前多轮会话的唯一标识，可用于外部状态关联或日志追踪 |
+| **响应消息 ID** | `responseChatItemId` | `String` | 本轮 AI 回复消息记录的唯一 ID |
+| **历史记录** | `histories` | `ChatHistory` | 结构为 `{ obj: 'System' \| 'Human' \| 'AI', value: string }[]` 的历史对话数组 |
+| **当前时间** | `cTime` | `String` | 本轮运行启动时的当前系统时间字符串（含时区上下文），常用于提示词时间锚定 |
+
+## 四、节点间数据类型字典（`WorkflowIOValueTypeEnum`）
+
+画布连接与变量选择器会根据端口声明的数据类型进行匹配校验：
+
+| 类型标识 | 显示名称 | 数据结构说明 |
+| --- | --- | --- |
+| `string` / `number` / `boolean` | `String` / `Number` / `Boolean` | 基础标量类型 |
+| `object` | `Object` | JSON 对象（键值对） |
+| `arrayString` / `arrayNumber` / `arrayBoolean` / `arrayObject` | `Array<T>` | 强类型数组，可直接作为[循环执行](/zh-CN/guide/build/workflow/nodes/loop_run)或[并行执行](/zh-CN/guide/build/workflow/nodes/parallel_run)的迭代输入 |
+| `arrayAny` / `any` | `Array` / `Any` | 通用数组或动态任意类型（常见于代码运行或 HTTP 节点动态输出） |
+| `chatHistory` | 聊天记录 | 对话上下文数组，供 AI 对话或问题分类节点承接多轮记忆 |
+| `datasetQuote` | 知识库引用 | 结构为 `{ id, datasetId, collectionId, sourceName, q, a }[]` 的检索分块数组 |
+| `selectDataset` | 选择知识库 | 由工作流工具传入的目标知识库 ID 列表 |
+
+下一步：学习[变量更新节点](/zh-CN/guide/build/workflow/nodes/variable_update)的状态修改方式，或查阅[工作流连线规则校验](/zh-CN/guide/build/workflow/rules)。

@@ -7,7 +7,15 @@ description: FastGPT Dataset search Merge node overview
 
 ## What It Does
 
-Merges search results from multiple Datasets into a single output, re-ranks them using RRF (Reciprocal Rank Fusion), and supports max token filtering.
+Combines citation lists from multiple upstream [Dataset Search](/en/guide/build/workflow/nodes/dataset_search) nodes into a single `datasetQuote` array, deduplicates chunks by ID, re-ranks results using **RRF (Reciprocal Rank Fusion)**, and trims the combined context to the configured **Max Tokens** budget.
+
+## Inputs, Configuration, and Outputs
+
+| Item | Internal Key | Value Type | Description |
+| --- | --- | --- | --- |
+| **Max Tokens** | `limit` | `Number` | Maximum token budget retained after merging; lower-ranked RRF items beyond this cap are trimmed |
+| **Citation list inputs (Dynamic)** | `system_datasetQuoteList` | `DatasetQuote` | Connects two or more `quoteQA` outputs from upstream Dataset Search nodes |
+| **Merged citations** | `quoteQA` | `DatasetQuote` | Deduplicated, RRF-ranked, and token-trimmed citation list ready for AI Chat |
 
 ## Usage
 
@@ -24,3 +32,4 @@ Open run details and select Dataset search Merge to verify the merged total. Thi
 ## Example Use Cases
 
 1. After question classification, search different Datasets per category, then feed the merged results to a single AI Chat node. This avoids adding a separate AI Chat node to each branch.
+2. Run parallel searches using both the original user question and an expanded sub-query, then merge and deduplicate the recalled chunks with RRF before answer generation.

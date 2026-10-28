@@ -33,7 +33,28 @@ Workflow tools declare input and output contracts and can execute independently.
 
 ## Runtime and management
 
-For conversation reuse and streamed content, read [conversation integration](/en/openapi/chat). For statistics and log management, verify each generated operation's availability, version, and licensing requirements before calling it.
+For conversation reuse and streamed content, read [conversation integration](/en/openapi/chat); for interactive node suspension and file inputs, read [Interactive Suspension Resume and File Input API Flow](/en/openapi/interactive-and-variables).
+
+## System OpenAPI Endpoint Reference (App Logs and Models)
+
+The endpoints below accept team-level `Authorization: Bearer <apiKey>` authentication (commercial analytics endpoints use the `/api/proApi/` prefix):
+
+### 1. Application Logs and Analytics (`appLog`)
+
+| Method | Path | Summary | Key Parameters (Query / Body) |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/app/logs/list` | List paginated application conversation logs | Body: `appId` (required), `dateStart`, `dateEnd`, `sources`, `logUser`, `errorFilter`, `unreadOnly`, `offset`/`pageNum`, `pageSize` |
+| `POST` | `/api/core/app/logs/getUsers` | List users recorded in application logs | Body: `appId` (required), `dateStart`, `dateEnd`, `searchKey` |
+| `GET` | `/api/proApi/core/app/logs/getTotalData` | Get cumulative application totals (users, chats, consumed points) | Query: `appId` (required) |
+| `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart`, `dateEnd`, `source` |
+
+### 2. Model Discovery (`model`)
+
+| Method | Path | Summary | Key Parameters and Response |
+| --- | --- | --- | --- |
+| `GET` | `/api/core/ai/model/list` | List active public system models and pricing | No parameters required; returns `model`, `name`, `type` (`llm`/`embedding`/`rerank`/`tts`/`stt`), and token rates |
+| `GET` | `/api/core/ai/model/catalog` | Get the current member's available model catalog and defaults | Query: `version` (optional version negotiation); returns accessible models, providers, and default model IDs |
+| `POST` | `/api/core/ai/model/summary` | Batch-fetch display metadata and availability for model IDs | Body: `modelIds` (string array), `appId` (optional); returns display names, icons, types, and status |
 
 [Historical application parameters](/en/openapi/legacy/app) preserve earlier log-interface documentation for maintaining existing integrations.
 

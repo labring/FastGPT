@@ -6,6 +6,7 @@
     "---API Getting Started---",
     "../openapi/intro",
     "../openapi/identity-proxy",
+    "../openapi/interactive-and-variables",
     "---Integration Tasks---",
     "../openapi/app",
     "../openapi/chat",

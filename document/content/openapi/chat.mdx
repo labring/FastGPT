@@ -55,6 +55,48 @@ description: 管理 chatId，消费 SSE 内容，并区分请求错误和运行�
 
 用同一输入验证 JSON 与流式结果均满足应用规则；测试一个无效应用 ID，确认客户端能显示可诊断错误；中断连接后确认界面显示未完成状态。成功后再接入[日志观察](/zh-CN/guide/build/logs)。
 
+## 开放接口端点参考（System OpenAPI—对话、会话、记录与反馈）
+
+除 `/api/v1/chat/completions` 与 `/api/v2/chat/completions` 支持在 `Bearer <apiKey>-<appId>` 中附带应用 ID 外，其余会话、记录与反馈接口均推荐在请求体或查询参数中**显式传入 `appId`**。
+
+### 1. 对话生成与运行控制（`chatController`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段 |
+| --- | --- | --- | --- |
+| `POST` | `/api/v2/chat/completions` | 发起对话 v2（推荐，兼容 OpenAI 格式） | Body: `appId`、`chatId`、`stream`、`detail`、`messages`、`variables`、`responseChatItemId` |
+| `POST` | `/api/v1/chat/completions` | 发起对话 v1（兼容旧版流与响应格式） | Body: `appId`、`chatId`、`stream`、`detail`、`messages`、`variables` |
+| `POST` | `/api/v2/chat/stop` | 停止正在生成的会话运行 | Body: `appId`（必填）、`chatId`（必填）、`outLinkAuthData`（可选）；在后续安全检查点终止工作流调度 |
+
+### 2. 会话管理（`chatHistory`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
+| --- | --- | --- | --- |
+| `GET` | `/api/core/chat/init` | 获取会话初始化信息（应用信息、开场白、前置变量配置） | Query: `appId`（必填）、`chatId`（可选） |
+| `POST` | `/api/core/chat/history/getHistories` | 分页获取应用的会话历史列表 | Body: `appId`（必填）、`offset` / `pageNum`、`pageSize`、`source` |
+| `POST` | `/api/core/chat/history/getHistoryStatus` | 批量轮询会话生成状态与已读状态 | Body: `appId`（必填）、`chatIds`（字符串数组）；返回 `chatGenerateStatus`、`hasBeenRead`、`updateTime` |
+| `POST` | `/api/core/chat/history/markRead` | 标记指定会话为已读 | Body: `appId`（必填）、`chatId`（必填） |
+| `PUT` | `/api/core/chat/history/updateHistory` | 修改会话标题、自定义标题或置顶状态 | Body: `appId`（必填）、`chatId`（必填）、`title`、`customTitle`、`top`（布尔值） |
+| `DELETE` | `/api/core/chat/history/delHistory` | 软删除单个会话 | Query: `appId`（必填）、`chatId`（必填） |
+| `DELETE` | `/api/core/chat/history/clearHistories` | 清空指定应用下的全部会话（软删除） | Query: `appId`（必填） |
+| `POST` | `/api/core/chat/history/batchDelete` | 批量物理删除多个会话（需目标管理权限） | Body: `appId`（必填）、`chatIds`（非空字符串数组） |
+
+### 3. 对话消息记录与知识引用查询（`chat`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段（Query / Body） |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/chat/record/getPaginationRecords` | 分页获取会话内的对话消息列表 | Body: `appId`（必填）、`chatId`（必填）、`offset` / `pageNum`、`pageSize`、`loadCustomFeedbacks` |
+| `POST` | `/api/core/chat/record/getRecords_v2` | 按消息锚点游标获取对话消息列表 | Body: `appId`（必填）、`chatId`（必填）、`pageSize`、`initialId`、`prevId`、`nextId` |
+| `GET` | `/api/core/chat/record/getResData` | 获取单条 AI 回复的完整节点执行详情（`responseData`） | Query: `appId`（必填）、`chatId`（必填）、`dataId`（消息记录 ID，必填） |
+| `POST` | `/api/core/chat/record/getQuote` | 根据数据块 ID 列表获取对话引用的知识分块详情 | Body: `appId`（必填）、`chatId`（必填）、`chatItemDataId`（必填）、`datasetDataIdList` |
+| `POST` | `/api/core/chat/record/getCollectionQuote` | 分页获取引用来源集合的全文数据块（用于分块阅读器） | Body: `appId`（必填）、`chatId`（必填）、`chatItemDataId`（必填）、`collectionId`（必填）、`pageSize` |
+| `DELETE` | `/api/core/chat/record/delete` | 删除单条对话消息记录 | Query: `appId`（必填）、`chatId`（必填）、`contentId`（必填） |
+
+### 4. 消息反馈管理（`chatFeedback`）
+
+| 方法 | 完整路径 | 摘要与用途 | 核心请求字段 |
+| --- | --- | --- | --- |
+| `POST` | `/api/core/chat/feedback/updateUserFeedback` | 添加、更新或取消用户对单条回复的好评/差评反馈 | Body: `appId`（必填）、`chatId`（必填）、`dataId`（必填）、`userGoodFeedback`（好评说明）、`userBadFeedback`（差评说明；均不传表示取消反馈） |
+
 [历史对话参数](/zh-CN/openapi/legacy/chat)保留旧版手写字段与示例。
 
 <details>
@@ -154,7 +196,7 @@ description: 管理 chatId，消费 SSE 内容，并区分请求错误和运行�
 
 <span id="更新反馈点赞--点踩" />
 
-[更新反馈（点赞 / 点踩） ](/zh-CN/openapi/legacy/chat#更新反馈点赞--点踩)
+[更新反馈（点赞 / 点踩）](/zh-CN/openapi/legacy/chat#更新反馈点赞--点踩)
 
 <span id="猜你想问" />
 
