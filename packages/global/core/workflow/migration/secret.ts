@@ -1,4 +1,4 @@
-import { parseSecretValue } from '../../../common/secret/utils';
+import { CompatibleSecretValueSchema } from '../../../common/secret/type';
 import { getWorkflowSecretInputKind } from '../../../common/workflow/input';
 import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
@@ -15,8 +15,10 @@ const isRecord = (value: unknown): value is RecordValue =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** 已确认的凭据字段兼容旧空 wrapper，再收敛为唯一的明文、密文或引用分支。 */
-export const migrateSecretValueToCurrent = (value: unknown): unknown =>
-  parseSecretValue(value, { allowEmptyLegacy: true }) ?? value;
+export const migrateSecretValueToCurrent = (value: unknown): unknown => {
+  const parsed = CompatibleSecretValueSchema.safeParse(value);
+  return parsed.success ? parsed.data : value;
+};
 
 /** 迁移已确认属于鉴权配置的凭据表；普通业务对象不进入此入口。 */
 export const migrateSecretStoreToCurrent = (value: unknown): unknown => {

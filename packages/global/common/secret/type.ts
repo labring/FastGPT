@@ -45,6 +45,43 @@ export const SecretValueTypeSchema = z.union([StaticSecretValueSchema, SecretRef
 });
 export type SecretValueType = z.infer<typeof SecretValueTypeSchema>;
 
+// 复用当前字段定义接纳旧双字段结构，strict 保证附带业务字段的对象不会被当作凭据。
+const SecretValueInputSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  },
+  z.union([
+    SecretRefValueSchema,
+    SecretPlainValueSchema.extend(SecretCipherValueSchema.shape).partial()
+  ])
+);
+
+/** 将已校验的历史凭据收敛为当前格式；非空明文优先，否则保留密文或空明文。 */
+const normalizeSecretValueInput = (
+  value: z.output<typeof SecretValueInputSchema>
+): SecretValueType => {
+  if ('ref' in value) return value;
+  if (value.value !== undefined && value.value !== '') return { value: value.value };
+  if (value.secret !== undefined) return { secret: value.secret };
+  return { value: '' };
+};
+
+/** 通用凭据识别要求存在明确来源，避免把普通业务空对象识别为凭据。 */
+export const SecretValueParseSchema = SecretValueInputSchema.refine(
+  (value) => 'ref' in value || value.value !== undefined || value.secret !== undefined
+)
+  .transform(normalizeSecretValueInput)
+  .pipe(SecretValueTypeSchema);
+
+/** 仅在已确认的凭据边界兼容旧空 wrapper；API 与迁移共用相同转换规则。 */
+export const CompatibleSecretValueSchema =
+  SecretValueInputSchema.transform(normalizeSecretValueInput).pipe(SecretValueTypeSchema);
+
 export const StoreSecretValueTypeSchema = z.record(z.string(), SecretValueTypeSchema).meta({
   description: '存储密钥值类型，key 为密钥名称，value 为密钥值。',
   example: {

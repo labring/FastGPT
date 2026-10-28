@@ -5,12 +5,11 @@ import {
   getSecretPlainValue,
   getSecretReferenceValue,
   isSecretValueConfigured,
-  normalizeLegacySecretValue,
   parseSecretValue,
   StoreSecretValueTypeApiInputSchema
 } from '@fastgpt/global/common/secret/utils';
 
-describe('normalizeLegacySecretValue', () => {
+describe('parseSecretValue', () => {
   it('normalizes empty legacy wrappers only at a declared credential boundary', () => {
     for (const value of [
       {},
@@ -19,11 +18,13 @@ describe('normalizeLegacySecretValue', () => {
       { value: undefined, secret: undefined },
       '{}'
     ]) {
-      expect(normalizeLegacySecretValue(value)).toBe(value);
-      expect(normalizeLegacySecretValue(value, { allowEmptyLegacy: true })).toEqual({ value: '' });
+      expect(parseSecretValue(value)).toBeUndefined();
+      expect(StoreSecretValueTypeApiInputSchema.parse({ token: value })).toEqual({
+        token: { value: '' }
+      });
     }
     const business = { extra: true };
-    expect(normalizeLegacySecretValue(business, { allowEmptyLegacy: true })).toBe(business);
+    expect(StoreSecretValueTypeApiInputSchema.safeParse({ token: business }).success).toBe(false);
   });
 
   it.each([
@@ -31,11 +32,10 @@ describe('normalizeLegacySecretValue', () => {
     [{ value: '', secret: 'cipher' }, { secret: 'cipher' }],
     [{ value: undefined, secret: 'cipher' }, { secret: 'cipher' }],
     [{ value: 'plain', secret: undefined }, { value: 'plain' }],
-    [{ value: '' }, { value: '' }],
     ['{"value":"","secret":"cipher"}', { secret: 'cipher' }],
     ['{"ref":["node","token"]}', { ref: ['node', 'token'] }]
   ])('normalizes known credential storage values: %j', (value, expected) => {
-    expect(normalizeLegacySecretValue(value)).toEqual(expected);
+    expect(parseSecretValue(value)).toEqual(expected);
   });
 
   it.each([
@@ -49,16 +49,13 @@ describe('normalizeLegacySecretValue', () => {
     'null',
     '{invalid',
     '{"payload":true}',
-    { value: undefined },
     { value: 1 },
     { secret: false },
     { value: 'plain', secret: 'cipher', business: true }
-  ])('preserves unrelated or malformed values: %j', (value) => {
-    expect(normalizeLegacySecretValue(value)).toEqual(value);
+  ])('rejects unrelated or malformed values: %j', (value) => {
+    expect(parseSecretValue(value)).toBeUndefined();
   });
-});
 
-describe('parseSecretValue', () => {
   it.each([
     { value: '' },
     { secret: 'cipher' },
@@ -74,8 +71,6 @@ describe('parseSecretValue', () => {
   });
 
   it.each([
-    {},
-    'plain',
     { ref: [] },
     { ref: ['node'] },
     { ref: ['', 'token'] },
