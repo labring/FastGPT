@@ -64,6 +64,33 @@ describe('CommandFilesystemPolyfill', () => {
     });
   });
 
+  it('refuses a fallback read whose output was truncated', async () => {
+    const { execute, polyfill } = setup();
+    execute
+      .mockResolvedValueOnce(commandResult('STAT_FAILED'))
+      .mockResolvedValueOnce({ ...commandResult('b2xkCg=='), truncated: true });
+
+    await expect(
+      polyfill.replaceContent([{ path: '/workspace/big.txt', oldContent: 'old', newContent: '' }])
+    ).rejects.toMatchObject({ path: '/workspace/big.txt', fileErrorCode: 'TRANSFER_ERROR' });
+    expect(execute).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not replace a symlink it cannot resolve', async () => {
+    const { execute, polyfill } = setup();
+    execute
+      .mockResolvedValueOnce(commandResult('4'))
+      .mockResolvedValueOnce(commandResult('b2xkCg=='))
+      .mockResolvedValueOnce(commandResult('', 'sh: readlink: not found', 127));
+
+    await expect(
+      polyfill.replaceContent([
+        { path: '/workspace/link.txt', oldContent: 'old', newContent: 'new' }
+      ])
+    ).rejects.toMatchObject({ path: '/workspace/link.txt' });
+    expect(execute).toHaveBeenCalledTimes(3);
+  });
+
   it('chunks encoded writes without interpolating source text', async () => {
     const { execute, polyfill } = setup();
     const content = '$(touch /tmp/pwned)\n'.repeat(100);
@@ -299,6 +326,20 @@ MemAvailable:   6144000 kB`)
         expect((await lstat(link)).isSymbolicLink()).toBe(true);
         expect((await stat(path)).mode & 0o777).toBe(0o640);
         expect((await readdir(dir)).sort()).toEqual(['file.txt', 'link.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it('edits a file whose name is close to the length limit', async () => {
+      const { polyfill, dir, cleanup } = await setupShell('');
+      const path = join(dir, `${'n'.repeat(240)}.txt`);
+      await writeFile(path, 'old\n');
+      try {
+        await polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }]);
+
+        await expect(readFile(path, 'utf8')).resolves.toBe('new\n');
+        expect((await readdir(dir)).sort()).toEqual(['file.txt', `${'n'.repeat(240)}.txt`]);
       } finally {
         await cleanup();
       }

@@ -34,8 +34,8 @@ export class CommandFilesystemPolyfill {
    * the sandbox lacks GNU stat or the file is missing). The redirect makes a
    * missing or unreadable file fail the command; with `cat | base64` the
    * pipeline exits with base64's status and the file reads as empty. That
-   * fallback is bounded by the caller's `maxOutputBytes`, so very large files
-   * require stat-based chunking.
+   * fallback is bounded by the executor's output cap, so a file too large for
+   * it fails instead of returning partial content.
    */
   async readFile(path: string): Promise<Uint8Array> {
     try {
@@ -44,6 +44,13 @@ export class CommandFilesystemPolyfill {
         const result = await this.executor.execute(`base64 -w 0 < ${this.shellQuote(path)}`);
         if (result.exitCode !== 0) {
           throw this.createFileError(path, result.stderr);
+        }
+        if (result.truncated) {
+          throw new FileOperationError(
+            'File is too large to read without stat',
+            path,
+            'TRANSFER_ERROR'
+          );
         }
         return base64ToBytes(result.stdout);
       }
@@ -456,16 +463,17 @@ export class CommandFilesystemPolyfill {
    *
    * A symlink is followed and the file it points to is replaced, so the link
    * stays a link. That file is copied with `cp -p` to a temporary file in the
-   * same directory, which keeps its mode and timestamps, and the copy is
-   * rewritten with `data` over as many commands as it needs. Once its size is
-   * checked, `mv` renames it over the file in one step. If any step fails,
-   * the original file is untouched. Other hard links to the file keep the old
-   * content, as with `sed -i`.
+   * same directory, which keeps its mode and timestamps. Its name is short
+   * and fixed-length, so it fits even when the target's name is near the
+   * filename length limit. The copy is rewritten with `data` over as many
+   * commands as it needs. Once its size is checked, `mv` renames it over the
+   * file in one step. If any step fails, the original file is untouched.
+   * Other hard links to the file keep the old content, as with `sed -i`.
    */
   private async replaceFileContents(path: string, data: Uint8Array): Promise<void> {
     const target = await this.resolveSymlinks(path);
     const quotedTarget = this.shellQuote(target);
-    const tempPath = `${target}.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.tmp`;
+    const tempPath = `${target.slice(0, target.lastIndexOf('/') + 1)}.edit-${Math.random().toString(36).slice(2, 10).padEnd(8, '0')}.tmp`;
     const quotedTemp = this.shellQuote(tempPath);
     try {
       const copy = await this.executor.execute(`cp -p ${quotedTarget} ${quotedTemp}`);
@@ -496,7 +504,8 @@ export class CommandFilesystemPolyfill {
 
   /**
    * Return the file `path` finally points to, or `path` itself if it is not a
-   * symlink or `readlink -f` is unavailable.
+   * symlink. Fails if `path` is a symlink that `readlink -f` can't resolve,
+   * rather than replacing the link with a regular file.
    */
   private async resolveSymlinks(path: string): Promise<string> {
     const quotedPath = this.shellQuote(path);
@@ -504,7 +513,10 @@ export class CommandFilesystemPolyfill {
       `if [ -L ${quotedPath} ]; then readlink -f ${quotedPath}; fi`
     );
     const resolved = result.stdout.replace(/\n$/, '');
-    return result.exitCode === 0 && resolved ? resolved : path;
+    if (result.exitCode !== 0) {
+      throw this.createFileError(path, result.stderr || 'Cannot resolve symlink');
+    }
+    return resolved || path;
   }
 
   // ==================== Health Check Polyfill ====================
