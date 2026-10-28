@@ -10,7 +10,11 @@ import {
   resolveSecretValue,
   storeSecretValue
 } from '../../../common/secret/utils';
-import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
+import {
+  isSecretValueConfigured,
+  parseSecretValue,
+  type SecretValueReferenceResolver
+} from '@fastgpt/global/common/secret/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
@@ -23,7 +27,7 @@ const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValu
   select: WorkflowIOValueTypeEnum.string
 };
 
-/** 解析系统工具手工输入中的静态 wrapper/ref，并复用工作流值类型转换。 */
+/** 解析系统工具手工输入；未配置的静态项省略，显式 0/false 和引用结果保留。 */
 export const resolveToolInputValues = ({
   value,
   inputList,
@@ -36,15 +40,19 @@ export const resolveToolInputValues = ({
   if (!value) return value;
 
   return Object.fromEntries(
-    Object.entries(value).map(([key, rawValue]) => {
+    Object.entries(value).flatMap(([key, rawValue]) => {
+      if (rawValue === undefined || rawValue === null) return [];
       const input = inputList?.find((item) => item.key === key);
+      const secretValue = input
+        ? normalizeToolInputValue({ value: rawValue, inputType: input.inputType })
+        : parseSecretValue(rawValue);
+      // 在解析引用前判断来源是否已配置，避免空静态项覆盖默认值，也保留有效引用的空结果。
+      if (secretValue && !isSecretValueConfigured(secretValue)) return [];
       const resolvedValue = resolveSecretValue({
-        value: input
-          ? (normalizeToolInputValue({ value: rawValue, inputType: input.inputType }) ?? rawValue)
-          : rawValue,
+        value: secretValue ?? rawValue,
         resolveReference
       });
-      if (!input) return [key, resolvedValue];
+      if (!input) return [[key, resolvedValue]];
 
       const valueType = inputTypeValueTypeMap[input.inputType];
       if (resolvedValue !== null && typeof resolvedValue === 'object') {
@@ -56,7 +64,7 @@ export const resolveToolInputValues = ({
           ? resolvedValue === 'true'
           : resolvedValue;
 
-      return [key, valueTypeFormat(valueForFormatting, valueType)];
+      return [[key, valueTypeFormat(valueForFormatting, valueType)]];
     })
   );
 };

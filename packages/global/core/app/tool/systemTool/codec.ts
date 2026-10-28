@@ -4,12 +4,17 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import { isDebugToolSource } from '../utils';
-import { parseSecretValue } from '../../../../common/secret/utils';
-import type { SecretValueType } from '../../../../common/secret/type';
+import z from 'zod';
+import { CompatibleSecretValueSchema, type SecretValueType } from '../../../../common/secret/type';
 import type { InputConfigType } from '../../../workflow/type/io';
 
+// 旧表单给非密钥控件也保留 secret 字段；只接纳标量 wrapper，拒绝 ref 混用和业务扩展字段。
+const LegacyToolScalarValueSchema = z
+  .object({ value: z.union([z.number(), z.boolean()]), secret: z.string().optional() })
+  .strict();
+
 /**
- * 将工具配置边界的旧标量/单字段值包装为凭据来源，前端和运行时共用。
+ * 将工具配置边界的旧标量和双字段值包装为凭据来源，前端和运行时共用。
  * 密钥只接受字符串；数字/开关仅在对应非密钥字段中转成持久化字符串，非法对象不算已配置。
  */
 export const normalizeToolInputValue = ({
@@ -19,20 +24,13 @@ export const normalizeToolInputValue = ({
   value: unknown;
   inputType: InputConfigType['inputType'];
 }): SecretValueType | undefined => {
-  const secretValue = parseSecretValue(value);
-  if (secretValue) return secretValue;
+  const secretValue = CompatibleSecretValueSchema.safeParse(value);
+  if (secretValue.success) return secretValue.data;
 
   const rawValue = (() => {
-    if (
-      inputType !== 'secret' &&
-      typeof value === 'object' &&
-      value !== null &&
-      Object.keys(value).length === 1 &&
-      'value' in value
-    ) {
-      return value.value;
-    }
-    return value;
+    if (inputType === 'secret') return value;
+    const legacyScalar = LegacyToolScalarValueSchema.safeParse(value);
+    return legacyScalar.success ? legacyScalar.data.value : value;
   })();
 
   if (typeof rawValue === 'string') return { value: rawValue };

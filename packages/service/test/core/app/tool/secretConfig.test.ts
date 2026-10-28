@@ -110,7 +110,14 @@ describe('resolveToolInputValues', () => {
       text: 'plain'
     });
     const inputList = [{ key: 'token', label: 'Token', inputType: 'secret' as const }];
-    expect(resolveToolInputValues({ value: { token: null }, inputList })).toEqual({ token: null });
+    expect(resolveToolInputValues({ value: { token: null }, inputList })).toEqual({});
+    expect(
+      resolveToolInputValues({
+        value: { token: { ref: ['node', 'null'] } },
+        inputList,
+        resolveReference: () => null
+      })
+    ).toEqual({ token: null });
     expect(() =>
       resolveToolInputValues({ value: { token: { business: true } }, inputList })
     ).toThrow('must resolve to a scalar');
@@ -169,5 +176,52 @@ describe('resolveToolInputValues', () => {
         ]
       })
     ).toEqual({ count: 0, enabled: false });
+  });
+
+  it('resolves legacy dual-field numeric and switch values without losing falsy values', () => {
+    expect(
+      resolveToolInputValues({
+        value: {
+          count: { value: 12, secret: '' },
+          zero: { value: 0, secret: '' },
+          enabled: { value: true, secret: '' },
+          disabled: { value: false, secret: '' }
+        },
+        inputList: [
+          { key: 'count', label: 'Count', inputType: 'numberInput' },
+          { key: 'zero', label: 'Zero', inputType: 'numberInput' },
+          { key: 'enabled', label: 'Enabled', inputType: 'switch' },
+          { key: 'disabled', label: 'Disabled', inputType: 'switch' }
+        ]
+      })
+    ).toEqual({ count: 12, zero: 0, enabled: true, disabled: false });
+  });
+
+  it('omits unconfigured static fields while retaining explicit and referenced values', () => {
+    expect(
+      resolveToolInputValues({
+        value: {
+          count: { value: '' },
+          enabled: { value: '', secret: '' },
+          token: {},
+          absent: undefined,
+          emptyCipher: { secret: '' },
+          zero: { value: '0' },
+          disabled: { value: 'false' },
+          reference: { ref: ['node', 'empty'] }
+        },
+        inputList: [
+          { key: 'count', label: 'Count', inputType: 'numberInput' },
+          { key: 'enabled', label: 'Enabled', inputType: 'switch' },
+          { key: 'token', label: 'Token', inputType: 'secret' },
+          { key: 'absent', label: 'Absent', inputType: 'input' },
+          { key: 'emptyCipher', label: 'Empty cipher', inputType: 'secret' },
+          { key: 'zero', label: 'Zero', inputType: 'numberInput' },
+          { key: 'disabled', label: 'Disabled', inputType: 'switch' },
+          { key: 'reference', label: 'Reference', inputType: 'secret' }
+        ],
+        resolveReference: () => ''
+      })
+    ).toEqual({ zero: 0, disabled: false, reference: '' });
   });
 });
