@@ -3,11 +3,19 @@ import { SecretValueTypeSchema, type ReferenceValue, type SecretValueType } from
 
 export type SecretValueReferenceResolver = (ref: ReferenceValue) => unknown;
 
+type SecretValueParseOptions = {
+  /** 仅在元数据已确认的凭据容器及兼容 API 边界接纳旧空 wrapper。 */
+  allowEmptyLegacy?: boolean;
+};
+
 /**
  * 仅在已知凭据边界归一化历史 wrapper；非空明文优先，否则保留密文。
  * 兼容序列化凭据及旧版可选字段，不改写附带业务字段的普通对象。
  */
-export const normalizeLegacySecretValue = <T>(value: T): T | SecretValueType => {
+export const normalizeLegacySecretValue = <T>(
+  value: T,
+  { allowEmptyLegacy = false }: SecretValueParseOptions = {}
+): T | SecretValueType => {
   const isRecord = (candidate: unknown): candidate is Record<string, unknown> =>
     typeof candidate === 'object' && candidate !== null && !Array.isArray(candidate);
 
@@ -25,7 +33,7 @@ export const normalizeLegacySecretValue = <T>(value: T): T | SecretValueType => 
   const record = candidate;
   const keys = Object.keys(record);
   if (
-    keys.length > 0 &&
+    (keys.length > 0 || allowEmptyLegacy) &&
     keys.every((key) => key === 'value' || key === 'secret') &&
     (record.value === undefined || typeof record.value === 'string') &&
     (record.secret === undefined || typeof record.secret === 'string')
@@ -35,6 +43,7 @@ export const normalizeLegacySecretValue = <T>(value: T): T | SecretValueType => 
     }
     if (typeof record.secret === 'string') return { secret: record.secret };
     if (typeof record.value === 'string') return { value: record.value };
+    if (allowEmptyLegacy) return { value: '' };
   }
 
   // JSON 字符串只在整个对象符合当前协议时解包，不能按单个 ref 字段猜测。
@@ -47,8 +56,11 @@ export const normalizeLegacySecretValue = <T>(value: T): T | SecretValueType => 
 };
 
 /** 凭据识别的唯一入口：先兼容旧数据，再严格校验整个互斥 wrapper。 */
-export const parseSecretValue = (value: unknown): SecretValueType | undefined => {
-  const parsed = SecretValueTypeSchema.safeParse(normalizeLegacySecretValue(value));
+export const parseSecretValue = (
+  value: unknown,
+  options?: SecretValueParseOptions
+): SecretValueType | undefined => {
+  const parsed = SecretValueTypeSchema.safeParse(normalizeLegacySecretValue(value, options));
   return parsed.success ? parsed.data : undefined;
 };
 
@@ -60,10 +72,13 @@ export const isSecretValueConfigured = (value: unknown): boolean => {
   return ('value' in secretValue ? secretValue.value : secretValue.secret) !== '';
 };
 
-/** API 入参先归一化历史双字段值，再按当前密钥格式严格校验。 */
+/** API 凭据表先归一化旧双字段及空 wrapper，再按当前密钥格式严格校验。 */
 export const StoreSecretValueTypeApiInputSchema = z.record(
   z.string(),
-  z.preprocess(normalizeLegacySecretValue, SecretValueTypeSchema)
+  z.preprocess(
+    (value) => normalizeLegacySecretValue(value, { allowEmptyLegacy: true }),
+    SecretValueTypeSchema
+  )
 );
 
 /** 从统一解析结果中提取明文，空字符串仍保留。 */

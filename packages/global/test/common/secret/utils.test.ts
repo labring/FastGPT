@@ -11,6 +11,21 @@ import {
 } from '@fastgpt/global/common/secret/utils';
 
 describe('normalizeLegacySecretValue', () => {
+  it('normalizes empty legacy wrappers only at a declared credential boundary', () => {
+    for (const value of [
+      {},
+      { value: undefined },
+      { secret: undefined },
+      { value: undefined, secret: undefined },
+      '{}'
+    ]) {
+      expect(normalizeLegacySecretValue(value)).toBe(value);
+      expect(normalizeLegacySecretValue(value, { allowEmptyLegacy: true })).toEqual({ value: '' });
+    }
+    const business = { extra: true };
+    expect(normalizeLegacySecretValue(business, { allowEmptyLegacy: true })).toBe(business);
+  });
+
   it.each([
     [{ value: 'plain', secret: 'cipher' }, { value: 'plain' }],
     [{ value: '', secret: 'cipher' }, { secret: 'cipher' }],

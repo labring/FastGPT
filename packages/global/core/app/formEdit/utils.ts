@@ -554,11 +554,12 @@ export const isToolInputValueConfigured = ({
   input,
   value = input.value
 }: {
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'value' | 'defaultValue'>;
+  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedType' | 'value' | 'defaultValue'>;
   value?: FlowNodeInputItemType['value'];
 }) => {
   const configuredValue = value ?? input.defaultValue;
-  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+  // 候选控件中包含 password 不代表当前在手动密码模式；普通引用仍保存原始 tuple。
+  if (getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password) {
     return isSecretValueConfigured(
       normalizeToolInputValue({ value: configuredValue, inputType: 'secret' })
     );

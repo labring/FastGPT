@@ -30,6 +30,7 @@ describe('decryptSecretValue', () => {
       false,
       0,
       'plain',
+      {},
       { value: 'business', extra: true },
       { value: 'plain', ref: ['node', 'token'] }
     ]) {

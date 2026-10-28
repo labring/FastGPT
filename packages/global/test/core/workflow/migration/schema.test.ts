@@ -51,7 +51,9 @@ describe('workflow migration boundary', () => {
   it('preserves ordinary business JSON containing credential-shaped fields', () => {
     const value = {
       headerSecret: { Authorization: { value: 'business-value', secret: 'business-secret' } },
-      payload: { value: 'also-business', secret: 'keep' }
+      payload: { value: 'also-business', secret: 'keep' },
+      empty: {},
+      omitted: { value: undefined, secret: undefined }
     };
     const result = migrateWorkflowToCurrent({
       nodes: [
@@ -76,6 +78,45 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[0].value).toEqual(value);
     expect(migrateWorkflowToCurrent(result)).toEqual(result);
   });
+
+  it.each(['mcpToolSet', 'httpToolSet'] as const)(
+    'normalizes historical empty %s credentials before canonical validation',
+    (toolSetKey) => {
+      const result = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'tool-set',
+            name: 'Tool set',
+            flowNodeType: 'toolSet',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              [toolSetKey]: {
+                url: 'https://example.com/mcp',
+                baseUrl: 'https://example.com',
+                toolList: [],
+                headerSecret: {
+                  Authorization: {},
+                  'X-Omitted': { value: undefined, secret: undefined }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      });
+      expect(result.nodes[0].toolConfig).toMatchObject({
+        [toolSetKey]: {
+          headerSecret: {
+            Authorization: { value: '' },
+            'X-Omitted': { value: '' }
+          }
+        }
+      });
+      expect(migrateWorkflowToCurrent(result)).toEqual(result);
+    }
+  );
 
   it('migrates secrets in legacy MCP tool-set values after structure conversion', () => {
     const result = migrateWorkflowToCurrent({

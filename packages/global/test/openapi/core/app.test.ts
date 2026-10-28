@@ -260,7 +260,8 @@ describe('App OpenAPI contracts', () => {
   it('normalizes legacy dual-field secrets at HTTP and MCP API boundaries', () => {
     const legacyHeaderSecret = {
       Authorization: { value: 'plain-token', secret: 'encrypted-token' },
-      'X-Empty': { value: '', secret: 'fallback-token' }
+      'X-Empty': { value: '', secret: 'fallback-token' },
+      'X-Unconfigured': {}
     };
     const httpBody = UpdateHttpToolsBodySchema.parse({
       appId: objectId,
@@ -272,7 +273,8 @@ describe('App OpenAPI contracts', () => {
           path: '/search',
           method: 'GET',
           headerSecret: {
-            'X-Nested': { value: 'nested-token', secret: 'nested-cipher' }
+            'X-Nested': { value: 'nested-token', secret: 'nested-cipher' },
+            'X-Unconfigured': {}
           }
         }
       ]
@@ -280,10 +282,12 @@ describe('App OpenAPI contracts', () => {
 
     expect(httpBody.headerSecret).toEqual({
       Authorization: { value: 'plain-token' },
-      'X-Empty': { secret: 'fallback-token' }
+      'X-Empty': { secret: 'fallback-token' },
+      'X-Unconfigured': { value: '' }
     });
     expect(httpBody.toolList[0].headerSecret).toEqual({
-      'X-Nested': { value: 'nested-token' }
+      'X-Nested': { value: 'nested-token' },
+      'X-Unconfigured': { value: '' }
     });
 
     const mcpBody = GetMcpToolsBodySchema.parse({
