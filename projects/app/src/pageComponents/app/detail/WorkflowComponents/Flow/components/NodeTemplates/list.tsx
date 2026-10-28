@@ -78,6 +78,25 @@ export type TemplateListProps = {
   ScrollData?: ScrollListType;
 };
 
+type ToolSetTemplate = Pick<NodeTemplateListItemType, 'id' | 'flowNodeType' | 'templateType'>;
+
+const isLocalToolSetTemplate = (template: ToolSetTemplate) =>
+  template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
+  (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
+
+/** 本地 MCP/HTTP 工具集可直接添加；其他工具集需先选择。 */
+export const canDirectAddToolSet = ({
+  template,
+  isPopover,
+  isToolSelector
+}: {
+  template: ToolSetTemplate;
+  isPopover?: boolean;
+  isToolSelector: boolean;
+}) =>
+  template.flowNodeType === FlowNodeTypeEnum.toolSet &&
+  (isToolSelector || (!isPopover && isLocalToolSetTemplate(template)));
+
 const NodeTemplateListItem = ({
   template,
   templateType,
@@ -102,10 +121,8 @@ const NodeTemplateListItem = ({
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const isLocalToolSet =
-    template.templateType === FlowNodeTemplateTypeEnum.toolCall &&
-    (template.id === McpToolSetNode.id || template.id === HttpToolSetNode.id);
-  const allowDirectAddToolSet = isToolSet && (isToolSelector || (!isPopover && isLocalToolSet));
+  const isLocalToolSet = isLocalToolSetTemplate(template);
+  const allowDirectAddToolSet = canDirectAddToolSet({ template, isPopover, isToolSelector });
   const canDragCreateNode =
     !isPopover && (!template.isFolder || isToolSet) && (!isToolSet || allowDirectAddToolSet);
   const showExpandArrow = (template.isFolder || isToolSet) && !isLocalToolSet;
