@@ -1,4 +1,3 @@
-import { getLogger, LogCategories } from '../../../../common/logger';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -61,6 +60,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
+  // 仅保留并行节点自身未恢复的异常；子流程失败只参与任务结果汇总。
+  let parallelFailure: { error: unknown } | undefined;
   const taskResponseIdPrefix = props.nodeResponseParentId || node.nodeId;
 
   const taskResults = await batchRun(
@@ -120,10 +121,6 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           });
 
           const result = parseTaskResponse({ index, response });
-          // 任务失败不改变并行节点的输出分支；原始异常仅汇总给本轮父流程，供其直接分类。
-          if (!result.success && Object.hasOwn(response, 'error')) {
-            props.nodeSummary.mergeNodeSummary({ error: response.error });
-          }
           if (result.success) {
             await syncContainerRunState({
               sourceNodes: taskRuntimeNodes,
@@ -161,15 +158,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             totalPoints: accumulatedPoints
           };
         } catch (err) {
-          // 任务自身的准备/状态同步异常在本任务结束前记录，不与其他层日志做去重。
-          if (err instanceof Error) {
-            getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH).warn('Parallel task failed', {
-              error: err,
-              nodeName: node.name,
-              taskIndex: index
-            });
-          }
-          props.nodeSummary.mergeNodeSummary({ error: err });
+          // 重试成功不遗留本节点的失败状态；最终异常由外层调度统一记录。
+          if (attempt === maxRetryAttempts) parallelFailure = { error: err };
           const attemptResult = {
             ...parseTaskError(index, err),
             taskResponseId,
@@ -225,6 +215,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [NodeOutputKeyEnum.parallelStatus]: status
   };
   return {
+    ...parallelFailure,
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,

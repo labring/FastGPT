@@ -1,4 +1,4 @@
-import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
@@ -58,15 +58,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
       summary.finishedNodeIds?.push(...(source.finishedNodeIds ?? []));
-      // 原始异常只留在本次 collector，系统故障优先；安全摘要的白名单不会输出该对象。
-      if (
-        Object.hasOwn(source, 'error') &&
-        (!Object.hasOwn(summary, 'error') ||
-          isUserConfigError(summary.error) ||
-          !isUserConfigError(source.error))
-      ) {
-        summary.error = source.error;
-      }
       summary.errorText = source.errorText || summary.errorText;
       summary.errorCount = (summary.errorCount || 0) + (source.errorCount || 0);
       summary.citeCollectionIds?.push(...(source.citeCollectionIds ?? []));
@@ -126,8 +117,11 @@ export const runtimeSummaryToNodeSummary = (
  *
  * 工具内部错误已经记录在 nodeResponse，不再提升为整轮会话错误；token、积分、引用等
  * 业务汇总字段保留，由调用方通过 mergeNodeSummary 一次性合并。
+ * 同时清理旧运行器可能携带的原始 error，避免旧对象越过工具边界。
  */
-export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary | undefined => {
+export const stripNodeSummaryErrorFields = (
+  summary?: NodeSummary & { error?: unknown }
+): NodeSummary | undefined => {
   if (!summary) return undefined;
 
   const controlSummary = { ...summary };

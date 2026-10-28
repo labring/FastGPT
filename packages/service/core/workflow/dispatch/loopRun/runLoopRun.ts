@@ -104,7 +104,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
-  // 原始异常只在本轮请求中保留；恢复 checkpoint 沿用可序列化的 iteration summary。
+  // 本次 loopRun 调用的失败原因：子流程的原始异常或循环自身的错误，不进入恢复 checkpoint。
   let loopFailure: { error: unknown } | undefined;
   const getWrapperSummary = ({
     isResumeIteration,
@@ -156,6 +156,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     if (iteration > maxLength) {
       maxIterationsExceeded = true;
+      loopFailure = { error: new Error(maxIterationsMessage) };
       break;
     }
 
@@ -279,14 +280,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    if (!!iterationSummary.errorCount) {
-      const errText = getErrText(iterationSummary.errorText);
-      loopFailure = Object.hasOwn(response, 'error')
-        ? { error: response.error }
-        : {
-            // 旧调用方只有展示文本时保留失败分支，不将其重建成需要统一上报的 Error。
-            error: errText
-          };
+    // 仅子流程明确返回的原始异常表示本轮失败，summary 中的文本和计数不重建异常。
+    if (Object.hasOwn(response, 'error')) {
+      const errText = getErrText(iterationSummary.errorText ?? response.error);
+      loopFailure = { error: response.error };
       await pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
@@ -328,7 +325,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const lastEntry = loopHistory[loopHistory.length - 1];
   const lastSnapshot: Record<string, any> = lastEntry?.customOutputs ?? {};
-  const lastFailed = !!lastEntry && lastEntry.success === false;
 
   const data: Record<string, any> = {
     ...lastSnapshot
@@ -336,16 +332,16 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const errorText = maxIterationsExceeded
     ? maxIterationsMessage
-    : lastFailed
+    : loopFailure
       ? (lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed'))
       : undefined;
   return {
     data: {
       ...data,
-      ...(errorText ? { [NodeOutputKeyEnum.errorText]: errorText } : {})
+      ...(errorText !== undefined ? { [NodeOutputKeyEnum.errorText]: errorText } : {})
     },
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
-    ...(errorText ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
+    ...(errorText !== undefined ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {
@@ -363,14 +359,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,
       childResponseCount,
-      ...(errorText ? { errorText } : {})
+      ...(errorText !== undefined ? { errorText } : {})
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
-    ...(errorText
-      ? {
-          error: loopFailure ? loopFailure.error : new Error(errorText)
-        }
-      : {})
+    ...(loopFailure ? { error: loopFailure.error } : {})
   };
 };

@@ -1,6 +1,5 @@
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -138,12 +137,9 @@ const makeProps = (override: Record<string, any> = {}) => {
 };
 
 describe('dispatchParallelRun', () => {
-  it.each([false, true])(
-    'reports task-local exceptions before returning, config=%s',
-    async (isConfigError) => {
-      const error = isConfigError
-        ? new UserConfigError('invalid task input')
-        : new Error('task state clone failed');
+  it.each([new Error('task state clone failed'), undefined])(
+    'returns task-local exceptions to dispatch without logging or merging them: %s',
+    async (error) => {
       const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
       warn.mockClear();
       const props = makeProps();
@@ -152,10 +148,11 @@ describe('dispatchParallelRun', () => {
         throw error;
       });
       try {
-        await dispatchParallelRun(props);
-        // 调度层提交所有原始 Error；用户配置错误由真实 logger 统一降级。
-        expect(warn).toHaveBeenCalledTimes(2);
-        expect(props.nodeSummary.error).toBe(error);
+        const result = await dispatchParallelRun(props);
+        expect(Object.hasOwn(result, 'error')).toBe(true);
+        expect(result.error).toBe(error);
+        expect(warn).not.toHaveBeenCalled();
+        expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
         expect(runWorkflowMock).not.toHaveBeenCalled();
       } finally {
         warn.mockRestore();
@@ -163,8 +160,34 @@ describe('dispatchParallelRun', () => {
     }
   );
 
+  it('does not return an old task-local exception after a successful retry', async () => {
+    const props = makeProps();
+    props.params.parallelRunMaxRetryTimes = 1;
+    props.variableState.clone.mockImplementationOnce(() => {
+      throw new Error('transient state clone failure');
+    });
+    runWorkflowMock.mockResolvedValueOnce(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'recovered'
+          })
+        ]
+      })
+    );
+
+    const result = await dispatchParallelRun(props);
+
+    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
+    expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
+  });
+
   it.each([false, true])(
-    'keeps a failed task raw exception in the current collector only: fails=%s',
+    'aggregates child task status without promoting its raw exception: fails=%s',
     async (fails) => {
       const error = new UserConfigError('Invalid key');
       runWorkflowMock.mockResolvedValueOnce(
@@ -183,11 +206,15 @@ describe('dispatchParallelRun', () => {
       const props = makeProps();
       const result = await dispatchParallelRun(props);
       expect(Object.hasOwn(result, 'error')).toBe(false);
-      expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(fails);
-      if (fails) expect(props.nodeSummary.error).toBe(error);
+      expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
       expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
         fails ? ParallelRunStatusEnum.failed : ParallelRunStatusEnum.success
       );
+      if (fails) {
+        expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+          { success: false, message: error.message }
+        ]);
+      }
       expect(result.responseData).not.toHaveProperty('errorType');
       expect(result.responseData).not.toHaveProperty('error');
     }
@@ -222,11 +249,6 @@ describe('dispatchParallelRun', () => {
       nodeResponseParentId: 'parallel-parent-response'
     });
     const result: any = await dispatchParallelRun(props);
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.parallelRun,
-      result,
-      expectedData: result.data ?? {}
-    });
 
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(result.data[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['done']);

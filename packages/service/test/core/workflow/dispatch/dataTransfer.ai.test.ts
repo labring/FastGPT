@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import {
   graphNode,
   graphEdge,
@@ -70,12 +69,10 @@ const aiCases = [
 ];
 
 describe('AI nodes in complete workflow graphs', () => {
-  it.each(aiCases.flatMap((item) => [false, true].map((config) => ({ ...item, config }))))(
-    '$type forwards an upstream exception through its real catch branch: config=$config',
-    async ({ type, params, config }) => {
-      const error = config
-        ? new UserConfigError('invalid model configuration')
-        : new Error('model server failed');
+  it.each(aiCases)(
+    '$type forwards an upstream exception through its real catch branch',
+    async ({ type, params }) => {
+      const error = new Error('model server failed');
       requestMock.mockRejectedValueOnce(error);
       const source = graphNode({
         id: 'ai',

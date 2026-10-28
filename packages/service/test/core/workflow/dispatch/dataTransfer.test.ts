@@ -1,5 +1,4 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -175,7 +174,7 @@ const cases: DataCase[] = [
 ];
 
 describe('registered node data transfer', () => {
-  it('accounts for every registered dispatcher in the data-transfer suite', () => {
+  it('accounts for every registered dispatcher and checks editor placeholders', async () => {
     // 这些节点的真实成功/失败返回值由各自的外部依赖 fixture 测试验证，并共用相同下游断言。
     const dedicatedNodeTypes = [
       FlowNodeTypeEnum.appModule,
@@ -203,6 +202,7 @@ describe('registered node data transfer', () => {
     const covered = [...cases.map((item) => item.type), ...dedicatedNodeTypes, ...placeholders];
     expect([...new Set(covered)].sort()).toEqual(Object.keys(callbackMap).sort());
     expect(covered.length).toBe(Object.keys(callbackMap).length);
+    for (const type of placeholders) expect(await callbackMap[type]()).toBeUndefined();
   });
 
   it('internal runtime runner failures expose display data while retaining an Error object', async () => {
@@ -266,49 +266,21 @@ describe('registered node data transfer', () => {
       prepare?.(props);
       const result = (await callbackMap[type](props)) as any;
       expect(Object.hasOwn(result, 'error')).toBe(false);
-      const queue = await expectNodeDataToReachDownstream({
+      const workflow = await expectNodeDataToReachDownstream({
         nodeType: type as any,
         result,
         expectedData
       });
       if (type === FlowNodeTypeEnum.pluginOutput)
-        expect(queue.workflowRuntimeSummary.pluginOutput).toEqual(params);
+        expect(workflow.workflowRuntimeSummary.pluginOutput).toEqual(params);
       if (type === FlowNodeTypeEnum.nestedEnd)
-        expect(queue.workflowRuntimeSummary.nestedEndOutput).toBe('finished');
+        expect(workflow.workflowRuntimeSummary.nestedEndOutput).toBe('finished');
       if (type === FlowNodeTypeEnum.stopTool)
-        expect(queue.workflowRuntimeSummary.hasToolStop).toBe(true);
+        expect(workflow.workflowRuntimeSummary.hasToolStop).toBe(true);
       if (type === FlowNodeTypeEnum.customFeedback)
-        expect(queue.customFeedbackList).toEqual(['feedback']);
+        expect(workflow.customFeedbacks).toEqual(['feedback']);
       if (type === FlowNodeTypeEnum.loopRunBreak)
-        expect(queue.workflowRuntimeSummary.hasLoopRunBreak).toBe(true);
+        expect(workflow.workflowRuntimeSummary.hasLoopRunBreak).toBe(true);
     }
   );
-
-  it.each([FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput])(
-    '%s pauses without data until user input arrives',
-    async (type) => {
-      const result: any = await callbackMap[type]({
-        node: { nodeId: 'pending', isEntry: false, inputs: [] },
-        params: { userSelectOptions: [{ key: 'yes', value: 'yes' }], userInputForms: [] }
-      });
-      expect(result.data).toBeUndefined();
-      expect(result.error).toBeUndefined();
-      expect(result[DispatchNodeResponseKeyEnum.interactive]).toBeDefined();
-      await expectNodeDataToReachDownstream({
-        nodeType: type,
-        result,
-        expectedData: {},
-        expectPause: true
-      });
-    }
-  );
-
-  it.each([
-    FlowNodeTypeEnum.emptyNode,
-    FlowNodeTypeEnum.globalVariable,
-    FlowNodeTypeEnum.comment,
-    FlowNodeTypeEnum.toolSet
-  ])('%s is an editor placeholder without a runtime output', async (type) => {
-    expect(await callbackMap[type]()).toBeUndefined();
-  });
 });

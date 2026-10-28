@@ -13,7 +13,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { runWorkflow, type RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
+import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
@@ -114,6 +114,10 @@ export const runGraph = async ({
   edges?: RuntimeEdgeItemType[];
   overrides?: Partial<RunWorkflowProps>;
 }) => {
+  // 节点单测可以 mock 子工作流调用，但共享 graph 始终运行真实调度层。
+  const { runWorkflow } = await vi.importActual<
+    typeof import('@fastgpt/service/core/workflow/dispatch')
+  >('@fastgpt/service/core/workflow/dispatch');
   const responses: ChatHistoryItemResType[] = [];
   const publish = vi.fn(async (items: Array<{ response: ChatHistoryItemResType }>) => {
     responses.push(...items.map((item) => item.response));

@@ -1037,27 +1037,17 @@ export class WorkflowQueue {
         (hasDispatchError ? getErrText(dispatchRes.error) : undefined);
       // 仅本轮原始异常参与分类；展示文本不用于重建用户错误身份。
       const isUserConfigFailure = hasDispatchError && isUserConfigError(dispatchRes.error);
+      // 仅节点直接返回且未被捕获/工具边界消化的异常参与本轮失败；summary 只维护统计。
       if (
-        currentNodeError !== undefined &&
-        !(hasDispatchError && node.catchError) &&
+        hasDispatchError &&
+        !node.catchError &&
         !formatCurrentNodeResponse?.errorCaptured &&
-        !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse))
-      ) {
-        nodeSummary.mergeNodeSummary({
-          errorText: getErrText(currentNodeError),
-          // 展示文本不能重建成原始异常，否则父容器会把它当作新的 Error 再次上报。
-          ...(hasDispatchError ? { error: dispatchRes.error } : {})
-        });
-      }
-      // 容器可汇总子任务的原始异常，而不改变节点自身成功/部分成功的分支输出。
-      // 该对象只向本轮父流程传递，不进入持久化摘要或 checkpoint。
-      if (
-        Object.hasOwn(nodeSummary, 'error') &&
+        !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse)) &&
         (!this.runtimeFailure ||
           isUserConfigError(this.runtimeFailure.error) ||
-          !isUserConfigError(nodeSummary.error))
+          !isUserConfigFailure)
       ) {
-        this.runtimeFailure = { error: nodeSummary.error };
+        this.runtimeFailure = { error: dispatchRes.error };
       }
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse

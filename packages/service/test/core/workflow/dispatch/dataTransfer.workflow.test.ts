@@ -70,26 +70,30 @@ afterEach(() => vi.restoreAllMocks());
 
 // 这些场景直接运行完整生产调度，外部请求边界被替换；不覆盖 callbackMap，也不回放节点结果。
 describe('workflow data transfer through real nodes', () => {
-  it.each([
-    0,
-    false,
-    '',
-    null,
-    undefined,
-    [],
-    {},
-    { items: [0, false, '', null], error: 'business value' }
-  ])('preserves %j through multiple hops and fan-out', async (value) => {
+  it('preserves empty, falsy and structured outputs through multiple hops and fan-out', async () => {
+    const values = {
+      zero: 0,
+      flag: false,
+      empty: '',
+      nil: null,
+      missing: undefined,
+      array: [],
+      object: {},
+      nested: { items: [0, false, '', null], error: 'business value' }
+    };
+    const keys = Object.keys(values);
     const source = graphNode({
       id: 'source',
       type: FlowNodeTypeEnum.toolParams,
-      params: { value },
-      outputs: ['value'],
+      params: values,
+      outputs: keys,
       isEntry: true
     });
-    const middle = consumer('middle', { forwarded: ['source', 'value'] });
-    const first = consumer('first', { value: ['middle', 'forwarded'] });
-    const second = consumer('second', { value: ['source', 'value'] });
+    const references = (id: string) =>
+      Object.fromEntries(keys.map((key) => [key, [id, key] as [string, string]]));
+    const middle = consumer('middle', references('source'));
+    const first = consumer('first', references('middle'));
+    const second = consumer('second', references('source'));
     const { result, responses } = await runGraph({
       nodes: [source, middle, first, second],
       edges: [
@@ -98,8 +102,8 @@ describe('workflow data transfer through real nodes', () => {
         graphEdge({ source: 'source', target: 'second' })
       ]
     });
-    expect(graphValues(first).value).toEqual(value);
-    expect(graphValues(second).value).toEqual(value);
+    expect(graphValues(first)).toEqual(values);
+    expect(graphValues(second)).toEqual(values);
     expect(responses.map((response) => response.nodeId)).toEqual(
       expect.arrayContaining(['source', 'middle', 'first', 'second'])
     );
@@ -107,38 +111,41 @@ describe('workflow data transfer through real nodes', () => {
     expect(Object.hasOwn(result, 'error')).toBe(false);
   });
 
-  it.each([
-    { value: '42', type: WorkflowIOValueTypeEnum.number, expected: 42 },
-    { value: 0, type: WorkflowIOValueTypeEnum.string, expected: '0' },
-    { value: 'false', type: WorkflowIOValueTypeEnum.boolean, expected: true },
-    {
-      value: '{"nested":[0,false]}',
-      type: WorkflowIOValueTypeEnum.object,
-      expected: { nested: [0, false] }
-    }
-  ])(
-    'converts the referenced value using the consumer type: $type',
-    async ({ value, type, expected }) => {
-      const source = graphNode({
-        id: 'source',
-        type: FlowNodeTypeEnum.toolParams,
-        params: { value },
-        outputs: ['value'],
-        isEntry: true
-      });
-      const target = graphNode({
-        id: 'target',
-        type: FlowNodeTypeEnum.toolParams,
-        inputs: [graphReference({ key: 'value', from: ['source', 'value'], valueType: type })],
-        outputs: ['value']
-      });
-      await runGraph({
-        nodes: [source, target],
-        edges: [graphEdge({ source: 'source', target: 'target' })]
-      });
-      expect(graphValues(target).value).toEqual(expected);
-    }
-  );
+  it('converts each referenced output using its consumer type', async () => {
+    const cases = [
+      { key: 'number', value: '42', type: WorkflowIOValueTypeEnum.number, expected: 42 },
+      { key: 'string', value: 0, type: WorkflowIOValueTypeEnum.string, expected: '0' },
+      { key: 'boolean', value: 'false', type: WorkflowIOValueTypeEnum.boolean, expected: true },
+      {
+        key: 'object',
+        value: '{"nested":[0,false]}',
+        type: WorkflowIOValueTypeEnum.object,
+        expected: { nested: [0, false] }
+      }
+    ];
+    const source = graphNode({
+      id: 'source',
+      type: FlowNodeTypeEnum.toolParams,
+      params: Object.fromEntries(cases.map(({ key, value }) => [key, value])),
+      outputs: cases.map(({ key }) => key),
+      isEntry: true
+    });
+    const target = graphNode({
+      id: 'target',
+      type: FlowNodeTypeEnum.toolParams,
+      inputs: cases.map(({ key, type }) =>
+        graphReference({ key, from: ['source', key], valueType: type })
+      ),
+      outputs: cases.map(({ key }) => key)
+    });
+    await runGraph({
+      nodes: [source, target],
+      edges: [graphEdge({ source: 'source', target: 'target' })]
+    });
+    expect(graphValues(target)).toEqual(
+      Object.fromEntries(cases.map(({ key, expected }) => [key, expected]))
+    );
+  });
 
   it('collects reference arrays and interpolates text after a merge', async () => {
     const source = graphNode({
@@ -221,51 +228,54 @@ describe('workflow data transfer through real nodes', () => {
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
-  it.each([false, true])(
-    'updates node outputs and variables before the next consumer: boolean=%s',
-    async (useBoolean) => {
-      // 使用同一条顺序链同时覆盖节点输出写回和全局变量写回，确保下游读取的是更新后的值。
-      const source = graphNode({
-        id: 'source',
-        type: FlowNodeTypeEnum.toolParams,
-        params: { value: 'old' },
-        outputs: ['value'],
-        isEntry: true
-      });
-      const update = graphNode({
-        id: 'update',
-        type: FlowNodeTypeEnum.variableUpdate,
-        params: {
-          updateList: [
-            {
-              variable: ['source', 'value'],
-              value: ['', useBoolean ? false : 0],
-              valueType: useBoolean ? 'boolean' : 'number',
-              renderType: 'input'
-            },
-            {
-              variable: [VARIABLE_NODE_ID, 'custom'],
-              value: ['', 'updated'],
-              valueType: 'string',
-              renderType: 'input'
-            }
-          ]
-        }
-      });
-      const target = consumer('target', {
-        output: ['source', 'value'],
-        variable: [VARIABLE_NODE_ID, 'custom']
-      });
-      await runGraph({
-        nodes: [source, update, target],
-        edges: [
-          graphEdge({ source: 'source', target: 'update' }),
-          graphEdge({ source: 'update', target: 'target' })
+  it('updates numeric and boolean node outputs and global variables before the next consumer', async () => {
+    const source = graphNode({
+      id: 'source',
+      type: FlowNodeTypeEnum.toolParams,
+      params: { zero: 1, flag: true },
+      outputs: ['zero', 'flag'],
+      isEntry: true
+    });
+    const update = graphNode({
+      id: 'update',
+      type: FlowNodeTypeEnum.variableUpdate,
+      params: {
+        updateList: [
+          {
+            variable: ['source', 'zero'],
+            value: ['', 0],
+            valueType: 'number',
+            renderType: 'input'
+          },
+          {
+            variable: ['source', 'flag'],
+            value: ['', false],
+            valueType: 'boolean',
+            renderType: 'input'
+          },
+          {
+            variable: [VARIABLE_NODE_ID, 'custom'],
+            value: ['', 'updated'],
+            valueType: 'string',
+            renderType: 'input'
+          }
         ]
-      });
-      expect(graphValues(target)).toEqual({ output: useBoolean ? false : 0, variable: 'updated' });
-    }
-  );
+      }
+    });
+    const target = consumer('target', {
+      zero: ['source', 'zero'],
+      flag: ['source', 'flag'],
+      variable: [VARIABLE_NODE_ID, 'custom']
+    });
+    await runGraph({
+      nodes: [source, update, target],
+      edges: [
+        graphEdge({ source: 'source', target: 'update' }),
+        graphEdge({ source: 'update', target: 'target' })
+      ]
+    });
+    expect(graphValues(target)).toEqual({ zero: 0, flag: false, variable: 'updated' });
+  });
 
   it.each([0, 1])('runs only the selected if/else branch for %s', async (value) => {
     const source = graphNode({
@@ -720,7 +730,7 @@ describe('real container child workflows', () => {
       'target',
       Object.fromEntries(keys.map((key) => [key, ['container', key] as [string, string]]))
     );
-    await runGraph({
+    const { result } = await runGraph({
       nodes: [source, start, body, end, target],
       edges: [
         graphEdge({ source: 'container', target: 'target' }),
@@ -737,6 +747,7 @@ describe('real container child workflows', () => {
     expect(graphValues(target)[NodeOutputKeyEnum.parallelStatus]).not.toBe(
       ParallelRunStatusEnum.success
     );
+    expect(Object.hasOwn(result, 'error')).toBe(false);
   });
   it('loopRunBreak stops later iterations while preserving the current output', async () => {
     const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);

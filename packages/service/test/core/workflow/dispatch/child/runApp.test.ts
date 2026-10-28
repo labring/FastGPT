@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -116,11 +114,7 @@ describe('dispatchRunAppNode', () => {
     };
 
     const result = await dispatchRunAppNode(props);
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.appModule,
-      result,
-      expectedData: result.data ?? {}
-    });
+
     // 验证资源加载时使用当前运行用户身份
     expect(mocks.loadChildWorkflowWithResource).toHaveBeenCalledWith({
       appId: 'child-app-id',

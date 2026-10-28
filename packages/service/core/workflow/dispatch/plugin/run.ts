@@ -373,13 +373,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         ...pluginOutput,
         ...(pluginOutputError ? { [NodeOutputKeyEnum.errorText]: pluginOutputError } : {})
       },
-      ...(pluginOutputError
-        ? {
-            error: Object.hasOwn(childWorkflowResponse, 'error')
-              ? childWorkflowResponse.error
-              : pluginOutput?.error
-          }
-        : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       system_memories,

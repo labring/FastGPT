@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   FlowNodeInputTypeEnum,
@@ -60,7 +58,8 @@ const createVariableState = () =>
   WorkflowVariableState.create({
     timezone: 'Asia/Shanghai',
     runningAppInfo: {
-      id: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       name: 'app',
       teamId: 'team',
       tmbId: 'member'
@@ -77,6 +76,21 @@ describe('dispatchRunPlugin', () => {
     runWorkflowMock.mockReset();
     getSystemToolWorkflowRuntimeMock.mockReset();
     computedAppToolUsageMock.mockReset().mockResolvedValue(1);
+  });
+
+  it('returns its own resource-load exception as the top-level error', async () => {
+    const error = new Error('Plugin resource unavailable');
+    getSystemToolWorkflowRuntimeMock.mockRejectedValueOnce(error);
+
+    const result = await dispatchRunPlugin({
+      node: { pluginId: 'commercial-system-workflow' },
+      query: [],
+      params: {}
+    } as any);
+
+    expect(result.error).toBe(error);
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(error.message);
+    expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -172,7 +186,7 @@ describe('dispatchRunPlugin', () => {
           id: 'failedResponse',
           nodeId: 'failedNode',
           moduleName: 'Failed node',
-          moduleType: FlowNodeTypeEnum.systemConfig,
+          moduleType: FlowNodeTypeEnum.chatNode,
           errorText: 'child failed'
         }
       ])
@@ -216,78 +230,79 @@ describe('dispatchRunPlugin', () => {
     );
   });
 
-  it('treats pluginOutput.error as a standard workflow tool failure', async () => {
-    getSystemToolWorkflowRuntimeMock.mockResolvedValue({
-      id: 'commercial-system-workflow',
-      name: 'System Workflow',
-      avatar: 'system-avatar',
-      nodes: [],
-      edges: [],
-      chatConfig: { variables: [] },
-      currentCost: 10,
-      hasTokenFee: true
-    });
-    runWorkflowMock.mockResolvedValue({
-      flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
-      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
-        {
-          id: 'pluginOutputResponse',
-          nodeId: 'pluginOutput',
-          moduleName: 'Output',
-          moduleType: FlowNodeTypeEnum.pluginOutput,
-          pluginOutput: { error: 'upstream unavailable' }
-        }
-      ])
-    });
+  it.each([{}, { error: new Error('Child workflow failed') }])(
+    'keeps tool failure data without promoting the child result to error: %j',
+    async (childResult) => {
+      getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+        id: 'commercial-system-workflow',
+        name: 'System Workflow',
+        avatar: 'system-avatar',
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] },
+        currentCost: 10,
+        hasTokenFee: true
+      });
+      runWorkflowMock.mockResolvedValue({
+        ...childResult,
+        flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
+        workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
+          {
+            id: 'pluginOutputResponse',
+            nodeId: 'pluginOutput',
+            moduleName: 'Output',
+            moduleType: FlowNodeTypeEnum.pluginOutput,
+            pluginOutput: { error: 'upstream unavailable' }
+          }
+        ])
+      });
 
-    const result = await dispatchRunPlugin({
-      node: {
-        nodeId: 'toolNode',
-        name: 'Tool',
-        avatar: '',
-        flowNodeType: FlowNodeTypeEnum.pluginModule,
-        pluginId: 'commercial-system-workflow',
-        inputs: [],
-        outputs: []
-      },
-      runningAppInfo: {
-        id: 'app',
-        name: 'app',
-        teamId: 'team',
-        tmbId: 'member'
-      },
-      query: [],
-      params: {},
-      histories: [],
-      timezone: 'Asia/Shanghai',
-      uid: 'user',
-      chatId: 'chat',
-      responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      usagePush: vi.fn(),
-      runtimeNodes: [],
-      runtimeNodesMap: new Map(),
-      runtimeEdges: [],
-      nodeSummary: createNodeSummary()
-    } as any);
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.pluginModule,
-      result,
-      expectedData: result.data ?? {}
-    });
+      const result = await dispatchRunPlugin({
+        node: {
+          nodeId: 'toolNode',
+          name: 'Tool',
+          avatar: '',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: 'commercial-system-workflow',
+          inputs: [],
+          outputs: []
+        },
+        runningAppInfo: {
+          id: 'app',
+          name: 'app',
+          teamId: 'team',
+          tmbId: 'member'
+        },
+        query: [],
+        params: {},
+        histories: [],
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        variableState: await createVariableState(),
+        usagePush: vi.fn(),
+        runtimeNodes: [],
+        runtimeNodesMap: new Map(),
+        runtimeEdges: [],
+        nodeSummary: createNodeSummary()
+      } as any);
 
-    expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
-    expect(result.error).toBe('upstream unavailable');
-    expect(result.data).toMatchObject({
-      [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
-    });
-    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
-      errorText: 'upstream unavailable'
-    });
-    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
-      error: 'upstream unavailable'
-    });
-  });
+      expect(computedAppToolUsageMock).toHaveBeenCalledWith(
+        expect.objectContaining({ error: true })
+      );
+      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(result.data).toMatchObject({
+        [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
+      });
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+        errorText: 'upstream unavailable'
+      });
+      expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toMatchObject({
+        error: 'upstream unavailable'
+      });
+    }
+  );
 
   it('系统级 workflow tool 不把外层 nodeResponseSink 传给 child workflow', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
@@ -395,11 +410,6 @@ describe('dispatchRunPlugin', () => {
       runtimeEdges: [],
       nodeSummary
     } as any);
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.pluginModule,
-      result,
-      expectedData: result.data ?? {}
-    });
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];

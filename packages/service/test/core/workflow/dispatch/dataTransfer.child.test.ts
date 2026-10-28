@@ -104,58 +104,57 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
     expect(Object.hasOwn(result, 'error')).toBe(false);
   });
 
-  it.each([0, false, '', { nested: [0, false, ''] }])(
-    'passes pluginInput → pluginOutput → parent → downstream: %j',
-    async (value) => {
-      const input = graphNode({
-        id: 'plugininput',
-        type: FlowNodeTypeEnum.pluginInput,
-        params: { value: 'default', error: 'default error' },
-        outputs: ['value', 'error']
-      });
-      const output = graphNode({
-        id: 'pluginoutput',
-        type: FlowNodeTypeEnum.pluginOutput,
-        inputs: [
-          graphReference({ key: 'value', from: ['plugininput', 'value'] }),
-          graphReference({ key: 'error', from: ['plugininput', 'error'] })
-        ]
-      });
-      loadChild.mockResolvedValue(
-        childResource({
-          nodes: [input, output],
-          edges: [graphEdge({ source: 'plugininput', target: 'pluginoutput' })]
-        })
-      );
-      const plugin = graphNode({
-        id: 'plugin',
-        type: FlowNodeTypeEnum.pluginModule,
-        pluginId: 'childplugin',
-        params: { value, error: 'business error field' },
-        outputs: ['value', 'error'],
-        isEntry: true
-      });
-      const target = graphNode({
-        id: 'target',
-        type: FlowNodeTypeEnum.toolParams,
-        inputs: [
-          graphReference({ key: 'value', from: ['plugin', 'value'] }),
-          graphReference({ key: 'error', from: ['plugin', 'error'] })
-        ],
-        outputs: ['value', 'error']
-      });
-      const { result, responses } = await runGraph({
-        nodes: [plugin, target],
-        edges: [graphEdge({ source: 'plugin', target: 'target' })]
-      });
-      expect(graphValues(target)).toEqual({ value, error: 'business error field' });
-      expect(
-        responses.find((response) => response.nodeId === 'pluginoutput')?.pluginOutput
-      ).toEqual({ value, error: 'business error field' });
-      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
-    }
-  );
+  it('passes plugin input and output fields through the parent to downstream', async () => {
+    const values = {
+      zero: 0,
+      flag: false,
+      empty: '',
+      nested: { items: [0, false, ''] },
+      error: 'business error field'
+    };
+    const keys = Object.keys(values);
+    const input = graphNode({
+      id: 'plugininput',
+      type: FlowNodeTypeEnum.pluginInput,
+      params: Object.fromEntries(keys.map((key) => [key, 'default'])),
+      outputs: keys
+    });
+    const output = graphNode({
+      id: 'pluginoutput',
+      type: FlowNodeTypeEnum.pluginOutput,
+      inputs: keys.map((key) => graphReference({ key, from: ['plugininput', key] }))
+    });
+    loadChild.mockResolvedValue(
+      childResource({
+        nodes: [input, output],
+        edges: [graphEdge({ source: 'plugininput', target: 'pluginoutput' })]
+      })
+    );
+    const plugin = graphNode({
+      id: 'plugin',
+      type: FlowNodeTypeEnum.pluginModule,
+      pluginId: 'childplugin',
+      params: values,
+      outputs: keys,
+      isEntry: true
+    });
+    const target = graphNode({
+      id: 'target',
+      type: FlowNodeTypeEnum.toolParams,
+      inputs: keys.map((key) => graphReference({ key, from: ['plugin', key] })),
+      outputs: keys
+    });
+    const { result, responses } = await runGraph({
+      nodes: [plugin, target],
+      edges: [graphEdge({ source: 'plugin', target: 'target' })]
+    });
+    expect(graphValues(target)).toEqual(values);
+    expect(responses.find((response) => response.nodeId === 'pluginoutput')?.pluginOutput).toEqual(
+      values
+    );
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    expect(Object.hasOwn(result, 'error')).toBe(false);
+  });
 
   it.each([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule])(
     '%s exposes its own resource-load failure through the catch branch',

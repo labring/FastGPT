@@ -135,10 +135,7 @@ export type SystemVariablesType = {
 };
 
 /** 当前节点 callback 可向 queue 贡献的运行摘要增量。 */
-export type NodeSummary = Partial<WorkflowRuntimeSummaryFields> & {
-  /** 本轮容器内的原始异常，仅供当前 Queue 汇总；不写入详情、运行摘要或 checkpoint。 */
-  error?: unknown;
-};
+export type NodeSummary = Partial<WorkflowRuntimeSummaryFields>;
 
 /** 当前节点执行单元的摘要及其统一增量合并入口。 */
 export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputTokens'> & {

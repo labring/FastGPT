@@ -2411,24 +2411,16 @@ describe('mergeWorkflowRuntimeSummary', () => {
 });
 
 describe('createNodeSummary', () => {
-  const configError = new UserConfigError('invalid key');
-  const systemError = new Error('database unavailable');
-  it.each([
-    { errors: [configError, systemError], expectedError: systemError },
-    { errors: [systemError, configError], expectedError: systemError },
-    { errors: [undefined], expectedError: undefined }
-  ])(
-    'keeps the current raw exception in memory with system failure priority: %j',
-    ({ errors, expectedError }) => {
-      const summary = createNodeSummary();
-      errors.forEach((error) => summary.mergeNodeSummary({ error }));
-      expect(Object.hasOwn(summary, 'error')).toBe(true);
-      expect(summary.error).toBe(expectedError);
-      expect(getNodeSummaryData(summary)).not.toHaveProperty('error');
-      expect(mergeWorkflowRuntimeSummary({ nodeSummary: summary })).not.toHaveProperty('error');
-      expect(Object.hasOwn(createNodeSummary(), 'error')).toBe(false);
-    }
-  );
+  it('collects statistics without retaining a legacy raw exception', () => {
+    const source = { llmInputTokens: 2, error: new Error('legacy child error') };
+    const summary = createNodeSummary();
+
+    summary.mergeNodeSummary(source);
+
+    expect(summary).not.toHaveProperty('error');
+    expect(getNodeSummaryData(summary)).toEqual({ llmInputTokens: 2 });
+    expect(mergeWorkflowRuntimeSummary({ nodeSummary: source })).not.toHaveProperty('error');
+  });
 
   it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();

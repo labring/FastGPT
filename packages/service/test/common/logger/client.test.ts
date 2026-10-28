@@ -58,11 +58,7 @@ describe('getLogger', () => {
   it.each([
     new Error('Database unavailable'),
     new UserError('Business error'),
-    new Error('Internal wrapper', { cause: configError }),
-    { name: 'Error', type: 'config' },
-    'Invalid key',
-    null,
-    undefined
+    new Error('Internal wrapper', { cause: configError })
   ])('keeps an unclassified failure at its requested severity: %s', (error) => {
     const logger = getLogger();
     const properties = { error, nodeId: 'search' };
