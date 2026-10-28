@@ -107,6 +107,61 @@ describe('legacy ToolSet migration', () => {
     });
   });
 
+  it('preserves a full inline MCP App runtime config and tool schemas', () => {
+    const mcpToolSet = {
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(mcpToolSet);
+  });
+
+  it('rejects an incomplete inline MCP App runtime config', () => {
+    expect(() =>
+      migrateWorkflowToCurrent({
+        nodes: [
+          {
+            nodeId: 'mcp-app-root',
+            flowNodeType: 'toolSet',
+            name: 'MCP App',
+            inputs: [],
+            outputs: [],
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [{ name: 'search', description: 'Search' }]
+              }
+            }
+          }
+        ],
+        edges: []
+      })
+    ).toThrow();
+  });
+
   it('rejects the unpublished node-local full tool schema format', () => {
     expect(() =>
       migrateWorkflowToCurrent({
