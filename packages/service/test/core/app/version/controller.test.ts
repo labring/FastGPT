@@ -1,4 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -90,6 +92,59 @@ const createToolSetVersion = (toolConfig: Record<string, unknown>) => ({
   chatConfig: {},
   resources: []
 });
+
+const toolSetVersionCases = [
+  {
+    protocol: 'MCP',
+    appType: AppTypeEnum.mcpToolSet,
+    toolSetKey: 'mcpToolSet',
+    createVersion: () => ({
+      ...createToolSetVersion({}),
+      nodes: [
+        getMCPToolSetRuntimeNode({
+          url: 'https://mcp.example.com/sse',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search tool',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        })
+      ]
+    })
+  },
+  {
+    protocol: 'HTTP',
+    appType: AppTypeEnum.httpToolSet,
+    toolSetKey: 'httpToolSet',
+    createVersion: () => ({
+      ...createToolSetVersion({}),
+      nodes: [
+        getHTTPToolSetRuntimeNode({
+          baseUrl: 'https://http.example.com',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search tool',
+              path: '/search',
+              method: 'POST',
+              inputSchema: {
+                type: 'object',
+                properties: { query: { type: 'string' } },
+                required: ['query']
+              }
+            }
+          ]
+        })
+      ]
+    })
+  }
+] as const;
 
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
@@ -394,6 +449,24 @@ describe('getAppDraftWorkflow', () => {
       { type: 'skill', id: 'legacy-skill' }
     ]);
   });
+
+  it.each(toolSetVersionCases)(
+    'loads App type dynamically for migrated $protocol draft Versions',
+    async ({ appType, toolSetKey, createVersion }) => {
+      const version = createVersion();
+      findOneMock.mockReturnValue({
+        sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(version) })
+      });
+      findAppByIdMock.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: appType })
+      });
+
+      const result = await getAppDraftWorkflow('app-id');
+
+      expect(findAppByIdMock).toHaveBeenCalledWith('app-id', 'type');
+      expect(result.nodes[0]).toHaveProperty(`toolConfig.${toolSetKey}.toolList.0.inputSchema`);
+    }
+  );
 });
 
 describe('getAppVersionById', () => {
@@ -414,6 +487,24 @@ describe('getAppVersionById', () => {
 
     expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
   });
+
+  it.each(toolSetVersionCases)(
+    'loads App type dynamically for migrated $protocol requested Versions',
+    async ({ appType, toolSetKey, createVersion }) => {
+      findOneMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(createVersion()) });
+      findAppByIdMock.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: appType })
+      });
+
+      const result = await getAppVersionById({
+        appId: 'app-id',
+        versionId: '507f1f77bcf86cd799439011'
+      });
+
+      expect(findAppByIdMock).toHaveBeenCalledWith('app-id', 'type');
+      expect(result.nodes[0]).toHaveProperty(`toolConfig.${toolSetKey}.toolList.0.inputSchema`);
+    }
+  );
 });
 
 describe('getAppPublishedWorkflowMap', () => {

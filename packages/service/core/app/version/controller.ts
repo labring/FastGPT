@@ -189,6 +189,10 @@ export type AppVersionLookupApp = AppSchemaType & {
 const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
   app ?? ((await MongoApp.findById(appId).lean()) as AppVersionLookupApp | null | undefined);
 
+/** Version 不保存 App.type；调用方未提供 App 时只查询该字段供根节点归一化。 */
+const loadAppType = async (appId: string, app?: AppVersionLookupApp) =>
+  app?.type ?? (await MongoApp.findById(appId, 'type').lean())?.type;
+
 /**
  * 在非阻塞迁移窗口内读取无正式 Version 应用的旧工作流。
  * 草稿 Version 不能替代旧代码实际运行的 App 图；迁移补出正式 Version 后停止 fallback。
@@ -252,7 +256,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
  */
 export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
-  if (draft) return normalizeAppVersionWorkflow(draft, app?.type);
+  if (draft) return normalizeAppVersionWorkflow(draft, await loadAppType(appId, app));
   const migrationApp = await loadApp(appId, app);
   return normalizeLegacyAppWorkflow(migrationApp);
 };
@@ -485,7 +489,7 @@ export const getAppVersionById = async ({
       appId
     }).lean();
 
-    if (version) return normalizeAppVersionWorkflow(version, app?.type);
+    if (version) return normalizeAppVersionWorkflow(version, await loadAppType(appId, app));
   }
 
   return getAppLatestVersion(appId, app);
