@@ -8,6 +8,7 @@ import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
 import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
+import { markProfileError } from '../profiling';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -217,6 +218,11 @@ export const getSseErrorResponse = (
   data: string;
   shouldClearCookie: boolean;
 } => {
+  // SSE 错误按协议以 HTTP 200 正常结束，共享入口只能按状态码/断流判断成败，
+  // 因此在这个唯一的 SSE 错误载荷出口标记采集失败（v1、v2、pro 等入口共享）。
+  // 只影响观测口径，不改变响应内容。
+  markProfileError(error);
+
   const errResponseKey = typeof error === 'string' ? error : error?.message;
   const processedError = processError({ error });
 
