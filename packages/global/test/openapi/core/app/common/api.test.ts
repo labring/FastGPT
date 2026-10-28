@@ -216,9 +216,9 @@ describe('persisted workflow node tool secrets', () => {
     {
       toolSetKey: 'httpToolSet',
       config: {
-        baseUrl: 'https://api.example.com',
+        apiSchemaUrl: 'https://api.example.com/openapi.json',
         headerSecret: { Authorization: { value: 'secret' } },
-        toolList: [{ name: 'search', description: 'Search', path: '/search', method: 'GET' }]
+        toolList: [{ name: 'search', description: 'Search' }]
       }
     }
   ] as const)('keeps a secret on a node-local $toolSetKey', ({ toolSetKey, config }) => {
@@ -232,6 +232,29 @@ describe('persisted workflow node tool secrets', () => {
     } as StoreNodeItemType;
 
     expect(parseCreateNode(node)).toBe(true);
+  });
+
+  it('rejects full tool schemas on independent workflow nodes', () => {
+    const node = {
+      ...currentNode,
+      flowNodeType: 'toolSet',
+      toolConfig: {
+        httpToolSet: {
+          apiSchemaUrl: 'https://api.example.com/openapi.json',
+          toolList: [
+            {
+              name: 'search',
+              description: 'Search',
+              path: '/search',
+              method: 'GET',
+              inputSchema: { type: 'object' }
+            }
+          ]
+        }
+      }
+    } as StoreNodeItemType;
+
+    expect(parseCreateNode(node)).toBe(false);
   });
 });
 

@@ -2,7 +2,10 @@ import z from 'zod';
 import { VersionListItemSchema } from '../../../../core/app/version/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { createPaginationSchema } from '../../../api';
-import { PersistedOpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import {
+  OpenAPIStoreNodeItemTypeSchema,
+  PersistedOpenAPIStoreNodeItemTypeSchema
+} from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
@@ -17,7 +20,7 @@ export const PublishAppQuerySchema = z.object({
 });
 export type PublishAppQueryType = z.infer<typeof PublishAppQuerySchema>;
 
-const AppVersionNodesSchema = z.array(PersistedOpenAPIStoreNodeItemTypeSchema).meta({
+const AppVersionNodesSchema = z.array(OpenAPIStoreNodeItemTypeSchema).meta({
   description: '版本内保存的应用节点配置'
 });
 

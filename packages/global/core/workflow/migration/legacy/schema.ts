@@ -6,8 +6,8 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeInputItemTypeSchema } from '../../type/io';
 import { StoreEdgeItemTypeSchema } from '../../type/edge';
 import {
-  HttpToolSetRuntimeConfigSchema,
-  McpToolSetRuntimeConfigSchema,
+  HttpToolSetNodeConfigSchema,
+  McpToolSetNodeConfigSchema,
   StoreNodeItemTypeSchema,
   ToolSetPreviewReferenceSchema
 } from '../../type/node';
@@ -19,12 +19,12 @@ const LegacyToolSetPreviewReferenceSchema = ToolSetPreviewReferenceSchema.extend
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const CurrentInlineToolSetSchemas = {
-  mcpToolSet: McpToolSetRuntimeConfigSchema.strict(),
-  httpToolSet: HttpToolSetRuntimeConfigSchema.strict()
+const CurrentNodeToolSetSchemas = {
+  mcpToolSet: McpToolSetNodeConfigSchema,
+  httpToolSet: HttpToolSetNodeConfigSchema
 };
 
-/** 旧快照只在迁移边界读取，并按 pluginId 归一为当前内联配置或外部引用。 */
+/** 历史外部引用只按 pluginId 归一；独立节点只接受当前名称/描述摘要格式。 */
 const normalizeLegacyToolSetNode = (value: unknown) => {
   if (!isRecord(value)) return value;
   if (value.flowNodeType !== FlowNodeTypeEnum.toolSet) return value;
@@ -55,8 +55,8 @@ const normalizeLegacyToolSetNode = (value: unknown) => {
       return;
     }
 
-    const inlineConfig = CurrentInlineToolSetSchemas[key].safeParse(toolSet);
-    if (inlineConfig.success) toolConfig[key] = inlineConfig.data;
+    const nodeConfig = CurrentNodeToolSetSchemas[key].safeParse(toolSet);
+    if (nodeConfig.success) toolConfig[key] = nodeConfig.data;
   });
 
   return { ...value, toolConfig };
@@ -121,11 +121,11 @@ export const LegacyStoreNodeItemSchema = z
     const toolConfig = value.toolConfig;
     (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
       const toolSet = toolConfig[key];
-      if (!isRecord(toolSet) || CurrentInlineToolSetSchemas[key].safeParse(toolSet).success) return;
+      if (!isRecord(toolSet) || CurrentNodeToolSetSchemas[key].safeParse(toolSet).success) return;
       ctx.addIssue({
         code: 'custom',
         path: ['toolConfig', key],
-        message: '节点内工具集必须符合当前完整配置'
+        message: '节点内工具集必须使用名称和描述摘要'
       });
     });
   })

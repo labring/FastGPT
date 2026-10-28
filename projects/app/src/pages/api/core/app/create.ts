@@ -4,7 +4,6 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -34,6 +33,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -138,8 +138,10 @@ const formatAppWorkflowForSave = async ({
   chatConfig,
   teamId,
   tmbId,
-  isRoot
+  isRoot,
+  appType
 }: {
+  appType?: AppTypeEnum;
   nodes?: unknown[];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
@@ -147,11 +149,11 @@ const formatAppWorkflowForSave = async ({
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const workflow = migrateWorkflowToCurrent({
+  const workflow = normalizeAppWorkflow({
     nodes: nodes ?? [],
     edges: edges ?? [],
     chatConfig
-  });
+  }, appType);
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
@@ -242,6 +244,7 @@ export const onCreateApp = async ({
     ? undefined
     : await (async () => {
         const { workflow, modelHandle } = await formatAppWorkflowForSave({
+          appType: type,
           nodes,
           edges,
           chatConfig,
