@@ -515,6 +515,78 @@ describe('getWorkflowNodeRunParams', () => {
     expect(params.secretValue).toEqual({ value: 'token' });
   });
 
+  it('密码输入的 ref 会解析为节点输出或工作流变量值', () => {
+    const variableState = createVariableState({ workflowToken: 'variable-token' });
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'nodeSecret',
+        label: 'Node secret',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        value: { ref: ['source', 'token'] },
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'variableSecret',
+        label: 'Variable secret',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        value: { ref: [VARIABLE_NODE_ID, 'workflowToken'] },
+        valueType: WorkflowIOValueTypeEnum.string
+      },
+      {
+        key: 'missingSecret',
+        label: 'Missing secret',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        value: { ref: ['missing-node', 'token'] },
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'token',
+        key: 'token',
+        type: FlowNodeOutputTypeEnum.static,
+        value: 'node-token',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['source', sourceNode]]),
+      variableState: variableState.state
+    });
+
+    expect(params.nodeSecret).toBe('node-token');
+    expect(params.variableSecret).toBe('variable-token');
+    expect(params.missingSecret).toBeUndefined();
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('plugin input 密码 ref 也会解析为工作流变量值', () => {
+    const variableState = createVariableState({ workflowToken: 'variable-token' });
+    const node = createNode('plugin-input', FlowNodeTypeEnum.pluginInput);
+    node.inputs = [
+      {
+        key: 'secret',
+        label: 'Secret',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        value: { ref: [VARIABLE_NODE_ID, 'workflowToken'] },
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params.secret).toBe('variable-token');
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
   it('普通变量模板按需构造 runtimeVariables 并完成替换', () => {
     const variableState = createVariableState({ name: 'Ada' });
     const node = createNode('node1', FlowNodeTypeEnum.textEditor);

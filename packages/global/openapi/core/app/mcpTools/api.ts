@@ -1,7 +1,7 @@
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
+import { StoreSecretValueTypeApiInputSchema } from '../../../../common/secret/utils';
 import { CreateAppBodySchema } from '../common/api';
 import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
 
@@ -17,7 +17,7 @@ export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
       example: 'https://example.com/mcp',
       description: 'MCP 服务地址'
     }),
-    headerSecret: StoreSecretValueTypeSchema.optional().meta({
+    headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),
@@ -106,7 +106,7 @@ export const GetMcpToolsBodySchema = z
       example: 'https://example.com/mcp',
       description: 'MCP 服务地址'
     }),
-    headerSecret: StoreSecretValueTypeSchema.optional().meta({
+    headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     })
@@ -136,7 +136,7 @@ export const RunMcpToolBodySchema = z
       example: 'search',
       description: '工具名称'
     }),
-    headerSecret: StoreSecretValueTypeSchema.optional().meta({
+    headerSecret: StoreSecretValueTypeApiInputSchema.optional().meta({
       example: { Authorization: { value: 'token' } },
       description: '请求头密钥'
     }),

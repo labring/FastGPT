@@ -14,6 +14,7 @@ import {
   getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
@@ -32,14 +33,34 @@ export const getWorkflowNodeRunParams = ({
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   variableState: WorkflowVariableStateLike;
 }) => {
+  let runtimeVariables: Record<string, unknown> | undefined;
+  const getRuntimeVariables = () => {
+    runtimeVariables ??= variableState.toRuntimeRecord();
+    return runtimeVariables;
+  };
+  const resolveSecretInputReference = (value: unknown) => {
+    const reference = getSecretReferenceValue(value);
+    if (!reference) return value;
+
+    const resolvedValue = getReferenceVariableValue({
+      value: reference,
+      nodesMap: runtimeNodesMap,
+      variables: getRuntimeVariables()
+    });
+    // 通用引用解析器会将缺失节点的引用原样返回，避免它被格式化成密码文本。
+    return resolvedValue === reference ? undefined : resolvedValue;
+  };
+
   if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
     // Format plugin input to object
     return node.inputs.reduce<Record<string, any>>((acc, item) => {
       // 内部变量不从工具参数进入，缺少 runtime value 时使用节点声明的默认值。
+      const value = item.value ?? item.defaultValue;
+      const isSecretInput = getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.password;
       acc[item.key] = valueTypeFormat(
-        item.value ?? item.defaultValue,
+        isSecretInput ? resolveSecretInputReference(value) : value,
         item.valueType,
-        getSelectedInputRenderType(item) === FlowNodeInputTypeEnum.password
+        isSecretInput
       );
       return acc;
     }, {});
@@ -54,12 +75,6 @@ export const getWorkflowNodeRunParams = ({
         [dynamicInput.key]: {}
       }
     : {};
-
-  let runtimeVariables: Record<string, unknown> | undefined;
-  const getRuntimeVariables = () => {
-    runtimeVariables ??= variableState.toRuntimeRecord();
-    return runtimeVariables;
-  };
 
   node.inputs.forEach((input) => {
     // Special input, not format
@@ -82,6 +97,10 @@ export const getWorkflowNodeRunParams = ({
     const isSecretInput = getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password;
     const needsTextReplace = typeof rawValue === 'string' && rawValue.includes('{{');
     let value = rawValue;
+
+    if (isSecretInput) {
+      value = resolveSecretInputReference(value);
+    }
 
     if (isReferenceInput && !needsTextReplace) {
       value = getReferenceVariableValue({

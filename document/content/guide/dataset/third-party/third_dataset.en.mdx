@@ -101,8 +101,8 @@ In `FastGPT\packages\web\components\common\Icon\constants.ts`, register your ico
 
 In `FastGPT\packages\global\core\dataset\constants.ts`, add your Dataset type to both `DatasetTypeEnum` and `ApiDatasetTypeMap`.
 
-|                                                     |                                                                          |
-| --------------------------------------------------- | ------------------------------------------------------------------------ |
+|                               |                                |
+| ----------------------------- | ------------------------------ |
 | ![Extend DatasetTypeEnum](/imgs/thirddataset-9.png) | ![Configure the Dataset type display mapping](/imgs/thirddataset-10.png) |
 
 <Alert icon="🤖" context="success">
@@ -120,16 +120,16 @@ In `FastGPT\projects\app\src\pages\dataset\list\index.tsx`, add the following. T
 
 In `FastGPT\projects\app\src\pageComponents\dataset\detail\Info\index.tsx`, render a configuration section for the new Dataset type. Show its translated configuration title and account or app identifier. Wire the edit icon to `setEditedAPIDataset`, passing the Dataset ID and its server configuration.
 
-|                                                                                |                                                                                |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+|                                |                                |
+| ------------------------------ | ------------------------------ |
 | ![Render the Dataset configuration and edit action](/imgs/thirddataset-12.png) | ![Configuration section on the Dataset detail page](/imgs/thirddataset-13.png) |
 
 ## Adding the Configuration Form
 
 In `FastGPT\projects\app\src\pageComponents\dataset\ApiDatasetForm.tsx`, add the following. This file handles the field input form when creating a Dataset. Import the new server type, add it to the form data type, and render its credential fields when the corresponding Dataset type is selected. Register each required field with validation. The pictured form uses App ID and App Secret; token-based adapters should expose the token fields defined by their server type.
 
-|                                                                                  |                                                                   |                                                                                                   |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+|                                |                                |                                |
+| ------------------------------ | ------------------------------ | ------------------------------ |
 | ![Import the server type into the configuration form](/imgs/thirddataset-14.png) | ![Register required credential inputs](/imgs/thirddataset-15.png) | ![Dataset creation form with credentials and root directory selection](/imgs/thirddataset-16.png) |
 
 For adapters with root directory support, include `renderBaseUrlSelector()` and `renderDirectoryModal()` to display the current path and folder picker. Directory details come from the adapter's `getFileDetail` implementation. The user clicks **Select**, chooses a folder, and clicks **Confirm**; the selected path then appears in the form.
@@ -139,8 +139,8 @@ For adapters with root directory support, include `renderBaseUrlSelector()` and 
 {renderDirectoryModal()} // The `Select Root Directory` modal that appears when clicking `Select` (see image)
 ```
 
-|                                                                   |                                                                                 |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+|                                |                                |
+| ------------------------------ | ------------------------------ |
 | ![Select and confirm a root directory](/imgs/thirddataset-17.png) | ![Selected root path displayed in the creation form](/imgs/thirddataset-18.png) |
 
 If the Dataset needs root directory support, also add the following in the `ApiDatasetForm` file.

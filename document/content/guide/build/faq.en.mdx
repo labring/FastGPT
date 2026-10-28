@@ -23,8 +23,8 @@ After changing an app, click **Publish**. Chat and published channels only use t
 
 Edit the Dataset default prompt. The built-in standard template instructs the model to use Markdown. You can remove that requirement:
 
-|                                                         |                                                                         |
-| ------------------------------------------------------- | ----------------------------------------------------------------------- |
+|                         |                         |
+| ----------------------- | ----------------------- |
 | ![Dataset response prompt settings](/imgs/image-83.png) | ![Edit the default response-formatting instruction](/imgs/image-84.png) |
 
 ## Inconsistent App Results
@@ -33,8 +33,8 @@ Q: The app produces different results in debug mode vs. production, or when call
 
 A: This is usually caused by differences in context. Check the chat logs, find the relevant entry, and compare the run details side by side.
 
-|                                                   |                                                    |                                                              |
-| ------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+|                         |                         |                         |
+| ----------------------- | ----------------------- | ----------------------- |
 | ![Open the relevant chat log](/imgs/image-85.png) | ![Inspect the app run details](/imgs/image-86.png) | ![Compare the context passed to the app](/imgs/image-87.png) |
 
 The Dataset response settings require a custom prompt. Without one, the default prompt (which includes Markdown formatting instructions) is used.

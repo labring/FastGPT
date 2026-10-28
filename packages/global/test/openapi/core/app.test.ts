@@ -11,6 +11,8 @@ import {
   ChangeAppOwnerBodySchema,
   ChangeAppOwnerResponseSchema
 } from '../../../openapi/core/app/permission/api';
+import { UpdateHttpToolsBodySchema } from '../../../openapi/core/app/httpTools/api';
+import { GetMcpToolsBodySchema } from '../../../openapi/core/app/mcpTools/api';
 import { UpdateAppCollaboratorBodySchema } from '../../../openapi/support/permission/api';
 import {
   GetTemplateTypesQuerySchema,
@@ -253,5 +255,41 @@ describe('App OpenAPI contracts', () => {
         ]
       }).list
     ).toHaveLength(1);
+  });
+
+  it('normalizes legacy dual-field secrets at HTTP and MCP API boundaries', () => {
+    const legacyHeaderSecret = {
+      Authorization: { value: 'plain-token', secret: 'encrypted-token' },
+      'X-Empty': { value: '', secret: 'fallback-token' }
+    };
+    const httpBody = UpdateHttpToolsBodySchema.parse({
+      appId: objectId,
+      headerSecret: legacyHeaderSecret,
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'GET',
+          headerSecret: {
+            'X-Nested': { value: 'nested-token', secret: 'nested-cipher' }
+          }
+        }
+      ]
+    });
+
+    expect(httpBody.headerSecret).toEqual({
+      Authorization: { value: 'plain-token' },
+      'X-Empty': { secret: 'fallback-token' }
+    });
+    expect(httpBody.toolList[0].headerSecret).toEqual({
+      'X-Nested': { value: 'nested-token' }
+    });
+
+    const mcpBody = GetMcpToolsBodySchema.parse({
+      url: 'https://example.com/mcp',
+      headerSecret: legacyHeaderSecret
+    });
+    expect(mcpBody.headerSecret).toEqual(httpBody.headerSecret);
   });
 });

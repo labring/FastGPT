@@ -1,4 +1,10 @@
-import { ReferenceValueSchema, SecretRefValueSchema, type ReferenceValue } from './type';
+import z from 'zod';
+import {
+  ReferenceValueSchema,
+  SecretRefValueSchema,
+  SecretValueTypeSchema,
+  type ReferenceValue
+} from './type';
 
 export type SecretValueLike = {
   value?: unknown;
@@ -86,6 +92,12 @@ export const normalizeLegacySecretValue = <T>(
 
   return value;
 };
+
+/** API 入参先归一化历史双字段值，再按当前密钥格式严格校验。 */
+export const StoreSecretValueTypeApiInputSchema = z.record(
+  z.string(),
+  z.preprocess(normalizeLegacySecretValue, SecretValueTypeSchema)
+);
 
 /** 提取密文值。 */
 export const getSecretCipherValue = (value: unknown): string | undefined => {
