@@ -6,6 +6,7 @@ import {
 } from './type';
 import type { AppFileSelectConfigType } from './type/config.schema';
 import { documentFileExtensions } from '../../common/file/constants';
+import z from 'zod';
 
 export enum AppTypeEnum {
   folder = 'folder',
@@ -38,11 +39,21 @@ export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEn
 
 export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
 
-export enum AppListSortEnum {
-  updateTimeDesc = 'updateTimeDesc',
-  createTimeDesc = 'createTimeDesc',
-  createTimeAsc = 'createTimeAsc'
-}
+/** 应用、知识库和技能列表共用的排序值及逐项文档说明。 */
+export const AppListSortSchema = z
+  .enum(['updateTimeDesc', 'createTimeDesc', 'createTimeAsc'])
+  .meta({
+    default: 'updateTimeDesc',
+    example: 'updateTimeDesc',
+    description: '列表排序，缺省按最近修改倒序',
+    'x-enumDescriptions': {
+      updateTimeDesc: '按修改时间倒序，最近修改的排在前面（默认）',
+      createTimeDesc: '按创建时间倒序，最新创建的排在前面',
+      createTimeAsc: '按创建时间升序，最早创建的排在前面'
+    }
+  });
+export type AppListSortEnum = z.infer<typeof AppListSortSchema>;
+export const AppListSortEnum = AppListSortSchema.enum;
 
 export const appListSortMongoMap: Record<AppListSortEnum, Record<string, 1 | -1>> = {
   [AppListSortEnum.updateTimeDesc]: { updateTime: -1 },

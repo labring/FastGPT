@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { applyWorkflowCommand } from '../../src/command/apply';
 import { builtinTemplateProvider } from '../template/provider';
 import { collectWorkflowBindings, getWorkflowBindingDiagnostics } from '../../src/binding/service';
@@ -46,7 +47,7 @@ describe('collectWorkflowBindings', () => {
     ]);
     expect(getWorkflowBindingDiagnostics(missingBindings)).toEqual([
       {
-        code: 'WORKFLOW_BINDING_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.bindingRequired,
         severity: 'warning',
         nodeId: 'search',
         inputKey: 'datasets',
@@ -78,7 +79,7 @@ describe('collectWorkflowBindings', () => {
     expect(JSON.stringify(bindings)).not.toContain('dataset-id');
     expect(getWorkflowBindingDiagnostics(bindings)).toEqual([
       {
-        code: 'WORKFLOW_BINDING_UNVERIFIED',
+        code: WorkflowDiagnosticCodeEnum.bindingUnverified,
         severity: 'warning',
         nodeId: 'search',
         inputKey: 'datasets',
@@ -110,7 +111,7 @@ describe('collectWorkflowBindings', () => {
     ]);
     expect(getWorkflowBindingDiagnostics(bindings)).toEqual([
       {
-        code: 'WORKFLOW_BINDING_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.bindingRequired,
         severity: 'warning',
         nodeId: 'http',
         inputKey: 'system_httpReqUrl',

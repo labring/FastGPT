@@ -2,7 +2,9 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   fetchRemoteMarkdown,
-  parseTableToGrid
+  parseTableToCSVString,
+  parseTableToGrid,
+  parseTableToMarkdownString
 } from '../../../../components/common/Markdown/utils';
 
 describe('fetchRemoteMarkdown', () => {
@@ -123,5 +125,74 @@ describe('parseTableToGrid (Plan B - Value Replicate Fill)', () => {
       ['Block', 'Block', 'Right 2'],
       ['Bottom 1', 'Bottom 2', 'Bottom 3']
     ]);
+  });
+
+  it('keeps the cell text raw so markdown export does not carry CSV escaping', () => {
+    const table = createTable(`
+      <table>
+        <thead><tr><th>Name</th><th>Note</th></tr></thead>
+        <tbody><tr><td>1,234</td><td>say "hi"</td></tr></tbody>
+      </table>
+    `);
+    const grid = parseTableToGrid(table);
+    expect(grid).toEqual([
+      ['Name', 'Note'],
+      ['1,234', 'say "hi"']
+    ]);
+  });
+});
+
+describe('table export formats', () => {
+  const createTable = (html: string) => {
+    const div = document.createElement('div');
+    div.innerHTML = html.trim();
+    return div.querySelector('table') as HTMLTableElement;
+  };
+
+  const tableWithSpecialChars = () =>
+    createTable(`
+      <table>
+        <thead><tr><th>Name</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>1,234</td><td>say "hi"</td></tr>
+          <tr><td>a|b</td><td>plain</td></tr>
+        </tbody>
+      </table>
+    `);
+
+  it('exports markdown cells without CSV quoting artifacts', () => {
+    expect(parseTableToMarkdownString(tableWithSpecialChars())).toBe(
+      ['| Name | Note |', '| --- | --- |', '| 1,234 | say "hi" |', '| a\\|b | plain |'].join('\n')
+    );
+  });
+
+  it('still quotes CSV cells that need CSV escaping', () => {
+    expect(parseTableToCSVString(tableWithSpecialChars())).toBe(
+      ['Name,Note', '"1,234","say ""hi"""', 'a|b,plain'].join('\n')
+    );
+  });
+
+  // 原生 HTML 表格里 `&#13;` 会解码成裸 CR，单元格正文因此可以包含 CR。
+  const tableWithBareCr = () =>
+    createTable(`
+      <table>
+        <thead><tr><th>Name</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>a&#13;b</td><td>x</td></tr>
+          <tr><td>c</td><td>y</td></tr>
+        </tbody>
+      </table>
+    `);
+
+  it('quotes CSV cells containing a bare carriage return', () => {
+    expect(parseTableToCSVString(tableWithBareCr())).toBe(
+      ['Name,Note', '"a\rb",x', 'c,y'].join('\n')
+    );
+  });
+
+  it('collapses a bare carriage return in markdown cells', () => {
+    expect(parseTableToMarkdownString(tableWithBareCr())).toBe(
+      ['| Name | Note |', '| --- | --- |', '| a b | x |', '| c | y |'].join('\n')
+    );
   });
 });

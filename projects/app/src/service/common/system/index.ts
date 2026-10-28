@@ -11,10 +11,8 @@ import {
   postCheckCensor,
   postConcatUsage,
   postCreateUsage,
-  postDeepRag,
   postPushUsageItems
 } from '@fastgpt/service/thirdProvider/fastgptPro/api';
-import type { DeepRagSearchProps } from '@fastgpt/service/core/dataset/search';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -40,10 +38,6 @@ export function initGlobalVariables() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
       if (!isProVersion()) return Promise.resolve({ code: 200 });
       return postCheckCensor({ text });
-    };
-
-    global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
-      return postDeepRag(data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
@@ -150,6 +144,7 @@ export async function initSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
+      datasetSynonymEnabled: serviceEnv.DATASET_SYNONYM_ENABLED,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_coupon: appEnv.SHOW_COUPON,

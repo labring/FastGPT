@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   WORKFLOW_DOCUMENT_SCHEMA_VERSION,
   WorkflowDocumentSchema,
@@ -8,7 +9,7 @@ export const WORKFLOW_DOCUMENT_MIGRATION_GUIDANCE =
   'Use a CLI version that supports the source schema, migrate one version at a time, and never remove or rewrite schemaVersion manually.';
 
 export class WorkflowDocumentVersionError extends Error {
-  readonly code = 'WORKFLOW_DOCUMENT_VERSION_UNSUPPORTED';
+  readonly code = WorkflowDiagnosticCodeEnum.documentVersionUnsupported;
 
   constructor(readonly foundVersion: string | undefined) {
     super(

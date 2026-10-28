@@ -15,10 +15,7 @@ export const pushGenerateVectorUsage = ({
   source = UsageSourceEnum.fastgpt,
   extensionModel,
   extensionInputTokens,
-  extensionOutputTokens,
-  deepSearchModel,
-  deepSearchInputTokens,
-  deepSearchOutputTokens
+  extensionOutputTokens
 }: {
   usageId?: string;
   teamId: string;
@@ -30,10 +27,6 @@ export const pushGenerateVectorUsage = ({
   extensionModel?: AIModelDataType;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
-
-  deepSearchModel?: AIModelDataType;
-  deepSearchInputTokens?: number;
-  deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelId: vectorModelId } = formatModelChars2Points({
     model,
@@ -56,24 +49,7 @@ export const pushGenerateVectorUsage = ({
       extensionModelId: modelId
     };
   })();
-  const { deepSearchTotalPoints, deepSearchModelId } = (() => {
-    if (!deepSearchModel || !deepSearchInputTokens)
-      return {
-        deepSearchTotalPoints: 0,
-        deepSearchModelId: undefined
-      };
-    const { totalPoints, modelId } = formatModelChars2Points({
-      model: deepSearchModel,
-      inputTokens: deepSearchInputTokens,
-      outputTokens: deepSearchOutputTokens
-    });
-    return {
-      deepSearchTotalPoints: totalPoints,
-      deepSearchModelId: modelId
-    };
-  })();
-
-  const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
+  const totalPoints = totalVector + extensionTotalPoints;
 
   // 插入 Bill 记录
   if (usageId) {
@@ -106,17 +82,6 @@ export const pushGenerateVectorUsage = ({
                 modelId: extensionModelId,
                 inputTokens: extensionInputTokens,
                 outputTokens: extensionOutputTokens
-              }
-            ]
-          : []),
-        ...(deepSearchModel !== undefined
-          ? [
-              {
-                moduleName: i18nT('common:deep_rag_search'),
-                amount: deepSearchTotalPoints,
-                modelId: deepSearchModelId,
-                inputTokens: deepSearchInputTokens,
-                outputTokens: deepSearchOutputTokens
               }
             ]
           : [])

@@ -62,13 +62,7 @@ type SystemToolRuntimeType = {
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
-  | 'id'
-  | 'name'
-  | 'status'
-  | 'description'
-  | 'icon'
-  | 'currentCost'
-  | 'systemKeyCost'
+  'id' | 'name' | 'status' | 'description' | 'icon' | 'currentCost' | 'systemKeyCost'
 >;
 
 type SystemToolDisplayInfoType = Pick<
@@ -98,7 +92,6 @@ type SystemToolDisplayInfoType = Pick<
 > & {
   children?: SystemToolDisplayChildType[];
 };
-
 
 const getChildIconMap = (children?: { id: string; icon?: string }[]) =>
   new Map(
@@ -543,7 +536,8 @@ export class SystemToolRepo {
       secretsVal: visibleSecretsVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
       intro:
-        dbTool?.customConfig?.intro ?? (childPluginId ? (child!.description ?? '') : tool.description),
+        dbTool?.customConfig?.intro ??
+        (childPluginId ? (child!.description ?? '') : tool.description),
       isToolSet: tool.isToolset && !childPluginId,
       ...(children ? { children } : {}),
       name: dbTool?.customConfig?.name ?? (childPluginId ? child!.name : tool.name),
@@ -649,7 +643,7 @@ export class SystemToolRepo {
       : getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId);
     const parent = SystemToolCodec.attachToolConfig({
       tool,
-      config: parentConfig,
+      config: parentConfig
     });
     parent.status = getVisiblePluginStatus({
       status: parent.status,

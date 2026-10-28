@@ -1,4 +1,5 @@
-import React, { type ReactNode, useEffect, useImperativeHandle, useMemo } from 'react';
+import React, { type ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
@@ -8,11 +9,12 @@ import ChatBox from '../ChatContainer/ChatBox';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { streamFetch } from '@/web/common/api/fetch';
-import type { StartChatFnProps } from '../ChatContainer/type';
+import type { generatingMessageProps, StartChatFnProps } from '../ChatContainer/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
@@ -32,7 +34,7 @@ export type ChatAgentHelperProps = {
 } & {
   type: typeof ChatAgentHelperTypeEnum.chatAgent;
   metadata: ChatAgentHelperMetadataType;
-  onApply: (e: ChatAgentConfigFormDataType) => void;
+  onApply: (e: ChatAgentConfigFormDataType) => void | Promise<void>;
 };
 
 const ChatAgentHelperChatBox = ({
@@ -96,10 +98,20 @@ const ChatAgentHelperChatBox = ({
     }
   );
 
+  // 由 ChatBox 的统一事件入口调用，让首次生成和刷新恢复都能应用生成配置。
+  const onGeneratingMessage = useMemoizedFn((event: generatingMessageProps) => {
+    if (
+      event.event === AuxiliaryGenerationEventEnum.chatAgentConfig &&
+      event.formData &&
+      type === ChatAgentHelperTypeEnum.chatAgent
+    ) {
+      onApply(event.formData);
+    }
+  });
+
   const onStartChat = async ({
     messages,
     responseChatItemId,
-    interactive,
     controller,
     generatingMessage
   }: StartChatFnProps) => {
@@ -114,22 +126,12 @@ const ChatAgentHelperChatBox = ({
         responseChatItemId,
         appId,
         messages,
-        interactive,
         metadata: {
           type,
           data: metadata
         }
       },
-      onMessage: (event) => {
-        if (
-          event.event === AuxiliaryGenerationEventEnum.chatAgentConfig &&
-          event.formData &&
-          type === ChatAgentHelperTypeEnum.chatAgent
-        ) {
-          onApply(event.formData);
-        }
-        generatingMessage(event);
-      },
+      onMessage: generatingMessage,
       abortCtrl: controller
     });
 
@@ -167,6 +169,7 @@ const ChatAgentHelperChatBox = ({
       }}
       InputLeftComponent={InputLeftComponent}
       onStartChat={onStartChat}
+      onGeneratingMessage={onGeneratingMessage}
     />
   );
 };
@@ -203,12 +206,35 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }
   }, [chatId, chatIdCacheKey, ensureSourceChatId]);
 
+  const applyingConfigRef = useRef(false);
+  const { run: applyConfig, loading: isApplyingConfig } = useRequest(
+    async (responseChatItemId: string) => {
+      if (applyingConfigRef.current) return;
+      applyingConfigRef.current = true;
+      try {
+        const { formData } = await loadChatAgentConfig({
+          appId: props.appId,
+          chatId,
+          responseChatItemId
+        });
+        await props.onApply(formData);
+      } finally {
+        applyingConfigRef.current = false;
+      }
+    }
+  );
+  const chatAgentBuilderVersionActions = useMemo(
+    () => ({ isApplying: isApplyingConfig, applyConfig }),
+    [isApplyingConfig, applyConfig]
+  );
+
   const onRestart = () => {
     setSourceChatId(chatIdCacheKey);
   };
 
   return (
     <ChatItemContextProvider
+      chatAgentBuilderVersionActions={chatAgentBuilderVersionActions}
       showRouteToDatasetDetail={false}
       canDownloadSource={false}
       isShowCite={false}

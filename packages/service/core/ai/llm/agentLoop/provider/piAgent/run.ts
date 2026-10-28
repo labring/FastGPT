@@ -307,7 +307,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages: result.assistantMessages,
       assistantResponses: result.assistantResponses,

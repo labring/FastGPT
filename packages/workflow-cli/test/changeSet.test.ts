@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { runCli } from '../src/run';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -103,7 +104,7 @@ describe('PR4 ChangeSet CLI', () => {
     });
     expect(planned.exitCode).toBe(0);
     expect(planned.stdout.result.diagnostics).toEqual([
-      { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+      { code: WorkflowDiagnosticCodeEnum.nodeIsolated, severity: 'error', nodeId: 'start' }
     ]);
     const applied = await invoke({
       args: [
@@ -165,7 +166,7 @@ describe('PR4 ChangeSet CLI', () => {
     });
     expect(missingConfirm).toMatchObject({
       exitCode: 2,
-      stderr: { errors: [{ code: 'CLI_CONFIRM_REQUIRED' }] }
+      stderr: { errors: [{ code: WorkflowDiagnosticCodeEnum.cliConfirmRequired }] }
     });
     expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
 
@@ -175,7 +176,7 @@ describe('PR4 ChangeSet CLI', () => {
     });
     expect(wrongConfirm).toMatchObject({
       exitCode: 2,
-      stderr: { errors: [{ code: 'CLI_CONFIRM_CHECKSUM_MISMATCH' }] }
+      stderr: { errors: [{ code: WorkflowDiagnosticCodeEnum.cliConfirmChecksumMismatch }] }
     });
     expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
 
@@ -223,7 +224,9 @@ describe('PR4 ChangeSet CLI', () => {
       stderr: {
         errors: [
           {
-            diagnostics: [expect.objectContaining({ code: 'WORKFLOW_BASE_CHECKSUM_MISMATCH' })]
+            diagnostics: [
+              expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.baseChecksumMismatch })
+            ]
           }
         ]
       }
@@ -250,7 +253,9 @@ describe('PR4 ChangeSet CLI', () => {
     });
     expect(result.exitCode).toBe(3);
     expect(result.stderr.errors[0].diagnostics).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'WORKFLOW_PLAN_CONTENT_MISMATCH' })])
+      expect.arrayContaining([
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.planContentMismatch })
+      ])
     );
     expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
   });
@@ -274,7 +279,7 @@ describe('PR4 ChangeSet CLI', () => {
     expect(promptedChecksum).toBe(planned.stdout.result.targetChecksum);
     expect(rejected).toMatchObject({
       exitCode: 2,
-      stderr: { errors: [{ code: 'CLI_CONFIRM_REJECTED' }] }
+      stderr: { errors: [{ code: WorkflowDiagnosticCodeEnum.cliConfirmRejected }] }
     });
     expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
 
@@ -305,7 +310,9 @@ describe('PR4 ChangeSet CLI', () => {
     });
     expect(result.exitCode).toBe(3);
     expect(result.stderr.errors[0].diagnostics).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'WORKFLOW_BASE_CHECKSUM_MISMATCH' })])
+      expect.arrayContaining([
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.baseChecksumMismatch })
+      ])
     );
     expect(JSON.parse(await readFile(join(dir, 'workflow.json'), 'utf8')).app.name).toBe(
       'Concurrent edit'

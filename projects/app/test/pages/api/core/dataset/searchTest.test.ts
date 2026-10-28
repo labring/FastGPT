@@ -7,7 +7,6 @@ const mockGetDefaultModelData = vi.hoisted(() => vi.fn());
 const mockAuthDataset = vi.hoisted(() => vi.fn());
 const mockCheckTeamAIPoints = vi.hoisted(() => vi.fn());
 const mockDefaultSearchDatasetData = vi.hoisted(() => vi.fn());
-const mockDeepRagSearch = vi.hoisted(() => vi.fn());
 const mockPushDatasetTestUsage = vi.hoisted(() => vi.fn());
 const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
 const mockGetRerankModelData = vi.hoisted(() => vi.fn());
@@ -39,8 +38,7 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
-  defaultSearchDatasetData: mockDefaultSearchDatasetData,
-  deepRagSearch: mockDeepRagSearch
+  defaultSearchDatasetData: mockDefaultSearchDatasetData
 }));
 
 vi.mock('@/service/support/wallet/usage/push', () => ({
@@ -213,15 +211,7 @@ describe('searchTest query image auth', () => {
       searchMode: DatasetSearchModeEnum.embedding,
       similarity: 0
     });
-    mockDeepRagSearch.mockResolvedValue({
-      searchRes: [],
-      embeddingTokens: 0,
-      reRankInputTokens: 0,
-      usingReRank: false,
-      limit: 5000,
-      searchMode: DatasetSearchModeEnum.embedding,
-      similarity: 0
-    });
+
     mockCreateExternalUrl.mockResolvedValue({
       url: 'https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'
     });
@@ -292,8 +282,44 @@ describe('searchTest query image auth', () => {
     ).rejects.toBe('Invalid query image key');
 
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
-    expect(mockDeepRagSearch).not.toHaveBeenCalled();
     expect(mockCreateExternalUrl).not.toHaveBeenCalled();
+  });
+
+  it('preserves both text and authorized images for a mixed search', async () => {
+    await handler(
+      {
+        body: {
+          datasetId,
+          text: 'question',
+          queryImageUrls: ['temp/team-1/search-image.png']
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['question'],
+        imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock']
+      })
+    );
+  });
+
+  it('uses ordinary search for images without text and caps the token budget at 20000', async () => {
+    await handler(
+      {
+        body: {
+          datasetId,
+          queryImageUrls: ['temp/team-1/search-image.png'],
+          limit: 25000
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: [], limit: 20000 })
+    );
   });
 
   it('should stop before searching when the shared team chat QPM is exhausted', async () => {
@@ -313,10 +339,9 @@ describe('searchTest query image auth', () => {
 
     expect(mockCheckTeamAIPoints).not.toHaveBeenCalled();
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
-    expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });
 
-  it('should validate auxiliary models with assertAuthModels', async () => {
+  it('ignores retired options and authorizes only the ordinary search models', async () => {
     mockGetRerankModelData.mockReturnValue({
       modelId: 'rerank-id',
       model: 'rerank-model',
@@ -342,7 +367,10 @@ describe('searchTest query image auth', () => {
           datasetSearchUsingExtensionQuery: true,
           datasetSearchExtensionModelId: 'extension-id',
           datasetDeepSearch: true,
-          datasetDeepSearchModelId: 'deepsearch-id'
+          datasetDeepSearchModelId: 'deleted-model',
+          datasetDeepSearchModel: 'deleted-model',
+          datasetDeepSearchMaxTimes: 3,
+          datasetDeepSearchBg: 'old settings'
         }
       } as any,
       {} as any
@@ -352,16 +380,20 @@ describe('searchTest query image auth', () => {
     expect(mockAssertAuthModels).toHaveBeenCalledWith(
       expect.objectContaining({
         actor: expect.objectContaining({ teamId: 'team-1', tmbId: 'tmb-1' }),
-        modelIds: expect.arrayContaining(['rerank-id', 'extension-id', 'deepsearch-id']),
+        modelIds: ['rerank-id', 'extension-id'],
         action: 'use',
         handle: expect.anything()
       })
+    );
+    expect(mockGetLLMModelData).toHaveBeenCalledOnce();
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({ textQueries: ['question'] })
     );
   });
 
   it('should reject search when auxiliary model is unauthorized', async () => {
     mockGetLLMModelData.mockReturnValue({
-      modelId: 'unauthorized-deepsearch-id',
+      modelId: 'unauthorized-extension-id',
       model: 'foreign-team-model',
       name: 'Foreign Model',
       type: 'llm',
@@ -375,8 +407,8 @@ describe('searchTest query image auth', () => {
           body: {
             datasetId,
             text: 'question',
-            datasetDeepSearch: true,
-            datasetDeepSearchModelId: 'unauthorized-deepsearch-id'
+            datasetSearchUsingExtensionQuery: true,
+            datasetSearchExtensionModelId: 'unauthorized-extension-id'
           }
         } as any,
         {} as any
@@ -384,6 +416,5 @@ describe('searchTest query image auth', () => {
     ).rejects.toEqual(new UserError(ModelErrEnum.unAuthModel));
 
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
-    expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });
 });

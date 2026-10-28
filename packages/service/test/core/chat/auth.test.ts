@@ -1,3 +1,4 @@
+import { MarkChatReadBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { authChatTargetCrud, assertChatAccess } from '@fastgpt/service/core/chat/auth';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -501,6 +502,47 @@ describe('authChatTargetCrud App and share access', () => {
 describe('authChatTargetCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('selects the external identity even when token and API Key headers are present', async () => {
+    const req = { headers: { token: 'login-token', authorization: 'Bearer test-key' } } as any;
+    const target = MarkChatReadBodySchema.parse({
+      outLinkAuthData: { shareId: 'share1', outLinkUid: 'user1' },
+      chatId: 'chat1'
+    });
+    vi.mocked(authOutLink).mockResolvedValue({
+      outLinkConfig: buildOutLinkConfig(),
+      uid: 'user1',
+      appId: 'app1'
+    });
+    vi.mocked(MongoChat.findOne).mockReturnValue({ lean: async () => null } as any);
+
+    const result = await authChatTargetCrud({ req, authToken: true, authApiKey: true, ...target });
+
+    expect(result.authType).toBe(AuthUserTypeEnum.outLink);
+    expect(result.uid).toBe('user1');
+    expect(authOutLink).toHaveBeenCalledWith({ req, shareId: 'share1', outLinkUid: 'user1' });
+    expect(authApp).not.toHaveBeenCalled();
+    expect(authSkill).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to token or API Key when external authentication fails', async () => {
+    const target = MarkChatReadBodySchema.parse({
+      outLinkAuthData: { shareId: 'share1', outLinkUid: 'user1' },
+      chatId: 'chat1'
+    });
+    vi.mocked(authOutLink).mockRejectedValueOnce(ChatErrEnum.unAuthChat);
+
+    await expect(
+      authChatTargetCrud({
+        req: { headers: { token: 'login-token', authorization: 'Bearer test-key' } } as any,
+        authToken: true,
+        authApiKey: true,
+        ...target
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+    expect(authApp).not.toHaveBeenCalled();
+    expect(authSkill).not.toHaveBeenCalled();
   });
 
   it('should pass requested app permission to app auth', async () => {

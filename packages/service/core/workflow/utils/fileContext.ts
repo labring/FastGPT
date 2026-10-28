@@ -27,6 +27,7 @@ import {
   isAbsoluteHttpUrl,
   getFileUrlIdentity,
   getFileNameFromUrl,
+  isSignedDownloadAlias,
   selectFileInputs
 } from '../../chat/file/utils';
 import { filterWorkflowQueryFiles, type WorkflowFileLimits } from './fileLimits';
@@ -193,9 +194,11 @@ const createWorkflowExternalFileSource = ({
   filename?: string;
   maxSizeBytes: number;
 }) => {
-  const displayFilename = isAbsoluteHttpUrl(name)
+  const inputFilename = isAbsoluteHttpUrl(name)
     ? (getFileNameFromUrl(name) ?? 'file')
     : name || getFileNameFromUrl(url) || 'file';
+  // 手动输入链接时 name 默认也是 URL；短链签名不能覆盖探测或下载响应提供的真实文件名。
+  const displayFilename = isSignedDownloadAlias(inputFilename) ? 'file' : inputFilename;
   const displayExtension = path.extname(displayFilename);
   const filename =
     displayExtension && displayExtension !== '.'

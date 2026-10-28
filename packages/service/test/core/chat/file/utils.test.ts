@@ -3,8 +3,21 @@ import {
   getFileNameFromUrl,
   getFileUrlIdentity,
   isAbsoluteHttpUrl,
+  isSignedDownloadAlias,
   selectFileInputs
 } from '@fastgpt/service/core/chat/file/utils';
+
+describe('isSignedDownloadAlias', () => {
+  it.each<[string, boolean]>([
+    ['workflowFileAlias.hscf3.ExampleSignatureValue1234', true],
+    ['report.pdf', false],
+    ['workflowFileAlias.hscf3.ExampleSignatureValue1234.txt', false],
+    ['%invalid', false],
+    ['', false]
+  ])('区分短链凭证与文件名：%s', (value, expected) =>
+    expect(isSignedDownloadAlias(value)).toBe(expected)
+  );
+});
 
 describe('getFileNameFromUrl', () => {
   it.each<[string, string | undefined]>([

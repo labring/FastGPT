@@ -53,9 +53,7 @@ export const isWorkflowSystemModelInput = ({
     input.key === NodeInputKeyEnum.datasetSearchRerankModel ||
     input.key === NodeInputKeyEnum.datasetSearchRerankModelId ||
     input.key === NodeInputKeyEnum.datasetSearchExtensionModel ||
-    input.key === NodeInputKeyEnum.datasetSearchExtensionModelId ||
-    input.key === NodeInputKeyEnum.datasetDeepSearchModel ||
-    input.key === NodeInputKeyEnum.datasetDeepSearchModelId
+    input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
   ) {
     return (
       node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||

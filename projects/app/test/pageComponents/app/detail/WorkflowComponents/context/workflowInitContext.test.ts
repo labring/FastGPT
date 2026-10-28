@@ -1,3 +1,4 @@
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
@@ -9,7 +10,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import WorkflowInitContextProvider, {
   WorkflowBufferDataContext,
   type WorkflowDataContextType
@@ -56,6 +57,59 @@ describe('workflow canvas replacement', () => {
     dom.window.close();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('reads current branch values through the stable node lookup used by handle checks', async () => {
+    const source = node('Branch', 'branch');
+    source.data.flowNodeType = FlowNodeTypeEnum.ifElseNode;
+    source.data.inputs = [
+      {
+        key: NodeInputKeyEnum.ifElseList,
+        label: '',
+        renderTypeList: [],
+        value: [{ branchId: 'before' }]
+      }
+    ];
+    const target = node('Target', 'target');
+    target.data.flowNodeType = FlowNodeTypeEnum.chatNode;
+    await act(async () => state.replaceWorkflowData({ nodes: [source, target], edges: [] }));
+    const lookup = state.getNodeById;
+    await act(async () =>
+      state.setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === 'branch'
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  inputs: node.data.inputs.map((input) => ({
+                    ...input,
+                    value: [{ branchId: 'after' }]
+                  }))
+                }
+              }
+            : node
+        )
+      )
+    );
+    expect(state.getNodeById).toBe(lookup);
+    for (const [key, allowed] of [
+      ['before', false],
+      ['after', true]
+    ] as const) {
+      expect(
+        checkExecutionConnection({
+          connection: {
+            source: 'branch',
+            sourceHandle: `branch-source-${key}`,
+            target: 'target',
+            targetHandle: 'target-target-left'
+          },
+          edges: [],
+          getNodeById: lookup
+        }).allowed
+      ).toBe(allowed);
+    }
   });
 
   it('assigns distinct revisions to batched replacements even when their node IDs are identical', async () => {

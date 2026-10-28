@@ -23,13 +23,15 @@ type Props = {
   selectedSelf?: string;
   /** 是否让后端将当前登录成员放在分页结果首位。 */
   currentFirst?: boolean;
+  /** 默认只查询活跃成员；审计历史筛选设为 false，保留停用和离职人员。 */
+  activeOnly?: boolean;
   maxW?: string | number;
   /** 下拉浮层最大宽度，默认 260px。 */
   menuMaxW?: string | number;
 };
 
 /**
- * 团队活跃成员多选筛选。点「全部」清空勾选；取消所有勾选回到「全部」。
+ * 团队成员多选筛选，默认只查询活跃成员。点「全部」清空勾选；取消所有勾选回到「全部」。
  * 工作台创建者、使用记录、操作日志共用。
  *
  * 已选成员用 tmbIds 单独回填/校验，不依赖候选列表滚完。候选列表仍分页搜索。
@@ -40,6 +42,7 @@ const TeamMemberFilter = ({
   onChange,
   selectedSelf,
   currentFirst = false,
+  activeOnly = true,
   maxW,
   menuMaxW
 }: Props) => {
@@ -68,10 +71,10 @@ const TeamMemberFilter = ({
     pageSize: 20,
     params: {
       searchKey,
-      status: 'active',
+      ...(activeOnly ? { status: 'active' } : {}),
       ...(currentFirst ? { currentFirst: true } : {})
     },
-    refreshDeps: [searchKey],
+    refreshDeps: [searchKey, activeOnly],
     throttleWait: 500,
     debounceWait: 200,
     showNoMoreTip: false,
@@ -89,7 +92,7 @@ const TeamMemberFilter = ({
       }
       const result = await getTeamMembers({
         tmbIds: selectedIds,
-        status: 'active',
+        ...(activeOnly ? { status: 'active' } : {}),
         offset: 0,
         pageSize: selectedIds.length
       });
@@ -97,7 +100,7 @@ const TeamMemberFilter = ({
     },
     {
       manual: false,
-      refreshDeps: [selectedIdsKey]
+      refreshDeps: [selectedIdsKey, activeOnly]
     }
   );
 

@@ -8,8 +8,6 @@ import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { getHTTPToolRuntimeSchemas } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import { assertToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
@@ -155,8 +153,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         version: tool.version ?? version,
         fallbackLatestVersion: true
       });
-      assertToolRuntimeParams({ jsonSchema: toolDetail.inputSchema, params: toolInput });
-
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
@@ -252,7 +248,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: tool.id,
         result: 1,
         usagePoint: usagePoints,
@@ -306,7 +301,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       context.mcpClientMemory[url] = mcpClient;
 
       toolInput = params;
-      assertToolRuntimeParams({ jsonSchema: mcpTool?.inputSchema, params });
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
@@ -346,12 +340,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       }
 
       toolInput = params;
-      // 最新定义先兼容旧标量/缺失 requestSchema，与运行节点构建使用同一套解析逻辑。
-      const { requestSchema } = getHTTPToolRuntimeSchemas(httpTool);
-      assertToolRuntimeParams({
-        jsonSchema: requestSchema,
-        params
-      });
       const { data, errorMsg } = await runHTTPTool({
         apiSchemaStr: toolSetData?.apiSchemaStr,
         baseUrl: baseUrl || '',
@@ -403,7 +391,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         })
       });
       toolInput = restParams;
-      assertToolRuntimeParams({ jsonSchema: toolData?.inputSchema, params: restParams });
       const result = await mcpClient.toolCall({ toolName, params: restParams });
 
       return {
@@ -424,7 +411,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: uId,
         toolId: systemToolId,
         result: 0,
         msg: getErrText(error)

@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeTypeEnum,
@@ -14,7 +15,7 @@ export const getDocumentNode = (document: WorkflowDocument, nodeId: string) => {
   const node = document.nodes.find((item) => item.nodeId === nodeId);
   if (!node) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_NODE_NOT_FOUND', severity: 'error', nodeId }
+      { code: WorkflowDiagnosticCodeEnum.nodeNotFound, severity: 'error', nodeId }
     ]);
   }
   return node;
@@ -46,12 +47,20 @@ export const assertParentAssignment = ({
   if (!parentNodeId) {
     if (node.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_LOOP_BREAK_PARENT_REQUIRED', severity: 'error', nodeId: node.nodeId }
+        {
+          code: WorkflowDiagnosticCodeEnum.loopBreakParentRequired,
+          severity: 'error',
+          nodeId: node.nodeId
+        }
       ]);
     }
     if (isNestedChildSystemNodeType(node.flowNodeType) && !allowSystemChild) {
       throw new WorkflowCommandError([
-        { code: 'WORKFLOW_SYSTEM_CHILD_MOVE_FORBIDDEN', severity: 'error', nodeId: node.nodeId }
+        {
+          code: WorkflowDiagnosticCodeEnum.systemChildMoveForbidden,
+          severity: 'error',
+          nodeId: node.nodeId
+        }
       ]);
     }
     return;
@@ -61,7 +70,7 @@ export const assertParentAssignment = ({
   if (!isNestedParentNodeType(parent.flowNodeType)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_PARENT_NOT_CONTAINER',
+        code: WorkflowDiagnosticCodeEnum.parentNotContainer,
         severity: 'error',
         nodeId: node.nodeId,
         params: { parentNodeId }
@@ -71,7 +80,7 @@ export const assertParentAssignment = ({
   if (ROOT_ONLY_NODE_TYPES.has(node.flowNodeType)) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_NODE_NOT_ALLOWED_IN_CONTAINER',
+        code: WorkflowDiagnosticCodeEnum.nodeNotAllowedInContainer,
         severity: 'error',
         nodeId: node.nodeId,
         params: { parentNodeId }
@@ -84,7 +93,7 @@ export const assertParentAssignment = ({
   ) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_INTERACTIVE_NODE_NOT_ALLOWED_IN_PARALLEL',
+        code: WorkflowDiagnosticCodeEnum.interactiveNodeNotAllowedInParallel,
         severity: 'error',
         nodeId: node.nodeId,
         params: { parentNodeId }
@@ -97,7 +106,7 @@ export const assertParentAssignment = ({
   ) {
     throw new WorkflowCommandError([
       {
-        code: 'WORKFLOW_LOOP_BREAK_PARENT_INVALID',
+        code: WorkflowDiagnosticCodeEnum.loopBreakParentInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         params: { parentNodeId }
@@ -106,7 +115,11 @@ export const assertParentAssignment = ({
   }
   if (isNestedChildSystemNodeType(node.flowNodeType) && !allowSystemChild) {
     throw new WorkflowCommandError([
-      { code: 'WORKFLOW_SYSTEM_CHILD_MOVE_FORBIDDEN', severity: 'error', nodeId: node.nodeId }
+      {
+        code: WorkflowDiagnosticCodeEnum.systemChildMoveForbidden,
+        severity: 'error',
+        nodeId: node.nodeId
+      }
     ]);
   }
 };

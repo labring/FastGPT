@@ -60,7 +60,7 @@ export const buildDocument = async (
 ): Promise<CliResult> => {
   const output = requireString(input, 'output');
   const document = await readWorkflowFile(context.dir);
-  const diagnostics = validateWorkflow(document);
+  const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
   assertNoValidationErrors(diagnostics);
   const bindings = collectWorkflowBindings(document);
   const bindingDiagnostics = getWorkflowBindingDiagnostics(bindings);
@@ -117,7 +117,7 @@ export const inspectDocument = async (
   context: CliContext
 ): Promise<CliResult> => {
   const document = await readWorkflowFile(context.dir);
-  const diagnostics = validateWorkflow(document);
+  const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
   const bindings = collectWorkflowBindings(document);
   const bindingDiagnostics = getWorkflowBindingDiagnostics(bindings);
   const allDiagnostics = [...diagnostics, ...bindingDiagnostics];

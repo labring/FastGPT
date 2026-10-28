@@ -160,7 +160,7 @@ API 契约向后兼容：
 
 - 恢复策略使用分批断点续跑。App 和 Version 数量没有固定上界，分别按不可变 ObjectId `_id` 固定扫描上界并推进游标；每批使用全局 `SYSTEM_MIGRATION_BATCH_SIZE`，内存只保留当前批次和有限状态。
 - 阶段固定为 `versions`、`apps`、`validation`。任务位于当前注册表末尾，依赖此前的模型引用迁移先补齐工作流 `modelId`，再从 Version 工作流生成完整资源快照。
-- 任务非阻塞启动并使用 `onFailure: continue`。新版本对缺失 `resources` 保留运行时提取兼容，对没有正式 Version 的 App 临时读取旧图；旧版本仍可读取保留的 App 图和 `resourceRefs`，因此任务失败不影响节点 readiness，也不要求停机升级。
+- 任务在后台执行，通过 `dependsOn` 等待应用模型引用回填成功；失败只影响自身及依赖它的任务。新版本对缺失 `resources` 保留运行时提取兼容，对没有正式 Version 的 App 临时读取旧图；旧版本仍可读取保留的 App 图和 `resourceRefs`，因此任务失败不影响节点 readiness，也不要求停机升级。
 - Version 快照使用读取字段 compare-and-set，只在该 Version 的 `nodes/edges/chatConfig/resourceRefs/resources` 未变化时回填；已有合法快照保持不变。批次重放会再次计算同一确定性结果，不产生额外记录。
 - App 正式指针只在扫描时读取的 `publishedVersionId` 未变化时回填。无正式 Version App 的补 Version 与指针写入在同一 Mongo 事务内完成，并在事务内再次确认仍无正式 Version，避免业务并发发布或进程退出留下孤立迁移版本；已有草稿不影响补建。
 - 非阻塞失败记录只保存 `appId` 或 `versionId`、阶段和截断后的原始原因。重试时先重放上次失败记录，完整错误快照持久化成功后才推进对应 checkpoint。

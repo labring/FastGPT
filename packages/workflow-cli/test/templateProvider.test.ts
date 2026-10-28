@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { builtinTemplateProvider } from '@fastgpt/workflow-core/test/template/provider';
 import { createWorkflowTemplateBundle } from '@fastgpt/web/core/workflow/template/bundle';
 import {
@@ -106,7 +107,7 @@ describe('request-scoped CLI template provider', () => {
       ]);
       expect(unavailable.exitCode).toBe(3);
       expect(JSON.parse(unavailable.stderr[0]).errors[0].diagnostics).toContainEqual(
-        expect.objectContaining({ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' })
+        expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.templateUnavailable })
       );
 
       const initialized = await invoke(['init', '--name', 'System tool workflow']);
@@ -160,7 +161,9 @@ describe('request-scoped CLI template provider', () => {
       await expect(provider.list({ locale: 'en' })).resolves.toEqual([]);
       await expect(
         provider.resolve({ kind: 'builtin', templateId: 'ai-chat' }, { locale: 'en' })
-      ).rejects.toMatchObject({ diagnostics: [{ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' }] });
+      ).rejects.toMatchObject({
+        diagnostics: [{ code: WorkflowDiagnosticCodeEnum.templateUnavailable }]
+      });
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

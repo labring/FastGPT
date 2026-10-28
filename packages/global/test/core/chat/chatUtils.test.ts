@@ -640,26 +640,45 @@ describe('getFlatAppResponses', () => {
 });
 
 describe('checkInteractiveResponseStatus', () => {
-  it('should keep legacy agentPlanAskQuery as a query', () => {
-    const result = checkInteractiveResponseStatus({
-      interactive: {
-        type: 'agentPlanAskQuery',
-        askId: 'call_ask',
-        params: {
-          content: 'What do you want?',
-          options: ['Use repo', 'Use docs', 'Use defaults']
-        }
-      },
-      input: 'any input'
-    });
-
-    expect(result).toBe('query');
+  it('creates a new message round for workflow preview decisions, including nested previews', () => {
+    const preview = {
+      type: 'workflowBuilderPreview' as const,
+      previewId: 'preview-1',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        title: 'Confirm workflow?',
+        mermaid: 'flowchart LR\n A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
+          { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
+          { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
+        ]
+      }
+    };
+    for (const interactive of [
+      preview,
+      {
+        type: 'childrenInteractive' as const,
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: { childrenResponse: preview }
+      }
+    ]) {
+      expect(checkInteractiveResponseStatus({ interactive, input: 'Confirm' })).toBe('query');
+    }
   });
 
-  it('should return query for agentAsk by default and submit when configured', () => {
+  it('should always create a query round for agentAsk answers', () => {
     const interactive = {
       type: 'agentAsk' as const,
       askId: 'call_ask',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
       params: {
         description: 'Need input',
         questions: [
@@ -668,28 +687,19 @@ describe('checkInteractiveResponseStatus', () => {
             options: [
               { summary: 'A', value: 'A' },
               { summary: 'B', value: 'B' }
-            ],
-            answer: ''
+            ]
           }
         ]
       }
     };
-    expect(
-      checkInteractiveResponseStatus({
-        interactive,
-        input: '{"answers":["A"]}'
-      })
-    ).toBe('query');
-
-    expect(
-      checkInteractiveResponseStatus({
-        interactive: {
-          ...interactive,
-          responseMode: 'submit'
-        },
-        input: '{"answers":["A"]}'
-      })
-    ).toBe('submit');
+    for (const answer of ['A', 'custom answer', '']) {
+      expect(
+        checkInteractiveResponseStatus({
+          interactive,
+          input: JSON.stringify({ answers: [answer] })
+        })
+      ).toBe('query');
+    }
   });
 
   it('should keep a nested legacy agent ask as a query', () => {
@@ -705,11 +715,20 @@ describe('checkInteractiveResponseStatus', () => {
             params: {
               childrenId: 'child_1',
               childrenResponse: {
-                type: 'agentPlanAskQuery',
+                type: 'agentAsk',
                 askId: 'ask_1',
                 params: {
-                  content: 'Choose one',
-                  options: ['A', 'B', 'C']
+                  description: '',
+                  questions: [
+                    {
+                      question: 'Choose one',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' },
+                        { summary: 'C', value: 'C' }
+                      ]
+                    }
+                  ]
                 }
               }
             }

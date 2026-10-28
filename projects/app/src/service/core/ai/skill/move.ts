@@ -101,8 +101,8 @@ export const moveSkill = async ({
   await checkMoveFolderDepth({
     resourceId: skillId,
     targetParentId: parentId,
-    teamId,
-    model: MongoAgentSkills,
+    findResource: (id) => MongoAgentSkills.findOne({ _id: id, teamId }, '_id parentId type').lean(),
+    findChildren: (parentId) => MongoAgentSkills.find({ parentId, teamId }, '_id type').lean(),
     isFolderType: (type) => type === AgentSkillTypeEnum.folder
   });
 

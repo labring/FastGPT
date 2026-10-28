@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import updateHandler from '@/pages/api/core/dataset/collection/update';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -87,6 +88,31 @@ const fixture = async () => {
 };
 
 describe('update collection', () => {
+  it('scopes move ancestor lookups to the source dataset', async () => {
+    const { owner, source, target, file } = await fixture();
+    const otherDataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'other-dataset'
+    });
+    const foreignAncestor = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: otherDataset._id,
+      name: 'foreign-ancestor',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    await MongoDatasetCollection.updateOne({ _id: target._id }, { parentId: foreignAncestor._id });
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(result.error).toBe(CommonErrEnum.invalidParams);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(source._id)
+    );
+  });
+
   it('普通移动复用批量鉴权，只解析一次身份并实际落库', async () => {
     const { actor, file, target } = await fixture();
     vi.mocked(parseHeaderCert).mockClear();
@@ -125,13 +151,42 @@ describe('update collection', () => {
       String(context.source._id)
     );
   });
-  it('普通字段修改继续要求节点 write，授权后可修改', async () => {
+  it('普通字段修改要求节点 manage：write 被拒、manage 通过', async () => {
     const { actor, file, grant } = await fixture();
     const body = { id: String(file._id), name: 'renamed' };
+    // fixture 只给 file 授予 read
     expect((await Call(updateHandler, { auth: actor, body })).code).not.toBe(200);
     await grant(String(file._id), WriteRoleVal);
+    expect((await Call(updateHandler, { auth: actor, body })).code).not.toBe(200);
+    await grant(String(file._id), ManageRoleVal);
     expect((await Call(updateHandler, { auth: actor, body })).code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.name).toBe('renamed');
+  });
+  it('移动同请求携带字段更新时仍要求节点 manage，不能借移动绕过', async () => {
+    const { actor, file, source, target } = await fixture();
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(file._id), parentId: String(target._id), name: 'renamed' }
+    });
+    expect(result.code).not.toBe(200);
+    const updated = await MongoDatasetCollection.findById(file._id).lean();
+    expect(updated?.name).toBe('file');
+    expect(String(updated?.parentId)).toBe(String(source._id));
+  });
+  it('externalFileId 定位只需 dataset read，更新由节点 manage 把关', async () => {
+    const { actor, datasetId, file, grant } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { externalFileId: 'external-meta' });
+    await grant(datasetId, ReadRoleVal, PerResourceTypeEnum.dataset);
+    await grant(String(file._id), ManageRoleVal);
+
+    const result = await Call(updateHandler, {
+      auth: actor,
+      body: { datasetId, externalFileId: 'external-meta', name: 'renamed-by-external' }
+    });
+    expect(result.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(file._id).lean())?.name).toBe(
+      'renamed-by-external'
+    );
   });
   it('权限允许时仍拒绝父目录移入后代', async () => {
     const { owner, source, target } = await fixture();
@@ -161,4 +216,18 @@ describe('update collection', () => {
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
   });
+});
+
+it('rejects moving into a leaf even when the target is manageable', async () => {
+  const { owner, source, target } = await fixture();
+  await MongoDatasetCollection.updateOne(
+    { _id: target._id },
+    { type: DatasetCollectionTypeEnum.virtual }
+  );
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { id: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
 });

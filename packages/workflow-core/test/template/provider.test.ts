@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -63,7 +64,7 @@ describe('workflow template provider', () => {
         { locale: 'en' }
       )
     ).rejects.toMatchObject({
-      diagnostics: [{ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' }]
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.templateUnavailable }]
     });
   });
 
@@ -78,7 +79,9 @@ describe('workflow template provider', () => {
     expect(refs).toContainEqual(systemToolRef);
     await expect(
       provider.resolve({ kind: 'builtin', templateId: '__system-config' }, { locale: 'en' })
-    ).rejects.toMatchObject({ diagnostics: [{ code: 'WORKFLOW_TEMPLATE_UNAVAILABLE' }] });
+    ).rejects.toMatchObject({
+      diagnostics: [{ code: WorkflowDiagnosticCodeEnum.templateUnavailable }]
+    });
     await expect(
       instantiateNodeFromTemplate({
         document: createWorkflowDocument(),

@@ -1,7 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -34,6 +33,7 @@ import {
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
+import { formatDatasetSearchToolResponse } from '../../../../dataset/toolResponse';
 import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
 import type { DispatchSubAppResponse } from '../../type';
 import { DatasetSearchToolSchema } from './utils';
@@ -60,19 +60,7 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
     return '未找到相关信息。';
   }
 
-  return JSON.stringify(
-    {
-      prompt: getDatasetSearchToolResponsePrompt(),
-      cites: searchResults.map((item) => ({
-        id: item.id,
-        sourceName: item.sourceName,
-        updateTime: item.updateTime,
-        content: `${item.q}\n${item.a || ''}`.trim()
-      }))
-    },
-    null,
-    2
-  );
+  return JSON.stringify(formatDatasetSearchToolResponse(searchResults), null, 2);
 };
 
 /**
@@ -308,6 +296,8 @@ export const dispatchAgentDatasetSearch = async ({
       readableCollectionIdList,
       userKey
     };
+    // retrievalResults：重排前的候选快照，由检索层在 usingReRank 成立且
+    // RETRIEVAL_RESULTS_LIMIT > 0 时产出；此处只透出，不参与后续选块与提示词拼装。
     const {
       searchRes,
       embeddingTokens,
@@ -315,7 +305,8 @@ export const dispatchAgentDatasetSearch = async ({
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
       queryExtensionResult,
-      imageCaptionResult
+      imageCaptionResult,
+      retrievalResults
     } = await defaultSearchDatasetData(searchData);
 
     // count bill results
@@ -476,7 +467,10 @@ export const dispatchAgentDatasetSearch = async ({
       searchUsingReRank,
       ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
       // Results
-      quoteList: searchResults
+      quoteList: searchResults,
+      // 融合候选集快照：检索层仅在重排开启且 RETRIEVAL_RESULTS_LIMIT > 0 时产出。
+      // Agent 原样透出，与原生检索节点保持同一份「召回 vs 重排」对比语义。
+      ...(retrievalResults?.length ? { retrievalResults } : {})
     };
 
     return {

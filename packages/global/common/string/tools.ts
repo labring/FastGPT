@@ -32,10 +32,10 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* replace sensitive text */
+/** 隐藏错误文本中的 URL 地址和 ns- 标识，保留 JSON 字段及转义边界。 */
 export const replaceSensitiveText = (text: string) => {
-  // 1. http link
-  text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
+  // 1. URL 脱敏保留 JSON 的引号和转义边界，避免吞掉同一行后续的错误字段。
+  text = text.replace(/(?<=https?:\/\/)[^\s"\\]+/g, 'xxx');
   // 2. nx-xxx 全部替换成xxx。只替换以 ns- 开头的完整片段，
   // 不能把 tokens-per-minute、dns-server 这类普通单词里的 ns- 也换掉。
   text = text.replace(/(?<![\w-])ns-[\w-]+/g, 'xxx');
@@ -142,6 +142,13 @@ export const sliceJsonStr = (str: string) => {
   return str;
 };
 
+/**
+ * 保留字符串开头 start 个和结尾 end 个 UTF-16 code unit，中间替换成省略提示。
+ *
+ * 截断点必须落在码点边界上：`😀` 这类非 BMP 字符由代理对组成，用 `str.slice`
+ * 直接按 code unit 切会留下半个字符（孤立代理项），渲染和送模型时都会变成
+ * U+FFFD 乱码。切到代理对中间时放弃那半个字符，宁可少留一个也不会产出坏字符。
+ */
 export const sliceStrStartEnd = (str: string | null = '', start: number, end: number) => {
   if (!str) return '';
 
@@ -149,10 +156,25 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
 
   if (!overSize) return str;
 
-  const startContent = str.slice(0, start);
-  const endContent = overSize ? str.slice(-end) : '';
+  const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
+  const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;
 
-  return `${startContent}${overSize ? `\n\n...[hide ${str.length - start - end} chars]...\n\n` : ''}${endContent}`;
+  // 头部结尾若是代理对的前半部分，说明它和后半部分被切开了，一起丢掉
+  const headEnd =
+    start > 0 && start < str.length && isHighSurrogate(str.charCodeAt(start - 1))
+      ? start - 1
+      : start;
+
+  // 尾部开头若是代理对的后半部分，前半部分已被切掉，这个残尾也要丢掉。
+  // 用正的起始下标切片，end 为 0 时不会退化成 slice(-0) 把整串拼回来。
+  const tailStart = str.length - end;
+  const safeTailStart =
+    tailStart > 0 && tailStart < str.length && isLowSurrogate(str.charCodeAt(tailStart))
+      ? tailStart + 1
+      : tailStart;
+  const endContent = safeTailStart >= str.length ? '' : str.slice(safeTailStart);
+
+  return `${str.slice(0, headEnd)}\n\n...[hide ${str.length - start - end} chars]...\n\n${endContent}`;
 };
 
 /**

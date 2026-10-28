@@ -706,6 +706,31 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('标签过滤关闭时，collectionFilterMatch 解析为 undefined', () => {
+    const node = createNode('search', FlowNodeTypeEnum.datasetSearchNode);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: {
+          logic: 'AND',
+          conditions: [{ tag: 'dept', op: '$eq', value: 'sales' }],
+          open: false
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createVariableState({}).state
+    });
+
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBeUndefined();
+  });
+
   it('Agent 嵌套 datasetParams 会解析标签过滤行内引用', () => {
     const variableState = createVariableState({ price: 18 });
     const node = createNode('agent', FlowNodeTypeEnum.agent);
@@ -747,6 +772,66 @@ describe('getWorkflowNodeRunParams', () => {
 });
 
 describe('runWorkflow catchError', () => {
+  it.each(['success', 'returned-error', 'thrown-error'] as const)(
+    'activates exactly one of the success and error routes for %s',
+    async (outcome) => {
+      const original = callbackMap[FlowNodeTypeEnum.textEditor];
+      const called: string[] = [];
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ node }) => {
+        called.push(node.nodeId);
+        if (node.nodeId === 'source') {
+          if (outcome === 'thrown-error') throw new Error('failed');
+          if (outcome === 'returned-error') return { error: { errorText: 'failed' } };
+        }
+        return { data: {} };
+      });
+      const source = createNode('source', FlowNodeTypeEnum.textEditor);
+      source.isEntry = true;
+      source.catchError = true;
+      try {
+        await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'branch routing',
+            teamId: '654a4107c32f3bf5f998452f'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          uid: 'branch-routing-test',
+          lang: 'zh-CN',
+          histories: [],
+          query: [],
+          variables: {},
+          chatConfig: {},
+          runtimeNodes: [
+            source,
+            createNode('success', FlowNodeTypeEnum.textEditor),
+            createNode('error', FlowNodeTypeEnum.textEditor)
+          ],
+          runtimeEdges: [
+            createEdge('source', 'success', 'waiting', 'source-source-right'),
+            createEdge('source', 'error', 'waiting', 'source-source_catch-right')
+          ],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          stream: false,
+          responseDetail: true,
+          responseAllData: true,
+          checkIsStopping: () => false
+        } as any);
+        expect(called).toEqual(['source', outcome === 'success' ? 'success' : 'error']);
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = original;
+      }
+    }
+  );
+
   it('捕获 throw 异常后，下游节点应能引用错误输出', async () => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     const errorText = 'upstream failed';

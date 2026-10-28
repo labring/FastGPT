@@ -62,6 +62,10 @@ const DatasetSchema = new Schema({
     ref: DatasetCollectionName,
     default: null
   },
+  ancestorIds: {
+    type: [{ type: Schema.Types.ObjectId, ref: DatasetCollectionName }],
+    default: undefined
+  },
   userId: {
     //abandon
     type: Schema.Types.ObjectId,
@@ -181,6 +185,10 @@ const DatasetSchema = new Schema({
 defineIndex(DatasetSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(DatasetSchema, { key: { teamId: 1, updateTime: -1 } });
 defineIndex(DatasetSchema, { key: { teamId: 1, parentId: 1 } });
+defineIndex(DatasetSchema, {
+  key: { teamId: 1, ancestorIds: 1 },
+  options: { partialFilterExpression: { ancestorIds: { $exists: true } } }
+});
 defineIndex(DatasetSchema, { key: { type: 1 } }); // Admin count
 defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段索引
 

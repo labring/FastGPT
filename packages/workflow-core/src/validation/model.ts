@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
@@ -23,12 +24,14 @@ import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/docume
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
+import { hasConfiguredValue } from '../template/defaultValue';
 
 /**
  * 根据调用方提供的模型状态检查节点与聊天配置，返回错误诊断，不修改文档、不查询目录或权限。
  * templates 为已注入的系统节点模板，用于识别被删掉的模型槽位，不会回填模板默认值。
  * 未提供目录时只检查节点模型必填；聊天模型与静态可用性等待目录加载后校验。
- * 动态模型留到执行点校验；非空稳定 ID 不允许用旧名称修复，旧工具选择器除外。
+ * 已配置的动态模型留到执行点校验；空引用仍检查模型必填，避免资源绑定槽位绕过缺项检查。
+ * 非空稳定 ID 不允许用旧名称修复，旧工具选择器除外。
  */
 export const checkWorkflowModels = ({
   document,
@@ -63,13 +66,16 @@ export const checkWorkflowModels = ({
     allowLegacyModelFallback?: boolean;
     slotKey?: string;
   }) => {
-    if (!enabled || (input && nodeInputIsReference(input))) return;
-    const value = getModelReferenceValue({ modelId, model });
+    if (!enabled) return;
+    const isReference = input && nodeInputIsReference(input);
+    if (isReference && hasConfiguredValue(input.value ?? input.defaultValue)) return;
+    // 客户端已将失效引用视为空值，不能再把旧的模型名或引用模式当作有效配置。
+    const value = isReference ? undefined : getModelReferenceValue({ modelId, model });
     if (isWorkflowModelExpression(value)) return;
     if (isEmptyModelValue(value)) {
       if (defaultWhenEmpty) return;
       diagnostics.push({
-        code: 'WORKFLOW_MODEL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.modelRequired,
         severity: 'error',
         ...location,
         params: {
@@ -92,7 +98,7 @@ export const checkWorkflowModels = ({
     );
     if (available) return;
     diagnostics.push({
-      code: 'WORKFLOW_MODEL_UNAVAILABLE',
+      code: WorkflowDiagnosticCodeEnum.modelUnavailable,
       severity: 'error',
       ...location,
       params: {
@@ -141,7 +147,8 @@ export const checkWorkflowModels = ({
     const datasetInput = inputMap.get(NodeInputKeyEnum.datasetSelectList);
     const hasDataset =
       !datasetInput ||
-      nodeInputIsReference(datasetInput) ||
+      (nodeInputIsReference(datasetInput) &&
+        hasConfiguredValue(datasetInput.value ?? datasetInput.defaultValue)) ||
       (Array.isArray(datasetInput.value) && datasetInput.value.length > 0);
 
     for (const slot of workflowSystemModelSlots) {

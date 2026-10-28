@@ -13,14 +13,17 @@ import {
   transformChatTargetInput
 } from '../api';
 
-/* Init */
-// Online chat
+/* ============================================================================
+ * API: 初始化应用或 Skill 调试会话
+ * Route: GET /api/core/chat/init
+ * Description: 通过 appId 或 skillId 初始化资源鉴权会话；外链初始化使用独立的 outLink/init 接口。
+ * ============================================================================ */
 export const InitChatQueryRawSchema = createChatTargetInputSchema({
   chatId: z.string().min(1).describe('会话ID'),
   loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
 }).meta({
   example: {
-    appId: '1234567890',
+    appId: '68ad85a7463006c963799a05',
     chatId: '1234567890',
     loadCustomFeedbacks: true
   }

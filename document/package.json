@@ -60,6 +60,6 @@
     "textlint-plugin-mdx": "catalog:lint",
     "textlint-rule-preset-zh-technical-writing": "catalog:lint",
     "typescript": "catalog:",
-    "zod": "^4.0.5"
+    "zod": "^4.6.6"
   }
 }

@@ -4,6 +4,7 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { SystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { TeamPluginPolicyStatusEnum } from '@fastgpt/global/core/plugin/schema/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -40,7 +41,10 @@ vi.mock('@fastgpt/service/core/app/tool/utils/client', () => ({
   getClientToolPreviewNode: mocks.getClientToolPreviewNode
 }));
 
-import { getAuthorizedSystemToolTemplateCatalog } from '@fastgpt/service/core/app/tool/systemTool/capability';
+import {
+  getAuthorizedSystemToolTemplateCatalog,
+  listAuthorizedSystemToolTemplates
+} from '@fastgpt/service/core/app/tool/systemTool/capability';
 
 const context = { teamId: 'team-1', tmbId: 'member-1', isRoot: false, lang: 'en' } as const;
 
@@ -79,6 +83,107 @@ const createTemplate = (
   ...overrides
 });
 
+describe('listAuthorizedSystemToolTemplates', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.getUserDetail.mockResolvedValue({ tags: ['hidden-user'] });
+    mocks.getDebugSessionStatus.mockResolvedValue(undefined);
+  });
+
+  it('filters top-level system and team tools without loading details or toolset children', async () => {
+    const teamSource = 'teamId:team-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-shared'),
+      createTool('systemTool-set', { isToolSet: true }),
+      createTool('systemTool-shared', { source: teamSource }),
+      createTool('systemTool-set', { source: teamSource, isToolSet: true }),
+      createTool('systemTool-deleted', { source: teamSource }),
+      createTool('systemTool-unregistered', { source: teamSource }),
+      createTool('systemTool-shared', { source: 'teamId:another-team' }),
+      createTool('systemTool-hidden-by-tag', { hideTags: ['hidden-user'] }),
+      ...[PluginStatusEnum.Hidden, PluginStatusEnum.SoonOffline, PluginStatusEnum.Offline].map(
+        (status) => createTool(`systemTool-${status}`, { status })
+      )
+    ]);
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(
+      new Map([
+        ['shared', { pluginId: 'shared', status: TeamPluginPolicyStatusEnum.installed }],
+        ['set', { pluginId: 'set', status: TeamPluginPolicyStatusEnum.installed }],
+        ['deleted', { pluginId: 'deleted', status: TeamPluginPolicyStatusEnum.deleted }]
+      ])
+    );
+
+    const tools = await listAuthorizedSystemToolTemplates(context);
+
+    expect(tools.map(({ id, source, flowNodeType }) => ({ id, source, flowNodeType }))).toEqual([
+      { id: 'systemTool-shared', source: 'system', flowNodeType: FlowNodeTypeEnum.tool },
+      { id: 'systemTool-set', source: 'system', flowNodeType: FlowNodeTypeEnum.toolSet },
+      { id: 'systemTool-shared', source: teamSource, flowNodeType: FlowNodeTypeEnum.tool },
+      { id: 'systemTool-set', source: teamSource, flowNodeType: FlowNodeTypeEnum.toolSet }
+    ]);
+    expect(mocks.getSystemToolList).toHaveBeenCalledExactlyOnceWith({
+      lang: context.lang,
+      op: 'or',
+      sources: ['system', teamSource],
+      tags: undefined
+    });
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
+    expect(mocks.getClientToolPreviewNode).not.toHaveBeenCalled();
+  });
+
+  it('preserves debug priority, root visibility and search filtering', async () => {
+    const debugSource = 'debug:tmbId:member-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-match', { hideTags: ['hidden-user'] }),
+      createTool('systemTool-other'),
+      createTool('systemTool-debug-match', { source: debugSource })
+    ]);
+    mocks.getDebugSessionStatus.mockResolvedValue({
+      enabled: true,
+      status: 'enabled',
+      source: debugSource
+    });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
+
+    const tools = await listAuthorizedSystemToolTemplates({
+      ...context,
+      isRoot: true,
+      searchKey: 'MATCH'
+    });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-debug-match', 'systemTool-match']);
+  });
+
+  it.each([
+    [PluginStatusEnum.Normal, true, ['systemTool-set/match']],
+    [PluginStatusEnum.Hidden, true, []],
+    [PluginStatusEnum.Normal, false, []]
+  ] as const)(
+    'filters children for parent status %s with children=%s',
+    async (status, hasChildren, expectedIds) => {
+      mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
+        ...createTool('systemTool-set', { isToolSet: true, status }),
+        children: hasChildren
+          ? [
+              { id: 'match', name: 'Match', status: PluginStatusEnum.Normal },
+              { id: 'other', name: 'Other', status: PluginStatusEnum.Normal },
+              { id: 'hidden-match', name: 'Hidden match', status: PluginStatusEnum.Hidden }
+            ]
+          : undefined
+      });
+
+      const tools = await listAuthorizedSystemToolTemplates({
+        ...context,
+        parentId: 'systemTool-set',
+        searchKey: 'match'
+      });
+
+      expect(tools.map((tool) => tool.id)).toEqual(expectedIds);
+      expect(mocks.getSystemToolList).not.toHaveBeenCalled();
+    }
+  );
+});
+
 describe('getAuthorizedSystemToolTemplateCatalog', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -109,6 +214,62 @@ describe('getAuthorizedSystemToolTemplateCatalog', () => {
       getLatestVersion: true,
       lang: context.lang
     });
+  });
+
+  it('keeps normal system and installed team tools while excluding deleted and foreign tools', async () => {
+    const teamSource = 'teamId:team-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-shared'),
+      createTool('systemTool-shared', { source: teamSource }),
+      createTool('systemTool-deleted', { source: teamSource }),
+      createTool('systemTool-unregistered', { source: teamSource }),
+      createTool('systemTool-shared', { source: 'teamId:another-team' }),
+      createTool('systemTool-offline', { status: PluginStatusEnum.Offline })
+    ]);
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(
+      new Map([
+        ['shared', { pluginId: 'shared', status: TeamPluginPolicyStatusEnum.installed }],
+        ['deleted', { pluginId: 'deleted', status: TeamPluginPolicyStatusEnum.deleted }]
+      ])
+    );
+
+    const catalog = await getAuthorizedSystemToolTemplateCatalog(context);
+
+    expect(catalog.map(({ toolId, source }) => ({ toolId, source }))).toEqual([
+      { toolId: 'systemTool-shared', source: 'system' },
+      { toolId: 'systemTool-shared', source: teamSource }
+    ]);
+    expect(mocks.getSystemToolList).toHaveBeenCalledExactlyOnceWith({
+      lang: context.lang,
+      op: 'or',
+      sources: ['system', teamSource],
+      tags: undefined
+    });
+    expect(mocks.getClientToolPreviewNode).toHaveBeenCalledTimes(2);
+    expect(mocks.getClientToolPreviewNode).toHaveBeenCalledWith({
+      appId: 'systemTool-shared',
+      teamId: context.teamId,
+      source: teamSource,
+      getLatestVersion: true,
+      lang: context.lang
+    });
+  });
+
+  it('drops a team toolset when it is uninstalled before loading its children', async () => {
+    const teamSource = 'teamId:team-1';
+    mocks.getSystemToolList.mockResolvedValue([
+      createTool('systemTool-set', { source: teamSource, isToolSet: true }),
+      createTool('systemTool-healthy')
+    ]);
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(
+      new Map([['set', { pluginId: 'set', status: TeamPluginPolicyStatusEnum.installed }]])
+    );
+    mocks.assertTeamPluginSourceAccess.mockRejectedValue('plugin.team_not_installed');
+
+    const catalog = await getAuthorizedSystemToolTemplateCatalog(context);
+
+    expect(catalog.map((item) => item.toolId)).toEqual(['systemTool-healthy']);
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).not.toHaveBeenCalled();
   });
 
   it.each([

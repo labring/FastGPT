@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -17,6 +18,10 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
 import { getWorkflowReferenceValues } from '../reference/service';
+import {
+  resolveWorkflowReferenceDocument,
+  type WorkflowInvalidReferencePolicy
+} from '../reference/validation';
 import { hasConfiguredValue } from '../template/defaultValue';
 import { validateNodeIO } from './io';
 import { checkWorkflowModels } from './model';
@@ -79,7 +84,7 @@ const validateContainer = ({
     : [];
   if (JSON.stringify(actualIds) !== JSON.stringify(listedIds)) {
     diagnostics.push({
-      code: 'WORKFLOW_CONTAINER_CHILDREN_OUT_OF_SYNC',
+      code: WorkflowDiagnosticCodeEnum.containerChildrenOutOfSync,
       severity: 'error',
       nodeId: node.nodeId
     });
@@ -93,7 +98,7 @@ const validateContainer = ({
     const count = children.filter((item) => item.flowNodeType === systemType).length;
     if (count !== 1) {
       diagnostics.push({
-        code: 'WORKFLOW_CONTAINER_SYSTEM_CHILD_INVALID',
+        code: WorkflowDiagnosticCodeEnum.containerSystemChildInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         params: { systemType, count }
@@ -108,7 +113,7 @@ const validateContainer = ({
       !children.some((item) => item.flowNodeType === FlowNodeTypeEnum.loopRunBreak)
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_CONDITIONAL_LOOP_BREAK_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.conditionalLoopBreakRequired,
         severity: 'error',
         nodeId: node.nodeId
       });
@@ -164,7 +169,7 @@ const validateSpecialNode = ({
     !hasConfiguredValue(getInputValue(NodeInputKeyEnum.httpReqUrl))
   ) {
     diagnostics.push({
-      code: 'WORKFLOW_REQUIRED_INPUT_MISSING',
+      code: WorkflowDiagnosticCodeEnum.requiredInputMissing,
       severity: 'error',
       nodeId: node.nodeId,
       inputKey: NodeInputKeyEnum.httpReqUrl
@@ -176,7 +181,7 @@ const validateSpecialNode = ({
     (!Array.isArray(extractFields) || extractFields.length === 0)
   ) {
     diagnostics.push({
-      code: 'WORKFLOW_EXTRACT_FIELDS_REQUIRED',
+      code: WorkflowDiagnosticCodeEnum.extractFieldsRequired,
       severity: 'error',
       nodeId: node.nodeId,
       inputKey: NodeInputKeyEnum.extractKeys
@@ -187,7 +192,7 @@ const validateSpecialNode = ({
     !node.inputs.some((input) => input.canEdit)
   ) {
     diagnostics.push({
-      code: 'WORKFLOW_REQUIRED_INPUT_MISSING',
+      code: WorkflowDiagnosticCodeEnum.requiredInputMissing,
       severity: 'error',
       nodeId: node.nodeId,
       inputKey: NodeInputKeyEnum.datasetQuoteList
@@ -239,14 +244,14 @@ const validateSpecialNode = ({
     if (!Array.isArray(updateList) || updateList.length === 0) {
       diagnostics.push(
         {
-          code: 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING',
+          code: WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing,
           severity: 'error',
           nodeId: node.nodeId,
           inputKey: NodeInputKeyEnum.updateList,
           params: { field: 'variable' }
         },
         {
-          code: 'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING',
+          code: WorkflowDiagnosticCodeEnum.variableUpdateValueMissing,
           severity: 'error',
           nodeId: node.nodeId,
           inputKey: NodeInputKeyEnum.updateList,
@@ -257,7 +262,7 @@ const validateSpecialNode = ({
       updateList.forEach((item, index) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) {
           diagnostics.push({
-            code: 'WORKFLOW_VARIABLE_UPDATE_ITEM_INVALID',
+            code: WorkflowDiagnosticCodeEnum.variableUpdateItemInvalid,
             severity: 'error',
             nodeId: node.nodeId,
             inputKey: NodeInputKeyEnum.updateList,
@@ -275,7 +280,7 @@ const validateSpecialNode = ({
         };
         if (!isLiveReference(update.variable)) {
           diagnostics.push({
-            code: 'WORKFLOW_VARIABLE_UPDATE_TARGET_MISSING',
+            code: WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing,
             severity: 'error',
             nodeId: node.nodeId,
             inputKey: NodeInputKeyEnum.updateList,
@@ -284,7 +289,7 @@ const validateSpecialNode = ({
         }
         if (isVariableUpdateValueMissing(update)) {
           diagnostics.push({
-            code: 'WORKFLOW_VARIABLE_UPDATE_VALUE_MISSING',
+            code: WorkflowDiagnosticCodeEnum.variableUpdateValueMissing,
             severity: 'error',
             nodeId: node.nodeId,
             inputKey: NodeInputKeyEnum.updateList,
@@ -325,7 +330,7 @@ const validateSpecialNode = ({
       });
     if (invalid) {
       diagnostics.push({
-        code: 'WORKFLOW_BRANCH_CONFIGURATION_INVALID',
+        code: WorkflowDiagnosticCodeEnum.branchConfigurationInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: NodeInputKeyEnum.ifElseList
@@ -371,7 +376,7 @@ const validateSpecialNode = ({
     })();
     if (reason) {
       diagnostics.push({
-        code: 'WORKFLOW_BRANCH_CONFIGURATION_INVALID',
+        code: WorkflowDiagnosticCodeEnum.branchConfigurationInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: key,
@@ -393,7 +398,7 @@ const validateSpecialNode = ({
           return;
         if (!dynamicOptionsAreSelectable(field.listReference)) {
           diagnostics.push({
-            code: 'WORKFLOW_REQUIRED_INPUT_MISSING',
+            code: WorkflowDiagnosticCodeEnum.requiredInputMissing,
             severity: 'error',
             nodeId: node.nodeId,
             inputKey: NodeInputKeyEnum.userInputForms,
@@ -417,7 +422,7 @@ const validateSpecialNode = ({
       );
     if (hasInvalidField) {
       diagnostics.push({
-        code: 'WORKFLOW_FORM_INPUT_CONFIGURATION_INVALID',
+        code: WorkflowDiagnosticCodeEnum.formInputConfigurationInvalid,
         severity: 'error',
         nodeId: node.nodeId,
         inputKey: NodeInputKeyEnum.userInputForms,
@@ -436,7 +441,7 @@ const validateSpecialNode = ({
     const usesSandbox = Boolean(getInputValue(NodeInputKeyEnum.useAgentSandbox));
     if (!hasTool && !usesSandbox) {
       diagnostics.push({
-        code: 'WORKFLOW_TOOL_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.toolRequired,
         severity: 'error',
         nodeId: node.nodeId
       });
@@ -449,27 +454,38 @@ const validateSpecialNode = ({
  * CLI、辅助生成及运行/发布入口统一执行完整检查，包括主入口与嵌套入口的孤立检查。
  * 返回诊断供调用方决定阻断或展示；保存草稿不调用此检查。
  * 仅显式传入 modelCheck 时检查模型；CLI 生成不传，Web 注入目录和模板。资源状态由 Web/服务端补充。
+ * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除失效项后再执行必填及模型检查。
  */
 export const validateWorkflow = (
-  document: WorkflowDocument,
-  { modelCheck }: { modelCheck?: Omit<Parameters<typeof checkWorkflowModels>[0], 'document'> } = {}
+  sourceDocument: WorkflowDocument,
+  {
+    modelCheck,
+    invalidReferencePolicy
+  }: {
+    modelCheck?: Omit<Parameters<typeof checkWorkflowModels>[0], 'document'>;
+    invalidReferencePolicy: WorkflowInvalidReferencePolicy;
+  }
 ): WorkflowDiagnostic[] => {
-  const schemaResult = WorkflowDocumentSchema.safeParse(document);
+  const schemaResult = WorkflowDocumentSchema.safeParse(sourceDocument);
   if (!schemaResult.success) {
     return schemaResult.error.issues.map((issue) => ({
-      code: 'WORKFLOW_SCHEMA_INVALID',
+      code: WorkflowDiagnosticCodeEnum.schemaInvalid,
       severity: 'error' as const,
       path: issue.path.map((item) => (typeof item === 'symbol' ? item.toString() : item)),
       params: { reason: issue.message }
     }));
   }
 
+  const document = resolveWorkflowReferenceDocument({
+    document: sourceDocument,
+    invalidReferencePolicy
+  });
   const diagnostics: WorkflowDiagnostic[] = [];
   const nodeIds = new Set<string>();
   for (const node of document.nodes) {
     if (nodeIds.has(node.nodeId)) {
       diagnostics.push({
-        code: 'WORKFLOW_NODE_ID_DUPLICATED',
+        code: WorkflowDiagnosticCodeEnum.nodeIdDuplicated,
         severity: 'error',
         nodeId: node.nodeId
       });
@@ -480,7 +496,7 @@ export const validateWorkflow = (
   for (const node of document.nodes) {
     if (node.parentNodeId && !nodeIds.has(node.parentNodeId)) {
       diagnostics.push({
-        code: 'WORKFLOW_PARENT_NODE_NOT_FOUND',
+        code: WorkflowDiagnosticCodeEnum.parentNodeNotFound,
         severity: 'error',
         nodeId: node.nodeId,
         params: { parentNodeId: node.parentNodeId }
@@ -505,7 +521,7 @@ export const validateWorkflow = (
       isNestedChildSystemNodeType(node.flowNodeType)
     ) {
       diagnostics.push({
-        code: 'WORKFLOW_SYSTEM_OR_BREAK_PARENT_REQUIRED',
+        code: WorkflowDiagnosticCodeEnum.systemOrBreakParentRequired,
         severity: 'error',
         nodeId: node.nodeId
       });
@@ -522,7 +538,7 @@ export const validateWorkflow = (
   );
   if (startNodes.length !== 1) {
     diagnostics.push({
-      code: 'WORKFLOW_START_COUNT_INVALID',
+      code: WorkflowDiagnosticCodeEnum.startCountInvalid,
       severity: 'error',
       params: { count: startNodes.length }
     });
@@ -533,7 +549,11 @@ export const validateWorkflow = (
   for (const edge of document.executionEdges) {
     const edgeKey = JSON.stringify(edge);
     if (edgeKeys.has(edgeKey)) {
-      diagnostics.push({ code: 'WORKFLOW_EDGE_DUPLICATED', severity: 'error', params: { edge } });
+      diagnostics.push({
+        code: WorkflowDiagnosticCodeEnum.edgeDuplicated,
+        severity: 'error',
+        params: { edge }
+      });
     }
     edgeKeys.add(edgeKey);
     try {
@@ -549,7 +569,7 @@ export const validateWorkflow = (
         );
       } else {
         diagnostics.push({
-          code: 'WORKFLOW_EDGE_INVALID',
+          code: WorkflowDiagnosticCodeEnum.edgeInvalid,
           severity: 'error',
           params: { edge, reason: error instanceof Error ? error.message : String(error) }
         });
@@ -580,7 +600,7 @@ export const validateWorkflow = (
     if (reachabilityIgnoredNodeTypes.has(node.flowNodeType)) continue;
     if (!entryTypes.has(node.flowNodeType) && !reachableNodeIds.has(node.nodeId)) {
       diagnostics.push({
-        code: 'WORKFLOW_NODE_NOT_REACHABLE',
+        code: WorkflowDiagnosticCodeEnum.nodeNotReachable,
         severity: 'error',
         nodeId: node.nodeId,
         params: {
@@ -589,7 +609,7 @@ export const validateWorkflow = (
       });
     } else if (!connectedNodeIds.has(node.nodeId)) {
       diagnostics.push({
-        code: 'WORKFLOW_NODE_ISOLATED',
+        code: WorkflowDiagnosticCodeEnum.nodeIsolated,
         severity: 'error',
         nodeId: node.nodeId
       });

@@ -1,11 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Box, Button, Flex, IconButton, Portal, Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { useTranslation } from 'next-i18next';
+import { Trans, useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
 import { getModelList } from '@/web/core/ai/model/modelData';
@@ -15,7 +16,7 @@ import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { parseCompatibleWorkflowDocument } from '@fastgpt/workflow-core/domain/document';
 import ChatPanel, { type WorkflowBuilderChatPanelRef } from './ChatPanel';
-import { mergeWorkflowBuilderAppliedAppDetail } from './utils';
+import { mergeWorkflowBuilderAppliedAppDetail, prepareWorkflowBuilderToolSecrets } from './utils';
 import { useWorkflowAutoLayout } from '../Flow/hooks/useWorkflowAutoLayout';
 import { WorkflowSnapshotContext } from '../context/workflowSnapshotContext';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
@@ -27,54 +28,9 @@ import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
-const WorkflowBuilderApplyToast = ({
-  status,
-  message
-}: {
-  status: 'success' | 'error';
-  message: string;
-}) => {
-  const isSuccess = status === 'success';
-
-  return (
-    <Flex
-      h="48px"
-      maxW="calc(100vw - 32px)"
-      px="20px"
-      alignItems="center"
-      gap="12px"
-      bg={isSuccess ? '#EDFBF3' : '#FEF3F2'}
-      borderRadius="6px"
-      boxShadow="0 0 1px rgba(19, 51, 107, 0.1), 0 4px 10px rgba(19, 51, 107, 0.1)"
-    >
-      <Flex
-        boxSize="24px"
-        flexShrink={0}
-        alignItems="center"
-        justifyContent="center"
-        bg={isSuccess ? '#039855' : '#D92D20'}
-        borderRadius="50%"
-      >
-        <MyIcon name={isSuccess ? 'check' : 'common/closeLight'} boxSize="16px" color="white" />
-      </Flex>
-      <Text
-        minW={0}
-        color="#111824"
-        fontSize="14px"
-        fontWeight={400}
-        lineHeight="20px"
-        letterSpacing="0.25px"
-        noOfLines={1}
-      >
-        {message}
-      </Text>
-    </Flex>
-  );
-};
-
 const WorkflowBuilder = () => {
-  const { t } = useTranslation('workflow');
-  const { toast } = useToast();
+  const { t } = useTranslation(['workflow']);
+  const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
   const appDetail = useContextSelector(AppContext, (value) => value.appDetail);
@@ -111,28 +67,13 @@ const WorkflowBuilder = () => {
     const workflow = flowData2StoreData();
     return workflow ? { ...workflow, chatConfig: appDetail.chatConfig } : undefined;
   });
-  const showApplyResultToast = useCallback(
-    ({ status, message }: { status: 'success' | 'error'; message: string }) =>
-      toast({
-        id: 'workflow-builder-apply-result',
-        title: message,
-        position: 'top',
-        containerStyle: {
-          minWidth: 0,
-          maxWidth: 'none',
-          marginTop: '80px'
-        },
-        render: () => <WorkflowBuilderApplyToast status={status} message={message} />
-      }),
-    [toast]
-  );
   const notifyVersionExpired = useCallback(
     () =>
-      showApplyResultToast({
+      myToast({
         status: 'error',
-        message: t('workflow_builder_version_expired_toast')
+        title: t('workflow_builder_version_expired_toast')
       }),
-    [showApplyResultToast, t]
+    [myToast, t]
   );
 
   /** 同一画布串行应用版本；锁覆盖加载、写入和失败恢复，避免旧请求回滚较新的版本。 */
@@ -155,7 +96,7 @@ const WorkflowBuilder = () => {
         const targetDocument = parseCompatibleWorkflowDocument(loaded.document);
         const modelList = await getModelList();
         const defaultModelIds = useUserModelStore.getState().defaultModelIds;
-        const workflowConfig = await parseWorkflowImportConfig({
+        const importedWorkflowConfig = await parseWorkflowImportConfig({
           config: compileStoreWorkflow(targetDocument),
           appType:
             appDetail.type === AppTypeEnum.workflowTool
@@ -167,6 +108,10 @@ const WorkflowBuilder = () => {
           modelReferencePolicy: 'fallback',
           modelCatalogLoaded: true
         });
+        const workflowConfig = {
+          ...importedWorkflowConfig,
+          nodes: await prepareWorkflowBuilderToolSecrets({ nodes: importedWorkflowConfig.nodes })
+        };
         // 预加载不修改画布；写入前再取最新快照，失败时保留用户等待期间的编辑。
         previousWorkflow = getCurrentWorkflow();
         if (!previousWorkflow) throw new Error('Workflow Builder current canvas is unavailable');
@@ -186,7 +131,7 @@ const WorkflowBuilder = () => {
         });
         if (autoLayoutResult === 'failed') {
           // 布局只影响节点位置，不能阻断 JSON 业务配置的应用。
-          console.warn('[Workflow Builder] Auto layout failed, keeping applied workflow');
+          console.warn('Auto layout failed, keeping applied workflow');
         }
         const archivedVersion = await commitWorkflowBuilderVersion({
           appId,
@@ -213,19 +158,28 @@ const WorkflowBuilder = () => {
             }
           };
         });
-        showApplyResultToast({
+        myToast({
           status: 'success',
-          message: t('workflow_builder_applied', { name: version.name })
+          title: (
+            <Text as="span" fontWeight="normal">
+              <Trans
+                i18nKey="workflow:workflow_builder_applied"
+                values={{ name: version.name }}
+                components={{ bold: <Text as="strong" fontWeight={600} /> }}
+              />
+            </Text>
+          )
         });
         return archivedVersion;
       } catch (error) {
         if (isWorkflowBuilderVersionExpiredError(error)) {
           notifyVersionExpired();
         } else {
-          console.error('[Workflow Builder] Apply failed', error);
-          showApplyResultToast({
+          console.error('Apply failed', error);
+          myToast({
             status: 'error',
-            message: t('workflow_builder_apply_failed')
+            title: t('workflow:workflow_builder_apply_failed'),
+            description: getErrText(error)
           });
         }
         try {
@@ -256,7 +210,7 @@ const WorkflowBuilder = () => {
       setAppDetail,
       setActivity,
       notifyVersionExpired,
-      showApplyResultToast,
+      myToast,
       t
     ]
   );
@@ -416,8 +370,6 @@ const WorkflowBuilder = () => {
                 ref={chatPanelRef}
                 appId={appId}
                 appDetail={appDetail}
-                isOpen={isOpen}
-                workflowBuilderEnabled={workflowBuilderEnabled}
                 workflowBuilderVersionActions={versionActions}
                 onChatIdChange={setBuilderChatId}
                 focusRequestId={focusRequestId}

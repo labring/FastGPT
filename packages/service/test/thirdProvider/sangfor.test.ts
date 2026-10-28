@@ -54,6 +54,24 @@ describe('Sangfor provider', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it('accepts stable MinerU PDF failure statusText values', async () => {
+    postMock.mockRejectedValueOnce({
+      response: { data: { statusText: CommonErrEnum.pdfEncrypted } }
+    });
+
+    await expect(
+      parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' })
+    ).rejects.toThrow(CommonErrEnum.pdfEncrypted);
+
+    postMock.mockRejectedValueOnce({
+      response: { data: { statusText: CommonErrEnum.pdfCorrupted } }
+    });
+
+    await expect(
+      parseFromSangfor({ fileBuffer: Buffer.from('pdf'), extension: 'pdf' })
+    ).rejects.toThrow(CommonErrEnum.pdfCorrupted);
+  });
+
   it('requires provider selection, parser URL and a supported extension', () => {
     expect(useSangforParse('pdf')).toBe(false);
 

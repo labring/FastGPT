@@ -1,5 +1,5 @@
 import z from 'zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, createPaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
@@ -106,9 +106,7 @@ const FeedbackLogParamSchema = z.object({
   })
 });
 // Get App Chat Logs Query Parameters (based on GetAppChatLogsProps)
-export const GetAppChatLogsBodySchema = PaginationSchema.extend(
-  FeedbackLogParamSchema.shape
-).extend({
+const AppChatLogsFilterSchema = FeedbackLogParamSchema.extend({
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
@@ -147,6 +145,7 @@ export const GetAppChatLogsBodySchema = PaginationSchema.extend(
     description: '对话内容搜索关键词'
   })
 });
+export const GetAppChatLogsBodySchema = createPaginationSchema(AppChatLogsFilterSchema.shape);
 export type getAppChatLogsBody = z.infer<typeof GetAppChatLogsBodySchema>;
 // Get App Chat Logs Response
 export const GetAppChatLogsResponseSchema = z
@@ -165,11 +164,7 @@ export const ExportChatLogsResponseSchema = z.string().meta({
 export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSchema>;
 
 /* Export chat log */
-export const ExportChatLogsBodySchema = GetAppChatLogsBodySchema.omit({
-  pageSize: true,
-  offset: true,
-  pageNum: true
-}).safeExtend({
+export const ExportChatLogsBodySchema = AppChatLogsFilterSchema.safeExtend({
   title: z.string().meta({
     example: 'chat logs',
     description: '标题'
@@ -334,7 +329,7 @@ export const GetTotalDataResponseSchema = z.object({
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
 
 /* Get log users */
-export const GetLogUsersBodySchema = PaginationSchema.extend({
+export const GetLogUsersBodySchema = createPaginationSchema({
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'

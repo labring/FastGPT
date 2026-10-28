@@ -68,6 +68,22 @@ describe('string tools', () => {
     );
   });
 
+  it('preserves JSON fields and escaped quotes after masking URLs', () => {
+    const text = JSON.stringify({
+      url: 'https://example.com/path',
+      detail: 'sku missing',
+      reason: 'see https://example.com/docs" retry'
+    });
+    const sanitized = replaceSensitiveText(text);
+
+    expect(JSON.parse(sanitized)).toEqual({
+      url: 'https://xxx',
+      detail: 'sku missing',
+      reason: 'see https://xxx" retry'
+    });
+    expect(replaceSensitiveText(sanitized)).toBe(sanitized);
+  });
+
   it('should generate nanoid with lowercase prefix', () => {
     const id = getNanoid(12);
     expect(id).toHaveLength(12);
@@ -143,6 +159,26 @@ describe('string tools', () => {
     expect(sliceStrStartEnd('abcdefghijklmnopqrstuvwxyz', 5, 4)).toBe(
       'abcde\n\n...[hide 17 chars]...\n\nwxyz'
     );
+  });
+
+  it('should not split a surrogate pair in the sliced preview', () => {
+    // `😀` 占 2 个 UTF-16 code unit。截断点落在代理对中间时，
+    // 原来的 str.slice 会保留半个字符（孤立代理项），渲染或送模型时变成 U+FFFD 乱码。
+    const hasLoneSurrogate = (text: string) =>
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(text);
+
+    const text = 'a😀b😀c';
+    expect(text.length).toBe(7);
+
+    // start=2 / end=2 正好切在两组代理对中间，两侧都只能放弃半个字符
+    expect(sliceStrStartEnd(text, 2, 2)).toBe('a\n\n...[hide 3 chars]...\n\nc');
+    expect(hasLoneSurrogate(sliceStrStartEnd(text, 2, 2))).toBe(false);
+
+    // readFiles 预览用 start=end=1000：第 1000 个 code unit 是代理对的前半部分
+    const longText = `${'a'.repeat(999)}😀${'b'.repeat(1000)}`;
+    const preview = sliceStrStartEnd(longText, 1000, 1000);
+    expect(hasLoneSurrogate(preview)).toBe(false);
+    expect(preview).toBe(`${'a'.repeat(999)}\n\n...[hide 1 chars]...\n\n${'b'.repeat(1000)}`);
   });
 
   it('should format numbers with units', () => {

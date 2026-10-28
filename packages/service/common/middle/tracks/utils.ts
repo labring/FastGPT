@@ -1,4 +1,8 @@
-import { type PushTrackCommonType } from '@fastgpt/global/common/middle/tracks/type';
+import type {
+  PushTrackTeamType,
+  PushTrackUserType,
+  WorkflowBuilderTrackData
+} from '@fastgpt/global/common/middle/tracks/type';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
@@ -18,10 +22,7 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 const logger = getLogger(LogCategories.EVENT.TRACK);
 const dailyActiveDedupeCache = new DailyActiveDedupeCache({ logger });
 
-type AccountCancellationTrackData = {
-  uid?: string;
-  teamId?: string;
-  tmbId?: string;
+type AccountCancellationTrackData = PushTrackUserType & {
   userId: string;
   operatorUserId: string;
   operatorType: 'self' | 'system' | 'admin';
@@ -36,6 +37,7 @@ type AccountCancellationTrackData = {
   cronExecutionId?: string;
 };
 
+/** 提取埋点身份；账号事件只保留 uid，团队事件保留团队及成员，业务字段放入 data。 */
 const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, any> }) => {
   if (!global.feConfigs?.isPlus) return;
   logger.debug('Enqueue track event', {
@@ -47,9 +49,7 @@ const createTrack = ({ event, data }: { event: TrackEnum; data: Record<string, a
 
   return TrackModel.create({
     event,
-    uid,
-    teamId,
-    tmbId,
+    ...(uid !== undefined ? { uid } : { teamId, tmbId }),
     data: props
   });
 };
@@ -90,19 +90,42 @@ const pushCountTrack = ({
 };
 
 export const pushTrack = {
-  login: (data: PushTrackCommonType & { type: `${OAuthEnum}` | 'password' }) => {
+  /** 入口每次点击累加一次，按发生时的 UTC 小时分桶，不保存团队或成员信息。 */
+  workflowBuilderClick: () => {
+    const hour = new Date();
+    hour.setUTCMinutes(0, 0, 0);
+    pushCountTrack({
+      event: TrackEnum.workflowBuilderClick,
+      key: `${TrackEnum.workflowBuilderClick}_${hour.getTime()}`,
+      data: { createTime: hour }
+    });
+  },
+  /** 固定字段逐条落库；拒绝额外参数进入埋点，采集失败不影响业务执行。 */
+  workflowBuilder: async ({ teamId, tmbId, appId, chatId, event }: WorkflowBuilderTrackData) => {
+    if (!global.feConfigs?.isPlus) return;
+    try {
+      await createTrack({ event, data: { teamId, tmbId, appId, chatId } });
+    } catch {
+      logger.warn('Failed to record Workflow Builder track', {
+        teamId,
+        tmbId,
+        appId,
+        chatId,
+        event
+      });
+    }
+  },
+  login: (data: PushTrackUserType & { type: `${OAuthEnum}` | 'password' }) => {
     return createTrack({
       event: TrackEnum.login,
       data
     })?.then(() => {
       pushTrack.dailyUserActive({
-        uid: data.uid,
-        teamId: data.teamId,
-        tmbId: data.tmbId
+        uid: data.uid
       });
     });
   },
-  dailyUserActive: async (data: PushTrackCommonType) => {
+  dailyUserActive: async (data: PushTrackUserType) => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const shouldRecord = await dailyActiveDedupeCache.shouldRecord({
@@ -120,7 +143,7 @@ export const pushTrack = {
     }
   },
   createApp: (
-    data: PushTrackCommonType &
+    data: PushTrackTeamType &
       ShortUrlParams & {
         type: AppTypeEnum;
         appId: string;
@@ -131,13 +154,13 @@ export const pushTrack = {
       data
     });
   },
-  createDataset: (data: PushTrackCommonType & { type: DatasetTypeEnum }) => {
+  createDataset: (data: PushTrackTeamType & { type: DatasetTypeEnum }) => {
     return createTrack({
       event: TrackEnum.createDataset,
       data
     });
   },
-  countAppNodes: async (data: PushTrackCommonType & { appId: string }) => {
+  countAppNodes: async (data: PushTrackTeamType & { appId: string }) => {
     try {
       const { nodes } = await getAppLatestVersion(data.appId);
       const nodeTypeList = nodes.map((node) => ({
@@ -154,7 +177,7 @@ export const pushTrack = {
     } catch {}
   },
   runSystemTool: (
-    data: PushTrackCommonType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }
+    data: PushTrackTeamType & { toolId: string; result: 1 | 0; usagePoint?: number; msg?: string }
   ) => {
     return createTrack({
       event: TrackEnum.runSystemTool,
@@ -185,7 +208,7 @@ export const pushTrack = {
     });
   },
   enterpriseAuthStart: (
-    data: PushTrackCommonType & {
+    data: PushTrackTeamType & {
       result: 'success' | 'failed';
       status?: `${TeamEnterpriseAuthStatusEnum}`;
       taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
@@ -199,7 +222,7 @@ export const pushTrack = {
     });
   },
   enterpriseAuthBenefitGrant: (
-    data: PushTrackCommonType & {
+    data: PushTrackTeamType & {
       status?: `${TeamEnterpriseAuthStatusEnum}`;
       taskId?: string;
       billId?: string;

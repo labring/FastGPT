@@ -314,22 +314,8 @@ export const filterSystemVariables = (variables: Record<string, any>): SystemVar
   };
 };
 
-/**
- * 将 HTTP 请求异常整理成可序列化、可展示的错误摘要。
- *
- * Axios 等请求库的原始错误通常包含循环引用和大量配置对象，这里只保留排查请求失败所需的
- * method、status、code 和响应数据。
- */
-export const formatHttpError = (error: any) => {
-  return {
-    message: getErrText(error),
-    data: error?.response?.data,
-    name: error?.name,
-    method: error?.config?.method,
-    code: error?.code,
-    status: error?.status
-  };
-};
+/** HTTP 错误摘要已下沉到 common/api/httpError，供 HTTP 节点与工具调用共用。 */
+export { formatHttpError } from '../../../../common/api/httpError';
 
 /**
  * 重写 runtime workflow 中的工具相关节点配置。
@@ -469,7 +455,7 @@ export const rewriteRuntimeWorkFlow = async ({
         if (systemToolId) {
           const children = await getSystemToolRunTimeNodeFromSystemToolset({
             toolSetNode,
-            teamId,
+            teamId
           });
           children.forEach((node) => {
             const runtimeNode = initToolSetChildNode(node);

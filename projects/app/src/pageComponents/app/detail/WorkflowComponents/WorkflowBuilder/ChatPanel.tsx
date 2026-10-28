@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
@@ -26,11 +26,7 @@ import {
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
-import {
-  clearWorkflowBuilderChatHistory,
-  prewarmWorkflowBuilderRuntime,
-  streamWorkflowBuilderChat
-} from './api';
+import { clearWorkflowBuilderChatHistory, streamWorkflowBuilderChat } from './api';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -40,8 +36,7 @@ import {
   getWorkflowBuilderErrorAttentionKey,
   getWorkflowBuilderPendingInteractiveKey,
   getWorkflowBuilderWatchChatId,
-  isWorkflowBuilderVersionGenerating,
-  shouldPrewarmWorkflowBuilderRuntime
+  isWorkflowBuilderVersionGenerating
 } from './uiState';
 import { WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY } from '@/web/core/app/utils';
 
@@ -255,13 +250,7 @@ const WorkflowBuilderChatContent = ({
   ]);
 
   const onStartChat = useMemoizedFn(
-    async ({
-      messages,
-      responseChatItemId,
-      agentPlanAskResponse,
-      controller,
-      generatingMessage
-    }: StartChatFnProps) => {
+    async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
       const document = reactFlowStateToWorkflowDocument({
         nodes: getNodes(),
         edges,
@@ -276,7 +265,6 @@ const WorkflowBuilderChatContent = ({
           responseChatItemId,
           messages: messages.slice(-1),
           model: selectedModelId || undefined,
-          agentPlanAskResponse,
           workflowContext: { document, checksum }
         },
         onMessage: generatingMessage,
@@ -311,6 +299,7 @@ const WorkflowBuilderChatContent = ({
     <Box display={'flex'} flexDirection={'column'} h={'100%'} minH={0}>
       <Box flex={1} minH={0} overflow={'hidden'}>
         <ChatBox
+          dialogTips={t('builder_input_placeholder')}
           isReady={!!selectedModel}
           active={!watchExternalChat}
           sourceTarget={sourceTarget}
@@ -327,7 +316,6 @@ const WorkflowBuilderChatContent = ({
             quickReplies: true,
             disableFooterHoverTranslate: true,
             workflowBuilderInput: true,
-            workflowBuilderResponseCollapse: true,
             hideAgentAskOptionDescription: true
           }}
           InputLeftComponent={ModelSelector}
@@ -347,8 +335,6 @@ const ChatPanel = React.forwardRef<
   {
     appId: string;
     appDetail: AppDetailType;
-    isOpen: boolean;
-    workflowBuilderEnabled: boolean;
     workflowBuilderVersionActions: WorkflowBuilderVersionActions;
     onChatIdChange: (chatId: string) => void;
     focusRequestId: number;
@@ -359,8 +345,6 @@ const ChatPanel = React.forwardRef<
     {
       appId,
       appDetail,
-      isOpen,
-      workflowBuilderEnabled,
       workflowBuilderVersionActions,
       onChatIdChange,
       focusRequestId,
@@ -381,7 +365,6 @@ const ChatPanel = React.forwardRef<
     const cachedChatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
     const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
     const setSourceChatId = useChatStore((state) => state.setSourceChatId);
-    const prewarmStartedRuntimeKeyRef = useRef('');
     const watchChatId = getWorkflowBuilderWatchChatId(
       router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
     );
@@ -393,38 +376,6 @@ const ChatPanel = React.forwardRef<
         ensureSourceChatId(chatIdCacheKey);
       }
     }, [chatId, chatIdCacheKey, ensureSourceChatId, watchChatId]);
-
-    useRequest(
-      async () => {
-        if (watchChatId) return;
-        if (
-          !shouldPrewarmWorkflowBuilderRuntime({
-            workflowBuilderEnabled,
-            isOpen,
-            chatId,
-            runtimeKey: chatIdCacheKey,
-            prewarmStartedRuntimeKey: prewarmStartedRuntimeKeyRef.current
-          })
-        ) {
-          return;
-        }
-
-        prewarmStartedRuntimeKeyRef.current = chatIdCacheKey;
-        await prewarmWorkflowBuilderRuntime({ appId, chatId }).catch((error) => {
-          if (prewarmStartedRuntimeKeyRef.current === chatIdCacheKey) {
-            prewarmStartedRuntimeKeyRef.current = '';
-          }
-          throw error;
-        });
-      },
-      {
-        manual: false,
-        ready: workflowBuilderEnabled && isOpen && Boolean(chatId),
-        // Sandbox 按应用和成员隔离：首次打开时预热，关闭重开或 chatId 变化不重复请求。
-        refreshDeps: [appId, tmbId, isOpen, watchChatId, workflowBuilderEnabled],
-        errorToast: ''
-      }
-    );
 
     const chatRecordProviderParams = useMemo(
       () => ({

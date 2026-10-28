@@ -54,6 +54,11 @@ type DatasetSynonymMutationProps = {
 /**
  * 原子切换当前同义词 matcher，并创建独立的同义词重建任务。
  * mapping、配置、data 标记和种子任务在同一事务中提交；保留历史词表供差量比较。
+ *
+ * 管理面边界：路由层只负责入参校验、鉴权和 response schema，本函数承载事务、
+ * 队列忙校验、重建任务种子和 matcher 缓存失效。管理页面由宿主产品实现（agent-builder
+ * UI 已消费这套 API），本仓库只提供 API 契约，避免维护第二份管理实现；独立部署
+ * 需要页面时直接调用 `pages/api/core/dataset/synonym/*` 即可，不需要改引擎。
  */
 export const createDatasetSynonymMutation = async ({
   req,

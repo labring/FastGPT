@@ -1,3 +1,4 @@
+import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { type ChatControllerProps } from './ChatController';
@@ -7,8 +8,6 @@ import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useTranslation } from 'next-i18next';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import {
   ChatItemContext,
@@ -19,9 +18,11 @@ import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
+import InteractiveReply from './InteractiveReply';
 import AIChatBubble from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
-import { groupAIChatResponseValues, shouldFilterAiValue } from './AIChatBubble/utils';
+import { shouldFilterAiValue } from './AIChatBubble/utils';
+import { getAIChatDisplayGroups } from '../utils/agentAsk';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
@@ -81,10 +82,6 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const boxBodyProps = useContextSelector(ChatBoxContext, (v) => v.boxBodyProps);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const collapseIntermediateAgentResponses = useContextSelector(
-    ChatBoxContext,
-    (v) => v.collapseIntermediateAgentResponses ?? false
-  );
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
   const { isPc } = useSystem();
@@ -131,24 +128,26 @@ const ChatItem = (props: Props) => {
     return colorMap[statusBoxData.status];
   }, [statusBoxData?.status]);
 
-  /*
-    1. The interactive node is divided into n dialog boxes.
-    2. Auto-complete the last textnode
-  */
-  const splitAiResponseResults = useMemo(() => {
-    if (chat.obj === ChatRoleEnum.Human) return [chat.value];
+  const hasFooterContent = showInlineError || React.Children.toArray(children).length > 0;
+  const displayGroups = useMemo(() => {
+    if (chat.obj === ChatRoleEnum.Human) return [{ type: 'human' as const, values: chat.value }];
 
     if (chat.obj === ChatRoleEnum.AI) {
-      return groupAIChatResponseValues({
+      const groups = getAIChatDisplayGroups({
         chatValue: chat.value,
         isLastChild,
-        isChatting,
-        collapseIntermediateAgentResponses
+        isChatting
       });
+      // 仅有提问交互时，也要保留 AI 的错误和反馈位置。
+      if (hasFooterContent && groups.length === 0) {
+        groups.push({ type: 'ai', values: [] });
+      }
+      return groups;
     }
 
     return [];
-  }, [chat.obj, chat.value, collapseIntermediateAgentResponses, isChatting, isLastChild]);
+  }, [chat.obj, chat.value, hasFooterContent, isChatting, isLastChild]);
+  const lastAiGroupIndex = displayGroups.findLastIndex((group) => group.type === 'ai');
   const hasValidAiContent = useMemo(() => {
     if (chat.obj !== ChatRoleEnum.AI) return false;
 
@@ -232,13 +231,12 @@ const ChatItem = (props: Props) => {
         )}
 
       {/* content */}
-      {splitAiResponseResults.map((value, i) => {
+      {displayGroups.map((group, i) => {
         const isPlanCard =
-          chat.obj === ChatRoleEnum.AI &&
-          (value as AIChatItemValueItemType[]).some((item) => item.plan || item.planStatus);
+          group.type === 'ai' && group.values.some((item) => item.plan || item.planStatus);
 
         const renderCommonFooter = () =>
-          i === splitAiResponseResults.length - 1 ? (
+          i === (isHumanMessage ? displayGroups.length - 1 : lastAiGroupIndex) ? (
             <>
               {/* error message */}
               {showInlineError && inlineErrorInfo && (
@@ -250,7 +248,9 @@ const ChatItem = (props: Props) => {
             </>
           ) : null;
 
-        if (chat.obj === ChatRoleEnum.Human) {
+        if (group.type === 'human') {
+          const select = getUserChatSelect(group.values);
+          // 用户气泡的复制操作在正文下方，需要保留与普通 user 消息相同的空间。
           return (
             <Box
               key={i}
@@ -260,14 +260,20 @@ const ChatItem = (props: Props) => {
               mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? (isPc ? 'auto' : 0)}
               textAlign={styleMap.textAlign}
             >
-              <HumanChatBubble
-                chatValue={value as UserChatItemValueItemType[]}
-                chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
-                canEdit={!isChatting && !isChatLog}
-                onEditSubmit={onEditSubmit}
-              >
-                {renderCommonFooter()}
-              </HumanChatBubble>
+              {select ? (
+                <InteractiveReply reply={select} chatValue={group.values} chatTime={chat.time}>
+                  {renderCommonFooter()}
+                </InteractiveReply>
+              ) : (
+                <HumanChatBubble
+                  chatValue={group.values}
+                  chatTime={chat.time}
+                  canEdit={!isChatting && !isChatLog}
+                  onEditSubmit={onEditSubmit}
+                >
+                  {renderCommonFooter()}
+                </HumanChatBubble>
+              )}
             </Box>
           );
         }
@@ -283,10 +289,10 @@ const ChatItem = (props: Props) => {
           >
             <AIChatBubble
               chat={chat}
-              chatValue={value as AIChatItemValueItemType[]}
+              chatValue={group.values}
               isPlanCard={isPlanCard}
-              isLastChild={isLastChild}
-              isLastValueGroup={i === splitAiResponseResults.length - 1}
+              isLastChild={isLastChild && i === displayGroups.length - 1}
+              isLastValueGroup={i === lastAiGroupIndex}
               isChatting={isChatting}
               hasValidContent={hasValidAiContent}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}

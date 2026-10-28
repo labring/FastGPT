@@ -1,3 +1,4 @@
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { runCli } from '../src/run';
 import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -128,7 +129,7 @@ describe('PR1 through PR4 CLI end to end', () => {
       const result = await invoke(jsonArgs(dir, args));
       expect(result.exitCode).toBe(4);
       expect(JSON.parse(result.stderr[0]).errors[0].diagnostics).toEqual([
-        { code: 'WORKFLOW_NODE_ISOLATED', severity: 'error', nodeId: 'start' }
+        { code: WorkflowDiagnosticCodeEnum.nodeIsolated, severity: 'error', nodeId: 'start' }
       ]);
     }
     expect(await readFile(join(dir, 'workflow.json'), 'utf8')).toBe(before);
@@ -436,7 +437,7 @@ describe('PR1 through PR4 CLI end to end', () => {
       },
       warnings: [
         {
-          code: 'WORKFLOW_BINDING_REQUIRED',
+          code: WorkflowDiagnosticCodeEnum.bindingRequired,
           nodeId: 'search',
           inputKey: 'datasets'
         }
@@ -447,7 +448,7 @@ describe('PR1 through PR4 CLI end to end', () => {
     const build = await invoke(jsonArgs(dir, ['build', '--output', output]));
     expect(build.exitCode).toBe(0);
     expect(JSON.parse(build.stdout[0]).warnings).toMatchObject([
-      { code: 'WORKFLOW_BINDING_REQUIRED', nodeId: 'search', inputKey: 'datasets' }
+      { code: WorkflowDiagnosticCodeEnum.bindingRequired, nodeId: 'search', inputKey: 'datasets' }
     ]);
     const workflow = JSON.parse(await readFile(output, 'utf8'));
     expect(
@@ -759,6 +760,15 @@ describe('PR1 through PR4 CLI end to end', () => {
     const { invoke } = await createHarness();
     expect((await invoke(['--help'])).stdout[0]).toContain('Commands:');
     expect((await invoke(['--version'])).stdout).toEqual(['0.3.0-beta.1']);
+    // 全局选项可以与其他参数共存：--version 不应要求命令，也不能继续执行命令。
+    const versionWithOptions = await invoke(['--version', '--format', 'json']);
+    expect(versionWithOptions.exitCode).toBe(0);
+    expect(versionWithOptions.stdout).toEqual(['0.3.0-beta.1']);
+    expect(versionWithOptions.stderr).toEqual([]);
+    const versionAfterCommand = await invoke(['node', 'show', '--version']);
+    expect(versionAfterCommand.exitCode).toBe(0);
+    expect(versionAfterCommand.stdout).toEqual(['0.3.0-beta.1']);
+    expect(versionAfterCommand.stderr).toEqual([]);
     const commandHelp = await invoke(['node', 'show', '--help']);
     expect(commandHelp.exitCode).toBe(0);
     expect(commandHelp.stdout[0]).toContain('Usage: fastgpt-workflow node show');

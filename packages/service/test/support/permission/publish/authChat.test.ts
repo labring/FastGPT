@@ -109,13 +109,14 @@ describe('authOutLink', () => {
       appId: 'app-id'
     } as any);
 
+    const req = { headers: { token: 'login-token' } } as any;
     await authOutLink({
       shareId: 'share-id',
       outLinkUid: 'raw-uid',
-      req: {} as any
+      req
     });
 
-    expect(parseHeaderCert).toHaveBeenCalledWith({ req: {}, authToken: true });
+    expect(parseHeaderCert).toHaveBeenCalledWith({ req, authToken: true });
     expect(MongoTeamMember.findOne).toHaveBeenCalledWith({
       userId: 'user-id',
       teamId: 'team-id',

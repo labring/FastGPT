@@ -1,3 +1,4 @@
+/** @deprecated 使用 /api/core/dataset/listV2，旧接口仅保留兼容。 */
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';

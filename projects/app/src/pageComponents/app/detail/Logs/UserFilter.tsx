@@ -38,7 +38,7 @@ export const parseUserKey = (key: string): SelectedUserType => {
   return { outLinkUid: null, tmbId: null };
 };
 
-const USER_PAGE_SIZE = 50;
+const USER_PAGE_SIZE = 20;
 
 const UserFilter = ({
   appId,

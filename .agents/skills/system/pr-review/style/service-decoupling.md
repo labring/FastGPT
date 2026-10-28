@@ -6,6 +6,8 @@
 
 如果 serviceA 确实需要 serviceB 的数据，**由 controller 提前调用 serviceB，将结果以参数形式传入 serviceA**，而不是让 serviceA 自行 import serviceB。
 
+也可按照当前 [代码规范](../../../../code/syntax.md) 通过 props 显式传入所需 service 能力，由上层选择和组织依赖；传入数据或传入函数都是合法方式。审查时核实真实依赖方向、业务归属和循环风险，不因文件名含 `service` 就机械判错，也不要求所有公共逻辑一律移动到 `common/`。
+
 ---
 
 ## 依赖方向

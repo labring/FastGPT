@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getTmbPermission } from '../controller';
 import {
@@ -30,7 +32,10 @@ import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
 import { assertDatasetPermission } from './utils';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
@@ -102,7 +107,8 @@ export const authDatasetByTmbId = async ({
       tmbId,
       isTeamOwner: tmbPer.isOwner,
       isRoot,
-      role: sumPer(folderPer, myPer) ?? 0,
+      // 父级 owner 在子级只能是 manage；物化快照已含父级贡献，这里只兜底历史缺失快照。
+      role: sumPer(toInheritedPermissionValue(folderPer), myPer) ?? 0,
       per
     });
   })();
@@ -172,6 +178,9 @@ export const authDatasetCollectionCreate = async ({
   });
   if (String(result.collection.datasetId) !== String(datasetId)) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+  }
+  if (result.collection.type !== DatasetCollectionTypeEnum.folder) {
+    throw CommonErrEnum.invalidParams;
   }
   const { dataset } = await authDatasetByTmbId({
     tmbId: result.tmbId,
