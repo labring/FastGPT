@@ -34,7 +34,7 @@ describe('dispatchWorkFlow request profile result', () => {
         .spyOn(callbacks.callbackMap, FlowNodeTypeEnum.textEditor)
         .mockImplementation(async ({ nodeSummary }) => {
           if (outcome === 'summary-only') {
-            nodeSummary?.mergeNodeSummary({ hasError: true });
+            nodeSummary?.mergeNodeSummary({ errorCount: 1 });
             return { data: {} };
           }
           if (outcome === 'tool-error') {
@@ -71,6 +71,10 @@ describe('dispatchWorkFlow request profile result', () => {
           runningUserInfo: {
             teamId: '654a4107c32f3bf5f998452f',
             tmbId: '65ab7007462ada7dbb899948',
+            username: 'profile-user',
+            teamName: 'Profile team',
+            memberName: 'Profile member',
+            contact: 'profile@example.com',
             externalProvider: {}
           },
           uid: 'profile-user',
@@ -81,7 +85,7 @@ describe('dispatchWorkFlow request profile result', () => {
           chatConfig: {},
           runtimeNodes: [node],
           runtimeEdges: [],
-          resourceContext: { resourceMap: new Map() },
+          resourceContext: { resourceMap: new Map(), isRoot: true },
           maxRunTimes: 10,
           maxFileAmount: 5,
           maxBytesPerFile: 1024,
@@ -91,7 +95,7 @@ describe('dispatchWorkFlow request profile result', () => {
       );
       expect(callback).toHaveBeenCalledOnce();
       const failed = outcome === 'failed' || outcome === 'summary-only';
-      expect(result.workflowRuntimeSummary.hasError).toBe(failed);
+      expect(!!result.workflowRuntimeSummary.errorCount).toBe(failed);
       const profiles = logger.info.mock.calls
         .filter(([message]) => String(message).startsWith('Request profile '))
         .map(([, payload]) => payload);

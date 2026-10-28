@@ -340,8 +340,8 @@ export async function dispatchWorkFlow({
           .then(async (result) => {
             await nodeResponseSink.close();
             // HTTP 200/SSE 正常收尾也可能包含根运行错误；只按最终摘要判断，避免子层错误误报。
-            const { errorText, hasError } = result.workflowRuntimeSummary;
-            if (errorText || hasError) markProfileError(errorText || 'Workflow run failed');
+            const { errorText, errorCount } = result.workflowRuntimeSummary;
+            if (errorText || errorCount) markProfileError(errorText || 'Workflow run failed');
 
             resolve({
               ...result,
