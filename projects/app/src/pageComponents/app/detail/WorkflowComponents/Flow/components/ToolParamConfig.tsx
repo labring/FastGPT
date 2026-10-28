@@ -12,7 +12,7 @@ import SecretInputModal, {
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { useReference } from '../nodes/render/RenderInput/templates/Reference';
+import { ReferSelector, useReference } from '../nodes/render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
@@ -67,8 +67,10 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
       </Button>
       {isOpen && (
         <SecretInputModal
-          nodeId={nodeId}
           referenceList={referenceList as SecretReferenceList}
+          renderReference={({ list, value, onSelect }) => (
+            <ReferSelector list={list} value={value} onSelect={onSelect} />
+          )}
           isFolder={node?.isFolder}
           inputConfig={inputConfig}
           hasSystemSecret={node?.hasSystemSecret}

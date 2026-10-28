@@ -24,6 +24,7 @@ import { valueMatchesSchema } from '../template/valueSchema';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migration/secret';
 import { getWorkflowInputReferenceDiagnostics } from '../reference/validation';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
@@ -216,6 +217,18 @@ export const validateNodeIO = ({
           nodeId: node.nodeId,
           inputKey: input.key
         });
+      } else {
+        const reference = getSecretReferenceValue(secretValueResult.data);
+        if (reference) {
+          // TODO: 可能和后面的引用检查 PR 冲突。
+          diagnostics.push(
+            ...getWorkflowInputReferenceDiagnostics({
+              document,
+              nodeId: node.nodeId,
+              input: { ...normalizedInput, value: reference }
+            })
+          );
+        }
       }
       // 密文无法按明文字符串的类型和 Schema 检查；诊断也不能携带敏感原值。
       continue;

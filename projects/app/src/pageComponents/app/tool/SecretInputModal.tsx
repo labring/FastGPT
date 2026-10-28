@@ -6,7 +6,11 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  InputConfigType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import {
@@ -31,7 +35,6 @@ import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
@@ -42,8 +45,12 @@ export type ToolParamsFormType = {
 };
 
 type SecretInputFormProps = {
-  nodeId?: string;
   referenceList?: SecretReferenceList;
+  renderReference?: (params: {
+    list: SecretReferenceList;
+    value?: ReferenceValueType;
+    onSelect: (value?: ReferenceValueType) => void;
+  }) => React.ReactElement;
   parentId?: string;
   source?: string;
   isFolder?: boolean;
@@ -171,8 +178,8 @@ export const filterReferenceListByInputType = (
 };
 
 export const SecretInputForm = ({
-  nodeId,
   referenceList = [],
+  renderReference,
   parentId,
   source,
   hasSystemSecret,
@@ -499,7 +506,7 @@ export const SecretInputForm = ({
                                 {fieldLabel}
                               </FormLabel>
                               {item.description && <QuestionTip label={item.description} />}
-                              {nodeId && (
+                              {renderReference && (
                                 <Box ml={2} className="nodrag">
                                   <NodeInputSelect
                                     renderTypeList={[
@@ -532,16 +539,14 @@ export const SecretInputForm = ({
                                   required: item.required
                                 }}
                                 render={({ field: { value: referenceValue, onChange } }) =>
-                                  nodeId && !isReferenceArrayValue(referenceValue) ? (
-                                    <ReferSelector
-                                      list={fieldReferenceList}
-                                      value={
-                                        isSecretReferenceValue(referenceValue)
-                                          ? referenceValue.ref
-                                          : undefined
-                                      }
-                                      onSelect={(ref) => onChange(ref ? { ref } : undefined)}
-                                    />
+                                  renderReference && !isReferenceArrayValue(referenceValue) ? (
+                                    renderReference({
+                                      list: fieldReferenceList,
+                                      value: isSecretReferenceValue(referenceValue)
+                                        ? referenceValue.ref
+                                        : undefined,
+                                      onSelect: (ref) => onChange(ref ? { ref } : undefined)
+                                    })
                                   ) : (
                                     <Box
                                       borderRadius={'6px'}

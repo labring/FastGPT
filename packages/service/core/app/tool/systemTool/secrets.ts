@@ -8,6 +8,7 @@ import {
   normalizeLegacySecretValue
 } from '@fastgpt/global/common/secret/utils';
 import { type InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import { encryptSecretValue } from '../../../../common/secret/utils';
 import { decryptSecret, encryptSecret } from '../../../../common/secret/aes256gcm';
 
 type SecretsVal = Record<string, unknown>;
@@ -37,7 +38,7 @@ const encryptValue = (value: unknown) => {
   if (isSecretValueLike(value)) {
     if (hasSecretValueField(value, 'value') && hasSecretValueField(value, 'secret')) return '';
     const plainValue = getSecretPlainValue(value);
-    if (plainValue !== undefined) return { secret: encryptSecret(plainValue) };
+    if (plainValue !== undefined) return encryptSecretValue({ value: plainValue });
     if (isSecretCipherValue(value)) return value;
     return '';
   }

@@ -79,7 +79,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
 import { useNodeHandleLayout } from './Handle/useNodeHandleLayout';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
-import { useReference } from './RenderInput/templates/Reference';
+import { ReferSelector, useReference } from './RenderInput/templates/Reference';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -1309,8 +1309,10 @@ const NodeSecret = React.memo(function NodeSecret({
 
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
-          nodeId={nodeId}
           referenceList={referenceList as SecretReferenceList}
+          renderReference={({ list, value, onSelect }) => (
+            <ReferSelector list={list} value={value} onSelect={onSelect} />
+          )}
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {

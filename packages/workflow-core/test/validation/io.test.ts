@@ -609,6 +609,21 @@ describe('validateNodeIO', () => {
     expect(check(node, true)).toEqual([]);
   });
 
+  it('validates reference targets inside password wrappers', () => {
+    const node = makeNode({
+      inputs: [
+        makeInput({
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { ref: ['deleted-node', 'text'] }
+        })
+      ]
+    });
+
+    expect(check(node).map((item) => item.code)).toEqual([
+      WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+    ]);
+  });
+
   it('distinguishes empty required secrets from malformed storage values without exposing them', () => {
     const node = makeNode({
       inputs: [

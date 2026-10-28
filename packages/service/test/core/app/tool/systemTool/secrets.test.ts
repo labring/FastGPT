@@ -146,6 +146,20 @@ describe('system tool secrets', () => {
     ).toEqual({});
   });
 
+  it('keeps an empty secret wrapper unconfigured after saving', () => {
+    const stored = encryptSystemToolSecrets({
+      secretsVal: { apiKey: { value: '' } },
+      existingSecretsVal: { apiKey: { secret: encryptSecret('old-api-key') } },
+      secretKeys
+    });
+
+    expect(stored).toEqual({ apiKey: { value: '' } });
+    expect(maskSystemToolSecrets({ secretsVal: stored, secretKeys })).toEqual({
+      apiKey: { value: '' }
+    });
+    expect(decryptSystemToolSecrets(stored)).toEqual({ apiKey: '' });
+  });
+
   it('preserves an existing reference when the field is omitted or masked', () => {
     const existing = { ref: ['node-1', 'token'] as [string, string] };
 
