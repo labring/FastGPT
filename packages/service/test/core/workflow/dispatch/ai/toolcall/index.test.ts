@@ -1,5 +1,5 @@
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -248,18 +248,19 @@ describe('dispatchRunTools', () => {
       completeMessages: [],
       assistantResponses: [],
       finish_reason: 'error',
-      error: new UserConfigError('Invalid API key'),
+      error: new UserError('Invalid API key', undefined, { type: 'config' }),
       requestIds: []
     });
 
     const result = await dispatchRunTools(createProps());
 
     expect(result.error).toMatchObject({
-      system_error_text: 'Invalid API key',
-      name: 'UserConfigError'
+      message: 'Invalid API key',
+      name: 'UserError',
+      type: 'config'
     });
     expect(result.responseData).toMatchObject({
-      errorType: 'UserConfigError'
+      errorType: 'config'
     });
   });
 
@@ -492,7 +493,7 @@ describe('dispatchRunTools', () => {
 
     const result = await dispatchRunTools(props);
 
-    expect(result.error).toEqual({
+    expect(result.data).toEqual({
       system_error_text: 'archive upload failed'
     });
     expect(result.toolResponse).toEqual({

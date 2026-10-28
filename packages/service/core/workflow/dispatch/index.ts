@@ -410,6 +410,8 @@ export class WorkflowQueue {
   // Workflow variables
   workflowRunTimes = 0;
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
+  /** 保留未捕获异常，优先保留系统错误；容器恢复摘要不保存该运行时对象。 */
+  runtimeFailure?: { error: unknown };
   chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   chatNodeUsages: ChatNodeUsageType[] = [];
   toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
@@ -908,23 +910,31 @@ export class WorkflowQueue {
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
-            if (result.error) {
+            if (Object.hasOwn(result, 'error')) {
               const isUserConfigFailure = isUserConfigError(result.error);
+              const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+              // 节点可直接返回原始异常；统一补齐错误输出，供 catch 分支按原 key 引用。
+              const errText =
+                result.data?.[NodeOutputKeyEnum.errorText] ??
+                nodeResponseBase?.errorText ??
+                getErrText(result.error);
+              const errorData = {
+                ...result.data,
+                [NodeOutputKeyEnum.errorText]: errText
+              };
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
                 // Callback returned with `result.error` set instead of throwing;
                 // mirror the catch-branch convention and copy it onto nodeResponse
                 // so runLoopRun / parallelRun failure detection and OTel span
                 // status see `.error` uniformly across both failure paths.
-                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-                const errText = nodeResponseBase?.errorText ?? getErrText(result.error);
-
                 return {
                   ...result,
+                  data: errorData,
                   [DispatchNodeResponseKeyEnum.nodeResponse]: {
                     ...nodeResponseBase,
                     error: errText,
-                    ...(isUserConfigFailure && { errorType: 'UserConfigError' as const })
+                    ...(isUserConfigFailure && { errorType: 'config' as const })
                   },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
@@ -939,6 +949,7 @@ export class WorkflowQueue {
 
               return {
                 ...result,
+                data: errorData,
                 ...(result[DispatchNodeResponseKeyEnum.nodeResponse]
                   ? {
                       [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -980,17 +991,11 @@ export class WorkflowQueue {
             }
 
             return {
-              ...(node.catchError || isUserConfigFailure
-                ? {
-                    error: {
-                      [NodeOutputKeyEnum.errorText]: errorText,
-                      ...(isUserConfigFailure ? { name: 'UserConfigError' as const } : {})
-                    }
-                  }
-                : {}),
+              error,
+              data: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
-                ...(isUserConfigFailure && { errorType: 'UserConfigError' as const }),
+                ...(isUserConfigFailure && { errorType: 'config' as const }),
                 ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
@@ -1025,13 +1030,18 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
+      const hasDispatchError = Object.hasOwn(dispatchRes, 'error');
       const currentNodeError =
-        formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
-      const isUserConfigFailure =
-        isUserConfigError(dispatchRes.error) ||
-        formatCurrentNodeResponse?.errorType === 'UserConfigError';
+        formatCurrentNodeResponse?.errorText ??
+        formatCurrentNodeResponse?.error ??
+        (hasDispatchError ? getErrText(dispatchRes.error) : undefined);
+      // 有原始异常时以它为准，详情标记仅兼容只贡献 nodeResponse 的内部调用。
+      const isUserConfigFailure = hasDispatchError
+        ? isUserConfigError(dispatchRes.error)
+        : formatCurrentNodeResponse?.errorType === 'config';
       if (
         currentNodeError !== undefined &&
+        !(hasDispatchError && node.catchError) &&
         !formatCurrentNodeResponse?.errorCaptured &&
         !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse))
       ) {
@@ -1040,6 +1050,20 @@ export class WorkflowQueue {
           hasUserConfigError: isUserConfigFailure,
           errorText: getErrText(currentNodeError)
         });
+        // 只保留一个代表异常；同一轮混合失败时系统错误优先，原始对象不进入 summary。
+        if (
+          !this.runtimeFailure ||
+          isUserConfigError(this.runtimeFailure.error) ||
+          !isUserConfigFailure
+        ) {
+          this.runtimeFailure = {
+            error: hasDispatchError
+              ? dispatchRes.error
+              : isUserConfigFailure
+                ? new UserError(getErrText(currentNodeError), undefined, { type: 'config' })
+                : new Error(getErrText(currentNodeError))
+          };
+        }
       }
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
@@ -1069,7 +1093,7 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
       // Add output default value
-      if (dispatchRes.data) {
+      if (dispatchRes.data && !hasDispatchError) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
@@ -1322,10 +1346,7 @@ export class WorkflowQueue {
     } => {
       pushStore(result);
 
-      const concatData: Record<string, any> = {
-        ...(result.data ?? {}),
-        ...(result.error ?? {})
-      };
+      const concatData = result.data ?? {};
 
       // Assign the output value to the next node
       node.outputs.forEach((outputItem) => {
@@ -1741,6 +1762,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             }
 
             return {
+              ...workflowQueue.runtimeFailure,
               flowUsages: workflowQueue.chatNodeUsages,
               debugResponse: workflowQueue.getDebugResponse(),
               workflowInteractiveResponse: interactiveResult,

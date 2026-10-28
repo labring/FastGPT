@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getErrorMessage,
   getErrText,
+  isUserConfigError,
   ToastHandledError,
   UserError
 } from '@fastgpt/global/common/error/utils';
@@ -122,7 +123,51 @@ describe('UserError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
+    expect(err.type).toBeUndefined();
   });
+
+  it('preserves the config type, display message and original cause on UserError', () => {
+    const cause = new Error('upstream rejected the key');
+    const error = new UserError('invalid key', '请检查密钥', { type: 'config', cause });
+
+    expect(error).toBeInstanceOf(UserError);
+    expect(error).toMatchObject({
+      name: 'UserError',
+      message: 'invalid key',
+      displayMessage: '请检查密钥',
+      type: 'config',
+      cause
+    });
+    expect(getErrText(error)).toBe('请检查密钥');
+  });
+});
+
+describe('isUserConfigError', () => {
+  it('recognizes the config type before and after serialization', () => {
+    const error = new UserError('invalid key', undefined, { type: 'config' });
+
+    expect(isUserConfigError(error)).toBe(true);
+    expect(isUserConfigError(JSON.parse(JSON.stringify(error)))).toBe(true);
+    expect(isUserConfigError({ name: 'UserError', type: 'config' })).toBe(true);
+  });
+
+  it.each([
+    new UserError('ordinary business error'),
+    new Error('system error'),
+    Object.assign(new Error('system error'), { type: 'config' }),
+    { name: 'UserError' },
+    { name: 'UserError', type: 'other' },
+    { type: 'config' },
+    null,
+    undefined,
+    'config',
+    1
+  ])(
+    'does not classify ordinary business errors or invalid values as config errors: %j',
+    (error) => {
+      expect(isUserConfigError(error)).toBe(false);
+    }
+  );
 });
 
 describe('ToastHandledError', () => {

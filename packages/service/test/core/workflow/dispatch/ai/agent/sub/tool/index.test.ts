@@ -5,8 +5,8 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const {
   authAppByTmbIdMock,
@@ -663,7 +663,9 @@ describe('dispatchTool runtime toolset auth', () => {
       ]
     });
     getMCPChildrenMock.mockResolvedValueOnce([tool]);
-    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+    mcpToolCallMock.mockRejectedValueOnce(
+      new UserError('Invalid MCP URL', undefined, { type: 'config' })
+    );
 
     const result = await dispatchTool(
       createDispatchToolProps({

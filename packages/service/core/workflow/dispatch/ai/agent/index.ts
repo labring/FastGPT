@@ -17,7 +17,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError } from '@fastgpt/global/common/error/utils';
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
@@ -26,6 +26,7 @@ import {
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -373,19 +374,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
-    const isUserConfigFailure =
-      coreResult.status === 'error' && isUserConfigError(coreResult.error);
-
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: finalOutput.answerText
+        [NodeOutputKeyEnum.answerText]: finalOutput.answerText,
+        ...(outputSummary.errorText && {
+          [NodeOutputKeyEnum.errorText]: outputSummary.errorText
+        })
       },
-      ...(outputSummary.errorText && {
-        error: {
-          [NodeOutputKeyEnum.errorText]: outputSummary.errorText,
-          ...(isUserConfigFailure && { name: 'UserConfigError' as const })
-        }
-      }),
+      ...(coreResult.status === 'error' ? { error: coreResult.error } : {}),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
       }),
@@ -399,15 +395,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         error
       });
     }
-    const errorText = getErrText(error);
     return {
-      error: {
-        [NodeOutputKeyEnum.errorText]: errorText,
-        ...(isUserConfigFailure ? { name: 'UserConfigError' as const } : {})
-      },
-      [DispatchNodeResponseKeyEnum.toolResponse]: {
-        error: errorText
-      },
+      ...getNodeErrResponse({ error }),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
           nodeId,

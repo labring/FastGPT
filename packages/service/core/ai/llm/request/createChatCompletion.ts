@@ -1,4 +1,4 @@
-import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 import OpenAI from '@fastgpt/global/core/ai';
 import { getAIApi, getModelOpenAIOptions } from '../../config';
@@ -124,7 +124,8 @@ export const createChatCompletion = async ({
         // 鉴权或地址配置错误仅保留本地诊断日志，不导出到 OTel。
         logger.warn('User AI API error', { ...errorSnapshot, ...statusSnapshot, fastgpt: true });
         return Promise.reject(
-          new UserConfigError(`您的 OpenAI key 出错了: ${getErrText(error)}`, undefined, {
+          new UserError(`您的 OpenAI key 出错了: ${getErrText(error)}`, undefined, {
+            type: 'config',
             cause: error
           })
         );

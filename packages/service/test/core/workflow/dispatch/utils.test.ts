@@ -26,7 +26,7 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -1881,7 +1881,8 @@ describe('rewriteRuntimeWorkFlow', () => {
 describe('getNodeErrResponse', () => {
   it('should return proper error response structure', () => {
     const result = getNodeErrResponse({ error: 'test error' });
-    expect(result.error[NodeOutputKeyEnum.errorText]).toBe('test error');
+    expect(result.error).toBe('test error');
+    expect(result.data[NodeOutputKeyEnum.errorText]).toBe('test error');
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toHaveProperty(
       'errorText',
       'test error'
@@ -1889,12 +1890,12 @@ describe('getNodeErrResponse', () => {
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toHaveProperty('error', 'test error');
   });
 
-  it('should include customErr in error and toolResponse', () => {
+  it('should include customErr in data and toolResponse', () => {
     const result = getNodeErrResponse({
       error: 'fail',
       customErr: { code: 500, detail: 'internal' }
     });
-    expect(result.error).toEqual({
+    expect(result.data).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail',
       code: 500,
       detail: 'internal'
@@ -1907,17 +1908,14 @@ describe('getNodeErrResponse', () => {
   });
 
   it('should mark user config errors for workflow-level log suppression', () => {
-    const result = getNodeErrResponse({
-      error: new UserConfigError('Invalid MCP URL')
-    });
+    const error = new UserError('Invalid MCP URL', undefined, { type: 'config' });
+    const result = getNodeErrResponse({ error });
 
-    expect(result.error).toMatchObject({
-      [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL',
-      name: 'UserConfigError'
-    });
+    expect(result.error).toBe(error);
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       errorText: 'Invalid MCP URL',
-      errorType: 'UserConfigError'
+      errorType: 'config'
     });
     expect(isUserConfigError(result.error)).toBe(true);
   });
@@ -1949,9 +1947,22 @@ describe('getNodeErrResponse', () => {
       error: 'fail',
       customErr: 'not-object' as any
     });
-    expect(result.error).toEqual({
+    expect(result.data).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
+  });
+
+  it('keeps the original exception while allowing a sanitized display message', () => {
+    const cause = new Error('upstream failure');
+    const error = new Error('private transport details', { cause });
+    const result = getNodeErrResponse({ error, errorText: 'HTTP 400: missing input' });
+
+    expect(result.error).toBe(error);
+    expect(result.data).toEqual({ system_error_text: 'HTTP 400: missing input' });
+    expect(result.responseData).toEqual({ errorText: 'HTTP 400: missing input' });
+    expect(result.toolResponse).toEqual({ error: 'HTTP 400: missing input' });
+    expect(JSON.stringify(result.responseData)).not.toContain('private transport details');
+    expect(JSON.stringify(result.responseData)).not.toContain('upstream failure');
   });
 });
 
@@ -2004,7 +2015,7 @@ describe('summarizeRuntimeNodeResponses', () => {
         nodeId: 'tool-node',
         moduleType: FlowNodeTypeEnum.toolCall,
         errorText: 'Invalid MCP URL',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       }
     ] as ChatHistoryItemResType[]);
 

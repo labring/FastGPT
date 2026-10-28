@@ -11,9 +11,7 @@ export type WorkflowObservedStepResult = {
   nodeResponseId: string;
   result: {
     [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
-    error?: {
-      system_error_text?: string;
-    };
+    error?: unknown;
     [key: string]: unknown;
   };
 };
@@ -57,14 +55,16 @@ export const getWorkflowStepStatus = (
   const topLevelError = result.result.error;
 
   // 顶层错误存在时以它为准，防止遗留的用户配置标记掩盖后续系统故障。
-  if (topLevelError) {
+  if (Object.hasOwn(result.result, 'error')) {
     return isUserConfigError(topLevelError) ? 'user_error' : 'error';
   }
-  if (nodeResponse?.errorType === 'UserConfigError') {
+  if (nodeResponse?.errorType === 'config') {
     return 'user_error';
   }
 
-  return nodeResponse?.error ? 'error' : 'ok';
+  return nodeResponse?.error !== undefined || nodeResponse?.errorText !== undefined
+    ? 'error'
+    : 'ok';
 };
 
 /**

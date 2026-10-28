@@ -26,6 +26,8 @@ import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/t
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { getNodeErrResponse } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -874,7 +876,7 @@ describe('getWorkflowNodeRunParams', () => {
 });
 
 describe('runWorkflow catchError', () => {
-  it.each(['success', 'returned-error', 'thrown-error'] as const)(
+  it.each(['success', 'returned-error', 'thrown-error', 'returned-undefined'] as const)(
     'activates exactly one of the success and error routes for %s',
     async (outcome) => {
       const original = callbackMap[FlowNodeTypeEnum.textEditor];
@@ -883,13 +885,25 @@ describe('runWorkflow catchError', () => {
         called.push(node.nodeId);
         if (node.nodeId === 'source') {
           if (outcome === 'thrown-error') throw new Error('failed');
-          if (outcome === 'returned-error') return { error: { errorText: 'failed' } };
+          if (outcome === 'returned-error') return { error: new Error('failed'), data: {} };
+          if (outcome === 'returned-undefined') return { error: undefined, data: {} };
         }
         return { data: {} };
       });
       const source = createNode('source', FlowNodeTypeEnum.textEditor);
       source.isEntry = true;
       source.catchError = true;
+      source.outputs = [
+        {
+          id: 'successOutput',
+          key: 'successOutput',
+          type: FlowNodeOutputTypeEnum.static,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          required: true,
+          defaultValue: 'default on success'
+        }
+      ];
       try {
         await runWorkflow({
           apiVersion: 'v2',
@@ -928,130 +942,148 @@ describe('runWorkflow catchError', () => {
           checkIsStopping: () => false
         } as any);
         expect(called).toEqual(['source', outcome === 'success' ? 'success' : 'error']);
+        expect(source.outputs[0].value).toBe(
+          outcome === 'success' ? 'default on success' : undefined
+        );
       } finally {
         callbackMap[FlowNodeTypeEnum.textEditor] = original;
       }
     }
   );
 
-  it('捕获 throw 异常后，下游节点应能引用错误输出', async () => {
-    const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-    const errorText = 'upstream failed';
-    const appId = '67e0d5535c02d1d5cdede721';
-    const teamId = '654a4107c32f3bf5f998452f';
-    const tmbId = '65ab7007462ada7dbb899948';
+  it.each(['throw', 'return'] as const)(
+    '捕获 %s 异常后，下游节点应能引用错误输出',
+    async (mode) => {
+      const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+      const errorText = 'upstream failed';
+      const appId = '67e0d5535c02d1d5cdede721';
+      const teamId = '654a4107c32f3bf5f998452f';
+      const tmbId = '65ab7007462ada7dbb899948';
 
-    callbackMap[FlowNodeTypeEnum.textEditor] = vi
-      .fn()
-      .mockRejectedValueOnce(new Error(errorText))
-      .mockImplementationOnce(async ({ params }) => {
-        return {
-          data: {
-            [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput]
-          },
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            textOutput: params[NodeInputKeyEnum.textareaInput]
-          }
-        };
-      });
-
-    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
-    sourceNode.isEntry = true;
-    sourceNode.catchError = true;
-    sourceNode.outputs = [
-      {
-        id: NodeOutputKeyEnum.errorText,
-        key: NodeOutputKeyEnum.errorText,
-        type: FlowNodeOutputTypeEnum.error,
-        label: '',
-        valueType: WorkflowIOValueTypeEnum.string
-      }
-    ];
-
-    const targetNode = createNode('target', FlowNodeTypeEnum.textEditor);
-    targetNode.inputs = [
-      {
-        key: NodeInputKeyEnum.textareaInput,
-        label: '',
-        renderTypeList: [FlowNodeInputTypeEnum.textarea],
-        value: `caught: {{$source.${NodeOutputKeyEnum.errorText}$}}`,
-        valueType: WorkflowIOValueTypeEnum.string
-      }
-    ];
-    targetNode.outputs = [
-      {
-        id: NodeOutputKeyEnum.text,
-        key: NodeOutputKeyEnum.text,
-        type: FlowNodeOutputTypeEnum.static,
-        label: '',
-        valueType: WorkflowIOValueTypeEnum.string
-      }
-    ];
-
-    try {
-      const result = await runWorkflow({
-        apiVersion: 'v2',
-        mode: 'chat',
-        runningAppInfo: {
-          id: appId,
-          name: 'catch error test',
-          teamId,
-          tmbId
-        },
-        runningUserInfo: {
-          teamId,
-          tmbId,
-          teamName: 'team',
-          memberName: 'member',
-          contact: '',
-          username: 'user'
-        },
-        uid: 'user-catch-error-test',
-        lang: 'zh-CN',
-        histories: [],
-        query: [],
-        variables: {},
-        chatConfig: {},
-        runtimeNodes: [sourceNode, targetNode],
-        runtimeEdges: [
-          {
-            source: 'source',
-            target: 'target',
-            sourceHandle: 'source-source_catch-right',
-            targetHandle: 'target-target-left',
-            status: 'waiting'
-          }
-        ],
-        variableState: createWorkflowVariableState(),
-        externalProvider: {},
-        workflowDispatchDeep: 0,
-        maxRunTimes: 10,
-        stream: false,
-        responseDetail: true,
-        responseAllData: true,
-        checkIsStopping: () => false
-      } as any);
-
-      expect(callbackMap[FlowNodeTypeEnum.textEditor]).toHaveBeenCalledTimes(2);
-      expect(vi.mocked(callbackMap[FlowNodeTypeEnum.textEditor]).mock.calls[1][0].params).toEqual(
-        expect.objectContaining({
-          [NodeInputKeyEnum.textareaInput]: `caught: ${errorText}`
+      const error = new Error(errorText);
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi
+        .fn()
+        .mockImplementationOnce(async () => {
+          if (mode === 'throw') throw error;
+          return getNodeErrResponse({ error, customErr: { status: 429 } });
         })
-      );
-      expect(
-        result.debugResponse.memoryNodes
-          .find((node) => node.nodeId === 'source')
-          ?.outputs.find((output) => output.key === NodeOutputKeyEnum.errorText)?.value
-      ).toBe(errorText);
-      expect(
-        result.debugResponse.memoryNodes
-          .find((node) => node.nodeId === 'target')
-          ?.outputs.find((output) => output.key === NodeOutputKeyEnum.text)?.value
-      ).toBe(`caught: ${errorText}`);
-    } finally {
-      callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+        .mockImplementationOnce(async ({ params }) => {
+          return {
+            data: {
+              [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput]
+            },
+            [DispatchNodeResponseKeyEnum.nodeResponse]: {
+              textOutput: params[NodeInputKeyEnum.textareaInput]
+            }
+          };
+        });
+
+      const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+      sourceNode.isEntry = true;
+      sourceNode.catchError = true;
+      sourceNode.outputs = [
+        {
+          id: NodeOutputKeyEnum.errorText,
+          key: NodeOutputKeyEnum.errorText,
+          type: FlowNodeOutputTypeEnum.error,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        {
+          id: 'status',
+          key: 'status',
+          type: FlowNodeOutputTypeEnum.error,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number
+        }
+      ];
+
+      const targetNode = createNode('target', FlowNodeTypeEnum.textEditor);
+      targetNode.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.textarea],
+          value: `caught: {{$source.${NodeOutputKeyEnum.errorText}$}}${mode === 'return' ? ' status={{$source.status$}}' : ''}`,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+      targetNode.outputs = [
+        {
+          id: NodeOutputKeyEnum.text,
+          key: NodeOutputKeyEnum.text,
+          type: FlowNodeOutputTypeEnum.static,
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ];
+
+      try {
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: appId,
+            name: 'catch error test',
+            teamId,
+            tmbId
+          },
+          runningUserInfo: {
+            teamId,
+            tmbId,
+            teamName: 'team',
+            memberName: 'member',
+            contact: '',
+            username: 'user'
+          },
+          uid: 'user-catch-error-test',
+          lang: 'zh-CN',
+          histories: [],
+          query: [],
+          variables: {},
+          chatConfig: {},
+          runtimeNodes: [sourceNode, targetNode],
+          runtimeEdges: [
+            {
+              source: 'source',
+              target: 'target',
+              sourceHandle: 'source-source_catch-right',
+              targetHandle: 'target-target-left',
+              status: 'waiting'
+            }
+          ],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          stream: false,
+          responseDetail: true,
+          responseAllData: true,
+          checkIsStopping: () => false
+        } as any);
+
+        expect(callbackMap[FlowNodeTypeEnum.textEditor]).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(callbackMap[FlowNodeTypeEnum.textEditor]).mock.calls[1][0].params).toEqual(
+          expect.objectContaining({
+            [NodeInputKeyEnum.textareaInput]: `caught: ${errorText}${mode === 'return' ? ' status=429' : ''}`
+          })
+        );
+        expect(
+          result.debugResponse.memoryNodes
+            .find((node) => node.nodeId === 'source')
+            ?.outputs.find((output) => output.key === NodeOutputKeyEnum.errorText)?.value
+        ).toBe(errorText);
+        expect(
+          result.debugResponse.memoryNodes
+            .find((node) => node.nodeId === 'target')
+            ?.outputs.find((output) => output.key === NodeOutputKeyEnum.text)?.value
+        ).toBe(`caught: ${errorText}${mode === 'return' ? ' status=429' : ''}`);
+        expect(Object.hasOwn(result, 'error')).toBe(false);
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
+      }
     }
-  });
+  );
 });
 
 describe('runWorkflow assistant response aggregation', () => {
@@ -1461,6 +1493,77 @@ describe('Workflow runtime LLM token summary', () => {
 });
 
 describe('Workflow runtime error summary', () => {
+  const configError = new UserError('Invalid key', undefined, {
+    type: 'config',
+    cause: new Error('private-cause')
+  });
+  const systemError = new Error('Database unavailable', { cause: new Error('private-cause') });
+  it.each([
+    { errors: [configError], expectedError: configError, hasUserConfigError: true },
+    { errors: [systemError], expectedError: systemError, hasUserConfigError: false },
+    { errors: [undefined], expectedError: undefined, hasUserConfigError: false },
+    { errors: [configError, systemError], expectedError: systemError, hasUserConfigError: false },
+    { errors: [systemError, configError], expectedError: systemError, hasUserConfigError: false }
+  ])(
+    'preserves the original uncaptured exception outside serialized node details: %j',
+    async ({ errors, expectedError, hasUserConfigError }) => {
+      const original = callbackMap[FlowNodeTypeEnum.textEditor];
+      const nodes = errors.map((_, index) => {
+        const node = createNode(`raw-error-node-${index}`, FlowNodeTypeEnum.textEditor);
+        node.isEntry = true;
+        return node;
+      });
+      const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ node }) => {
+        throw errors[nodes.findIndex((item) => item.nodeId === node.nodeId)];
+      });
+
+      try {
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'raw error boundary',
+            teamId: '654a4107c32f3bf5f998452f'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: nodes,
+          runtimeEdges: [],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          checkIsStopping: () => false,
+          nodeResponseSink: { publish }
+        } as any);
+
+        expect(Object.hasOwn(result, 'error')).toBe(true);
+        expect(result.error).toBe(expectedError);
+        expect(result.workflowRuntimeSummary).toMatchObject({
+          hasError: true,
+          hasUserConfigError
+        });
+        expect(result.workflowRuntimeSummary).not.toHaveProperty('error');
+        for (const call of publish.mock.calls) {
+          for (const { response } of call[0]) {
+            expect(typeof response.error).toBe('string');
+            expect(JSON.stringify(response)).not.toContain('private-cause');
+          }
+        }
+        expect(JSON.stringify(result.debugResponse)).not.toContain('private-cause');
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = original;
+      }
+    }
+  );
+
   it('uses the node response error type when the dispatcher does not return an error object', async () => {
     const original = callbackMap[FlowNodeTypeEnum.textEditor];
     const node = createNode('editor-node', FlowNodeTypeEnum.textEditor);
@@ -1468,7 +1571,7 @@ describe('Workflow runtime error summary', () => {
     callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         error: 'invalid API key',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       }
     }));
     const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
@@ -1519,7 +1622,7 @@ describe('Workflow runtime error summary', () => {
     callbackMap[FlowNodeTypeEnum.tool] = vi.fn(async () => ({
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         error: 'invalid API key',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       }
     }));
     const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);

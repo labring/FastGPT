@@ -44,6 +44,8 @@ export type WorkflowDebugResponse = {
   skipNodeQueue?: { id: string; skippedNodeIdList: string[] }[]; // Cache
 };
 export type DispatchFlowResponse = {
+  /** 本次运行未捕获的原始异常；只在请求内向父流程传递，不写入详情或恢复摘要。 */
+  error?: unknown;
   flowUsages: ChatNodeUsageType[];
   debugResponse: WorkflowDebugResponse;
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;

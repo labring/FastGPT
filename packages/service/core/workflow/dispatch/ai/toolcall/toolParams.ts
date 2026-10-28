@@ -3,7 +3,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 
 export type Props = ModuleDispatchProps<Record<string, never>>;
-export type Response = DispatchNodeResultType<Record<string, never>>;
+export type Response = DispatchNodeResultType;
 
 export const dispatchToolParams = (props: Props): Response => {
   const { params } = props;

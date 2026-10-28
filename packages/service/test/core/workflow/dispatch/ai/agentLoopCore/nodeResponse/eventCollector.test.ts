@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { createAgentLoopCoreNodeResponseEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/eventCollector';
 import { describe, expect, it } from 'vitest';
 
@@ -87,7 +87,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       modelName: 'GPT-4',
       requestId: 'req_config_error',
       finishReason: 'error',
-      error: new UserConfigError('Invalid API key'),
+      error: new UserError('Invalid API key', undefined, { type: 'config' }),
       usages: [],
       seconds: 0.2
     } as any);
@@ -95,7 +95,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     expect(nodeResponses).toEqual([
       expect.objectContaining({
         errorText: 'Invalid API key',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       })
     ]);
   });

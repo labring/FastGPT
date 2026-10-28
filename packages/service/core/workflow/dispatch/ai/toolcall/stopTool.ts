@@ -3,7 +3,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 
 export type AnswerProps = ModuleDispatchProps<Record<string, never>>;
-export type AnswerResponse = DispatchNodeResultType<Record<string, never>>;
+export type AnswerResponse = DispatchNodeResultType;
 
 // Signal-only tool node. The parent ToolCall workflow reads toolStop from nodeResponse
 // and stops the current agent loop without treating it as an execution error.

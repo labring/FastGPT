@@ -276,7 +276,7 @@ describe('dispatchRunAppNode', () => {
     };
 
     const result = await dispatchRunAppNode(props);
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Input is empty');
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('Input is empty');
     expect(mocks.runWorkflow).not.toHaveBeenCalled();
   });
 

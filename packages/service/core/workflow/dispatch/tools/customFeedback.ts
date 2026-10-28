@@ -6,7 +6,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.textareaInput]: string;
 }>;
-type Response = DispatchNodeResultType<Record<string, never>>;
+type Response = DispatchNodeResultType;
 
 export const dispatchCustomFeedback = (props: Record<string, any>): Response => {
   const {

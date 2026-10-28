@@ -195,7 +195,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       ...(event.error
         ? {
             errorText: getErrText(event.error),
-            ...(isUserConfigError(event.error) && { errorType: 'UserConfigError' as const })
+            ...(isUserConfigError(event.error) && { errorType: 'config' as const })
           }
         : {})
     });

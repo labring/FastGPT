@@ -64,10 +64,7 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ description: '错误信息' }),
     errorText: z.string().optional().meta({ description: '错误文本' }), // Just show
-    errorType: z
-      .literal('UserConfigError')
-      .optional()
-      .meta({ description: '预期内用户配置错误的分类标记' }),
+    errorType: z.literal('config').optional().meta({ description: '预期内用户配置错误的分类标记' }),
     errorCaptured: z.boolean().optional().meta({ description: '错误已被 catch 分支捕获' }),
 
     customInputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输入' }),

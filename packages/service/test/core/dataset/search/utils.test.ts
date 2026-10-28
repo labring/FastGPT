@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serviceEnv } from '@fastgpt/service/env';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
@@ -434,7 +434,9 @@ describe('datasetSearchQueryExtension', () => {
   it('should not log user config errors and fall back to the original query', async () => {
     const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
     const errorLog = vi.spyOn(logger, 'error').mockImplementation(() => {});
-    mockQueryExtension.mockRejectedValue(new UserConfigError('Invalid OpenAI key'));
+    mockQueryExtension.mockRejectedValue(
+      new UserError('Invalid OpenAI key', undefined, { type: 'config' })
+    );
 
     const result = await datasetSearchQueryExtension({
       query: 'original query',

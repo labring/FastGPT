@@ -18,7 +18,7 @@ import { migrateSecretValueToCurrent } from '@fastgpt/global/core/workflow/migra
 import { parseSecretValue } from '@fastgpt/global/common/secret/utils';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
-import { isUserConfigError, UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import { isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { ZodError } from 'zod';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -34,6 +34,7 @@ import {
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
+
 import { profileStage } from '../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
@@ -48,10 +49,6 @@ type McpChildToolType = McpToolConfigType & {
 const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
-const MCP_USER_CONFIG_HTTP_ERROR_CODES = new Set([
-  400, 401, 403, 404, 405, 410, 422, 429, 502, 503, 504
-]);
-
 const MCP_NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND',
   'ECONNREFUSED',
@@ -420,19 +417,9 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
 };
 
 /**
- * 将 MCP 协议错误转换为用户友好的 UserError
- */
-const toMcpProtocolUserError = (error: unknown): UserError => {
-  return new UserError(
-    'MCP server returned invalid response',
-    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确'
-  );
-};
-
-/**
  * 提取 MCP SDK、协议响应或 fetch 错误中的状态码或错误代号。
  *
- * UserConfigError 只保存 cause，需要沿 cause 继续读取状态码用于本地诊断。
+ * UserError 只保存 cause，需要沿 cause 继续读取状态码用于本地诊断。
  */
 const getMcpErrorCode = (
   error: unknown,
@@ -468,15 +455,33 @@ const getMcpErrorCode = (
   }
 };
 
-const isMcpUserConfigCode = (error: unknown, codes: Set<number>) => {
-  const code = getMcpErrorCode(error);
-  return typeof code === 'number' && codes.has(code);
+/**
+ * 提取 MCP transport 暴露的 HTTP 状态码。
+ * MCP 工具请求的目标地址由用户配置，上游返回任何 4xx/5xx 都属于外部服务问题。
+ */
+const getMcpHttpStatus = (error: unknown, visited = new Set<unknown>()): number | undefined => {
+  if (typeof error !== 'object' || error === null || visited.has(error)) {
+    return;
+  }
+  visited.add(error);
+
+  if (
+    (error instanceof StreamableHTTPError ||
+      error instanceof McpHttpStatusError ||
+      error instanceof SseError) &&
+    typeof error.code === 'number'
+  ) {
+    return error.code;
+  }
+  if ('cause' in error) {
+    return getMcpHttpStatus(error.cause, visited);
+  }
 };
 
 /**
  * 校验是否属于 MCP JSON-RPC 协议错误（如 -32003 协议版本协商不兼容或远端工具报错）。
  */
-const isMcpProtocolError = (error: unknown, visited = new Set<unknown>()): boolean => {
+const isMcpJsonRpcError = (error: unknown, visited = new Set<unknown>()): boolean => {
   if (typeof error !== 'object' || error === null || visited.has(error)) {
     return false;
   }
@@ -496,7 +501,7 @@ const isMcpProtocolError = (error: unknown, visited = new Set<unknown>()): boole
     return true;
   }
   if ('cause' in error) {
-    return isMcpProtocolError(error.cause, visited);
+    return isMcpJsonRpcError(error.cause, visited);
   }
   return false;
 };
@@ -544,12 +549,32 @@ const isMcpNetworkFailure = (error: unknown, visited = new Set<unknown>()): bool
 };
 
 /**
+ * 检查外部 MCP server 是否返回了不符合 JSON-RPC 2.0 规范的响应。
+ * 这类错误属于 MCP 服务实现问题，应按用户配置错误处理。
+ */
+const isMcpResponseFormatError = (error: unknown): boolean => {
+  // ZodError 通常表示响应格式不符合 JSON-RPC 2.0 规范
+  if (error instanceof ZodError) {
+    return true;
+  }
+
+  // 检查错误消息中是否包含 Zod 验证相关的关键词
+  const errorMessage = getErrorMessage(error);
+  return (
+    errorMessage.includes('invalid_union') ||
+    errorMessage.includes('unrecognized_keys') ||
+    errorMessage.includes('Invalid input')
+  );
+};
+
+/**
  * 综合判定当前错误是否属于用户配置或外部 MCP 服务不可用/协议错误。
  */
 const isMcpExternalFailure = (error: unknown): boolean => {
   if (isUserConfigError(error)) return true;
-  if (isMcpProtocolError(error)) return true;
-  if (isMcpUserConfigCode(error, MCP_USER_CONFIG_HTTP_ERROR_CODES)) return true;
+  if (isMcpJsonRpcError(error)) return true;
+  if (isMcpResponseFormatError(error)) return true;
+  if ((getMcpHttpStatus(error) ?? 0) >= 400) return true;
   if (isMcpNetworkFailure(error)) return true;
   return false;
 };
@@ -589,9 +614,20 @@ const normalizeMcpClientError = (error: unknown) => {
     return error;
   }
   if (isMcpExternalFailure(error)) {
-    return new UserConfigError(getErrorMessage(error), undefined, { cause: error });
+    return new UserError(getErrorMessage(error), undefined, { type: 'config', cause: error });
   }
   return error;
+};
+
+/**
+ * 将 MCP 协议格式错误转换为用户友好的错误提示。
+ */
+const toMcpProtocolUserError = (): UserError => {
+  return new UserError(
+    'MCP server returned invalid response',
+    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确',
+    { type: 'config' }
+  );
 };
 
 export class MCPClient {
@@ -643,14 +679,10 @@ export class MCPClient {
         });
         await this.client.connect(transport);
       } catch (streamableError: any) {
-        // 如果是 MCP 协议格式错误（外部 server 返回不合规响应），转换为 UserError
-        if (isMcpProtocolError(streamableError)) {
+        // 外部 server 返回不合规响应时，直接转换为用户配置错误，避免继续探测 SSE。
+        if (isMcpResponseFormatError(streamableError)) {
           await this.closeSafeFetch();
-          logger.info('MCP protocol error from external server', {
-            url: this.url,
-            error: streamableError
-          });
-          throw toMcpProtocolUserError(streamableError);
+          throw toMcpProtocolUserError();
         }
 
         if (!shouldFallbackToSSE(streamableError)) {
@@ -671,20 +703,22 @@ export class MCPClient {
           );
         } catch (sseError: any) {
           await this.closeSafeFetch();
-          logger.info('SSE error', sseError);
-
-          // 如果 SSE fallback 也是协议错误，直接抛出 UserError
-          if (isMcpProtocolError(sseError)) {
-            throw toMcpProtocolUserError(sseError);
+          if (isMcpResponseFormatError(sseError)) {
+            throw toMcpProtocolUserError();
           }
 
           const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
             streamableError
           )}; SSE: ${getErrorMessage(sseError)}`;
-          const isUserConfigFailure = isMcpExternalFailure(sseError) || isMcpExternalFailure(streamableError);
+          // 外部 MCP 服务网络不可达、协议不匹配或返回客户端错误时，均归为用户配置/外部服务错误。
+          const isUserConfigFailure =
+            isMcpExternalFailure(sseError) || isMcpExternalFailure(streamableError);
+
           if (isUserConfigFailure) {
-            throw new UserConfigError(message, undefined, { cause: sseError });
+            throw new UserError(message, undefined, { type: 'config', cause: sseError });
           }
+
+          logger.info('SSE error', sseError);
           throw new Error(message, { cause: sseError });
         }
       }

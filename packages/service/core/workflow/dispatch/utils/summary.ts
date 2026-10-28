@@ -284,7 +284,7 @@ export const summarizeRuntimeNodeResponses = (
     ) {
       mergeErrorClassification(summary, {
         hasError: true,
-        hasUserConfigError: response.errorType === 'UserConfigError'
+        hasUserConfigError: response.errorType === 'config'
       });
       summary.errorCount += 1;
       summary.errorText = getErrText(response.error || response.errorText);

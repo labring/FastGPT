@@ -10,7 +10,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
@@ -189,8 +189,9 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(result.error).toMatchObject({
-      system_error_text: 'Invalid MCP tool id: invalid-id',
-      name: 'UserConfigError'
+      message: 'Invalid MCP tool id: invalid-id',
+      name: 'UserError',
+      type: 'config'
     });
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
@@ -249,7 +250,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       execute.mockClear();
       authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
       const denied = await dispatchRunTool(props);
-      expect(denied.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+      expect(denied.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
       expect(execute).not.toHaveBeenCalled();
     }
   );
@@ -323,7 +324,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       per: ReadPermissionVal
     });
     expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
   it('should authorize HTTP parent toolset before loading version and running tool', async () => {
@@ -467,7 +468,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       per: ReadPermissionVal
     });
     expect(mcpToolCallMock).not.toHaveBeenCalled();
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
   it('should pass MCP params through without validating against the tool schema', async () => {
@@ -549,13 +550,15 @@ describe('dispatchRunTool runtime toolset auth', () => {
         inputSchema: { type: 'object', properties: {} }
       }
     ]);
-    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+    mcpToolCallMock.mockRejectedValueOnce(
+      new UserError('Invalid MCP URL', undefined, { type: 'config' })
+    );
 
     const result = await dispatchRunTool(
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
     );
 
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
+    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 

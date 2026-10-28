@@ -756,9 +756,8 @@ describe('runWorkflow node response persistence', () => {
     callbackMap[FlowNodeTypeEnum.textEditor] = vi
       .fn()
       .mockResolvedValueOnce({
-        error: {
-          [NodeOutputKeyEnum.errorText]: 'upstream timeout'
-        },
+        error: new Error('upstream timeout'),
+        data: { [NodeOutputKeyEnum.errorText]: 'upstream timeout' },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           errorText: 'upstream timeout'
         }

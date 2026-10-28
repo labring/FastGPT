@@ -30,9 +30,7 @@ import { MongoApp } from '../../../core/app/schema';
 import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
-import { UserError } from '../../../common/error';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -213,7 +211,10 @@ describe('MCPClient', () => {
       const warnLog = vi.spyOn(logger, 'warn');
       client.listTools.mockRejectedValue(new StreamableHTTPError(401, 'Invalid MCP credentials'));
 
-      await expect(mcpClient.getTools()).rejects.toBeInstanceOf(UserConfigError);
+      await expect(mcpClient.getTools()).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
 
       expect(errorLog).not.toHaveBeenCalled();
       expect(warnLog).toHaveBeenCalledWith(
@@ -570,9 +571,10 @@ describe('MCPClient', () => {
       const warnLog = vi.spyOn(logger, 'warn');
       client.callTool.mockRejectedValue(new StreamableHTTPError(410, 'Url is expired'));
 
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
-        UserConfigError
-      );
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
 
       expect(errorLog).not.toHaveBeenCalled();
       expect(warnLog).toHaveBeenCalledWith(
@@ -593,9 +595,10 @@ describe('MCPClient', () => {
       const warnLog = vi.spyOn(logger, 'warn');
       client.callTool.mockRejectedValue(new StreamableHTTPError(404, 'Session not found'));
 
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
-        UserConfigError
-      );
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
 
       expect(errorLog).not.toHaveBeenCalled();
       expect(warnLog).toHaveBeenCalledWith(
@@ -620,9 +623,10 @@ describe('MCPClient', () => {
       });
       client.callTool.mockRejectedValue(error);
 
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toBeInstanceOf(
-        UserConfigError
-      );
+      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
 
       expect(errorLog).not.toHaveBeenCalled();
       expect(warnLog).toHaveBeenCalledWith(
@@ -733,7 +737,7 @@ describe('MCPClient', () => {
 
       const request = (mcpClient as any).getConnection();
 
-      await expect(request).rejects.toBeInstanceOf(UserConfigError);
+      await expect(request).rejects.toMatchObject({ name: 'UserError', type: 'config' });
       await expect(request).rejects.toThrow(
         /Streamable HTTP:.*Not Found.*SSE:.*SSE handshake failed/s
       );
@@ -748,7 +752,10 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'))
         .mockRejectedValueOnce(new Error('SSE network unreachable'));
 
-      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
@@ -762,7 +769,10 @@ describe('MCPClient', () => {
           new Error('SSE error: Invalid content type, expected "text/event-stream"')
         );
 
-      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
@@ -774,7 +784,10 @@ describe('MCPClient', () => {
         .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'))
         .mockRejectedValueOnce(new StreamableHTTPError(410, 'Url is expired'));
 
-      await expect((mcpClient as any).getConnection()).rejects.toBeInstanceOf(UserConfigError);
+      await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
+        name: 'UserError',
+        type: 'config'
+      });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
@@ -798,6 +811,7 @@ describe('MCPClient', () => {
 
       await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
         name: 'UserError',
+        type: 'config',
         message: 'MCP server returned invalid response',
         displayMessage: expect.stringContaining('JSON-RPC 2.0')
       });
@@ -816,6 +830,7 @@ describe('MCPClient', () => {
 
       await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
         name: 'UserError',
+        type: 'config',
         message: 'MCP server returned invalid response'
       });
       expect(client.connect).toHaveBeenCalledTimes(2);

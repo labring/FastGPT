@@ -1,5 +1,5 @@
 import { cloneDeep } from 'lodash-es';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -100,7 +100,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
-  let hasUserConfigError = false;
+  // 原始异常只在本轮请求中保留；恢复 checkpoint 沿用可序列化的 iteration summary。
+  let loopFailure: { error: unknown } | undefined;
   const getWrapperSummary = ({
     isResumeIteration,
     response
@@ -229,7 +230,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     // Wrap this iteration as a virtual task node so the whole-response tree
     // shows a per-iteration layer through sink. Parent loopRun only keeps
     // summary stats and business history.
-    const pushIterationDetail = async (opts: { error?: string; errorType?: 'UserConfigError' }) => {
+    const pushIterationDetail = async (opts: { error?: string; errorType?: 'config' }) => {
       const wrapper = {
         id: iterationResponseId,
         nodeId: iterationResponseId,
@@ -275,11 +276,18 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     if (iterationSummary.hasError) {
-      hasUserConfigError ||= iterationSummary.hasUserConfigError;
       const errText = getErrText(iterationSummary.errorText);
+      loopFailure = Object.hasOwn(response, 'error')
+        ? { error: response.error }
+        : {
+            // 恢复摘要或旧调用方没有原始异常时，在当前容器边界生成带分类的失败原因。
+            error: iterationSummary.hasUserConfigError
+              ? new UserError(errText, undefined, { type: 'config' })
+              : new Error(errText)
+          };
       await pushIterationDetail({
         error: errText,
-        ...(iterationSummary.hasUserConfigError && { errorType: 'UserConfigError' as const })
+        ...(iterationSummary.hasUserConfigError && { errorType: 'config' as const })
       });
       loopHistory.push({
         iteration,
@@ -333,7 +341,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       ? (lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed'))
       : undefined;
   return {
-    data,
+    data: {
+      ...data,
+      ...(errorText ? { [NodeOutputKeyEnum.errorText]: errorText } : {})
+    },
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
     ...(errorText ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
@@ -359,10 +370,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
     ...(errorText
       ? {
-          error: {
-            [NodeOutputKeyEnum.errorText]: errorText,
-            ...(hasUserConfigError ? { name: 'UserConfigError' as const } : {})
-          }
+          error: loopFailure ? loopFailure.error : new Error(errorText)
         }
       : {})
   };

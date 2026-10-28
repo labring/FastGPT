@@ -16,7 +16,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -341,7 +341,7 @@ describe('parallelRun/service', () => {
             id: 'llm',
             moduleType: FlowNodeTypeEnum.chatNode,
             errorText: 'Invalid API key',
-            errorType: 'UserConfigError'
+            errorType: 'config'
           } as any
         ]
       });
@@ -351,7 +351,7 @@ describe('parallelRun/service', () => {
       expect(result).toMatchObject({
         success: false,
         error: 'Invalid API key',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       });
     });
   });
@@ -388,12 +388,15 @@ describe('parallelRun/service', () => {
     });
 
     it('保留用户配置错误分类', () => {
-      const result = parseTaskError(3, new UserConfigError('Invalid MCP URL'));
+      const result = parseTaskError(
+        3,
+        new UserError('Invalid MCP URL', undefined, { type: 'config' })
+      );
 
       expect(result).toMatchObject({
         success: false,
         error: 'Invalid MCP URL',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       });
     });
   });
@@ -525,13 +528,13 @@ describe('parallelRun/service', () => {
       const { responseDetails } = agg([
         {
           ...failResult1,
-          errorType: 'UserConfigError'
+          errorType: 'config'
         }
       ]);
 
       expect(responseDetails[0]).toMatchObject({
         error: 'task failed',
-        errorType: 'UserConfigError'
+        errorType: 'config'
       });
     });
 
@@ -542,7 +545,7 @@ describe('parallelRun/service', () => {
             id: 'llm',
             moduleType: FlowNodeTypeEnum.chatNode,
             errorText: 'Invalid API key',
-            errorType: 'UserConfigError'
+            errorType: 'config'
           } as any
         ]
       });

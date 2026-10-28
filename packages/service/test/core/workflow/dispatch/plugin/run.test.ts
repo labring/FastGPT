@@ -270,7 +270,8 @@ describe('dispatchRunPlugin', () => {
     } as any);
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
-    expect(result.error).toEqual({
+    expect(result.error).toBe('upstream unavailable');
+    expect(result.data).toMatchObject({
       [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
     });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({

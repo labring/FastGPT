@@ -78,16 +78,11 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
-type HttpResponse = DispatchNodeResultType<
-  {
-    [key: string]: any;
-  },
-  {
-    [NodeOutputKeyEnum.errorText]: string; //未使用，仅作类型。
-    [NodeOutputKeyEnum.error]: string; // 适配字段
-    [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
-  }
->;
+type HttpResponse = DispatchNodeResultType<{
+  [key: string]: any;
+  [NodeOutputKeyEnum.error]?: string; // 适配字段
+  [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
+}>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
@@ -319,7 +314,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
     const { rawText, ...errObj } = formatHttpError(error);
     return getNodeErrResponse({
-      error: rawText,
+      error,
+      errorText: rawText,
       customErr: {
         [NodeOutputKeyEnum.error]: rawText,
         [NodeOutputKeyEnum.httpRawError]: errObj

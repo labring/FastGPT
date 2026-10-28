@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { getErrText, isUserConfigError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { getErrText, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
@@ -60,13 +60,10 @@ type RunToolProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 
-type RunToolResponse = DispatchNodeResultType<
-  {
-    [NodeOutputKeyEnum.rawResponse]?: any;
-    [key: string]: any;
-  },
-  Record<string, any>
->;
+type RunToolResponse = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.rawResponse]?: any;
+  [key: string]: any;
+}>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
@@ -289,7 +286,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       // pluginId: toolSetAppId/toolsetName/toolName
       const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
       if (!parentId || !toolName) {
-        throw new UserConfigError(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
+        throw new UserError(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`, undefined, {
+          type: 'config'
+        });
       }
       const app = await authRuntimeToolset(parentId, toolName);
       const workflow = await getAppVersionById({ appId: parentId, app });
@@ -298,15 +297,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       ).data;
       const mcpToolList = await getMCPChildren(app, workflow);
       if (!mcpToolSet || !mcpToolList.length) {
-        throw new UserConfigError('MCP tool set is missing');
+        throw new UserError('MCP tool set is missing', undefined, { type: 'config' });
       }
       const mcpTool = getToolNameCandidates(toolName)
         .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);
-      if (!mcpTool) throw new UserConfigError(`MCP tool ${toolName} not found`);
+      if (!mcpTool)
+        throw new UserError(`MCP tool ${toolName} not found`, undefined, { type: 'config' });
       const url = mcpToolSet?.url ?? mcpTool.url;
       const headerSecret = mcpToolSet?.headerSecret ?? mcpTool.headerSecret;
-      if (!url) throw new UserConfigError('MCP tool set URL is missing');
+      if (!url) throw new UserError('MCP tool set URL is missing', undefined, { type: 'config' });
 
       await assertMCPUrlNotInternal(url);
 
@@ -341,7 +341,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       if (!parentId || !toolName) {
-        throw new UserConfigError(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
+        throw new UserError(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`, undefined, {
+          type: 'config'
+        });
       }
       const app = await authRuntimeToolset(parentId, toolName);
       const workflow = await getAppVersionById({
@@ -354,7 +356,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       ).data;
       const toolList = await getHTTPToolList(app, workflow);
       if (!toolSetData || !toolList.length) {
-        throw new UserConfigError('HTTP tool set not found');
+        throw new UserError('HTTP tool set not found', undefined, { type: 'config' });
       }
 
       const { headerSecret, baseUrl, customHeaders } = toolSetData ?? {};
@@ -363,7 +365,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         .map((name) => toolList?.find((tool: HttpToolConfigType) => tool.name === name))
         .find(Boolean);
       if (!httpTool) {
-        throw new UserConfigError(`HTTP tool ${toolName} not found`);
+        throw new UserError(`HTTP tool ${toolName} not found`, undefined, { type: 'config' });
       }
 
       toolInput = params;

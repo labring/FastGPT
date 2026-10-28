@@ -741,8 +741,9 @@ describe('dispatchDatasetSearch', () => {
     const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
     loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
     const result = await runSearch();
+    expect(result.error).toBe(error);
     expect(result).toMatchObject({
-      error: { [NodeOutputKeyEnum.errorText]: error.message },
+      data: { [NodeOutputKeyEnum.errorText]: error.message },
       [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText: error.message },
       [DispatchNodeResponseKeyEnum.toolResponse]: { error: error.message }
     });
@@ -764,7 +765,8 @@ describe('dispatchDatasetSearch', () => {
     const error = new Error('Mongo connection timed out');
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
     const result = await runSnapshotSearch();
-    expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
+    expect(result.error).toBe(error);
+    expect(result.data).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
     expect(mockLogger.error).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });

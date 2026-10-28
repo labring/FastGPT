@@ -4,11 +4,11 @@ import {
   ChatRoleEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
@@ -720,7 +720,7 @@ describe('dispatchRunAgent user context', () => {
         .filter((event: { event: string }) => event.event === 'sandboxStatus')
         .map((event: { data: { phase: string } }) => event.data.phase)
     ).toEqual(['lazyInit']);
-    expect(result.error?.system_error_text).toContain('archive upload failed');
+    expect(result.data?.system_error_text).toContain('archive upload failed');
   });
 
   it('scans edit skill infos without requiring selected skills', async () => {
@@ -794,7 +794,7 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'error',
-      error: new UserConfigError('Invalid API key'),
+      error: new UserError('Invalid API key', undefined, { type: 'config' }),
       completeMessages: [],
       assistantMessages: [],
       requestIds: [],
@@ -814,8 +814,9 @@ describe('dispatchRunAgent user context', () => {
     const result = await resultPromise!;
 
     expect(result.error).toMatchObject({
-      [NodeOutputKeyEnum.errorText]: 'Invalid API key',
-      name: 'UserConfigError'
+      message: 'Invalid API key',
+      name: 'UserError',
+      type: 'config'
     });
   });
 
@@ -1453,7 +1454,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await promise!;
 
-    expect(result.error?.system_error_text).toBe(
+    expect(result.data?.system_error_text).toBe(
       'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();

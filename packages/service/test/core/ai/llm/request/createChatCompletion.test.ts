@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import OpenAI from '@fastgpt/global/core/ai';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 
@@ -187,7 +186,7 @@ describe('createChatCompletion', () => {
       } as any
     });
 
-    await expect(request).rejects.toBeInstanceOf(UserConfigError);
+    await expect(request).rejects.toMatchObject({ name: 'UserError', type: 'config' });
     await expect(request).rejects.toMatchObject({
       message: expect.stringContaining('您的 OpenAI key 出错了'),
       cause: upstreamError
@@ -313,7 +312,7 @@ describe('createChatCompletion', () => {
       const request = createChatCompletion({ modelData: createModel(), body });
       const isUserConfigFailure = usedUserOpenAIKey && status === 401;
       if (isUserConfigFailure) {
-        await expect(request).rejects.toBeInstanceOf(UserConfigError);
+        await expect(request).rejects.toMatchObject({ name: 'UserError', type: 'config' });
       } else if (usedUserOpenAIKey) {
         await expect(request).rejects.toContain('您的 OpenAI key 出错了');
       } else {
@@ -385,6 +384,6 @@ describe('createChatCompletion', () => {
         body: createBody(),
         userKey: { key: 'user-key' } as any
       })
-    ).rejects.not.toBeInstanceOf(UserConfigError);
+    ).rejects.not.toMatchObject({ name: 'UserError', type: 'config' });
   });
 });

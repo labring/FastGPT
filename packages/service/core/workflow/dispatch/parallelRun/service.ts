@@ -115,7 +115,7 @@ export type ParallelTaskResult =
       success: false;
       index: number;
       error?: string;
-      errorType?: 'UserConfigError';
+      errorType?: 'config';
       response?: DispatchFlowResponse;
       totalPoints: number;
       runningTime?: number;
@@ -161,7 +161,7 @@ export const parseTaskResponse = (params: {
         i18nT('workflow:parallel_task_not_reach_end')
       ),
       ...(workflowRuntimeSummary.hasUserConfigError && {
-        errorType: 'UserConfigError' as const
+        errorType: 'config' as const
       }),
       response,
       totalPoints: 0
@@ -181,7 +181,7 @@ export const parseTaskError = (index: number, err: unknown): ParallelTaskResult 
     success: false,
     index,
     error: getErrText(err),
-    ...(isUserConfigError(err) && { errorType: 'UserConfigError' as const }),
+    ...(isUserConfigError(err) && { errorType: 'config' as const }),
     totalPoints: 0
   };
 };
