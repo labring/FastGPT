@@ -64,7 +64,7 @@ export const createToolCallToolProvider = async ({
     .filter((toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
     .map((toolNode) => toolNode.nodeId);
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
-    async ({ callId, runtimeNodes, runtimeEdges, lastInteractive }) => {
+    async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
         // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。

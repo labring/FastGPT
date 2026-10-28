@@ -22,14 +22,13 @@ export const InteractiveBasicTypeSchema = z.object({
 });
 export type InteractiveBasicType = z.infer<typeof InteractiveBasicTypeSchema>;
 
-const InteractiveNodeTypeSchema = z.object({
-  entryNodeIds: z.array(z.string()).optional(),
-  interactiveId: z.string().optional(),
-  nodeResponseId: z.string().optional(),
-  memoryEdges: z.array(RuntimeEdgeItemTypeSchema).optional(),
-  nodeOutputs: z.array(NodeOutputItemSchema).optional()
-});
-export type InteractiveNodeType = z.infer<typeof InteractiveNodeTypeSchema>;
+/** 节点局部交互尚未补齐调度字段，复用完整交互的基础类型并将这些字段设为可选。 */
+export type InteractiveNodeType = Partial<
+  Pick<
+    InteractiveBasicType,
+    'entryNodeIds' | 'interactiveId' | 'nodeResponseId' | 'memoryEdges' | 'nodeOutputs'
+  >
+>;
 
 export const ChildrenInteractiveSchema = z.object({
   type: z.literal('childrenInteractive'),
