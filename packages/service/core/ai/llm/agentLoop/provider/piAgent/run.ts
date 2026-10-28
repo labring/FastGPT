@@ -199,11 +199,17 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   } = {};
   const normalizationTools = getPiAgentNormalizationTools(runtime);
   const retainDatasetCite = runtime.responseParams?.retainDatasetCite ?? true;
+  // 直接交互的 Human 回答已回放为末尾 tool response，必须保留整段上下文并继续执行。
+  // 只有新 User 输入才拆出最后一条消息交给 prompt，避免重复发送原始需求或丢失工具结果。
+  const shouldContinueFromMessages =
+    requestMessages.at(-1)?.role === ChatCompletionRequestMessageRoleEnum.Tool;
   const lastUserMessageIndex = requestMessages.findLastIndex(
     (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
   );
   const standardHistoryMessages =
-    lastUserMessageIndex >= 0 ? requestMessages.slice(0, lastUserMessageIndex) : requestMessages;
+    !shouldContinueFromMessages && lastUserMessageIndex >= 0
+      ? requestMessages.slice(0, lastUserMessageIndex)
+      : requestMessages;
   const shouldResumeStandardAsk =
     !input.childrenInteractiveParams && !!pendingMainContext && input.userAnswer !== undefined;
   const shouldResumeAsk = shouldResumeStandardAsk;
@@ -669,7 +675,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }, 200);
 
   try {
-    if (resumedInteractiveTool || resumedAsk) {
+    if (resumedInteractiveTool || resumedAsk || shouldContinueFromMessages) {
       await agent.continue();
     } else {
       const prompt = getPiAgentPrompt(requestMessages);
