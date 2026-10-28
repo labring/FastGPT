@@ -138,16 +138,10 @@ function normalizePath(path: string) {
 }
 
 function applyRedirectMaps(path: string): string | null {
+  const matchesPrefix = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
   if (path in exactMap) return exactMap[path];
-  if (path === '/use-cases/app-cases' || path.startsWith('/use-cases/app-cases/')) {
-    return '/guide/getting-started/examples';
-  }
-  if (
-    path === '/introduction/development/proxy' ||
-    path.startsWith('/introduction/development/proxy/') ||
-    path === '/self-host/proxy' ||
-    path.startsWith('/self-host/proxy/')
-  ) {
+  if (matchesPrefix('/use-cases/app-cases')) return '/guide/getting-started/examples';
+  if (matchesPrefix('/introduction/development/proxy') || matchesPrefix('/self-host/proxy')) {
     return '/self-host/deploy/docker';
   }
   const outdatedUpgradeMatch = path.match(/^\/self-host\/upgrading\/(4(?:[0-9]|1[01])\d*)$/);
@@ -155,7 +149,7 @@ function applyRedirectMaps(path: string): string | null {
     return `/self-host/upgrading/outdated/${outdatedUpgradeMatch[1]}`;
   }
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-    if (path === oldPrefix || path.startsWith(`${oldPrefix}/`)) {
+    if (matchesPrefix(oldPrefix)) {
       return newPrefix + path.slice(oldPrefix.length);
     }
   }
