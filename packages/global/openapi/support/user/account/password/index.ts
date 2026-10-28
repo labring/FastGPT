@@ -8,6 +8,7 @@ import {
   PasswordAuthorizationBodySchema,
   PasswordAuthorizationResponseSchema,
   UpdatePasswordBodySchema,
+  UpdateRootPasswordBodySchema,
   UpdatePasswordByCodeBodySchema
 } from './api';
 import { LoginSuccessResponseSchema } from '../login/api';
@@ -48,11 +49,26 @@ export const PasswordPath: OpenAPIPath = {
   '/support/user/account/password/update': {
     post: {
       summary: '设置或修改密码',
-      description:
-        '使用当前 Session 设置或修改密码，并注销其他 Session。商业版必须额外提交一次性改密 Session；开源版没有认证服务，已设置密码的账号必须提交旧密码（oldPsw）。',
+      description: '使用当前 Session 和一次性改密 Session 设置或修改密码，并注销其他 Session',
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: { 'application/json': { schema: UpdatePasswordBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '密码设置成功'
+        }
+      }
+    }
+  },
+  '/support/user/account/password/updateRoot': {
+    post: {
+      summary: '开源版修改 root 密码',
+      description:
+        '仅限开源版已登录的 root 账号修改自身密码；已设置密码时必须提交旧密码（oldPsw），成功后注销其他 Session',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateRootPasswordBodySchema } }
       },
       responses: {
         200: {

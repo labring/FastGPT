@@ -77,41 +77,30 @@ export const createPasswordChangeSession = async ({
 };
 
 /**
- * 在同一 Mongo 事务中更新密码；提供 sessionId 时先校验并消费一次性改密 Session，
+ * 在同一 Mongo 事务中校验并消费一次性改密 Session，再更新密码。
  * 只有密码更新和凭证删除都成功，事务才会提交，避免凭证被提前消费或重复使用。
- * 开源版没有商业版认证服务签发 Session，改密时由调用方传入 oldPassword 证明身份。
  */
 export const updatePassword = async ({
   sessionId,
   userId,
   loginSessionId,
-  newPassword,
-  oldPassword
+  newPassword
 }: PasswordChangeSessionData & {
-  sessionId?: string;
+  sessionId: string;
   newPassword: string;
-  /** 开源版改密必传的旧密码摘要；商业版由一次性改密 Session 承担身份验证。 */
-  oldPassword?: string;
 }) =>
   mongoSessionRun(async (session) => {
-    const dataId = sessionId ? getPasswordChangeSessionDataId(sessionId) : undefined;
-    if (dataId) {
-      const record = await MongoTmpData.findOne({
-        dataId,
-        expireAt: { $gt: new Date() },
-        'data.userId': userId,
-        'data.loginSessionId': loginSessionId
-      })
-        .session(session)
-        .lean();
+    const dataId = getPasswordChangeSessionDataId(sessionId);
+    const record = await MongoTmpData.findOne({
+      dataId,
+      expireAt: { $gt: new Date() },
+      'data.userId': userId,
+      'data.loginSessionId': loginSessionId
+    })
+      .session(session)
+      .lean();
 
-      if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
-    }
-
-    // 旧密码校验与写入放在同一事务内，避免校验后、写入前被并发改密绕过。
-    if (oldPassword !== undefined) {
-      await assertOldPasswordMatches({ userId, oldPassword, session });
-    }
+    if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
 
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
 
@@ -129,8 +118,6 @@ export const updatePassword = async ({
     );
     if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
 
-    if (!dataId) return;
-
     const deleted = await MongoTmpData.deleteOne(
       {
         dataId,
@@ -143,6 +130,44 @@ export const updatePassword = async ({
     if (deleted.deletedCount !== 1) {
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
     }
+  });
+
+/**
+ * 开源版 root 改密：在同一 Mongo 事务中校验旧密码（若已设置密码）并更新 root 密码。
+ * 旧密码校验与写入放在同一事务内，避免校验后、写入前被并发改密绕过。
+ */
+export const updateRootPassword = async ({
+  userId,
+  oldPassword,
+  newPassword
+}: {
+  userId: string;
+  oldPassword?: string;
+  newPassword: string;
+}) =>
+  mongoSessionRun(async (session) => {
+    if (oldPassword !== undefined) {
+      await assertOldPasswordMatches({ userId, oldPassword, session });
+    }
+
+    await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
+
+    const updateResult = await MongoUser.updateOne(
+      {
+        _id: userId,
+        username: 'root',
+        status: { $ne: UserStatusEnum.forbidden }
+      },
+      {
+        $set: {
+          password: newPassword,
+          passwordUpdateTime: new Date(),
+          status: UserStatusEnum.active
+        }
+      },
+      { session }
+    );
+    if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
   });
 
 /** 未激活账号首次设置密码；仅此路径无需旧密码，并在成功后标记账号已激活。 */

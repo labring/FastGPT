@@ -4,7 +4,8 @@ import { POST } from '@/web/common/api/request';
 import {
   authorizePasswordChange,
   createPasswordVerification,
-  updatePassword
+  updatePassword,
+  updateRootPassword
 } from '@/web/support/user/account/password/api';
 
 vi.mock('@/web/common/api/request', () => ({
@@ -47,22 +48,22 @@ describe('password account API', () => {
     });
   });
 
-  it('omits the change token when the login Session is the only authorization', async () => {
-    await updatePassword({ newPassword: 'Strong-password-123' });
-
-    expect(POST).toHaveBeenCalledWith('/support/user/account/password/update', {
-      newPsw: hashStr('Strong-password-123')
-    });
-  });
-
-  it('hashes the old password for the open-source change flow', async () => {
-    await updatePassword({
+  it('hashes the old and new passwords for the open-source root change flow', async () => {
+    await updateRootPassword({
       oldPassword: 'Old-password-123',
       newPassword: 'Strong-password-123'
     });
 
-    expect(POST).toHaveBeenCalledWith('/support/user/account/password/update', {
+    expect(POST).toHaveBeenCalledWith('/support/user/account/password/updateRoot', {
       oldPsw: hashStr('Old-password-123'),
+      newPsw: hashStr('Strong-password-123')
+    });
+  });
+
+  it('omits oldPsw when setting the first root password in open-source', async () => {
+    await updateRootPassword({ newPassword: 'Strong-password-123' });
+
+    expect(POST).toHaveBeenCalledWith('/support/user/account/password/updateRoot', {
       newPsw: hashStr('Strong-password-123')
     });
   });

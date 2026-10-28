@@ -10,7 +10,8 @@ import {
   getUserPasswordAvailability,
   isSsoPasswordDisabled,
   isSsoUserByUsername,
-  updatePassword
+  updatePassword,
+  updateRootPassword
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
@@ -53,44 +54,56 @@ describe('password change session service', () => {
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
   });
 
-  describe('old password check used by the open-source flow', () => {
-    let userId: string;
-    let loginSessionId: string;
+  describe('updateRootPassword used by the open-source flow', () => {
+    let rootUserId: string;
 
     beforeEach(async () => {
+      await MongoUser.deleteMany({ username: 'root' });
       const user = await MongoUser.create({
-        username: 'old-password-user',
+        username: 'root',
         password: hashStr('current-password')
       });
-      userId = String(user._id);
-      loginSessionId = 'login-old-password';
+      rootUserId = String(user._id);
     });
 
-    it('updates the password when the submitted old password matches', async () => {
-      await updatePassword({
-        userId,
-        loginSessionId,
+    it('updates the root password when the submitted old password matches', async () => {
+      await updateRootPassword({
+        userId: rootUserId,
         oldPassword: hashStr('current-password'),
         newPassword: hashStr('next-password')
       });
 
-      const updated = await MongoUser.findById(userId).select('+password').lean();
+      const updated = await MongoUser.findById(rootUserId).select('+password').lean();
       expect(updated?.password).toBe(hashStr(hashStr('next-password')));
     });
 
     it('rejects a wrong old password and leaves the password unchanged', async () => {
       await expect(
-        updatePassword({
-          userId,
-          loginSessionId,
+        updateRootPassword({
+          userId: rootUserId,
           oldPassword: hashStr('wrong-password'),
           newPassword: hashStr('next-password')
         })
       ).rejects.toThrow(UserErrEnum.oldPasswordError);
 
-      const unchanged = await MongoUser.findById(userId).select('+password').lean();
+      const unchanged = await MongoUser.findById(rootUserId).select('+password').lean();
       expect(unchanged?.password).toBe(hashStr(hashStr('current-password')));
       expect(unchanged?.passwordUpdateTime).toBeUndefined();
+    });
+
+    it('rejects non-root users even if userId exists', async () => {
+      const nonRoot = await MongoUser.create({
+        username: 'non-root-user',
+        password: hashStr('current-password')
+      });
+
+      await expect(
+        updateRootPassword({
+          userId: String(nonRoot._id),
+          oldPassword: hashStr('current-password'),
+          newPassword: hashStr('next-password')
+        })
+      ).rejects.toThrow('Failed to update password');
     });
   });
 

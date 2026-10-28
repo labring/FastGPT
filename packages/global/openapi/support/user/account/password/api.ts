@@ -13,8 +13,10 @@ import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/
  * Routes: POST /proApi/support/user/account/password/verification/create
  *         POST /proApi/support/user/account/password/authorization
  *         POST /support/user/account/password/update
+ *         POST /support/user/account/password/updateRoot
  *         POST /support/user/account/password/activate
  * Description: 创建身份验证材料、一次性改密 Session 并更新当前用户密码；
+ *              开源版 root 通过独立端点校验旧密码改密；
  *              未激活账号可通过独立端点首次设置密码
  * Tags: ['User Login', 'Account Verification']
  * ============================================================================ */
@@ -211,16 +213,30 @@ export type PasswordAuthorizationResponse = z.infer<typeof PasswordAuthorization
 
 export const UpdatePasswordBodySchema = z
   .object({
-    /**
-     * 旧密码摘要。商业版由一次性改密 Session 承担身份验证；开源版没有认证服务，
-     * 只能用旧密码证明是本人，因此该字段在开源版改密时必填。
-     */
+    newPsw: z
+      .string()
+      .length(64)
+      .meta({
+        description: '客户端 SHA-256 处理后的新密码摘要',
+        example: 'a'.repeat(64)
+      }),
+    passwordChangeSession: z.string().min(1).max(128).meta({
+      description: '身份验证成功后签发的一次性改密 Session',
+      example: 'password-change-session'
+    })
+  })
+  .strict();
+export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
+
+/** 开源版 root 修改密码请求体：没有商业版认证服务，使用旧密码摘要证明身份。 */
+export const UpdateRootPasswordBodySchema = z
+  .object({
     oldPsw: z
       .string()
       .length(64)
       .optional()
       .meta({
-        description: '客户端 SHA-256 处理后的旧密码摘要；开源版改密必填',
+        description: '客户端 SHA-256 处理后的旧密码摘要；已设置密码时必填',
         example: 'b'.repeat(64)
       }),
     newPsw: z
@@ -229,14 +245,10 @@ export const UpdatePasswordBodySchema = z
       .meta({
         description: '客户端 SHA-256 处理后的新密码摘要',
         example: 'a'.repeat(64)
-      }),
-    passwordChangeSession: z.string().min(1).max(128).optional().meta({
-      description: '身份验证成功后签发的一次性改密 Session（商业版必填）',
-      example: 'password-change-session'
-    })
+      })
   })
   .strict();
-export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
+export type UpdateRootPasswordBody = z.infer<typeof UpdateRootPasswordBodySchema>;
 
 // ===== Activate account（账号激活）=====
 /** 账号激活提交体：只提交客户端摘要后的新密码。 */

@@ -23,7 +23,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   authorizePasswordChange,
   createPasswordVerification,
-  updatePassword
+  updatePassword,
+  updateRootPassword
 } from '@/web/support/user/account/password/api';
 import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 import {
@@ -210,12 +211,20 @@ const PasswordChangeModal = ({
     if (stage.type !== 'password') return;
     setSubmitting(true);
     try {
-      await updatePassword({
-        // 仅商业版需要旧密码：开源版没有认证服务，表单会要求用户先填写旧密码。
-        oldPassword: stage.authorization ? undefined : oldPassword,
-        newPassword,
-        passwordChangeSession: stage.authorization?.sessionId
-      });
+      if (isPlus) {
+        if (!stage.authorization) {
+          throw new Error('Password change authorization is required');
+        }
+        await updatePassword({
+          newPassword,
+          passwordChangeSession: stage.authorization.sessionId
+        });
+      } else {
+        await updateRootPassword({
+          oldPassword,
+          newPassword
+        });
+      }
       form.reset();
       setStoredSession(undefined);
       await initUserInfo();

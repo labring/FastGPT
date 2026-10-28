@@ -74,14 +74,11 @@ describe('password/update API', () => {
 
   const getBody = async ({
     userId = String(testUser._id),
-    newPsw = hashStr('new-password'),
-    oldPsw = hashStr(OLD_PASSWORD)
+    newPsw = hashStr('new-password')
   }: {
     userId?: string;
     newPsw?: string;
-    oldPsw?: string;
   } = {}): Promise<UpdatePasswordBody> => ({
-    ...(oldPsw ? { oldPsw } : {}),
     newPsw,
     passwordChangeSession: (
       await createPasswordChangeSession({ userId, loginSessionId: 'current-session' })
@@ -253,64 +250,13 @@ describe('password/update API', () => {
     ).toBeTruthy();
   });
 
-  it('updates the password from the login Session when the commercial license is inactive', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
-      updatePasswordApi,
-      { body: await getBody(), auth: getAuth() }
-    );
-
-    expect(response.code).toBe(200);
-    expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr('new-password') })
-    ).toBeTruthy();
-    expect(delUserAllSession).toHaveBeenCalledWith(String(testUser._id), ['current-session']);
-  });
-
-  it('requires the old password in OSS when a password is already stored', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
-      updatePasswordApi,
-      {
-        // 显式传空串模拟“开源版改密未提交旧密码”，不能传 undefined（会回落到默认值）。
-        body: await getBody({ oldPsw: '' }),
-        auth: getAuth()
-      }
-    );
-
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({ message: UserErrEnum.oldPasswordError });
-    expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
-    ).toBeTruthy();
-  });
-
-  it('rejects a wrong old password in OSS', async () => {
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
-      updatePasswordApi,
-      {
-        body: await getBody({ oldPsw: hashStr('wrong-old-password') }),
-        auth: getAuth()
-      }
-    );
-
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({ message: UserErrEnum.oldPasswordError });
-    expect(delUserAllSession).not.toHaveBeenCalled();
-    expect(
-      await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
-    ).toBeTruthy();
-  });
-
-  it('rejects a missing password change session when the commercial license is active', async () => {
-    global.feConfigs = { ...global.feConfigs, isPlus: true };
-    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
-      updatePasswordApi,
-      { body: { newPsw: hashStr('new-password') }, auth: getAuth() }
-    );
-
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({
-      message: UserErrEnum.passwordChangeAuthorizationInvalid
+  it('rejects a missing password change session', async () => {
+    const response = await Call<any, Record<string, never>, undefined>(updatePasswordApi, {
+      body: { newPsw: hashStr('new-password') },
+      auth: getAuth()
     });
+
+    expect(response.code).toBe(500);
     expect(
       await MongoUser.exists({ _id: testUser._id, password: hashStr(OLD_PASSWORD) })
     ).toBeTruthy();
