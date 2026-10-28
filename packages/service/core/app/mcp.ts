@@ -428,7 +428,7 @@ export class MCPClient {
     this.safeFetch = safeFetch;
 
     logger.debug('Start connect mcp client', { url: this.url });
-    await profileStage('mcpClient.connect', async () => {
+    await profileStage({ event: 'mcpClient.connect' }, async () => {
       try {
         const transport = new StreamableHTTPClientTransport(new URL(this.url), {
           fetch: safeFetch,
@@ -605,7 +605,7 @@ export class MCPClient {
       const client = await this.getConnection();
       logger.debug('MCP client calling tool', { url: this.url, toolName, params });
 
-      return await profileStage('mcpClient.call', () =>
+      return await profileStage({ event: 'mcpClient.call', params: { toolName } }, () =>
         client.callTool(
           {
             name: toolName,

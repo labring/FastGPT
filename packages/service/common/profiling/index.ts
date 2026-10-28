@@ -2,15 +2,22 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
 import type { Histogram } from '@opentelemetry/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../logger';
 
-/** 入口标识，用于区分 chat / tools/list / tools/call 等调用来源。 */
+/** 稳定的入口标识，使用规范化 HTTP 路由或 RPC 入口区分请求来源。 */
 export type RequestProfileKind = string;
 
 type StageStat = {
   n: number;
   ms: number;
+  params?: Record<string, unknown>[];
+};
+
+export type ProfileStageOptions = {
+  /** 稳定的阶段标识；同时用于请求汇总和指标属性。 */
+  event: string;
+  /** 本次调用的日志摘要；同名阶段保留各次参数，不作为指标标签。 */
+  params?: Record<string, unknown>;
 };
 
 type ProfileState = {
@@ -41,27 +48,16 @@ let inflightCount = 0;
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
+/** 标记失败并保留首条可提取的错误摘要；异常对象不可读时也不能覆盖原始业务异常。 */
 const markStateError = (state: ProfileState, error?: unknown) => {
   state.ok = false;
   if (error === undefined) return;
 
-  state.error ??= getErrText(error).slice(0, MAX_ERROR_LENGTH);
-};
-
-/**
- * 采集开关。
- *
- * 每次调用读取一次 `serviceEnv`，便于测试与灰度切换；关闭或采样未命中时
- * 不创建 AsyncLocalStorage 上下文，调用方只剩一次属性访问的开销。
- */
-const shouldProfile = () => {
-  if (!serviceEnv.REQUEST_PROFILE_ENABLE) return false;
-
-  const sampleRate = serviceEnv.REQUEST_PROFILE_SAMPLE_RATE;
-  if (sampleRate >= 1) return true;
-  if (sampleRate <= 0) return false;
-
-  return Math.random() < sampleRate;
+  try {
+    state.error ??= String(getErrText(error)).slice(0, MAX_ERROR_LENGTH);
+  } catch {
+    // 上游可能抛出非标准或带 getter 的错误对象，摘要失败只丢弃观测字段。
+  }
 };
 
 /** 供其它模块低成本判断是否处于采集上下文，避免无谓的属性读取与字符串拼接。 */
@@ -80,25 +76,32 @@ export const markProfileError = (error?: unknown) => {
 /**
  * 在本次调用上下文内累加一个阶段的耗时。
  *
- * 没有 profile 上下文时直接执行回调，不做任何计时，保证默认关闭时几乎零开销。
+ * 没有 profile 上下文时直接执行回调，不采集阶段参数或耗时。
+ * 同名事件累计次数与耗时，params 按调用顺序保留，失败调用同样参与统计。
  */
-export const profileStage = async <T>(name: string, fn: () => PromiseLike<T> | T): Promise<T> => {
+export const profileStage = async <T>(
+  { event, params }: ProfileStageOptions,
+  fn: () => PromiseLike<T> | T
+): Promise<T> => {
   const state = storage.getStore();
   if (!state) return fn();
+
+  let stat = state.stages.get(event);
+  if (!stat) {
+    stat = { n: 0, ms: 0 };
+    state.stages.set(event, stat);
+  }
+  if (params !== undefined) {
+    stat.params ??= [];
+    stat.params.push(params);
+  }
 
   const startedAt = performance.now();
   try {
     return await fn();
   } finally {
-    const stat = state.stages.get(name);
-    const cost = performance.now() - startedAt;
-
-    if (stat) {
-      stat.n += 1;
-      stat.ms += cost;
-    } else {
-      state.stages.set(name, { n: 1, ms: cost });
-    }
+    stat.n += 1;
+    stat.ms += performance.now() - startedAt;
   }
 };
 
@@ -106,7 +109,7 @@ export const profileStage = async <T>(name: string, fn: () => PromiseLike<T> | T
  * 记录一次 Mongo 操作。
  *
  * 由 `common/mongo` 的公共中间件在操作完成后调用；没有 profile 上下文时是空操作，
- * 因此不会对非 MCP 请求产生可见影响。
+ * 未启用采集的请求不追加统计。
  */
 export const recordMongoOperation = ({
   collectionName,
@@ -192,7 +195,10 @@ const emit = async (state: ProfileState) => {
   const cpu = process.cpuUsage(state.cpu);
   const elu = performance.eventLoopUtilization(state.elu);
   const stages = Object.fromEntries(
-    [...state.stages.entries()].map(([name, stat]) => [name, { n: stat.n, ms: round(stat.ms) }])
+    [...state.stages.entries()].map(([event, stat]) => [
+      event,
+      { n: stat.n, ms: round(stat.ms), ...(stat.params ? { params: stat.params } : {}) }
+    ])
   );
 
   const payload = {
@@ -250,7 +256,7 @@ const emit = async (state: ProfileState) => {
 /**
  * 在一次调用范围内采集分段耗时与资源指标。
  *
- * - 开关关闭或采样未命中时直接执行回调，不创建上下文
+ * - 请求入口决定是否启用；业务阶段不自行创建上下文
  * - 已存在 profile 上下文时（例如嵌套调用）直接执行，避免重复计数
  * - 无论成功或失败都会输出一次汇总日志
  */
@@ -258,7 +264,7 @@ export const withRequestProfile = async <T>(
   options: { kind: RequestProfileKind; toolName?: string },
   fn: () => Promise<T>
 ): Promise<T> => {
-  if (!shouldProfile() || isProfiling()) {
+  if (isProfiling()) {
     return fn();
   }
 

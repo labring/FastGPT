@@ -49,7 +49,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { markProfileError, withRequestProfile } from '@fastgpt/service/common/profiling';
+import { markProfileError } from '@fastgpt/service/common/profiling';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -95,17 +95,7 @@ import {
 } from '@fastgpt/service/core/chat/completionMessage';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
-type ChatCompletionProfileResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error?: unknown;
-    };
-
-const handleChatCompletions = async (
-  req: NextApiRequest,
-  res: NextApiResponse
-): Promise<ChatCompletionProfileResult> => {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const completionBody = parseApiInput({ req, bodySchema: CompletionsPropsSchema }).body;
   const {
     chatId,
@@ -197,7 +187,8 @@ const handleChatCompletions = async (
         res
       }))
     ) {
-      return { ok: false };
+      markProfileError();
+      return;
     }
 
     const workflowFileLimits = await getWorkflowFileLimits({ teamId });
@@ -574,8 +565,9 @@ const handleChatCompletions = async (
       });
     }
 
-    return finalError ? { ok: false, error: finalError } : { ok: true };
+    if (finalError) markProfileError(finalError);
   } catch (err) {
+    markProfileError(err);
     const { preparedRound } = roundState;
     if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
       if (preparedRound.shouldFinalizePreparedRound) {
@@ -609,7 +601,6 @@ const handleChatCompletions = async (
         error: err
       });
     }
-    return { ok: false, error: err };
   } finally {
     if (stream) {
       // 失败状态写入再次报错时，也必须等待续流缓存收尾后再关闭响应。
@@ -617,14 +608,6 @@ const handleChatCompletions = async (
       res.end();
     }
   }
-};
-
-/** chat 与 MCP 共用同一套分段耗时采集，便于对比两类入口的耗时构成。 */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  return withRequestProfile({ kind: 'chat' }, async () => {
-    const result = await handleChatCompletions(req, res);
-    if (!result.ok) markProfileError(result.error);
-  });
 }
 export default NextAPI(handler);
 

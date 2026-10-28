@@ -1,4 +1,6 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.unmock('@fastgpt/service/common/http/entry');
 
 const mocks = vi.hoisted(() => ({
   logger: {
@@ -56,8 +58,9 @@ vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
   teamFrequencyLimit: mocks.teamFrequencyLimit
 }));
 
-vi.mock('@/service/middleware/entry', () => ({
-  NextAPI: (handler: unknown) => handler
+vi.mock('@fastgpt/next/middle/cors', () => ({
+  parseAllowedOrigins: () => undefined,
+  withNextCors: vi.fn().mockResolvedValue(undefined)
 }));
 
 vi.mock('@/service/support/permission/auth/chatCompletion', () => ({
@@ -70,7 +73,6 @@ type ProfilePayload = {
 };
 
 let handler: (req: any, res: any) => Promise<unknown>;
-let serviceEnv: typeof import('@fastgpt/service/env').serviceEnv;
 
 const getLastProfile = (): ProfilePayload => {
   const profileCall = mocks.logger.info.mock.calls
@@ -87,26 +89,49 @@ const getLastProfile = (): ProfilePayload => {
   ) as ProfilePayload;
 };
 
-const createRes = () => ({
-  end: vi.fn(),
-  json: vi.fn(),
-  status: vi.fn().mockReturnThis()
+const createRes = () => {
+  const res = {
+    statusCode: 200,
+    writableEnded: false,
+    writableFinished: false,
+    destroyed: false,
+    headersSent: false,
+    setHeader: vi.fn(),
+    getHeader: vi.fn(),
+    once: vi.fn(),
+    end: vi.fn(() => {
+      res.writableEnded = true;
+    }),
+    json: vi.fn(() => {
+      res.writableEnded = true;
+    }),
+    status: vi.fn((code: number) => {
+      res.statusCode = code;
+      return res;
+    })
+  };
+  return res;
+};
+
+const createReq = (profile = true) => ({
+  headers: profile ? { 'x-fastgpt-profile': '1' } : {},
+  method: 'POST',
+  url: '/api/v2/chat/completions',
+  socket: { remoteAddress: '127.0.0.1' }
 });
 
 describe('v2 chat completion profile status', () => {
   beforeAll(async () => {
     vi.resetModules();
-    ({ serviceEnv } = await import('@fastgpt/service/env'));
-    serviceEnv.REQUEST_PROFILE_ENABLE = true;
-    serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 1;
-    process.env.REQUEST_PROFILE_ENABLE = 'true';
-    process.env.REQUEST_PROFILE_SAMPLE_RATE = '1';
     handler = (await import('@/pages/api/v2/chat/completions')).default;
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getIpFromRequest.mockReturnValue('127.0.0.1');
+    mocks.jsonRes.mockImplementation((res, { code = 200, ...body }) => {
+      res.status(code).json(body);
+    });
     mocks.parseApiInput.mockReturnValue({
       body: {
         appId: 'app-id',
@@ -117,13 +142,6 @@ describe('v2 chat completion profile status', () => {
         variables: {}
       }
     });
-  });
-
-  afterAll(() => {
-    serviceEnv.REQUEST_PROFILE_ENABLE = false;
-    serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 1;
-    delete process.env.REQUEST_PROFILE_ENABLE;
-    delete process.env.REQUEST_PROFILE_SAMPLE_RATE;
   });
 
   it.each([false, true])('marks an auth failure as failed for stream=%s', async (stream) => {
@@ -140,11 +158,16 @@ describe('v2 chat completion profile status', () => {
     mocks.authChatCompletionHeaderRequest.mockRejectedValue(new Error('auth failed'));
 
     const res = createRes();
-    await handler({ headers: {}, method: 'POST' }, res);
+    await handler(createReq(), res);
 
     const profile = getLastProfile();
     expect(profile.ok).toBe(false);
     expect(profile.error).toContain('auth failed');
+    expect(
+      mocks.logger.info.mock.calls.filter(([message]) =>
+        String(message).startsWith('Request profile ')
+      )
+    ).toHaveLength(1);
     if (stream) {
       expect(mocks.sseErrRes).toHaveBeenCalled();
       expect(res.end).toHaveBeenCalled();
@@ -169,10 +192,37 @@ describe('v2 chat completion profile status', () => {
     });
     mocks.teamFrequencyLimit.mockResolvedValue(false);
 
-    await handler({ headers: {}, method: 'POST' }, createRes());
+    await handler(createReq(), createRes());
 
     const profile = getLastProfile();
     expect(profile.ok).toBe(false);
     expect(profile.error).toBeUndefined();
+  });
+
+  it('未带 header 时不因业务报错自行启动采集', async () => {
+    mocks.authChatCompletionHeaderRequest.mockRejectedValue(new Error('auth failed'));
+    await handler(createReq(false), createRes());
+    expect(
+      mocks.logger.info.mock.calls.some(([message]) =>
+        String(message).startsWith('Request profile ')
+      )
+    ).toBe(false);
+    expect(mocks.jsonRes).toHaveBeenCalled();
+  });
+
+  it('中间件捕获的参数解析错误同样标记为失败', async () => {
+    mocks.parseApiInput.mockImplementationOnce(() => {
+      throw new Error('invalid input');
+    });
+    await handler(createReq(), createRes());
+    expect(getLastProfile()).toMatchObject({ ok: false, error: 'invalid input' });
+  });
+
+  it('直接写回的 HTTP 错误状态由中间件统一标记', async () => {
+    const { NextAPI } = await import('@/service/middleware/entry');
+    await NextAPI(async (_req, res) => {
+      res.status(429).end();
+    })(createReq() as any, createRes() as any);
+    expect(getLastProfile()).toMatchObject({ ok: false });
   });
 });

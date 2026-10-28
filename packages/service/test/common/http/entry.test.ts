@@ -11,6 +11,8 @@ vi.unmock('@fastgpt/service/common/response');
 vi.unmock('@fastgpt/service/common/logger');
 
 import { createApiEntry, redactRequestUrl } from '@fastgpt/service/common/http/entry';
+import { isProfiling, profileStage } from '@fastgpt/service/common/profiling';
+import { REQUEST_PROFILE_HEADER } from '@fastgpt/service/common/http/requestProfile';
 
 describe('redactRequestUrl', () => {
   it('redacts every declared query value while preserving non-sensitive parameters', () => {
@@ -65,6 +67,32 @@ describe('createApiEntry response lifecycle', () => {
       data: { value: 1 }
     });
   });
+
+  it.each([undefined, '1'])(
+    '请求入口按 header 创建上下文，覆盖前置中间件和异步业务：%s',
+    async (header) => {
+      const { req, res } = createHttpObjects();
+      req.headers[REQUEST_PROFILE_HEADER] = header;
+      const active = header === '1';
+      const handler = createApiEntry({
+        beforeCallback: [
+          async () => {
+            expect(isProfiling()).toBe(active);
+          }
+        ]
+      })(async () => {
+        expect(isProfiling()).toBe(active);
+        await profileStage({ event: 'tools.authorize', params: { toolCount: 2 } }, async () => {
+          await Promise.resolve();
+          expect(isProfiling()).toBe(active);
+        });
+        return { value: 1 };
+      });
+      await handler(req, res);
+      expect(isProfiling()).toBe(false);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: { value: 1 } }));
+    }
+  );
 
   it('stops later handlers and JSON fallback after end without waiting for finish', async () => {
     const { req, res } = createHttpObjects();

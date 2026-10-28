@@ -49,12 +49,7 @@ import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
-import {
-  markProfileError,
-  profileStage,
-  setProfileMeta,
-  withRequestProfile
-} from '@fastgpt/service/common/profiling';
+import { markProfileError, profileStage, setProfileMeta } from '@fastgpt/service/common/profiling';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import {
   LimitTypeEnum,
@@ -158,11 +153,8 @@ export const workflow2InputSchema = (chatConfig?: {
  * MCP key 在创建或更新绑定应用时已经完成权限校验；运行时按 key 中保存的应用快照提供工具，
  * 不再因为创建人的应用权限后续变化而隐藏工具，避免已发布集成被普通权限调整意外中断。
  */
-export const getMcpServerTools = (key: string): Promise<Tool[]> =>
-  withRequestProfile({ kind: 'tools/list' }, () => buildMcpServerTools(key));
-
-const buildMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const mcp = await profileStage('mcpKey.read', () =>
+export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
+  const mcp = await profileStage({ event: 'mcpKey.read' }, () =>
     MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean()
   );
   if (!mcp) {
@@ -170,23 +162,25 @@ const buildMcpServerTools = async (key: string): Promise<Tool[]> => {
   }
 
   setProfileMeta({ appCount: mcp.apps.length });
-  await profileStage('team.check', () => assertMcpTeamUsable(mcp));
+  await profileStage({ event: 'team.check' }, () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await profileStage('app.list', () =>
-    MongoApp.find(
-      {
-        _id: { $in: mcp.apps.map((app) => app.appId) },
-        type: {
-          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-        }
-      },
-      { name: 1, intro: 1, publishedVersionId: 1 }
-    ).lean()
+  const appList = await profileStage(
+    { event: 'app.list', params: { appCount: mcp.apps.length } },
+    () =>
+      MongoApp.find(
+        {
+          _id: { $in: mcp.apps.map((app) => app.appId) },
+          type: {
+            $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+          }
+        },
+        { name: 1, intro: 1, publishedVersionId: 1 }
+      ).lean()
   );
 
   // Get latest version
-  const versionList = await profileStage('app.versions', () =>
+  const versionList = await profileStage({ event: 'app.versions' }, () =>
     Promise.all(appList.map((app) => getAppLatestVersion(app._id, app)))
   );
 
@@ -217,12 +211,8 @@ const buildMcpServerTools = async (key: string): Promise<Tool[]> => {
  * 发布 key 用于定位绑定关系；每次执行都按发布者或 authProxy 代理成员重新校验应用读权限，
  * 并将对话与运行用户上下文归属到该有效成员。
  */
-export const callMcpServerTool = (props: toolCallProps) =>
-  withRequestProfile({ kind: 'tools/call', toolName: props.toolName }, () =>
-    callMcpServerToolInner(props)
-  );
-
-const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
+export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
+  setProfileMeta({ toolName });
   const dispatchApp = async (
     app: AppSchemaType,
     variables: Record<string, any>,
@@ -233,7 +223,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
 
     // Get app latest version
     const { versionId, nodes, edges, chatConfig, resources } = await profileStage(
-      'app.version',
+      { event: 'app.version', params: { appId: String(app._id) } },
       () => getAppLatestVersion(app._id, app)
     );
 
@@ -290,7 +280,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
       query: workflowQuery,
       maxFileAmount,
       maxBytesPerFile
-    } = await profileStage('file.limit', () =>
+    } = await profileStage({ event: 'file.limit' }, () =>
       prepareWorkflowFileQuery({
         teamId: String(app.teamId),
         chatConfig,
@@ -301,7 +291,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
       ...userQuestion,
       value: workflowQuery
     };
-    const preparedRound = await profileStage('chat.prepare', () =>
+    const preparedRound = await profileStage({ event: 'chat.prepare' }, () =>
       preChatRound({
         ...chatSource,
         chatId,
@@ -317,7 +307,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
 
     try {
       // 保持在 dispatchWorkFlow 参数求值时的原始顺序：先读运行成员，再构建资源快照。
-      const runningUserInfo = await profileStage('runningUser.read', () =>
+      const runningUserInfo = await profileStage({ event: 'runningUser.read' }, () =>
         getRunningUserInfoByTmbId(effectiveTmbId)
       );
       const resourceContext = createWorkflowResourceContext({
@@ -331,37 +321,39 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
         durationSeconds,
         system_memories,
         workflowRuntimeSummary
-      } = await profileStage('workflow.dispatch', () =>
-        dispatchWorkFlow({
-          chatId: preparedRound.chatId,
-          mode: 'chat',
-          usageSource: UsageSourceEnum.mcp,
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(app._id),
-            name: app.name,
-            teamId: String(app.teamId),
-            tmbId: String(app.tmbId)
-          },
-          runningUserInfo,
-          uid: effectiveTmbId,
-          runtimeNodes,
-          runtimeEdges: storeEdges2RuntimeEdges(edges),
-          resourceContext,
-          variables,
-          responseChatItemId: preparedRound.responseChatItemId,
-          query: removeEmptyUserInput(workflowQuery),
-          maxFileAmount,
-          maxBytesPerFile,
-          chatConfig,
-          histories: [],
-          stream: false,
-          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-          nodeResponseWriteConfig: {
-            persistToDb: true,
-            retainInMemory: false
-          }
-        })
+      } = await profileStage(
+        { event: 'workflow.dispatch', params: { nodeCount: runtimeNodes.length } },
+        () =>
+          dispatchWorkFlow({
+            chatId: preparedRound.chatId,
+            mode: 'chat',
+            usageSource: UsageSourceEnum.mcp,
+            runningAppInfo: {
+              sourceType: ChatSourceTypeEnum.app,
+              sourceId: String(app._id),
+              name: app.name,
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
+            runningUserInfo,
+            uid: effectiveTmbId,
+            runtimeNodes,
+            runtimeEdges: storeEdges2RuntimeEdges(edges),
+            resourceContext,
+            variables,
+            responseChatItemId: preparedRound.responseChatItemId,
+            query: removeEmptyUserInput(workflowQuery),
+            maxFileAmount,
+            maxBytesPerFile,
+            chatConfig,
+            histories: [],
+            stream: false,
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+            nodeResponseWriteConfig: {
+              persistToDb: true,
+              retainInMemory: false
+            }
+          })
       );
 
       // dispatchWorkFlow 正常返回但工作流内部存在未捕获错误时，本次调用仍应视为失败，
@@ -392,7 +384,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
         durationSeconds,
         workflowRuntimeSummary
       };
-      await profileStage('chat.finalize', () => finalizeChatRound(saveParams));
+      await profileStage({ event: 'chat.finalize' }, () => finalizeChatRound(saveParams));
       chatRoundFinalized = true;
 
       // Get MCP response type
@@ -425,7 +417,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
     }
   };
 
-  const mcp = await profileStage('mcpKey.read', () =>
+  const mcp = await profileStage({ event: 'mcpKey.read' }, () =>
     MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }).lean()
   );
 
@@ -434,16 +426,18 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
   }
 
   setProfileMeta({ appCount: mcp.apps.length });
-  await profileStage('team.check', () => assertMcpTeamUsable(mcp));
+  await profileStage({ event: 'team.check' }, () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await profileStage('app.list', () =>
-    MongoApp.find({
-      _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-      }
-    }).lean()
+  const appList = await profileStage(
+    { event: 'app.list', params: { appCount: mcp.apps.length } },
+    () =>
+      MongoApp.find({
+        _id: { $in: mcp.apps.map((app) => app.appId) },
+        type: {
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+        }
+      }).lean()
   );
 
   const app = appList.find((app) => {
@@ -456,10 +450,10 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const effectiveTmbId = await profileStage('identity.resolve', () =>
+  const effectiveTmbId = await profileStage({ event: 'identity.resolve' }, () =>
     resolveMcpEffectiveTmbId({ mcp, authProxy })
   );
-  await profileStage('app.auth', () =>
+  await profileStage({ event: 'app.auth', params: { appId: String(app._id) } }, () =>
     authAppByTmbId({
       tmbId: effectiveTmbId,
       appId: String(app._id),
@@ -468,7 +462,7 @@ const callMcpServerToolInner = async ({ key, toolName, inputs, authProxy }: tool
   );
 
   // 校验所属团队的对话 QPM 频次限制，防止无限制调用打满集群或下游模型并发
-  await profileStage('team.frequency', () =>
+  await profileStage({ event: 'team.frequency' }, () =>
     assertTeamFrequencyLimit({
       teamId: String(app.teamId),
       type: LimitTypeEnum.chat

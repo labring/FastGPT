@@ -160,7 +160,7 @@ export async function dispatchWorkFlow({
 
   /* Init function */
   // Check point
-  await profileStage('wf.points.check', () => checkTeamAIPoints(runningUserInfo.teamId));
+  await profileStage({ event: 'wf.points.check' }, () => checkTeamAIPoints(runningUserInfo.teamId));
 
   const {
     fileContext,
@@ -168,7 +168,7 @@ export async function dispatchWorkFlow({
     getPreviewUrl,
     query: runtimeQuery,
     histories: preparedHistories
-  } = await profileStage('wf.file.context', () =>
+  } = await profileStage({ event: 'wf.file.context' }, () =>
     prepareWorkflowFileContext({
       query,
       histories,
@@ -192,7 +192,7 @@ export async function dispatchWorkFlow({
   };
 
   const [{ timezone, externalProvider }, newUsageId, runtimeHistories] = await profileStage(
-    'wf.init',
+    { event: 'wf.init' },
     () =>
       Promise.all([
         runningUserInfo.externalProvider
@@ -236,7 +236,7 @@ export async function dispatchWorkFlow({
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
-  const variableState = await profileStage('wf.variable.state', () =>
+  const variableState = await profileStage({ event: 'wf.variable.state' }, () =>
     WorkflowVariableState.create({
       timezone,
       runningAppInfo,
@@ -289,7 +289,7 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
-  const nodeResponseSink = await profileStage('wf.sink.create', () =>
+  const nodeResponseSink = await profileStage({ event: 'wf.sink.create' }, () =>
     createWorkflowEntryNodeResponseSink({
       teamId: data.runningAppInfo.teamId,
       sourceType: data.runningAppInfo.sourceType,

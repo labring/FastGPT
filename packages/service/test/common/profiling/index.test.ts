@@ -6,7 +6,7 @@ type ProfilePayload = {
   ok: boolean;
   error?: string;
   totalMs: number;
-  stages: Record<string, { n: number; ms: number }>;
+  stages: Record<string, { n: number; ms: number; params?: Record<string, unknown>[] }>;
   mongo: { ops: number; ms: number; top: Record<string, number> };
   inflight: number;
   cpuMs: number;
@@ -15,11 +15,9 @@ type ProfilePayload = {
 };
 
 type ProfilingModule = typeof import('@fastgpt/service/common/profiling');
-type EnvModule = typeof import('@fastgpt/service/env');
-
 let loggerMocks: { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
+let recordMetric: ReturnType<typeof vi.fn>;
 let profiling: ProfilingModule;
-let serviceEnv: EnvModule['serviceEnv'];
 
 const getLastPayload = (): ProfilePayload => {
   const lastCall = loggerMocks.info.mock.calls.at(-1);
@@ -38,6 +36,7 @@ const getLastPayload = (): ProfilePayload => {
 beforeEach(async () => {
   vi.resetModules();
   loggerMocks = { info: vi.fn(), warn: vi.fn() };
+  recordMetric = vi.fn();
 
   vi.doMock('@fastgpt/service/common/logger', () => ({
     getLogger: () => ({
@@ -50,47 +49,27 @@ beforeEach(async () => {
       }
     }
   }));
+  vi.doMock('@fastgpt/service/common/metrics', () => ({
+    getMeter: () => ({ createHistogram: () => ({ record: recordMetric }) })
+  }));
 
-  ({ serviceEnv } = await import('@fastgpt/service/env'));
   profiling = await import('@fastgpt/service/common/profiling');
-
-  serviceEnv.REQUEST_PROFILE_ENABLE = true;
-  serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 1;
 });
 
 afterEach(() => {
   vi.doUnmock('@fastgpt/service/common/logger');
+  vi.doUnmock('@fastgpt/service/common/metrics');
   vi.resetModules();
 });
 
 describe('withRequestProfile', () => {
-  it('关闭时不创建上下文，也不输出日志', async () => {
-    serviceEnv.REQUEST_PROFILE_ENABLE = false;
-
-    const result = await profiling.withRequestProfile(
-      { kind: 'tools/call', toolName: 'demo' },
-      async () => profiling.isProfiling()
-    );
-
-    expect(result).toBe(false);
-    expect(loggerMocks.info).not.toHaveBeenCalled();
-  });
-
-  it('采样率为 0 时不采集', async () => {
-    serviceEnv.REQUEST_PROFILE_SAMPLE_RATE = 0;
-
-    await profiling.withRequestProfile({ kind: 'tools/list' }, async () => undefined);
-
-    expect(loggerMocks.info).not.toHaveBeenCalled();
-  });
-
   it('输出一次汇总，包含阶段、Mongo 与 meta', async () => {
     await profiling.withRequestProfile({ kind: 'tools/call', toolName: 'search' }, async () => {
       expect(profiling.isProfiling()).toBe(true);
 
-      await profiling.profileStage('mcpKey.read', async () => undefined);
-      await profiling.profileStage('app.list', async () => undefined);
-      await profiling.profileStage('app.list', async () => undefined);
+      await profiling.profileStage({ event: 'mcpKey.read' }, async () => undefined);
+      await profiling.profileStage({ event: 'app.list' }, async () => undefined);
+      await profiling.profileStage({ event: 'app.list' }, async () => undefined);
 
       profiling.recordMongoOperation({ collectionName: 'apps', durationMs: 3 });
       profiling.recordMongoOperation({ collectionName: 'apps', durationMs: 2 });
@@ -141,6 +120,32 @@ describe('withRequestProfile', () => {
     expect(payload.error).toContain('boom');
   });
 
+  it.each([
+    { code: 500 },
+    Object.defineProperty({}, 'message', {
+      get() {
+        throw new Error('unreadable error');
+      }
+    })
+  ])('异常摘要不可读时仍抛出原始业务错误：%j', async (error) => {
+    await expect(
+      profiling.withRequestProfile({ kind: 'test' }, async () => {
+        throw error;
+      })
+    ).rejects.toBe(error);
+    expect(getLastPayload()).toMatchObject({ ok: false });
+  });
+
+  it('已处理异常的摘要提取失败时不打断业务', async () => {
+    await expect(
+      profiling.withRequestProfile({ kind: 'test' }, async () => {
+        profiling.markProfileError({ code: 500 });
+        return 'result';
+      })
+    ).resolves.toBe('result');
+    expect(getLastPayload()).toMatchObject({ ok: false });
+  });
+
   it('允许业务代码标记已处理的失败，并保留第一个错误', async () => {
     await profiling.withRequestProfile({ kind: 'chat' }, async () => {
       profiling.markProfileError(new Error('auth failed'));
@@ -164,13 +169,122 @@ describe('withRequestProfile', () => {
 
   it('没有 profile 上下文时标记失败是空操作', () => {
     expect(() => profiling.markProfileError('ignored')).not.toThrow();
+    profiling.setProfileMeta({ ignored: true });
+    profiling.recordMongoOperation({ durationMs: 1 });
+    expect(loggerMocks.info).not.toHaveBeenCalled();
+  });
+
+  it('隔离并发请求的阶段、参数和失败状态，退出后清理上下文', async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = profiling.withRequestProfile({ kind: 'first' }, async () => {
+      await profiling.profileStage(
+        { event: 'tools.authorize', params: { teamId: 'a' } },
+        () => pending
+      );
+    });
+    await profiling.withRequestProfile({ kind: 'second' }, async () => {
+      profiling.markProfileError('second failed');
+      await profiling.profileStage({ event: 'tools.authorize', params: { teamId: 'b' } }, () => 1);
+    });
+    expect(getLastPayload()).toMatchObject({
+      kind: 'second',
+      ok: false,
+      stages: { 'tools.authorize': { n: 1, params: [{ teamId: 'b' }] } }
+    });
+    release();
+    await first;
+    expect(getLastPayload()).toMatchObject({
+      kind: 'first',
+      ok: true,
+      stages: { 'tools.authorize': { n: 1, params: [{ teamId: 'a' }] } }
+    });
+    expect(profiling.isProfiling()).toBe(false);
+    expect(loggerMocks.info).toHaveBeenCalledTimes(2);
+  });
+
+  it('日志上报失败不改变业务结果', async () => {
+    loggerMocks.info.mockImplementation(() => {
+      throw new Error('logger unavailable');
+    });
+    await expect(
+      profiling.withRequestProfile({ kind: 'test' }, async () => 'result')
+    ).resolves.toBe('result');
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
+      'Failed to write request profile log',
+      expect.any(Object)
+    );
+  });
+
+  it('指标上报和兜底日志均失败时仍保留业务结果', async () => {
+    recordMetric.mockImplementation(() => {
+      throw new Error('metrics unavailable');
+    });
+    loggerMocks.warn.mockImplementation(() => {
+      throw new Error('logger unavailable');
+    });
+    await expect(
+      profiling.withRequestProfile({ kind: 'test' }, async () => 'result')
+    ).resolves.toBe('result');
+    expect(loggerMocks.warn).toHaveBeenCalledWith(
+      'Failed to record request profile metrics',
+      expect.any(Object)
+    );
   });
 });
 
 describe('profileStage', () => {
   it('没有上下文时直接执行回调', async () => {
-    const result = await profiling.profileStage('noop', async () => 'value');
+    const result = await profiling.profileStage({ event: 'noop' }, async () => 'value');
 
     expect(result).toBe('value');
+    expect(loggerMocks.info).not.toHaveBeenCalled();
+  });
+
+  it('同名 event 累计次数和耗时，并分别保留额外参数', async () => {
+    await profiling.withRequestProfile({ kind: 'test' }, async () => {
+      expect(
+        await profiling.profileStage({ event: 'tools.authorize', params: { toolCount: 2 } }, () => [
+          'a',
+          'b'
+        ])
+      ).toEqual(['a', 'b']);
+      await profiling.profileStage({ event: 'tools.authorize' }, async () => undefined);
+      await profiling.profileStage({ event: 'tools.authorize', params: { toolCount: 0 } }, () => 0);
+    });
+    expect(getLastPayload().stages['tools.authorize']).toEqual({
+      n: 3,
+      ms: expect.any(Number),
+      params: [{ toolCount: 2 }, { toolCount: 0 }]
+    });
+    expect(recordMetric).toHaveBeenCalledWith(expect.any(Number), {
+      kind: 'test',
+      stage: 'tools.authorize',
+      status: 'ok'
+    });
+    for (const [, attributes] of recordMetric.mock.calls) {
+      expect(attributes).not.toHaveProperty('params');
+      expect(attributes).not.toHaveProperty('toolCount');
+    }
+  });
+
+  it('同步异常及 Promise 失败均记录阶段，保留原始错误', async () => {
+    const error = new Error('authorize failed');
+    await profiling.withRequestProfile({ kind: 'test' }, async () => {
+      await expect(
+        profiling.profileStage({ event: 'sync' }, () => {
+          throw error;
+        })
+      ).rejects.toBe(error);
+      await expect(
+        profiling.profileStage({ event: 'async', params: {} }, () => Promise.reject(error))
+      ).rejects.toBe(error);
+    });
+    expect(getLastPayload().stages).toMatchObject({
+      sync: { n: 1 },
+      async: { n: 1, params: [{}] }
+    });
   });
 });

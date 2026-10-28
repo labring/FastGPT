@@ -14,6 +14,8 @@ import { getMcpAuthProxyFromHeaders } from '@/service/support/mcp/auth';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { withHttpRequestProfile } from '@fastgpt/service/common/http/requestProfile';
+import { markProfileError } from '@fastgpt/service/common/profiling';
 const logger = getLogger(LogCategories.MODULE.MCP.APP);
 
 const mcpExpectedClientErrors = new Set<string>([
@@ -94,6 +96,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
           isError: false
         };
       } catch (error) {
+        markProfileError(error);
         return {
           content: [
             {
@@ -114,6 +117,7 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
+    markProfileError(error);
     const isExpectedClientError = isMcpExpectedClientError(error);
     if (isExpectedClientError) {
       // 预期内的客户端错误（无效 key、注销中）：降级为 warn，避免污染服务端 error 指标
@@ -149,13 +153,17 @@ const handlePost = async (req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiRespo
   }
 };
 
-async function handler(req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponseType<any>) {
+async function handleMcpRequest(
+  req: ApiRequestProps<mcpBody, mcpQuery>,
+  res: ApiResponseType<any>
+) {
   const method = req.method;
 
   if (method === 'POST') {
     return handlePost(req, res);
   }
 
+  markProfileError();
   res.writeHead(405).end(
     JSON.stringify({
       jsonrpc: '2.0',
@@ -167,6 +175,13 @@ async function handler(req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponse
     })
   );
   return;
+}
+
+/** 原生 MCP 不经过 NextAPI；复用相同的按 header 开启的观测层，保持 JSON-RPC 响应。 */
+async function handler(req: ApiRequestProps<mcpBody, mcpQuery>, res: ApiResponseType<any>) {
+  return withHttpRequestProfile({ headers: req.headers, kind: 'mcp' }, () =>
+    handleMcpRequest(req, res)
+  );
 }
 
 export default handler;
