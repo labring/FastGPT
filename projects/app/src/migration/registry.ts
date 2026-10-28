@@ -24,6 +24,7 @@ import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_datas
 import { backfillFolderAncestorIds } from './tasks/4173/20261022_backfill_folder_ancestor_ids';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 import { backfillAgentSandboxTeamId } from './tasks/4173/20261009_backfill_agent_sandbox_team_id';
+import { migrateTokenPricesPerMillion } from './tasks/4173/20261025_token_prices_per_million';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -555,6 +556,24 @@ export const systemMigrations = [
       }
     ],
     run: backfillFolderAncestorIds
+  },
+  {
+    id: '20261025_token_prices_per_million',
+    version: '4.17.3',
+    nameKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261025_token_prices_per_million.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.result'),
+    progressSteps: [
+      {
+        key: 'models',
+        labelKey: i18nT('system_migration:migrations.20261025_token_prices_per_million.models')
+      }
+    ],
+    // 系统模型迁移由全局启动链保证先成功；计价转换随后独立运行，不阻塞业务或普通队列。
+    independent: true,
+    run: migrateTokenPricesPerMillion
   }
 ] as const satisfies readonly SystemMigration[];
 

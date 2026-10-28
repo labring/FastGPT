@@ -142,7 +142,7 @@ const ModelTable = ({
           onReplaceInvalidModels && (
             <Button
               variant="whiteBase"
-              h="40px"
+              h="36px"
               whiteSpace="nowrap"
               onClick={onReplaceInvalidModels}
             >

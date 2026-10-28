@@ -1,3 +1,5 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getTmbPermission } from '../controller';
 import {
@@ -176,6 +178,9 @@ export const authDatasetCollectionCreate = async ({
   });
   if (String(result.collection.datasetId) !== String(datasetId)) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+  }
+  if (result.collection.type !== DatasetCollectionTypeEnum.folder) {
+    throw CommonErrEnum.invalidParams;
   }
   const { dataset } = await authDatasetByTmbId({
     tmbId: result.tmbId,

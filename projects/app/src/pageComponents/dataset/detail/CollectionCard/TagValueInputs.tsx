@@ -142,18 +142,20 @@ export const DateTimeTagInput = ({
   value,
   onChange,
   placeholder,
-  joined
+  joined,
+  usePortal
 }: {
   value?: number | string;
   onChange: (val: number) => void;
   placeholder?: string;
   joined?: boolean;
+  usePortal?: boolean;
 }) => (
   <SingleDateTimePicker
     value={value === undefined || value === '' ? undefined : Number(value)}
     onChange={onChange}
     placeholder={placeholder}
-    usePortal={!joined}
+    usePortal={usePortal ?? !joined}
     w={'100%'}
     {...(joined ? joinedFieldStyles : {})}
   />
@@ -412,7 +414,8 @@ export const ArrayTagSelect = ({
   onCreateOption,
   allowCreate = true,
   placeholder,
-  joined
+  joined,
+  usePortal
 }: {
   options: string[];
   value?: string[];
@@ -421,6 +424,7 @@ export const ArrayTagSelect = ({
   allowCreate?: boolean;
   placeholder?: string;
   joined?: boolean;
+  usePortal?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -715,7 +719,7 @@ export const ArrayTagSelect = ({
           />
         </Flex>
       </PopoverTrigger>
-      {joined ? popoverContent : <Portal>{popoverContent}</Portal>}
+      {(usePortal ?? !joined) ? <Portal>{popoverContent}</Portal> : popoverContent}
     </Popover>
   );
 };

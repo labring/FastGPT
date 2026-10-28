@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import {
@@ -25,7 +25,7 @@ const pluginLlm: AIModelDocumentDataType = {
   provider: 'OpenAI',
   model: 'plugin-llm',
   name: 'Plugin LLM',
-  scope: 'system',
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     maxContext: 128000,

@@ -1,12 +1,14 @@
-import {
-  AIModelDocumentDataSchema,
-  type AIModelDocumentDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import { type AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
-import { getLegacyDefaultModelFlags, repairSystemModelDocument } from './utils';
+import {
+  getLegacyDefaultModelFlags,
+  repairSystemModelDocument,
+  LegacyAIModelDocumentSchema,
+  type LegacyAIModelDocumentType
+} from './utils';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { assertSystemModelTypesMatchPluginTemplates } from '@fastgpt/service/core/ai/model/transform';
 import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/model/catalog/entity';
@@ -51,7 +53,7 @@ export const bootstrapAIModelsFromLegacy = async ({
   const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
   const modelIds = new Set<string>();
   type MigrationCandidate = {
-    document: AIModelDocumentDataType & {
+    document: LegacyAIModelDocumentType & {
       _id: (typeof records)[number]['_id'];
     };
     defaultFlags: ReturnType<typeof getLegacyDefaultModelFlags>;
@@ -98,7 +100,7 @@ export const bootstrapAIModelsFromLegacy = async ({
     );
     const targetModels = targetRecords.map((record) => ({
       _id: record._id,
-      document: AIModelDocumentDataSchema.parse(record)
+      document: LegacyAIModelDocumentSchema.parse(record)
     }));
     const targetByModel = new Map<string, (typeof targetModels)[number]>();
     const targetById = new Map(targetModels.map((model) => [String(model._id), model]));

@@ -158,6 +158,21 @@ describe('SystemToolRepo.getSystemToolList', () => {
     ]);
   });
 
+  it('merges configured workflow tools with system tools', async () => {
+    mocks.listTools.mockResolvedValue([createPluginTool({ pluginId: 'normal', name: 'Normal' })]);
+    const workflowConfig = createToolConfig({ pluginId: 'workflow', pluginOrder: 0, tags: [] });
+    mocks.findSystemTools.mockResolvedValue([
+      {
+        ...workflowConfig,
+        customConfig: { ...workflowConfig.customConfig, associatedPluginId: 'app-1' }
+      }
+    ]);
+
+    const tools = await SystemToolRepo.getInstance().getSystemToolList({ sources: ['system'] });
+
+    expect(tools.map((tool) => tool.id)).toEqual(['systemTool-normal', 'systemTool-workflow']);
+  });
+
   it('keeps list plugin metadata unchanged across UI locales', async () => {
     const name = { en: 'Search', 'zh-CN': '搜索' };
     const intro = { en: 'Find documents', 'zh-CN': '查找文档' };
@@ -507,7 +522,10 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 
     const repo = SystemToolRepo.getInstance();
     const english = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'en' });
-    const chinese = await repo.getSystemToolDetail({ pluginId: 'systemTool-search', lang: 'zh-CN' });
+    const chinese = await repo.getSystemToolDetail({
+      pluginId: 'systemTool-search',
+      lang: 'zh-CN'
+    });
 
     expect(english).toMatchObject({ name, intro, readmeUrls });
     expect(english.readmeUrl).toBe('https://example.com/legacy.md');

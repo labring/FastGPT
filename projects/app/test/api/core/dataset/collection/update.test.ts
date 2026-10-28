@@ -1,3 +1,4 @@
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import updateHandler from '@/pages/api/core/dataset/collection/update';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -87,6 +88,31 @@ const fixture = async () => {
 };
 
 describe('update collection', () => {
+  it('scopes move ancestor lookups to the source dataset', async () => {
+    const { owner, source, target, file } = await fixture();
+    const otherDataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'other-dataset'
+    });
+    const foreignAncestor = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: otherDataset._id,
+      name: 'foreign-ancestor',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    await MongoDatasetCollection.updateOne({ _id: target._id }, { parentId: foreignAncestor._id });
+    const result = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), parentId: String(target._id) }
+    });
+    expect(result.error).toBe(CommonErrEnum.invalidParams);
+    expect(String((await MongoDatasetCollection.findById(file._id).lean())?.parentId)).toBe(
+      String(source._id)
+    );
+  });
+
   it('普通移动复用批量鉴权，只解析一次身份并实际落库', async () => {
     const { actor, file, target } = await fixture();
     vi.mocked(parseHeaderCert).mockClear();
@@ -190,4 +216,18 @@ describe('update collection', () => {
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(file._id).lean())?.parentId).toBeNull();
   });
+});
+
+it('rejects moving into a leaf even when the target is manageable', async () => {
+  const { owner, source, target } = await fixture();
+  await MongoDatasetCollection.updateOne(
+    { _id: target._id },
+    { type: DatasetCollectionTypeEnum.virtual }
+  );
+  const res = await Call(updateHandler, {
+    auth: owner,
+    body: { id: String(source._id), parentId: String(target._id) }
+  });
+  expect(res.error).toBe(CommonErrEnum.invalidParams);
+  expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
 });
