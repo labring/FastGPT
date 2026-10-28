@@ -14,6 +14,6 @@
   "redirect": "跳轉",
   "register": "註冊帳號",
   "reset_password_tip": "新密碼至少 8 位，且至少包含數字、小寫字母、大寫字母或特殊字元中的兩種，不允許包含空格",
-  "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
+  "root_password_placeholder": "root 初始密碼請見部署文件，首次登入需修改",
   "use_root_login": "使用 root 使用者登入"
 }

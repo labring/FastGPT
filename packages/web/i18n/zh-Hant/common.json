@@ -1327,6 +1327,8 @@
   "password_wechat_load_failed": "QR Code 載入失敗，請重試",
   "password_wechat_qr": "微信驗證 QR Code",
   "password_wechat_scan": "微信掃碼登入",
+  "account_activation_title": "帳號啟用",
+  "account_activation_description": "首次登入請設定新密碼以啟用帳號。",
   "update_password": "修改密碼",
   "batch_manage": "批量管理",
   "batch_move": "批量移動",

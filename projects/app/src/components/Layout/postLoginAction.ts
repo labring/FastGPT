@@ -1,6 +1,20 @@
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
+
+/**
+ * 仅平台密码可用的 inactive 账号能通过设置密码完成激活；旧版用户信息未下发能力标志时沿用原行为。
+ */
+export const shouldPromptAccountActivation = ({
+  status,
+  passwordAvailable
+}: {
+  status?: `${UserStatusEnum}`;
+  passwordAvailable?: boolean;
+}) => status === UserStatusEnum.inactive && passwordAvailable !== false;
+
 export type PostLoginAction =
   | 'invitation'
   | 'memberName'
+  | 'accountActivation'
   | 'resetExpiredPassword'
   | 'contact'
   | 'systemMessage'
@@ -71,7 +85,8 @@ export const isMandatoryPostLoginActionRoute = (pathname: string) =>
 /** 强制动作集合：新增动作默认属于可选通知类，只有必须完成的补齐才放进这里。 */
 export const MANDATORY_POST_LOGIN_ACTIONS: ReadonlySet<PostLoginAction> = new Set([
   'invitation',
-  'memberName'
+  'memberName',
+  'accountActivation'
 ]);
 
 export const isMandatoryPostLoginAction = (action: PostLoginAction) =>
@@ -106,7 +121,8 @@ export const getNextPostLoginAction = ({
   shouldShowContact,
   contactHandled,
   isPlus,
-  hasImportantInform
+  hasImportantInform,
+  needsAccountActivation = false
 }: {
   canStartMandatory: boolean;
   canStartOptional: boolean;
@@ -118,6 +134,8 @@ export const getNextPostLoginAction = ({
   contactHandled: boolean;
   isPlus: boolean;
   hasImportantInform: boolean;
+  /** 当前账号是否需要首次设置密码。 */
+  needsAccountActivation?: boolean;
 }) => {
   if (!canStartMandatory && !canStartOptional) return undefined;
   if (
@@ -130,6 +148,7 @@ export const getNextPostLoginAction = ({
   if (currentAction && isMandatoryPostLoginAction(currentAction)) return undefined;
 
   const candidates: Array<PostLoginAction | undefined> = [
+    needsAccountActivation ? 'accountActivation' : undefined,
     inviteLinkId ? 'invitation' : undefined,
     hasPendingMemberName ? 'memberName' : undefined,
     isPlus ? 'resetExpiredPassword' : undefined,

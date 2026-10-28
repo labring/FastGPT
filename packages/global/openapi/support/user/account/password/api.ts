@@ -13,7 +13,11 @@ import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/
  * Routes: POST /proApi/support/user/account/password/verification/create
  *         POST /proApi/support/user/account/password/authorization
  *         POST /support/user/account/password/update
- * Description: 创建身份验证材料、一次性改密 Session 并更新当前用户密码
+ *         POST /support/user/account/password/updateRoot
+ *         POST /support/user/account/password/activate
+ * Description: 创建身份验证材料、一次性改密 Session 并更新当前用户密码；
+ *              开源版 root 通过独立端点校验旧密码改密；
+ *              未激活账号可通过独立端点首次设置密码
  * Tags: ['User Login', 'Account Verification']
  * ============================================================================ */
 
@@ -223,6 +227,43 @@ export const UpdatePasswordBodySchema = z
   })
   .strict();
 export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
+
+/** 开源版 root 修改密码请求体：没有商业版认证服务，使用旧密码摘要证明身份。 */
+export const UpdateRootPasswordBodySchema = z
+  .object({
+    oldPsw: z
+      .string()
+      .length(64)
+      .optional()
+      .meta({
+        description: '客户端 SHA-256 处理后的旧密码摘要；已设置密码时必填',
+        example: 'b'.repeat(64)
+      }),
+    newPsw: z
+      .string()
+      .length(64)
+      .meta({
+        description: '客户端 SHA-256 处理后的新密码摘要',
+        example: 'a'.repeat(64)
+      })
+  })
+  .strict();
+export type UpdateRootPasswordBody = z.infer<typeof UpdateRootPasswordBodySchema>;
+
+// ===== Activate account（账号激活）=====
+/** 账号激活提交体：只提交客户端摘要后的新密码。 */
+export const ActivateAccountBodySchema = z
+  .object({
+    newPsw: z
+      .string()
+      .length(64)
+      .meta({
+        description: '客户端 SHA-256 处理后的新密码摘要',
+        example: 'a'.repeat(64)
+      })
+  })
+  .strict();
+export type ActivateAccountBody = z.infer<typeof ActivateAccountBodySchema>;
 
 // ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z.object({
