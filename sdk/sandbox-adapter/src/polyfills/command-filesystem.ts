@@ -59,6 +59,14 @@ export class CommandFilesystemPolyfill {
         totalLength += chunk.length;
       }
 
+      if (totalLength !== size) {
+        throw new FileOperationError(
+          `Read ${totalLength} of ${size} bytes`,
+          path,
+          'TRANSFER_ERROR'
+        );
+      }
+
       const combined = new Uint8Array(totalLength);
       let writeOffset = 0;
       for (const chunk of chunks) {
@@ -110,7 +118,9 @@ export class CommandFilesystemPolyfill {
         : `tail -c +${tailPos} ${quotedPath} | base64 -w 0`;
 
     const result = await this.executor.execute(cmd);
-    if (result.exitCode !== 0) {
+    // The pipeline exits with base64's status, so a `tail` that can't read the
+    // file (e.g. permission denied) only shows up on stderr.
+    if (result.exitCode !== 0 || (!result.stdout && result.stderr.trim())) {
       throw this.createFileError(path, result.stderr);
     }
     return base64ToBytes(result.stdout);
@@ -410,8 +420,8 @@ export class CommandFilesystemPolyfill {
    * The text is matched as a plain string, not as a sed regex: content from
    * an edit usually holds `.`, `*`, `[`, `$`, backslashes and newlines, which
    * sed would treat as pattern syntax or reject. The file is read, replaced
-   * in memory and written back in place, so its mode is kept. A file without
-   * a match is left untouched.
+   * in memory and written back with `replaceFileContents`. A file without a
+   * match is left untouched.
    */
   async replaceContent(
     entries: { path: string; oldContent: string; newContent: string }[]
@@ -421,10 +431,54 @@ export class CommandFilesystemPolyfill {
         throw new FileOperationError('Content to replace must not be empty', path, 'INVALID_PATH');
       }
 
-      const content = new TextDecoder().decode(await this.readFile(path));
+      const bytes = await this.readFile(path);
+      let content: string;
+      try {
+        // Keep a leading BOM, and refuse bytes that aren't UTF-8 instead of
+        // writing them back as U+FFFD.
+        content = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true }).decode(bytes);
+      } catch {
+        throw new FileOperationError('File is not valid UTF-8 text', path, 'TRANSFER_ERROR');
+      }
       if (!content.includes(oldContent)) continue;
 
-      await this.writeTextFile(path, content.split(oldContent).join(newContent));
+      await this.replaceFileContents(
+        path,
+        new TextEncoder().encode(content.split(oldContent).join(newContent))
+      );
+    }
+  }
+
+  /**
+   * Overwrite an existing file with `data` without leaving it partly written.
+   *
+   * The data goes to a temporary file next to `path` over as many commands as
+   * it needs. Once its size is checked, one command copies it over `path`.
+   * Copying with `cat` rewrites the existing file, so its mode, owner and
+   * links are kept. If a step before the copy fails, `path` is untouched.
+   */
+  private async replaceFileContents(path: string, data: Uint8Array): Promise<void> {
+    const tempPath = `${path}.${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.tmp`;
+    const quotedTemp = this.shellQuote(tempPath);
+    try {
+      await this.appendBytes({ path: tempPath, data, truncate: true });
+
+      const size = await this.executor.execute(`wc -c < ${quotedTemp}`);
+      const written = Number.parseInt(size.stdout.trim(), 10);
+      if (size.exitCode !== 0 || written !== data.length) {
+        throw new FileOperationError(
+          `Wrote ${Number.isNaN(written) ? 0 : written} of ${data.length} bytes`,
+          path,
+          'TRANSFER_ERROR'
+        );
+      }
+
+      const result = await this.executor.execute(`cat ${quotedTemp} > ${this.shellQuote(path)}`);
+      if (result.exitCode !== 0) {
+        throw this.createFileError(path, result.stderr);
+      }
+    } finally {
+      await this.executor.execute(`rm -f ${quotedTemp}`).catch(() => undefined);
     }
   }
 

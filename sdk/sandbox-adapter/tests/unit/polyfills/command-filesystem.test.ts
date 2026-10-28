@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -165,18 +165,24 @@ MemAvailable:   6144000 kB`)
 
   describe.skipIf(process.platform === 'win32')('replaceContent', () => {
     // 用真实 sh 执行命令，验证文件最终内容，而不是断言拼出的命令字符串。
-    const setupShell = async (content: string) => {
+    const setupShell = async (
+      content: string | Uint8Array,
+      // 返回 true 时模拟该次命令的传输失败
+      failCommand: (command: string) => boolean = () => false
+    ) => {
       const dir = await mkdtemp(join(tmpdir(), 'command-fs-'));
       const path = join(dir, 'file.txt');
       await writeFile(path, content, { mode: 0o640 });
 
       const executor = {
-        execute: async (command: string): Promise<ExecuteResult> =>
-          new Promise((resolve) => {
+        execute: async (command: string): Promise<ExecuteResult> => {
+          if (failCommand(command)) throw new Error('connection lost');
+          return new Promise((resolve) => {
             execFile('sh', ['-c', command], (error, stdout, stderr) => {
               resolve(commandResult(stdout, stderr, error ? Number(error.code ?? 1) : 0));
             });
-          }),
+          });
+        },
         executeStream: vi.fn(async () => {}),
         executeBackground: vi.fn(async () => ({
           sessionId: 'test-session',
@@ -189,6 +195,7 @@ MemAvailable:   6144000 kB`)
         path,
         polyfill: new CommandFilesystemPolyfill(executor),
         read: () => readFile(path, 'utf8'),
+        listDir: () => readdir(dir),
         cleanup: () => rm(dir, { recursive: true, force: true })
       };
     };
@@ -227,6 +234,60 @@ MemAvailable:   6144000 kB`)
         expect((await stat(path)).mode & 0o777).toBe(0o640);
       } finally {
         await cleanup();
+      }
+    });
+
+    it('keeps the original file when a write fails partway through', async () => {
+      const original = `${'0123456789abcdef'.repeat(187)}old\n`;
+      let appends = 0;
+      const { path, polyfill, read, listDir, cleanup } = await setupShell(original, (command) =>
+        command.includes('base64 -d >>') ? ++appends === 2 : false
+      );
+      try {
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toThrow('connection lost');
+
+        await expect(read()).resolves.toBe(original);
+        await expect(listDir()).resolves.toEqual(['file.txt']);
+      } finally {
+        await cleanup();
+      }
+    });
+
+    it.skipIf(process.getuid?.() === 0)('reports a file it cannot read', async () => {
+      const { path, polyfill, cleanup } = await setupShell('old\n');
+      try {
+        await chmod(path, 0o000);
+        await expect(
+          polyfill.replaceContent([{ path, oldContent: 'old', newContent: 'new' }])
+        ).rejects.toMatchObject({ fileErrorCode: 'PERMISSION_DENIED' });
+      } finally {
+        await chmod(path, 0o640);
+        await cleanup();
+      }
+    });
+
+    it('keeps a UTF-8 BOM and rejects text that is not UTF-8', async () => {
+      const bom = await setupShell('\uFEFFconst answer = 1;\n');
+      try {
+        await bom.polyfill.replaceContent([{ path: bom.path, oldContent: '1', newContent: '2' }]);
+        await expect(readFile(bom.path)).resolves.toEqual(Buffer.from('\uFEFFconst answer = 2;\n'));
+      } finally {
+        await bom.cleanup();
+      }
+
+      const latin1 = Buffer.from('caf\xe9 old\n', 'latin1');
+      const binary = await setupShell(latin1);
+      try {
+        await expect(
+          binary.polyfill.replaceContent([
+            { path: binary.path, oldContent: 'old', newContent: 'new' }
+          ])
+        ).rejects.toMatchObject({ fileErrorCode: 'TRANSFER_ERROR' });
+        await expect(readFile(binary.path)).resolves.toEqual(latin1);
+      } finally {
+        await binary.cleanup();
       }
     });
 
