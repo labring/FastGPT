@@ -1,24 +1,19 @@
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
-import {
-  isLegacyV1Workflow,
-  migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration';
+import { isLegacyV1Workflow } from '@fastgpt/global/core/workflow/migration';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  decodeToolSetNodesFromStorage,
-  encodeMcpToolSetNodesForStorage
-} from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { encodeMcpToolSetNodesForStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
 import { resolveStoredAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
@@ -101,11 +96,14 @@ export const buildAppResourceSnapshot = (record: AppResourceMigrationRecord) => 
     : Array.isArray(record.modules)
       ? record.modules
       : [];
-  const normalizedWorkflow = migrateWorkflowToCurrent({
-    nodes: decodeToolSetNodesFromStorage(storedNodes),
-    edges: Array.isArray(record.edges) ? record.edges : [],
-    chatConfig: record.chatConfig
-  });
+  const normalizedWorkflow = normalizeAppWorkflow(
+    {
+      nodes: storedNodes,
+      edges: Array.isArray(record.edges) ? record.edges : [],
+      chatConfig: record.chatConfig
+    },
+    record.type as AppTypeEnum | undefined
+  );
   const resources = resolveStoredAppResources({
     resources: record.resources,
     nodes: normalizedWorkflow.nodes,
