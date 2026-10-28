@@ -96,8 +96,8 @@ describe('isAgentAskInteractive', () => {
         childrenResponse: {
           ...runtime,
           type: 'agentAsk',
-          askId: 'ask-1',
-          params: { description: '', questions: [] }
+
+          params: { askId: 'ask-1', blockerType: 'user_choice', description: '', questions: [] }
         }
       }
     };
@@ -190,6 +190,24 @@ describe('extractDeepestInteractive', () => {
 });
 
 describe('getMaxHistoryLimitFromNodes', () => {
+  it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.toolCall])(
+    'uses continuous recovery history for %s',
+    (flowNodeType) => {
+      expect(
+        getMaxHistoryLimitFromNodes([
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType,
+            inputs: [],
+            outputs: [],
+            position: { x: 0, y: 0 }
+          }
+        ])
+      ).toBe(0);
+    }
+  );
+
   it('should return default limit 20 when no history inputs', () => {
     const nodes: StoreNodeItemType[] = [
       {
@@ -850,11 +868,13 @@ describe('getLastInteractiveValue', () => {
   it('derives a pending Ask from adjacent messages without mutating its questions', () => {
     const interactive: WorkflowInteractiveResponseType = {
       type: 'agentAsk',
-      askId: 'ask-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
+        askId: 'ask-1',
+        blockerType: 'user_choice',
         description: '',
         questions: [
           {
@@ -931,11 +951,13 @@ describe('getLastInteractiveValue', () => {
   it('should return an unanswered top-level agentAsk', () => {
     const interactive = {
       type: 'agentAsk',
-      askId: 'call_ask',
+
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
+        askId: 'call_ask',
+        blockerType: 'user_choice',
         description: '',
         questions: [
           {
@@ -958,8 +980,10 @@ describe('getLastInteractiveValue', () => {
     ];
     expect(getLastInteractiveValue(histories)).toMatchObject({
       type: 'agentAsk',
-      askId: 'call_ask',
+
       params: {
+        askId: 'call_ask',
+        blockerType: 'user_choice',
         description: '',
         questions: [
           {
@@ -997,12 +1021,7 @@ describe('getLastInteractiveValue', () => {
         params: {
           title: 'Confirm?',
           mermaid: 'flowchart LR; A --> B',
-          sections: [],
-          actions: [
-            { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-            { value: 'revise', label: 'Revise', inputMode: 'text' },
-            { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-          ]
+          sections: []
         }
       };
       const messages: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];
@@ -1013,16 +1032,13 @@ describe('getLastInteractiveValue', () => {
             {
               select: {
                 type: 'workflowBuilderPreview',
-                questions: [{ question: 'Confirm?', value: 'Confirm' }]
+                action: 'confirm'
               }
             }
           ]
         });
       expect(getLastInteractiveValue(messages)).toBe(answered ? undefined : interactive);
-      for (const decision of ['confirm', 'cancel'] as const) {
-        interactive.params.decision = decision;
-        expect(getLastInteractiveValue([messages[0]])).toBeUndefined();
-      }
+      expect(interactive.params).not.toHaveProperty('decision');
     }
   );
 

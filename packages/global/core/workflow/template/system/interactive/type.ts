@@ -8,7 +8,7 @@ import { ReferenceArrayValueTypeSchema } from '../../../type/io';
 import z from 'zod';
 import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
-import { AgentAskQuestionSchema } from '../../../../ai/agent/type';
+import { AgentAskQuestionSchema, AgentAskBlockerTypeSchema } from '../../../../ai/agent/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -178,8 +178,9 @@ export type UserInputInteractive = z.infer<typeof UserInputInteractiveSchema>;
 
 export const AgentAskInteractiveSchema = z.object({
   type: z.literal('agentAsk'),
-  askId: z.string().min(1),
   params: z.object({
+    askId: z.string().min(1),
+    blockerType: AgentAskBlockerTypeSchema,
     description: z.string(),
     questions: z.array(AgentAskQuestionSchema).min(1).max(3)
   })
@@ -196,22 +197,17 @@ export const PaymentPauseInteractiveSchema = z.object({
 });
 export type PaymentPauseInteractive = z.infer<typeof PaymentPauseInteractiveSchema>;
 
-export const InteractiveNodeResponseTypeSchema = z.intersection(
-  z.discriminatedUnion('type', [
-    UserSelectInteractiveSchema,
-    UserInputInteractiveSchema,
-    ChildrenInteractiveSchema,
-    ToolCallChildrenInteractiveSchema,
-    LoopInteractiveSchema,
-    LoopRunInteractiveSchema,
-    PaymentPauseInteractiveSchema,
-    AgentAskInteractiveSchema,
-    WorkflowBuilderPreviewInteractiveSchema
-  ]),
-  z.object({
-    askId: z.string().nullish()
-  })
-);
+export const InteractiveNodeResponseTypeSchema = z.discriminatedUnion('type', [
+  UserSelectInteractiveSchema,
+  UserInputInteractiveSchema,
+  ChildrenInteractiveSchema,
+  ToolCallChildrenInteractiveSchema,
+  LoopInteractiveSchema,
+  LoopRunInteractiveSchema,
+  PaymentPauseInteractiveSchema,
+  AgentAskInteractiveSchema,
+  WorkflowBuilderPreviewInteractiveSchema
+]);
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;
 
 export const WorkflowInteractiveResponseTypeSchema = z.intersection(

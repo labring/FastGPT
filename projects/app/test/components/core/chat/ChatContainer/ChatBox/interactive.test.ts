@@ -123,8 +123,10 @@ describe('getInteractiveByHistories', () => {
       const interactive: WorkflowInteractiveResponseType = {
         ...baseInteractive,
         type: 'agentAsk',
-        askId: 'ask-1',
+
         params: {
+          askId: 'ask-1',
+          blockerType: 'user_choice',
           description: '',
           questions: [
             {
@@ -185,12 +187,7 @@ describe('getInteractiveByHistories', () => {
       params: {
         title: 'Confirm workflow',
         mermaid: 'flowchart LR\n  A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-          { value: 'revise', label: 'Revise', inputMode: 'text' },
-          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-        ]
+        sections: []
       }
     } satisfies WorkflowInteractiveResponseType;
 
@@ -211,8 +208,10 @@ describe('isPendingAgentAsk', () => {
       isPendingAgentAsk({
         ...baseInteractive,
         type: 'agentAsk',
-        askId: 'ask-1',
+
         params: {
+          askId: 'ask-1',
+          blockerType: 'user_choice',
           description: 'Need input',
           questions: [
             {
@@ -319,8 +318,10 @@ describe('resolveInteractiveResponseChatItemId', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentAsk',
-      askId: 'ask-1',
+
       params: {
+        askId: 'ask-1',
+        blockerType: 'user_choice',
         description: 'Need input',
         questions: [
           {

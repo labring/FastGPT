@@ -650,12 +650,7 @@ describe('checkInteractiveResponseStatus', () => {
       params: {
         title: 'Confirm workflow?',
         mermaid: 'flowchart LR\n A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
-          { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
-          { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
-        ]
+        sections: []
       }
     };
     for (const interactive of [
@@ -675,11 +670,13 @@ describe('checkInteractiveResponseStatus', () => {
   it('should always create a query round for agentAsk answers', () => {
     const interactive = {
       type: 'agentAsk' as const,
-      askId: 'call_ask',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
+        askId: 'call_ask',
+        blockerType: 'user_choice',
         description: 'Need input',
         questions: [
           {
@@ -716,8 +713,10 @@ describe('checkInteractiveResponseStatus', () => {
               childrenId: 'child_1',
               childrenResponse: {
                 type: 'agentAsk',
-                askId: 'ask_1',
+
                 params: {
+                  askId: 'ask_1',
+                  blockerType: 'user_choice',
                   description: '',
                   questions: [
                     {

@@ -1,4 +1,7 @@
-import { getUserChatSelect } from '@fastgpt/global/core/chat/input/utils';
+import {
+  getWorkflowBuilderPreview,
+  getWorkflowBuilderPreviewDecision
+} from '@fastgpt/global/core/workflow/builder/utils';
 import { useEffect, useState } from 'react';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
@@ -146,28 +149,17 @@ export const isWorkflowBuilderVersionGenerating = ({
   chatRecords.forEach((record, index) => {
     if (record.obj === ChatRoleEnum.Human) {
       valueOrder += 1;
-      const select = getUserChatSelect(record.value);
-      if (select?.type === 'workflowBuilderPreview') {
-        const previous = chatRecords[index - 1];
-        const interactiveValue =
-          previous?.obj === ChatRoleEnum.AI
-            ? previous.value.findLast((value) => value.interactive)?.interactive
-            : undefined;
-        const interactive = interactiveValue
-          ? extractDeepestInteractive(interactiveValue)
-          : undefined;
-        if (
-          interactive?.type === 'workflowBuilderPreview' &&
-          interactive.params.actions.some(
-            ({ value, label }) => value === 'confirm' && label === select.questions[0].value
-          )
-        )
-          latestConfirmedPreviewOrder = valueOrder;
-      }
+      const previous = chatRecords[index - 1];
+      const preview =
+        previous?.obj === ChatRoleEnum.AI ? getWorkflowBuilderPreview(previous.value) : undefined;
+      if (
+        preview &&
+        getWorkflowBuilderPreviewDecision({ preview, userContent: record })?.action === 'confirm'
+      )
+        latestConfirmedPreviewOrder = valueOrder;
       return;
     }
     if (record.obj !== ChatRoleEnum.AI) return;
-    const hasDeliveredVersion = record.value.some((value) => value.workflowBuilderVersion);
     record.value.forEach((value) => {
       valueOrder += 1;
 
@@ -179,8 +171,6 @@ export const isWorkflowBuilderVersionGenerating = ({
       const interactive = extractDeepestInteractive(value.interactive);
       if (interactive.type === 'workflowBuilderPreview') {
         latestPreviewOrder = valueOrder;
-        if (interactive.params.decision === 'confirm' && !hasDeliveredVersion)
-          latestConfirmedPreviewOrder = valueOrder;
       }
     });
   });
@@ -208,7 +198,9 @@ export const getWorkflowBuilderPendingInteractiveKey = (
   const interactiveId =
     finalInteractive.type === 'workflowBuilderPreview'
       ? finalInteractive.previewId
-      : (finalInteractive.askId ?? pendingInteractive.askId ?? '');
+      : finalInteractive.type === 'agentAsk'
+        ? finalInteractive.params.askId
+        : (pendingInteractive.interactiveId ?? '');
 
   return [
     'interactive',

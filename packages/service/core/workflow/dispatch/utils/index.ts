@@ -266,6 +266,16 @@ export const getAgentLoopHistories = (
   history?: ChatItemMiniType[] | number,
   histories: ChatItemMiniType[] = []
 ) => {
+  if (
+    typeof history !== 'object' &&
+    histories.some(
+      (item) =>
+        item.obj === ChatRoleEnum.AI &&
+        item.value.some((value) => value.modelResponseId || value.contextCheckpoint)
+    )
+  ) {
+    return histories;
+  }
   const filteredHistories = getHistories(history, histories);
   if (history !== 0 || filteredHistories.length > 0) return filteredHistories;
 

@@ -12,8 +12,9 @@ export const createAgentLoopCoreAskInteractive = ({
   ask: AgentAskPayload;
 }): InteractiveNodeResponseType => ({
   type: 'agentAsk',
-  askId,
   params: {
+    askId,
+    blockerType: ask.blockerType,
     description: ask.reason,
     questions: ask.questions
   }

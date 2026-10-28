@@ -27,7 +27,7 @@ describe('agentLoopCore child interactive', () => {
     });
   });
 
-  it('keeps legacy memory request messages when old interactive payload has them', () => {
+  it('ignores legacy memory snapshots when restoring an old interactive', () => {
     const legacyMessages = [
       {
         role: 'tool',
@@ -54,8 +54,7 @@ describe('agentLoopCore child interactive', () => {
     ).toEqual(
       expect.objectContaining({
         toolParams: {
-          toolCallId: 'call_tool',
-          memoryRequestMessages: legacyMessages
+          toolCallId: 'call_tool'
         }
       })
     );

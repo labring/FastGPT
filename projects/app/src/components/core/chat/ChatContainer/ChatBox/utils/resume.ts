@@ -329,7 +329,7 @@ const areSameInteractive = (
 
   // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
   if (isAgentAskInteractive(finalA) && isAgentAskInteractive(finalB)) {
-    return finalA.askId === finalB.askId;
+    return !!finalA.params?.askId && finalA.params.askId === finalB.params?.askId;
   }
   if (finalA.type === 'workflowBuilderPreview' && finalB.type === 'workflowBuilderPreview') {
     return finalA.previewId === finalB.previewId;

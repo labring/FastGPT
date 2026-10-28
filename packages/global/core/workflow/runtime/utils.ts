@@ -54,6 +54,15 @@ export const extractDeepestInteractive = (
   return current;
 };
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
+  // Agent 的恢复来源是完整 ChatItem；Mongo limit=0 表示不裁剪，模型侧仍按最新 checkpoint 压缩。
+  if (
+    nodes.some(
+      (node) =>
+        node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall
+    )
+  )
+    return 0;
   let limit = 10;
   nodes.forEach((node) => {
     node.inputs.forEach((input) => {
@@ -194,7 +203,10 @@ export const getLastInteractiveValue = (
   const lastAIMessage = histories[lastAIIndex];
 
   if (lastAIMessage?.obj === ChatRoleEnum.AI) {
-    const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
+    const lastValue = lastAIMessage.value.findLast(
+      (value) =>
+        !value.displayOnly && !value.workflowBuilderVersion && !value.chatAgentBuilderVersion
+    );
 
     if (!lastValue || !lastValue.interactive) {
       return;
@@ -202,8 +214,6 @@ export const getLastInteractiveValue = (
 
     const finalInteractive = extractDeepestInteractive(lastValue.interactive);
     if (!finalInteractive) return;
-    if (finalInteractive.type === 'workflowBuilderPreview' && finalInteractive.params.decision)
-      return;
     if (isAskInteractive(finalInteractive)) {
       const schema = isAgentAskInteractive(finalInteractive)
         ? AgentAskInteractiveSchema
@@ -440,3 +450,30 @@ export function rewriteNodeOutputByHistories(
     };
   });
 }
+
+/** 给同一条 Ask value 补齐工作流续跑包装，不重复保存 interactive 或回写历史 AI。 */
+export const appendWorkflowInteractiveValue = ({
+  values,
+  interactive
+}: {
+  values: import('../../chat/type').AIChatItemValueItemType[];
+  interactive: WorkflowInteractiveResponseType;
+}) => {
+  const latest = extractDeepestInteractive(interactive);
+  if (isAgentAskInteractive(latest)) {
+    const existing = values.find((value) => {
+      if (value.displayOnly || !value.interactive) return false;
+      const current = extractDeepestInteractive(value.interactive);
+      return (
+        !!latest.params?.askId &&
+        isAgentAskInteractive(current) &&
+        current.params?.askId === latest.params.askId
+      );
+    });
+    if (existing) {
+      existing.interactive = interactive;
+      return;
+    }
+  }
+  values.push({ interactive });
+};

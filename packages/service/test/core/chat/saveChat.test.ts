@@ -1351,8 +1351,10 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentAsk' as const,
-              askId: 'call_ask_agent',
+
               params: {
+                askId: 'call_ask_agent',
+                blockerType: 'user_choice',
                 description: '需要用户明确任务目标',
                 questions: [
                   {
@@ -1386,11 +1388,13 @@ describe('pushChatRecords', () => {
 
       const interactive: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
-        askId: 'call_ask_agent',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
+          askId: 'call_ask_agent',
+          blockerType: 'user_choice',
           description: '需要用户明确任务目标',
           questions: [
             {
@@ -1419,8 +1423,10 @@ describe('pushChatRecords', () => {
             ? {
                 ...runtime,
                 type: 'agentAsk',
-                askId: 'ask-1',
+
                 params: {
+                  askId: 'ask-1',
+                  blockerType: 'user_choice',
                   description: '',
                   questions: [
                     {

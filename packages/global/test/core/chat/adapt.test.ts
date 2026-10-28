@@ -15,6 +15,11 @@ import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/consta
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  WorkflowBuilderPreviewInteractive,
+  WorkflowBuilderPreviewAction
+} from '@fastgpt/global/core/workflow/builder/type';
+import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
 
 describe('GPT2Chat mapping', () => {
   it('should map GPT roles to Chat roles correctly', () => {
@@ -1847,8 +1852,10 @@ describe('chats2GPTMessages', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'call_ask',
+
               params: {
+                askId: 'call_ask',
+                blockerType: 'user_choice',
                 description: '',
                 questions: [
                   {
@@ -3281,8 +3288,10 @@ describe('GPTMessages2Chats', () => {
         content: '',
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
+
           params: {
+            askId: 'call_ask',
+            blockerType: 'user_choice',
             description: '',
             questions: [
               {
@@ -3555,12 +3564,36 @@ describe('structured user answers', () => {
     type: 'agentAsk' as const,
     questions: [{ question: '输入方式？', value: 'upload' }]
   };
-  const ask: ChatItemMiniType = {
+  const makeAsk = (askId = 'ask-call', question = '输入方式？'): ChatItemMiniType => ({
     obj: ChatRoleEnum.AI,
     value: [
-      { agentAsk: { id: 'ask-call', askId: 'ask-call', functionName: 'ask_user', params: '{}' } }
+      {
+        modelResponseId: askId,
+        toolCallIds: [askId],
+        interactive: {
+          type: 'agentAsk',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            askId,
+            blockerType: 'user_choice',
+            description: '',
+            questions: [
+              {
+                question,
+                options: [
+                  { summary: 'upload', value: 'upload' },
+                  { summary: 'other', value: 'other' }
+                ]
+              }
+            ]
+          }
+        }
+      }
     ]
-  };
+  });
+  const ask = makeAsk();
   const answer: ChatItemMiniType = { obj: ChatRoleEnum.Human, value: [{ select }] };
 
   it('reads only the adjacent user and consumes its answer once as a tool response', () => {
@@ -3570,7 +3603,14 @@ describe('structured user answers', () => {
       expect.objectContaining({
         role: 'assistant',
         tool_calls: [
-          { id: 'ask-call', type: 'function', function: { name: 'ask_user', arguments: '{}' } }
+          {
+            id: 'ask-call',
+            type: 'function',
+            function: {
+              name: 'ask_user',
+              arguments: expect.stringContaining('\"blockerType\":\"user_choice\"')
+            }
+          }
         ]
       }),
       expect.objectContaining({
@@ -3585,13 +3625,13 @@ describe('structured user answers', () => {
     { intervening: [] },
     { intervening: [{ obj: ChatRoleEnum.AI, value: [{ text: { content: 'intervening AI' } }] }] }
   ])(
-    'returns an empty response when the next record is missing or not user: %j',
+    'keeps a waiting response when the next record is missing or not user: %j',
     ({ intervening }) => {
       const messages: ChatItemMiniType[] = intervening.length
         ? [ask, ...(intervening as ChatItemMiniType[]), answer]
         : [ask];
       const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
-      expect(result.find((item) => item.role === 'tool')?.content).toBe('');
+      expect(result.find((item) => item.role === 'tool')?.content).toBe('Waiting for user answer.');
       if (intervening.length) expect(result.at(-1)).toMatchObject({ role: 'user' });
     }
   );
@@ -3603,7 +3643,10 @@ describe('structured user answers', () => {
       reserveTool: true
     });
     expect(result).toHaveLength(2);
-    expect(result[1]).toMatchObject({ role: 'tool', content: 'custom answer' });
+    expect(result[1]).toMatchObject({
+      role: 'tool',
+      content: '## 输入方式？\n\n回答：custom answer'
+    });
   });
 
   it('preserves the structured user type across ChatBox transport and extracts runtime answers', () => {
@@ -3624,10 +3667,7 @@ describe('structured user answers', () => {
   });
 
   it('keeps independent answers for consecutive Ask rounds without matching user ids', () => {
-    const secondAsk: ChatItemMiniType = {
-      ...ask,
-      value: [{ agentAsk: { id: 'ask-2', askId: 'ask-2', functionName: 'ask_user', params: '{}' } }]
-    };
+    const secondAsk = makeAsk('ask-2', '补充？');
     const secondAnswer: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: [
@@ -3648,5 +3688,202 @@ describe('structured user answers', () => {
       '## 输入方式？\n\n回答：upload',
       '## 补充？\n\n回答：review'
     ]);
+  });
+});
+
+describe('workflow preview answers', () => {
+  const preview: WorkflowBuilderPreviewInteractive = {
+    type: 'workflowBuilderPreview',
+    previewId: 'preview-1',
+    params: {
+      title: 'Build workflow',
+      mermaid: 'flowchart TD\n A-->B',
+      sections: [{ title: 'Goal', content: 'Review and reply' }]
+    }
+  };
+  const makePreview = (id = 'preview-call'): ChatItemMiniType => ({
+    obj: ChatRoleEnum.AI,
+    value: [
+      {
+        tools: [
+          {
+            id: 'failed-preview',
+            toolName: 'Preview',
+            toolAvatar: '',
+            functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+            params: '{}',
+            response: '{"ok":false}'
+          },
+          {
+            id,
+            toolName: 'Preview',
+            toolAvatar: '',
+            functionName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+            params: JSON.stringify(preview.params),
+            response: '{"ok":true,"state":"awaiting_confirmation","sentinel":"preserved"}'
+          }
+        ]
+      },
+      {
+        interactive: {
+          type: 'toolChildrenInteractive',
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: { childrenResponse: preview, toolParams: { toolCallId: id } }
+        }
+      }
+    ]
+  });
+  const answer = (
+    value: string,
+    action: WorkflowBuilderPreviewAction = 'confirm'
+  ): ChatItemMiniType => ({
+    obj: ChatRoleEnum.Human,
+    value: [
+      {
+        select:
+          action === 'revise'
+            ? { type: 'workflowBuilderPreview', action: action, reviseText: value }
+            : { type: 'workflowBuilderPreview', action: action }
+      }
+    ]
+  });
+
+  it.each([
+    { value: 'Confirm and build', decision: 'confirm', state: 'confirmed', taskComplete: false },
+    { value: 'Cancel this build', decision: 'cancel', state: 'cancelled', taskComplete: true },
+    {
+      value: 'Add a review branch',
+      decision: 'revise',
+      state: 'revision_requested',
+      taskComplete: false
+    }
+  ] as const)(
+    'projects the adjacent Human $decision into only the matching tool response',
+    ({ value, decision, state, taskComplete }) => {
+      const messages = [makePreview(), answer(value, decision)];
+      const before = structuredClone(messages);
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      const response = result.find(
+        (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+      );
+      expect(JSON.parse(String(response?.content))).toMatchObject({
+        ok: true,
+        state,
+        decision,
+        previewId: 'preview-1',
+        taskComplete,
+        sentinel: 'preserved'
+      });
+      if (decision === 'revise') expect(JSON.parse(String(response?.content)).feedback).toBe(value);
+      expect(
+        result.find((item) => item.role === 'tool' && item.tool_call_id === 'failed-preview')
+          ?.content
+      ).toBe('{"ok":false}');
+      expect(result.filter((item) => item.role === 'user')).toEqual([]);
+      expect(messages).toEqual(before);
+    }
+  );
+
+  it('treats plain confirmation text as revision feedback and preserves attached files', () => {
+    const result = chats2GPTMessages({
+      messages: [
+        makePreview(),
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            { text: { content: 'Confirm and build' } },
+            {
+              file: {
+                type: ChatFileTypeEnum.image,
+                name: 'reference.png',
+                url: 'https://example.com/reference.png'
+              }
+            }
+          ]
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    const response = result.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(JSON.parse(String(response?.content))).toMatchObject({
+      decision: 'revise',
+      feedback: 'Confirm and build'
+    });
+    expect(result.at(-1)).toMatchObject({ role: 'user', content: [{ type: 'image_url' }] });
+  });
+
+  it.each(['missing', 'intervening AI', 'wrong select type'])(
+    'does not invent a decision for %s',
+    (scenario) => {
+      const messages: ChatItemMiniType[] = [makePreview()];
+      if (scenario === 'intervening AI')
+        messages.push(
+          { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Another reply' } }] },
+          answer('Confirm and build')
+        );
+      if (scenario === 'wrong select type')
+        messages.push({
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select: {
+                type: 'agentAsk',
+                questions: [{ question: 'Other question', value: 'Confirm and build' }]
+              }
+            }
+          ]
+        });
+      const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+      const response = result.find(
+        (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+      );
+      expect(JSON.parse(String(response?.content))).toEqual({
+        ok: true,
+        state: 'awaiting_confirmation',
+        sentinel: 'preserved'
+      });
+      if (scenario !== 'missing') expect(result.at(-1)?.role).toBe('user');
+    }
+  );
+
+  it('keeps answers independent across preview rounds', () => {
+    const result = chats2GPTMessages({
+      messages: [
+        makePreview(),
+        answer('Confirm and build'),
+        makePreview('preview-next'),
+        answer('Cancel this build', 'cancel')
+      ],
+      reserveId: false,
+      reserveTool: true
+    });
+    expect(
+      result
+        .filter((item) => item.role === 'tool' && item.tool_call_id !== 'failed-preview')
+        .map((item) => JSON.parse(String(item.content)).decision)
+    ).toEqual(['confirm', 'cancel']);
+  });
+
+  it('preserves original values for ChatBox transport and ordinary chat rendering', () => {
+    const messages = [makePreview(), answer('Confirm and build')];
+    const transport = chats2GPTMessages({
+      messages,
+      reserveId: true,
+      reserveTool: true,
+      reserveSelect: true
+    });
+    expect(transport.at(-1)).toMatchObject({ role: 'user', content: [{ type: 'select' }] });
+    const response = transport.find(
+      (item) => item.role === 'tool' && item.tool_call_id === 'preview-call'
+    );
+    expect(JSON.parse(String(response?.content))).not.toHaveProperty('decision');
+    expect(
+      chats2GPTMessages({ messages, reserveId: false, reserveTool: false }).at(-1)
+    ).toMatchObject({ role: 'user', content: JSON.stringify({ action: 'confirm' }) });
   });
 });

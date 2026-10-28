@@ -138,8 +138,10 @@ describe('summarizeAgentLoopCoreResult', () => {
         providerState,
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
+
           params: {
+            askId: 'call_ask',
+            blockerType: 'missing_required_input',
             description: 'Need input',
             questions: [
               {

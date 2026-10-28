@@ -1,298 +1,227 @@
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
+import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
 
-const createToolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) =>
-  ({
-    id,
-    type: 'function',
-    function: {
-      name,
-      arguments: args
-    }
-  }) as const;
+const call = (id: string, name = 'search', args = '{}') => ({
+  id,
+  type: 'function' as const,
+  function: { name, arguments: args }
+});
+const end = (requestId: string, toolCalls: ReturnType<typeof call>[] = []) => ({
+  type: 'llm_request_end' as const,
+  requestId,
+  requestIndex: 1,
+  modelName: 'Model',
+  finishReason: 'stop' as const,
+  toolCalls,
+  seconds: 0
+});
+const plan = {
+  planId: 'plan',
+  name: 'Work',
+  steps: [{ id: 'step', name: 'Build', status: 'in_progress' as const }]
+};
 
 describe('createAgentLoopCoreAssistantEventCollector', () => {
-  it('collects answer, hidden reasoning and runtime tool responses', () => {
+  it('keeps Preview decisions exclusively in Human records', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({
+      type: 'tool_run_end',
+      resumed: true,
+      call: call('preview', WORKFLOW_BUILDER_PREVIEW_TOOL_NAME),
+      response: '{"decision":"confirm"}',
+      seconds: 0
+    });
+    expect(collector.assistantResponses).toEqual([]);
+  });
+
+  it('does not create an interactive without a valid tool call id', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({
+      type: 'ask_start',
+      ask: { reason: 'Legacy input', blockerType: 'user_choice', questions: [] }
+    });
+    expect(collector.assistantResponses).toEqual([]);
+  });
+
+  it('keeps text, reasoning and streamed tools in one response with final parameters and original call order', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       showReasoning: false,
-      getToolInfo: (name) => ({
-        name: name === 'search' ? 'Search' : name,
-        avatar: 'tool-avatar'
-      })
-    });
-
-    collector.emitEvent({
-      type: 'reasoning_delta',
-      text: 'think'
+      getToolInfo: (name) => ({ name, avatar: 'icon' })
     });
     collector.emitEvent({
-      type: 'answer_delta',
-      text: 'Need search.'
+      type: 'llm_request_start',
+      responseId: 'response',
+      requestIndex: 1,
+      modelName: 'Model'
     });
+    collector.emitEvent({ type: 'reasoning_delta', text: 'Think' });
+    collector.emitEvent({ type: 'answer_delta', text: 'Search' });
+    collector.emitEvent({ type: 'tool_call', call: call('a') });
+    collector.emitEvent({ type: 'tool_params', callId: 'a', argsDelta: 'partial' });
     collector.emitEvent({
-      type: 'tool_call',
-      call: createToolCall({
-        id: 'call_search',
-        name: 'search',
-        args: '{"q":"FastGPT"}'
-      })
+      ...end('request', [call('a'), call('b')]),
+      responseId: 'response',
+      answerText: 'Search',
+      reasoningText: 'Think'
     });
-    collector.emitEvent({
-      type: 'tool_run_end',
-      call: createToolCall({
-        id: 'call_search',
-        name: 'search',
-        args: '{"q":"FastGPT"}'
-      }),
-      response: 'result',
-      seconds: 0.1
-    });
-
+    collector.emitEvent({ type: 'tool_run_end', call: call('b'), response: 'B', seconds: 0 });
+    collector.emitEvent({ type: 'tool_run_end', call: call('a'), response: 'A', seconds: 0 });
+    collector.emitEvent({ ...end('request'), responseId: 'response', answerText: 'duplicate' });
     expect(collector.assistantResponses).toEqual([
       {
-        reasoning: {
-          content: 'think'
-        },
+        modelResponseId: 'response',
+        hideInUI: false,
         hideReason: true,
-        text: {
-          content: 'Need search.'
-        }
-      },
-      {
-        id: 'call_search',
+        text: { content: 'Search' },
+        reasoning: { content: 'Think' },
+        toolCallIds: ['a', 'b'],
         tools: [
-          {
-            id: 'call_search',
-            toolName: 'Search',
-            toolAvatar: 'tool-avatar',
-            functionName: 'search',
-            params: '{"q":"FastGPT"}',
-            response: 'result'
-          }
+          expect.objectContaining({ id: 'a', params: '{}', response: 'A' }),
+          expect.objectContaining({ id: 'b', response: 'B' })
         ]
       }
     ]);
   });
 
-  it('inserts unstreamed assistant text before runtime tools on llm_request_end', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector({
-      getToolInfo: (name) => ({
-        name,
-        avatar: ''
-      })
-    });
-    const call = createToolCall({
-      id: 'call_time',
-      name: 'get_time'
-    });
+  it.each([true, false])(
+    'persists plan tools and only successful state snapshots: %s',
+    (success) => {
+      const collector = createAgentLoopCoreAssistantEventCollector({
+        metaEventNames: { setPlanToolName: 'custom_set_plan' }
+      });
+      const base = {
+        type: 'plan_operation' as const,
+        operation: 'set_plan' as const,
+        id: 'plan-call',
+        params: '{}',
+        message: 'plan result'
+      };
+      collector.emitEvent(success ? { ...base, success: true, plan } : { ...base, success: false });
+      expect(collector.assistantResponses[0]).toMatchObject({
+        tools: [{ functionName: 'custom_set_plan', response: 'plan result', hideInUI: true }],
+        ...(success ? { plan } : { hideInUI: true })
+      });
+      if (!success) expect(collector.assistantResponses[0]).not.toHaveProperty('plan');
+    }
+  );
 
-    collector.emitEvent({
-      type: 'tool_call',
-      call
-    });
-    collector.emitEvent({
-      type: 'llm_request_end',
-      requestIndex: 1,
-      modelName: 'GPT-4',
-      requestId: 'req_1',
-      finishReason: 'tool_calls',
-      reasoningText: 'Need time first.',
-      toolCalls: [call]
-    });
-
-    expect(collector.assistantResponses).toEqual([
-      {
-        reasoning: {
-          content: 'Need time first.'
-        }
-      },
-      {
-        id: 'call_time',
-        tools: [
-          {
-            id: 'call_time',
-            toolName: 'get_time',
-            toolAvatar: '',
-            functionName: 'get_time',
-            params: '{}'
-          }
-        ]
-      }
-    ]);
-  });
-
-  it('persists failed plan operations without creating a plan snapshot', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector({
-      metaEventNames: {
-        setPlanToolName: 'set_plan',
-        updatePlanToolName: 'update_plan'
-      }
-    });
-
-    collector.emitEvent({
-      type: 'plan_operation',
-      operation: 'set_plan',
-      success: false,
-      message: 'plan creation failed',
-      id: 'call_plan',
-      params: '{"action":"set_plan"}'
-    });
-
-    expect(collector.assistantResponses).toEqual([
-      {
-        id: 'call_plan',
-        agentPlanUpdate: {
-          id: 'call_plan',
-          functionName: 'set_plan',
-          params: '{"action":"set_plan"}',
-          response: 'plan creation failed'
-        }
-      }
-    ]);
-  });
-
-  it('persists the complete plan as a standalone snapshot', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector({
-      metaEventNames: {
-        setPlanToolName: 'set_plan',
-        updatePlanToolName: 'update_plan'
-      }
-    });
-
-    collector.emitEvent({
-      type: 'plan_operation',
-      operation: 'set_plan',
-      success: true,
-      message: 'plan created',
-      id: 'call_plan',
-      params: '{"action":"set_plan"}',
-      plan: {
-        planId: 'plan_1',
-        name: 'Implementation plan',
-        description: null,
-        steps: [
-          {
-            id: 'step_1',
-            name: 'Implement persistence',
-            status: 'in_progress'
-          }
-        ]
-      }
-    });
-
-    expect(collector.assistantResponses).toEqual([
-      {
-        plan: {
-          planId: 'plan_1',
-          name: 'Implementation plan',
-          description: null,
-          steps: [
-            {
-              id: 'step_1',
-              name: 'Implement persistence',
-              status: 'in_progress'
-            }
-          ]
-        }
-      },
-      {
-        id: 'call_plan',
-        agentPlanUpdate: {
-          id: 'call_plan',
-          functionName: 'set_plan',
-          params: '{"action":"set_plan"}',
-          response: 'plan created'
-        }
-      }
-    ]);
-  });
-
-  it('stores child assistant responses after the parent tool result', () => {
-    const collector = createAgentLoopCoreAssistantEventCollector({
-      getToolInfo: (name) => ({
-        name: name === 'nested_search' ? 'Nested search' : name,
-        avatar: 'tool-avatar'
-      })
-    });
-    const call = createToolCall({
-      id: 'call_workflow',
-      name: 'workflow_tool'
-    });
-
-    collector.emitEvent({ type: 'tool_call', call });
-    collector.emitEvent({
-      type: 'tool_run_end',
-      call,
-      response: 'workflow result',
-      seconds: 0.1,
-      assistantMessages: [{ role: 'assistant', content: 'context only' }],
-      assistantResponses: [
-        { text: { content: 'child answer' } },
-        {
-          id: 'call_nested',
-          tools: [
-            {
-              id: 'call_nested',
-              toolName: 'Nested search',
-              toolAvatar: 'tool-avatar',
-              params: '{"query":"FastGPT"}',
-              response: 'nested result',
-              functionName: 'nested_search'
-            }
-          ]
-        }
-      ]
-    });
-    collector.emitEvent({
-      type: 'tool_run_end',
-      call,
-      response: 'duplicate',
-      seconds: 0.2,
-      assistantMessages: [{ role: 'assistant', content: 'duplicate child answer' }],
-      assistantResponses: [{ text: { content: 'duplicate child answer' } }]
-    });
-    collector.emitEvent({
-      type: 'llm_request_end',
-      requestIndex: 1,
-      modelName: 'GPT-4',
-      requestId: 'req_after_child',
-      finishReason: 'stop',
-      answerText: 'parent answer',
-      seconds: 0.1
-    });
-
-    expect(collector.assistantResponses).toEqual([
-      expect.objectContaining({
-        id: 'call_workflow',
-        tools: [expect.objectContaining({ response: 'workflow result' })]
-      }),
-      { text: { content: 'child answer' } },
-      expect.objectContaining({
-        id: 'call_nested',
-        tools: [expect.objectContaining({ response: 'nested result' })]
-      }),
-      { text: { content: 'parent answer' } }
-    ]);
-  });
-
-  it('persists a failed tool result as the tool response', () => {
+  it('marks child display separately, ignores duplicate end events and starts a new parent response', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();
-    const call = createToolCall({ id: 'call_failed', name: 'search' });
-
-    collector.emitEvent({ type: 'tool_call', call });
+    collector.emitEvent({ ...end('first', [call('parent')]), answerText: 'Before' });
     collector.emitEvent({
       type: 'tool_run_end',
-      call,
-      response: 'search unavailable',
-      errorMessage: 'search unavailable',
-      seconds: 0.1
+      call: call('parent'),
+      response: 'Parent context',
+      assistantResponses: [{ text: { content: 'Child display' } }],
+      seconds: 0
     });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('parent'),
+      response: 'Duplicate',
+      assistantResponses: [{ text: { content: 'Duplicate child' } }],
+      seconds: 0
+    });
+    collector.emitEvent({ ...end('second'), answerText: 'After' });
+    expect(collector.assistantResponses).toMatchObject([
+      { text: { content: 'Before' }, tools: [{ response: 'Parent context' }] },
+      { displayOnly: true, text: { content: 'Child display' } },
+      { text: { content: 'After' } }
+    ]);
+    expect(collector.assistantResponses[0].modelResponseId).not.toBe(
+      collector.assistantResponses[2].modelResponseId
+    );
+  });
 
-    expect(collector.assistantResponses).toEqual([
-      expect.objectContaining({
-        id: 'call_failed',
-        tools: [expect.objectContaining({ response: 'search unavailable' })]
-      })
+  it('persists failures without hiding details from model context', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector({ showReasoning: false });
+    collector.emitEvent({ type: 'reasoning_delta', text: 'Private reasoning' });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('invalid', 'ask_user', 'invalid JSON'),
+      response: 'Invalid arguments',
+      hideInUI: true,
+      seconds: 0
+    });
+    expect(collector.assistantResponses[0]).toMatchObject({
+      hideInUI: true,
+      tools: [{ params: 'invalid JSON', response: 'Invalid arguments', hideInUI: true }]
+    });
+    expect(collector.assistantResponses[0].tools?.[0]).not.toHaveProperty('hideDetails');
+  });
+
+  it('keeps activity-only records separate from complete model tool context', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({ type: 'tool_params', callId: 'unknown', argsDelta: 'ignored' });
+    collector.emitEvent({
+      type: 'tool_activity',
+      callId: 'activity',
+      toolName: 'read_file',
+      status: 'running'
+    });
+    collector.emitEvent({
+      type: 'tool_activity',
+      callId: 'activity',
+      toolName: 'read_file',
+      status: 'done'
+    });
+    expect(collector.assistantResponses).toMatchObject([
+      { tools: [{ id: 'activity', hideDetails: true, params: '', response: '' }] }
+    ]);
+  });
+
+  it('stores valid Ask only in interactive and does not append its waiting result', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent(end('ask-response', [call('ask', 'ask_user')]));
+    collector.emitEvent({
+      type: 'ask_start',
+      id: 'ask',
+      ask: {
+        reason: 'Need input',
+        blockerType: 'ambiguous_goal',
+        questions: [
+          {
+            question: 'Which?',
+            options: [
+              { summary: 'A', value: 'A' },
+              { summary: 'B', value: 'B' }
+            ]
+          }
+        ]
+      }
+    });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('ask', 'ask_user'),
+      response: 'Waiting',
+      seconds: 0
+    });
+    expect(collector.assistantResponses).toHaveLength(1);
+    expect(collector.assistantResponses[0]).toMatchObject({
+      interactive: { type: 'agentAsk', params: { askId: 'ask', blockerType: 'ambiguous_goal' } }
+    });
+    expect(collector.assistantResponses[0]).not.toHaveProperty('tools');
+    expect(collector.assistantResponses[0]).not.toHaveProperty('agentAsk');
+  });
+
+  it('deduplicates checkpoints and separates the next response from compressed history', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    collector.emitEvent({ type: 'answer_delta', text: 'Before' });
+    const checkpoint = {
+      type: 'after_message_compress' as const,
+      modelName: 'Model',
+      requestIds: ['compress'],
+      seconds: 0,
+      contextCheckpoint: 'Summary'
+    };
+    collector.emitEvent(checkpoint);
+    collector.emitEvent(checkpoint);
+    collector.emitEvent({ type: 'answer_delta', text: 'After' });
+    expect(collector.assistantResponses).toMatchObject([
+      { text: { content: 'Before' } },
+      { contextCheckpoint: 'Summary', hideInUI: true },
+      { text: { content: 'After' } }
     ]);
   });
 });

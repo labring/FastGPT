@@ -68,6 +68,26 @@ describe('readAgentLoopCoreActivePlan', () => {
     expect(readAgentLoopCoreActivePlan({ histories })).toBeUndefined();
   });
 
+  it('ignores child display plans after a parent terminal marker', () => {
+    const histories: ChatItemMiniType[] = [
+      createPlanHistory(null),
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            displayOnly: true,
+            plan: {
+              planId: 'child',
+              name: 'Child',
+              steps: [{ id: 'child-step', name: 'Work', status: 'pending' }]
+            }
+          }
+        ]
+      }
+    ];
+    expect(readAgentLoopCoreActivePlan({ histories })).toBeUndefined();
+  });
+
   it('ignores agentPlanUpdate records when reading runtime state', () => {
     const histories: ChatItemMiniType[] = [
       createPlanHistory({

@@ -47,13 +47,32 @@ export type WorkflowBuilderVersion = z.infer<typeof WorkflowBuilderVersionSchema
 
 export type WorkflowBuilderVersionDisplayState = 'ready' | 'available' | 'expired';
 
-export const WorkflowBuilderPreviewActionSchema = z.object({
-  value: z.enum(['confirm', 'revise', 'cancel']),
-  label: z.string().trim().min(1),
-  inputMode: z.enum(['none', 'text']),
-  inputPlaceholder: z.string().trim().min(1).optional()
-});
+export const WorkflowBuilderPreviewActionSchema = z.enum(['confirm', 'revise', 'cancel']);
 export type WorkflowBuilderPreviewAction = z.infer<typeof WorkflowBuilderPreviewActionSchema>;
+
+/** Preview 回复按 action 区分：仅 revise 必须携带非空修改意见，其余动作不接受该字段。 */
+export const WorkflowBuilderPreviewReplySchema = z.discriminatedUnion('action', [
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('confirm').meta({ description: '确认方案并开始搭建' })
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('cancel').meta({ description: '取消本次搭建' })
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('workflowBuilderPreview'),
+      action: z.literal('revise').meta({ description: '修改方案' }),
+      reviseText: z.string().trim().min(1).meta({ description: '修改方案的具体意见，不能为空' })
+    })
+    .strict()
+]);
+export type WorkflowBuilderPreviewReply = z.infer<typeof WorkflowBuilderPreviewReplySchema>;
 
 export const WorkflowBuilderPreviewSectionSchema = z.object({
   title: z.string().trim().min(1),
@@ -63,7 +82,7 @@ export type WorkflowBuilderPreviewSection = z.infer<typeof WorkflowBuilderPrevie
 
 /**
  * Workflow Builder 的唯一预览载荷。
- * Mermaid、说明和用户动作都挂在同一个交互节点上，避免 assistant 文本与预览字段各自维护一份方案。
+ * Mermaid 和说明挂在同一个交互节点上；固定操作由前端渲染，不随预览重复存储。
  */
 export const WorkflowBuilderPreviewInteractiveSchema = z.object({
   type: z.literal('workflowBuilderPreview'),
@@ -71,14 +90,19 @@ export const WorkflowBuilderPreviewInteractiveSchema = z.object({
   params: z.object({
     title: z.string().trim().min(1),
     mermaid: z.string().trim().min(1),
-    sections: z.array(WorkflowBuilderPreviewSectionSchema),
-    decision: z.enum(['confirm', 'cancel']).optional(),
-    actions: z.array(WorkflowBuilderPreviewActionSchema).length(3)
+    sections: z.array(WorkflowBuilderPreviewSectionSchema)
   })
 });
 export type WorkflowBuilderPreviewInteractive = z.infer<
   typeof WorkflowBuilderPreviewInteractiveSchema
 >;
+
+/** 由预览后紧邻的 Human 消息解析，仅用于本轮执行和模型工具上下文，不写回预览。 */
+export type WorkflowBuilderPreviewDecision = {
+  previewId: string;
+  action: WorkflowBuilderPreviewAction;
+  feedback?: string;
+};
 
 /** Builder 只持久化业务执行事实；对话、计划和模型暂停状态沿用 ChatItem 协议。 */
 export const WorkflowBuilderTaskSchema = z.object({
@@ -91,14 +115,6 @@ export const WorkflowBuilderTaskSchema = z.object({
     responseChatItemId: z.string().min(1),
     checksum: WorkflowChecksumSchema
   }),
-  confirmation: z
-    .object({
-      previewId: z.string().min(1),
-      checksum: WorkflowChecksumSchema,
-      responseChatItemId: z.string().min(1),
-      answer: z.string()
-    })
-    .optional(),
   cancelled: z.boolean().optional(),
   delivery: z
     .object({

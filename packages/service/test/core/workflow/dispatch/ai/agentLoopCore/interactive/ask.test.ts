@@ -31,8 +31,10 @@ describe('agentLoopCore ask interactive', () => {
       })
     ).toEqual({
       type: 'agentAsk',
-      askId: 'call_ask',
+
       params: {
+        askId: 'call_ask',
+        blockerType: 'missing_required_input',
         description: 'Need input',
         questions: [
           {
@@ -59,8 +61,10 @@ describe('agentLoopCore ask interactive', () => {
     expect(
       AgentAskInteractiveSchema.safeParse({
         type: 'agentAsk',
-        askId: 'call_skill_choice',
+
         params: {
+          askId: 'call_skill_choice',
+          blockerType: 'user_choice',
           description: 'The selected Skill requires the user to choose a style.',
           questions: [
             {

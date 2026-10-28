@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest';
 import {
   getWorkflowBuilderErrorLog,
   getWorkflowBuilderVersionDisplayState,
-  isWorkflowBuilderVersionExpiredError
+  isWorkflowBuilderVersionExpiredError,
+  getWorkflowBuilderPreview,
+  getWorkflowBuilderPreviewDecision,
+  getWorkflowBuilderPreviewToolResponse
 } from '@fastgpt/global/core/workflow/builder/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
-import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import type {
+  WorkflowBuilderVersion,
+  WorkflowBuilderPreviewInteractive
+} from '@fastgpt/global/core/workflow/builder/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const version: WorkflowBuilderVersion = {
   versionNo: 1,
@@ -51,6 +58,134 @@ describe('getWorkflowBuilderErrorLog', () => {
       errorType: 'Error'
     });
   });
+});
+
+const preview: WorkflowBuilderPreviewInteractive = {
+  type: 'workflowBuilderPreview',
+  previewId: 'preview',
+  params: {
+    title: 'Plan',
+    mermaid: 'flowchart TD\n A-->B',
+    sections: []
+  }
+};
+
+describe('getWorkflowBuilderPreview', () => {
+  it('accepts only valid preview display values from the latest interactive', () => {
+    expect(getWorkflowBuilderPreview([])).toBeUndefined();
+    expect(
+      getWorkflowBuilderPreview([{ interactive: { ...preview, previewId: '' } }])
+    ).toBeUndefined();
+    expect(
+      getWorkflowBuilderPreview([
+        { interactive: preview },
+        {
+          interactive: {
+            type: 'agentAsk',
+
+            params: { askId: 'ask', blockerType: 'user_choice', description: '', questions: [] },
+            entryNodeIds: [],
+            memoryEdges: [],
+            nodeOutputs: []
+          }
+        }
+      ])
+    ).toBeUndefined();
+    expect(getWorkflowBuilderPreview([{ interactive: preview }])).toEqual(preview);
+  });
+});
+
+describe('getWorkflowBuilderPreviewDecision', () => {
+  it('ignores empty and unrelated answers without mutating the preview', () => {
+    const before = structuredClone(preview);
+    for (const value of [
+      [],
+      [{ text: { content: '   ' } }],
+      [
+        {
+          select: {
+            type: 'agentAsk' as const,
+            questions: [{ question: 'Other', value: 'Confirm' }]
+          }
+        }
+      ]
+    ]) {
+      expect(
+        getWorkflowBuilderPreviewDecision({
+          preview,
+          userContent: { obj: ChatRoleEnum.Human, value }
+        })
+      ).toBeUndefined();
+    }
+    expect(preview).toEqual(before);
+  });
+  it.each(['confirm', 'revise', 'cancel'] as const)(
+    'reads %s directly from the standalone action',
+    (action) => {
+      expect(
+        getWorkflowBuilderPreviewDecision({
+          preview,
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                select:
+                  action === 'revise'
+                    ? { type: 'workflowBuilderPreview', action, reviseText: 'Add review' }
+                    : { type: 'workflowBuilderPreview', action }
+              }
+            ]
+          }
+        })
+      ).toEqual({
+        previewId: preview.previewId,
+        action,
+        ...(action === 'revise' ? { feedback: 'Add review' } : {})
+      });
+    }
+  );
+  it('uses only reviseText for revision feedback', () => {
+    expect(
+      getWorkflowBuilderPreviewDecision({
+        preview,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select: {
+                type: 'workflowBuilderPreview',
+                action: 'revise',
+
+                reviseText: '  Add a review  '
+              }
+            }
+          ]
+        }
+      })
+    ).toEqual({ previewId: preview.previewId, action: 'revise', feedback: 'Add a review' });
+    expect(
+      getWorkflowBuilderPreviewDecision({
+        preview,
+        userContent: { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Confirm' } }] }
+      })
+    ).toEqual({ previewId: preview.previewId, action: 'revise', feedback: 'Confirm' });
+  });
+});
+
+describe('getWorkflowBuilderPreviewToolResponse', () => {
+  it.each([
+    { action: 'confirm' as const, state: 'confirmed', taskComplete: false },
+    { action: 'revise' as const, state: 'revision_requested', taskComplete: false },
+    { action: 'cancel' as const, state: 'cancelled', taskComplete: true }
+  ])(
+    'exposes the decision only in the projected tool response: $action',
+    ({ action, state, taskComplete }) => {
+      const result = getWorkflowBuilderPreviewToolResponse({ previewId: 'preview', action });
+      expect(result).toMatchObject({ decision: action, state, taskComplete });
+      if (action === 'revise') expect(result.feedback).toBe('');
+      expect(preview.params).not.toHaveProperty('decision');
+    }
+  );
 });
 
 describe('isWorkflowBuilderVersionExpiredError', () => {

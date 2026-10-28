@@ -136,11 +136,13 @@ describe('delete chat record api', () => {
     };
     const interactive = {
       type: 'agentAsk',
-      askId: 'ask-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
+        askId: 'ask-1',
+        blockerType: 'user_choice',
         description: '',
         questions: [
           {

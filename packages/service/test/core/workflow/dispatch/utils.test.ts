@@ -574,8 +574,10 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
+                askId: 'ask_1',
+                blockerType: 'user_choice',
                 description: 'Choose one',
                 questions: [
                   {
@@ -641,8 +643,10 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
+                askId: 'ask_1',
+                blockerType: 'user_choice',
                 description: '',
                 questions: [
                   {

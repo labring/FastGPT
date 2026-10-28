@@ -78,7 +78,9 @@ const AIResponseBox = ({
     onEditQuestion,
     onQuickReplyClick: enableQuickReplies ? onQuickReplyClick : undefined
   };
-  const tools = value.tools || (value.tool ? [value.tool] : undefined);
+  const tools = (value.tools || (value.tool ? [value.tool] : undefined))?.filter(
+    (tool) => !tool.hideInUI
+  );
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
   const reasoningContent = value.reasoning?.content || '';

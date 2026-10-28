@@ -486,8 +486,8 @@ describe('runToolCall compression node responses', () => {
       }
     });
     expect(result.assistantResponses).toEqual([
-      expect.objectContaining({ text: { content: 'before pause' } }),
       expect.objectContaining({
+        text: { content: 'before pause' },
         tools: [expect.objectContaining({ id: 'call_child', response: 'partial child output' })]
       })
     ]);

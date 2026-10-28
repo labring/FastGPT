@@ -6,8 +6,10 @@ import { getAIChatDisplayGroups } from '@/components/core/chat/ChatContainer/Cha
 
 const ask: AgentAskInteractive = {
   type: 'agentAsk',
-  askId: 'ask-1',
+
   params: {
+    askId: 'ask-1',
+    blockerType: 'user_choice',
     description: 'Choose a direction',
     questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
   }
@@ -23,12 +25,7 @@ const preview: WorkflowBuilderPreviewInteractive = {
   params: {
     title: 'Confirm this workflow?',
     mermaid: 'flowchart LR\n  A --> B',
-    sections: [],
-    actions: [
-      { value: 'confirm', label: 'Confirm and build', inputMode: 'none' },
-      { value: 'revise', label: 'Revise', inputMode: 'text' },
-      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-    ]
+    sections: []
   }
 };
 const previewValue = {
@@ -155,4 +152,24 @@ describe('getAIChatDisplayGroups', () => {
       ]);
     }
   );
+  it('does not render an empty bubble for hidden internal tools and preserves mixed visible text', () => {
+    const tool = {
+      id: 'internal',
+      functionName: 'ask_user',
+      params: 'invalid',
+      response: 'validation failed',
+      toolName: 'Ask',
+      toolAvatar: '',
+      hideInUI: true
+    };
+    expect(
+      getGroups([{ modelResponseId: 'hidden-response', hideInUI: true, tools: [tool] }])
+    ).toEqual([]);
+    const groups = getGroups([
+      { modelResponseId: 'mixed-response', text: { content: 'Visible' }, tools: [tool] }
+    ]);
+    expect(groups.flatMap((group) => group.values)).toMatchObject([
+      { text: { content: 'Visible' }, tools: [] }
+    ]);
+  });
 });

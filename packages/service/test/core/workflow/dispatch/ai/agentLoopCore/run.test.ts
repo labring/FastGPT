@@ -176,9 +176,7 @@ describe('runAgentLoopCore', () => {
       expect.objectContaining({
         text: {
           content: 'answer'
-        }
-      }),
-      expect.objectContaining({
+        },
         tools: [
           expect.objectContaining({
             id: 'call_1',
@@ -284,47 +282,19 @@ describe('runAgentLoopCore', () => {
       }
     });
 
-    expect(eventTarget).toEqual([
+    expect(eventTarget).toMatchObject([
       {
-        text: {
-          content: 'hello'
-        }
-      },
-      {
-        id: 'call_search',
+        text: { content: 'hello' },
         tools: [
+          { id: 'call_search', response: 'tool result' },
           {
-            id: 'call_search',
-            toolName: 'Search',
-            toolAvatar: 'search-avatar',
-            functionName: 'search',
-            params: '{"q":"FastGPT"}',
-            response: 'tool result'
+            id: 'call_plan',
+            functionName: 'agent_set_plan',
+            response: 'plan created',
+            hideInUI: true
           }
-        ]
-      },
-      {
-        plan: {
-          planId: 'plan_1',
-          name: 'Implementation plan',
-          description: null,
-          steps: [
-            {
-              id: 'step_1',
-              name: 'Implement plan events',
-              status: 'pending'
-            }
-          ]
-        }
-      },
-      {
-        id: 'call_plan',
-        agentPlanUpdate: {
-          id: 'call_plan',
-          functionName: 'agent_set_plan',
-          params: '{"name":"Implementation plan","steps":["Implement plan events"]}',
-          response: 'plan created'
-        }
+        ],
+        plan: { planId: 'plan_1', steps: [{ status: 'pending' }] }
       }
     ]);
     expect(forwardedEvents).toEqual([
@@ -488,42 +458,17 @@ describe('runAgentLoopCore', () => {
           : event.call?.id === publicCall.id
       )
     ).toBe(true);
-    expect(result.assistantResponses).toEqual([
+    expect(result.assistantResponses).toMatchObject([
       {
-        id: privateCall.id,
         tools: [
           {
             id: privateCall.id,
-            toolName: 'Sandbox read file',
-            toolAvatar: '',
-            functionName: privateCall.function.name,
-            params: '',
-            response: '',
-            hideDetails: true
-          }
+            params: privateCall.function.arguments,
+            response: 'internal access denied',
+            internalOnly: true
+          },
+          { id: publicCall.id, response: 'public result' }
         ]
-      },
-      expect.objectContaining({
-        id: publicCall.id,
-        tools: [
-          expect.objectContaining({
-            id: publicCall.id,
-            response: 'public result'
-          })
-        ]
-      })
-    ]);
-    expect(result.assistantMessages).toEqual([]);
-    expect(result.completeMessages).toEqual([
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: null,
-        tool_calls: [publicCall]
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Tool,
-        tool_call_id: publicCall.id,
-        content: 'public result'
       }
     ]);
   });

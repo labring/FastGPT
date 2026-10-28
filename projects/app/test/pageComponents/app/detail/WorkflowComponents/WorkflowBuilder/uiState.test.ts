@@ -26,12 +26,7 @@ const createPreviewInteractive = (
   params: {
     title: '方案预览',
     mermaid: 'flowchart LR\nA --> B',
-    sections: [],
-    actions: [
-      { value: 'confirm', label: '确认', inputMode: 'none' },
-      { value: 'revise', label: '修改', inputMode: 'text' },
-      { value: 'cancel', label: '取消', inputMode: 'none' }
-    ]
+    sections: []
   }
 });
 
@@ -322,48 +317,72 @@ describe('getWorkflowBuilderPendingInteractiveKey', () => {
 });
 
 describe('isWorkflowBuilderVersionGenerating', () => {
-  it('restores confirmed progress without a separate Human message and stops it for an archived version', () => {
+  it('restores confirmed progress from the adjacent Human and stops it for an archived version', () => {
     const interactive = createPreviewInteractive();
-    interactive.params.decision = 'confirm';
     const record = {
       obj: ChatRoleEnum.AI,
       dataId: 'preview',
       value: [{ interactive }]
     } as ChatItemObjItemType & { dataId: string };
-    expect(getWorkflowBuilderPendingInteractiveKey([record])).toBeUndefined();
+    const answer: ChatItemObjItemType & { dataId: string } = {
+      obj: ChatRoleEnum.Human,
+      dataId: 'answer',
+      value: [
+        {
+          select: {
+            type: 'workflowBuilderPreview',
+            action: 'confirm'
+          }
+        }
+      ]
+    };
+    expect(getWorkflowBuilderPendingInteractiveKey([record, answer])).toBeUndefined();
     expect(
-      isWorkflowBuilderVersionGenerating({ chatRecords: [record], isChatGenerating: true })
+      isWorkflowBuilderVersionGenerating({ chatRecords: [record, answer], isChatGenerating: true })
     ).toBe(true);
-    record.value.unshift({
-      workflowBuilderVersion: {
-        versionNo: 1,
-        name: 'Version',
-        filename: 'workflow.json',
-        checksum: 'checksum',
-        generatedAt: '2026-10-23T00:00:00.000Z'
-      }
-    });
+    const delivered: ChatItemObjItemType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          workflowBuilderVersion: {
+            versionNo: 1,
+            name: 'Version',
+            filename: 'workflow.json',
+            checksum: 'checksum',
+            generatedAt: '2026-10-23T00:00:00.000Z'
+          }
+        }
+      ]
+    };
     expect(
-      isWorkflowBuilderVersionGenerating({ chatRecords: [record], isChatGenerating: true })
+      isWorkflowBuilderVersionGenerating({
+        chatRecords: [record, answer, delivered],
+        isChatGenerating: true
+      })
     ).toBe(false);
+    expect(interactive.params).not.toHaveProperty('decision');
   });
 
   it.each([
-    { value: '确认并开始搭建', expected: true },
-    { value: '取消本次搭建', expected: false },
-    { value: '增加审核分支', expected: false },
-    { value: 'confirm', expected: false }
-  ])('matches the adjacent preview button label: $value', ({ value, expected }) => {
-    const interactive = createPreviewInteractive();
-    interactive.params.actions[0].label = '确认并开始搭建';
-    const preview: ChatItemObjItemType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
+    { action: 'confirm' as const, expected: true },
+    { action: 'cancel' as const, expected: false },
+    { action: 'revise' as const, expected: false }
+  ])('reads the adjacent Human action: $action', ({ action, expected }) => {
+    const preview: ChatItemObjItemType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ interactive: createPreviewInteractive() }]
+    };
     const answer: ChatItemObjItemType = {
       obj: ChatRoleEnum.Human,
       value: [
-        { select: { type: 'workflowBuilderPreview', questions: [{ question: '方案预览', value }] } }
+        {
+          select:
+            action === 'revise'
+              ? { type: 'workflowBuilderPreview', action, reviseText: 'Add review' }
+              : { type: 'workflowBuilderPreview', action }
+        }
       ]
     };
-
     expect(
       isWorkflowBuilderVersionGenerating({ chatRecords: [preview, answer], isChatGenerating: true })
     ).toBe(expected);
@@ -387,7 +406,7 @@ describe('isWorkflowBuilderVersionGenerating', () => {
         {
           select: {
             type: 'workflowBuilderPreview',
-            questions: [{ question: '方案预览', value: '确认' }]
+            action: 'confirm'
           }
         }
       ]

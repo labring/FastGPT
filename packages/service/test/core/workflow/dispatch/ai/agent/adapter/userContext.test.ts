@@ -1050,8 +1050,10 @@ describe('useUserContext', () => {
               {
                 interactive: {
                   type: 'agentAsk',
-                  askId: 'ask_1',
+
                   params: {
+                    askId: 'ask_1',
+                    blockerType: 'user_choice',
                     description: 'Choose one',
                     questions: [
                       {

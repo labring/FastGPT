@@ -101,6 +101,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         return;
       }
       case 'tool_run_end': {
+        if (event.hideInUI) return;
         if (completedToolCallIds.has(event.call.id)) return;
         completedToolCallIds.add(event.call.id);
 

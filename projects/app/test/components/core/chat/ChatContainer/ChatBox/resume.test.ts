@@ -337,10 +337,11 @@ describe('mergeResumeCompletedChatRecords', () => {
             type,
             memoryEdges: [],
             nodeOutputs: [],
-            askId: id,
             entryNodeIds: ['same-node'],
             usageId: 'same-usage',
             params: {
+              askId: id,
+              blockerType: 'user_choice',
               description: '',
               questions: [{ question: 'Question', options: [] }]
             }
@@ -356,8 +357,7 @@ describe('mergeResumeCompletedChatRecords', () => {
           params: {
             title: 'Confirm?',
             mermaid: '',
-            sections: [],
-            actions: []
+            sections: []
           }
         };
       };

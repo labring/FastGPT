@@ -187,7 +187,8 @@ describe('runFastAgentMainLoop', () => {
     expect(completionPolicy).toHaveBeenNthCalledWith(1, { requestIndex: 1 });
     expect(completionPolicy).toHaveBeenNthCalledWith(2, { requestIndex: 2 });
     expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
-      role: ChatCompletionRequestMessageRoleEnum.System,
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      hideInUI: true,
       content: 'Continue until terminal facts exist.'
     });
   });
@@ -217,10 +218,9 @@ describe('runFastAgentMainLoop', () => {
     expect(result.status).toBe('aborted');
     expect(completionPolicy).toHaveBeenCalledTimes(1);
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(result.completeMessages).not.toContainEqual({
-      role: ChatCompletionRequestMessageRoleEnum.System,
-      content: continuationMessage
-    });
+    expect(result.completeMessages.some((message) => message.content === continuationMessage)).toBe(
+      false
+    );
   });
 
   it('returns an error when completion policy cannot reach terminal facts within the run budget', async () => {
@@ -555,7 +555,7 @@ describe('runFastAgentMainLoop', () => {
     );
   });
 
-  it('returns ask with pending main context when ask_agent is called', async () => {
+  it('returns Ask without saving a message snapshot', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({
         id: 'call_ask',
@@ -602,21 +602,8 @@ describe('runFastAgentMainLoop', () => {
         ]
       }
     ]);
-    expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
-    expect(result.pendingMainContext?.messages.at(-1)).toEqual({
-      role: 'assistant',
-      reasoning_content: 'Need to ask before planning can continue.',
-      tool_calls: [
-        {
-          id: 'call_ask',
-          type: 'function',
-          function: {
-            name: 'ask_user',
-            arguments: expect.stringContaining('"summary":"Current workspace"')
-          }
-        }
-      ]
-    });
+    expect(result).not.toHaveProperty('pendingMainContext');
+    expect(result.pause).toMatchObject({ askId: 'call_ask' });
     expect(compressToolResponseMock).not.toHaveBeenCalled();
   });
 
@@ -690,7 +677,7 @@ describe('runFastAgentMainLoop', () => {
       })
     );
     expect(executeTool).not.toHaveBeenCalled();
-    expect(result.assistantMessages).not.toContainEqual(
+    expect(result.assistantMessages).toContainEqual(
       expect.objectContaining({
         role: 'tool',
         tool_call_id: 'call_search_after_ask'
@@ -731,49 +718,11 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
   });
 
-  it('normalizes empty ask_agent resume answer to none in tool message', async () => {
-    mockCreateLLMResponseQueue(createLLMResponseMock, [
-      text({
-        requestId: 'req_after_resume',
-        content: 'continued after empty answer'
-      })
-    ]);
-
-    await runFastAgentMainLoop({
-      runtime: createRuntime(),
-      input: {
-        messages: [],
-        pendingMainContext: {
-          messages: [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.User,
-              content: 'Need clarification'
-            },
-            {
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              tool_calls: [
-                {
-                  id: 'call_ask',
-                  type: 'function',
-                  function: {
-                    name: 'ask_agent',
-                    arguments: '{}'
-                  }
-                }
-              ]
-            }
-          ],
-          askToolCallId: 'call_ask'
-        },
-        userAnswer: ''
-      }
-    });
-
-    expect(createLLMResponseMock.mock.calls[0][0].body.messages).toContainEqual({
-      role: 'tool',
-      tool_call_id: 'call_ask',
-      content: 'none'
-    });
+  it('uses reconstructed messages without an Ask-specific snapshot', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [text({ content: 'continued' })]);
+    const messages = [{ role: 'user' as const, content: 'Continue normally' }];
+    await runFastAgentMainLoop({ runtime: createRuntime(), input: { messages } });
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages[0]).toEqual(messages[0]);
   });
 
   it('does not restore active plan state from a compressed context in a new turn', async () => {
@@ -864,30 +813,7 @@ describe('runFastAgentMainLoop', () => {
       runtime: createRuntime(),
       input: {
         messages: [],
-        pendingMainContext: {
-          messages: [
-            {
-              role: ChatCompletionRequestMessageRoleEnum.User,
-              content: 'Need clarification'
-            },
-            {
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              tool_calls: [
-                {
-                  id: 'call_ask',
-                  type: 'function',
-                  function: {
-                    name: 'ask_user',
-                    arguments: '{}'
-                  }
-                }
-              ]
-            }
-          ],
-          askToolCallId: 'call_ask',
-          activePlan
-        },
-        userAnswer: 'Continue'
+        activePlan
       }
     });
 

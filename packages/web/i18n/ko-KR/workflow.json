@@ -378,5 +378,9 @@
   "cli.config.welcome_config": "새 대화가 시작될 때 표시할 시작 콘텐츠를 구성합니다.",
   "cli.config.welcome_questions": "환영 메시지 뒤에 사용자가 클릭할 수 있는 짧고 완전한 질문을 설정합니다.",
   "cli.config.whisper": "음성 인식을 통해 질문을 제출할 수 있어야 하는 경우 구성합니다.",
-  "connection_invalid": "워크플로 규칙에 맞지 않는 연결입니다"
+  "connection_invalid": "워크플로 규칙에 맞지 않는 연결입니다",
+  "workflow_builder_preview_confirm": "확인 후 빌드 시작",
+  "workflow_builder_preview_revise": "계획 수정",
+  "workflow_builder_preview_cancel": "이번 빌드 취소",
+  "workflow_builder_preview_revise_placeholder": "변경할 노드나 흐름을 설명해 주세요"
 }

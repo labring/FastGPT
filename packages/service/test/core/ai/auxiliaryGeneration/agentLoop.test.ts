@@ -20,7 +20,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
   it('uses ask without plan and preserves pause state', async () => {
     const streamWriter = vi.fn();
     const executeTool = vi.fn();
-    const providerState = { pendingMainContext: { askToolCallId: 'ask_1' } };
     const nextProviderState = { pendingMainContext: { askToolCallId: 'ask_2' } };
     runAgentLoopMock.mockImplementation(async ({ runtime }) => {
       runtime.emitEvent({ type: 'reasoning_delta', text: '分析中' });
@@ -61,7 +60,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       model: 'gpt-4o',
       systemPrompt: 'helper prompt',
       messages: [{ role: 'user', content: '创建客服 Agent' }],
-      providerState,
       userAnswer: JSON.stringify({ answers: ['小范围'] }),
       runtimeTools: [
         {
@@ -95,7 +93,6 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
         input: {
           systemPrompt: 'helper prompt',
           messages: [{ role: 'user', content: '创建客服 Agent' }],
-          providerState,
           userAnswer: JSON.stringify({ answers: ['小范围'] })
         }
       })

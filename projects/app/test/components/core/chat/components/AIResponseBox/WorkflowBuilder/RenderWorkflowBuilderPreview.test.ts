@@ -20,12 +20,7 @@ const preview: WorkflowBuilderPreviewInteractive = {
   params: {
     title: 'Workflow plan',
     mermaid: 'flowchart LR\n  Start --> Answer',
-    sections: [{ title: 'Plan details', content: 'Return a Chinese summary.' }],
-    actions: [
-      { value: 'confirm', label: 'Confirm and build', inputMode: 'none' },
-      { value: 'revise', label: 'Revise the plan', inputMode: 'text' },
-      { value: 'cancel', label: 'Cancel this build', inputMode: 'none' }
-    ]
+    sections: [{ title: 'Plan details', content: 'Return a Chinese summary.' }]
   }
 };
 

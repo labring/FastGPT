@@ -341,11 +341,13 @@ describe('prepare chat round', () => {
 
       const ask: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
-        askId: 'chat-agent-helper-ask',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
+          askId: 'chat-agent-helper-ask',
+          blockerType: 'user_choice',
           description: 'Collect requirements',
           questions: [
             {
@@ -443,8 +445,10 @@ describe('prepare chat round', () => {
       ...params,
       interactive: {
         type: 'agentAsk',
-        askId: 'call_ask',
+
         params: {
+          askId: 'call_ask',
+          blockerType: 'user_choice',
           description: '',
           questions: [
             {
@@ -483,8 +487,10 @@ describe('prepare chat round', () => {
           },
           childrenResponse: {
             type: 'agentAsk',
-            askId: 'call_ask',
+
             params: {
+              askId: 'call_ask',
+              blockerType: 'user_choice',
               description: '',
               questions: [
                 {

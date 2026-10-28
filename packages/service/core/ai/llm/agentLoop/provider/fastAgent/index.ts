@@ -14,15 +14,6 @@ import { createAgentLoopSandboxTools } from '../../domain/systemTool/sandbox';
 import { createDatasetSearchTool } from '../../domain/systemTool/datasetSearch';
 import { AgentUsageModuleName } from '../../domain/usage';
 
-export type FastAgentProviderState = {
-  pendingMainContext?: import('./loop/type').PendingMainContext;
-};
-
-const readFastAgentProviderState = (providerState: unknown): FastAgentProviderState => {
-  if (!providerState || typeof providerState !== 'object') return {};
-  return providerState as FastAgentProviderState;
-};
-
 /**
  * result.usages 是只读观测汇总，供 workflow 节点输出 token/points 摘要。
  * 真实账单仍由 loop 运行过程中逐次 usagePush，不在 result 层重复推送。
@@ -64,8 +55,6 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
   input: AgentLoopInput<TChildrenResponse>;
   runtime: AgentLoopRuntime<TChildrenResponse>;
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
-  const providerState = readFastAgentProviderState(input.providerState);
-
   const fastAgentRuntime: FastAgentInternalRuntime<TChildrenResponse> = {
     teamId: runtime.teamId,
     model: runtime.llmParams.model,
@@ -129,19 +118,12 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
       messages: input.messages,
       systemPrompt: input.systemPrompt,
       activePlan: input.activePlan,
-      pendingMainContext: providerState.pendingMainContext,
       userAnswer: input.userAnswer,
       childrenInteractiveParams: input.childrenInteractiveParams
     }
   });
 
   const askPause = result.pause?.type === 'ask' ? result.pause : undefined;
-  const nextProviderState =
-    askPause && result.pendingMainContext
-      ? {
-          pendingMainContext: result.pendingMainContext
-        }
-      : undefined;
 
   if (input.userAnswer !== undefined) {
     runtime.emitEvent?.({
@@ -154,13 +136,13 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     runtime.emitEvent?.({
       type: 'ask',
       ask: askPause.ask,
-      providerState: nextProviderState
+      providerState: undefined
     });
   }
 
   const commonResult = {
     activePlan: result.activePlan,
-    providerState: nextProviderState,
+    providerState: undefined,
     completeMessages: result.completeMessages,
     assistantMessages: result.assistantMessages,
     requestIds: result.requestIds,

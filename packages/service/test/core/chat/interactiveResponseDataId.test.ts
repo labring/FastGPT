@@ -67,11 +67,13 @@ describe('resolveResponseChatItemId', () => {
         responseChatItemId: 'client-response-id',
         interactive: {
           type: 'agentAsk',
-          askId: 'call_ask',
+
           entryNodeIds: [],
           memoryEdges: [],
           nodeOutputs: [],
           params: {
+            askId: 'call_ask',
+            blockerType: 'user_choice',
             description: '',
             submitted: false,
             questions: [
@@ -116,8 +118,10 @@ describe('resolveResponseChatItemId', () => {
             },
             childrenResponse: {
               type: 'agentAsk',
-              askId: 'call_ask',
+
               params: {
+                askId: 'call_ask',
+                blockerType: 'user_choice',
                 description: '',
                 submitted: false,
                 questions: [

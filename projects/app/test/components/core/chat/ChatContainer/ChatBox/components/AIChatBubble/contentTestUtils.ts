@@ -147,12 +147,7 @@ export const confirmedPreview: AIChatItemValueItemType = {
     params: {
       title: 'Preview',
       mermaid: 'flowchart LR',
-      sections: [],
-      actions: [
-        { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-        { value: 'revise', label: 'Revise', inputMode: 'text' },
-        { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-      ]
+      sections: []
     }
   }
 };

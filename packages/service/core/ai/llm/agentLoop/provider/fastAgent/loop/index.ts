@@ -1,17 +1,9 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
-} from '@fastgpt/global/core/ai/llm/type';
-import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
-import {
-  formatAgentAskToolResponse,
-  parseAgentAskToolCall,
-  type AgentAskPayload
-} from '../../../domain/systemTool/ask';
+import { parseAgentAskToolCall, type AgentAskPayload } from '../../../domain/systemTool/ask';
 import { applyPlanUpdate, applySetPlan } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
@@ -23,11 +15,9 @@ import type {
   AgentLoopRuntime,
   AgentLoopToolExecutionResult,
   FastAgentLoopInput,
-  FastAgentLoopResult,
-  PendingMainContext
+  FastAgentLoopResult
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/application/toolCall';
-import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -107,47 +97,6 @@ const buildInitialMessages = ({ input }: { input: FastAgentLoopInput }) => [
 ];
 
 /**
- * ask_user 暂停时保存恢复所需上下文。
- * 恢复后用户回答会作为同一个 ask tool_call 的 Tool message 追加，继续原消息链而不是开启新轮对话。
- */
-const buildAskPendingContext = ({
-  messages,
-  call,
-  assistantMessage,
-  activePlan
-}: {
-  messages: ChatCompletionMessageParam[];
-  call: ChatCompletionMessageToolCall;
-  assistantMessage?: ChatCompletionMessageParam;
-  activePlan?: AgentPlanType;
-}): PendingMainContext => {
-  const assistantFields =
-    assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
-      ? {
-          ...(('content' in assistantMessage && assistantMessage.content
-            ? { content: assistantMessage.content }
-            : {}) as Pick<typeof assistantMessage, 'content'>),
-          ...(assistantMessage.reasoning_content
-            ? { reasoning_content: assistantMessage.reasoning_content }
-            : {})
-        }
-      : {};
-
-  return {
-    messages: [
-      ...messages,
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        ...assistantFields,
-        tool_calls: [call]
-      }
-    ],
-    askToolCallId: call.id,
-    activePlan
-  };
-};
-
-/**
  * 单主 Agent Loop。
  * Main Agent 在同一条消息链中直接使用 runtime tools、ask_user、set_plan 和 update_plan；
  * answer/reasoning delta 和 plan 状态始终实时透传给前端。
@@ -170,32 +119,12 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     | {
         ask: AgentAskPayload;
         askId: string;
-        context: PendingMainContext;
       }
     | undefined;
 
-  // ask_user 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
-  // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
-  const messages =
-    input.pendingMainContext && input.userAnswer !== undefined
-      ? [
-          ...input.pendingMainContext.messages,
-          {
-            role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: input.pendingMainContext.askToolCallId,
-            content: normalizeToolResponseContent(
-              formatAgentAskToolResponse({
-                messages: input.pendingMainContext.messages,
-                askToolCallId: input.pendingMainContext.askToolCallId,
-                answer: input.userAnswer
-              })
-            )
-          } as ChatCompletionMessageParam
-        ]
-      : buildInitialMessages({ input });
-  // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
-  // 历史 checkpoint 只负责给模型提供上下文，不再作为运行时状态的反序列化来源。
-  let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
+  // FastAgent 完全使用 ChatItem 重建后的消息；旧 providerState 不参与恢复。
+  const messages = buildInitialMessages({ input });
+  let activePlan = input.activePlan;
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。
   // read_files/sandbox 是内置执行器，但需要走普通工具事件链路供前端和运行详情展示。
   const askToolName = runtime.toolCatalog.askTool?.function.name;
@@ -265,9 +194,10 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         contextCheckpoint
       });
     },
-    onLLMRequestStart: ({ requestIndex, modelName }) =>
+    onLLMRequestStart: ({ requestIndex, modelName, responseId }) =>
       runtime.emitEvent?.({
         type: 'llm_request_start',
+        responseId,
         requestIndex,
         modelName
       }),
@@ -282,7 +212,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       usage,
       seconds,
       firstTokenTime,
-      error
+      error,
+      responseId,
+      assistantMessage
     }) => {
       const agentCallUsage = usage
         ? {
@@ -296,6 +228,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       pushAgentLoopUsages(runtime, [agentCallUsage]);
       emitAgentLoopEvent(runtime, {
         type: 'llm_request_end',
+        responseId,
+        assistantMessage,
         requestIndex,
         modelName,
         requestId,
@@ -337,6 +271,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         call
       });
     },
+    onUserMessage: (event) => emitAgentLoopEvent(runtime, { type: 'user_message', ...event }),
     onToolRunEnd: ({
       call,
       response,
@@ -346,13 +281,15 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       errorMessage,
       usages,
       toolResponseCompress,
-      metadata
+      metadata,
+      hideInUI,
+      resumed
     }) => {
-      if (controlToolNames.has(call.function.name)) return;
-
       pushAgentLoopUsages(runtime, usages);
       emitAgentLoopEvent(runtime, {
         type: 'tool_run_end',
+        resumed,
+        hideInUI: hideInUI || controlToolNames.has(call.function.name),
         call,
         response,
         assistantMessages,
@@ -377,6 +314,18 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           return createToolResponse(validationError, { skipResponseCompress: true });
         }
 
+        // 有效 Ask 的原始参数以 interactive 为唯一来源，运行消息也使用同样的规范形式。
+        const argumentsText = JSON.stringify({
+          reason: parsed.ask.reason,
+          blockerType: parsed.ask.blockerType,
+          questions: parsed.ask.questions
+        });
+        call.function.arguments = argumentsText;
+        if (assistantMessage?.role === 'assistant') {
+          const original = assistantMessage.tool_calls?.find((tool) => tool.id === call.id);
+          if (original) original.function.arguments = argumentsText;
+        }
+
         emitAgentLoopEvent(runtime, {
           type: 'ask_start',
           ask: parsed.ask,
@@ -386,13 +335,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
         pendingAsk = {
           ask: parsed.ask,
-          askId: call.id,
-          context: buildAskPendingContext({
-            messages,
-            call,
-            assistantMessage,
-            activePlan
-          })
+          askId: call.id
         };
 
         return createToolResponse('Waiting for user answer.', {
@@ -535,7 +478,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         askId: pendingAsk.askId
       },
       activePlan,
-      pendingMainContext: pendingAsk.context,
       completeMessages: result.completeMessages,
       assistantMessages: result.assistantMessages,
       inputTokens: result.inputTokens,

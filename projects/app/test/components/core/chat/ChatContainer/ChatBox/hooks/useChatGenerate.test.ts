@@ -419,35 +419,28 @@ describe('useChatGenerate.sendPrompt', () => {
                 { question: 'Optional?', value: '' }
               ]
             }
-          : {
-              type: 'workflowBuilderPreview',
-              questions: [
-                {
-                  question: 'Confirm workflow?',
-                  value:
-                    action === 'revise'
-                      ? 'Add a review branch'
-                      : action === 'confirm'
-                        ? 'Confirm'
-                        : 'Cancel'
-                }
-              ]
-            };
+          : action === 'revise'
+            ? { type: 'workflowBuilderPreview', action: action, reviseText: 'Add a review branch' }
+            : { type: 'workflowBuilderPreview', action: action };
       const interactive: WorkflowInteractiveResponseType =
         action === 'agentAsk'
           ? {
               ...runtime,
               type: 'agentAsk',
-              askId: 'ask-1',
+
               params: {
+                askId: 'ask-1',
+                blockerType: 'user_choice',
                 description: '',
-                questions: select.questions.map(({ question }) => ({
-                  question,
-                  options: [
-                    { summary: 'Upload file', value: 'upload' },
-                    { summary: 'Paste text', value: 'paste' }
-                  ]
-                }))
+                questions: (select.type === 'agentAsk' ? select.questions : []).map(
+                  ({ question }) => ({
+                    question,
+                    options: [
+                      { summary: 'Upload file', value: 'upload' },
+                      { summary: 'Paste text', value: 'paste' }
+                    ]
+                  })
+                )
               }
             }
           : {
@@ -457,12 +450,7 @@ describe('useChatGenerate.sendPrompt', () => {
               params: {
                 title: 'Confirm workflow?',
                 mermaid: 'flowchart LR; A --> B',
-                sections: [],
-                actions: [
-                  { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                  { value: 'revise', label: 'Revise', inputMode: 'text' },
-                  { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                ]
+                sections: []
               }
             };
       const request = Promise.withResolvers<{ responseText: string }>();
@@ -568,10 +556,10 @@ describe('useChatGenerate.sendPrompt', () => {
             status: ChatStatusEnum.finish,
             value: [
               {
-                select: {
-                  type,
-                  questions: [{ question: 'Choose?', value: 'confirm' }]
-                }
+                select:
+                  type === 'agentAsk'
+                    ? { type, questions: [{ question: 'Choose?', value: 'confirm' }] }
+                    : { type, action: 'confirm' }
               }
             ]
           }

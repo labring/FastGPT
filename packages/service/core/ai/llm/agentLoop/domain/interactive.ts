@@ -9,6 +9,7 @@ import type {
 export type AgentLoopChildrenInteractiveParams<TChildrenResponse = unknown> = {
   childrenResponse: TChildrenResponse;
   toolParams: {
+    /** @deprecated 旧交互字段，仅允许旧载荷容错，不参与上下文恢复。 */
     memoryRequestMessages?: ChatCompletionMessageParam[];
     toolCallId: string;
   };

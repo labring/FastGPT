@@ -49,6 +49,8 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   stop?: boolean;
   skipResponseCompress?: boolean;
   errorMessage?: string;
+  /** 隐藏工具卡，但调用和结果仍完整进入模型上下文。 */
+  hideInUI?: boolean;
   /** 由调用方透传并在 agent-loop 外部解释的工具运行元数据。 */
   metadata?: unknown;
 };
