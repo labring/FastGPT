@@ -241,7 +241,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                   <MyIcon
                     name={
                       activeTab === AgentChatTestTabEnum.helper
-                        ? 'common/addLight'
+                        ? 'core/chat/chatLight'
                         : 'common/clearLight'
                     }
                     w={'14px'}

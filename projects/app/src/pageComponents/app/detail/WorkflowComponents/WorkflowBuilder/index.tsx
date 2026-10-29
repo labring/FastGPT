@@ -341,7 +341,7 @@ const WorkflowBuilder = () => {
                   <IconButton
                     aria-label={t('common:core.chat.New Chat')}
                     size="smSquare"
-                    icon={<MyIcon name="common/addLight" w="14px" />}
+                    icon={<MyIcon name="core/chat/chatLight" w="14px" />}
                     variant="whiteBase"
                     borderRadius="md"
                     mr={2}
