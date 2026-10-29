@@ -130,7 +130,7 @@ describe('interactive workflow output propagation', () => {
       [NodeOutputKeyEnum.formInputResult]: submitted
     });
     expect(resumed.result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(resumed.result, 'error')).toBe(false);
+    expect(Object.hasOwn(resumed.result, 'rawError')).toBe(false);
   });
 
   it.each([FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput])(

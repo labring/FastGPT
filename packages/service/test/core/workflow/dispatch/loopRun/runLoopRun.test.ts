@@ -280,7 +280,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.loopRunHistory.every((h: any) => h.success)).toBe(true);
     // Last snapshot exposed on data
     expect(result.data.answer).toBe('v-c');
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
   });
 
   it('子运行返回的 newVariables 不再透出到 loopRun 节点结果', async () => {
@@ -465,7 +465,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       await args.variableState.set('count', 1);
 
       return makeDispatchFlowResponse({
-        error: new Error('boom'),
+        rawError: new Error('boom'),
         nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
       });
     });
@@ -537,7 +537,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       // iter === 2: chatNode 未跑到（startNode 先出错了）
       return Promise.resolve(
         makeDispatchFlowResponse({
-          error: new Error('boom'),
+          rawError: new Error('boom'),
           nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
         })
       );
@@ -574,7 +574,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     // Failure iteration: chatNode didn't finish → `answer` filtered to undefined
     expect(history[1].customOutputs.answer).toBeUndefined();
     // Error surfaces through standard node error protocol
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('boom');
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('boom');
     expect(result.data.answer).toBeUndefined();
   });
 
@@ -635,7 +635,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       if (iter === 2) {
         return Promise.resolve(
           makeDispatchFlowResponse({
-            error: new Error('111'),
+            rawError: new Error('111'),
             nodeResponses: [
               makeResponseItem('startNode'),
               makeResponseItem('codeNode', { error: '111' })
@@ -664,7 +664,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       success: false,
       error: '111'
     });
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('111');
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('111');
   });
 
   it.each([
@@ -673,7 +673,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   ])(
     'preserves an explicit child error independently of summary statistics: $text',
     async ({ error, text }) => {
-      runWorkflowMock.mockResolvedValue(makeDispatchFlowResponse({ error }));
+      runWorkflowMock.mockResolvedValue(makeDispatchFlowResponse({ rawError: error }));
 
       const result = await dispatchLoopRun(
         makeProps({
@@ -682,9 +682,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         })
       );
 
-      expect(Object.hasOwn(result, 'error')).toBe(true);
-      expect(result.error).toBe(error);
-      expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(text);
+      expect(Object.hasOwn(result, 'rawError')).toBe(true);
+      expect(result.rawError).toBe(error);
+      expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(text);
       expect(result.responseData?.loopRunHistory).toMatchObject([{ success: false, error: text }]);
       expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBeUndefined();
     }
@@ -694,7 +694,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
-        error: new UserConfigError('Invalid MCP URL'),
+        rawError: new UserConfigError('Invalid MCP URL'),
         nodeResponses: [makeResponseItem('startNode', { error: 'Invalid MCP URL' })],
         workflowRuntimeSummary: {
           ...createWorkflowRuntimeSummary(),
@@ -723,7 +723,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     );
   });
 
-  it('continues iterations when only summary text and counts indicate a failure', async () => {
+  it('stops on a current child business failure without reconstructing an exception', async () => {
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         nodeResponses: [makeResponseItem('startNode', { error: 'database unavailable' })],
@@ -742,19 +742,18 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       })
     );
 
-    expect(Object.hasOwn(result, 'error')).toBe(false);
-    expect(result.data?.system_error_text).toBeUndefined();
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.error?.system_error_text).toBe('database unavailable');
     expect(result.responseData.loopRunHistory).toMatchObject([
-      { iteration: 1, success: true },
-      { iteration: 2, success: true }
+      { iteration: 1, success: false, error: 'database unavailable' }
     ]);
-    expect(runWorkflowMock).toHaveBeenCalledTimes(2);
+    expect(runWorkflowMock).toHaveBeenCalledOnce();
   });
 
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
       'workflow:loop_run_conditional_requires_break'
     );
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
@@ -779,11 +778,11 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
     // 触发 5 次预算后兜底，loopHistory 保留已跑完的每一轮以便排查
     expect(runWorkflowMock).toHaveBeenCalledTimes(5);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
       'workflow:loop_run_max_iterations_exceeded'
     );
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error.message).toBe(result.data?.[NodeOutputKeyEnum.errorText]);
+    expect(result.rawError).toBeInstanceOf(Error);
+    expect(result.rawError.message).toBe(result.error?.[NodeOutputKeyEnum.errorText]);
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(5);
     expect(nodeResponse.loopRunHistory).toHaveLength(5);
@@ -832,7 +831,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       const error = new Error('current system failure');
       runWorkflowMock.mockResolvedValueOnce(
         makeDispatchFlowResponse({
-          ...(failsNow ? { error } : {}),
+          ...(failsNow ? { rawError: error } : {}),
           nodeResponses: [makeResponseItem('chatNode', failsNow ? { error: error.message } : {})]
         })
       );
@@ -860,9 +859,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       const history = result.responseData?.loopRunHistory;
       expect(history?.[0].success).toBe(!failsNow);
       expect(history?.[0].error).toBe(failsNow ? error.message : undefined);
-      expect(Object.hasOwn(result, 'error')).toBe(failsNow);
-      if (failsNow) expect(result.error).toBe(error);
-      expect(result.data?.system_error_text).toBe(failsNow ? error.message : undefined);
+      expect(Object.hasOwn(result, 'rawError')).toBe(failsNow);
+      if (failsNow) expect(result.rawError).toBe(error);
+      expect(result.error?.system_error_text).toBe(failsNow ? error.message : undefined);
     }
   );
 
@@ -1060,7 +1059,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
     const result: any = await dispatchLoopRun(props);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('workflow:loop_run_input_not_array');
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('workflow:loop_run_input_not_array');
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
@@ -1071,7 +1070,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
     const result: any = await dispatchLoopRun(props);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
       'workflow:loop_run_max_iterations_exceeded'
     );
     expect(runWorkflowMock).not.toHaveBeenCalled();
@@ -1230,7 +1229,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       if (iter === 2) {
         return Promise.resolve(
           makeDispatchFlowResponse({
-            error: new Error('kaboom'),
+            rawError: new Error('kaboom'),
             nodeResponses: [
               makeResponseItem('startNode'),
               makeResponseItem('chatNode', { error: 'kaboom' })
@@ -1323,7 +1322,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(5);
     expect(nodeResponse.loopRunHistory.every((h: any) => h.success)).toBe(true);
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(nodeResponse.errorText).toBeUndefined();
   });
 

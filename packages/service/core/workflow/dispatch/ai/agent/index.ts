@@ -375,12 +375,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: finalOutput.answerText,
-        ...(outputSummary.errorText && {
-          [NodeOutputKeyEnum.errorText]: outputSummary.errorText
-        })
+        [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(coreResult.status === 'error' ? { error: coreResult.error } : {}),
+      ...(outputSummary.errorText
+        ? { error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText } }
+        : {}),
+      ...(coreResult.status === 'error' ? { rawError: coreResult.error } : {}),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
       }),

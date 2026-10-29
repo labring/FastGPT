@@ -82,7 +82,7 @@ describe('dispatchHttp468Request empty keys', () => {
     props.node.outputs = ['zero', 'flag', 'nested'].map((key) => ({ key }));
     const result = await dispatchHttp468Request(props);
     expect(result.data).toEqual({ [NodeOutputKeyEnum.httpRawResponse]: body, ...body });
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 
   it.each(
@@ -143,15 +143,15 @@ describe('dispatchHttp468Request error body', () => {
 
     const result = await rejectWith(axiosError);
 
-    expect(result.error).toBe(axiosError);
+    expect(result.rawError).toBe(axiosError);
     const errorText = result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText;
 
     expect(errorText).toContain('Request failed with status code 400');
     expect(errorText).toContain('sku missing');
     expect(errorText).toContain(JSON.stringify({ detail: 'sku missing' }));
-    expect(result.data?.[NodeOutputKeyEnum.error]).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.error]).toBe(errorText);
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]?.error).toBe(errorText);
-    expect(result.data?.[NodeOutputKeyEnum.httpRawError]).toEqual({
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]).toEqual({
       message: 'Request failed with status code 400',
       data: { detail: 'sku missing' },
       name: 'AxiosError',
@@ -173,7 +173,7 @@ describe('dispatchHttp468Request error body', () => {
     const errorText = result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText;
 
     expect(errorText).toBe('Request failed with status code 400: sku missing');
-    expect(result.data?.[NodeOutputKeyEnum.httpRawError]?.data).toBe('sku missing');
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toBe('sku missing');
   });
 
   it('shares sanitized text across error outputs without losing fields after a URL', async () => {
@@ -190,12 +190,12 @@ describe('dispatchHttp468Request error body', () => {
       'Request failed with status code 400\n{"url":"https://xxx","detail":"sku missing xxx"}';
 
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText).toBe(errorText);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(errorText);
-    expect(result.data?.[NodeOutputKeyEnum.error]).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(errorText);
+    expect(result.error?.[NodeOutputKeyEnum.error]).toBe(errorText);
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]?.error).toBe(errorText);
-    expect(result.data?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual(data);
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual(data);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.httpErrorResult?.data).toEqual(data);
-    expect(result.data?.[NodeOutputKeyEnum.httpRawError]).not.toHaveProperty('rawText');
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]).not.toHaveProperty('rawText');
   });
 
   it('caps a huge response body in the node error text', async () => {
@@ -214,6 +214,6 @@ describe('dispatchHttp468Request error body', () => {
     expect(snippet.endsWith('...')).toBe(true);
     expect(snippet.length).toBe(2003);
     expect(errorText).not.toContain(detail);
-    expect(result.data?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual({ detail });
+    expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual({ detail });
   });
 });

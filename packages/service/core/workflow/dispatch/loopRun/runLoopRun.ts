@@ -38,6 +38,10 @@ type Props = ModuleDispatchProps<{
 
 type Response = DispatchNodeResultType<Record<string, any>>;
 
+/**
+ * 逐轮执行子流程并保留输出快照；本轮未捕获的失败停止迭代，仅透传实际存在的原始异常。
+ * 恢复时累计历史统计，但失败判断只读取本轮结果，避免旧错误污染后续运行。
+ */
 export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const { params, runtimeNodes, runtimeEdges, node, lastInteractive, checkIsStopping } = props;
   const { name } = node;
@@ -104,8 +108,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
-  // 本次 loopRun 调用的失败原因：子流程的原始异常或循环自身的错误，不进入恢复 checkpoint。
-  let loopFailure: { error: unknown } | undefined;
+  // 本次调用的失败文本与可选原始异常不进入 checkpoint；业务失败不伪造 Error。
+  let loopFailure: { text: string; rawError?: unknown } | undefined;
   const getWrapperSummary = ({
     isResumeIteration,
     response
@@ -132,11 +136,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
-  // Hit the iteration budget (primarily a conditional-mode guard). Signal via
-  // `error` on return so the accumulated loopHistory/loopDetail survives for
-  // user debugging, instead of reject'ing and dropping everything.
-  let maxIterationsExceeded = false;
-
   while (true) {
     if (checkIsStopping()) {
       break;
@@ -155,8 +154,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const currentItem = arrayItem.item;
 
     if (iteration > maxLength) {
-      maxIterationsExceeded = true;
-      loopFailure = { error: new Error(maxIterationsMessage) };
+      // 预算耗尽属于循环自身异常，返回原始 Error，同时保留此前的输出快照和历史。
+      loopFailure = { text: maxIterationsMessage, rawError: new Error(maxIterationsMessage) };
       break;
     }
 
@@ -280,10 +279,11 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    // 仅子流程明确返回的原始异常表示本轮失败，summary 中的文本和计数不重建异常。
-    if (Object.hasOwn(response, 'error')) {
-      const errText = getErrText(iterationSummary.errorText ?? response.error);
-      loopFailure = { error: response.error };
+    // 本轮未捕获的业务失败也必须停止迭代，但只有实际原始异常才向上保留 rawError。
+    const hasRawError = Object.hasOwn(response, 'rawError');
+    if (hasRawError || !!childRuntimeSummary.errorCount) {
+      const errText = getErrText(childRuntimeSummary.errorText ?? response.rawError);
+      loopFailure = { text: errText, ...(hasRawError ? { rawError: response.rawError } : {}) };
       await pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
@@ -330,16 +330,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     ...lastSnapshot
   };
 
-  const errorText = maxIterationsExceeded
-    ? maxIterationsMessage
-    : loopFailure
-      ? (lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed'))
-      : undefined;
+  const errorText = loopFailure?.text;
   return {
-    data: {
-      ...data,
-      ...(errorText !== undefined ? { [NodeOutputKeyEnum.errorText]: errorText } : {})
-    },
+    data,
+    ...(errorText !== undefined ? { error: { [NodeOutputKeyEnum.errorText]: errorText } } : {}),
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
     ...(errorText !== undefined ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
@@ -363,6 +357,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
-    ...(loopFailure ? { error: loopFailure.error } : {})
+    ...(loopFailure && Object.hasOwn(loopFailure, 'rawError')
+      ? { rawError: loopFailure.rawError }
+      : {})
   };
 };

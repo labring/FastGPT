@@ -19,15 +19,16 @@ const createResult = (result: Record<string, any>) =>
   }) as any;
 
 describe('getWorkflowStepStatus', () => {
-  it('returns ok for a successful node', () => {
-    expect(getWorkflowStepStatus(createResult({}))).toBe('ok');
-  });
+  it.each([{}, { data: { error: 'business value' } }, { error: { message: 'selected branch' } }])(
+    'returns ok for success or an intentional error branch without an exception: %j',
+    (result) => expect(getWorkflowStepStatus(createResult(result))).toBe('ok')
+  );
 
   it('returns error for a system failure', () => {
     expect(
       getWorkflowStepStatus(
         createResult({
-          error: { errorText: 'system failure' }
+          rawError: { errorText: 'system failure' }
         })
       )
     ).toBe('error');
@@ -36,7 +37,7 @@ describe('getWorkflowStepStatus', () => {
   it.each([undefined, null, false, 0, ''])(
     'treats a returned falsy exception as failure: %j',
     (error) => {
-      expect(getWorkflowStepStatus(createResult({ error }))).toBe('error');
+      expect(getWorkflowStepStatus(createResult({ rawError: error }))).toBe('error');
     }
   );
 
@@ -44,7 +45,7 @@ describe('getWorkflowStepStatus', () => {
     expect(
       getWorkflowStepStatus(
         createResult({
-          error: new UserConfigError('Invalid MCP configuration')
+          rawError: new UserConfigError('Invalid MCP configuration')
         })
       )
     ).toBe('user_error');
@@ -57,7 +58,7 @@ describe('getWorkflowStepStatus', () => {
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             error: 'Invalid MCP configuration'
           },
-          error: {
+          rawError: {
             errorText: 'Invalid MCP configuration',
             name: 'UserConfigError'
           }
@@ -85,7 +86,7 @@ describe('getWorkflowStepStatus', () => {
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             error: 'Invalid MCP configuration'
           },
-          error: {
+          rawError: {
             errorText: 'database unavailable'
           }
         })

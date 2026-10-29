@@ -531,10 +531,10 @@ describe('dispatchRunAgent user context', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.agent,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
     expect(systemPrompt).toContain('你是一个 Work Agent。');
     expect(systemPrompt).not.toContain('<user_system_prompt>');
@@ -641,7 +641,7 @@ describe('dispatchRunAgent user context', () => {
       () => dispatchRunAgent(props)
     );
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(authSkillByTmbIdMock).toHaveBeenCalledWith({
       tmbId: 'external_user_tmb',
       skillId,
@@ -698,7 +698,7 @@ describe('dispatchRunAgent user context', () => {
     );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
   });
 
   it('returns the concrete silent migration failure reason', async () => {
@@ -727,7 +727,7 @@ describe('dispatchRunAgent user context', () => {
         .filter((event: { event: string }) => event.event === 'sandboxStatus')
         .map((event: { data: { phase: string } }) => event.data.phase)
     ).toEqual(['lazyInit']);
-    expect(result.data?.system_error_text).toContain('archive upload failed');
+    expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 
   it('scans edit skill infos without requiring selected skills', async () => {
@@ -822,10 +822,10 @@ describe('dispatchRunAgent user context', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.agent,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
 
-    expect(result.error).toMatchObject({
+    expect(result.rawError).toMatchObject({
       message: 'Invalid API key',
       name: 'UserConfigError'
     });
@@ -1431,7 +1431,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await promise;
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(result.data.answerText).toBe('ok');
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
@@ -1465,7 +1465,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await promise!;
 
-    expect(result.data?.system_error_text).toBe(
+    expect(result.error?.system_error_text).toBe(
       'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();

@@ -369,10 +369,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           }, {})
       : undefined;
     return {
-      data: {
-        ...pluginOutput,
-        ...(pluginOutputError ? { [NodeOutputKeyEnum.errorText]: pluginOutputError } : {})
-      },
+      data: { ...pluginOutput },
+      ...(pluginOutputError ? { error: { [NodeOutputKeyEnum.errorText]: pluginOutputError } } : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       system_memories,

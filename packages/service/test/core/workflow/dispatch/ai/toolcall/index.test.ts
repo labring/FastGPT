@@ -231,7 +231,7 @@ describe('dispatchRunTools', () => {
       await expectNodeDataToReachDownstream({
         nodeType: TransferNodeType.toolCall,
         result,
-        expectedData: result.data ?? {},
+        expectedData: { ...result.data, ...result.error },
         expectPause: 'toolWorkflowInteractiveResponse' in runtimeResult
       });
 
@@ -267,7 +267,7 @@ describe('dispatchRunTools', () => {
       expectedData: { system_error_text: 'Invalid API key' }
     });
 
-    expect(result.error).toMatchObject({
+    expect(result.rawError).toMatchObject({
       message: 'Invalid API key',
       name: 'UserConfigError'
     });
@@ -353,7 +353,7 @@ describe('dispatchRunTools', () => {
     });
     const result = await dispatchRunTools(props);
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({ useSandbox: false })
@@ -488,7 +488,7 @@ describe('dispatchRunTools', () => {
         data: { sandboxId, phase: 'ready' }
       }
     ]);
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runToolCallMock).toHaveBeenCalledOnce();
   });
@@ -504,7 +504,7 @@ describe('dispatchRunTools', () => {
 
     const result = await dispatchRunTools(props);
 
-    expect(result.data).toEqual({
+    expect(result.error).toEqual({
       system_error_text: 'archive upload failed'
     });
     expect(result.toolResponse).toEqual({

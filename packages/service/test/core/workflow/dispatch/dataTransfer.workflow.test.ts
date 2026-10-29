@@ -16,6 +16,11 @@ import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/sy
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
+import {
+  internalRuntimeNodeType,
+  internalRuntimeNodeRunnerKey
+} from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
 import {
   graphNode,
   graphEdge,
@@ -70,6 +75,72 @@ afterEach(() => vi.restoreAllMocks());
 
 // 这些场景直接运行完整生产调度，外部请求边界被替换；不覆盖 callbackMap，也不回放节点结果。
 describe('workflow data transfer through real nodes', () => {
+  it('passes both output records through an intentional error branch without logging a fault', async () => {
+    const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
+    const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+    warn.mockClear();
+    const source = graphNode({
+      id: 'source',
+      type: internalRuntimeNodeType as FlowNodeTypeEnum,
+      isEntry: true,
+      catchError: true,
+      params: {
+        [internalRuntimeNodeRunnerKey]: () => ({
+          data: { value: 0, shared: 'normal', nullable: null },
+          error: { reason: 'chosen branch', shared: false, message: '' },
+          responseData: { codeLog: 'intentional branch' }
+        })
+      },
+      outputs: ['value', 'shared', 'nullable', 'reason', 'message', 'rawError', 'stack']
+    });
+    source.outputs[0].id = 'value-output-id';
+    source.outputs[3].id = 'reason-output-id';
+    const target = consumer('target', {
+      value: ['source', 'value-output-id'],
+      shared: ['source', 'shared'],
+      nullable: ['source', 'nullable'],
+      reason: ['source', 'reason-output-id'],
+      message: ['source', 'message'],
+      rawError: ['source', 'rawError'],
+      stack: ['source', 'stack']
+    });
+    const unused = consumer('unused', { value: ['source', 'value-output-id'] });
+    const { result, responses } = await runGraph({
+      nodes: [source, target, unused],
+      edges: [
+        graphEdge({ source: 'source', target: 'target', error: true }),
+        graphEdge({ source: 'source', target: 'unused' })
+      ]
+    });
+
+    expect(graphValues(target)).toEqual({
+      value: 0,
+      shared: false,
+      nullable: null,
+      reason: 'chosen branch',
+      message: '',
+      rawError: undefined,
+      stack: undefined
+    });
+    expect(graphValues(unused).value).toBeUndefined();
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(responses.find((response) => response.nodeId === 'source')).toMatchObject({
+      codeLog: 'intentional branch'
+    });
+    expect(
+      responses.find((response) => response.nodeId === 'source')?.errorCaptured
+    ).toBeUndefined();
+    expect(warn).not.toHaveBeenCalled();
+    const observationIndex = stepObservation.mock.calls.findIndex(
+      ([options]) => options.nodeType === internalRuntimeNodeType
+    );
+    expect(observationIndex).toBeGreaterThanOrEqual(0);
+    const observed = await stepObservation.mock.results[observationIndex].value;
+    expect(observed.result.responseData).toBeUndefined();
+    expect(stepObservation.mock.calls[observationIndex][2]?.getStatus?.(observed)).toBe('ok');
+  });
+
   it('preserves empty, falsy and structured outputs through multiple hops and fan-out', async () => {
     const values = {
       zero: 0,
@@ -89,8 +160,15 @@ describe('workflow data transfer through real nodes', () => {
       outputs: keys,
       isEntry: true
     });
+    // 输出 key 决定 data 写入位置，output id 决定引用地址，两者不要求相同。
+    source.outputs[0].id = 'zero_output_id';
     const references = (id: string) =>
-      Object.fromEntries(keys.map((key) => [key, [id, key] as [string, string]]));
+      Object.fromEntries(
+        keys.map((key) => [
+          key,
+          [id, id === 'source' && key === 'zero' ? 'zero_output_id' : key] as [string, string]
+        ])
+      );
     const middle = consumer('middle', references('source'));
     const first = consumer('first', references('middle'));
     const second = consumer('second', references('source'));
@@ -108,7 +186,7 @@ describe('workflow data transfer through real nodes', () => {
       expect.arrayContaining(['source', 'middle', 'first', 'second'])
     );
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 
   it('converts each referenced output using its consumer type', async () => {
@@ -411,7 +489,7 @@ describe('real code and HTTP node error routes', () => {
           default: 'success only'
         });
       expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
     }
   );
 
@@ -440,7 +518,7 @@ describe('real code and HTTP node error routes', () => {
           graphEdge({ source: 'code', target: 'caught', error: true })
         ]
       });
-      expect(result.error).toBe(error);
+      expect(result.rawError).toBe(error);
       expect(result.workflowRuntimeSummary.errorCount).toBe(1);
       expect(responses.map((response) => response.nodeId)).toEqual(['code']);
       // mock logger 只验证原始异常的提交，配置错误的降级由 logger 自身测例验证。
@@ -469,7 +547,7 @@ describe('real code and HTTP node error routes', () => {
       nodes: [source, target],
       edges: [graphEdge({ source: 'code', target: 'target' })]
     });
-    expect(first.result.error).toBe(error);
+    expect(first.result.rawError).toBe(error);
     expect(graphValues(source).system_error_text).toBe(error.message);
     source.isEntry = true;
     const second = await runGraph({
@@ -478,7 +556,7 @@ describe('real code and HTTP node error routes', () => {
     });
     expect(graphValues(target)).toEqual({ value: false, message: undefined, error: undefined });
     expect(second.result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(second.result, 'error')).toBe(false);
+    expect(Object.hasOwn(second.result, 'rawError')).toBe(false);
   });
 
   it('passes selected JSON fields and the raw HTTP response to the next node', async () => {
@@ -565,7 +643,7 @@ describe('real code and HTTP node error routes', () => {
     expect(graphValues(target).error).toContain('sku missing');
     expect(graphValues(target).privateErrorField).toBeUndefined();
     expect(graphValues(target)[NodeOutputKeyEnum.httpRawError]).toBeDefined();
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 });
 
@@ -637,7 +715,7 @@ describe('real container child workflows', () => {
         ]
       });
       expect(graphValues(target).values).toEqual([0, false, '']);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(codeSandbox.runCode).toHaveBeenCalledTimes(3);
     }
   );
@@ -747,7 +825,7 @@ describe('real container child workflows', () => {
     expect(graphValues(target)[NodeOutputKeyEnum.parallelStatus]).not.toBe(
       ParallelRunStatusEnum.success
     );
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
   it('loopRunBreak stops later iterations while preserving the current output', async () => {
     const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);

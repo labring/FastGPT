@@ -24,14 +24,16 @@ export const expectNodeDataToReachDownstream = async ({
   missingOutputKeys?: string[];
   expectPause?: boolean;
 }) => {
-  expect(result.data ?? {}).toEqual(expectedData);
+  expect({ ...result.data, ...result.error }).toEqual(expectedData);
   const interactive = result[DispatchNodeResponseKeyEnum.interactive];
   if (expectPause) expect(interactive).toBeDefined();
   else expect(interactive).toBeUndefined();
 
   const rawErrorKeys =
-    Object.hasOwn(result, 'error') && result.error !== null && typeof result.error === 'object'
-      ? [...Object.keys(result.error), 'message', 'name', 'stack', 'cause']
+    Object.hasOwn(result, 'rawError') &&
+    result.rawError !== null &&
+    typeof result.rawError === 'object'
+      ? [...Object.keys(result.rawError), 'message', 'name', 'stack', 'cause']
       : [];
   const absentKeys = [...new Set([...missingOutputKeys, ...rawErrorKeys])].filter(
     (key) => !Object.hasOwn(expectedData, key)
@@ -84,7 +86,7 @@ export const expectNodeDataToReachDownstream = async ({
       });
       for (const key of absentKeys) expect(graphValues(source)[key], key).toBeUndefined();
     }
-    expect(Object.hasOwn(workflow, 'error')).toBe(false);
+    expect(Object.hasOwn(workflow, 'rawError')).toBe(false);
     return workflow;
   } finally {
     originalCallbacks.forEach((callback, type) => {

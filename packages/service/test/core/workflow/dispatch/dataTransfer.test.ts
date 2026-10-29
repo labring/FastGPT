@@ -207,7 +207,7 @@ describe('registered node data transfer', () => {
 
   it('internal runtime runner failures expose display data while retaining an Error object', async () => {
     const result: any = await callbackMap[internalRuntimeNodeType]({ params: {} });
-    expect(result.error).toBeInstanceOf(Error);
+    expect(result.rawError).toBeInstanceOf(Error);
     await expectNodeDataToReachDownstream({
       nodeType: internalRuntimeNodeType as any,
       result,
@@ -265,7 +265,7 @@ describe('registered node data transfer', () => {
       } as unknown as ModuleDispatchProps<Record<string, any>>;
       prepare?.(props);
       const result = (await callbackMap[type](props)) as any;
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       const workflow = await expectNodeDataToReachDownstream({
         nodeType: type as any,
         result,

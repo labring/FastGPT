@@ -246,10 +246,10 @@ describe('dispatchDatasetSearch', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.datasetSearchNode,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
@@ -271,7 +271,7 @@ describe('dispatchDatasetSearch', () => {
       throw new UserError(ModelErrEnum.unExist);
     });
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
     expect((await modelGetters.getSystemModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
@@ -333,7 +333,7 @@ describe('dispatchDatasetSearch', () => {
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ vlmModel: undefined })
     );
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(result.data?.quoteQA).toEqual([]);
   });
 
@@ -653,7 +653,7 @@ describe('dispatchDatasetSearch', () => {
       datasetDeepSearchBg: 'old settings'
     });
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(result.data?.quoteQA).toEqual(quotes);
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ textQueries: ['question'] })
@@ -751,11 +751,11 @@ describe('dispatchDatasetSearch', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.datasetSearchNode,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
-    expect(result.error).toBe(error);
+    expect(result.rawError).toBe(error);
     expect(result).toMatchObject({
-      data: { [NodeOutputKeyEnum.errorText]: error.message },
+      error: { [NodeOutputKeyEnum.errorText]: error.message },
       [DispatchNodeResponseKeyEnum.nodeResponse]: { errorText: error.message },
       [DispatchNodeResponseKeyEnum.toolResponse]: { error: error.message }
     });
@@ -766,7 +766,7 @@ describe('dispatchDatasetSearch', () => {
   it('downgrades log to warn when dataset is missing (unExistDataset)', async () => {
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([]) });
     const result = await runSnapshotSearch();
-    expect(result.error).toBeDefined();
+    expect(result.rawError).toBeDefined();
     expect(mockLogger.warn).toHaveBeenCalledWith('Dataset search dispatch failed', {
       error: DatasetErrEnum.unExist
     });
@@ -777,8 +777,8 @@ describe('dispatchDatasetSearch', () => {
     const error = new Error('Mongo connection timed out');
     findDatasetMock.mockReturnValueOnce({ lean: vi.fn().mockRejectedValue(error) });
     const result = await runSnapshotSearch();
-    expect(result.error).toBe(error);
-    expect(result.data).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: error.message });
     expect(mockLogger.error).toHaveBeenCalledWith('Dataset search dispatch failed', { error });
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });

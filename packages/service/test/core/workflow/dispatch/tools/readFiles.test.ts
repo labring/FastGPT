@@ -61,7 +61,7 @@ describe('dispatchReadFiles', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.readFiles,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith({
@@ -295,10 +295,10 @@ describe('dispatchReadFiles', () => {
     await expectNodeDataToReachDownstream({
       nodeType: TransferNodeType.readFiles,
       result,
-      expectedData: result.data ?? {}
+      expectedData: { ...result.data, ...result.error }
     });
 
-    expect((result as any).data?.[NodeOutputKeyEnum.errorText]).toBe('boom');
+    expect((result as any).error?.[NodeOutputKeyEnum.errorText]).toBe('boom');
     expect((result[DispatchNodeResponseKeyEnum.nodeResponse] as any).errorText).toBe('boom');
     expect((result[DispatchNodeResponseKeyEnum.toolResponse] as any).error).toBe('boom');
   });

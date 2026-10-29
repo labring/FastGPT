@@ -78,11 +78,13 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.httpTimeout]?: number;
   [key: string]: any;
 }>;
-type HttpResponse = DispatchNodeResultType<{
-  [key: string]: any;
-  [NodeOutputKeyEnum.error]?: string; // 适配字段
-  [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
-}>;
+type HttpResponse = DispatchNodeResultType<
+  Record<string, any>,
+  {
+    [NodeOutputKeyEnum.error]?: string; // 适配字段
+    [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
+  }
+>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 

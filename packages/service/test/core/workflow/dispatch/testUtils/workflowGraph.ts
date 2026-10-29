@@ -181,7 +181,8 @@ export const runGraph = async ({
       variableState,
       runtimeNodes: nodes,
       runtimeEdges: edges,
-      nodeResponseSink: { publish }
+      // 与生产 sink 一样接管明细，Queue 不再重复保留 responseData。
+      nodeResponseSink: { publish, hasOutput: true }
     })
   );
   return { result, responses, publish, variableState };

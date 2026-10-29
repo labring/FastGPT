@@ -211,12 +211,12 @@ describe('dispatchRunTool runtime toolset auth', () => {
       createRunToolProps({ [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId } })
     );
 
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error).not.toBeInstanceOf(UserConfigError);
-    expect(result.error).toMatchObject({ name: 'Error', message });
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(message);
+    expect(result.rawError).toBeInstanceOf(Error);
+    expect(result.rawError).not.toBeInstanceOf(UserConfigError);
+    expect(result.rawError).toMatchObject({ name: 'Error', message });
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(message);
     expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith('Tool Run Error', {
-      error: result.error
+      error: result.rawError
     });
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).not.toHaveBeenCalled();
@@ -271,9 +271,9 @@ describe('dispatchRunTool runtime toolset auth', () => {
       await expectNodeDataToReachDownstream({
         nodeType: TransferNodeType.tool,
         result,
-        expectedData: result.data ?? {}
+        expectedData: { ...result.data, ...result.error }
       });
-      expect(result.error).toBeUndefined();
+      expect(result.rawError).toBeUndefined();
       const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
       expect(execute).toHaveBeenCalledOnce();
       expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
@@ -281,7 +281,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       execute.mockClear();
       authAppByTmbIdMock.mockRejectedValueOnce(AppErrEnum.unAuthApp);
       const denied = await dispatchRunTool(props);
-      expect(denied.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+      expect(denied.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
       expect(execute).not.toHaveBeenCalled();
     }
   );
@@ -355,7 +355,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       per: ReadPermissionVal
     });
     expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
   it('should authorize HTTP parent toolset before loading version and running tool', async () => {
@@ -476,7 +476,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(props);
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ params: { keyword: 'blocked', extra: true } })
     );
@@ -499,7 +499,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       per: ReadPermissionVal
     });
     expect(mcpToolCallMock).not.toHaveBeenCalled();
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
   it('should pass MCP params through without validating against the tool schema', async () => {
@@ -544,7 +544,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } }, { extra: true })
     );
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
@@ -587,8 +587,8 @@ describe('dispatchRunTool runtime toolset auth', () => {
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
     );
 
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
-    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.error });
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
+    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.rawError });
   });
 
   it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
@@ -659,7 +659,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
       const result = await dispatchRunTool(props);
 
-      expect(result.error).toBeUndefined();
+      expect(result.rawError).toBeUndefined();
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
         headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
@@ -690,7 +690,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(props);
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(MCPClient).toHaveBeenCalledWith({
       url: 'https://mcp.example.com',
       headers: { Authorization: 'legacy-token' }
@@ -708,7 +708,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(createRunToolProps({ systemTool: { toolId: 'search' } }));
 
-    expect(result.error).toBeUndefined();
+    expect(result.rawError).toBeUndefined();
     expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
     );

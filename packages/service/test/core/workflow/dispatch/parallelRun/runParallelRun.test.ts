@@ -149,8 +149,8 @@ describe('dispatchParallelRun', () => {
       });
       try {
         const result = await dispatchParallelRun(props);
-        expect(Object.hasOwn(result, 'error')).toBe(true);
-        expect(result.error).toBe(error);
+        expect(Object.hasOwn(result, 'rawError')).toBe(true);
+        expect(result.rawError).toBe(error);
         expect(warn).not.toHaveBeenCalled();
         expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
         expect(runWorkflowMock).not.toHaveBeenCalled();
@@ -180,7 +180,7 @@ describe('dispatchParallelRun', () => {
     const result = await dispatchParallelRun(props);
 
     expect(props.variableState.clone).toHaveBeenCalledTimes(2);
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
     expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
     expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
     expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
@@ -192,7 +192,7 @@ describe('dispatchParallelRun', () => {
       const error = new UserConfigError('Invalid key');
       runWorkflowMock.mockResolvedValueOnce(
         makeDispatchFlowResponse({
-          error,
+          rawError: error,
           nodeResponses: [
             makeResponseItem(
               fails ? 'chatNode' : 'nestedEnd',
@@ -205,7 +205,7 @@ describe('dispatchParallelRun', () => {
       );
       const props = makeProps();
       const result = await dispatchParallelRun(props);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
       expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
         fails ? ParallelRunStatusEnum.failed : ParallelRunStatusEnum.success

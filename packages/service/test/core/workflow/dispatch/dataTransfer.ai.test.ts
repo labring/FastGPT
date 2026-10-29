@@ -100,7 +100,7 @@ describe('AI nodes in complete workflow graphs', () => {
         errorCaptured: true
       });
       expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(requestMock).toHaveBeenCalledOnce();
     }
   );

@@ -411,7 +411,7 @@ export class WorkflowQueue {
   workflowRunTimes = 0;
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
   /** 保留未捕获异常，优先保留系统错误；容器恢复摘要不保存该运行时对象。 */
-  runtimeFailure?: { error: unknown };
+  runtimeFailure?: { rawError: unknown };
   chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   chatNodeUsages: ChatNodeUsageType[] = [];
   toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
@@ -867,6 +867,8 @@ export class WorkflowQueue {
       nodeType: node.flowNodeType,
       mode
     };
+    // 每次节点执行独立保存观测状态，避免持久化后移除 responseData 导致业务失败被记为成功。
+    let stepStatus: ReturnType<typeof getWorkflowStepStatus> = 'ok';
 
     const executeNode = async (stepSpan?: Span): Promise<WorkflowObservedStepResult> => {
       const nodeResponseId =
@@ -912,30 +914,31 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+            const callbackResult = (await callbackMap[node.flowNodeType](
+              dispatchData
+            )) as NodeResponseType;
+            const responseData = callbackResult[DispatchNodeResponseKeyEnum.nodeResponse];
+            // 原始异常需要可展示的故障详情；只有分支输出时不生成故障状态。
+            const result = Object.hasOwn(callbackResult, 'rawError')
+              ? {
+                  ...callbackResult,
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...responseData,
+                    error:
+                      responseData?.error ??
+                      responseData?.errorText ??
+                      getErrText(callbackResult.rawError)
+                  }
+                }
+              : callbackResult;
 
             const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-            const responseError = nodeResponseBase?.errorText ?? nodeResponseBase?.error;
-            // 原始异常与节点明确返回的业务失败共用错误路由；展示文本不重建顶层异常。
-            if (Object.hasOwn(result, 'error') || responseError !== undefined) {
-              const errText =
-                result.data?.[NodeOutputKeyEnum.errorText] ??
-                responseError ??
-                getErrText(result.error);
-              const errorData = {
-                ...result.data,
-                [NodeOutputKeyEnum.errorText]: errText
-              };
+            // error 是错误分支的数据记录；主动选该分支不代表出现了系统异常。
+            if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
-                // 未捕获的失败统一保留详情并停止所有下游，异常归属仍只读取原始 error。
                 return {
                   ...result,
-                  data: errorData,
-                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                    ...nodeResponseBase,
-                    error: errText
-                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -949,11 +952,13 @@ export class WorkflowQueue {
 
               return {
                 ...result,
-                data: errorData,
-                ...(result[DispatchNodeResponseKeyEnum.nodeResponse]
+                ...(nodeResponseBase &&
+                (Object.hasOwn(result, 'rawError') ||
+                  nodeResponseBase.error !== undefined ||
+                  nodeResponseBase.errorText !== undefined)
                   ? {
                       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                        ...result[DispatchNodeResponseKeyEnum.nodeResponse],
+                        ...nodeResponseBase,
                         errorCaptured: true
                       }
                     }
@@ -990,8 +995,8 @@ export class WorkflowQueue {
             }
 
             return {
-              error,
-              data: { [NodeOutputKeyEnum.errorText]: errorText },
+              rawError: error,
+              error: { [NodeOutputKeyEnum.errorText]: errorText },
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
                 error: errorText,
                 ...(node.catchError ? { errorCaptured: true } : {})
@@ -1028,24 +1033,33 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
-      const hasDispatchError = Object.hasOwn(dispatchRes, 'error');
+      stepStatus = getWorkflowStepStatus({
+        node,
+        runStatus: 'run',
+        nodeResponseId,
+        result: {
+          ...dispatchRes,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: formatCurrentNodeResponse
+        }
+      });
+      const hasRawError = Object.hasOwn(dispatchRes, 'rawError');
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ??
         formatCurrentNodeResponse?.error ??
-        (hasDispatchError ? getErrText(dispatchRes.error) : undefined);
+        (hasRawError ? getErrText(dispatchRes.rawError) : undefined);
       // 仅本轮原始异常参与分类；展示文本不用于重建用户错误身份。
-      const isUserConfigFailure = hasDispatchError && isUserConfigError(dispatchRes.error);
+      const isUserConfigFailure = hasRawError && isUserConfigError(dispatchRes.rawError);
       // 仅节点直接返回且未被捕获/工具边界消化的异常参与本轮失败；summary 只维护统计。
       if (
-        hasDispatchError &&
+        hasRawError &&
         !node.catchError &&
         !formatCurrentNodeResponse?.errorCaptured &&
         !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse)) &&
         (!this.runtimeFailure ||
-          isUserConfigError(this.runtimeFailure.error) ||
+          isUserConfigError(this.runtimeFailure.rawError) ||
           !isUserConfigFailure)
       ) {
-        this.runtimeFailure = { error: dispatchRes.error };
+        this.runtimeFailure = { rawError: dispatchRes.rawError };
       }
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
@@ -1075,7 +1089,12 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
       // 仅成功节点补齐默认值；商业插件等业务失败可能只有错误详情，没有原始异常。
-      if (dispatchRes.data && !hasDispatchError && currentNodeError === undefined) {
+      if (
+        dispatchRes.data &&
+        !dispatchRes.error &&
+        !hasRawError &&
+        currentNodeError === undefined
+      ) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
@@ -1106,8 +1125,8 @@ export class WorkflowQueue {
       }
 
       // 统一日志只读取节点返回的原始 Error；responseData 的文本仅用于展示和流程控制。
-      if (hasDispatchError && dispatchRes.error instanceof Error) {
-        logger.warn('Workflow node returned error', { error: dispatchRes.error });
+      if (hasRawError && dispatchRes.rawError instanceof Error) {
+        logger.warn('Workflow node returned error', { error: dispatchRes.rawError });
       }
 
       if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
@@ -1164,7 +1183,7 @@ export class WorkflowQueue {
           );
         },
         {
-          getStatus: getWorkflowStepStatus
+          getStatus: () => stepStatus
         }
       );
     }
@@ -1186,7 +1205,7 @@ export class WorkflowQueue {
             eventName: 'workflow.step.end',
             nodeType: node.flowNodeType,
             mode,
-            status: getWorkflowStepStatus(result),
+            status: stepStatus,
             durationMs: Date.now() - stepStartedAt
           });
 
@@ -1203,7 +1222,7 @@ export class WorkflowQueue {
         }
       },
       {
-        getStatus: getWorkflowStepStatus
+        getStatus: () => stepStatus
       }
     );
   }
@@ -1330,11 +1349,11 @@ export class WorkflowQueue {
     } => {
       pushStore(result);
 
-      const concatData = result.data ?? {};
+      const concatData = { ...result.data, ...result.error };
 
       // Assign the output value to the next node
       node.outputs.forEach((outputItem) => {
-        // 每次完成执行都以本次 data 为准；缺失输出清为 undefined，避免循环/恢复读取旧值。
+        // 每次完成执行都以本次 data/error 为准；缺失输出清为 undefined，避免循环/恢复读取旧值。
         outputItem.value = concatData[outputItem.key];
       });
 

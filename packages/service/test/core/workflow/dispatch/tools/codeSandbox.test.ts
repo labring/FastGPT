@@ -13,7 +13,7 @@ describe('dispatchCodeSandbox', () => {
       params: { codeType: 'javascript', code: 'return {}', [NodeInputKeyEnum.addInputParam]: {} }
     } as Parameters<typeof dispatchCodeSandbox>[0]);
     expect(result.data).toEqual({ [NodeOutputKeyEnum.rawResponse]: codeReturn, ...codeReturn });
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 
   it('keeps the sandbox exception and publishes legacy error outputs through data', async () => {
@@ -34,8 +34,8 @@ describe('dispatchCodeSandbox', () => {
       }
     } as Parameters<typeof dispatchCodeSandbox>[0]);
 
-    expect(result.error).toBe(error);
-    expect(result.data).toEqual({ system_error_text: 'sandbox failed', error: 'sandbox failed' });
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ system_error_text: 'sandbox failed', error: 'sandbox failed' });
     expect(result.toolResponse).toEqual({ error: 'sandbox failed' });
     expect(result.responseData).toMatchObject({ errorText: 'sandbox failed' });
     expect(JSON.stringify(result.responseData)).not.toContain('private transport details');

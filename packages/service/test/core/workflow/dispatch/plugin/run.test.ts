@@ -78,7 +78,7 @@ describe('dispatchRunPlugin', () => {
     computedAppToolUsageMock.mockReset().mockResolvedValue(1);
   });
 
-  it('returns its own resource-load exception as the top-level error', async () => {
+  it('returns its own resource-load exception in rawError', async () => {
     const error = new Error('Plugin resource unavailable');
     getSystemToolWorkflowRuntimeMock.mockRejectedValueOnce(error);
 
@@ -88,8 +88,8 @@ describe('dispatchRunPlugin', () => {
       params: {}
     } as any);
 
-    expect(result.error).toBe(error);
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBe(error.message);
+    expect(result.rawError).toBe(error);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(error.message);
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
@@ -230,8 +230,8 @@ describe('dispatchRunPlugin', () => {
     );
   });
 
-  it.each([{}, { error: new Error('Child workflow failed') }])(
-    'keeps tool failure data without promoting the child result to error: %j',
+  it.each([{}, { rawError: new Error('Child workflow failed') }])(
+    'keeps tool failure data without promoting the child exception to rawError: %j',
     async (childResult) => {
       getSystemToolWorkflowRuntimeMock.mockResolvedValue({
         id: 'commercial-system-workflow',
@@ -291,8 +291,8 @@ describe('dispatchRunPlugin', () => {
       expect(computedAppToolUsageMock).toHaveBeenCalledWith(
         expect.objectContaining({ error: true })
       );
-      expect(Object.hasOwn(result, 'error')).toBe(false);
-      expect(result.data).toMatchObject({
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+      expect(result.error).toMatchObject({
         [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
       });
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
@@ -429,7 +429,7 @@ describe('dispatchRunPlugin', () => {
       childResponseCount: 1
     });
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
   });
 
   it('Workflow Tool child context only inherits selected files from the parent context', async () => {

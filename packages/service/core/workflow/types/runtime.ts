@@ -145,11 +145,11 @@ export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutp
 };
 
 /**
- * 节点运行结果：data 统一承载成功输出和错误分支输出，error 只保留原始异常。
- * 仅失败时返回 error 字段；通过字段是否存在区分失败，兼容 throw undefined 等非 Error 异常。
+ * data/error 分别承载正常分支和错误分支的输出记录，不能用分支选择推断系统异常。
+ * rawError 独立保留原始异常，只有该字段参与异常分类和日志；字段存在性兼容 throw undefined。
  * 原始异常仅在请求运行期传递，详情、SSE 和恢复数据只保存展示文本。
  */
-export type DispatchNodeResultType<T = Record<string, unknown>> = {
+export type DispatchNodeResultType<T = Record<string, unknown>, ERR = Record<string, unknown>> = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
   [DispatchNodeResponseKeyEnum.skipHandleId]?: string[]; // skip some edge handle id
@@ -163,7 +163,8 @@ export type DispatchNodeResultType<T = Record<string, unknown>> = {
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
 
   data?: Partial<T> & { [NodeOutputKeyEnum.errorText]?: string };
-  error?: unknown;
+  error?: Partial<ERR> & { [NodeOutputKeyEnum.errorText]?: string };
+  rawError?: unknown;
 
   /** @deprecated */
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage

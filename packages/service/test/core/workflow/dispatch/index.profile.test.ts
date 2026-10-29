@@ -46,7 +46,9 @@ describe('dispatchWorkFlow request profile result', () => {
               }
             };
           }
-          return outcome === 'success' ? { data: {} } : { error: { errorText: 'node failed' } };
+          return outcome === 'success'
+            ? { data: {} }
+            : { rawError: new Error('node failed'), error: { system_error_text: 'node failed' } };
         });
       onTestFinished(() => callback.mockRestore());
       const node = {

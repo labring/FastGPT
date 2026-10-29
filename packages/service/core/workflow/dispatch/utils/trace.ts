@@ -11,7 +11,7 @@ export type WorkflowObservedStepResult = {
   nodeResponseId: string;
   result: {
     [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
-    error?: unknown;
+    rawError?: unknown;
     [key: string]: unknown;
   };
 };
@@ -44,18 +44,19 @@ export const shouldTraceWorkflowStep = (nodeType: FlowNodeTypeEnum) =>
 /**
  * 从节点执行结果提取指标/trace 状态。
  *
- * `nodeResponse.error` 和 dispatcher 顶层 `error` 都代表当前节点异常，二者口径需要一致，
+ * `nodeResponse.error` 和 dispatcher 的 `rawError` 表示节点故障，分支输出 `error` 本身不表示故障，
  * 否则 metrics 和 OTel span 会出现一个成功一个失败的分裂状态。用户配置错误使用独立状态，
  * 避免进入 error 指标，同时保留其发生次数。
+ * Queue 在移除已持久化的 responseData 前提取状态，避免观测结果依赖详情保存策略。
  */
 export const getWorkflowStepStatus = (
   result: WorkflowObservedStepResult
 ): 'ok' | 'error' | 'user_error' => {
   const nodeResponse = result.result[DispatchNodeResponseKeyEnum.nodeResponse];
-  const topLevelError = result.result.error;
+  const topLevelError = result.result.rawError;
 
   // 分类仅读取本轮原始异常，历史详情不参与本轮日志或指标的降噪判断。
-  if (Object.hasOwn(result.result, 'error')) {
+  if (Object.hasOwn(result.result, 'rawError')) {
     return isUserConfigError(topLevelError) ? 'user_error' : 'error';
   }
 

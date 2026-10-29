@@ -1882,8 +1882,8 @@ describe('rewriteRuntimeWorkFlow', () => {
 describe('getNodeErrResponse', () => {
   it('should return proper error response structure', () => {
     const result = getNodeErrResponse({ error: 'test error' });
-    expect(result.error).toBe('test error');
-    expect(result.data[NodeOutputKeyEnum.errorText]).toBe('test error');
+    expect(result.rawError).toBe('test error');
+    expect(result.error[NodeOutputKeyEnum.errorText]).toBe('test error');
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toHaveProperty(
       'errorText',
       'test error'
@@ -1891,12 +1891,12 @@ describe('getNodeErrResponse', () => {
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toHaveProperty('error', 'test error');
   });
 
-  it('should include customErr in data and toolResponse', () => {
+  it('should include customErr in error and toolResponse', () => {
     const result = getNodeErrResponse({
       error: 'fail',
       customErr: { code: 500, detail: 'internal' }
     });
-    expect(result.data).toEqual({
+    expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail',
       code: 500,
       detail: 'internal'
@@ -1912,12 +1912,12 @@ describe('getNodeErrResponse', () => {
     const error = new UserConfigError('Invalid MCP URL');
     const result = getNodeErrResponse({ error });
 
-    expect(result.error).toBe(error);
-    expect(result.data).toEqual({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ [NodeOutputKeyEnum.errorText]: 'Invalid MCP URL' });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       errorText: 'Invalid MCP URL'
     });
-    expect(isUserConfigError(result.error)).toBe(true);
+    expect(isUserConfigError(result.rawError)).toBe(true);
     expect(result.responseData).not.toHaveProperty('errorType');
   });
 
@@ -1948,7 +1948,7 @@ describe('getNodeErrResponse', () => {
       error: 'fail',
       customErr: 'not-object' as any
     });
-    expect(result.data).toEqual({
+    expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
   });
@@ -1958,8 +1958,8 @@ describe('getNodeErrResponse', () => {
     const error = new Error('private transport details', { cause });
     const result = getNodeErrResponse({ error, errorText: 'HTTP 400: missing input' });
 
-    expect(result.error).toBe(error);
-    expect(result.data).toEqual({ system_error_text: 'HTTP 400: missing input' });
+    expect(result.rawError).toBe(error);
+    expect(result.error).toEqual({ system_error_text: 'HTTP 400: missing input' });
     expect(result.responseData).toEqual({ errorText: 'HTTP 400: missing input' });
     expect(result.toolResponse).toEqual({ error: 'HTTP 400: missing input' });
     expect(JSON.stringify(result.responseData)).not.toContain('private transport details');

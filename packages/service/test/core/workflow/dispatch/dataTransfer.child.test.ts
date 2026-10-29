@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  NodeInputKeyEnum,
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  LoopRunModeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -13,6 +15,7 @@ import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
 import {
   graphNode,
   graphEdge,
@@ -63,6 +66,32 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('child workflow data transfer without mocking runWorkflow', () => {
+  /** 仅替换系统工具资源读取，插件输入、输出和父子 Queue 均真实执行。 */
+  const mockCommercialWorkflow = () => {
+    const input = graphNode({
+      id: 'plugininput',
+      type: FlowNodeTypeEnum.pluginInput,
+      params: { value: '', error: '' },
+      outputs: ['value', 'error']
+    });
+    const output = graphNode({
+      id: 'pluginoutput',
+      type: FlowNodeTypeEnum.pluginOutput,
+      inputs: ['value', 'error'].map((key) => graphReference({ key, from: ['plugininput', key] }))
+    });
+    return vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolWorkflowRuntime')
+      .mockResolvedValue({
+        id: 'commercial-regression',
+        associatedPluginId: 'system-workflow',
+        name: 'Commercial workflow',
+        avatar: '',
+        nodes: [input, output],
+        edges: [graphEdge({ source: 'plugininput', target: 'pluginoutput' })],
+        chatConfig: {}
+      });
+  };
+
   it('passes workflowStart query through a real answer node, parent app node, and downstream references', async () => {
     const start = graphNode({
       id: 'childstart',
@@ -108,7 +137,7 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
       expect.arrayContaining(['childstart', 'childanswer', 'app', 'target'])
     );
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 
   it('passes plugin input and output fields through the parent to downstream', async () => {
@@ -160,7 +189,7 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
       values
     );
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 
   it.each([
@@ -170,27 +199,9 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
   ])(
     'routes commercial plugin output with failed=$failed and catchError=$catchError',
     async ({ failed, catchError }) => {
+      const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
       const message = failed ? 'upstream unavailable' : '';
-      const input = graphNode({
-        id: 'plugininput',
-        type: FlowNodeTypeEnum.pluginInput,
-        params: { value: '', error: '' },
-        outputs: ['value', 'error']
-      });
-      const output = graphNode({
-        id: 'pluginoutput',
-        type: FlowNodeTypeEnum.pluginOutput,
-        inputs: ['value', 'error'].map((key) => graphReference({ key, from: ['plugininput', key] }))
-      });
-      vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolWorkflowRuntime').mockResolvedValue({
-        id: 'commercial-regression',
-        associatedPluginId: 'system-workflow',
-        name: 'Commercial workflow',
-        avatar: '',
-        nodes: [input, output],
-        edges: [graphEdge({ source: 'plugininput', target: 'pluginoutput' })],
-        chatConfig: {}
-      });
+      mockCommercialWorkflow();
       const plugin = graphNode({
         id: 'plugin',
         type: FlowNodeTypeEnum.pluginModule,
@@ -241,10 +252,94 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
         failed && catchError ? true : undefined
       );
       expect(result.workflowRuntimeSummary.errorCount).toBe(failed && !catchError ? 1 : 0);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(warn).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
+
+      const pluginIndex = stepObservation.mock.calls.findIndex(
+        ([attributes]) => attributes.nodeType === FlowNodeTypeEnum.pluginModule
+      );
+      const observedResult = await stepObservation.mock.results[pluginIndex].value;
+      expect(observedResult.result.responseData).toBeUndefined();
+      expect(stepObservation.mock.calls[pluginIndex][2]?.getStatus?.(observedResult)).toBe(
+        failed ? 'error' : 'ok'
+      );
     }
   );
+
+  it('stops a loop on a child business failure while preserving partial outputs for the catch branch', async () => {
+    const loadCommercial = mockCommercialWorkflow();
+    const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
+    const loop = graphNode({
+      id: 'loop',
+      type: FlowNodeTypeEnum.loopRun,
+      params: {
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['start', 'plugin']
+      },
+      inputs: [{ ...graphReference({ key: 'value', from: ['plugin', 'value'] }), canEdit: true }],
+      outputs: [
+        {
+          id: 'value',
+          key: 'value',
+          label: 'value',
+          type: FlowNodeOutputTypeEnum.dynamic,
+          valueType: WorkflowIOValueTypeEnum.any
+        },
+        NodeOutputKeyEnum.errorText
+      ],
+      isEntry: true,
+      catchError: true
+    });
+    const start = graphNode({
+      id: 'start',
+      type: FlowNodeTypeEnum.loopRunStart,
+      params: {
+        loopRunMode: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.nestedStartInput]: undefined,
+        [NodeInputKeyEnum.nestedStartIndex]: 0
+      },
+      outputs: [NodeOutputKeyEnum.currentItem]
+    });
+    const plugin = graphNode({
+      id: 'plugin',
+      type: FlowNodeTypeEnum.pluginModule,
+      pluginId: 'commercial-regression',
+      params: { value: 'partial output', error: 'upstream unavailable' },
+      outputs: ['value', NodeOutputKeyEnum.errorText]
+    });
+    const caught = graphNode({
+      id: 'caught',
+      type: FlowNodeTypeEnum.toolParams,
+      inputs: [
+        graphReference({ key: 'value', from: ['loop', 'value'] }),
+        graphReference({ key: 'message', from: ['loop', NodeOutputKeyEnum.errorText] })
+      ],
+      outputs: ['value', 'message']
+    });
+    const { result, responses } = await runGraph({
+      nodes: [loop, start, plugin, caught],
+      edges: [
+        graphEdge({ source: 'start', target: 'plugin' }),
+        graphEdge({ source: 'loop', target: 'caught', error: true })
+      ]
+    });
+
+    expect(graphValues(caught)).toEqual({
+      value: 'partial output',
+      message: 'upstream unavailable'
+    });
+    expect(loadCommercial).toHaveBeenCalledOnce();
+    expect(responses.find((response) => response.nodeId === 'loop')?.loopRunHistory).toMatchObject([
+      { iteration: 1, success: false, error: 'upstream unavailable' }
+    ]);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    const index = stepObservation.mock.calls.findIndex(
+      ([attributes]) => attributes.nodeType === FlowNodeTypeEnum.loopRun
+    );
+    const observedResult = await stepObservation.mock.results[index].value;
+    expect(stepObservation.mock.calls[index][2]?.getStatus?.(observedResult)).toBe('error');
+  });
 
   it.each([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule])(
     '%s exposes its own resource-load failure through the catch branch',
@@ -272,7 +367,7 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
       });
       expect(graphValues(target).message).toBe(error.message);
       expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(loadChild).toHaveBeenCalledOnce();
     }
   );
@@ -320,6 +415,6 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
       failure.message
     );
     expect(graphValues(target).answer).toBe('');
-    expect(Object.hasOwn(result, 'error')).toBe(false);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
   });
 });
