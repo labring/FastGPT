@@ -41,7 +41,7 @@ describe('team audit date contracts', () => {
     expect(AuditExportBodySchema.safeParse({ ...input, locale: 'en' }).success).toBe(false);
   });
 
-  it('allows today through its last millisecond using dateStart offset rather than server time', () => {
+  it('allows today through its last millisecond using dateEnd offset rather than server time', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-03-08T18:00:00Z'));
     expect(AuditExportBodySchema.safeParse({ ...filters, locale: 'en' }).success).toBe(true);
     expect(
@@ -52,6 +52,45 @@ describe('team audit date contracts', () => {
       }).success
     ).toBe(false);
   });
+
+  it.each([
+    {
+      transition: 'fall back',
+      now: '2026-11-01T17:00:00Z',
+      dateStart: '2026-10-26T00:00:00.000-04:00',
+      dateEnd: '2026-11-01T23:59:59.999-05:00',
+      nextDay: '2026-11-02T00:00:00.000-05:00'
+    },
+    {
+      transition: 'spring forward',
+      now: '2026-03-08T16:00:00Z',
+      dateStart: '2026-03-02T00:00:00.000-05:00',
+      dateEnd: '2026-03-08T23:59:59.999-04:00',
+      nextDay: '2026-03-09T00:00:00.000-04:00'
+    }
+  ])(
+    'validates today and tomorrow across DST $transition',
+    ({ now, dateStart, dateEnd, nextDay }) => {
+      vi.useFakeTimers().setSystemTime(new Date(now));
+      const input = { dateStart, dateEnd, locale: 'en' };
+
+      // 跨夏令时的七天范围首尾 offset 不同，按结束日判断，避免误拒今天或放行明天。
+      for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
+        expect(schema.safeParse(input).success).toBe(true);
+        expect(schema.safeParse({ ...input, dateEnd: nextDay })).toMatchObject({
+          success: false,
+          error: {
+            issues: [
+              expect.objectContaining({
+                path: ['dateEnd'],
+                message: 'Future dates are not allowed'
+              })
+            ]
+          }
+        });
+      }
+    }
+  );
 
   it('uses UTC when the ISO timestamps end in Z', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-03-09T23:00:00Z'));

@@ -45,16 +45,16 @@ export const AuditFilterSchema = z
   });
 export type AuditFilterType = z.infer<typeof AuditFilterSchema>;
 
-/** 统一校验时间顺序，并按 dateStart 的固定 UTC offset 允许查询到今天结束。 */
+/** 统一校验时间顺序，并按 dateEnd 的固定 UTC offset 允许查询到今天结束。 */
 const validateAuditRange = (data: AuditFilterType, ctx: z.RefinementCtx) => {
   const start = new Date(data.dateStart);
   const end = new Date(data.dateEnd);
   if (start > end) {
     ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Start must not be after end' });
   }
-  // 与使用记录共用 offset 解析方式，允许结束时间为今天的 23:59:59.999。
+  // 跨夏令时时首尾 offset 可能不同，使用结束日的 offset，避免当天上限偏移一小时。
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return;
-  const todayEnd = dayjs().utcOffset(getTimezoneCodeFromStr(data.dateStart)).endOf('day');
+  const todayEnd = dayjs().utcOffset(getTimezoneCodeFromStr(data.dateEnd)).endOf('day');
   if (end.getTime() > todayEnd.valueOf()) {
     ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Future dates are not allowed' });
   }
