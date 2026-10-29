@@ -237,17 +237,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               <IconButton
                 className="chat"
                 size={'smSquare'}
-                icon={
-                  <MyIcon
-                    name={
-                      activeTab === AgentChatTestTabEnum.helper
-                        ? 'core/chat/chatLight'
-                        : 'common/clearLight'
-                    }
-                    w={'14px'}
-                  />
-                }
-                variant={activeTab === AgentChatTestTabEnum.helper ? 'whiteBase' : 'whiteDanger'}
+                icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
+                variant={'whitePrimary'}
                 borderRadius={'md'}
                 aria-label={restartChatLabel}
                 onClick={(e) => {

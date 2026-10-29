@@ -342,7 +342,7 @@ const WorkflowBuilder = () => {
                     aria-label={t('common:core.chat.New Chat')}
                     size="smSquare"
                     icon={<MyIcon name="core/chat/chatLight" w="14px" />}
-                    variant="whiteBase"
+                    variant="whitePrimary"
                     borderRadius="md"
                     mr={2}
                     onClick={() => chatPanelRef.current?.restartChat()}
