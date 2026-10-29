@@ -63,7 +63,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
         params: {
-          description,
+          description: description ?? '',
           userSelectOptions: resolvedOptions
         }
       }

@@ -9,12 +9,9 @@ upgradeTags:
 
 ### Image updates
 
-- AI Proxy: v0.7.5
-- Code execution sandbox (`fastgpt-code-sandbox`): v4.17.0, replacing the unavailable v4.17.2 tag.
+- AI Proxy: v0.7.6
 
 ### Upgrade scripts
-
-The system first completes startup migrations and their full dependency chain. Each App instance then reloads its models before starting business services. If the startup chain fails, the App remains unready. Check the logs, fix the issue, and restart the App instance holding the task lease.
 
 This release adds the following automatic background migrations. They run independently after the startup chain completes, sharing up to 3 concurrent slots across the cluster. A failed task does not block unrelated background tasks. Fix the data and retry the task from the admin console:
 
@@ -22,21 +19,24 @@ This release adds the following automatic background migrations. They run indepe
 - `20261022_backfill_folder_ancestor_ids`: Rebuilds ancestor paths for App, Tool, and Dataset folders from parent relationships and removes stale path fields from resources that are not folders. Folders directly attached to a different type of folder tree move to the team's root, preserving child relationships within their own tree and removing permissions inherited from the old parent. References to a different tree farther up the path are truncated at the boundary. Missing parents, references across teams, cycles, and other invalid relationships remain failed records that require repair and a retry.
 - `20261025_token_prices_per_million`: Converts legacy system model prices and tier boundaries to million units and saves them in `pricing`. Original root-level prices are preserved, and models with valid existing `pricing` are skipped. Team models are excluded from the migration.
 
-### Configuration and API compatibility
+### Configuration changes
 
 - `AGENT_SANDBOX_MAX` sets the total number of active Agent sandbox instances and defaults to 100. App sessions and Skill editing share this quota. Use `AGENT_SANDBOX_MAX_PER_TEAM` to set a per-team limit; it is unlimited by default. In the Commercial edition, both limits can be configured in the admin system settings, which take precedence over environment variables.
-- Shared pagination automatically caps `pageSize` values above 500 at 500 instead of returning a validation error. Some endpoints still enforce smaller limits. Use `offset` or `pageNum` to select a position. When both are provided, `offset` takes precedence, including `offset=0`. Invalid offsets do not fall back to page-based queries.
 - OpenSandbox adds `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR`. Both default to 1 and must be at least 1. They apply only to the Kubernetes runtime with OpenSandbox Server v0.2.1 or later, reducing resource requests while keeping limits unchanged. Changes apply only to newly created or recreated sandboxes, not when connecting to or resuming existing sandboxes.
+- The default marketplace URL (`MARKETPLACE_URL`) is now `https://v3.marketplace.fastgpt.cn`. Explicitly configured custom URLs keep their existing value.
+
+### API compatibility
+
+- Shared pagination automatically caps `pageSize` values above 500 at 500 instead of returning a validation error. Some endpoints still enforce smaller limits. Use `offset` or `pageNum` to select a position. When both are provided, `offset` takes precedence, including `offset=0`. Invalid offsets do not fall back to page-based queries.
 - The `/api/core/dataset/exportAll` endpoint now exports a single Dataset and no longer supports exporting an entire folder. When file-level permissions are enabled, exports include only files the current member can read. Update folder export integrations to request each Dataset separately.
 - The Commercial edition admin console adds a maximum vector retrieval concurrency setting (`systemEnv.vectorRecallConcurrency`). It accepts integers from 0 to 1000 and defaults to 0, meaning unlimited. A positive value sets a shared recall limit across all service instances and vector databases. This limit does not apply to the Open-source edition and has no corresponding environment variable.
 - Model prices now use `pricing`: LLMs use `pricing.tiers`, and other models use `pricing.unitPrice`. Token prices and the `maxInputTokens` upper bound of each LLM tier use M Tokens (million tokens). TTS prices are per million characters, while STT prices remain per 60 seconds. Unit prices support up to two decimal places. The migration multiplies legacy Token/TTS prices by 1000, divides legacy LLM tier upper bounds by 1000, and leaves STT prices unchanged.
-- The new APIs and runtime no longer read legacy root-level pricing fields. Only system models are billed; team models are free. Price migration runs in the background, and system models without `pricing` are temporarily free. During mixed-version operation, older instances continue using legacy prices, and prices saved by the new version are not written back to legacy fields. After upgrading, confirm that price migration succeeded and review system model prices.
-- Updating a Dataset's own information or model settings, or a Collection's name, tags, disabled state, and similar metadata, now requires Manage (`manage`) permission instead of Edit (`write`) permission. Content operations retain their existing Edit requirements. Moving a Collection while also updating its metadata requires Manage permission on that Collection.
-- The default marketplace URL (`MARKETPLACE_URL`) is now `https://v3.marketplace.fastgpt.cn`. Explicitly configured custom URLs keep their existing value.
+- Removed `DEFAULT_ROOT_PSW`. Startup no longer overwrites an existing root password. New root accounts use `123456` initially and must set a new password after login to activate the account. Existing root accounts without a stored `status` also enter activation while keeping their current password. Change passwords from the account information page. If you forget the password, use the root password reset script and explicitly provide a new password.
+- The Workflow canvas now uses shared [orchestration validation rules](/en/guide/build/workflow/rules), with added checks that block unconditional cycles, connections across Tool workflows, and Tool entries shared by multiple callers. Feedback through valid conditional outputs is allowed. Existing connections are preserved when opening older Workflows, and drafts can still be saved, but invalid connections must be fixed before debugging or publishing.
 
 ## 🚀 New features
 
-1. Added [Workflow assisted generation](/en/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language, confirm a plan, then generate a candidate version. Apply it manually to replace and automatically arrange the canvas. Review, debug, save, and publish the Workflow after applying it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
+1. Added [Workflow assisted generation](/en/guide/build/workflow/assisted-generation) for the Commercial edition. Create or modify Workflows using natural language. After you confirm a plan, the same Agent builds, validates, and repairs the Workflow before delivering a candidate. Interrupted tasks can continue from saved chat history, plans, and task state. Substantial changes to the plan or canvas baseline require confirmation again. If the sandbox is lost, rebuilding relies on saved context. Apply the candidate manually to replace and automatically arrange the canvas, then review, debug, save, and publish it. App edit permission is required, and an administrator must enable assisted generation and virtual machines (sandboxes).
 2. Added support for limited HTML rendering in the Markdown component and optimized interactions across components.
 3. App chats now cache input drafts separately for each member, App, and session. Text and references to successfully uploaded attachments can be restored after switching sessions or refreshing the page. Drafts stay in the current browser tab, with up to 10 drafts retained for one hour after the last edit. A draft is cleared once its message is accepted for sending.
 4. Added an option to inherit parent permissions when creating App, Tool, and Dataset folders.
@@ -47,10 +47,12 @@ This release adds the following automatic background migrations. They run indepe
 9. System plugins now support localized names, descriptions, Tools within Toolkits, input and output parameters, secret schemas, and READMEs. Existing Workflow Nodes and fixed Agent Tools retain the language snapshot captured when they were added.
 10. The OpenSandbox Kubernetes runtime now supports separate CPU and memory overcommit factors, reducing scheduling reservations while keeping resource limits unchanged.
 11. Team audit logs now record bulk retries of failed Dataset or Collection processing tasks, single-task retries, processing record deletions, and index rebuilds when switching Embedding models. These events can be filtered by type. Index rebuild logs retain both model names and stable IDs for traceability.
-12. The admin user list in the Commercial edition now supports All, Active, Disabled, and Cancelled status filters, defaults to Active, and can combine status filtering with username searches. Cancelled accounts are identified by current and legacy anonymized username formats for filtering and display; the account's stored status is unchanged.
+12. The admin user list in the Commercial edition now supports All, Active, Pending activation, Disabled, and Cancelled status filters, defaults to Active, and can combine status filtering with username searches. Cancelled accounts are identified by current and legacy anonymized username formats for filtering and display; the account's stored status is unchanged.
 13. Improved folder navigation for Apps, Tools, Skills, and Datasets. Members can follow folder paths to authorized child resources. When a member only has access to a child resource, parent folders appear as navigation entries without granting additional folder management permissions.
 14. Team audit logs now record restored permission inheritance for Apps, Skills, Datasets, and Collections, preserving resource paths and supporting event-type filters.
 15. Team model management now supports bulk replacement of invalid model references. Team owners can select replacement LLM, TTS, and Rerank models for invalid static references in team Datasets, Apps, and historical versions, including custom model selectors. Results show replacements, skipped references, conflicts, and failures. Empty values and dynamic variable references are skipped, and Embedding models are not replaced.
+16. Workflow password inputs, Tool secrets, and HTTP/MCP authentication headers now support variable references, allowing credentials to come from upstream Nodes or App variables at runtime.
+17. Added a pending activation state and initial password setup. Root accounts can change their password from the account information page. The Open-source edition verifies the old password; the Commercial edition uses the existing identity verification flow. Password changes and activation retain the current login session and clear other sessions.
 
 ## ⚙️ Optimizations
 
@@ -80,6 +82,8 @@ This release adds the following automatic background migrations. They run indepe
 24. Improved API file library service address validation. Legacy bare domains now default to `https://` when a scheme is missing, and the form displays validation guidance for complete HTTP(S) URLs.
 25. HTTP request Nodes and HTTP Tools now include response bodies in error messages for non-2xx responses, making failures easier to troubleshoot.
 26. App, Skill, and Dataset lists now support targeted refreshes by resource ID. Changes to collaborators, ownership, or permission inheritance update the corresponding cards while preserving loaded pages and scroll position, reducing repeated loading.
+27. Agent Dataset search logs now expose candidates before reranking through `retrievalResults`, matching Dataset search Nodes. Candidates are recorded only when reranking is used and `RETRIEVAL_RESULTS_LIMIT > 0`, allowing recall and reranking results to be compared. Recording is off by default.
+28. HTTP 429 responses from external MCP services no longer trigger an automatic fallback to SSE. The original rate limit error is preserved, avoiding duplicate connection requests.
 
 ## 🐛 Fixes
 
@@ -136,6 +140,19 @@ This release adds the following automatic background migrations. They run indepe
 51. Invalid JSON-RPC 2.0 responses from external MCP services now produce a clear response format error with a configuration check hint instead of exposing low-level schema validation details.
 52. Fixed incomplete stream resume cleanup when chats or Skill debugging finish, are cancelled, or fail. Resume controllers are isolated by conversation so cancelling one conversation does not affect another.
 53. Fixed Tool calls being blocked by additional parameter filtering or schema validation before execution. Model-generated arguments are passed through, with configured fixed arguments taking precedence.
+54. Fixed App test chat and Workflow debug endpoints requiring only Read permission. App Edit permission is now required before executing Node definitions supplied in the request.
+55. Fixed text preview truncation splitting UTF-16 surrogate pairs in emoji and other characters, producing garbled text. A trailing length of 0 no longer appends the entire text again.
+56. Fixed tiered model billing treating `maxInputTokens=0` as unlimited. Only a missing upper bound now defines an open-ended tier.
+57. Fixed legacy or incomplete interactive records causing rendering errors in chats, resumed streams, assisted generation previews, and Node debugging. Incompatible payloads are skipped, while valid interactions retain the metadata needed to resume execution.
+58. Fixed file downloads and chat log exports displaying entire JSON error responses on failure. Error messages are extracted where available, and duplicate failure notifications are avoided.
+59. Fixed Workflow Nodes retaining stale outputs when run again. Outputs missing from the current result are cleared so loops and resumed interactions do not read previous values. Required output defaults are filled only after successful execution.
+60. Fixed admin invoice dialogs losing the selected record after list refreshes, sorting, or pagination. Dialogs retain the selected record and close before refreshing the list after a successful submission. Shared pagination now preserves valid list data and clears the loading state when a response contains a non-array list.
+61. Fixed unset custom chat titles being saved as empty strings by default. The field now remains unset.
+62. Fixed uncaught child Workflow errors not reaching the parent Node when directly calling a child Workflow or Workflow Tool. Parent Nodes can read the error text through their error-catching branch, including across multiple nesting levels. Errors caught and recovered within the child do not propagate further, and original exceptions are logged only where they occur.
+63. Fixed inconsistent multimodal URL extraction and file short-link classification. Model calls and chat files now share media classification rules, with probe results cached within each request or Agent run.
+64. Fixed dropdowns staying open when dragging Workflow Nodes. Selectors, menus, date pickers, and variable reference popovers now close consistently when dragging starts.
+65. Fixed out-of-range time inputs unexpectedly advancing the date. On blur, hours are clamped to 0–23 and minutes and seconds to 0–59. Changing the date preserves the current time edits.
+66. Fixed the first-time guide remaining in its original position after opening a Workflow side panel. Opening a panel now dismisses the guide and cancels its automatic panel-opening action.
 
 ## 🛠️ Code improvements
 
@@ -153,5 +170,7 @@ This release adds the following automatic background migrations. They run indepe
 12. Fixed repeated errors when a Dataset parsing task runs out of points during processing. The task now skips the current attempt, and the team balance check pauses processing when tasks are next claimed.
 13. Fixed website Dataset synchronization continuing to crawl after model configuration errors and deleting existing pages after an incomplete crawl. Outdated page cleanup is now skipped when quota or model configuration errors stop a crawl early, the page limit truncates the crawl, a page fails to load, or completion cannot be confirmed. Final task logs now include completion status, pending page counts, and failed page counts to help troubleshoot synchronization issues.
 14. File loading tasks now log expected DNS, network connection, and user errors as warnings while still returning failures to callers. Errors involving placeholder domains and unknown failures remain at the error level to reduce unnecessary alerts.
-15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, Undici to 7.30.1, and Zod to 4.6.6, along with the MCP SDK, KaTeX, and the documentation site's Next.js dependency.
+15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, Undici to 7.30.1, and Zod to 4.6.6, along with qs, the MCP SDK, KaTeX, and the documentation site's Next.js dependency.
 16. Added request-level performance profiling, enabled only for requests with the `x-fastgpt-profile: 1` header. Business code uses `profileStage({ event, params }, fn)` to record stage durations and parameter summaries. Request durations, Mongo operations, and process resource metrics are collected in one profile, with support for OTel metrics.
+17. Added `UserConfigError` to classify failures involving personal OpenAI API keys, HTTP requests, and external MCP services. These errors retain local info logs and skip OTel log export. Workflow Node metrics use the `user_error` status to reduce system failure alert noise.
+18. Separated Workflow error-branch outputs, original exceptions, and display details, with consistent error propagation and statistics across loops, parallel runs, and child Workflows. Node observation status is retained after execution details are persisted, and resumed loops no longer let historical errors affect the current result.

@@ -21,6 +21,7 @@ type ChatRecordContextType = {
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   refreshChatRecords: () => Promise<ChatSiteItemType[]>;
+  truncateChatRecords: (dataId: string) => Promise<ChatSiteItemType[]>;
   isChatRecordsLoaded: boolean;
   totalRecordsCount: number;
   ScrollData: ({
@@ -40,6 +41,7 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
     throw new Error('Function not implemented.');
   },
   refreshChatRecords: async () => [],
+  truncateChatRecords: async () => [],
   isChatRecordsLoaded: false,
 
   ScrollData: function (
@@ -81,6 +83,9 @@ const ChatRecordContextProvider = ({
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
+    replaceDataList,
+    hasMorePrev,
+    hasMoreNext,
     ScrollData,
     isLoading,
     itemRefs,
@@ -136,12 +141,27 @@ const ChatRecordContextProvider = ({
     return response?.list ?? [];
   });
 
+  /**
+   * 服务端删除成功后裁掉目标及后续记录，同时同步分页游标。
+   * 当前窗口被删空且前面还有历史时，需要补回前文（包括 Ask/Preview）；非末尾窗口沿用刷新。
+   */
+  const truncateChatRecords = useMemoizedFn(async (dataId: string) => {
+    const index = chatRecords.findIndex((item) => item.dataId === dataId);
+    if (index < 0) throw new Error('Chat record not found');
+    if (hasMoreNext || (index === 0 && hasMorePrev)) return refreshChatRecords();
+
+    const history = chatRecords.slice(0, index);
+    replaceDataList({ list: history, hasMorePrev, hasMoreNext: false });
+    return history;
+  });
+
   const contextValue = useMemoEnhance(() => {
     return {
       isLoadingRecords: isLoading,
       chatRecords,
       setChatRecords,
       refreshChatRecords,
+      truncateChatRecords,
       ScrollData,
       isChatRecordsLoaded,
       totalRecordsCount,
@@ -152,6 +172,7 @@ const ChatRecordContextProvider = ({
     chatRecords,
     setChatRecords,
     refreshChatRecords,
+    truncateChatRecords,
     totalRecordsCount,
     ScrollData,
     isChatRecordsLoaded

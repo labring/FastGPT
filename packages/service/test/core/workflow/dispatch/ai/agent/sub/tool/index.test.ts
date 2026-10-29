@@ -120,6 +120,27 @@ const createDispatchToolProps = (
   }) as any;
 
 describe('dispatchTool runtime toolset auth', () => {
+  it.each([false, true])('preserves Agent MCP results and detects isError=%s', async (isError) => {
+    const tool = { name: 'search', description: 'Search' };
+    const nodes = [
+      { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValueOnce({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValueOnce({ nodes });
+    getMCPChildrenMock.mockResolvedValueOnce([tool]);
+    const toolResult = { isError, content: [{ type: 'text', text: 'MCP call failed' }] };
+    mcpToolCallMock.mockResolvedValueOnce(toolResult);
+
+    const result = await dispatchTool(
+      createDispatchToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.errorMessage).toBe(isError ? 'MCP call failed' : undefined);
+    expect(result.nodeResponse?.errorText).toBe(isError ? 'MCP call failed' : undefined);
+    expect(result.nodeResponse?.toolRes).toEqual(toolResult);
+    expect(JSON.parse(result.response)).toEqual(toolResult);
+  });
+
   it.each(['mcp', 'http'] as const)(
     'passes Agent %s params through without schema validation',
     async (source) => {
