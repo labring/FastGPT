@@ -6,6 +6,8 @@ import {
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 
 const axiosMock = vi.hoisted(() => vi.fn());
 const isInternalAddressMock = vi.hoisted(() => vi.fn());
@@ -133,7 +135,8 @@ describe('dispatchHttp468Request error body', () => {
 
     const result = await rejectWith(axiosError);
 
-    expect(result.rawError).toBe(axiosError);
+    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    expect((result.rawError as UserConfigError).cause).toBe(axiosError);
     const errorText = result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText;
 
     expect(errorText).toContain('Request failed with status code 400');
@@ -205,5 +208,70 @@ describe('dispatchHttp468Request error body', () => {
     expect(snippet.length).toBe(2003);
     expect(errorText).not.toContain(detail);
     expect(result.error?.[NodeOutputKeyEnum.httpRawError]?.data).toEqual({ detail });
+  });
+
+  it.each([
+    { label: 'empty URL', params: { [NodeInputKeyEnum.httpReqUrl]: '' } },
+    { label: 'invalid headers', params: { [NodeInputKeyEnum.httpHeaders]: {} } },
+    { label: 'invalid JSON body', params: { [NodeInputKeyEnum.httpJsonBody]: '{' } }
+  ])(
+    'classifies $label as a configuration failure before sending a request',
+    async ({ params }) => {
+      const props = buildProps(ContentTypes.json);
+      Object.assign(props.params, params);
+
+      await expect(dispatchHttp468Request(props)).rejects.toBeInstanceOf(UserConfigError);
+      expect(axiosMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    { label: 'SSRF refusal', blocked: true, error: PRIVATE_URL_TEXT },
+    { label: 'timeout', blocked: false, error: new Error('Request timed out') },
+    { label: 'string rejection', blocked: false, error: 'Connection refused' },
+    { label: 'empty rejection', blocked: false, error: undefined }
+  ])('classifies $label and retains its original cause', async ({ blocked, error }) => {
+    isInternalAddressMock.mockResolvedValue(blocked);
+    const result = await rejectWith(error);
+
+    expect(result.rawError).toBeInstanceOf(UserConfigError);
+    expect((result.rawError as UserConfigError).cause).toBe(error);
+    expect(result.error).toBeDefined();
+    if (blocked) expect(axiosMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps errors in successful-response processing as system failures', async () => {
+    const error = new Error('Unexpected response getter failure');
+    const data = Object.defineProperty({}, 'value', {
+      enumerable: true,
+      get() {
+        throw error;
+      }
+    });
+    axiosMock.mockResolvedValue({ data });
+    const props = buildProps(ContentTypes.json);
+    props.node.outputs = [{ id: 'value', key: 'value' }];
+
+    const result = await dispatchHttp468Request(props);
+
+    expect(result.rawError).toBe(error);
+  });
+
+  it.each([
+    { body: 'plain text', displayed: { content: 'plain text' } },
+    { body: '{"message":"ok"}', displayed: { message: 'ok' } }
+  ])('keeps a successful raw-text request normal: $body', async ({ body, displayed }) => {
+    axiosMock.mockResolvedValue({ data: { value: false } });
+    const props = buildProps(ContentTypes.raw);
+    props.params[NodeInputKeyEnum.httpJsonBody] = body;
+    props.node.outputs = [{ id: 'missing', key: 'missing' }];
+
+    const result = await dispatchHttp468Request(props);
+
+    expect(axiosMock.mock.calls[0][0].data).toBe(body);
+    expect(result.responseData?.body).toEqual(displayed);
+    expect(result.data).toMatchObject({ [NodeOutputKeyEnum.httpRawResponse]: { value: false } });
+    expect(result).not.toHaveProperty('rawError');
+    expect(result).not.toHaveProperty('error');
   });
 });

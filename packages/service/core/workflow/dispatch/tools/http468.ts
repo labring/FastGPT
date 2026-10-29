@@ -27,6 +27,7 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -91,6 +92,10 @@ type HttpResponse = DispatchNodeResultType<
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
+/**
+ * 执行用户配置的 HTTP 请求，配置校验和请求失败使用 UserConfigError 降低系统观测噪声。
+ * 错误分支保留原有 HTTP 摘要和响应体；成功响应的内部处理异常仍按系统故障上报。
+ */
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
     runningAppInfo,
@@ -117,7 +122,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   let requestUrl = httpReqUrl;
 
   if (!requestUrl) {
-    return Promise.reject('Http url is empty');
+    return Promise.reject(new UserConfigError('Http url is empty'));
   }
 
   const systemVariables = {
@@ -173,8 +178,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
         return acc;
       }, {});
-    } catch {
-      return Promise.reject('Header 为非法 JSON 格式');
+    } catch (error) {
+      return Promise.reject(
+        new UserConfigError('Header 为非法 JSON 格式', undefined, { cause: error })
+      );
     }
   })();
   const sensitiveHeaders = getSecretValue({
@@ -230,8 +237,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       // Raw text, xml
       const rawBody = replaceStringVariables(httpJsonBody);
       return rawBody.replaceAll(UNDEFINED_SIGN, 'null');
-    } catch {
-      return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
+    } catch (error) {
+      return Promise.reject(
+        new UserConfigError(`Invalid JSON body: ${httpJsonBody}`, undefined, { cause: error })
+      );
     }
   })();
 
@@ -252,16 +261,17 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   })();
 
   try {
-    const { formatResponse, rawResponse } = await (async () => {
-      return fetchData({
-        method: httpMethod,
-        url: requestUrl,
-        headers: { ...sensitiveHeaders, ...publicHeaders },
-        body: requestBody,
-        params,
-        timeout: httpTimeout
-      });
-    })();
+    // 只转换请求边界的失败，避免将后续输出处理中的内部异常一起降级。
+    const { formatResponse, rawResponse } = await fetchData({
+      method: httpMethod,
+      url: requestUrl,
+      headers: { ...sensitiveHeaders, ...publicHeaders },
+      body: requestBody,
+      params,
+      timeout: httpTimeout
+    }).catch((error: unknown) => {
+      throw new UserConfigError(getErrText(error), undefined, { cause: error });
+    });
 
     // format output value type
     const results: Record<string, any> = {};
@@ -317,7 +327,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
     });
 
-    const { rawText, ...errObj } = formatHttpError(error);
+    // 分类包装不改变 HTTP 输出字段，摘要仍从原始异常提取状态码、响应体等信息。
+    const httpError =
+      error instanceof UserConfigError && Object.hasOwn(error, 'cause') ? error.cause : error;
+    const { rawText, ...errObj } = formatHttpError(httpError);
     return getNodeErrResponse({
       error,
       errorText: rawText,

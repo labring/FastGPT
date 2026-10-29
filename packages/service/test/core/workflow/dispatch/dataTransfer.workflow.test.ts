@@ -29,14 +29,17 @@ import {
   runGraph
 } from './testUtils/workflowGraph';
 
-const { axiosMock } = vi.hoisted(() => ({ axiosMock: vi.fn() }));
+const { axiosMock, isInternalAddressMock } = vi.hoisted(() => ({
+  axiosMock: vi.fn(),
+  isInternalAddressMock: vi.fn()
+}));
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/api/axios')>()),
   axios: axiosMock
 }));
 vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/system/utils')>()),
-  isInternalAddress: vi.fn(async () => false)
+  isInternalAddress: isInternalAddressMock
 }));
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
@@ -66,6 +69,8 @@ const consumer = (id: string, references: Record<string, [string, string]>) =>
 
 beforeEach(() => {
   axiosMock.mockReset();
+  isInternalAddressMock.mockReset();
+  isInternalAddressMock.mockResolvedValue(false);
   vi.spyOn(codeSandbox, 'runCode').mockImplementation(async ({ variables }) => ({
     codeReturn: variables,
     log: ''
@@ -605,44 +610,84 @@ describe('real code and HTTP node error routes', () => {
     expect(axiosMock).toHaveBeenCalledOnce();
   });
 
-  it('exposes the HTTP failure body on the catch route without leaking raw exception fields', async () => {
-    const error = Object.assign(new Error('HTTP failure'), {
-      response: { status: 422, data: { message: 'sku missing', code: 'INVALID_SKU' } },
-      privateErrorField: 'private'
-    });
-    axiosMock.mockRejectedValueOnce(error);
-    const source = graphNode({
-      id: 'http',
-      type: FlowNodeTypeEnum.httpRequest468,
-      params: {
-        [NodeInputKeyEnum.httpReqUrl]: 'https://example.com',
-        [NodeInputKeyEnum.httpMethod]: 'GET'
-      },
-      outputs: [
-        NodeOutputKeyEnum.errorText,
-        NodeOutputKeyEnum.error,
-        NodeOutputKeyEnum.httpRawError,
-        'privateErrorField'
-      ],
-      isEntry: true,
-      catchError: true
-    });
-    const target = consumer(
-      'target',
-      Object.fromEntries(
-        source.outputs.map((output) => [output.key, ['http', output.key] as [string, string]])
-      )
-    );
-    const { result } = await runGraph({
-      nodes: [source, target],
-      edges: [graphEdge({ source: 'http', target: 'target', error: true })]
-    });
-    expect(graphValues(target).system_error_text).toContain('sku missing');
-    expect(graphValues(target).error).toContain('sku missing');
-    expect(graphValues(target).privateErrorField).toBeUndefined();
-    expect(graphValues(target)[NodeOutputKeyEnum.httpRawError]).toBeDefined();
-    expect(Object.hasOwn(result, 'rawError')).toBe(false);
-  });
+  it.each(['URL', 'Header', 'Body', 'SSRF', 'response', 'timeout'] as const)(
+    'routes an HTTP %s failure as user_error and preserves downstream error references',
+    async (kind) => {
+      const errorBody = { message: 'sku missing', code: 'INVALID_SKU' };
+      const error = Object.assign(
+        new Error(kind === 'timeout' ? 'Request timed out' : 'HTTP failure'),
+        {
+          ...(kind === 'response' ? { response: { status: 422, data: errorBody } } : {}),
+          ...(kind === 'timeout' ? { code: 'ECONNABORTED' } : {}),
+          privateErrorField: 'private'
+        }
+      );
+      const stepObservation = vi.spyOn(workflowMetrics, 'observeWorkflowStep');
+      stepObservation.mockClear();
+      axiosMock.mockRejectedValueOnce(error);
+      isInternalAddressMock.mockResolvedValue(kind === 'SSRF');
+      const source = graphNode({
+        id: 'http',
+        type: FlowNodeTypeEnum.httpRequest468,
+        params: {
+          [NodeInputKeyEnum.httpReqUrl]: kind === 'URL' ? '' : 'https://example.com',
+          [NodeInputKeyEnum.httpMethod]: 'GET',
+          [NodeInputKeyEnum.httpHeaders]: kind === 'Header' ? {} : [],
+          [NodeInputKeyEnum.httpJsonBody]: kind === 'Body' ? '{' : ''
+        },
+        outputs: [
+          NodeOutputKeyEnum.errorText,
+          NodeOutputKeyEnum.error,
+          NodeOutputKeyEnum.httpRawError,
+          'privateErrorField'
+        ],
+        isEntry: true,
+        catchError: true
+      });
+      const target = consumer(
+        'target',
+        Object.fromEntries(
+          source.outputs.map((output) => [output.key, ['http', output.key] as [string, string]])
+        )
+      );
+      const normal = consumer('normal', { error: ['http', NodeOutputKeyEnum.errorText] });
+      const { result, responses } = await runGraph({
+        nodes: [source, target, normal],
+        edges: [
+          graphEdge({ source: 'http', target: 'target', error: true }),
+          graphEdge({ source: 'http', target: 'normal' })
+        ]
+      });
+      expect(graphValues(target).system_error_text).toBeTruthy();
+      expect(responses.some((response) => response.nodeId === 'target')).toBe(true);
+      expect(responses.some((response) => response.nodeId === 'normal')).toBe(false);
+      expect(responses.find((response) => response.nodeId === 'http')?.errorCaptured).toBe(true);
+      expect(graphValues(target).privateErrorField).toBeUndefined();
+      if (kind === 'response') {
+        expect(graphValues(target).system_error_text).toContain('sku missing');
+        expect(graphValues(target).error).toContain('sku missing');
+        expect(graphValues(target)[NodeOutputKeyEnum.httpRawError]).toMatchObject({
+          data: errorBody
+        });
+      }
+      if (kind === 'timeout') {
+        expect(graphValues(target).error).toBe('Request timed out');
+        expect(graphValues(target)[NodeOutputKeyEnum.httpRawError]).toMatchObject({
+          code: 'ECONNABORTED'
+        });
+      }
+      const observationIndex = stepObservation.mock.calls.findIndex(
+        ([options]) => options.nodeType === FlowNodeTypeEnum.httpRequest468
+      );
+      expect(observationIndex).toBeGreaterThanOrEqual(0);
+      const observed = await stepObservation.mock.results[observationIndex].value;
+      expect(stepObservation.mock.calls[observationIndex][2]?.getStatus?.(observed)).toBe(
+        'user_error'
+      );
+      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    }
+  );
 });
 
 /** 每个容器使用真实子 Queue；沙箱只承担可控的远程成功/失败响应。 */
