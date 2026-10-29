@@ -16,12 +16,11 @@
     "../guide/admin/platform-console",
     "../guide/admin/sso",
     "../guide/admin/teamMode",
-    "---架构与设计方案---",
-    "...design",
     "---运维与排障---",
     "...troubleshooting",
     "migration",
-    "---版本与升级---",
-    "...upgrading"
+    "---架构与设计方案---",
+    "...design",
+    "!upgrading"
   ]
 }

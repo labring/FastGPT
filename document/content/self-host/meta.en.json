@@ -16,12 +16,11 @@
     "../guide/admin/platform-console",
     "../guide/admin/sso",
     "../guide/admin/teamMode",
-    "---Architecture and Design---",
-    "...design",
     "---Operations and Troubleshooting---",
     "...troubleshooting",
     "migration",
-    "---Versions and Upgrades---",
-    "...upgrading"
+    "---Architecture and Design---",
+    "...design",
+    "!upgrading"
   ]
 }

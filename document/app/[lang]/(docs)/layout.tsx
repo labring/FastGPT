@@ -11,7 +11,7 @@ import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
 import { MobileNav } from '@/components/docs/mobileNav';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
-import { BookOpen, Code, Handshake, Server } from 'lucide-react';
+import { BookOpen, Code, Handshake, History, Server } from 'lucide-react';
 
 export default async function Layout({
   params,
@@ -56,6 +56,12 @@ export default async function Layout({
       title: lang === 'en' ? 'Deploy and Operate' : '部署与运维',
       url: getLocalizedPath('/self-host', lang),
       urls: sectionUrls[2]
+    },
+    {
+      icon: <History className={iconClass} />,
+      title: lang === 'en' ? 'Versions & Upgrades' : '版本与升级',
+      url: getLocalizedPath('/self-host/upgrading/version-timeline', lang),
+      urls: sectionUrls[3]
     },
     {
       icon: <Handshake className={iconClass} />,

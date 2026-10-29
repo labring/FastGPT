@@ -37,7 +37,7 @@ const source = loader({ baseUrl: '/', i18n: { defaultLanguage: 'zh-CN', language
 const compatibilityLandings = new Set(['toc.mdx', 'guide/chat/htmlRendering.mdx']);
 for (const locale of ['zh-CN', 'en']) {
   const tree = source.pageTree[locale];
-  assert.equal(tree.children.length, 3, 'Three reader entrances');
+  assert.equal(tree.children.length, 4, 'Four reader entrances');
   const counts = new Map();
   const owners = new Map();
   const titles = new Map();
@@ -70,7 +70,11 @@ for (const locale of ['zh-CN', 'en']) {
   }
   assert.equal(owners.get(`/${locale}/plugin/team-installation`), tree.children[0], 'Team installation belongs to Use FastGPT');
   assert.equal(owners.get(`/${locale}/plugin/runtime`), tree.children[2], 'Plugin operations belong to Deploy and Operate');
+  assert.equal(owners.get(`/${locale}/self-host/design/dataset`), tree.children[2], 'Design documentation belongs to Deploy and Operate');
+  assert.equal(tree.children[2].children.at(-1)?.url, `/${locale}/self-host/design/dataset`, 'Design documentation sits at the bottom of Deploy and Operate');
+  assert.equal(owners.get(`/${locale}/self-host/upgrading/version-timeline`), tree.children[3], 'Version timeline belongs to Versions & Upgrades');
+  assert.equal(owners.get(`/${locale}/self-host/upgrading/upgrade-instruction`), tree.children[3], 'Upgrade instructions belong to Versions & Upgrades');
   assert.equal(owners.get(`/${locale}/guide/build/tools/system-plugins/upload_system_tool`), tree.children[0], 'System tool configuration belongs to Use FastGPT');
   assert.ok(!counts.has(`/${locale}/plugin`), 'The compatibility landing stays out of adjacent-page navigation');
-  console.log(`${locale}: ${source.getPages(locale).length} pages accounted for under three entrances.`);
+  console.log(`${locale}: ${source.getPages(locale).length} pages accounted for under four entrances.`);
 }

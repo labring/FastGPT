@@ -3,6 +3,7 @@
     "guide",
     "developers",
     "self-host",
+    "self-host/upgrading",
     "!openapi",
     "!plugin",
     "!faq",

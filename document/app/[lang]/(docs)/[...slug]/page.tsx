@@ -73,13 +73,12 @@ export default async function Page({
     }
     return undefined;
   };
+  const sectionEntryUrl = section ? findFirstPageUrl(section) : undefined;
   const rawBreadcrumbs = [
     section?.type === 'folder' && page.url !== `/${lang}/guide/getting-started`
       ? {
           name: String(section.name),
-          url: section.index
-            ? `${domain}${section.index.url}`
-            : `${domain}/${lang}/guide/getting-started`
+          url: `${domain}${sectionEntryUrl ?? `/${lang}/guide/getting-started`}`
         }
       : { name: 'FastGPT', url: `${domain}/${lang}/guide/getting-started` },
     ...(searchPath(tree.children, page.url) ?? []).flatMap((node) => {

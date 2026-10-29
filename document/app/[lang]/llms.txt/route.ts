@@ -39,7 +39,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ lan
     {
       title: isEn ? 'Deploy and Operate' : '部署与运维',
       match: (pageUrl: string) =>
-        pageUrl === `/${lang}/self-host` || pageUrl.startsWith(`/${lang}/self-host/`)
+        pageUrl === `/${lang}/self-host` ||
+        (pageUrl.startsWith(`/${lang}/self-host/`) &&
+          !pageUrl.startsWith(`/${lang}/self-host/upgrading/`))
+    },
+    {
+      title: isEn ? 'Versions & Upgrades' : '版本与升级',
+      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/self-host/upgrading/`)
     },
     {
       title: isEn ? 'FAQ' : '常见问题',

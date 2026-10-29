@@ -1,6 +1,7 @@
 {
-  "title": "版本列表",
-  "description": "FastGPT 版本列表",
+  "title": "版本与升级",
+  "description": "FastGPT 版本发布时间轴、升级说明与历史版本记录",
+  "root": true,
   "pages": [
     "version-timeline",
     "upgrade-instruction",
