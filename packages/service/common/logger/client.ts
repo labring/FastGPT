@@ -11,7 +11,9 @@ export async function configureLogger() {
   await configureLoggerFromEnv({
     env: serviceEnv,
     defaultCategory: ['system'],
-    defaultServiceName: 'fastgpt-client'
+    defaultServiceName: 'fastgpt-client',
+    // 主应用和 pro 的配置日志仍携带完整 fastgpt 对象，保留其导出保护。
+    sensitiveProperties: ['fastgpt']
   });
 }
 

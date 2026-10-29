@@ -13,7 +13,8 @@ export async function configureLogger(options: { serviceName?: string } = {}) {
   await configureLoggerFromEnv({
     env: process.env,
     defaultCategory: LogCategories.MODULE.MCP.SERVER,
-    defaultServiceName: options.serviceName || 'fastgpt-mcp-server'
+    defaultServiceName: options.serviceName || 'fastgpt-mcp-server',
+    sensitiveProperties: ['fastgpt']
   });
 }
 

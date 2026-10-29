@@ -1,17 +1,69 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
-import { getLogger } from '@fastgpt/service/common/logger/client';
+import { configureLogger, getLogger } from '@fastgpt/service/common/logger/client';
 import { LogCategories } from '@fastgpt/service/common/logger/categories';
+import { createLoggerOptionsFromEnv } from '../../../../../sdk/otel/src/logger/env';
+import { createSinks } from '../../../../../sdk/otel/src/logger/sinks';
 
 const sdk = vi.hoisted(() => {
   vi.resetModules();
-  return { getLogger: vi.fn() };
+  return { getLogger: vi.fn(), configureLoggerFromEnv: vi.fn(), otel: vi.fn() };
 });
 vi.mock('@fastgpt-sdk/otel/logger', () => ({
   getLogger: sdk.getLogger,
-  configureLoggerFromEnv: vi.fn(),
+  configureLoggerFromEnv: sdk.configureLoggerFromEnv,
   disposeLogger: vi.fn()
 }));
+vi.mock('../../../../../sdk/otel/src/logger/otel', () => ({
+  getOpenTelemetrySink: () => sdk.otel
+}));
+
+describe('configureLogger', () => {
+  it('keeps application and pro configuration logs out of OTel while exporting normal logs', async () => {
+    await configureLogger();
+    const options = createLoggerOptionsFromEnv({
+      ...sdk.configureLoggerFromEnv.mock.calls[0][0],
+      env: { LOG_ENABLE_OTEL: true, LOG_OTEL_LEVEL: 'info' }
+    });
+    const { sinks } = await createSinks({ ...options, console: false });
+    const config = {
+      systemEnv: {
+        customPdfParse: {
+          key: 'test-pdf-key',
+          somarkApiKey: 'test-somark-key',
+          doc2xKey: 'test-doc2x-key',
+          textinSecretCode: 'test-textin-secret'
+        }
+      }
+    };
+    const record = {
+      category: ['system'],
+      level: 'info' as const,
+      message: ['System ready'],
+      rawMessage: 'System ready',
+      timestamp: 0,
+      properties: { ready: true }
+    };
+
+    // 对应主应用启动、pro 启动和配置刷新，均未显式设置 otel: false。
+    for (const message of [
+      'System config loaded',
+      'Pro system config loaded',
+      'PRO system config refreshed'
+    ]) {
+      sinks.otel?.({
+        ...record,
+        message: [message],
+        rawMessage: message,
+        properties: { fastgpt: config, fastgptPro: { token: 'test-pro-token' } }
+      });
+    }
+    expect(sdk.otel).not.toHaveBeenCalled();
+
+    sinks.otel?.(record);
+    expect(sdk.otel).toHaveBeenCalledExactlyOnceWith(record);
+  });
+});
 
 const createBackend = () => ({
   category: LogCategories.MODULE.WORKFLOW.DISPATCH,

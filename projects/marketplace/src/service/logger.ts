@@ -16,7 +16,8 @@ export async function configureLogger() {
   await configureLoggerFromEnv({
     env: marketplaceEnv,
     defaultCategory: LogCategories.SYSTEM,
-    defaultServiceName: 'fastgpt-marketplace'
+    defaultServiceName: 'fastgpt-marketplace',
+    sensitiveProperties: ['fastgpt']
   });
 }
 
