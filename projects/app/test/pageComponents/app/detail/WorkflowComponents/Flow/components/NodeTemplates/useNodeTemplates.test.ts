@@ -227,4 +227,46 @@ describe('useNodeTemplates parent type routing', () => {
     });
     expect(mocks.getTeamAppTemplatesV2).not.toHaveBeenCalled();
   });
+
+  it('requests system tools exactly once when switching to the tab', () => {
+    mocks.getAppToolTemplates.mockResolvedValue([]);
+    let state = renderHook();
+
+    state = updateState(state, () => state.onUpdateTemplateType(TemplateTypeEnum.systemTools));
+
+    expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(1);
+  });
+
+  it('debounces only search key changes and requests other changes immediately', () => {
+    vi.useFakeTimers();
+    try {
+      mocks.getAppToolTemplates.mockResolvedValue([]);
+      let state = renderHook();
+      state = updateState(state, () => state.onUpdateTemplateType(TemplateTypeEnum.systemTools));
+      expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(1);
+
+      state = updateState(state, () => state.setSearchKey('abc'));
+      expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(300);
+      expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(2);
+      expect(mocks.getAppToolTemplates).toHaveBeenLastCalledWith(
+        expect.objectContaining({ searchKey: 'abc' })
+      );
+
+      // Entering a toolset resets the search key; it must load immediately without waiting.
+      state = updateState(state, () => state.onUpdateParentId('system-set', 'system'));
+      expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(3);
+      expect(mocks.getAppToolTemplates).toHaveBeenLastCalledWith({
+        parentId: 'system-set',
+        source: 'system',
+        searchKey: '',
+        tags: []
+      });
+
+      state = updateState(state, () => state.setSelectedTagIds(['search']));
+      expect(mocks.getAppToolTemplates).toHaveBeenCalledTimes(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
