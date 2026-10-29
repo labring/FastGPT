@@ -140,6 +140,9 @@ export const isTrustedOriginUrl = (url: string, trustedOrigin?: string) => {
  * 该函数用于文档解析链路中转存 markdown http 图片，因此默认限制为 180 秒和 10MB：
  * 先用 Content-Length 快速拒绝明显超限的资源，下载过程中再按累计字节数中断，避免
  * 第三方图片拖住解析任务或把大响应一次性读进内存。
+ *
+ * 可信 origin 通道关闭自动重定向：safe axios 的每一跳都会做内网校验，而无 SSRF 通道
+ * 一旦跟随 3xx 就会把“只放行配置 origin”扩大成任意地址，因此这里宁可让重定向失败。
  */
 export const getImageBuffer = async (
   url: string,
@@ -155,13 +158,24 @@ export const getImageBuffer = async (
   try {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
     const maxSize = options.maxSize ?? DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE;
-    const requestClient = isTrustedOriginUrl(url, options.trustedOrigin) ? axiosWithoutSSRF : axios;
+    const isTrustedOrigin = isTrustedOriginUrl(url, options.trustedOrigin);
+    const requestClient = isTrustedOrigin ? axiosWithoutSSRF : axios;
     const response = await requestClient.get(url, {
       baseURL: serverRequestBaseUrl,
       responseType: 'stream',
       timeout: timeoutMs,
-      maxContentLength: maxSize
+      maxContentLength: maxSize,
+      // 不跟随 3xx：跨 origin 跳转会绕开内网校验，同 origin 跳转也不值得放开。
+      ...(isTrustedOrigin ? { maxRedirects: 0 } : {})
     });
+
+    // 可信通道不跟随重定向时，3xx 会作为普通响应返回；必须显式拒绝，
+    // 否则会把跳转响应当成图片内容继续读取。
+    const status = response?.status ?? 0;
+    if (status < 200 || status >= 300) {
+      response.data?.destroy?.();
+      throw new Error(`Unexpected image response status: ${status}`);
+    }
 
     const contentLength = Number(getAxiosHeaderValue(response?.headers?.['content-length']) || 0);
     if (contentLength > maxSize) {

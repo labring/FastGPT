@@ -20,6 +20,7 @@ vi.mock('@fastgpt/service/common/api/serverRequest', () => ({
 }));
 
 const createStreamResponse = () => ({
+  status: 200,
   headers: { 'content-length': '4', 'content-type': 'image/png' },
   data: Readable.from([Buffer.from([0x89, 0x50, 0x4e, 0x47])])
 });
