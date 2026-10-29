@@ -11,11 +11,20 @@ const mocks = vi.hoisted(() => ({
   getChatHistories: vi.fn(),
   getInitChatInfo: vi.fn(),
   clearChatRecords: vi.fn(),
-  setChatBoxData: vi.fn()
+  setChatBoxData: vi.fn(),
+  loadChatAgentConfig: vi.fn(),
+  onApply: vi.fn(),
+  toast: vi.fn(),
+  versionActions: undefined as
+    | { isApplying: boolean; applyConfig: (id: string) => void }
+    | undefined
 }));
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('@/components/core/chat/ChatAgentHelper/api', () => ({
+  loadChatAgentConfig: mocks.loadChatAgentConfig
+}));
 vi.mock('@/web/core/chat/history/api', () => ({
   batchDeleteChatHistories: mocks.batchDeleteChatHistories,
   getChatHistories: mocks.getChatHistories
@@ -31,7 +40,16 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox', () => ({
 vi.mock('@/web/core/chat/context/chatItemContext', async () => {
   const { createContext } = await import('use-context-selector');
   return {
-    default: ({ children }: { children: React.ReactNode }) => children,
+    default: ({
+      children,
+      chatAgentBuilderVersionActions
+    }: {
+      children: React.ReactNode;
+      chatAgentBuilderVersionActions: typeof mocks.versionActions;
+    }) => {
+      mocks.versionActions = chatAgentBuilderVersionActions;
+      return children;
+    },
     ChatItemContext: createContext({
       setChatBoxData: mocks.setChatBoxData,
       clearChatRecords: mocks.clearChatRecords
@@ -53,7 +71,7 @@ vi.mock('@chakra-ui/react', () => {
   };
 });
 
-describe('ChatAgentHelper new conversation', () => {
+describe('ChatAgentHelper', () => {
   let dom: JSDOM;
   let root: Root;
   let ChatAgentHelper: typeof import('@/components/core/chat/ChatAgentHelper').default;
@@ -69,7 +87,7 @@ describe('ChatAgentHelper new conversation', () => {
           appId: 'app-1',
           type: ChatAgentHelperTypeEnum.chatAgent,
           metadata: {},
-          onApply: vi.fn()
+          onApply: mocks.onApply
         })
       );
     });
@@ -78,6 +96,7 @@ describe('ChatAgentHelper new conversation', () => {
   beforeEach(async () => {
     vi.resetAllMocks();
     mocks.getInitChatInfo.mockResolvedValue({});
+    mocks.loadChatAgentConfig.mockResolvedValue({ formData: { tools: [] } });
     mocks.getChatHistories.mockResolvedValue({ list: [{ chatId: 'server-chat' }], total: 1 });
     dom = new JSDOM('<div id="root"></div>', { url: 'https://fastgpt.example.com' });
     vi.stubGlobal('window', dom.window);
@@ -185,4 +204,47 @@ describe('ChatAgentHelper new conversation', () => {
     expect(chatBoxData.chatId).toBe(newChatId);
     expect(chatBoxData.title).not.toBe('旧会话标题');
   });
+
+  it('notifies only after the configuration finishes applying, including reapplications', async () => {
+    let resolve!: () => void;
+    mocks.onApply.mockReturnValueOnce(
+      new Promise<void>((done) => {
+        resolve = done;
+      })
+    );
+    await render();
+    await act(async () => mocks.versionActions!.applyConfig('response-1'));
+    expect(mocks.loadChatAgentConfig).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      chatId: 'saved-chat',
+      responseChatItemId: 'response-1'
+    });
+    expect(mocks.onApply).toHaveBeenCalledExactlyOnceWith({ tools: [] });
+    expect(mocks.toast).not.toHaveBeenCalled();
+    await act(async () => resolve());
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'success',
+      title: 'app:chat_agent_config_applied'
+    });
+    await act(async () => mocks.versionActions!.applyConfig('response-1'));
+    expect(mocks.onApply).toHaveBeenCalledTimes(2);
+    expect(mocks.toast).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['load', 'apply'] as const)(
+    'does not notify success when %s fails and permits retry',
+    async (stage) => {
+      if (stage === 'load')
+        mocks.loadChatAgentConfig.mockRejectedValueOnce(new Error('load failed'));
+      else mocks.onApply.mockRejectedValueOnce(new Error('apply failed'));
+      await render();
+      await act(async () => mocks.versionActions!.applyConfig('response-1'));
+      expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
+      await act(async () => mocks.versionActions!.applyConfig('response-1'));
+      expect(mocks.toast).toHaveBeenLastCalledWith({
+        status: 'success',
+        title: 'app:chat_agent_config_applied'
+      });
+    }
+  );
 });

@@ -16,6 +16,7 @@ import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryG
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { useAppBuilderChat } from '@/web/core/chat/useAppBuilderChat';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -175,7 +176,8 @@ const ChatAgentHelperChatBox = ({
 };
 
 const ChatAgentHelper = (props: ChatAgentHelperProps) => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'app']);
+  const { toast } = useToast();
   const showRunDetail = useSystemStore(
     (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
   );
@@ -213,6 +215,7 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
           responseChatItemId
         });
         await props.onApply(formData);
+        toast({ status: 'success', title: t('app:chat_agent_config_applied') });
       } finally {
         applyingConfigRef.current = false;
       }
