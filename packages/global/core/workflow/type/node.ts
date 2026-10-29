@@ -30,7 +30,8 @@ export type McpToolSetRuntimeConfigType = z.infer<typeof McpToolSetRuntimeConfig
 export const McpToolSetNodeConfigSchema = z
   .object({
     url: z.string().meta({
-      description: 'MCP 服务地址'
+      description: 'MCP 服务地址',
+      example: 'https://mcp.example.com/sse'
     }),
     headerSecret: StoreSecretValueTypeSchema.nullish().meta({
       description: 'MCP 服务请求头密钥配置'
@@ -67,10 +68,12 @@ export const HttpToolSetNodeConfigSchema = z
       description: 'HTTP 工具名称与描述摘要'
     }),
     apiSchemaUrl: z.string().optional().meta({
-      description: 'HTTP 工具集 OpenAPI 文档地址'
+      description: 'HTTP 工具集 OpenAPI 文档地址',
+      example: 'https://api.example.com/openapi.json'
     }),
     baseUrl: z.string().optional().meta({
-      description: 'HTTP 工具集请求基础地址'
+      description: 'HTTP 工具集请求基础地址',
+      example: 'https://gateway.example.com/v2'
     }),
     customHeaders: z.string().optional().meta({
       description: 'HTTP 工具集公共请求头 JSON 字符串'
@@ -84,7 +87,8 @@ export type HttpToolSetNodeConfigType = z.infer<typeof HttpToolSetNodeConfigSche
 
 export const HttpToolRuntimeConfigSchema = HttpToolConfigTypeSchema.extend({
   baseUrl: z.string().optional().meta({
-    description: 'HTTP 工具集请求基础地址'
+    description: 'HTTP 工具集请求基础地址',
+    example: 'https://api.example.com'
   }),
   apiSchemaStr: z.string().optional().meta({
     description: 'HTTP 工具集导入的 OpenAPI Schema 原始内容'
@@ -113,7 +117,8 @@ export const ToolSetPreviewReferenceSchema = ToolSetReferenceSchema.extend({
 
 export const McpToolRuntimeConfigSchema = McpToolConfigSchema.extend({
   url: z.string().meta({
-    description: 'MCP 服务地址'
+    description: 'MCP 服务地址',
+    example: 'https://mcp.example.com/sse'
   }),
   headerSecret: StoreSecretValueTypeSchema.nullish().meta({
     description: 'MCP 服务请求头密钥配置'
