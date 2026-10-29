@@ -35,6 +35,7 @@ This release adds the following automatic background migrations. They run indepe
 - The default marketplace URL (`MARKETPLACE_URL`) is now `https://v3.marketplace.fastgpt.cn`. Explicitly configured custom URLs keep their existing value.
 - Removed `DEFAULT_ROOT_PSW`. Startup no longer overwrites an existing root password. New root accounts use `123456` initially and must set a new password after login to activate the account. Existing root accounts without a stored `status` also enter activation while keeping their current password. Change passwords from the account information page. If you forget the password, use the root password reset script and explicitly provide a new password.
 - The Workflow canvas now uses shared [orchestration validation rules](/en/guide/build/workflow/rules), with added checks that block unconditional cycles, connections across Tool workflows, and Tool entries shared by multiple callers. Feedback through valid conditional outputs is allowed. Existing connections are preserved when opening older Workflows, and drafts can still be saved, but invalid connections must be fixed before debugging or publishing.
+- API requests classified as user configuration errors now return HTTP 400 while preserving the user-facing error message. Integrations should handle these as failed requests.
 
 ## 🚀 New features
 
@@ -85,6 +86,7 @@ This release adds the following automatic background migrations. They run indepe
 25. HTTP request Nodes and HTTP Tools now include response bodies in error messages for non-2xx responses, making failures easier to troubleshoot.
 26. App, Skill, and Dataset lists now support targeted refreshes by resource ID. Changes to collaborators, ownership, or permission inheritance update the corresponding cards while preserving loaded pages and scroll position, reducing repeated loading.
 27. Agent Dataset search logs now expose candidates before reranking through `retrievalResults`, matching Dataset search Nodes. Candidates are recorded only when reranking is used and `RETRIEVAL_RESULTS_LIMIT > 0`, allowing recall and reranking results to be compared. Recording is off by default.
+28. HTTP 429 responses from external MCP services no longer trigger an automatic fallback to SSE. The original rate limit error is preserved, avoiding duplicate connection requests.
 
 ## 🐛 Fixes
 
@@ -144,6 +146,11 @@ This release adds the following automatic background migrations. They run indepe
 54. Fixed App test chat and Workflow debug endpoints requiring only Read permission. App Edit permission is now required before executing Node definitions supplied in the request.
 55. Fixed text preview truncation splitting UTF-16 surrogate pairs in emoji and other characters, producing garbled text. A trailing length of 0 no longer appends the entire text again.
 56. Fixed tiered model billing treating `maxInputTokens=0` as unlimited. Only a missing upper bound now defines an open-ended tier.
+57. Fixed legacy or incomplete interactive records causing rendering errors in chats, resumed streams, assisted generation previews, and Node debugging. Incompatible payloads are skipped, while valid interactions retain the metadata needed to resume execution.
+58. Fixed file downloads and chat log exports displaying entire JSON error responses on failure. Error messages are extracted where available, and duplicate failure notifications are avoided.
+59. Fixed Workflow Nodes retaining stale outputs when run again. Outputs missing from the current result are cleared so loops and resumed interactions do not read previous values. Required output defaults are filled only after successful execution.
+60. Fixed admin invoice dialogs losing the selected record after list refreshes, sorting, or pagination. Dialogs retain the selected record and close before refreshing the list after a successful submission. Shared pagination now preserves valid list data and clears the loading state when a response contains a non-array list.
+61. Fixed unset custom chat titles being saved as empty strings by default. The field now remains unset.
 
 ## 🛠️ Code improvements
 
@@ -163,3 +170,5 @@ This release adds the following automatic background migrations. They run indepe
 14. File loading tasks now log expected DNS, network connection, and user errors as warnings while still returning failures to callers. Errors involving placeholder domains and unknown failures remain at the error level to reduce unnecessary alerts.
 15. Updated Multer to 2.5.0, Nodemailer to 10.1.4, Undici to 7.30.1, and Zod to 4.6.6, along with qs, the MCP SDK, KaTeX, and the documentation site's Next.js dependency.
 16. Added request-level performance profiling, enabled only for requests with the `x-fastgpt-profile: 1` header. Business code uses `profileStage({ event, params }, fn)` to record stage durations and parameter summaries. Request durations, Mongo operations, and process resource metrics are collected in one profile, with support for OTel metrics.
+17. Added `UserConfigError` to classify failures involving personal OpenAI API keys, HTTP requests, and external MCP services. These errors retain local info logs and skip OTel log export. Workflow Node metrics use the `user_error` status to reduce system failure alert noise.
+18. Separated Workflow error-branch outputs, original exceptions, and display details, with consistent error propagation and statistics across loops, parallel runs, and child Workflows. Node observation status is retained after execution details are persisted, and resumed loops no longer let historical errors affect the current result.
