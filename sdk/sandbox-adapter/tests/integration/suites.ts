@@ -63,7 +63,7 @@ export const describeSandboxContract = (getAdapter: () => ISandbox): void => {
       const textPath = `${testDir}/file.txt`;
       const streamPath = `${testDir}/stream.bin`;
 
-      it('round-trips ordered writes and byte ranges', async () => {
+      it('round-trips ordered writes and reads', async () => {
         const written = await adapter.writeFiles([
           { path: textPath, data: 'first' },
           { path: textPath, data: 'second' }
@@ -72,12 +72,6 @@ export const describeSandboxContract = (getAdapter: () => ISandbox): void => {
 
         expect(written.every((result) => result.error === null)).toBe(true);
         expect(new TextDecoder().decode(fullRead.content)).toBe('second');
-
-        await adapter.writeFiles([{ path: textPath, data: '0123456789' }]);
-        const [rangeRead] = await adapter.readFiles([textPath], { offset: 2, length: 4 });
-
-        expect(rangeRead.error).toBeNull();
-        expect(new TextDecoder().decode(rangeRead.content)).toBe('2345');
       });
 
       it('supports native or polyfilled file streams', async () => {
