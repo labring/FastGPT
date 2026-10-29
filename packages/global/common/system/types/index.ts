@@ -199,9 +199,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_workflow_builder: BoolSchema.optional().meta({
     description: '是否展示工作流 AI 辅助构建入口'
   }),
-  showAuxiliaryGenerationRunDetail: BoolSchema.optional().meta({
-    description: '是否展示辅助生成运行详情，由 AUXILIARY_GENERATION_SHOW_RUN_DETAIL 控制'
-  }),
   show_agent_sandbox_free_tip: z
     .boolean()
     .optional()

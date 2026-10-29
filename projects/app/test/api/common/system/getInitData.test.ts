@@ -8,6 +8,9 @@ import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/s
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const originalShowRunDetail = serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
 
 // 公开字段和值只维护一份；精确响应断言同时验证保留值和顶层、嵌套字段过滤。
 const publicConfig = {
@@ -63,7 +66,8 @@ const expectedAuthenticatedConfig = () => ({
   show_pay: true,
   payConfig: { wx: true, alipay: true },
   payFormUrl: 'https://pay.example.com',
-  teamMode: 'sync'
+  teamMode: 'sync',
+  showAuxiliaryGenerationRunDetail: false
 });
 
 const channel = {
@@ -76,6 +80,7 @@ const channel = {
 describe('getInitData anonymous configuration filtering', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
     global.systemInitBufferId = 'config-1';
     global.systemVersion = '4.17.3';
     global.systemEnv = { ...global.systemEnv, sso: { url: 'https://sso.internal.example.com' } };
@@ -110,6 +115,7 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   afterEach(() => {
+    serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = originalShowRunDetail;
     vi.restoreAllMocks();
   });
 
@@ -133,9 +139,11 @@ describe('getInitData anonymous configuration filtering', () => {
   });
 
   it.each([false, true])(
-    'returns auxiliary generation detail switch %s only to members',
+    'returns environment detail switch %s only to members regardless of stored config',
     async (enabled) => {
-      global.feConfigs.showAuxiliaryGenerationRunDetail = enabled;
+      serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = enabled;
+      global.feConfigs.showAuxiliaryGenerationRunDetail = !enabled;
+      const originalConfig = structuredClone(global.feConfigs);
       for (const bufferId of [undefined, 'config-1']) {
         const { code, data } = await Call(handler, { auth, headers: {}, query: { bufferId } });
         expect(code).toBe(200);
@@ -143,6 +151,7 @@ describe('getInitData anonymous configuration filtering', () => {
       }
       const { data } = await Call(handler, { headers: {} });
       expect(data.feConfigs).not.toHaveProperty('showAuxiliaryGenerationRunDetail');
+      expect(global.feConfigs).toEqual(originalConfig);
     }
   );
 
