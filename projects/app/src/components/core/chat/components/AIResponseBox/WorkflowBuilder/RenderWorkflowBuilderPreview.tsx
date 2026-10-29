@@ -10,7 +10,8 @@ const RenderWorkflowBuilderPreview = ({
 }: {
   interactive: WorkflowBuilderPreviewInteractive;
 }) => {
-  const payload = parseWorkflowBuilderPreviewArguments(interactive.params.arguments);
+  // 历史交互可能缺少 params 或仍使用旧结构，统一解析失败后跳过，避免阻断会话打开。
+  const payload = parseWorkflowBuilderPreviewArguments(interactive.params?.arguments);
   if (!payload) return null;
   const { mermaid, sections } = payload;
 

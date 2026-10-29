@@ -12,6 +12,7 @@ import {
 import {
   isAgentAskInteractive,
   isAskInteractive,
+  isValidInteractive,
   extractDeepestInteractive
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -304,6 +305,7 @@ export const shouldAppendResumeInteractive = ({
   incomingInteractive: WorkflowInteractiveResponseType;
 }) => {
   const incomingFinalInteractive = extractDeepestInteractive(incomingInteractive);
+  if (!isValidInteractive(incomingFinalInteractive)) return false;
   const lastExistingInteractive = existingValues[existingValues.length - 1]?.interactive;
 
   if (!lastExistingInteractive) return true;
@@ -325,6 +327,7 @@ const areSameInteractive = (
   const finalA = extractDeepestInteractive(a);
   const finalB = extractDeepestInteractive(b);
 
+  if (!isValidInteractive(finalA) || !isValidInteractive(finalB)) return false;
   if (finalA.type !== finalB.type) return false;
 
   // 同一工作流节点可连续提问，必须按本次 Ask/Preview 的 ID 区分，不能复用上一轮答案。
@@ -348,7 +351,9 @@ const areSameInteractive = (
 
 /** 已提交交互不能被恢复流重放的未提交快照覆盖。 */
 const isSubmittedFormInteractive = (interactive: WorkflowInteractiveResponseType) =>
-  interactive.type === 'userInput' && !!interactive.params.submitted;
+  isValidInteractive(interactive) &&
+  interactive.type === 'userInput' &&
+  !!interactive.params.submitted;
 
 /**
  * 将 current 侧已提交的表单交互写回 completed 侧同身份交互节点。
@@ -378,7 +383,7 @@ const mergeSubmittedFormValues = ({
     if (!value.interactive) return value;
 
     const finalInteractive = extractDeepestInteractive(value.interactive);
-    if (finalInteractive.type !== 'userInput') {
+    if (!isValidInteractive(finalInteractive) || finalInteractive.type !== 'userInput') {
       return value;
     }
 

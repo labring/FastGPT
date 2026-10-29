@@ -7,6 +7,7 @@ import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/
 import type { ChatItemObjItemType } from '@fastgpt/global/core/chat/type';
 import {
   extractDeepestInteractive,
+  isValidInteractive,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 
@@ -169,7 +170,7 @@ export const isWorkflowBuilderVersionGenerating = ({
 
       if (!value.interactive) return;
       const interactive = extractDeepestInteractive(value.interactive);
-      if (interactive.type === 'workflowBuilderPreview') {
+      if (isValidInteractive(interactive) && interactive.type === 'workflowBuilderPreview') {
         latestPreviewOrder = valueOrder;
       }
     });

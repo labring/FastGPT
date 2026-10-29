@@ -525,7 +525,7 @@ const ChatBox = ({
     : undefined;
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
   const activeAsk = isAgentAskInteractive(activeInteractive)
-    ? parseAgentAskArguments(activeInteractive.params.arguments)
+    ? parseAgentAskArguments(activeInteractive.params?.arguments)
     : undefined;
   const isWorkflowBuilderPreviewPending = isPendingWorkflowBuilderPreview(lastInteractive);
   const isBlockingInteractivePending = isAgentAskPending || isWorkflowBuilderPreviewPending;

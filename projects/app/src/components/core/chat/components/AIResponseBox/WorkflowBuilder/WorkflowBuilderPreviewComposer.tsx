@@ -23,8 +23,8 @@ export const WorkflowBuilderPreviewComposer = React.memo(function WorkflowBuilde
   const [submittedValue, setSubmittedValue] = useState('');
   const isSubmitted = !!submittedValue;
   const payload = useMemo(
-    () => parseWorkflowBuilderPreviewArguments(interactive.params.arguments),
-    [interactive.params.arguments]
+    () => parseWorkflowBuilderPreviewArguments(interactive.params?.arguments),
+    [interactive.params?.arguments]
   );
   const question = useMemo<AgentAskQuestion>(
     () => ({
