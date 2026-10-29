@@ -18,62 +18,27 @@ const LegacyToolSetPreviewReferenceSchema = ToolSetPreviewReferenceSchema.extend
   toolList: z.array(ToolSetToolSummarySchema.strict()).optional()
 }).strict();
 
+/** 判断历史输入是否为可安全读取字段的非数组对象。 */
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// 旧 MCP App 曾保存空 toolId 占位；仅在 legacy 边界剔除，其他字段仍严格校验。
+export const LegacyMcpToolSetRuntimeConfigSchema = z.preprocess((value) => {
+  if (!isRecord(value) || value.toolId !== '') return value;
+  const config = { ...value };
+  delete config.toolId;
+  return config;
+}, McpToolSetRuntimeConfigSchema.strict());
 
 const CurrentNodeToolSetSchemas = {
   mcpToolSet: McpToolSetNodeConfigSchema,
   httpToolSet: HttpToolSetNodeConfigSchema
 };
 const LegacyToolSetRuntimeSchemas = {
-  mcpToolSet: McpToolSetRuntimeConfigSchema,
-  httpToolSet: HttpToolSetRuntimeConfigSchema
+  mcpToolSet: LegacyMcpToolSetRuntimeConfigSchema,
+  httpToolSet: HttpToolSetRuntimeConfigSchema.strict()
 };
 const ToolSetKeys = ['mcpToolSet', 'httpToolSet'] as const;
-
-/** 历史外部引用归一为资源摘要；工具集 App RuntimeConfig 保留完整工具 Schema。 */
-const normalizeLegacyToolSetNode = (value: unknown) => {
-  if (!isRecord(value)) return value;
-  if (value.flowNodeType !== FlowNodeTypeEnum.toolSet) return value;
-  if (!isRecord(value.toolConfig)) return value;
-
-  const toolConfig = { ...value.toolConfig };
-  ToolSetKeys.forEach((key) => {
-    const toolSet = toolConfig[key];
-    if (!isRecord(toolSet)) return;
-
-    if (value.pluginId) {
-      const nestedToolId =
-        typeof toolSet.toolId === 'string' && toolSet.toolId ? toolSet.toolId : undefined;
-      // pluginId 决定引用模式；嵌套 ID 是规范资源 ID，旧快照缺失时才从父节点补齐。
-      const toolId =
-        nestedToolId ?? (typeof value.pluginId === 'string' ? value.pluginId : undefined);
-      const toolList = Array.isArray(toolSet.toolList)
-        ? toolSet.toolList.flatMap((tool) =>
-            isRecord(tool) && typeof tool.name === 'string' && typeof tool.description === 'string'
-              ? [{ name: tool.name, description: tool.description }]
-              : []
-          )
-        : undefined;
-      toolConfig[key] = LegacyToolSetPreviewReferenceSchema.parse({
-        ...(toolId ? { toolId } : {}),
-        ...(toolList ? { toolList } : {})
-      });
-      return;
-    }
-
-    const nodeConfig = CurrentNodeToolSetSchemas[key].safeParse(toolSet);
-    if (nodeConfig.success) {
-      toolConfig[key] = nodeConfig.data;
-      return;
-    }
-
-    const runtimeConfig = LegacyToolSetRuntimeSchemas[key].strict().safeParse(toolSet);
-    if (runtimeConfig.success) toolConfig[key] = runtimeConfig.data;
-  });
-
-  return { ...value, toolConfig };
-};
 
 /** Historical chat config is only accepted at the workflow migration boundary. */
 const LegacyAppChatConfigSchema = AppChatConfigTypeSchema.omit({ questionGuide: true }).extend({
@@ -132,9 +97,7 @@ export const LegacyStoreNodeItemSchema = z
     }
     if (value.pluginId) return;
     if (
-      ToolSetKeys.some(
-        (key) => LegacyToolSetRuntimeSchemas[key].strict().safeParse(toolConfig[key]).success
-      )
+      ToolSetKeys.some((key) => LegacyToolSetRuntimeSchemas[key].safeParse(toolConfig[key]).success)
     ) {
       return;
     }
@@ -149,7 +112,51 @@ export const LegacyStoreNodeItemSchema = z
       });
     });
   })
-  .transform(normalizeLegacyToolSetNode)
+  .transform((value) => {
+    // 历史外部引用归一为资源摘要；工具集 App RuntimeConfig 保留完整工具 Schema。
+    if (!isRecord(value)) return value;
+    if (value.flowNodeType !== FlowNodeTypeEnum.toolSet) return value;
+    if (!isRecord(value.toolConfig)) return value;
+
+    const toolConfig = { ...value.toolConfig };
+    ToolSetKeys.forEach((key) => {
+      const toolSet = toolConfig[key];
+      if (!isRecord(toolSet)) return;
+
+      if (value.pluginId) {
+        const nestedToolId =
+          typeof toolSet.toolId === 'string' && toolSet.toolId ? toolSet.toolId : undefined;
+        // pluginId 决定引用模式；嵌套 ID 是规范资源 ID，旧快照缺失时才从父节点补齐。
+        const toolId =
+          nestedToolId ?? (typeof value.pluginId === 'string' ? value.pluginId : undefined);
+        const toolList = Array.isArray(toolSet.toolList)
+          ? toolSet.toolList.flatMap((tool) =>
+              isRecord(tool) &&
+              typeof tool.name === 'string' &&
+              typeof tool.description === 'string'
+                ? [{ name: tool.name, description: tool.description }]
+                : []
+            )
+          : undefined;
+        toolConfig[key] = LegacyToolSetPreviewReferenceSchema.parse({
+          ...(toolId ? { toolId } : {}),
+          ...(toolList ? { toolList } : {})
+        });
+        return;
+      }
+
+      const nodeConfig = CurrentNodeToolSetSchemas[key].safeParse(toolSet);
+      if (nodeConfig.success) {
+        toolConfig[key] = nodeConfig.data;
+        return;
+      }
+
+      const runtimeConfig = LegacyToolSetRuntimeSchemas[key].safeParse(toolSet);
+      if (runtimeConfig.success) toolConfig[key] = runtimeConfig.data;
+    });
+
+    return { ...value, toolConfig };
+  })
   .pipe(LegacyStoreNodeItemBaseSchema);
 export type LegacyStoreNodeItem = z.infer<typeof LegacyStoreNodeItemSchema>;
 

@@ -64,9 +64,6 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     description: '工作流节点输入配置'
   });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
@@ -229,52 +226,46 @@ const PersistedOpenAPIStoreNodeItemTypeBaseSchema = OpenAPIStoreNodeItemTypeSche
   })
 });
 
-const validatePersistedToolSetReference = ({
-  node,
-  ctx
-}: {
-  node: { flowNodeType?: string; pluginId?: string; toolConfig?: unknown };
-  ctx: z.RefinementCtx;
-}) => {
-  const { pluginId } = node;
-  const toolConfig = isRecord(node.toolConfig) ? node.toolConfig : undefined;
-  if (
-    node.flowNodeType === FlowNodeTypeEnum.toolSet &&
-    toolConfig?.mcpToolSet &&
-    toolConfig.httpToolSet
-  ) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['toolConfig', 'httpToolSet'],
-      message: '工具集节点只能配置 MCP 或 HTTP 工具集'
-    });
-  }
-
-  (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
-    const toolSet = toolConfig?.[key];
-    if (!toolSet) return;
-
-    const reference = ToolSetPreviewReferenceSchema.safeParse(toolSet);
-    const isInlineConfig =
-      key === 'mcpToolSet'
-        ? McpToolSetNodeConfigSchema.safeParse(toolSet).success
-        : HttpToolSetNodeConfigSchema.safeParse(toolSet).success;
-    const isValid = pluginId ? reference.success : isInlineConfig;
-
-    if (!isValid) {
+export const PersistedOpenAPIStoreNodeItemTypeSchema =
+  PersistedOpenAPIStoreNodeItemTypeBaseSchema.superRefine((node, ctx) => {
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null && !Array.isArray(value);
+    const { pluginId } = node;
+    const toolConfig = isRecord(node.toolConfig) ? node.toolConfig : undefined;
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      toolConfig?.mcpToolSet &&
+      toolConfig.httpToolSet
+    ) {
       ctx.addIssue({
         code: 'custom',
-        path: ['toolConfig', key],
-        message: pluginId ? '外部工具集节点必须使用工具集引用配置' : '节点内工具集必须使用完整配置'
+        path: ['toolConfig', 'httpToolSet'],
+        message: '工具集节点只能配置 MCP 或 HTTP 工具集'
       });
     }
-  });
-};
 
-export const PersistedOpenAPIStoreNodeItemTypeSchema =
-  PersistedOpenAPIStoreNodeItemTypeBaseSchema.superRefine((node, ctx) =>
-    validatePersistedToolSetReference({ node, ctx })
-  ).meta({ description: '持久化应用工作流节点配置' });
+    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+      const toolSet = toolConfig?.[key];
+      if (!toolSet) return;
+
+      const reference = ToolSetPreviewReferenceSchema.safeParse(toolSet);
+      const isInlineConfig =
+        key === 'mcpToolSet'
+          ? McpToolSetNodeConfigSchema.safeParse(toolSet).success
+          : HttpToolSetNodeConfigSchema.safeParse(toolSet).success;
+      const isValid = pluginId ? reference.success : isInlineConfig;
+
+      if (!isValid) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['toolConfig', key],
+          message: pluginId
+            ? '外部工具集节点必须使用工具集引用配置'
+            : '节点内工具集必须使用完整配置'
+        });
+      }
+    });
+  }).meta({ description: '持久化应用工作流节点配置' });
 
 export type PersistedOpenAPIStoreNodeItemType = z.infer<
   typeof PersistedOpenAPIStoreNodeItemTypeSchema

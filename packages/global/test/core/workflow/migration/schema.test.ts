@@ -177,6 +177,40 @@ describe('legacy ToolSet migration', () => {
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(mcpToolSet);
   });
 
+  it('strips a historical empty MCP toolId before strict runtime validation', () => {
+    const mcpToolSet = {
+      toolId: '',
+      url: 'https://mcp.example.com',
+      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object', properties: { query: { type: 'string' } } }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'mcp-app-root',
+          flowNodeType: 'toolSet',
+          name: 'MCP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { mcpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: mcpToolSet.url,
+      headerSecret: mcpToolSet.headerSecret,
+      toolList: mcpToolSet.toolList
+    });
+  });
+
   it('rejects an incomplete inline MCP App runtime config', () => {
     expect(() =>
       migrateWorkflowToCurrent({

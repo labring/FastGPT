@@ -44,11 +44,8 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
-import { encryptSecretValue } from '../../common/secret/utils';
-import {
-  StoreSecretValueTypeSchema,
-  type SecretValueType
-} from '@fastgpt/global/common/secret/type';
+import { storeSecretValue } from '../../common/secret/utils';
+import { StoreSecretValueTypeSchema } from '@fastgpt/global/common/secret/type';
 import z from 'zod';
 
 type DetailWorkflowNode = StoreNodeItemType;
@@ -396,8 +393,8 @@ export async function rewriteAppWorkflowToDetail({
       const httpTool = node.toolConfig?.httpTool;
       const mcpToolSet = node.toolConfig?.mcpToolSet;
       const httpToolSet = node.toolConfig?.httpToolSet;
-      const mcpToolSetId = getToolSetReferenceId(mcpToolSet);
-      const httpToolSetId = getToolSetReferenceId(httpToolSet);
+      const mcpToolSetId = getToolSetReferenceId(mcpToolSet) ?? node.pluginId;
+      const httpToolSetId = getToolSetReferenceId(httpToolSet) ?? node.pluginId;
       if (node.pluginId) {
         externalToolSetReferenceIds.set(node, {
           mcpToolSet: mcpToolSetId,
@@ -666,10 +663,6 @@ export async function rewriteAppWorkflowToDetail({
     delete sanitized.headerSecret;
     return sanitized;
   };
-  const encryptHeaderSecret = (value: Record<string, SecretValueType>) =>
-    Object.fromEntries(
-      Object.entries(value).map(([key, secret]) => [key, encryptSecretValue(secret)])
-    );
   const encryptToolHeaderSecret = (tool: unknown) => {
     if (
       !isRecord(tool) ||
@@ -681,7 +674,7 @@ export async function rewriteAppWorkflowToDetail({
     }
     const headerSecret = StoreSecretValueTypeSchema.safeParse(tool.headerSecret);
     if (!headerSecret.success) return stripHeaderSecret(tool);
-    return { ...tool, headerSecret: encryptHeaderSecret(headerSecret.data) };
+    return { ...tool, headerSecret: storeSecretValue(headerSecret.data) };
   };
   const projectToolSetSummary = (toolSet: Record<string, unknown>, toolId?: string) => ({
     ...(toolId ? { toolId } : {}),
@@ -744,7 +737,7 @@ export async function rewriteAppWorkflowToDetail({
       mcpToolSet.headerSecret !== null &&
       mcpToolSet.headerSecret !== undefined
     ) {
-      mcpToolSet.headerSecret = encryptHeaderSecret(mcpToolSet.headerSecret);
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
     }
 
     const httpToolSet = node.toolConfig?.httpToolSet;
@@ -754,7 +747,7 @@ export async function rewriteAppWorkflowToDetail({
       httpToolSet.headerSecret !== null &&
       httpToolSet.headerSecret !== undefined
     ) {
-      httpToolSet.headerSecret = encryptHeaderSecret(httpToolSet.headerSecret);
+      httpToolSet.headerSecret = storeSecretValue(httpToolSet.headerSecret);
     }
   });
 

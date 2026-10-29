@@ -262,7 +262,10 @@ export const storeNode2FlowNode = ({
     showSourceHandle: nodeTemplate.showSourceHandle,
     name: isPluginNode ? storeNode.name : t(storeNode.name),
     intro: isPluginNode || !storeNode.intro ? storeNode.intro : t(storeNode.intro),
-    avatar: nodeTemplate.avatar ?? storeNode.avatar,
+    avatar:
+      isPluginNode && storeNode.flowNodeType === FlowNodeTypeEnum.toolSet
+        ? storeNode.avatar || nodeTemplate.avatar
+        : (nodeTemplate.avatar ?? storeNode.avatar),
     version: nodeTemplate.version || storeNode.version,
     catchError: storeNode.catchError ?? nodeTemplate.catchError,
     // 按模板顺序恢复当前输入及存量废弃输入。
