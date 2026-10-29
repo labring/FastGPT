@@ -93,7 +93,7 @@ describe('CommandFilesystemPolyfill', () => {
 
   it('chunks encoded writes without interpolating source text', async () => {
     const { execute, polyfill } = setup();
-    const content = '$(touch /tmp/pwned)\n'.repeat(100);
+    const content = '$(touch /tmp/pwned)\n'.repeat(3000);
     const byteLength = new TextEncoder().encode(content).byteLength;
 
     await expect(polyfill.writeTextFile('/workspace/file.txt', content)).resolves.toBe(byteLength);
@@ -278,7 +278,7 @@ MemAvailable:   6144000 kB`)
     });
 
     it('keeps the original file when a write fails partway through', async () => {
-      const original = `${'0123456789abcdef'.repeat(187)}old\n`;
+      const original = `${'0123456789abcdef'.repeat(6200)}old\n`;
       let appends = 0;
       const { path, polyfill, read, listDir, cleanup } = await setupShell(original, (command) =>
         command.includes('base64 -d >>') ? ++appends === 2 : false

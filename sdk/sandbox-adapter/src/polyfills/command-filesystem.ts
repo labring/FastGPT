@@ -172,7 +172,7 @@ export class CommandFilesystemPolyfill {
     }
 
     const base64 = bytesToBase64(data);
-    const chunkSize = 1024; // Avoid command line length limits
+    const chunkSize = 64 * 1024; // Avoid command line length limits
     let first = truncate;
 
     for (let i = 0; i < base64.length; i += chunkSize) {
