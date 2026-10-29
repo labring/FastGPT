@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Sandbox,
+  SandboxApiException,
   SandboxManager,
   type SandboxInfo as SdkSandboxInfo,
   type ServerStreamEvent,
@@ -24,6 +25,12 @@ const sdkInfo = (state = 'Running', id = 'sandbox-1'): SdkSandboxInfo =>
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null
   }) as SdkSandboxInfo;
+
+const notFoundError = () =>
+  new SandboxApiException({
+    message: 'Sandbox not found',
+    statusCode: 404
+  });
 
 const createSdkSandbox = (
   props: {
@@ -100,8 +107,23 @@ const bindSandbox = (adapter: OpenSandboxAdapter, sandbox: Sandbox): void => {
   target.lifecycle.boundSandbox = sandbox;
 };
 
-const mockManager = (items: SdkSandboxInfo[] = [], info: SdkSandboxInfo = sdkInfo('Deleted')) => {
-  const getSandboxInfo = vi.fn(async () => info);
+const mockManager = (
+  items: SdkSandboxInfo[] = [],
+  info: SdkSandboxInfo | Array<SdkSandboxInfo | Error> = sdkInfo('Deleted')
+) => {
+  const sequence = Array.isArray(info) ? info : [info];
+  const getSandboxInfo = vi.fn<() => Promise<SdkSandboxInfo>>();
+  for (const value of sequence) {
+    getSandboxInfo.mockImplementationOnce(async () => {
+      if (value instanceof Error) throw value;
+      return value;
+    });
+  }
+  const fallback = sequence.at(-1) ?? sdkInfo('Deleted');
+  getSandboxInfo.mockImplementation(async () => {
+    if (fallback instanceof Error) throw fallback;
+    return fallback;
+  });
   const killSandbox = vi.fn(async () => undefined);
   const manager = {
     listSandboxInfos: vi.fn(async () => ({ items })),
@@ -186,7 +208,7 @@ describe('OpenSandboxAdapter', () => {
     );
   });
 
-  it.each(['Paused', 'Pausing', 'Creating', 'Deleting'])(
+  it.each(['Paused', 'Pausing', 'Creating', 'Deleting', 'Stopping'])(
     'connect-only rejects %s without resuming or creating',
     async (state) => {
       mockManager([sdkInfo(state)]);
@@ -228,28 +250,44 @@ describe('OpenSandboxAdapter', () => {
     expect(killSandbox.mock.calls).toEqual([['first'], ['second']]);
   });
 
-  it('deletes a bound sandbox on stop and releases its client', async () => {
-    const adapter = new OpenSandboxAdapter(CONNECTION);
-    const bound = createSdkSandbox({ info: [sdkInfo('Deleted')] });
-    bindSandbox(adapter, bound.sandbox);
+  it('deletes a bound sandbox on stop across Stopping cleanup until 404 and releases its client', async () => {
+    vi.useFakeTimers();
+    try {
+      const adapter = new OpenSandboxAdapter(CONNECTION);
+      const bound = createSdkSandbox({ info: [sdkInfo('Stopping'), notFoundError()] });
+      bindSandbox(adapter, bound.sandbox);
 
-    await adapter.stop();
+      const stopPromise = adapter.stop();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await stopPromise;
 
-    expect(bound.sandbox.kill).toHaveBeenCalledTimes(1);
-    expect(bound.sandbox.close).toHaveBeenCalledTimes(1);
-    expect(adapter.status.state).toBe('UnExist');
-    expect(adapter.id).toBeUndefined();
+      expect(bound.sandbox.kill).toHaveBeenCalledTimes(1);
+      expect(bound.getInfo).toHaveBeenCalledTimes(2);
+      expect(bound.sandbox.close).toHaveBeenCalledTimes(1);
+      expect(adapter.status.state).toBe('UnExist');
+      expect(adapter.id).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('deletes an unbound sandbox found by session metadata on stop', async () => {
-    const manager = mockManager([sdkInfo('Running')], sdkInfo('Deleted'));
-    const adapter = new OpenSandboxAdapter(CONNECTION);
+  it('deletes an unbound sandbox found by session metadata on stop across Stopping cleanup until 404', async () => {
+    vi.useFakeTimers();
+    try {
+      const manager = mockManager([sdkInfo('Running')], [sdkInfo('Stopping'), notFoundError()]);
+      const adapter = new OpenSandboxAdapter(CONNECTION);
 
-    await adapter.stop();
+      const stopPromise = adapter.stop();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await stopPromise;
 
-    expect(manager.killSandbox).toHaveBeenCalledWith('sandbox-1');
-    expect(manager.getSandboxInfo).toHaveBeenCalledWith('sandbox-1');
-    expect(adapter.status.state).toBe('UnExist');
+      expect(manager.killSandbox).toHaveBeenCalledWith('sandbox-1');
+      expect(manager.getSandboxInfo).toHaveBeenCalledTimes(2);
+      expect(manager.getSandboxInfo).toHaveBeenCalledWith('sandbox-1');
+      expect(adapter.status.state).toBe('UnExist');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('close releases the local client without changing the remote lifecycle', async () => {
@@ -264,26 +302,18 @@ describe('OpenSandboxAdapter', () => {
     expect(bound.sandbox.kill).not.toHaveBeenCalled();
   });
 
-  it('uses native range and streaming reads while reporting invalid ranges per file', async () => {
+  it('uses native file and streaming reads', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     const bound = createSdkSandbox();
     bindSandbox(adapter, bound.sandbox);
 
-    await adapter.readFiles(['file.txt'], { offset: 1, length: 3 });
+    await adapter.readFiles(['file.txt']);
     const chunks: Uint8Array[] = [];
     for await (const chunk of adapter.readFileStream('file.txt')) chunks.push(chunk);
-    const [invalidResult] = await adapter.readFiles(['file.txt'], { length: -1 });
 
-    expect(bound.readBytes).toHaveBeenCalledWith('/workspace/file.txt', {
-      offset: 1,
-      limit: 3
-    });
+    expect(bound.readBytes).toHaveBeenCalledWith('/workspace/file.txt');
     expect(bound.readBytesStream).toHaveBeenCalledWith('/workspace/file.txt');
     expect(new TextDecoder().decode(chunks[0])).toBe('stream');
-    expect(invalidResult).toMatchObject({
-      path: '/workspace/file.txt',
-      error: expect.any(TypeError)
-    });
     expect(bound.readBytes).toHaveBeenCalledTimes(1);
   });
 

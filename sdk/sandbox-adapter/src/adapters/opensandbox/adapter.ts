@@ -24,7 +24,6 @@ import type {
   FileWriteResult,
   MoveEntry,
   PermissionEntry,
-  ReadFileOptions,
   SandboxCapabilities,
   SandboxEndpointSelector,
   SandboxEnsureRunningOptions,
@@ -52,7 +51,7 @@ import type {
 
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
 
-/** OpenSandbox provider facade backed by the 0.1.10 native SDK services. */
+/** OpenSandbox provider facade backed by the native SDK services. */
 export class OpenSandboxAdapter extends BaseSandboxAdapter {
   readonly provider = 'opensandbox' as const;
   readonly runtime: SandboxRuntimeType;
@@ -139,20 +138,13 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     };
   }
 
-  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+  async readFiles(paths: string[]): Promise<FileReadResult[]> {
     const results: FileReadResult[] = [];
 
     for (const inputPath of paths) {
       const path = this.normalizePath(inputPath);
       try {
-        const readOptions =
-          options?.offset !== undefined || options?.length !== undefined
-            ? this.validateReadOptions(options)
-            : undefined;
-        const content = await this.lifecycle.sandbox.files.readBytes(
-          path,
-          readOptions ? { offset: readOptions.offset, limit: readOptions.length } : undefined
-        );
+        const content = await this.lifecycle.sandbox.files.readBytes(path);
         results.push({ path, content, error: null });
       } catch (error) {
         results.push({

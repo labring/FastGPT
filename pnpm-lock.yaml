@@ -2060,8 +2060,8 @@ importers:
   sdk/sandbox-adapter:
     dependencies:
       '@alibaba-group/opensandbox':
-        specifier: ^0.1.10
-        version: 0.1.10
+        specifier: ^1.2.0
+        version: 1.2.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -2149,8 +2149,8 @@ packages:
     peerDependencies:
       vue: ^3.3.4
 
-  '@alibaba-group/opensandbox@0.1.10':
-    resolution: {integrity: sha512-/hH54IZ5xC+gfM0t7+7JGX1gKRe5o/KZrTEK3CbJNlbhI0GntT2DsEVtdcpT0sf9j+/mVm9H5DKtgLMuegd7XQ==}
+  '@alibaba-group/opensandbox@1.2.0':
+    resolution: {integrity: sha512-Ogjt0n76pSyZxUvi8b6gnotbmoVfNNSZQn+iZ3njZWleMOgJxtki1qcs50ojGfPFeLA4iB2NZ6QpRCVEzu2JDg==}
     engines: {node: '>=20'}
 
   '@alicloud/credentials@2.4.7':
@@ -15083,10 +15083,11 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@alibaba-group/opensandbox@0.1.10':
+  '@alibaba-group/opensandbox@1.2.0':
     dependencies:
+      '@opentelemetry/api': 1.9.0
       openapi-fetch: 0.14.1
-      undici: 7.30.0
+      undici: 7.30.1
 
   '@alicloud/credentials@2.4.7':
     dependencies:
