@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, useMemo, useState } from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Button, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
@@ -30,7 +30,11 @@ import {
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
-import { clearWorkflowBuilderChatHistory, streamWorkflowBuilderChat } from './api';
+import {
+  clearWorkflowBuilderChatHistory,
+  getLatestWorkflowBuilderChatId,
+  streamWorkflowBuilderChat
+} from './api';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -358,6 +362,7 @@ const ChatPanel = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useTranslation('common');
     const router = useRouter();
     const showRunDetail = useSystemStore(
       (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
@@ -372,19 +377,54 @@ const ChatPanel = React.forwardRef<
       [sourceTarget, tmbId]
     );
     const cachedChatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
-    const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
+    const isChatStoreLoaded = useChatStore((state) => state.loaded);
     const setSourceChatId = useChatStore((state) => state.setSourceChatId);
     const watchChatId = getWorkflowBuilderWatchChatId(
       router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
     );
     // 旁观链接仅选择当前页面的会话，不能写入跨标签页缓存并切走正在编辑的对话。
     const chatId = watchChatId ?? cachedChatId;
+    const {
+      run: restoreChat,
+      cancel: cancelRestoreChat,
+      loading: isRestoringChat,
+      error: restoreChatError,
+      params: restoreChatParams
+    } = useRequest(
+      ({ appId }: { appId: string; cacheKey: string }) => getLatestWorkflowBuilderChatId(appId),
+      {
+        errorToast: '',
+        onSuccess: (latestChatId, [{ cacheKey }]) => {
+          // 请求期间切换成员、应用或由其他标签页选定会话后，不覆盖最新选择。
+          if (
+            cacheKey !== chatIdCacheKey ||
+            watchChatId ||
+            useChatStore.getState().sourceChatIdMap[cacheKey]
+          ) {
+            return;
+          }
+          setSourceChatId(cacheKey, latestChatId);
+        }
+      }
+    );
 
     useEffect(() => {
-      if (chatIdCacheKey && !watchChatId && !chatId) {
-        ensureSourceChatId(chatIdCacheKey);
-      }
-    }, [chatId, chatIdCacheKey, ensureSourceChatId, watchChatId]);
+      if (!router.isReady || !isChatStoreLoaded || !chatIdCacheKey || watchChatId || cachedChatId)
+        return;
+
+      // 登录会清空本地索引；先恢复服务端历史，只有明确没有历史时才生成新会话 ID。
+      restoreChat({ appId, cacheKey: chatIdCacheKey });
+      return cancelRestoreChat;
+    }, [
+      appId,
+      cachedChatId,
+      chatIdCacheKey,
+      isChatStoreLoaded,
+      router.isReady,
+      watchChatId,
+      restoreChat,
+      cancelRestoreChat
+    ]);
 
     const chatRecordProviderParams = useMemo(
       () => ({
@@ -412,6 +452,25 @@ const ChatPanel = React.forwardRef<
         showSandboxAction={false}
         workflowBuilderVersionActions={workflowBuilderVersionActions}
       >
+        {!chatId && (
+          <Flex flex={1} alignItems="center" justifyContent="center" flexDirection="column" gap={3}>
+            {restoreChatError &&
+            !isRestoringChat &&
+            restoreChatParams[0]?.cacheKey === chatIdCacheKey ? (
+              <>
+                <Text color="myGray.500">{t('load_failed')}</Text>
+                <Button
+                  variant="whiteBase"
+                  onClick={() => restoreChat({ appId, cacheKey: chatIdCacheKey })}
+                >
+                  {t('refresh')}
+                </Button>
+              </>
+            ) : (
+              <Spinner size="sm" />
+            )}
+          </Flex>
+        )}
         {chatId && (
           <ChatRecordContextProvider params={chatRecordProviderParams} showInitialLoading={false}>
             <WorkflowBuilderChatContent
