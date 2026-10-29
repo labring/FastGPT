@@ -12,14 +12,10 @@ export {
   LegacyStoreNodeItemSchema,
   LegacyWorkflowDataSchema,
   LegacyFlowNodeInputItemSchema,
-  StoreWorkflowInputSchema,
   type LegacyStoreNodeItem,
   type LegacyFlowNodeInputItem,
   type LegacyWorkflowData,
-  type LegacyWorkflowDataInput,
-  type StoreWorkflowInput
+  type LegacyWorkflowDataInput
 } from './legacy/schema';
-
-export { migrateWorkflowToCurrent, isLegacyV1Workflow } from './migrate';
 
 // [TODO] add an explicit version field and dispatch migrations by version.

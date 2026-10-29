@@ -1,19 +1,18 @@
-import type { CanonicalWorkflowData } from './schema';
-import { CanonicalSelectedToolsValueSchema, CanonicalWorkflowDataSchema } from './schema';
-import type { LegacyWorkflowDataInput } from './legacy/schema';
-import { migrateLegacyWorkflowStructureToCurrent } from './legacy/workflow';
-import { migrateLegacyWorkflowStructureData } from './legacy/structure';
-import { migrateWorkflowSecretValues } from './secret';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
-import { NodeInputKeyEnum } from '../constants';
-import { AgentToolInputModeEnum } from '../../app/tool/constants';
-import { isToolInputValueConfigured } from '../../app/formEdit/utils';
-import type { FlowNodeInputItemType } from '../type/io';
+import type { CanonicalWorkflowData } from '../../core/workflow/migration/schema';
+import {
+  CanonicalSelectedToolsValueSchema,
+  CanonicalWorkflowDataSchema
+} from '../../core/workflow/migration/schema';
+import type { LegacyWorkflowDataInput } from '../../core/workflow/migration/legacy/schema';
+import { migrateLegacyWorkflowStructureToCurrent } from '../../core/workflow/migration/legacy/workflow';
+import { migrateLegacyWorkflowStructureData } from '../../core/workflow/migration/legacy/structure';
+import { migrateWorkflowSecretValues } from '../../core/workflow/migration/secret';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../core/workflow/node/constant';
+import { NodeInputKeyEnum } from '../../core/workflow/constants';
+import { AgentToolInputModeEnum } from '../../core/app/tool/constants';
+import { isToolInputValueConfigured } from '../../core/app/formEdit/utils';
+import type { FlowNodeInputItemType } from '../../core/workflow/type/io';
 
-/**
- * 画布测量值：容器宽高与容器头部输入区高度由 renderer 测量得出，不属于持久化语义。
- * 入站边界统一清理，Runtime 内部也不再产生这些字段（替代来源见容器尺寸测量重做延后项）。
- */
 const canvasSizeInputKeys = new Set<string>([
   NodeInputKeyEnum.nodeWidth,
   NodeInputKeyEnum.nodeHeight,

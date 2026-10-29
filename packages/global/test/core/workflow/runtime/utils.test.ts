@@ -8,13 +8,15 @@ import {
   getLastInteractiveValue,
   storeEdges2RuntimeEdges,
   getWorkflowEntryNodeIds,
-  storeNodes2RuntimeNodes,
   filterWorkflowEdges,
-  getReferenceVariableValue as baseGetReferenceVariableValue,
   formatVariableValByType,
   textAdaptGptResponse,
   rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  getReferenceVariableValue as baseGetReferenceVariableValue,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/common/workflow/runtime';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -1284,6 +1286,7 @@ describe('storeNodes2RuntimeNodes', () => {
     const nodes: StoreNodeItemType[] = [
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1307,6 +1310,7 @@ describe('storeNodes2RuntimeNodes', () => {
     expect(result).toEqual([
       {
         nodeId: 'node1',
+        parentNodeId: 'container',
         name: 'Test Node',
         avatar: 'avatar.png',
         metadataLocale: 'zh-CN',
@@ -1339,6 +1343,7 @@ describe('storeNodes2RuntimeNodes', () => {
     ];
     const result = storeNodes2RuntimeNodes(nodes, ['other']);
     expect(result[0].isEntry).toBe(false);
+    expect(result[0]).not.toHaveProperty('parentNodeId');
   });
 });
 

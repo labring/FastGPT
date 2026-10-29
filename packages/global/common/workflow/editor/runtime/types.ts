@@ -8,15 +8,15 @@ import type {
   WorkflowFieldSnapshot,
   WorkflowNodeData,
   WorkflowReferenceStatus
-} from '../types';
-import type { StoreEdgeItemType } from '../../type/edge';
+} from '../../../../core/workflow/editor/types';
+import type { StoreEdgeItemType } from '../../../../core/workflow/type/edge';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   WorkflowReferenceSnapshot
-} from '../../type/io';
-import type { AppChatConfigType } from '../../../app/type';
-import type { WorkflowIOValueTypeEnum } from '../../constants';
+} from '../../../../core/workflow/type/io';
+import type { AppChatConfigType } from '../../../../core/app/type';
+import type { WorkflowIOValueTypeEnum } from '../../../../core/workflow/constants';
 
 // region documentTypes Runtime document and reference graph types
 

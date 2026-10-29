@@ -1,34 +1,52 @@
-import { isToolParamInput } from '../../app/formEdit/utils';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
-} from '../constants';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
-import { ModelTypeEnum } from '../../ai/constants';
-import { getHandleId } from '../../../common/workflow/reference';
-import { moduleTemplatesFlat } from '../template/constants';
-import { isNodeConnectionAllowed } from '../template/context';
-import type { FlowNodeTemplateOutputItemType } from '../template/output';
+} from '../../../core/workflow/constants';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
+import { ModelTypeEnum } from '../../../core/ai/constants';
+import { getHandleId } from '../reference';
+import { moduleTemplatesFlat } from '../../../core/workflow/template/constants';
+import { canInputBeAgentGenerated } from '../../../core/app/formEdit/utils';
+import {
+  getNodeContainerCheckError,
+  isTemplateVisible
+} from '../../../core/workflow/template/context';
+import type { FlowNodeTemplateOutputItemType } from '../../../core/workflow/template/output';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
-} from '../type/io';
-import type { FlowNodeItemType, NodeTemplateContext } from '../type/node';
-import type { AppChatConfigType } from '../../app/type';
-import type { WorkflowReferenceStatus } from './types';
+} from '../../../core/workflow/type/io';
+import type {
+  FlowNodeItemType,
+  FlowNodeTemplateType,
+  NodeTemplateContext
+} from '../../../core/workflow/type/node';
+import type { AppChatConfigType } from '../../../core/app/type';
+import type { WorkflowReferenceStatus } from '../../../core/workflow/editor/types';
 import { getWorkflowGlobalVariables } from './variables';
-import type { LLMModelDataType } from '../../ai/model/schema';
-import type { WorkflowEnvironmentModel } from './types';
+import type { LLMModelDataType } from '../../../core/ai/model/schema';
+import type { WorkflowEnvironmentModel } from '../../../core/workflow/editor/types';
 
 type WorkflowLLMModel = Pick<LLMModelDataType, 'modelId' | 'config'> & {
   model?: LLMModelDataType['model'];
 };
 
 export type WorkflowLLMModelMap = Record<string, WorkflowLLMModel>;
+
+/** 判断可编辑且默认交由 Agent 生成的输入是否属于工作流工具参数。 */
+export const isToolParamInput = (
+  input: Pick<
+    FlowNodeInputItemType,
+    'key' | 'canEdit' | 'defaultToAgentGenerated' | 'renderTypeList' | 'canAgentGenerated'
+  >
+) =>
+  input.canEdit === true &&
+  input.defaultToAgentGenerated === true &&
+  canInputBeAgentGenerated(input);
 
 /** 将 Runtime 环境目录整理成 invalidCondition 复用的模型索引。 */
 export const buildWorkflowLLMModelMap = (
@@ -209,6 +227,111 @@ export const isWorkflowEdgeSourceHandleValid = (
   }
 
   return true;
+};
+
+/**
+ * 目录是否提供该模板给用户手动添加。Unique 模板只能存在于文档根，并按已占用类型过滤。
+ */
+export const isTemplateAddable = (
+  template: Pick<FlowNodeTemplateType, 'flowNodeType' | 'unique'>,
+  ctx: NodeTemplateContext | null
+): boolean => {
+  if (!template.unique) return true;
+  if (!ctx || ctx.parentType) return false;
+  return !ctx.takenUniqueTypes.includes(template.flowNodeType);
+};
+
+/** 构建快捷添加、侧边栏或容器落点共用的展示上下文。 */
+export const buildNodeTemplateContext = ({
+  sourceNode,
+  edges,
+  handleId,
+  getNodeById,
+  isSidebar = false,
+  hasToolNode = false,
+  hasLoopRunNode = false,
+  targetParentType
+}: {
+  sourceNode: Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'parentNodeId'> | undefined;
+  edges: { source?: string; target: string; targetHandle?: string | null }[];
+  handleId?: string | null;
+  getNodeById: (
+    nodeId: string | undefined | null
+  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
+  isSidebar?: boolean;
+  hasToolNode?: boolean;
+  hasLoopRunNode?: boolean;
+  /** 目标容器类型；用于侧边栏或画布拖拽落点校验。 */
+  targetParentType?: FlowNodeTypeEnum | null;
+}): NodeTemplateContext | null => {
+  if (!sourceNode && !isSidebar) return null;
+  const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
+  const isConnectedTool = (() => {
+    if (!sourceNode) return false;
+
+    const incomingEdges = new Map<string, typeof edges>();
+    for (const edge of edges) {
+      const targetEdges = incomingEdges.get(edge.target);
+      if (targetEdges) {
+        targetEdges.push(edge);
+      } else {
+        incomingEdges.set(edge.target, [edge]);
+      }
+    }
+
+    // 工具子流程可经过多个普通节点，沿入边找到任一 selectedTools 根边即可。
+    const pendingNodeIds = [sourceNode.nodeId];
+    const visitedNodeIds = new Set<string>();
+    while (pendingNodeIds.length) {
+      const nodeId = pendingNodeIds.pop()!;
+      if (visitedNodeIds.has(nodeId)) continue;
+      visitedNodeIds.add(nodeId);
+
+      for (const edge of incomingEdges.get(nodeId) ?? []) {
+        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
+        if (edge.source) pendingNodeIds.push(edge.source);
+      }
+    }
+
+    return false;
+  })();
+
+  return {
+    isSidebar,
+    sourceNodeId: sourceNode?.nodeId ?? null,
+    sourceType: sourceNode?.flowNodeType ?? null,
+    isConnectedTool,
+    handleId: handleId ?? null,
+    parentType:
+      targetParentType === undefined ? (parentNode?.flowNodeType ?? null) : targetParentType,
+    hasToolNode,
+    hasLoopRunNode,
+    // shortcut: 旧 helper 不计算已占用唯一节点；需校验模板可添加性时改用 Runtime placement context。
+    takenUniqueTypes: []
+  };
+};
+
+/**
+ * 校验节点连接的容器和模板上下文，供目标柄展示与 Runtime 连线提交共用。
+ * context 由 Runtime 按来源节点派生（连线拖拽开始时算一次），目标柄只按 target 应用纯规则。
+ */
+export const isNodeConnectionAllowed = ({
+  context,
+  targetTemplate,
+  targetNode,
+  sourceParentNodeId
+}: {
+  /** 来源节点的 placement context；null 表示无法建立上下文，按「允许」处理。 */
+  context: NodeTemplateContext | null;
+  targetTemplate?: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
+  targetNode: Pick<FlowNodeItemType, 'parentNodeId'>;
+  sourceParentNodeId?: string;
+}) => {
+  if (sourceParentNodeId !== targetNode.parentNodeId) return false;
+  if (!context || !targetTemplate) return true;
+
+  if (getNodeContainerCheckError({ node: targetTemplate, context })) return false;
+  return isTemplateVisible(targetTemplate, context);
 };
 
 /**

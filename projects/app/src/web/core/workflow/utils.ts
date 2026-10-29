@@ -1,22 +1,47 @@
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getHandleId, getSelectedInputRenderType, getWorkflowReferenceSourceNodes, getWorkflowReferenceVariables } from '@fastgpt/global/common/workflow/reference';
+import {
+  getHandleId,
+  getSelectedInputRenderType,
+  getWorkflowReferenceSourceNodes,
+  getWorkflowReferenceVariables
+} from '@fastgpt/global/common/workflow/reference';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
-import { canInputBeAgentGenerated, normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  normalizeFlowNodeInputType
+} from '@fastgpt/global/core/app/formEdit/utils';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { NodeInputKeyEnum, VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
-import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { initNewIfElseList } from '@fastgpt/global/common/workflow/condition';
-import type { EditorVariablePickerType, FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
-import type { FlowNodeItemType, FlowNodeTemplateType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  EditorVariablePickerType,
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceItemValueType
+} from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeItemType,
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { formatEditorVariablePickerIcon } from '@fastgpt/web/core/workflow/utils';
 import type { Node, Edge, XYPosition } from '@xyflow/react';

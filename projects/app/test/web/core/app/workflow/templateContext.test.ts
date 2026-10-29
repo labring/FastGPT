@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  buildNodeTemplateContext,
   createHideInContext,
   createShowInContext,
   getNodeContainerCheckError,
-  isNodeConnectionAllowed,
-  isTemplateAddable,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
+import {
+  buildNodeTemplateContext,
+  isNodeConnectionAllowed,
+  isTemplateAddable
+} from '@fastgpt/global/common/workflow/editor/utils';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';

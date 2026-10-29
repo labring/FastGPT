@@ -1,8 +1,6 @@
 import { FlowNodeTypeEnum, isInteractiveNodeType, isNestedParentNodeType } from '../node/constant';
-import { NodeOutputKeyEnum } from '../constants';
 import type {
   FlowNodeTemplateType,
-  FlowNodeItemType,
   NodeTemplateContext,
   NodeTemplateContextPredicate
 } from '../type/node';
@@ -51,51 +49,6 @@ export const isTemplateVisible = (
   return !template.isShowInContext || template.isShowInContext(ctx);
 };
 
-/**
- * 目录是否提供该模板给用户手动添加。
- * unique 模板（流程开始 / 插件输入输出）随应用自动创建且禁止删除，只能存在于文档根：
- * 容器作用域与建不出上下文时一律不提供，根作用域按已占用类型过滤。
- * 目录只是候选集，重复添加最终仍由 Runtime 的 validateNodePlacement 拒绝。
- */
-export const isTemplateAddable = (
-  template: Pick<FlowNodeTemplateType, 'flowNodeType' | 'unique'>,
-  ctx: NodeTemplateContext | null
-): boolean => {
-  if (!template.unique) return true;
-  if (!ctx || ctx.parentType) return false;
-  return !ctx.takenUniqueTypes.includes(template.flowNodeType);
-};
-
-/**
- * 校验节点连接的容器和模板上下文，供目标柄展示与 Runtime 连线提交共用。
- * context 由 Runtime 按来源节点派生（连线拖拽开始时算一次），目标柄只按 target 应用纯规则。
- */
-export const isNodeConnectionAllowed = ({
-  context,
-  targetTemplate,
-  targetNode,
-  sourceParentNodeId
-}: {
-  /** 来源节点的 placement context；null 表示无法建立上下文，按「允许」处理。 */
-  context: NodeTemplateContext | null;
-  targetTemplate?: Pick<FlowNodeTemplateType, 'flowNodeType' | 'isShowInContext'>;
-  targetNode: Pick<FlowNodeItemType, 'parentNodeId'>;
-  sourceParentNodeId?: string;
-}) => {
-  if (sourceParentNodeId !== targetNode.parentNodeId) return false;
-  if (!context || !targetTemplate) return true;
-
-  if (
-    getNodeContainerCheckError({
-      node: targetTemplate,
-      context
-    })
-  ) {
-    return false;
-  }
-
-  return isTemplateVisible(targetTemplate, context);
-};
 export type NodeContainerCheckError =
   | 'can_not_loop'
   | 'can_not_parallel'
@@ -166,76 +119,4 @@ export const getNodeContainerCheckError = ({
   if (!isTemplateVisible(node, context)) return 'can_not_add_inside_container';
 
   return undefined;
-};
-/**
- * 构建快捷添加、侧边栏或容器落点共用的展示上下文；会沿入边追溯工具根边，无法建立上下文时返回 null。
- */
-export const buildNodeTemplateContext = ({
-  sourceNode,
-  edges,
-  handleId,
-  getNodeById,
-  isSidebar = false,
-  hasToolNode = false,
-  hasLoopRunNode = false,
-  targetParentType
-}: {
-  sourceNode:
-    | Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'parentNodeId'>
-    | undefined;
-  edges: { source?: string; target: string; targetHandle?: string | null }[];
-  handleId?: string | null;
-  getNodeById: (
-    nodeId: string | undefined | null
-  ) => Pick<FlowNodeItemType, 'flowNodeType'> | undefined;
-  isSidebar?: boolean;
-  hasToolNode?: boolean;
-  hasLoopRunNode?: boolean;
-  /** 目标容器类型；用于侧边栏或画布拖拽落点校验。 */
-  targetParentType?: FlowNodeTypeEnum | null;
-}): NodeTemplateContext | null => {
-  if (!sourceNode && !isSidebar) return null;
-  const parentNode = sourceNode?.parentNodeId ? getNodeById(sourceNode.parentNodeId) : undefined;
-  const isConnectedTool = (() => {
-    if (!sourceNode) return false;
-
-    const incomingEdges = new Map<string, typeof edges>();
-    for (const edge of edges) {
-      const targetEdges = incomingEdges.get(edge.target);
-      if (targetEdges) {
-        targetEdges.push(edge);
-      } else {
-        incomingEdges.set(edge.target, [edge]);
-      }
-    }
-
-    // 工具子流程可经过多个普通节点，沿入边找到任一 selectedTools 根边即可。
-    const pendingNodeIds = [sourceNode.nodeId];
-    const visitedNodeIds = new Set<string>();
-    while (pendingNodeIds.length) {
-      const nodeId = pendingNodeIds.pop()!;
-      if (visitedNodeIds.has(nodeId)) continue;
-      visitedNodeIds.add(nodeId);
-
-      for (const edge of incomingEdges.get(nodeId) ?? []) {
-        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
-        if (edge.source) pendingNodeIds.push(edge.source);
-      }
-    }
-
-    return false;
-  })();
-  return {
-    isSidebar,
-    sourceNodeId: sourceNode?.nodeId ?? null,
-    sourceType: sourceNode?.flowNodeType ?? null,
-    isConnectedTool,
-    handleId: handleId ?? null,
-    parentType:
-      targetParentType === undefined ? (parentNode?.flowNodeType ?? null) : targetParentType,
-    hasToolNode,
-    hasLoopRunNode,
-    // shortcut: legacy caller checks connection scope only; pass full nodes when it needs unique placement checks.
-    takenUniqueTypes: []
-  };
 };

@@ -6,7 +6,7 @@ import {
   migrateStoreWorkflow,
   serializeWorkflowEditor,
   type StoreWorkflow
-} from '@fastgpt/global/core/workflow/editor/protocol';
+} from '@fastgpt/global/common/workflow/editor/protocol';
 import type {
   WorkflowRuntimeOptions,
   WorkflowRuntimePort

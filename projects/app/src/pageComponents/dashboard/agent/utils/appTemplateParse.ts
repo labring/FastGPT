@@ -6,7 +6,7 @@ import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge'
 import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 

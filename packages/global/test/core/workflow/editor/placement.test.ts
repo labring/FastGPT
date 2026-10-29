@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
 /** placement 夹具：容器与根级节点齐备，初始文档不过 placement 校验，可以直接摆出目标形状。 */
@@ -150,16 +150,13 @@ describe('placement context', () => {
         node('n1', FlowNodeTypeEnum.chatNode),
         node('n2', FlowNodeTypeEnum.chatNode)
       ],
-      edges: [
-        edge('tool1', 'n1', NodeOutputKeyEnum.selectedTools),
-        edge('n1', 'n2')
-      ],
+      edges: [edge('tool1', 'n1', NodeOutputKeyEnum.selectedTools), edge('n1', 'n2')],
       chatConfig: {}
     } as never);
 
-    expect(
-      editor.dispatch({ type: 'connectEdge', edge: edge('outside', 'n2') }).error?.code
-    ).toBe('invalid_edge');
+    expect(editor.dispatch({ type: 'connectEdge', edge: edge('outside', 'n2') }).error?.code).toBe(
+      'invalid_edge'
+    );
   });
 
   it('同一批新增 selectedTools 边后仍能连接 stopTool', () => {

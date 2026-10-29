@@ -19,7 +19,7 @@ import {
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/core/workflow/editor/startAutoFill';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';

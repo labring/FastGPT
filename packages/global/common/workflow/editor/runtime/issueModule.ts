@@ -1,6 +1,10 @@
-import { FlowNodeTypeEnum } from '../../node/constant';
-import type { WorkflowCheckIssue } from '../../type/node';
-import type { WorkflowConfigIssue, WorkflowEnvironment, WorkflowIssueScope } from '../types';
+import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
+import type { WorkflowCheckIssue } from '../../../../core/workflow/type/node';
+import type {
+  WorkflowConfigIssue,
+  WorkflowEnvironment,
+  WorkflowIssueScope
+} from '../../../../core/workflow/editor/types';
 import { addFieldIdentity, valuesEqual } from './kernel';
 import { collectConfigIssues, collectNodeIssues, type IssueRuleInput } from './issueRules';
 import type { DocumentReadApi, MutationMeta, ReferenceReadApi } from './types';

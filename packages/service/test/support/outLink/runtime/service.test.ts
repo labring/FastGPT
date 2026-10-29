@@ -92,10 +92,12 @@ vi.mock('@fastgpt/global/core/workflow/runtime/utils', async (importOriginal) =>
     ...actual,
     getMaxHistoryLimitFromNodes: vi.fn(() => 10),
     getWorkflowEntryNodeIds: vi.fn(() => ['start']),
-    storeNodes2RuntimeNodes: vi.fn(() => [{ nodeId: 'runtime-start' }]),
     storeEdges2RuntimeEdges: vi.fn(() => [])
   };
 });
+vi.mock('@fastgpt/global/common/workflow/runtime', () => ({
+  storeNodes2RuntimeNodes: vi.fn(() => [{ nodeId: 'runtime-start' }])
+}));
 
 const outLinkConfig = {
   _id: 'outlink-id',

@@ -4,7 +4,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 import { createWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
 /** 两个可编辑引用输入的最小节点：复现同一节点多行同时整表回写 inputs 的场景。 */

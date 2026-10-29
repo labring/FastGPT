@@ -1,4 +1,4 @@
-import type { CanonicalWorkflowData } from '../../migration/schema';
+import type { CanonicalWorkflowData } from '../../../../core/workflow/migration/schema';
 import type {
   WorkflowChange,
   WorkflowAffectedRecords,
@@ -11,7 +11,7 @@ import type {
   WorkflowRuntimePort,
   WorkflowRuntimeOptions,
   WorkflowSavepoint
-} from '../types';
+} from '../../../../core/workflow/editor/types';
 import {
   addFieldIdentity,
   cloneValue,

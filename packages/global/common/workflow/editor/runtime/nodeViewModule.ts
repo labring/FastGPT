@@ -1,4 +1,8 @@
-import type { NodeViewState, WorkflowCommandError, WorkflowNodeViewSnapshot } from '../types';
+import type {
+  NodeViewState,
+  WorkflowCommandError,
+  WorkflowNodeViewSnapshot
+} from '../../../../core/workflow/editor/types';
 import { cloneValue, freezeValue, getError, isObject, valuesEqual } from './kernel';
 import type {
   DocumentReadApi,

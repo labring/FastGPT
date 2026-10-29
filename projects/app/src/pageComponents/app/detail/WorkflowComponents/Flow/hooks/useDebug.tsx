@@ -1,7 +1,7 @@
 import React from 'react';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import type {
   RuntimeEdgeItemType,
   StoreEdgeItemType

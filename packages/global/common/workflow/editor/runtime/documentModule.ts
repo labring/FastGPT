@@ -1,20 +1,26 @@
-import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
-import { stripCanvasSizeInputs } from '../../migration/migrate';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../../../core/workflow/constants';
+import { stripCanvasSizeInputs } from '../../migration';
 import {
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType,
   isNestedParentNodeType
-} from '../../node/constant';
-import { StoreEdgeItemTypeSchema, type StoreEdgeItemType } from '../../type/edge';
-import { StoreNodeItemTypeSchema, type NodeTemplateContext } from '../../type/node';
-import { AppChatConfigTypeSchema } from '../../../app/type';
-import { isToolWorkflowConnectionAllowed } from '../../../../common/workflow/connection';
+} from '../../../../core/workflow/node/constant';
+import {
+  StoreEdgeItemTypeSchema,
+  type StoreEdgeItemType
+} from '../../../../core/workflow/type/edge';
+import {
+  StoreNodeItemTypeSchema,
+  type NodeTemplateContext
+} from '../../../../core/workflow/type/node';
+import { AppChatConfigTypeSchema } from '../../../../core/app/type';
+import { isToolWorkflowConnectionAllowed } from '../../connection';
 import {
   getWorkflowReferenceItems,
   isConnectionTargetAllowed,
   isWorkflowEdgeSourceHandleValid
 } from '../utils';
-import { nodeInputIsReference } from '../../../../common/workflow/reference';
+import { nodeInputIsReference } from '../../reference';
 import {
   applyWorkflowStartInputAutoFill,
   getWorkflowStartAutoFillValue,
@@ -27,7 +33,7 @@ import type {
   WorkflowGraphQueries,
   WorkflowHandleConnectionQuery,
   WorkflowNodeData
-} from '../types';
+} from '../../../../core/workflow/editor/types';
 import {
   addFieldIdentity,
   cloneValue,
@@ -224,11 +230,15 @@ export const createDocumentModule = (initial: CanonicalResult) => {
   };
 
   /** staged 命令期间复用事务内父子索引，避免每次删除/挂载都扫描全部节点。 */
-  const getWorkingDescendantNodeIds = (
-    working: RuntimeDocument,
-    rootIds: ReadonlySet<string>,
-    meta?: MutationMeta
-  ) => {
+  const getWorkingDescendantNodeIds = ({
+    working,
+    rootIds,
+    meta
+  }: {
+    working: RuntimeDocument;
+    rootIds: ReadonlySet<string>;
+    meta?: MutationMeta;
+  }) => {
     const childrenByParent = meta
       ? getStagedIndexes(working, meta).childrenByParent
       : new Map<string, string[]>();
@@ -486,12 +496,17 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       ? derivePlacementContext({ isSidebar: true, parentNodeId: containerId, working, meta })
       : null;
 
-  const isEdgeConnectionAllowed = (
-    working: RuntimeDocument,
-    edge: StoreEdgeItemType,
-    ignoreEdgeId?: RuntimeEdgeId,
-    meta?: MutationMeta
-  ) => {
+  const isEdgeConnectionAllowed = ({
+    working,
+    edge,
+    ignoreEdgeId,
+    meta
+  }: {
+    working: RuntimeDocument;
+    edge: StoreEdgeItemType;
+    ignoreEdgeId?: RuntimeEdgeId;
+    meta?: MutationMeta;
+  }) => {
     const source = getFlowNodeById({ working, nodeId: edge.source, meta });
     const target = getFlowNodeById({ working, nodeId: edge.target, meta });
     if (
@@ -559,10 +574,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     };
     const getCommittedTargets = (nodeId: string) =>
       (graphIndex.bySource.get(nodeId) ?? []).map((edge) => edge.data.target);
-    const getReachableNodeIds = (
-      startNodeId: string,
-      getTargets: (nodeId: string) => string[]
-    ) => {
+    const getReachableNodeIds = (startNodeId: string, getTargets: (nodeId: string) => string[]) => {
       const reachable = new Set<string>();
       const pending = [...getTargets(startNodeId)];
       let index = 0;
@@ -785,7 +797,11 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         }
         working.nodes = working.nodes.slice();
         const current = working.nodes[index];
-        const runtimeNode = restoreRuntimeNodeOutputValidity(parsedNode, command.node, current.data);
+        const runtimeNode = restoreRuntimeNodeOutputValidity(
+          parsedNode,
+          command.node,
+          current.data
+        );
         const { record: nextNode, view } = splitNode(
           runtimeNode,
           current.forbidDelete === true || hasForbidDelete(command.node)
@@ -907,7 +923,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         const rootIds = new Set(command.nodeIds);
         const missing = command.nodeIds.find((nodeId) => !getWorkingNode(nodeId, meta));
         if (missing) throw getError('not_found', `Node not found: ${missing}`);
-        const descendantIds = getWorkingDescendantNodeIds(working, rootIds, meta);
+        const descendantIds = getWorkingDescendantNodeIds({ working, rootIds, meta });
         const deletedIds = new Set([...rootIds, ...descendantIds]);
         validateNodeDeletion({ nodes: working.nodes, deletedIds });
 
@@ -945,7 +961,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         if (!getWorkingNode(edge.source, meta) || !getWorkingNode(edge.target, meta)) {
           throw getError('invalid_edge', 'Cannot connect an edge to a missing node');
         }
-        if (!isEdgeConnectionAllowed(working, edge, undefined, meta)) {
+        if (!isEdgeConnectionAllowed({ working, edge, meta })) {
           throw getError('invalid_edge', 'Edge connection is not allowed');
         }
         if (working.edges.some(({ data }) => valuesEqual(data, edge))) {
@@ -990,9 +1006,11 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         }
         if (
           command.nodeId === command.containerId ||
-          getWorkingDescendantNodeIds(working, new Set([command.nodeId]), meta).has(
-            command.containerId
-          )
+          getWorkingDescendantNodeIds({
+            working,
+            rootIds: new Set([command.nodeId]),
+            meta
+          }).has(command.containerId)
         ) {
           throw getError(
             'invalid_placement',
@@ -1012,7 +1030,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         const previouslyAllowedEdges = new Map(
           working.edges
             .filter(({ data }) => data.source === command.nodeId || data.target === command.nodeId)
-            .map((edge) => [edge.id, isEdgeConnectionAllowed(working, edge.data, edge.id, meta)])
+            .map((edge) => [
+              edge.id,
+              isEdgeConnectionAllowed({ working, edge: edge.data, ignoreEdgeId: edge.id, meta })
+            ])
         );
         working.nodes = working.nodes.slice();
         const nextData = { ...node.data, parentNodeId: command.containerId };
@@ -1029,7 +1050,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
 
         const removedEdges = working.edges.filter(({ id, data }) => {
           if (!previouslyAllowedEdges.get(id)) return false;
-          return !isEdgeConnectionAllowed(working, data, id, meta);
+          return !isEdgeConnectionAllowed({ working, edge: data, ignoreEdgeId: id, meta });
         });
         if (removedEdges.length > 0) {
           removedEdges.forEach((edge) => {

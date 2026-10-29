@@ -1,7 +1,7 @@
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';

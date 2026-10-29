@@ -222,7 +222,10 @@ export const getDebugInputFormConfig = (
 };
 
 const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {
-  if (primitiveValueTypes.has(input.valueType as WorkflowIOValueTypeEnum)) {
+  if (
+    primitiveValueTypes.has(input.valueType as WorkflowIOValueTypeEnum) ||
+    typeof value !== 'string'
+  ) {
     return value;
   }
 

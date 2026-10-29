@@ -5,7 +5,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 
 describe('workflow reference reachability', () => {
   it('allows loop custom outputs to reference child nodes only', () => {

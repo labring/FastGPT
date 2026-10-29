@@ -3,7 +3,7 @@ import type {
   WorkflowFieldIdentity,
   WorkflowFieldQuery,
   WorkflowIssueUpdate
-} from '../types';
+} from '../../../../core/workflow/editor/types';
 
 type Listener = () => void;
 type ChangeListener = (change: WorkflowChange) => void;

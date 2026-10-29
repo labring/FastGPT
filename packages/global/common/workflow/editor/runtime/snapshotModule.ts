@@ -1,6 +1,9 @@
-import type { AppChatConfigType } from '../../../app/type';
-import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../type/io';
-import type { WorkflowCheckIssue } from '../../type/node';
+import type { AppChatConfigType } from '../../../../core/app/type';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '../../../../core/workflow/type/io';
+import type { WorkflowCheckIssue } from '../../../../core/workflow/type/node';
 import type {
   WorkflowActionsHandle,
   WorkflowCanvasEdgeSnapshot,
@@ -26,7 +29,7 @@ import type {
   WorkflowNodeData,
   DeepReadonly,
   WorkflowNodeViewSnapshot
-} from '../types';
+} from '../../../../core/workflow/editor/types';
 import { cloneValue, freezeValue, getFieldIdentityKey } from './kernel';
 import type {
   DocumentReadApi,

@@ -24,8 +24,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
-import { migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import { migrateStoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
 import { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
 import type { WorkflowEnvironment } from '@fastgpt/global/core/workflow/editor/types';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';

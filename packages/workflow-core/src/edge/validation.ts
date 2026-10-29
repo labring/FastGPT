@@ -21,8 +21,8 @@ import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/
 import { getDocumentNode } from '../nesting/service';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { buildNodeTemplateContext } from '@fastgpt/global/common/workflow/editor/utils';
 import {
-  buildNodeTemplateContext,
   getNodeContainerCheckError,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';

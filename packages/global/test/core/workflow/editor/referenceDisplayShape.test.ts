@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getWorkflowReferenceItems } from '@fastgpt/global/core/workflow/editor/utils';
+import { getWorkflowReferenceItems } from '@fastgpt/global/common/workflow/editor/utils';
 
 /**
  * 引用选择器的展示适配：单选/多选选择器各自需要的形态都能从存量值直接推导，

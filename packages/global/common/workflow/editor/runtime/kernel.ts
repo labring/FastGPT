@@ -1,12 +1,15 @@
-import { NodeInputKeyEnum } from '../../constants';
-import { nodeInputIsReference } from '../../../../common/workflow/reference';
+import { NodeInputKeyEnum } from '../../../../core/workflow/constants';
+import { nodeInputIsReference } from '../../reference';
 import { getWorkflowReferenceItemsFromValue } from '../utils';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType
-} from '../../type/io';
-import type { WorkflowCommandError, WorkflowFieldIdentity } from '../types';
+} from '../../../../core/workflow/type/io';
+import type {
+  WorkflowCommandError,
+  WorkflowFieldIdentity
+} from '../../../../core/workflow/editor/types';
 
 /**
  * Runtime 内部共享的最小原语：值拷贝/比较/冻结、命令错误工厂、字段身份。

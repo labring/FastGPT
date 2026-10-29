@@ -24,7 +24,7 @@ import {
   filterSelectableWorkflowNodeOutputs,
   workflowReferenceValueIsSelectable
 } from '@fastgpt/global/common/workflow/reference';
-import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/core/workflow/editor/startAutoFill';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import {
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
@@ -947,7 +947,7 @@ describe('storeNode2FlowNode', () => {
     );
   });
 
-+  it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
+  +it('loopRun: 自动补齐动态输出缺失的 canEdit 输入声明（AI 文档只声明 outputs 的场景）', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'examLoop',
       flowNodeType: FlowNodeTypeEnum.loopRun,

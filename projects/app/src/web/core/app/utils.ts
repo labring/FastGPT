@@ -5,9 +5,9 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
+import { workflowSystemVariables as globalWorkflowSystemVariables } from '@fastgpt/global/core/workflow/node/constant';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addModelNamesToWorkflow } from '@fastgpt/global/common/workflow/model';
-import { workflowSystemVariables as globalWorkflowSystemVariables } from '@fastgpt/global/core/workflow/editor/variables';
 
 export const WORKFLOW_BUILDER_AUTO_OPEN_QUERY_KEY = 'openWorkflowBuilder';
 export const WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY = 'workflowBuilderChatId';

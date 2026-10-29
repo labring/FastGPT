@@ -1,6 +1,6 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';

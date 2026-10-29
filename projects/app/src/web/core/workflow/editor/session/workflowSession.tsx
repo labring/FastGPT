@@ -30,7 +30,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   hydrateWorkflowEditor,
   type StoreWorkflow
-} from '@fastgpt/global/core/workflow/editor/protocol';
+} from '@fastgpt/global/common/workflow/editor/protocol';
 import type {
   WorkflowEnvironment,
   WorkflowRuntimePort,

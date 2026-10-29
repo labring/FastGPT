@@ -3,7 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getModelDefault } from '@/web/core/ai/model/modelData';
 import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/core/workflow/editor/startAutoFill';
+import { applyWorkflowStartInputAutoFill } from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import {
   Accordion,
   AccordionButton,

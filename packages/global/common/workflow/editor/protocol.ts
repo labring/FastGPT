@@ -1,12 +1,15 @@
 import {
   CanonicalWorkflowDataSchema,
-  migrateWorkflowToCurrent,
-  StoreWorkflowInputSchema,
   type CanonicalWorkflowData
-} from '../migration';
+} from '../../../core/workflow/migration/schema';
+import { migrateWorkflowToCurrent } from '../migration';
+import { StoreWorkflowInputSchema } from '../../../core/workflow/migration/legacy/schema';
 import { restoreRuntimeNodeOutputValidity } from './runtime/documentRules';
 import { createWorkflowEditor } from './runtime/runtime';
-import type { WorkflowRuntimePort, WorkflowRuntimeOptions } from './types';
+import type {
+  WorkflowRuntimePort,
+  WorkflowRuntimeOptions
+} from '../../../core/workflow/editor/types';
 
 export type StoreWorkflow = CanonicalWorkflowData;
 

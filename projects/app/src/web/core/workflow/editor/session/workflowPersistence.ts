@@ -1,7 +1,7 @@
 import type { UseToastOptions } from '@chakra-ui/react';
 import type { MutableRefObject } from 'react';
 import type { TFunction } from 'next-i18next';
-import type { StoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
+import type { StoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { serializeRuntime } from '../codec';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';

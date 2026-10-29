@@ -3,28 +3,31 @@ import {
   NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
-} from '../../constants';
-import { CanonicalWorkflowDataSchema, type CanonicalWorkflowData } from '../../migration/schema';
-import { stripCanvasSizeInputs } from '../../migration/migrate';
+} from '../../../../core/workflow/constants';
+import {
+  CanonicalWorkflowDataSchema,
+  type CanonicalWorkflowData
+} from '../../../../core/workflow/migration/schema';
+import { stripCanvasSizeInputs } from '../../migration';
 import {
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType,
   isNestedParentNodeType
-} from '../../node/constant';
-import type { NodeTemplateContext, StoreNodeItemType } from '../../type/node';
-import type { FlowNodeInputItemType } from '../../type/io';
-import type { AppChatConfigType } from '../../../app/type';
-import { isValidArrayReferenceValue } from '../../../../common/workflow/reference';
-import { getNodeContainerCheckError } from '../../template/context';
-import type { NodeContainerCheckError } from '../../template/context';
-import { moduleTemplatesFlat } from '../../template/constants';
-import type { FlowNodeTemplateOutputItemType } from '../../template/output';
+} from '../../../../core/workflow/node/constant';
+import type { NodeTemplateContext, StoreNodeItemType } from '../../../../core/workflow/type/node';
+import type { FlowNodeInputItemType } from '../../../../core/workflow/type/io';
+import type { AppChatConfigType } from '../../../../core/app/type';
+import { isValidArrayReferenceValue } from '../../reference';
+import { getNodeContainerCheckError } from '../../../../core/workflow/template/context';
+import type { NodeContainerCheckError } from '../../../../core/workflow/template/context';
+import { moduleTemplatesFlat } from '../../../../core/workflow/template/constants';
+import type { FlowNodeTemplateOutputItemType } from '../../../../core/workflow/template/output';
 import type {
   NodeViewState,
   WorkflowCommandError,
   WorkflowFieldIdentity,
   WorkflowNodeData
-} from '../types';
+} from '../../../../core/workflow/editor/types';
 import { getWorkflowGlobalVariables } from '../variables';
 import {
   addFieldIdentity,

@@ -1,4 +1,4 @@
-import type { HistorySnapshot, WorkflowChange } from '../types';
+import type { HistorySnapshot, WorkflowChange } from '../../../../core/workflow/editor/types';
 import { freezeValue } from './kernel';
 import type { HistoryEntry, MutationMeta, NodeViewChange, RuntimeDocument } from './types';
 

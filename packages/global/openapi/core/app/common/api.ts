@@ -26,7 +26,7 @@ import {
   PaginationPageSizeLimit,
   PaginationResponseSchema
 } from '../../../api';
-import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
+import { migrateWorkflowToCurrent } from '../../../../common/workflow/migration';
 import z from 'zod';
 
 const AppIdSchema = ObjectIdSchema.meta({

@@ -16,9 +16,9 @@ import type {
 import type { WorkflowRuntimeSummaryType } from '@fastgpt/service/core/workflow/dispatch/type';
 import {
   getWorkflowEntryNodeIds,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLogger } from '@fastgpt/service/common/logger';
 import { MongoApp } from '@fastgpt/service/core/app/schema';

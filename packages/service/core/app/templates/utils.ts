@@ -1,6 +1,6 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 
 /**
  * 将模板内的历史工作流迁移为当前结构。

@@ -5,7 +5,7 @@ import {
   applyWorkflowStartInputAutoFill,
   getWorkflowStartAutoFillValue,
   isWorkflowStartAutoFilledValue
-} from '@fastgpt/global/core/workflow/editor/startAutoFill';
+} from '@fastgpt/global/common/workflow/editor/startAutoFill';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { isEqual } from 'lodash-es';
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   CanonicalFlowNodeInputItemSchema,
-  LegacyFlowNodeInputItemSchema,
-  migrateWorkflowToCurrent,
-  isLegacyV1Workflow
+  LegacyFlowNodeInputItemSchema
 } from '@fastgpt/global/core/workflow/migration';
+import {
+  isLegacyV1Workflow,
+  migrateWorkflowToCurrent
+} from '@fastgpt/global/common/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,

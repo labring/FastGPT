@@ -1,12 +1,12 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
-import { nodeInputIsReference } from '../../../common/workflow/reference';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../../../core/workflow/constants';
+import { nodeInputIsReference } from '../reference';
 import { isEqual } from 'lodash-es';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
-} from '../type/io';
+} from '../../../core/workflow/type/io';
 
 /** 判断引用输入是否仍为空占位；失效引用保留给引用检查处理。 */
 const isUnsetReferenceValue = (value: unknown) => {

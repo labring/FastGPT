@@ -1,7 +1,7 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useUnmount } from 'ahooks';
-import type { StoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
+import type { StoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';

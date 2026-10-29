@@ -10,9 +10,9 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import {
   formatVariableValByType,
-  getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';

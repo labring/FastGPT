@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { filterSensitiveNodesData, storeNode2FlowNode } from '@/web/core/workflow/utils';
 
 describe('WorkflowComponents utils', () => {

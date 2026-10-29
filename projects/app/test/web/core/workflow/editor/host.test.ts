@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactFlowProvider } from '@xyflow/react';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
-import { hydrateWorkflowEditor } from '@fastgpt/global/core/workflow/editor/protocol';
+import { hydrateWorkflowEditor } from '@fastgpt/global/common/workflow/editor/protocol';
 import {
   getWorkflowModelDetails,
   peekWorkflowEnvironmentModels
@@ -60,8 +60,10 @@ vi.mock('@/web/core/workflow/editor/react/workflowEditorProvider', () => ({
 const t = ((key: string) => key) as never;
 
 type TestAppDetail = { chatConfig: Record<string, unknown> };
-type TestHost = { runtime: WorkflowRuntimePort | null; issueFocusNodeId?: string } &
-  WorkflowSessionActions &
+type TestHost = {
+  runtime: WorkflowRuntimePort | null;
+  issueFocusNodeId?: string;
+} & WorkflowSessionActions &
   WorkflowPersistenceState &
   WorkflowHistoryState;
 

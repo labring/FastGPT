@@ -3,8 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
-import { getInputReferences } from '@fastgpt/global/core/workflow/editor/runtime/kernel';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { getInputReferences } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   PublishAppBodySchema,

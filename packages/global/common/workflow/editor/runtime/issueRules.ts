@@ -1,39 +1,48 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../constants';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum, LoopRunModeEnum } from '../../node/constant';
 import {
-  getSelectedInputRenderType,
-  nodeInputIsReference
-} from '../../../../common/workflow/reference';
-import { isWorkflowSystemModelInput } from '../../../../common/workflow/model';
-import { workflowModelKeyMappings } from '../../model/constants';
-import { moduleTemplatesFlat } from '../../template/constants';
-import { VariableConditionEnum } from '../../template/system/ifElse/constant';
-import { PluginStatusEnum } from '../../../plugin/type';
-import { AppErrEnum } from '../../../../common/error/code/app';
-import { PluginErrEnum } from '../../../../common/error/code/plugin';
-import { ERROR_RESPONSE } from '../../../../common/error/errorCode';
-import { isToolNotExistError } from '../../../app/utils';
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '../../../../core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum,
+  LoopRunModeEnum
+} from '../../../../core/workflow/node/constant';
+import { getSelectedInputRenderType, nodeInputIsReference } from '../../reference';
+import { isWorkflowSystemModelInput } from '../../model';
+import { workflowModelKeyMappings } from '../../../../core/workflow/model/constants';
+import { moduleTemplatesFlat } from '../../../../core/workflow/template/constants';
+import { VariableConditionEnum } from '../../../../core/workflow/template/system/ifElse/constant';
+import { PluginStatusEnum } from '../../../../core/plugin/type';
+import { AppErrEnum } from '../../../error/code/app';
+import { PluginErrEnum } from '../../../error/code/plugin';
+import { ERROR_RESPONSE } from '../../../error/errorCode';
+import { isToolNotExistError } from '../../../../core/app/utils';
 import {
   canInputBeAgentGenerated,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
-  isToolInputValueConfigured,
-  isToolParamInput
-} from '../../../app/formEdit/utils';
-import { ModelTypeEnum } from '../../../ai/constants';
-import { getModelReferenceValue, isEmptyModelValue } from '../../../ai/model/reference';
+  isToolInputValueConfigured
+} from '../../../../core/app/formEdit/utils';
+import { ModelTypeEnum } from '../../../../core/ai/constants';
+import { getModelReferenceValue, isEmptyModelValue } from '../../../../core/ai/model/reference';
 import {
   getWorkflowReferenceItemsFromValue,
   isConfiguredReferenceValue,
   isEmptyReferenceValue,
+  isToolParamInput,
   workflowValueTypeIsCompatible
 } from '../utils';
-import type { WorkflowIssueCode } from '../issueCode';
-import type { WorkflowConfigIssue, WorkflowEnvironment, WorkflowReferenceStatus } from '../types';
-import type { FlowNodeInputItemType } from '../../type/io';
-import type { WorkflowCheckIssue } from '../../type/node';
-import type { IfElseListItemType } from '../../template/system/ifElse/type';
-import type { TUpdateListItem } from '../../template/system/variableUpdate/type';
+import type { WorkflowIssueCode } from '../../../../core/workflow/editor/issueCode';
+import type {
+  WorkflowConfigIssue,
+  WorkflowEnvironment,
+  WorkflowReferenceStatus
+} from '../../../../core/workflow/editor/types';
+import type { FlowNodeInputItemType } from '../../../../core/workflow/type/io';
+import type { WorkflowCheckIssue } from '../../../../core/workflow/type/node';
+import type { IfElseListItemType } from '../../../../core/workflow/template/system/ifElse/type';
+import type { TUpdateListItem } from '../../../../core/workflow/template/system/variableUpdate/type';
 import type { DocumentReadApi, NodeRecord, ReferenceReadApi } from './types';
 
 /**

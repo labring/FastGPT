@@ -22,7 +22,7 @@ import type {
 import {
   getWorkflowReferenceItems,
   isConfiguredReferenceValue
-} from '@fastgpt/global/core/workflow/editor/utils';
+} from '@fastgpt/global/common/workflow/editor/utils';
 import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import {
@@ -209,30 +209,30 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
 
   return (
     <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
-    <Box position={'relative'}>
-      <ReferSelector
-        placeholder={
-          t(currentInput.referencePlaceholder as any) ||
-          (isDynamicOptionsInput
-            ? t('workflow:please_select_variable')
-            : t('common:select_reference_variable'))
-        }
-        list={referenceList}
-        value={currentInput.value}
-        onSelect={onSelect}
-        popDirection={popDirection}
-        isArray={isArray}
-        excludeValueTypes={excludeValueTypes}
-      />
-      {isDynamicOptionsInput && (
-        <MySourceHandle
-          nodeId={nodeId}
-          handleId={getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)}
-          position={Position.Right}
-          translate={[34, 0]}
+      <Box position={'relative'}>
+        <ReferSelector
+          placeholder={
+            t(currentInput.referencePlaceholder as any) ||
+            (isDynamicOptionsInput
+              ? t('workflow:please_select_variable')
+              : t('common:select_reference_variable'))
+          }
+          list={referenceList}
+          value={currentInput.value}
+          onSelect={onSelect}
+          popDirection={popDirection}
+          isArray={isArray}
+          excludeValueTypes={excludeValueTypes}
         />
-      )}
-    </Box>
+        {isDynamicOptionsInput && (
+          <MySourceHandle
+            nodeId={nodeId}
+            handleId={getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY)}
+            position={Position.Right}
+            translate={[34, 0]}
+          />
+        )}
+      </Box>
     </WorkflowFieldScope>
   );
 };
@@ -617,17 +617,7 @@ const MultipleReferenceSelector = ({
         ButtonProps={ButtonProps}
       />
     );
-  }, [
-    arrayVal,
-    ButtonProps,
-    formatList,
-    list,
-    onOpenList,
-    onSelect,
-    placeholder,
-    popDirection,
-    t
-  ]);
+  }, [arrayVal, ButtonProps, formatList, list, onOpenList, onSelect, placeholder, popDirection, t]);
 
   return ArraySelector;
 };

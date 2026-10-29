@@ -6,7 +6,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
 /** 图查询夹具节点：只带判定需要的字段，其余由 runtime 入站边界补齐。 */

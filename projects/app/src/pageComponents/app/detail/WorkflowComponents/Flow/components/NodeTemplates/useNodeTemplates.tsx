@@ -4,10 +4,8 @@ import type {
   NodeTemplateContext,
   NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
-import {
-  isTemplateAddable,
-  isTemplateVisible
-} from '@fastgpt/global/core/workflow/template/context';
+import { isTemplateAddable } from '@fastgpt/global/common/workflow/editor/utils';
+import { isTemplateVisible } from '@fastgpt/global/core/workflow/template/context';
 import { getTeamAppTemplatesV2, getAppToolTemplates } from '@/web/core/app/api/tool';
 import { TemplateTypeEnum } from './header';
 import { useContextSelector } from 'use-context-selector';

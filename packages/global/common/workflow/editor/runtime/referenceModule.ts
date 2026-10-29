@@ -1,21 +1,22 @@
-import type { WorkflowIOValueTypeEnum } from '../../constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
+import type { WorkflowIOValueTypeEnum } from '../../../../core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '../../../../core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { isToolParamInput } from '../../../app/formEdit/utils';
-import {
-  getSelectedInputRenderType,
-  nodeInputIsReference
-} from '../../../../common/workflow/reference';
-import { i18nT } from '../../../../common/i18n/utils';
+} from '../../../../core/workflow/node/constant';
+import { getSelectedInputRenderType, nodeInputIsReference } from '../../reference';
+import { i18nT } from '../../../i18n/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
   getHTTPToolParamOutputs,
   getWorkflowReferenceItemsFromValue,
   isWorkflowReferenceItem,
+  isToolParamInput,
   workflowValueTypeIsCompatible
 } from '../utils';
 import { getWorkflowGlobalVariables } from '../variables';
@@ -24,16 +25,16 @@ import type {
   FlowNodeOutputItemType,
   ReferenceItemValueType,
   WorkflowReferenceSnapshot
-} from '../../type/io';
-import type { TUpdateListItem } from '../../template/system/variableUpdate/type';
+} from '../../../../core/workflow/type/io';
+import type { TUpdateListItem } from '../../../../core/workflow/template/system/variableUpdate/type';
 import type {
   WorkflowFieldIdentity,
   WorkflowNodeData,
   WorkflowReferenceOptionsQuery,
   WorkflowReferenceOption,
   WorkflowReferenceStatus
-} from '../types';
-import type { AppChatConfigType } from '../../../app/type';
+} from '../../../../core/workflow/editor/types';
+import type { AppChatConfigType } from '../../../../core/app/type';
 import {
   addFieldIdentity,
   getFieldIdentity,

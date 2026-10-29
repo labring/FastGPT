@@ -7,10 +7,38 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   isLegacyV1Workflow,
-  migrateWorkflowToCurrent
-} from '@fastgpt/global/core/workflow/migration/migrate';
-import { migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
+  migrateWorkflowToCurrent,
+  stripCanvasSizeInputs
+} from '@fastgpt/global/common/workflow/migration';
+import { migrateStoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
 import { migrateLegacyWorkflowStructureData } from '@fastgpt/global/core/workflow/migration/legacy/structure';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+
+describe('stripCanvasSizeInputs', () => {
+  it('removes renderer-measured dimensions and keeps persisted inputs', () => {
+    const query: FlowNodeInputItemType = {
+      key: 'query',
+      label: 'Query',
+      renderTypeList: [FlowNodeInputTypeEnum.input]
+    };
+    const inputs: FlowNodeInputItemType[] = [
+      { key: NodeInputKeyEnum.nodeWidth, label: '', renderTypeList: [] },
+      query,
+      { key: NodeInputKeyEnum.nodeHeight, label: '', renderTypeList: [] },
+      { key: NodeInputKeyEnum.nestedNodeInputHeight, label: '', renderTypeList: [] }
+    ];
+
+    expect(stripCanvasSizeInputs(inputs)).toEqual([query]);
+  });
+
+  it('returns the original array when no measured fields are present', () => {
+    const inputs: FlowNodeInputItemType[] = [
+      { key: 'query', label: 'Query', renderTypeList: [FlowNodeInputTypeEnum.input] }
+    ];
+
+    expect(stripCanvasSizeInputs(inputs)).toBe(inputs);
+  });
+});
 
 describe('workflow migration V1 detection', () => {
   it.each([

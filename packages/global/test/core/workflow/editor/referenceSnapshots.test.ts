@@ -5,8 +5,8 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
-import { getWorkflowReferenceItemsFromValue } from '@fastgpt/global/core/workflow/editor/utils';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import { getWorkflowReferenceItemsFromValue } from '@fastgpt/global/common/workflow/editor/utils';
 import type { CanonicalWorkflowData } from '@fastgpt/global/core/workflow/migration/schema';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type {

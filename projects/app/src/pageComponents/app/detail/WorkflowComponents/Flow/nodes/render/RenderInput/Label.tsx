@@ -31,7 +31,7 @@ import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearch
 import type { WorkflowCommand, WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
-import { cloneValue } from '@fastgpt/global/core/workflow/editor/runtime/kernel';
+import { cloneValue } from '@fastgpt/global/common/workflow/editor/runtime/kernel';
 
 type Props = {
   nodeId: string;
@@ -136,8 +136,7 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
           : getHandleId(nodeId, 'source', USER_SELECT_DEFAULT_OPTIONS[0].key);
       const commands: WorkflowCommand[] = edges
         .flatMap((edge, index) =>
-          edge.source === nodeId &&
-          (edge !== edgeToKeep || edge.sourceHandle !== nextFirstHandleId)
+          edge.source === nodeId && (edge !== edgeToKeep || edge.sourceHandle !== nextFirstHandleId)
             ? [index]
             : []
         )

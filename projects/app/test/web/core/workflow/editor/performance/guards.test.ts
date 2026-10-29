@@ -114,7 +114,7 @@ describe('workflow editor subscription guards', () => {
   it('画布与 Reference 不对普通字段事件做全量刷新', () => {
     const canvasSource = readFileSync(join(flowRoot, 'canvas/workflowCanvasContext.tsx'), 'utf8');
     const subscriptionSource = readFileSync(
-      join(globalRoot, 'core/workflow/editor/runtime/subscriptionModule.ts'),
+      join(globalRoot, 'common/workflow/editor/runtime/subscriptionModule.ts'),
       'utf8'
     );
 

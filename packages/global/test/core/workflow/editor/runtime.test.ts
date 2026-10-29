@@ -9,13 +9,13 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
-import * as documentRules from '@fastgpt/global/core/workflow/editor/runtime/documentRules';
-import * as issueRules from '@fastgpt/global/core/workflow/editor/runtime/issueRules';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import * as documentRules from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
+import * as issueRules from '@fastgpt/global/common/workflow/editor/runtime/issueRules';
 import {
   hydrateWorkflowEditor,
   migrateStoreWorkflow
-} from '@fastgpt/global/core/workflow/editor/protocol';
+} from '@fastgpt/global/common/workflow/editor/protocol';
 import type {
   WorkflowChange,
   WorkflowCommand,

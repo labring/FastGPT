@@ -579,4 +579,20 @@ describe('useDebugInput', () => {
 
     expect(updatedInput.value).toEqual({ new: true });
   });
+
+  it('should preserve array values returned by the debug form', () => {
+    const input = makeInput({
+      key: 'labels',
+      renderTypeList: [FlowNodeInputTypeEnum.select],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+    const values = ['true'];
+
+    const [updatedInput] = getDebugRuntimeInputs({
+      inputs: [input],
+      nodeVariables: { labels: values }
+    });
+
+    expect(updatedInput.value).toBe(values);
+  });
 });

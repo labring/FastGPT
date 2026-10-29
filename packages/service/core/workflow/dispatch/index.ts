@@ -28,7 +28,7 @@ import {
   filterWorkflowEdges,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/core/workflow/editor/utils';
+import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/common/workflow/editor/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
