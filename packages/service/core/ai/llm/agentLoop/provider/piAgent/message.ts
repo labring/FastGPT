@@ -16,8 +16,7 @@ import type {
   ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { getImageBase64 } from '../../../../../../common/file/image/utils';
-import { maskImagePlaceholderUrl } from '../../../utils';
+import { loadImageBase64, maskImagePlaceholderUrl } from '../../../utils';
 
 /** 将工具参数稳定序列化；不可序列化值回退为空对象，避免中断事件链。 */
 export const stringifyJson = (value: unknown) => {
@@ -130,7 +129,8 @@ export const convertToolResponseContentToPiContent = async (
       }
 
       try {
-        const { base64, mime } = await getImageBase64(url);
+        // 与 fastAgent 共用取图通道：沙箱预览地址允许走配置 origin 的受限下载。
+        const { base64, mime } = await loadImageBase64(url);
         return { type: 'image', mimeType: mime, data: base64 };
       } catch {
         return { type: 'text', text: `[Image: ${maskImagePlaceholderUrl(url)}]` };

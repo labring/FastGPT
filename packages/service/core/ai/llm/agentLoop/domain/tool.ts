@@ -16,6 +16,26 @@ export type AgentLoopToolCatalog = {
 };
 
 /**
+ * 构造写入 tool message 的 content：
+ * - 无结构化 parts 时直接用文本字符串；
+ * - 有 parts 时把最终要发送的文本作为 text part 拼在图片等 parts 前，
+ *   保证模型实际拿到的文本与展示/计费统计一致（文本已压缩时传压缩后的值）。
+ *
+ * fastAgent 与 piAgent 共用这层组合规则，避免两条 provider 路径对同一个工具结果
+ * 给出不同的内容：业务 response 文本永远保留，图片只作为附加 part。
+ */
+export const buildToolMessageContent = ({
+  content,
+  text
+}: {
+  content?: ChatCompletionToolMessageContentPart[];
+  text: string;
+}): string | ChatCompletionToolMessageContentPart[] => {
+  if (!content?.length) return text;
+  return [{ type: 'text', text }, ...content.filter((part) => part.type !== 'text')];
+};
+
+/**
  * 工具内部产生的可持久化 assistant 展示项。
  *
  * agent-loop 不解释这些字段，只负责沿工具执行结果和标准事件链路透传；
