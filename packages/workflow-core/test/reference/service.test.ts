@@ -1,5 +1,8 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   VARIABLE_NODE_ID,
   NodeInputKeyEnum,
@@ -321,6 +324,42 @@ describe('input mutation services', () => {
 
     setInputValue({ document, nodeId: 'ai', inputKey: input.key, value: { count: 3 } });
     expect(input.value).toEqual({ count: 3 });
+  });
+
+  it('hides tool caller outputs from queries, assignment and reference validation', () => {
+    const tool = document.nodes.find((node) => node.nodeId === 'ai')!;
+    document.nodes.push({
+      ...structuredClone(tool),
+      nodeId: 'caller',
+      flowNodeType: FlowNodeTypeEnum.toolCall
+    });
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'caller' } },
+      {
+        source: { kind: 'selectedTools', nodeId: 'caller' },
+        target: { kind: 'selectedTools', nodeId: 'ai' }
+      }
+    ];
+    const params = { document, nodeId: 'ai', inputKey: 'userChatInput' };
+    const callerRef = { nodeId: 'caller', outputKey: 'answerText' };
+    const upstreamRef = { nodeId: 'start', outputKey: 'userChatInput' };
+
+    const references = getAvailableInputReferences(params);
+    expect(references).not.toContainEqual(expect.objectContaining({ ref: callerRef }));
+    expect(references).toContainEqual(expect.objectContaining({ ref: upstreamRef }));
+    setInputReference({ ...params, ref: upstreamRef });
+    expect(() => setInputReference({ ...params, ref: callerRef })).toThrow(
+      WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
+    );
+
+    tool.inputs.find((input) => input.key === params.inputKey)!.value = ['caller', 'answerText'];
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
+        nodeId: 'ai',
+        inputKey: params.inputKey
+      })
+    );
   });
 
   it('validates reference mode, source output and value type', () => {
