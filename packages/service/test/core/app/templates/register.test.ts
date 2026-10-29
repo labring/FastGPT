@@ -197,6 +197,34 @@ describe('getAppTemplatesAndLoadThem', () => {
     expect(template?.workflow).toHaveProperty('referenceSnapshots', referenceSnapshots);
   });
 
+  it('keeps valid plugin templates when a snapshot is malformed', async () => {
+    mocks.listWorkflows.mockResolvedValue([
+      {
+        templateId: 'valid',
+        name: 'Valid',
+        intro: 'intro',
+        avatar: 'avatar',
+        tags: [],
+        type: AppTypeEnum.workflow,
+        workflow: {
+          nodes: [],
+          edges: [],
+          referenceSnapshots: [null, { reference: ['deleted', 'output'], sourceLabel: 'Source' }]
+        }
+      }
+    ]);
+    mocks.findTemplates.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    });
+
+    const templates = await getAppTemplatesAndLoadThem(true);
+
+    expect(templates).toHaveLength(1);
+    expect(templates[0]?.workflow).toHaveProperty('referenceSnapshots', [
+      { reference: ['deleted', 'output'], sourceLabel: 'Source' }
+    ]);
+  });
+
   it('migrates legacy workflow fields before returning templates', async () => {
     mocks.listWorkflows.mockResolvedValue([]);
     mocks.findTemplates.mockReturnValue({

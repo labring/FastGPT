@@ -88,6 +88,7 @@ export const getPositionDelta = (initialPosition: XYPosition, nextPosition?: XYP
 type WorkflowDragNode = Pick<CanvasNode, 'id' | 'position' | 'selected' | 'data'>;
 
 export type WorkflowDragGesture = {
+  nodeId: string;
   nodeIds: readonly string[];
   startPositions: ReadonlyMap<string, XYPosition>;
 };
@@ -154,6 +155,7 @@ export const captureWorkflowDrag = (
   nodes: readonly WorkflowDragNode[],
   activeNodeId: string
 ): WorkflowDragGesture => ({
+  nodeId: activeNodeId,
   nodeIds: [...getWorkflowDragNodeIds(nodes, activeNodeId)],
   startPositions: new Map(nodes.map((node) => [node.id, { ...node.position }] as const))
 });
@@ -575,7 +577,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   );
 
   // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
-  const checkNodeOverLoopNode = useMemoizedFn((node: CanvasNode) => {
+  const getDropContainerId = (node: CanvasNode) => {
     if (!node || node.data.parentNodeId) return;
 
     const nodeRect = getNodeRect(node, getNodeDimension(node.id));
@@ -589,38 +591,8 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
       const parentRect = getNodeRect(item, getNodeDimension(item.id));
       return !!parentRect && areNodeRectsIntersecting(nodeRect, parentRect);
     });
-
-    if (parentNode) {
-      // 断连用的边集合在 attach 之前取：与改造前的渲染期快照同一时点，
-      // 且不需要为了这一次事件期读取订阅整份结构。
-      const currentEdges = actions.getEdges();
-      const result = actions.attachToContainer(node.id, parentNode.id);
-      if (!result.ok) {
-        // 容器校验只在 runtime 跑一遍；拒绝原因随 dispatch 结果回来，app 只翻译。
-        // 非容器拒绝（节点已在容器里、目标不是容器、自嵌套）没有用户文案，保持静默。
-        if (result.error?.reason) {
-          toast({
-            status: 'warning',
-            title: translateNodeContainerCheckError(result.error.reason, t)
-          });
-        }
-        return;
-      }
-      // 旧行为是落入容器后删除该节点全部连线，按值断连避免投影 id 重排失效。
-      currentEdges
-        .filter((edge) => edge.source === node.id || edge.target === node.id)
-        .forEach((edge) =>
-          actions.disconnectEdge({
-            edge: {
-              source: edge.source,
-              target: edge.target,
-              sourceHandle: edge.sourceHandle || '',
-              targetHandle: edge.targetHandle || ''
-            }
-          })
-        );
-    }
-  });
+    return parentNode?.id;
+  };
 
   const getTemplatesListPopoverPosition = useMemoizedFn(
     ({
@@ -916,7 +888,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     }
   });
 
-  const commitDragGeometry = useMemoizedFn(() => {
+  const commitDragGeometry = useMemoizedFn((containerId?: string) => {
     const gesture = dragGestureRef.current;
     dragGestureRef.current = undefined;
     if (!gesture) return;
@@ -928,12 +900,19 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
       currentNodes,
       getPreviousPosition: (nodeId) => runtime?.getNodeView(nodeId)?.position
     });
-    if (geometryUpdates.length === 0) return;
+    if (geometryUpdates.length === 0 && !containerId) return;
 
-    const result = canvas.commitGeometry(geometryUpdates);
-    if (result.ok) return;
+    if (!runtime) return;
 
-    // Geometry batch 失败时回到 Runtime 已提交位置，避免 renderer 留下半套布局。
+    const result = runtime.dispatch([
+      ...geometryUpdates.map((update) => ({ type: 'commitGeometry' as const, ...update })),
+      ...(containerId
+        ? [{ type: 'attachToContainer' as const, nodeId: gesture.nodeId, containerId }]
+        : [])
+    ]);
+    if (result.ok) return result;
+
+    // 同一事务失败时 Runtime 未提交任何位置或父级，画布回到手势起点。
     replaceNodes(
       currentNodes.map((currentNode) => {
         const position =
@@ -942,6 +921,7 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
         return position ? { ...currentNode, position: { ...position } } : currentNode;
       })
     );
+    return result;
   });
 
   const handleEdgeChange = useMemoizedFn((changes: EdgeChange[]) => {
@@ -970,8 +950,13 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
 
   const onNodeDragStop = useMemoizedFn((_event: unknown, node: CanvasNode) => {
     helperLinesRef.current?.clear();
-    commitDragGeometry();
-    checkNodeOverLoopNode(node);
+    const result = commitDragGeometry(getDropContainerId(node));
+    if (result && !result.ok && result.error?.reason) {
+      toast({
+        status: 'warning',
+        title: translateNodeContainerCheckError(result.error.reason, t)
+      });
+    }
   });
 
   /* connect */

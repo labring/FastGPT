@@ -6,7 +6,8 @@ import {
 } from '../../../core/workflow/constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import { ModelTypeEnum } from '../../../core/ai/constants';
-import { getHandleId } from '../reference';
+import { getHandleId, nodeInputIsReference } from '../reference';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '../../../core/workflow/template/system/interactive/userSelect';
 import { moduleTemplatesFlat } from '../../../core/workflow/template/constants';
 import { canInputBeAgentGenerated } from '../../../core/app/formEdit/utils';
 import {
@@ -205,8 +206,11 @@ export const isWorkflowEdgeSourceHandleValid = (
   const { nodeId, flowNodeType, inputs } = sourceNode;
   if (flowNodeType === FlowNodeTypeEnum.userSelect) {
     if (!sourceHandle) return false;
-    const options = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
-      ?.value as Array<{ key?: string }> | undefined;
+    const input = inputs?.find((item) => item.key === NodeInputKeyEnum.userSelectOptions);
+    if (input && nodeInputIsReference(input)) {
+      return sourceHandle === getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
+    }
+    const options = input?.value as Array<{ key?: string }> | undefined;
     return (
       Array.isArray(options) &&
       options.some(

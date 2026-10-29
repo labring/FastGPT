@@ -53,18 +53,22 @@ export const ConnectionSourceHandle = ({
       if (node && nodeHandle?.view.isFolded && sourceType === 'source') {
         return (
           <>
-            {getFoldedSourceHandleIds(node as unknown as FlowNodeItemType).map(
-              (handleId, index) => (
-                <MySourceHandle
-                  key={handleId}
-                  nodeId={nodeId}
-                  handleId={handleId}
-                  position={Position.Right}
-                  translate={[4, 0]}
-                  showHandle={index === 0}
-                />
-              )
-            )}
+            {getFoldedSourceHandleIds({
+              ...node,
+              id: nodeId,
+              showSourceHandle: moduleTemplatesFlat.find(
+                (item) => item.flowNodeType === node.flowNodeType
+              )?.showSourceHandle
+            } as unknown as FlowNodeItemType).map((handleId, index) => (
+              <MySourceHandle
+                key={handleId}
+                nodeId={nodeId}
+                handleId={handleId}
+                position={Position.Right}
+                translate={[4, 0]}
+                showHandle={index === 0}
+              />
+            ))}
           </>
         );
       }

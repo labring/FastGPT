@@ -13,7 +13,7 @@ import { Position } from '@xyflow/react';
 
 /** 折叠只合并端口位置，保留所有业务端口 ID，避免折叠时已有分支或异常连线找不到端点。 */
 export const getFoldedSourceHandleIds = (node: FlowNodeItemType) => {
-  const { nodeId, inputs, outputs } = node;
+  const { nodeId, inputs, outputs, showSourceHandle } = node;
   const keys: string[] = [];
 
   if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
@@ -33,7 +33,7 @@ export const getFoldedSourceHandleIds = (node: FlowNodeItemType) => {
     keys.push(...(options ?? []).map((option: { key: string }) => option.key));
   }
 
-  if (node.showSourceHandle) keys.push(Position.Right);
+  if (showSourceHandle) keys.push(Position.Right);
   keys.push(
     ...outputs
       .filter(

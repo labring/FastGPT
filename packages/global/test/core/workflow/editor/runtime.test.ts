@@ -27,6 +27,7 @@ import type {
 } from '@fastgpt/global/core/workflow/editor/types';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 const createRuntime = (): WorkflowRuntimePort => {
   const editor = createWorkflowEditor({
@@ -728,6 +729,62 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getNode('answer')?.issues.map((issue) => issue.code)).toEqual([
       'invalid_reference'
     ]);
+  });
+
+  it('keeps UserSelect reference edges as valid execution branches', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'select',
+          flowNodeType: FlowNodeTypeEnum.userSelect,
+          name: 'Select',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.userSelectOptions,
+              label: 'Options',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              value: ['start', 'options'],
+              valueType: WorkflowIOValueTypeEnum.arrayAny
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'answer',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Answer',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'select',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        },
+        {
+          source: 'select',
+          target: 'answer',
+          sourceHandle: getHandleId('select', 'source', USER_SELECT_REFERENCE_HANDLE_KEY),
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+
+    expect(editor.getWorkflowData().edges).toHaveLength(2);
+    expect(editor.getNode('select')?.issues.map((issue) => issue.code)).not.toContain(
+      'unreachable_reference'
+    );
   });
 
   it('accepts array string references in string inputs after runtime formatting', () => {
@@ -1520,6 +1577,62 @@ describe('workflow editor runtime modules', () => {
     editor.undo();
     expect(editor.getNode('answer')?.name).toBe('Answer');
     expect(editor.getNodeView('answer')?.position).toBeUndefined();
+  });
+
+  it('undoes a geometry plus container attach as one transaction', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'loop',
+          flowNodeType: FlowNodeTypeEnum.loopRun,
+          name: 'Loop',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.loopRunMode,
+              label: 'Mode',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: 'array'
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'child',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Child',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'loop',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+
+    const result = editor.dispatch([
+      { type: 'commitGeometry', nodeId: 'child', position: { x: 120, y: 140 } },
+      { type: 'attachToContainer', nodeId: 'child', containerId: 'loop' }
+    ] satisfies readonly WorkflowCommand[]);
+    expect(result.ok).toBe(true);
+    expect(editor.getNode('child')?.parentNodeId).toBe('loop');
+    expect(editor.getNodeView('child')?.position).toEqual({ x: 120, y: 140 });
+
+    expect(editor.undo().ok).toBe(true);
+    expect(editor.getNode('child')?.parentNodeId).toBeUndefined();
+    expect(editor.getNodeView('child')?.position).toBeUndefined();
   });
 
   it('recomputes the container children list on structure changes', () => {
