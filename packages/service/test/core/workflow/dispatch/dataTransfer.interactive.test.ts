@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -11,6 +12,8 @@ import {
   graphValues,
   runGraph
 } from './testUtils/workflowGraph';
+
+afterEach(() => vi.restoreAllMocks());
 
 /** 使用真实暂停快照恢复节点入口和边状态，验证完整两轮执行。 */
 const restoreGraph = (paused: Awaited<ReturnType<typeof runGraph>>) => {
@@ -133,9 +136,18 @@ describe('interactive workflow output propagation', () => {
     expect(Object.hasOwn(resumed.result, 'rawError')).toBe(false);
   });
 
-  it.each([FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput])(
-    '%s forwards empty dynamic-option failures through its catch branch',
-    async (type) => {
+  it.each(
+    [FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput].flatMap((type) =>
+      [true, false].map((catchError) => ({ type, catchError }))
+    )
+  )(
+    '$type keeps empty dynamic-option failures silent with catchError=$catchError',
+    async ({ type, catchError }) => {
+      const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
+      const warn = vi.spyOn(logger, 'warn');
+      const error = vi.spyOn(logger, 'error');
+      const info = vi.spyOn(logger, 'info');
+      [warn, error, info].forEach((log) => log.mockClear());
       const source = graphNode({
         id: 'source',
         type: FlowNodeTypeEnum.toolParams,
@@ -146,7 +158,7 @@ describe('interactive workflow output propagation', () => {
       const form = graphNode({
         id: 'form',
         type,
-        catchError: true,
+        catchError,
         outputs: [NodeOutputKeyEnum.errorText],
         ...(type === FlowNodeTypeEnum.userSelect
           ? {
@@ -187,14 +199,19 @@ describe('interactive workflow output propagation', () => {
           graphEdge({ source: 'form', target: 'target', error: true })
         ]
       });
-      expect(graphValues(target).message).toBe(
+      const message =
         type === FlowNodeTypeEnum.userSelect
           ? 'workflow:user_select_no_available_options'
-          : 'workflow:form_input_no_available_options'
-      );
+          : 'workflow:form_input_no_available_options';
+      expect(graphValues(target).message).toBe(catchError ? message : undefined);
+      expect(responses.find((response) => response.nodeId === 'form')?.errorText).toBe(message);
       expect(result.workflowInteractiveResponse).toBeUndefined();
-      expect(result.workflowRuntimeSummary.errorCount).toBe(0);
-      expect(responses.map((response) => response.nodeId)).toContain('target');
+      expect(result.workflowRuntimeSummary.errorCount).toBe(catchError ? 0 : 1);
+      expect(responses.some((response) => response.nodeId === 'target')).toBe(catchError);
+      expect(warn).not.toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
+      // 正常的工作流启动 info 保留，但不能为该业务失败额外打印降级日志。
+      expect(info).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
     }
   );
 });
