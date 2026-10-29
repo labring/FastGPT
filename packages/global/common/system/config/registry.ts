@@ -207,7 +207,9 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'payment.bank.description',
       'billingNotify.paymentReceived.zh',
       'billingNotify.lackOfPoints.zh',
+      'billingNotify.pointsThirtyPercentRemain.zh',
       'billingNotify.pointsTenPercentRemain.zh',
+      'billingNotify.freeClean.zh',
       'billingNotify.expireSoon.zh',
       'billingNotify.expired.zh'
     ],
@@ -283,6 +285,11 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     secret: false,
     applyMode: 'reload'
   }),
+  ...createEntries('vector', ['vectorRecallConcurrency'], {
+    edition: 'pro',
+    secret: false,
+    applyMode: 'reload'
+  }),
   ...createEntries(
     'providers',
     [
@@ -319,6 +326,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.common.suspendMinutes',
       'agentSandbox.common.archiveInactiveDays',
       'agentSandbox.common.maxEditDebug',
+      'agentSandbox.common.maxPerTeam',
       'agentSandbox.common.entrypointTimeoutSeconds',
       'agentSandbox.common.wsMaxMessageBytes',
       'agentSandbox.common.wsMaxFrameBytes',

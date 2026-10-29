@@ -471,6 +471,33 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
+            label={t('admin:max_sandbox_instances_per_team')}
+            tooltip={t('admin:max_sandbox_instances_per_team_tip')}
+          >
+            <Controller
+              name="agentSandbox.common.maxPerTeam"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  variant={'whiteOutline'}
+                  min={1}
+                  max={100000}
+                  value={field.value ?? ''}
+                  onChange={(valueAsString, val) =>
+                    field.onChange(valueAsString === '' ? undefined : val)
+                  }
+                >
+                  <NumberInputField placeholder={t('admin:unlimited')} />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
+
+          <AdminFormItem
             label={t('admin:container_entrypoint_timeout_seconds')}
             tooltip={t('admin:max_wait_time_for_a_custom_container_entrypoint')}
             isRequired

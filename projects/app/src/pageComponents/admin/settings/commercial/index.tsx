@@ -308,11 +308,20 @@ const CommercialSettingComponent = () => {
           >
             <Input {...register('billingNotify.lackOfPoints.zh')} placeholder="SMS_xxx" />
           </AdminFormItem>
+          <AdminFormItem label={t('admin:points_thirty_percent_remain_template')}>
+            <Input
+              {...register('billingNotify.pointsThirtyPercentRemain.zh')}
+              placeholder="SMS_xxx"
+            />
+          </AdminFormItem>
           <AdminFormItem
             label={t('admin:points_running_out_chinese_template')}
             tooltip={t('admin:sms_template_id_for_10_points_remaining_reminder_chinese')}
           >
             <Input {...register('billingNotify.pointsTenPercentRemain.zh')} placeholder="SMS_xxx" />
+          </AdminFormItem>
+          <AdminFormItem label={t('admin:free_clean_template')}>
+            <Input {...register('billingNotify.freeClean.zh')} placeholder="SMS_xxx" />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:plan_expiring_soon_chinese_template')}

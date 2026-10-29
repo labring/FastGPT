@@ -11,6 +11,7 @@ export const ResourceConfigSchema = z.strictObject({
   uploadFileMaxSize: positiveInteger(1000),
   uploadFileMaxAmount: positiveInteger(1000),
   systemMaxStringLengthM: z.number().int().min(1).max(100).default(100),
-  exportDatasetLimitMinutes: nonNegativeInteger(0),
-  websiteSyncLimitMinuted: nonNegativeInteger(0)
+  // 旧配置允许小数分钟（例如 0.1 = 6 秒），迁移时必须原样保留
+  exportDatasetLimitMinutes: z.number().nonnegative().default(0),
+  websiteSyncLimitMinuted: z.number().nonnegative().default(0)
 });

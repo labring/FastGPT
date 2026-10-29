@@ -27,6 +27,10 @@ const isNonEmpty = (value: unknown): value is string =>
 const optionalText = (value: unknown): string | undefined =>
   isNonEmpty(value) ? value : undefined;
 
+/** 保留显式空串：旧配置中的清空操作不能被迁移成新 Schema 的非空默认值。 */
+const optionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
 const optionalNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
@@ -87,12 +91,12 @@ export const buildLegacyDomainOverrides = ({
     description: optionalText(appEnv.SYSTEM_DESCRIPTION),
     favicon: optionalText(feConfigs.favicon) ?? optionalText(appEnv.SYSTEM_FAVICON),
     marketplaceUrl: optionalText(appEnv.MARKETPLACE_URL),
-    docUrl: optionalText(feConfigs.docUrl),
-    openApiDocUrl: optionalText(feConfigs.openAPIDocUrl),
+    docUrl: optionalString(feConfigs.docUrl),
+    openApiDocUrl: optionalString(feConfigs.openAPIDocUrl),
     openApiPrefix: optionalText(systemEnv.openapiPrefix),
-    concatMd: optionalText(feConfigs.concatMd),
-    appTemplateCourse: optionalText(feConfigs.appTemplateCourse),
-    loginGuideDocUrl: optionalText(feConfigs.loginGuideDocUrl),
+    concatMd: optionalString(feConfigs.concatMd),
+    appTemplateCourse: optionalString(feConfigs.appTemplateCourse),
+    loginGuideDocUrl: optionalString(feConfigs.loginGuideDocUrl),
     customApiDomain:
       optionalText(feConfigs.customApiDomain) ?? optionalText(appEnv.CUSTOM_API_DOMAIN),
     customSharePageDomain:
@@ -192,9 +196,11 @@ export const buildLegacyDomainOverrides = ({
     appFolderMaxAmount: optionalNumber(serviceEnv.APP_FOLDER_MAX_AMOUNT),
     datasetFolderMaxAmount: optionalNumber(serviceEnv.DATASET_FOLDER_MAX_AMOUNT),
     uploadFileMaxSize:
+      optionalNumber(legacyLimit.uploadFileMaxSize) ??
       optionalNumber(feConfigs.uploadFileMaxSize) ??
       optionalNumber(serviceEnv.UPLOAD_FILE_MAX_SIZE),
     uploadFileMaxAmount:
+      optionalNumber(legacyLimit.uploadFileMaxAmount) ??
       optionalNumber(feConfigs.uploadFileMaxAmount) ??
       optionalNumber(serviceEnv.UPLOAD_FILE_MAX_AMOUNT),
     exportDatasetLimitMinutes: optionalNumber(legacyLimit.exportDatasetLimitMinutes),
@@ -206,7 +212,9 @@ export const buildLegacyDomainOverrides = ({
     workflow: compact({
       maxRunTimes: optionalNumber(serviceEnv.WORKFLOW_MAX_RUN_TIMES),
       maxLoopTimes: optionalNumber(serviceEnv.WORKFLOW_MAX_LOOP_TIMES),
-      parallelMaxConcurrency: optionalNumber(serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
+      parallelMaxConcurrency:
+        optionalNumber(legacyLimit.workflowParallelRunMaxConcurrency) ??
+        optionalNumber(serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY)
     }),
     parse: compact({
       fileTimeoutSeconds: optionalNumber(serviceEnv.PARSE_FILE_TIMEOUT_SECONDS),
@@ -261,7 +269,9 @@ export const buildLegacyDomainOverrides = ({
     hnswEfSearch:
       optionalNumber(systemEnv.hnswEfSearch) ?? optionalNumber(serviceEnv.HNSW_EF_SEARCH),
     hnswMaxScanTuples:
-      optionalNumber(systemEnv.hnswMaxScanTuples) ?? optionalNumber(serviceEnv.HNSW_MAX_SCAN_TUPLES)
+      optionalNumber(systemEnv.hnswMaxScanTuples) ??
+      optionalNumber(serviceEnv.HNSW_MAX_SCAN_TUPLES),
+    vectorRecallConcurrency: optionalNumber(systemEnv.vectorRecallConcurrency)
   }) as DomainOverrides['vector'];
 
   // ---------- providers ----------
@@ -340,6 +350,9 @@ export const buildLegacyDomainOverrides = ({
         archiveInactiveDays: optionalNumber(serviceEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS),
         maxEditDebug:
           optionalNumber(systemEnv.agentSandboxMax) ?? optionalNumber(serviceEnv.AGENT_SANDBOX_MAX),
+        maxPerTeam:
+          optionalNumber(systemEnv.agentSandboxMaxPerTeam) ??
+          optionalNumber(serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM),
         entrypointTimeoutSeconds: optionalNumber(
           serviceEnv.AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS
         ),
@@ -583,7 +596,12 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
     billingNotify: compact({
       paymentReceived: undefined,
       lackOfPoints: pair(sms.LACK_OF_POINTS, sms.LACK_OF_POINTS_EN),
+      pointsThirtyPercentRemain: pair(
+        sms.POINTS_THIRTY_PERCENT_REMAIN,
+        sms.POINTS_THIRTY_PERCENT_REMAIN_EN
+      ),
       pointsTenPercentRemain: pair(sms.POINTS_TEN_PERCENT_REMAIN, sms.POINTS_TEN_PERCENT_REMAIN_EN),
+      freeClean: pair(sms.FREE_CLEAN, sms.FREE_CLEAN_EN),
       expireSoon: pair(sms.EXPIRE_SOON, sms.EXPIRE_SOON_EN),
       expired: pair(sms.EXPIRED, sms.EXPIRED_EN)
     })
@@ -882,7 +900,7 @@ export const applyInstanceConfigMigration = async ({
   overrides: DomainOverrides;
   logger: SystemMigrationLogger;
 }) => {
-  const domains = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => !!overrides[domain]);
+  const domains = SYSTEM_INSTANCE_CONFIG_DOMAINS;
   const createdDomains: SystemInstanceConfigDomainKey[] = [];
   const backfilledDomains: SystemInstanceConfigDomainKey[] = [];
   const backfilledPaths: string[] = [];
@@ -1099,8 +1117,9 @@ export const applyInstanceConfigMigration = async ({
     );
   };
 
+  // 11 个 domain 必须全部初始化：空 overrides 也要落库，否则全新安装会因 Pro 启动断言缺域而无法就绪。
   for (const domain of domains) {
-    const targetOverrides = overrides[domain]!;
+    const targetOverrides = overrides[domain] ?? {};
     // 先执行两阶段校验，确保写入值与运行时解析结果一致（与 controller 写入路径一致，
     // updateOne 不跑 schema validator，由这里显式校验兜底）。
     resolveDomainEffectiveConfig(domain, targetOverrides);

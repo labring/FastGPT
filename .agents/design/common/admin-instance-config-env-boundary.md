@@ -593,6 +593,7 @@ config.performance.workflow.parallelMaxConcurrency
 | `MILVUS_LANGUAGE_IDENTIFIER` | `config.vector.languageIdentifier` | `lingua` 或 `whatlang` |
 | `HNSW_EF_SEARCH` | `config.vector.hnswEfSearch` | 向量检索参数 |
 | `HNSW_MAX_SCAN_TUPLES` | `config.vector.hnswMaxScanTuples` | PG 检索参数 |
+| `systemEnv.vectorRecallConcurrency` | `config.vector.vectorRecallConcurrency` | 商业版召回共享并发，0 表示不限制；无对应环境变量 |
 
 #### 外部 Provider
 
@@ -645,7 +646,8 @@ config.performance.workflow.parallelMaxConcurrency
 | `AGENT_SANDBOX_STORAGE_SIZE_GI` | `config.subservice.agentSandbox.common.storageSizeGi` | 公共资源参数 |
 | `AGENT_SANDBOX_SUSPEND_MINUTES` | `config.subservice.agentSandbox.common.suspendMinutes` | 生命周期参数 |
 | `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS` | `config.subservice.agentSandbox.common.archiveInactiveDays` | 生命周期参数 |
-| `AGENT_SANDBOX_MAX_EDIT_DEBUG` | `config.subservice.agentSandbox.common.maxEditDebug` | 编辑调试实例上限 |
+| `AGENT_SANDBOX_MAX` | `config.subservice.agentSandbox.common.maxEditDebug` | 系统活跃实例总上限；`AGENT_SANDBOX_MAX_EDIT_DEBUG` 已弃用且不再读取 |
+| `AGENT_SANDBOX_MAX_PER_TEAM` | `config.subservice.agentSandbox.common.maxPerTeam` | 单团队活跃实例配额，空值表示不限制 |
 | `AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS` | `config.subservice.agentSandbox.common.entrypointTimeoutSeconds` | 执行超时 |
 | `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `config.subservice.agentSandbox.common.wsMaxMessageBytes` | WebSocket 消息上限 |
 | `AGENT_SANDBOX_WS_MAX_FRAME_BYTES` | `config.subservice.agentSandbox.common.wsMaxFrameBytes` | WebSocket 帧上限 |

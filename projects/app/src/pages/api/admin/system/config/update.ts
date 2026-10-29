@@ -20,6 +20,7 @@ import { assertStorageDownloadConfig } from '@/service/common/system/assertStora
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { logInstanceConfigWrite } from '@fastgpt/service/common/system/migrationCoverageLog';
+import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -42,7 +43,8 @@ async function handler(
   const edition = getServiceEdition();
   const notAllowedKeys = findOverridesNotAllowedByEdition(domain, overrides, edition);
   if (notAllowedKeys.length > 0) {
-    throw new Error(
+    throw new ApiHttpError(
+      403,
       `Edition boundary violation: fields not allowed in ${edition} edition: ${notAllowedKeys.join(
         ', '
       )}`

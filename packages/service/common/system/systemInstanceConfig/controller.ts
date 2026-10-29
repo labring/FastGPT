@@ -40,6 +40,7 @@ import { ApiRequestInputParseError } from '../../zod/requestParseError';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
+import { ApiHttpError } from '../../http/apiError';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -276,7 +277,8 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   const currentRevision = existing?.revision ?? 0;
 
   if (currentRevision !== expectedRevision) {
-    throw new Error(
+    throw new ApiHttpError(
+      409,
       `Revision conflict: current revision is ${currentRevision}, expected ${expectedRevision}`
     );
   }
@@ -319,7 +321,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
       updatedDoc = newDoc.toObject();
     } catch (err: any) {
       if (err?.code === 11000) {
-        throw new Error('Revision conflict: document was concurrently created');
+        throw new ApiHttpError(409, 'Revision conflict: document was concurrently created');
       }
       throw err;
     }
@@ -339,7 +341,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     ).lean();
 
     if (!updatedDoc) {
-      throw new Error('Revision conflict: concurrent modification detected');
+      throw new ApiHttpError(409, 'Revision conflict: concurrent modification detected');
     }
   }
 
@@ -442,7 +444,8 @@ export const batchUpdateDomainConfigs = async ({
       const existing = await MongoSystemInstanceConfig.findOne({ domain }).lean();
       const currentRevision = existing?.revision ?? 0;
       if (currentRevision !== expectedRevision) {
-        throw new Error(
+        throw new ApiHttpError(
+          409,
           `Revision conflict for domain "${domain}": current revision is ${currentRevision}, expected ${expectedRevision}`
         );
       }
@@ -518,7 +521,8 @@ export const batchUpdateDomainConfigs = async ({
         ).lean();
 
         if (!updatedDoc) {
-          throw new Error(
+          throw new ApiHttpError(
+            409,
             `Revision conflict for domain "${item.domain}": concurrent modification detected`
           );
         }
@@ -533,7 +537,6 @@ export const batchUpdateDomainConfigs = async ({
   return preparedItems.map((item) => item.domain);
 };
 
-let currentSnapshot: SystemInstanceConfig | null = null;
 let currentInstanceVersionTag = '0';
 
 /** 获取基于所有 Domain 文档当前 revision 聚合生成的确定性版本标识 */
@@ -626,20 +629,16 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
  * 若尚未完成启动加载，则返回 Schema 定义的初始默认值，保证业务无锁直接调用且永不为 null。
  */
 export const getSystemInstanceConfig = (): SystemInstanceConfig => {
-  if (!currentSnapshot) {
-    if (global.systemInstanceConfig) {
-      currentSnapshot = global.systemInstanceConfig;
-    } else {
-      currentSnapshot = resolveSystemInstanceConfig({});
-      global.systemInstanceConfig = currentSnapshot;
-    }
-  }
+  // global 是跨 Next bundle 的唯一快照源；模块级缓存会让已访问过的路由永久滞留旧配置。
+  const snapshot = global.systemInstanceConfig ?? resolveSystemInstanceConfig({});
+  global.systemInstanceConfig = snapshot;
+
   logInstanceConfigRead({
     callsite: 'runtime.systemInstanceConfig.getSystemInstanceConfig',
     fields: [],
     dedupe: true
   });
-  return currentSnapshot;
+  return snapshot;
 };
 
 /**
@@ -648,7 +647,6 @@ export const getSystemInstanceConfig = (): SystemInstanceConfig => {
  */
 export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
   const snapshot = await getSystemInstanceConfigSnapshot();
-  currentSnapshot = snapshot;
   global.systemInstanceConfig = snapshot;
   global.systemInitBufferId = computeSystemInitBufferId({
     instanceVersionTag: currentInstanceVersionTag,

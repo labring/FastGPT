@@ -37,8 +37,12 @@ const BillingNotifyConfigSchema = z.strictObject({
   paymentReceived: BillingNotifySmsTemplateSchema.prefault({}),
   // 余额不足预警模板
   lackOfPoints: BillingNotifySmsTemplateSchema.prefault({}),
+  // 积分剩余 30% 预警模板
+  pointsThirtyPercentRemain: BillingNotifySmsTemplateSchema.prefault({}),
   // 积分即将耗尽提醒模板
   pointsTenPercentRemain: BillingNotifySmsTemplateSchema.prefault({}),
+  // 免费版知识库清理预警模板
+  freeClean: BillingNotifySmsTemplateSchema.prefault({}),
   // 套餐即将到期提醒模板
   expireSoon: BillingNotifySmsTemplateSchema.prefault({}),
   // 套餐已到期提醒模板

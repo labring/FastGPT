@@ -15,7 +15,7 @@ export const SiteConfigSchema = z.strictObject({
   name: z.string().min(1).max(100).default('AI'),
   description: z.string().max(1000).default(''),
   favicon: textWithDefault(),
-  marketplaceUrl: urlWithDefault('https://v2.marketplace.fastgpt.cn'),
+  marketplaceUrl: urlWithDefault('https://v3.marketplace.fastgpt.cn'),
   docUrl: urlWithDefault('https://doc.fastgpt.io'),
   openApiDocUrl: urlWithDefault('https://doc.fastgpt.io/openapi/intro'),
   // OpenAPI 前缀：用于生成 API Key 的可读前缀

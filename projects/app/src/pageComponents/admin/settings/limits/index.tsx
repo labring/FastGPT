@@ -25,6 +25,7 @@ type LimitsConfigForm = SystemInstanceConfigDomainMap['resource'] &
     fileUrlExpiredDays: SystemInstanceConfigDomainMap['storage']['fileUrlExpiredDays'];
     hnswEfSearch: SystemInstanceConfigDomainMap['vector']['hnswEfSearch'];
     hnswMaxScanTuples: SystemInstanceConfigDomainMap['vector']['hnswMaxScanTuples'];
+    vectorRecallConcurrency: SystemInstanceConfigDomainMap['vector']['vectorRecallConcurrency'];
   };
 
 /** 数字输入统一尺寸，避免各字段各自声明宽度 */
@@ -73,7 +74,8 @@ const LimitsSettingComponent = () => {
       openApiKeyMaxCount: 100,
       fileUrlExpiredDays: 90,
       hnswEfSearch: 100,
-      hnswMaxScanTuples: 100000
+      hnswMaxScanTuples: 100000,
+      vectorRecallConcurrency: 0
     }
   });
 
@@ -85,7 +87,8 @@ const LimitsSettingComponent = () => {
       openApiKeyMaxCount: auth.effectiveConfig?.openApiKeyMaxCount ?? 100,
       fileUrlExpiredDays: storage.effectiveConfig?.fileUrlExpiredDays ?? 90,
       hnswEfSearch: vector.effectiveConfig?.hnswEfSearch ?? 100,
-      hnswMaxScanTuples: vector.effectiveConfig?.hnswMaxScanTuples ?? 100000
+      hnswMaxScanTuples: vector.effectiveConfig?.hnswMaxScanTuples ?? 100000,
+      vectorRecallConcurrency: vector.effectiveConfig?.vectorRecallConcurrency ?? 0
     });
   }, [
     resource.effectiveConfig,
@@ -153,7 +156,8 @@ const LimitsSettingComponent = () => {
             overrides: {
               ...(vector.overrides as Record<string, unknown>),
               hnswEfSearch: Number(formData.hnswEfSearch) || 100,
-              hnswMaxScanTuples: Number(formData.hnswMaxScanTuples) || 100000
+              hnswMaxScanTuples: Number(formData.hnswMaxScanTuples) || 100000,
+              vectorRecallConcurrency: Number(formData.vectorRecallConcurrency ?? 0)
             }
           }
         ]
@@ -310,7 +314,8 @@ const LimitsSettingComponent = () => {
                   value={field.value ?? 1000}
                   // 0 = 禁止创建新目录，与旧 env 语义一致，不能用 || 吃掉 0
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 1000 : val)}
+                    field.onChange(valueAsString === '' ? 1000 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -337,7 +342,8 @@ const LimitsSettingComponent = () => {
                   max={10000}
                   value={field.value ?? 1000}
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 1000 : val)}
+                    field.onChange(valueAsString === '' ? 1000 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -535,7 +541,8 @@ const LimitsSettingComponent = () => {
                   value={field.value ?? 500}
                   // 0 是合法取值（禁用工作流），不能用 || 兜底，否则输入 0 会被吃回默认值
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 500 : val)}
+                    field.onChange(valueAsString === '' ? 500 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -562,7 +569,8 @@ const LimitsSettingComponent = () => {
                   max={1000}
                   value={field.value ?? 100}
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 100 : val)}
+                    field.onChange(valueAsString === '' ? 100 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -750,7 +758,8 @@ const LimitsSettingComponent = () => {
                   max={10000000}
                   value={field.value ?? 1000000}
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 1000000 : val)}
+                    field.onChange(valueAsString === '' ? 1000000 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -931,6 +940,33 @@ const LimitsSettingComponent = () => {
               )}
             />
           </AdminFormItem>
+
+          <AdminFormItem
+            label={t('admin:vector_recall_concurrency')}
+            tooltip={t('admin:vector_recall_concurrency_tip')}
+            isRequired
+          >
+            <Controller
+              name="vectorRecallConcurrency"
+              control={control}
+              render={({ field }) => (
+                <NumberInput
+                  {...numberInputProps}
+                  min={0}
+                  max={1000}
+                  value={field.value ?? 0}
+                  // 0 = 不限制召回并发，不能用 || 吃掉
+                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 0 : val)}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              )}
+            />
+          </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
 
@@ -957,7 +993,8 @@ const LimitsSettingComponent = () => {
                   value={field.value ?? 5000}
                   // 0 = 不限流（消费点对 falsy qpm 放行），不能用 || 兜底
                   onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 5000 : val)}
+                    field.onChange(valueAsString === '' ? 5000 : val)
+                  }
                 >
                   <NumberInputField />
                   <NumberInputStepper>
@@ -1159,8 +1196,7 @@ const LimitsSettingComponent = () => {
                   max={50}
                   value={field.value ?? 3}
                   // 0 = 暂停评测消费（BullMQ 合法取值），不能用 || 吃掉
-                  onChange={(valueAsString, val) =>
-                    field.onChange(valueAsString === '' ? 3 : val)}
+                  onChange={(valueAsString, val) => field.onChange(valueAsString === '' ? 3 : val)}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

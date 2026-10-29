@@ -33,7 +33,6 @@ import UserAddModal from './components/UserAddModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const userStatusColorMap = {
   [UserStatusEnum.active]: 'green',

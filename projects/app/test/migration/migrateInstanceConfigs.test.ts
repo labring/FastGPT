@@ -87,14 +87,56 @@ describe('migration buildLegacyDomainOverrides', () => {
     });
   });
 
-  it('drops empty strings so schema defaults stay authoritative', () => {
-    // 空值与纯空白不应产生覆盖项；env 兜底后等于默认值的项由 sparse 阶段剪枝
+  it('preserves explicitly cleared site links instead of restoring official defaults', () => {
     const sparse = buildSparseLegacyOverrides({
-      feConfigs: { systemTitle: '', docUrl: '' },
+      feConfigs: {
+        systemTitle: '',
+        docUrl: '',
+        openAPIDocUrl: '',
+        concatMd: '',
+        appTemplateCourse: '',
+        loginGuideDocUrl: ''
+      },
       systemEnv: { openapiPrefix: '   ' }
     });
 
-    expect(sparse.site).toBeUndefined();
+    expect(sparse.site).toMatchObject({
+      docUrl: '',
+      openApiDocUrl: '',
+      concatMd: '',
+      appTemplateCourse: '',
+      loginGuideDocUrl: ''
+    });
+    expect(sparse.site?.name).toBeUndefined();
+    expect(sparse.site?.openApiPrefix).toBeUndefined();
+  });
+
+  it('reads current limit fields and preserves fractional rate limits', () => {
+    const overrides = buildLegacyDomainOverrides({
+      feConfigs: {
+        limit: {
+          uploadFileMaxSize: 900,
+          uploadFileMaxAmount: 11,
+          workflowParallelRunMaxConcurrency: 3,
+          exportDatasetLimitMinutes: 0.1,
+          websiteSyncLimitMinuted: 0.5
+        }
+      },
+      systemEnv: {}
+    });
+
+    expect(overrides.resource).toMatchObject({
+      uploadFileMaxSize: 900,
+      uploadFileMaxAmount: 11,
+      exportDatasetLimitMinutes: 0.1,
+      websiteSyncLimitMinuted: 0.5
+    });
+    expect(overrides.performance?.workflow?.parallelMaxConcurrency).toBe(3);
+    for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
+      const domainOverrides = overrides[domain];
+      if (!domainOverrides) continue;
+      expect(() => resolveDomainEffectiveConfig(domain, domainOverrides)).not.toThrow();
+    }
   });
 
   it('produces validated effective config for every mapped domain', () => {
@@ -269,6 +311,25 @@ describe('migration buildSparseLegacyOverrides', () => {
     expect(pro.auth?.loginProviders?.sms?.register).toEqual({ zh: 'SMS_REGISTER_EN' });
   });
 
+  it('migrates free-clean and 30-percent billing SMS templates', () => {
+    const pro = buildLegacyProOverrides({
+      auth: {
+        sms: {
+          FREE_CLEAN: 'SMS_FREE_CLEAN',
+          POINTS_THIRTY_PERCENT_REMAIN: 'SMS_POINTS_30',
+          POINTS_TEN_PERCENT_REMAIN: 'SMS_POINTS_10'
+        }
+      }
+    });
+
+    expect(pro.commercial?.billingNotify).toMatchObject({
+      freeClean: { zh: 'SMS_FREE_CLEAN' },
+      pointsThirtyPercentRemain: { zh: 'SMS_POINTS_30' },
+      pointsTenPercentRemain: { zh: 'SMS_POINTS_10' }
+    });
+    expect(() => resolveDomainEffectiveConfig('commercial', pro.commercial ?? {})).not.toThrow();
+  });
+
   it('normalizes legacy object-shape fastLogin into the array contract', () => {
     // 旧商业版 Admin 存储的是 Record<key, { authUrl }> 对象形状
     const pro = buildLegacyProOverrides({
@@ -340,6 +401,34 @@ describe('migration env wiring', () => {
     });
 
     expect(pick(overrides, 'subservice.agentSandbox.common.maxEditDebug')).toBe(42);
+  });
+
+  it('migrates the legacy vector recall concurrency into the vector domain', () => {
+    const overrides = buildLegacyDomainOverrides({
+      feConfigs: {},
+      systemEnv: { vectorRecallConcurrency: 8 }
+    });
+
+    expect(pick(overrides, 'vector.vectorRecallConcurrency')).toBe(8);
+  });
+
+  it('migrates the per-team sandbox quota and preserves an unset value as unlimited', () => {
+    expect(
+      pick(
+        buildLegacyDomainOverrides({
+          feConfigs: {},
+          systemEnv: { agentSandboxMaxPerTeam: 10000 }
+        }),
+        'subservice.agentSandbox.common.maxPerTeam'
+      )
+    ).toBe(10000);
+
+    expect(
+      pick(
+        buildLegacyDomainOverrides({ feConfigs: {}, systemEnv: {} }),
+        'subservice.agentSandbox.common.maxPerTeam'
+      )
+    ).toBeUndefined();
   });
 
   /**

@@ -142,8 +142,8 @@ describe('initFastGPTConfig', () => {
       expect(global.systemEnv.fileUrlWhitelist).toEqual(fileUrlWhitelist);
       expect(global.systemEnv.ip_whitelist).toBe('10.0.0.1');
       expect(global.feConfigs.limit).toMatchObject({
-        uploadFileMaxAmount: 1000,
-        uploadFileMaxSize: 1000,
+        uploadFileMaxAmount: 7,
+        uploadFileMaxSize: 32,
         skillSandboxMaxBytes: 512,
         maxFolderDepth: 4,
         workflowParallelRunMaxConcurrency: 20
