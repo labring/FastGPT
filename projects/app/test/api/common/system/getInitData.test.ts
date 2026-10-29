@@ -132,6 +132,20 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(global.feConfigs).toEqual(originalConfig);
   });
 
+  it.each([false, true])(
+    'returns auxiliary generation detail switch %s only to members',
+    async (enabled) => {
+      global.feConfigs.showAuxiliaryGenerationRunDetail = enabled;
+      for (const bufferId of [undefined, 'config-1']) {
+        const { code, data } = await Call(handler, { auth, headers: {}, query: { bufferId } });
+        expect(code).toBe(200);
+        expect(data.feConfigs.showAuxiliaryGenerationRunDetail).toBe(enabled);
+      }
+      const { data } = await Call(handler, { headers: {} });
+      expect(data.feConfigs).not.toHaveProperty('showAuxiliaryGenerationRunDetail');
+    }
+  );
+
   it('returns complete configuration when an authenticated member has an anonymous cache', async () => {
     const { code, data } = await Call(handler, {
       auth,

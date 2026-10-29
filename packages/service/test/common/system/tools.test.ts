@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@fastgpt/service/env', () => ({
   hasAgentSandboxConfig: vi.fn(() => false),
   serviceEnv: {
+    AUXILIARY_GENERATION_SHOW_RUN_DETAIL: false,
     AGENT_SANDBOX_SHOW_FREE_TIP: false,
     UPLOAD_FILE_MAX_SIZE: 1000,
     UPLOAD_FILE_MAX_AMOUNT: 1000,
@@ -17,6 +18,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
 // setup 已加载过此模块，清缓存后才能使用本文件声明的环境与沙箱 mock。
 vi.resetModules();
 const { initFastGPTConfig } = await import('@fastgpt/service/common/system/tools');
+const { serviceEnv } = await import('@fastgpt/service/env');
 
 describe('initFastGPTConfig', () => {
   it.each([false, true])(
@@ -40,8 +42,18 @@ describe('initFastGPTConfig', () => {
     expect(global.feConfigs.sso).toEqual({ enabled: false });
   });
   beforeEach(() => {
+    serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
     global.feConfigs = {} as any;
     global.systemEnv = {} as any;
+  });
+
+  it.each([false, true])('uses the environment detail switch %s over stored config', (enabled) => {
+    serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = enabled;
+    initFastGPTConfig({
+      feConfigs: { showAuxiliaryGenerationRunDetail: !enabled },
+      systemEnv: {}
+    } as any);
+    expect(global.feConfigs.showAuxiliaryGenerationRunDetail).toBe(enabled);
   });
 
   it('只配置 SoMark 时开启 PDF 增强解析入口', () => {
