@@ -7,7 +7,12 @@ import type { UserType } from '@fastgpt/global/support/user/type';
 import type { WorkflowBuilderChatPanelRef } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/ChatPanel';
 
 const mocks = vi.hoisted(() => ({
-  router: { isReady: true, query: {} as Record<string, string> },
+  router: {
+    isReady: true,
+    pathname: '/app/detail',
+    query: {} as Record<string, string>,
+    replace: vi.fn()
+  },
   getChatHistories: vi.fn(),
   batchDeleteChatHistories: vi.fn(),
   getInitChatInfo: vi.fn(),
@@ -100,8 +105,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
   let useChatStore: typeof import('@/web/core/chat/context/useChatStore').useChatStore;
   let useUserStore: typeof import('@/web/support/user/useUserStore').useUserStore;
   let panelRef: React.RefObject<WorkflowBuilderChatPanelRef>;
-  const cacheKey = (appId = 'app-1', tmbId = 'member-1') =>
-    `workflow-builder:workflowBuilder:${appId}:${tmbId}`;
+  const cacheKey = (appId = 'app-1') => appId;
   const history = (chatId = 'saved-chat') => ({ list: [{ chatId }], total: 1 });
   const setMember = (tmbId: string) => {
     useUserStore.setState({ userInfo: { team: { tmbId } } as UserType });
@@ -126,12 +130,13 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
       );
     });
   };
-  const selectedChatId = () => useChatStore.getState().sourceChatIdMap[cacheKey()];
+  const selectedChatId = () => useChatStore.getState().appBuilderChatIdMap[cacheKey()];
 
   beforeEach(async () => {
     vi.resetAllMocks();
     mocks.router.isReady = true;
     mocks.router.query = {};
+    mocks.router.replace.mockResolvedValue(true);
     mocks.getChatHistories.mockResolvedValue(history());
     mocks.getInitChatInfo.mockResolvedValue({});
     mocks.batchDeleteChatHistories.mockResolvedValue(undefined);
@@ -145,7 +150,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
     ({ useUserStore } = await import('@/web/support/user/useUserStore'));
     ({ default: ChatPanel } =
       await import('@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/ChatPanel'));
-    useChatStore.setState({ loaded: true, sourceChatIdMap: {} });
+    useChatStore.setState({ loaded: true, appBuilderChatIdMap: {} });
     setMember('member-1');
     panelRef = createRef();
     root = createRoot(document.getElementById('root')!);
@@ -159,7 +164,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
   });
 
   it('restores server history after login clears the local session index before mounting the chat', async () => {
-    useChatStore.getState().setSourceChatId(cacheKey(), 'saved-chat');
+    useChatStore.getState().setAppBuilderChatId(cacheKey(), 'saved-chat');
     useChatStore.getState().resetChatCache();
     const request = deferred<ReturnType<typeof history>>();
     mocks.getChatHistories.mockReturnValueOnce(request.promise);
@@ -187,7 +192,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
   });
 
   it('keeps the locally selected conversation without querying server history', async () => {
-    useChatStore.getState().setSourceChatId(cacheKey(), 'local-chat');
+    useChatStore.getState().setAppBuilderChatId(cacheKey(), 'local-chat');
     await render();
     expect(mocks.getChatHistories).not.toHaveBeenCalled();
     expect(mocks.onChatIdChange).toHaveBeenLastCalledWith('local-chat');
@@ -235,7 +240,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
 
   it('opens a watch link without querying history or replacing the member’s own conversation', async () => {
     mocks.router.query.workflowBuilderChatId = 'watched-chat';
-    useChatStore.getState().setSourceChatId(cacheKey(), 'own-chat');
+    useChatStore.getState().setAppBuilderChatId(cacheKey(), 'own-chat');
     await render();
     expect(mocks.getChatHistories).not.toHaveBeenCalled();
     expect(selectedChatId()).toBe('own-chat');
@@ -261,19 +266,21 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
       if (outcome === 'success') oldRequest.resolve(history('old-chat'));
       else oldRequest.reject(new Error('old request failed'));
     });
-    expect(useChatStore.getState().sourceChatIdMap).toEqual({});
+    expect(useChatStore.getState().appBuilderChatIdMap).toEqual({});
     expect(document.body.textContent).not.toContain('load_failed');
 
     await act(async () => currentRequest.resolve(history('current-chat')));
-    const currentKey = context === 'app' ? cacheKey('app-2') : cacheKey('app-1', 'member-2');
-    expect(useChatStore.getState().sourceChatIdMap).toEqual({ [currentKey]: 'current-chat' });
+    const currentKey = context === 'app' ? cacheKey('app-2') : cacheKey();
+    expect(useChatStore.getState().appBuilderChatIdMap).toEqual({ [currentKey]: 'current-chat' });
   });
 
   it('keeps a conversation selected from another tab while the history request is pending', async () => {
     const request = deferred<ReturnType<typeof history>>();
     mocks.getChatHistories.mockReturnValueOnce(request.promise);
     await render();
-    await act(async () => useChatStore.getState().setSourceChatId(cacheKey(), 'other-tab-chat'));
+    await act(async () =>
+      useChatStore.getState().setAppBuilderChatId(cacheKey(), 'other-tab-chat')
+    );
     await act(async () => request.resolve(history()));
     expect(selectedChatId()).toBe('other-tab-chat');
   });
@@ -288,17 +295,44 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
     expect(selectedChatId()).toBeUndefined();
   });
 
-  it('starts a new conversation after explicitly clearing history without restoring the deleted one', async () => {
+  it('starts and preserves a new conversation without deleting or restoring the previous history', async () => {
     await render();
-    await act(async () => panelRef.current!.clearHistory());
-    expect(mocks.batchDeleteChatHistories).toHaveBeenCalledExactlyOnceWith({
-      appId: 'app-1',
-      sourceType: 'workflowBuilder',
-      chatIds: ['saved-chat']
-    });
+    await act(async () => panelRef.current!.restartChat());
+    expect(mocks.batchDeleteChatHistories).not.toHaveBeenCalled();
     expect(mocks.clearChatRecords).toHaveBeenCalledOnce();
-    expect(selectedChatId()).toHaveLength(24);
-    expect(selectedChatId()).not.toBe('saved-chat');
+    const newChatId = selectedChatId();
+    expect(newChatId).toHaveLength(24);
+    expect(newChatId).not.toBe('saved-chat');
+    expect(mocks.onChatIdChange).toHaveBeenLastCalledWith(newChatId);
+
+    await act(async () => root.unmount());
+    root = createRoot(document.getElementById('root')!);
+    await render();
+    expect(selectedChatId()).toBe(newChatId);
+    expect(mocks.onChatIdChange).toHaveBeenLastCalledWith(newChatId);
     expect(mocks.getChatHistories).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the watch link when starting the member’s own new conversation', async () => {
+    mocks.router.query = { appId: 'app-1', workflowBuilderChatId: 'watched-chat' };
+    useChatStore.getState().setAppBuilderChatId(cacheKey(), 'own-chat');
+    await render();
+
+    await act(async () => panelRef.current!.restartChat());
+    const newChatId = selectedChatId();
+    expect(newChatId).toHaveLength(24);
+    expect(newChatId).not.toBe('own-chat');
+    expect(newChatId).not.toBe('watched-chat');
+    expect(mocks.batchDeleteChatHistories).not.toHaveBeenCalled();
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith(
+      { pathname: '/app/detail', query: { appId: 'app-1' } },
+      undefined,
+      { shallow: true }
+    );
+
+    mocks.router.query = { appId: 'app-1' };
+    await render();
+    expect(mocks.onChatIdChange).toHaveBeenLastCalledWith(newChatId);
+    expect(mocks.getChatHistories).not.toHaveBeenCalled();
   });
 });

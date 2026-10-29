@@ -9,9 +9,8 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useAppBuilderChat } from '@/web/core/chat/useAppBuilderChat';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
@@ -27,11 +26,7 @@ import {
   reactFlowStateToWorkflowDocument
 } from '../adapters/document';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
-import {
-  clearWorkflowBuilderChatHistory,
-  getLatestWorkflowBuilderChatId,
-  streamWorkflowBuilderChat
-} from './api';
+import { streamWorkflowBuilderChat } from './api';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -46,7 +41,7 @@ import {
 import { WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY } from '@/web/core/app/utils';
 
 export type WorkflowBuilderChatPanelRef = {
-  clearHistory: () => Promise<void>;
+  restartChat: () => void;
 };
 
 const WorkflowBuilderChatContent = ({
@@ -121,13 +116,11 @@ const WorkflowBuilderChatContent = ({
     [appDetail.name, t]
   );
   useImperativeHandle(chatPanelRef, () => ({
-    clearHistory: () =>
-      clearWorkflowBuilderChatHistory({
-        appId,
-        chatId,
-        clearChatRecords,
-        restartChat: onRestart
-      })
+    restartChat: () => {
+      // 新对话只重置当前展示和会话 ID，保留服务端历史及其版本归档。
+      clearChatRecords();
+      onRestart();
+    }
   }));
 
   useEffect(() => {
@@ -361,64 +354,20 @@ const ChatPanel = React.forwardRef<
     const showRunDetail = useSystemStore(
       (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
     );
-    const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
     const sourceTarget = useMemo<ChatSourceTarget>(
       () => ({ sourceType: ChatSourceTypeEnum.workflowBuilder, sourceId: appId }),
       [appId]
     );
-    const chatIdCacheKey = useMemo(
-      () => (tmbId ? `workflow-builder:${getChatSourceKey(sourceTarget)}:${tmbId}` : ''),
-      [sourceTarget, tmbId]
-    );
-    const cachedChatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
-    const isChatStoreLoaded = useChatStore((state) => state.loaded);
-    const setSourceChatId = useChatStore((state) => state.setSourceChatId);
     const watchChatId = getWorkflowBuilderWatchChatId(
       router.query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY]
     );
-    // 旁观链接仅选择当前页面的会话，不能写入跨标签页缓存并切走正在编辑的对话。
-    const chatId = watchChatId ?? cachedChatId;
-    const {
-      run: restoreChat,
-      cancel: cancelRestoreChat,
-      loading: isRestoringChat,
-      error: restoreChatError,
-      params: restoreChatParams
-    } = useRequest(
-      ({ appId }: { appId: string; cacheKey: string }) => getLatestWorkflowBuilderChatId(appId),
-      {
-        errorToast: '',
-        onSuccess: (latestChatId, [{ cacheKey }]) => {
-          // 请求期间切换成员、应用或由其他标签页选定会话后，不覆盖最新选择。
-          if (
-            cacheKey !== chatIdCacheKey ||
-            watchChatId ||
-            useChatStore.getState().sourceChatIdMap[cacheKey]
-          ) {
-            return;
-          }
-          setSourceChatId(cacheKey, latestChatId);
-        }
-      }
-    );
-
-    useEffect(() => {
-      if (!router.isReady || !isChatStoreLoaded || !chatIdCacheKey || watchChatId || cachedChatId)
-        return;
-
-      // 登录会清空本地索引；先恢复服务端历史，只有明确没有历史时才生成新会话 ID。
-      restoreChat({ appId, cacheKey: chatIdCacheKey });
-      return cancelRestoreChat;
-    }, [
-      appId,
-      cachedChatId,
-      chatIdCacheKey,
-      isChatStoreLoaded,
-      router.isReady,
-      watchChatId,
-      restoreChat,
-      cancelRestoreChat
-    ]);
+    const { chatId, restartChat, restoreChat, isRestoringChat, restoreChatError } =
+      useAppBuilderChat({
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        watchChatId,
+        ready: router.isReady
+      });
 
     const chatRecordProviderParams = useMemo(
       () => ({
@@ -429,7 +378,13 @@ const ChatPanel = React.forwardRef<
       [appId, chatId]
     );
     const onRestart = useMemoizedFn(() => {
-      setSourceChatId(chatIdCacheKey);
+      restartChat();
+      if (watchChatId) {
+        // 新对话属于当前成员，退出旁观链接后才能采用刚缓存的会话 ID。
+        const query = { ...router.query };
+        delete query[WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY];
+        void router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+      }
     });
 
     return (
@@ -448,15 +403,10 @@ const ChatPanel = React.forwardRef<
       >
         {!chatId && (
           <Flex flex={1} alignItems="center" justifyContent="center" flexDirection="column" gap={3}>
-            {restoreChatError &&
-            !isRestoringChat &&
-            restoreChatParams[0]?.cacheKey === chatIdCacheKey ? (
+            {restoreChatError && !isRestoringChat ? (
               <>
                 <Text color="myGray.500">{t('load_failed')}</Text>
-                <Button
-                  variant="whiteBase"
-                  onClick={() => restoreChat({ appId, cacheKey: chatIdCacheKey })}
-                >
+                <Button variant="whiteBase" onClick={restoreChat}>
                   {t('refresh')}
                 </Button>
               </>

@@ -29,7 +29,7 @@ import { useWorkflowBuilderUI } from './hooks/useWorkflowBuilderUI';
 import WorkflowBuilderCommercialInput from './presentation/CommercialInput';
 
 const WorkflowBuilder = () => {
-  const { t } = useTranslation(['workflow']);
+  const { t } = useTranslation(['workflow', 'common']);
   const { toast: myToast } = useToast();
   const { requestAutoLayout } = useWorkflowAutoLayout();
   const appId = useContextSelector(AppContext, (value) => value.appId);
@@ -337,15 +337,15 @@ const WorkflowBuilder = () => {
                 >
                   {t('workflow_builder_title')}
                 </Text>
-                <MyTooltip label={t('workflow_builder_clear_history')}>
+                <MyTooltip label={t('common:core.chat.New Chat')}>
                   <IconButton
-                    aria-label={t('workflow_builder_clear_history')}
+                    aria-label={t('common:core.chat.New Chat')}
                     size="smSquare"
-                    icon={<MyIcon name="common/clearLight" w="14px" />}
-                    variant="whiteDanger"
+                    icon={<MyIcon name="common/addLight" w="14px" />}
+                    variant="whiteBase"
                     borderRadius="md"
                     mr={2}
-                    onClick={() => chatPanelRef.current?.clearHistory()}
+                    onClick={() => chatPanelRef.current?.restartChat()}
                   />
                 </MyTooltip>
                 <MyTooltip label={t('workflow_builder_collapse')}>

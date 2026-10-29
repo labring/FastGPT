@@ -1,4 +1,6 @@
 import React, { type ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { Button, Flex, Spinner, Text } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -12,20 +14,18 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps, StartChatFnProps } from '../ChatContainer/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useAppBuilderChat } from '@/web/core/chat/useAppBuilderChat';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import type {
   ChatAgentConfigFormDataType,
   ChatAgentHelperMetadataType
 } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 
 export type ChatAgentHelperRefType = {
-  restartChat: () => Promise<void>;
+  restartChat: () => void;
 };
 
 export type ChatAgentHelperProps = {
@@ -140,12 +140,8 @@ const ChatAgentHelperChatBox = ({
   };
 
   useImperativeHandle(ChatBoxRef, () => ({
-    async restartChat() {
-      await batchDeleteChatHistories({
-        appId,
-        sourceType: ChatSourceTypeEnum.chatAgentHelper,
-        chatIds: [chatId]
-      });
+    restartChat() {
+      // 保留旧会话，切换到独立的新 chatId 后再开始辅助生成。
       clearChatRecords();
       onRestart();
     }
@@ -175,10 +171,10 @@ const ChatAgentHelperChatBox = ({
 };
 
 const ChatAgentHelper = (props: ChatAgentHelperProps) => {
+  const { t } = useTranslation('common');
   const showRunDetail = useSystemStore(
     (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
   );
-  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({
       sourceType: ChatSourceTypeEnum.chatAgentHelper,
@@ -186,14 +182,12 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }),
     [props.appId]
   );
-  const chatIdCacheKey = useMemo(() => {
-    if (!tmbId) return '';
-
-    return `${getChatSourceKey(sourceTarget)}:${tmbId}`;
-  }, [sourceTarget, tmbId]);
-  const chatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
-  const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
-  const setSourceChatId = useChatStore((state) => state.setSourceChatId);
+  const { chatId, restartChat, restoreChat, isRestoringChat, restoreChatError } = useAppBuilderChat(
+    {
+      appId: props.appId,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper
+    }
+  );
   const chatRecordProviderParams = useMemo(
     () => ({
       chatId,
@@ -202,12 +196,6 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }),
     [chatId, props.appId]
   );
-
-  useEffect(() => {
-    if (chatIdCacheKey && !chatId) {
-      ensureSourceChatId(chatIdCacheKey);
-    }
-  }, [chatId, chatIdCacheKey, ensureSourceChatId]);
 
   const applyingConfigRef = useRef(false);
   const { run: applyConfig, loading: isApplyingConfig } = useRequest(
@@ -231,10 +219,6 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     [isApplyingConfig, applyConfig]
   );
 
-  const onRestart = () => {
-    setSourceChatId(chatIdCacheKey);
-  };
-
   return (
     <ChatItemContextProvider
       chatAgentBuilderVersionActions={chatAgentBuilderVersionActions}
@@ -249,12 +233,26 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
       showAvatar={true}
       showSandboxAction={false}
     >
+      {!chatId && (
+        <Flex flex={1} alignItems="center" justifyContent="center" flexDirection="column" gap={3}>
+          {restoreChatError && !isRestoringChat ? (
+            <>
+              <Text color="myGray.500">{t('load_failed')}</Text>
+              <Button variant="whiteBase" onClick={restoreChat}>
+                {t('refresh')}
+              </Button>
+            </>
+          ) : (
+            <Spinner size="sm" />
+          )}
+        </Flex>
+      )}
       {chatId && (
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <ChatAgentHelperChatBox
             {...props}
             chatId={chatId}
-            onRestart={onRestart}
+            onRestart={restartChat}
             sourceTarget={sourceTarget}
           />
         </ChatRecordContextProvider>
