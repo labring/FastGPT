@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isAgentAskInteractive,
   isAskInteractive,
+  isValidInteractive,
   extractDeepestInteractive,
   getMaxHistoryLimitFromNodes,
   valueTypeFormat,
@@ -743,6 +744,50 @@ describe('valueTypeFormat', () => {
   });
 });
 
+describe('isValidInteractive', () => {
+  it.each(['userSelect', 'userInput', 'paymentPause', 'agentAsk', 'workflowBuilderPreview'])(
+    'ignores missing, malformed and obsolete %s payloads without blocking chat',
+    (type) => {
+      for (const params of [undefined, null, 'legacy', {}, { questions: [] }]) {
+        const interactive = { type, params } as unknown as WorkflowInteractiveResponseType;
+        // paymentPause 的空对象是合法载荷，所有展示字段均可选。
+        const valid = type === 'paymentPause' && typeof params === 'object' && params !== null;
+        expect(isValidInteractive(interactive)).toBe(valid);
+        const histories: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];
+        expect(getLastInteractiveValue(histories)).toBe(valid ? interactive : undefined);
+      }
+    }
+  );
+
+  it.each([undefined, null, {}, { type: 'unknown' }])('ignores invalid leaves: %j', (value) => {
+    expect(isValidInteractive(value)).toBe(false);
+  });
+
+  it.each([undefined, null, 'legacy', {}])(
+    'ignores invalid nested responses: %j',
+    (childrenResponse) => {
+      const interactive = {
+        type: 'childrenInteractive',
+        params: { childrenResponse }
+      } as unknown as WorkflowInteractiveResponseType;
+      expect(
+        getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])
+      ).toBeUndefined();
+    }
+  );
+
+  it('validates node payloads without requiring or removing scheduler metadata', () => {
+    const interactive = {
+      type: 'userSelect',
+      params: { userSelectOptions: [{ key: 'a', value: 'A' }] }
+    } as WorkflowInteractiveResponseType;
+    expect(isValidInteractive(interactive)).toBe(true);
+    expect(getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])).toBe(
+      interactive
+    );
+  });
+});
+
 describe('getLastInteractiveValue', () => {
   it('should return undefined when no AI message', () => {
     const histories: ChatItemMiniType[] = [
@@ -764,7 +809,7 @@ describe('getLastInteractiveValue', () => {
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
-  it('should return interactive for childrenInteractive type', () => {
+  it('ignores a childrenInteractive without a valid leaf', () => {
     const interactive = {
       type: 'childrenInteractive',
       entryNodeIds: ['node1'],
@@ -779,7 +824,7 @@ describe('getLastInteractiveValue', () => {
         value: [{ text: { content: 'response' }, interactive }]
       }
     ];
-    expect(getLastInteractiveValue(histories)).toBe(interactive);
+    expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
 
   it('should return interactive for userSelect without selection', () => {

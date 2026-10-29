@@ -6,6 +6,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   getInteractiveByHistories,
+  refreshSubmittedFormInteractiveValues,
   isPendingAgentAsk,
   isPendingWorkflowBuilderPreview,
   isUserInputInteractiveSubmitted,
@@ -157,6 +158,45 @@ describe('getInteractiveByHistories', () => {
       }
     }
   );
+
+  it.each(['userSelect', 'userInput', 'paymentPause', 'agentAsk', 'workflowBuilderPreview'])(
+    'allows ordinary input for invalid historical %s interactions',
+    (type) => {
+      for (const params of [undefined, null, 'legacy']) {
+        const interactive = {
+          ...baseInteractive,
+          type,
+          params
+        } as unknown as WorkflowInteractiveResponseType;
+        const histories = [createAiRecord(interactive)];
+        expect(getInteractiveByHistories(histories)).toEqual({
+          interactive: undefined,
+          canSendQuery: true
+        });
+        expect(
+          refreshSubmittedFormInteractiveValues({
+            histories,
+            nodeResponse: { nodeId: 'node-1', formInputResult: { name: 'Alice' } } as any
+          })
+        ).toBe(histories);
+      }
+    }
+  );
+
+  it('ignores submitted historical forms without a field array during hydration', () => {
+    const interactive = {
+      ...baseInteractive,
+      type: 'userInput',
+      params: { submitted: true }
+    } as unknown as WorkflowInteractiveResponseType;
+    const histories = [createAiRecord(interactive)];
+    expect(
+      refreshSubmittedFormInteractiveValues({
+        histories,
+        nodeResponse: { nodeId: 'node-1', formInputResult: { name: 'Alice' } } as any
+      })
+    ).toBe(histories);
+  });
 
   it('allows normal chat when no pending interactive exists', () => {
     expect(getInteractiveByHistories([createAiRecord()])).toEqual({

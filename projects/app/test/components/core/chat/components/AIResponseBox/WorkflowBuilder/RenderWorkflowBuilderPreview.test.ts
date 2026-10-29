@@ -50,17 +50,37 @@ describe('RenderWorkflowBuilderPreview', () => {
     }
   );
 
-  it.each(['not JSON', JSON.stringify({ ...JSON.parse(preview.params.arguments), sections: [] })])(
-    'ignores invalid preview arguments: %s',
-    (argumentsText) => {
-      const html = renderToStaticMarkup(
-        React.createElement(RenderWorkflowBuilderPreview, {
-          interactive: { ...preview, params: { arguments: argumentsText } }
-        })
-      );
-      expect(html).toBe('');
+  it.each([
+    'not JSON',
+    JSON.stringify({ title: 'Plan', mermaid: 'flowchart LR\n  A --> B' }),
+    JSON.stringify({ ...JSON.parse(preview.params.arguments), sections: [] })
+  ])('ignores invalid preview arguments: %s', (argumentsText) => {
+    const html = renderToStaticMarkup(
+      React.createElement(RenderWorkflowBuilderPreview, {
+        interactive: { ...preview, params: { arguments: argumentsText } }
+      })
+    );
+    expect(html).toBe('');
+  });
+
+  it.each([
+    undefined,
+    null,
+    {},
+    {
+      title: 'Legacy plan',
+      mermaid: 'flowchart LR\n  A --> B',
+      sections: [{ title: 'Details', content: 'Legacy preview' }]
     }
-  );
+  ])('ignores missing or legacy preview params: %j', (params) => {
+    const html = renderToStaticMarkup(
+      React.createElement(RenderWorkflowBuilderPreview, {
+        interactive: { ...preview, params } as unknown as WorkflowBuilderPreviewInteractive
+      })
+    );
+
+    expect(html).toBe('');
+  });
 
   it('preserves full-width punctuation in the Mermaid source', () => {
     const mermaid =
