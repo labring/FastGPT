@@ -140,7 +140,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',
         params: {
-          description,
+          description: description ?? '',
           inputForm: resolvedInputForms
         }
       }
