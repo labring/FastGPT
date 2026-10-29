@@ -1,11 +1,11 @@
 // Function to escape CSV fields to prevent injection attacks
-export const sanitizeCsvField = (field: String): string => {
-  if (field == null) return '';
+export const sanitizeCsvField = (field: unknown): string => {
+  if (field === null || field === undefined) return '';
 
   let fieldStr = String(field);
 
   // Check for dangerous starting characters that could cause CSV injection
-  if (fieldStr.match(/^[\=\+\-\@\|]/)) {
+  if (/^[\s\uFEFF]*[=+\-@|]|^[\t\r\n]/.test(fieldStr)) {
     // Add prefix to neutralize potential formula injection
     fieldStr = `'${fieldStr}`;
   }

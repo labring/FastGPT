@@ -138,6 +138,18 @@ export const adminAuditLogMap = {
 };
 
 export const auditLogMap = {
+  [AuditEventEnum.EXPORT_AUDIT_LOGS]: {
+    content: i18nT('account_team:log_export_audit_logs'),
+    typeLabel: i18nT('account_team:export_audit_logs'),
+    params: {} as {
+      name?: string;
+      dateStart: string;
+      dateEnd: string;
+      tmbIds: string;
+      events: string;
+      total: string;
+    }
+  },
   //Team
   [AuditEventEnum.LOGIN]: {
     content: i18nT('account_team:log_login'),

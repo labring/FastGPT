@@ -3,7 +3,7 @@ import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/consta
 import {
   createDatasetAuditProcessors,
   processDatasetConfigUpdateSpecific
-} from '@/pageComponents/account/team/Audit/dataset/audit';
+} from '@fastgpt/web/support/user/audit/processors/datasetProcessors';
 
 /** 模拟 i18next：只有已知 key 会命中，未命中时原样返回（与项目 i18n 行为一致）。 */
 const t = (key: string) =>
