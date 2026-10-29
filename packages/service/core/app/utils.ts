@@ -738,12 +738,22 @@ export async function rewriteAppWorkflowToDetail({
     });
 
     const mcpToolSet = node.toolConfig?.mcpToolSet;
-    if (mcpToolSet && 'headerSecret' in mcpToolSet && mcpToolSet.headerSecret != null) {
+    if (
+      mcpToolSet &&
+      'headerSecret' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
       mcpToolSet.headerSecret = encryptHeaderSecret(mcpToolSet.headerSecret);
     }
 
     const httpToolSet = node.toolConfig?.httpToolSet;
-    if (httpToolSet && 'headerSecret' in httpToolSet && httpToolSet.headerSecret != null) {
+    if (
+      httpToolSet &&
+      'headerSecret' in httpToolSet &&
+      httpToolSet.headerSecret !== null &&
+      httpToolSet.headerSecret !== undefined
+    ) {
       httpToolSet.headerSecret = encryptHeaderSecret(httpToolSet.headerSecret);
     }
   });
