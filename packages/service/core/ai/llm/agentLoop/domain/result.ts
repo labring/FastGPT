@@ -3,20 +3,14 @@ import type {
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type { AgentAskPayload } from './systemTool/ask';
+import type { AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentLoopUsage } from './usage';
 
-export type AgentLoopPause<TChildrenResponse = unknown> =
-  | {
-      type: 'ask';
-      ask: AgentAskPayload;
-      askId: string;
-    }
-  | {
-      type: 'tool_child';
-      childrenResponse: TChildrenResponse;
-      toolCallId: string;
-    };
+/** 工具暂停只携带原调用关联及业务交互，Loop 不分类或包装工作流状态。 */
+export type AgentLoopPause<TInteractive = unknown> = {
+  toolCallId: string;
+  interactive: AgentAskInteractive | TInteractive;
+};
 
 export type AgentLoopResultStatus = 'done' | 'paused' | 'aborted' | 'error';
 

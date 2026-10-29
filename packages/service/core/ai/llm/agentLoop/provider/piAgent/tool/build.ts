@@ -1,17 +1,14 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '@mariozechner/pi-ai';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { AgentAskPayloadSchema, type AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  AgentAskPayloadSchema,
-  createAskUserAgentTool,
-  type AgentAskPayload
-} from '../../../domain/systemTool/ask';
+import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
 import {
   applyPlanUpdate,
   applySetPlan,
@@ -125,10 +122,11 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
     pushAgentLoopUsages(runtime, usages);
+    if (result.interactive)
+      runtime.emitEvent?.({ type: 'tool_interactive', call, interactive: result.interactive });
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
       assistantResponses: result.assistantResponses,
@@ -255,11 +253,9 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
 
         setPendingAsk(parsed.data, callId);
         runtime.emitEvent?.({
-          type: 'ask_start',
-          ask: parsed.data,
-          id: callId,
-          params,
-          seconds: 0
+          type: 'tool_interactive',
+          call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+          interactive: { type: 'agentAsk', params: { toolCallId: callId, arguments: params } }
         });
         onToolResult({
           call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),

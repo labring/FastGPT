@@ -39,6 +39,11 @@ export const LogCategories = {
     ERROR: ['http', 'error']
   },
 
+  // 请求级分段耗时（chat / MCP 等入口共用）
+  REQUEST: {
+    PROFILE: ['request', 'profile']
+  },
+
   // 业务模块层（参考 pages/api）
   MODULE: {
     WORKFLOW: Object.assign(['workflow'], {
@@ -52,6 +57,7 @@ export const LogCategories = {
       CODE_SANDBOX: ['workflow', 'code-sandbox']
     }),
     APP: Object.assign(['app'], {
+      WORKFLOW_BUILDER: ['app', 'workflow', 'builder'],
       EVALUATION: ['app', 'evaluation'],
       FOLDER: ['app', 'folder'],
       HTTP_TOOLS: ['app', 'http-tools'],
@@ -173,6 +179,7 @@ export type LogCategory =
   | (typeof LogCategories.SYSTEM.UPGRADE)[keyof typeof LogCategories.SYSTEM.UPGRADE]
   | (typeof LogCategories.INFRA)[keyof typeof LogCategories.INFRA]
   | (typeof LogCategories.HTTP)[keyof typeof LogCategories.HTTP]
+  | (typeof LogCategories.REQUEST)[keyof typeof LogCategories.REQUEST]
   | (typeof LogCategories.MODULE)[keyof typeof LogCategories.MODULE]
   | typeof LogCategories.ERROR
   | (typeof LogCategories.EVENT)[keyof typeof LogCategories.EVENT];

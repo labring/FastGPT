@@ -3,7 +3,10 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  extractDeepestInteractive,
+  isValidInteractive
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import {
@@ -78,7 +81,9 @@ const AIResponseBox = ({
     onEditQuestion,
     onQuickReplyClick: enableQuickReplies ? onQuickReplyClick : undefined
   };
-  const tools = value.tools || (value.tool ? [value.tool] : undefined);
+  const tools = (value.tools || (value.tool ? [value.tool] : undefined))?.filter(
+    (tool) => !tool.hideInUI
+  );
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
   const reasoningContent = value.reasoning?.content || '';
@@ -188,13 +193,14 @@ const AIResponseBox = ({
   }
 
   if (showInteractive && 'interactive' in value && value.interactive) {
-    const interactive = extractDeepestInteractive(value.interactive);
-    if (interactive.type === 'userSelect') {
+    const rawInteractive = extractDeepestInteractive(value.interactive);
+    const interactive = isValidInteractive(rawInteractive) ? rawInteractive : undefined;
+    if (interactive?.type === 'userSelect') {
       responseBlocks.push(
         <RenderUserSelectInteractive key="interactive" interactive={interactive} />
       );
     }
-    if (interactive.type === 'userInput') {
+    if (interactive?.type === 'userInput') {
       responseBlocks.push(
         <RenderUserFormInteractive
           key="interactive"
@@ -204,12 +210,12 @@ const AIResponseBox = ({
         />
       );
     }
-    if (interactive.type === 'paymentPause') {
+    if (interactive?.type === 'paymentPause') {
       responseBlocks.push(
         <RenderPaymentPauseInteractive key="interactive" interactive={interactive} />
       );
     }
-    if (interactive.type === 'workflowBuilderPreview') {
+    if (interactive?.type === 'workflowBuilderPreview') {
       responseBlocks.push(
         <RenderWorkflowBuilderPreview key="interactive" interactive={interactive} />
       );

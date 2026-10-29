@@ -37,7 +37,7 @@ async function handler(
     bodySchema: CreateMcpToolsBodySchema
   }).body;
 
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -71,7 +71,6 @@ async function handler(
   pushTrack.createApp({
     type: AppTypeEnum.mcpToolSet,
     appId: mcpToolsId,
-    uid: userId,
     teamId,
     tmbId
   });

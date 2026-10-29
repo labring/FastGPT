@@ -447,6 +447,8 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
 
     const secondLLMCall = createLLMResponseMock.mock.calls[1][0];
+    expect(createLLMResponseMock.mock.calls[0][0].fileContext).toBeDefined();
+    expect(secondLLMCall.fileContext).toBe(createLLMResponseMock.mock.calls[0][0].fileContext);
     expect(secondLLMCall.body.messages).toContainEqual({
       role: 'tool',
       tool_call_id: 'call_search',
@@ -654,7 +656,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     );
   });
 
-  it('keeps child nodeResponseId only inside childrenResponse when a tool call pauses', async () => {
+  it('keeps child nodeResponseId only inside interactive when a tool call pauses', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'waiting for user selection',
       assistantMessages: [],
@@ -703,15 +705,15 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(result.toolChildPause).toEqual(
+    expect(result.pause).toEqual(
       expect.objectContaining({
-        childrenResponse: expect.objectContaining({
+        interactive: expect.objectContaining({
           nodeResponseId: 'child_select_response'
         }),
         toolCallId: 'call_search'
       })
     );
-    expect(result.toolChildPause).not.toEqual(
+    expect(result.pause).not.toEqual(
       expect.objectContaining({
         nodeResponseId: expect.anything()
       })
@@ -1103,7 +1105,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
-        rawResponse: 'large search result',
         response: 'compressed:large search result',
         seconds: 1.23,
         toolResponseCompress: expect.objectContaining({
@@ -1112,6 +1113,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
         })
       })
     );
+    expect(onToolRunEnd.mock.calls[0]?.[0]).not.toHaveProperty('rawResponse');
   });
 
   it('forwards tool call events from createLLMResponse without replaying final tool calls', async () => {
@@ -1327,7 +1329,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(onToolRunEnd).toHaveBeenCalledWith(
       expect.objectContaining({
         call: expect.objectContaining({ id: 'call_search' }),
-        rawResponse: 'Tool error: network failed',
         response: 'Tool error: network failed',
         errorMessage: 'Tool error: network failed'
       })

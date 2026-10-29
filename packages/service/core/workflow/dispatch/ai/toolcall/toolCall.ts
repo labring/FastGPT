@@ -20,11 +20,12 @@ import {
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getWorkflowFileContext } from '../../../utils/context';
 
 type ResponseType = {
   requestIds: string[];
   firstTokenTime?: number;
-  error?: string;
+  error?: unknown;
   toolDispatchFlowResponses: AgentLoopCoreToolRunFlowResponse[];
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
@@ -83,7 +84,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowStreamResponse,
     streamAnswer: isResponseAnswerText,
     streamReasoning: aiChatReasoning,
-    sliceToolResponse: true,
     getToolInfo,
     collectToolRunResponses: true
   });
@@ -111,7 +111,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
 
-  const { summary: outputSummary } =
+  const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
       provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
@@ -121,6 +121,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       }),
       runtime: createAgentLoopCoreRuntimeWithEnvironment({
         teamId: workflowProps.runningUserInfo.teamId,
+        fileContext: getWorkflowFileContext(),
         environment: runtimeEnvironment,
         llmParams: {
           model: toolModel,
@@ -177,6 +178,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         usagePush
       }),
       assistantResponses: {
+        persistInputContext: !childrenInteractiveParams,
         showReasoning: aiChatReasoning,
         getEventToolInfo: getToolInfo
       }
@@ -185,7 +187,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   return {
     requestIds: outputSummary.requestIds,
     firstTokenTime: outputSummary.firstTokenTime,
-    error: outputSummary.errorText,
+    error: coreResult.status === 'error' ? coreResult.error : undefined,
     toolDispatchFlowResponses: runtimeEnvironment.toolRunResponses,
     toolCallInputTokens: outputSummary.inputTokens,
     toolCallOutputTokens: outputSummary.outputTokens,

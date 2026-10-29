@@ -5,11 +5,13 @@ import {
   parseToolId
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 const {
   authAppByTmbIdMock,
@@ -20,7 +22,9 @@ const {
   mcpToolCallMock,
   runToolStreamMock,
   getSystemToolRuntimeMock,
-  getSystemToolDetailMock
+  getSystemToolDetailMock,
+  workflowContextMock,
+  mockLogger
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
@@ -30,7 +34,9 @@ const {
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
-  getSystemToolDetailMock: vi.fn()
+  getSystemToolDetailMock: vi.fn(),
+  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> },
+  mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -49,6 +55,13 @@ vi.mock('@fastgpt/service/core/app/http', () => ({
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
   getMCPChildren: getMCPChildrenMock,
+  normalizeLegacyMcpHeaderSecret: (headerSecret: any) => {
+    if (!headerSecret || typeof headerSecret !== 'object') return undefined;
+    if ('value' in headerSecret || 'secret' in headerSecret || 'ref' in headerSecret) {
+      return { Authorization: headerSecret };
+    }
+    return headerSecret;
+  },
   MCPClient: vi.fn(function () {
     return { toolCall: mcpToolCallMock };
   })
@@ -58,9 +71,7 @@ vi.mock('@fastgpt/service/common/logger', () => {
   const logCategories = new Proxy({}, { get: () => logCategories });
   return {
     LogCategories: logCategories,
-    getLogger: vi.fn(() => ({
-      error: vi.fn()
-    }))
+    getLogger: vi.fn(() => mockLogger)
   };
 });
 
@@ -86,7 +97,7 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} })),
+  getWorkflowContext: vi.fn(() => workflowContextMock),
   getWorkflowResourceContext: vi.fn(() => undefined)
 }));
 
@@ -132,6 +143,8 @@ const createRunToolProps = (
 describe('dispatchRunTool runtime toolset auth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    workflowContextMock.mcpClientMemory = {};
+    mcpToolCallMock.mockResolvedValue({ ok: true });
     vi.mocked(getWorkflowResourceContext).mockReturnValue(undefined);
     authAppByTmbIdMock.mockResolvedValue({
       app: {
@@ -156,6 +169,54 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
     getSystemToolDetailMock.mockResolvedValue({ inputSchema: undefined });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
+  });
+
+  it.each([
+    { source: 'mcp', failure: 'id', message: 'Invalid MCP tool id: invalid-id' },
+    { source: 'mcp', failure: 'set', message: 'MCP tool set is missing' },
+    { source: 'mcp', failure: 'tool', message: 'MCP tool missing not found' },
+    { source: 'mcp', failure: 'url', message: 'MCP tool set URL is missing' },
+    { source: 'http', failure: 'id', message: 'Invalid HTTP tool id: invalid-id' },
+    { source: 'http', failure: 'set', message: 'HTTP tool set not found' },
+    { source: 'http', failure: 'tool', message: 'HTTP tool missing not found' }
+  ])('reports $source $failure failures as system errors', async ({ source, failure, message }) => {
+    const tool = { name: 'available', description: 'Tool', path: '/search', method: 'GET' };
+    getAppVersionByIdMock.mockResolvedValue({
+      nodes:
+        failure === 'set'
+          ? []
+          : [
+              {
+                toolConfig: {
+                  mcpToolSet: {
+                    url: failure === 'url' ? '' : 'https://example.com/mcp',
+                    toolList: [tool]
+                  },
+                  httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+                }
+              }
+            ]
+    });
+    getMCPChildrenMock.mockResolvedValue([tool]);
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    const toolId =
+      failure === 'id'
+        ? 'invalid-id'
+        : `${source}-victim-toolset/${failure === 'tool' ? 'missing' : 'available'}`;
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ [source === 'mcp' ? 'mcpTool' : 'httpTool']: { toolId } })
+    );
+
+    expect(result.rawError).toBeInstanceOf(Error);
+    expect(result.rawError).not.toBeInstanceOf(UserConfigError);
+    expect(result.rawError).toMatchObject({ name: 'Error', message });
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(message);
+    expect(mockLogger.error).toHaveBeenCalledExactlyOnceWith('Tool Run Error', {
+      error: result.rawError
+    });
+    expect(mcpToolCallMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
   });
 
   it.each(['mcp', 'http'] as const)(
@@ -259,6 +320,14 @@ describe('dispatchRunTool runtime toolset auth', () => {
         totalPoints: expectedPoints
       }
     ]);
+    expect(pushTrack.runSystemTool).toHaveBeenCalledWith({
+      teamId: props.runningUserInfo.teamId,
+      tmbId: props.runningUserInfo.tmbId,
+      toolId: 'search',
+      result: 1,
+      usagePoint: expectedPoints,
+      msg: ''
+    });
   });
 
   it('should reject HTTP tool execution when running app tmb has no parent toolset permission', async () => {
@@ -478,6 +547,92 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
+  it('should preserve MCP user config errors for centralized log classification', async () => {
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'Search',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getMCPChildrenMock.mockResolvedValueOnce([
+      {
+        name: 'search',
+        description: 'Search',
+        inputSchema: { type: 'object', properties: {} }
+      }
+    ]);
+    mcpToolCallMock.mockRejectedValueOnce(new UserConfigError('Invalid MCP URL'));
+
+    const result = await dispatchRunTool(
+      createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } })
+    );
+
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Invalid MCP URL');
+    expect(mockLogger.error).toHaveBeenCalledWith('Tool Run Error', { error: result.rawError });
+  });
+
+  it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
+    const url = 'https://mcp.example.com';
+    const mcpTool = { name: 'search', description: 'Search' };
+    authAppByTmbIdMock.mockResolvedValue({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url,
+                headerSecret: {
+                  Authorization: { ref: [VARIABLE_NODE_ID, 'token'] }
+                },
+                toolList: [mcpTool]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getMCPChildrenMock.mockResolvedValue([mcpTool]);
+
+    let token = 'token-a';
+    const props = createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } });
+    props.runtimeNodesMap = {};
+    props.variableState.toRuntimeRecord = () => ({ token });
+
+    await dispatchRunTool(props);
+    token = 'token-b';
+    await dispatchRunTool(props);
+    await dispatchRunTool(props);
+
+    expect(MCPClient).toHaveBeenNthCalledWith(1, {
+      url,
+      headers: { Authorization: 'token-a' }
+    });
+    expect(MCPClient).toHaveBeenNthCalledWith(2, {
+      url,
+      headers: { Authorization: 'token-b' }
+    });
+    expect(MCPClient).toHaveBeenCalledTimes(2);
+    expect(mcpToolCallMock).toHaveBeenCalledTimes(3);
+    expect(Object.keys(workflowContextMock.mcpClientMemory)).toHaveLength(2);
+    expect(Object.keys(workflowContextMock.mcpClientMemory).join(' ')).not.toContain('token-');
+  });
+
   it.each(
     ['toolData', 'system_toolData'].flatMap((legacyKey) =>
       [undefined, { 'example/context': { locale: 'zh-CN' } }].map((requestMeta) => ({
@@ -506,7 +661,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       mcpToolCallMock.mockResolvedValueOnce({ ok: true });
 
       const result = await dispatchRunTool(props);
-
       expect(result.error).toBeUndefined();
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
@@ -519,6 +673,32 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
     }
   );
+
+  it('should normalize a legacy single MCP header secret', async () => {
+    const props = createRunToolProps({});
+    props.params = {
+      query: 'fastgpt',
+      toolData: {
+        name: 'search',
+        url: 'https://mcp.example.com',
+        headerSecret: { value: 'legacy-token' },
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+          required: ['query']
+        }
+      }
+    };
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(props);
+
+    expect(result.error).toBeUndefined();
+    expect(MCPClient).toHaveBeenCalledWith({
+      url: 'https://mcp.example.com',
+      headers: { Authorization: 'legacy-token' }
+    });
+  });
 
   it('should pass system tool params through without validating against the tool schema', async () => {
     getSystemToolDetailMock.mockResolvedValueOnce({

@@ -20,6 +20,7 @@ import type {
 import type { generatingMessageProps, StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
+import { parseAgentAskArguments } from '@fastgpt/global/core/ai/agent/utils';
 import { ChatStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -523,6 +524,9 @@ const ChatBox = ({
     ? extractDeepestInteractive(lastInteractive)
     : undefined;
   const isAgentAskPending = isPendingAgentAsk(lastInteractive);
+  const activeAsk = isAgentAskInteractive(activeInteractive)
+    ? parseAgentAskArguments(activeInteractive.params?.arguments)
+    : undefined;
   const isWorkflowBuilderPreviewPending = isPendingWorkflowBuilderPreview(lastInteractive);
   const isBlockingInteractivePending = isAgentAskPending || isWorkflowBuilderPreviewPending;
   const canRenderChatInput =
@@ -815,7 +819,7 @@ const ChatBox = ({
                         workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                       />
                     </Box>
-                    {isAgentAskPending && isAgentAskInteractive(activeInteractive) && (
+                    {isAgentAskPending && activeAsk && (
                       <Box
                         w={'100%'}
                         maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
@@ -823,18 +827,16 @@ const ChatBox = ({
                         pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
                       >
                         <AgentAskComposer
-                          questions={activeInteractive.params.questions}
+                          questions={activeAsk.questions}
                           showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
                           onSubmit={(answers) =>
                             sendPromptWithDisabledGuard({
                               select: {
                                 type: 'agentAsk',
-                                questions: activeInteractive.params.questions.map(
-                                  ({ question }, index) => ({
-                                    question,
-                                    value: answers[index] ?? ''
-                                  })
-                                )
+                                questions: activeAsk.questions.map(({ question }, index) => ({
+                                  question,
+                                  value: answers[index] ?? ''
+                                }))
                               },
                               interactive: lastInteractive
                             })

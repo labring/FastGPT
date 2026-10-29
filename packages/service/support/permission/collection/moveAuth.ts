@@ -1,6 +1,7 @@
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   CollectionWithDatasetType,
   DatasetCollectionSchemaType
@@ -26,7 +27,10 @@ import { getTmbPermissionMap } from '../controller';
 import { assertDatasetPermission } from '../dataset/utils';
 import { getGroupsByTmbId } from '../memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
-import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import {
+  shouldInheritResourcePermission,
+  toInheritedPermissionValue
+} from '../resourcePermissionPolicy';
 import type { AuthModeType } from '../type';
 
 export type CollectionMoveAuthItem = { collectionId: string; targetParentId: string | null };
@@ -156,10 +160,13 @@ export const authDatasetCollectionMoves = async ({
     tmbId,
     isRoot,
     isTeamOwner,
+    // 父级 owner 在子级只能是 manage：不能用父目录的原始 owner role 通过 owner 级校验。
     role:
       sumPer(
         datasetPermissions.get(String(dataset._id)) ?? 0,
-        inheritedDatasetParent ? (datasetPermissions.get(inheritedDatasetParent) ?? 0) : 0
+        inheritedDatasetParent
+          ? toInheritedPermissionValue(datasetPermissions.get(inheritedDatasetParent) ?? 0)
+          : 0
       ) ?? 0,
     per: creationParentIds.includes(null) ? WritePermissionVal : ReadPermissionVal
   });
@@ -188,6 +195,17 @@ export const authDatasetCollectionMoves = async ({
           : authorizedDataset.permission.role;
     if (!new CollectionPermission({ role, isOwner }).checkPer(per)) {
       throw DatasetErrEnum.unAuthDatasetCollection;
+    }
+  }
+  // 获得父级写/管理权限并不代表它是目录；导入规划与普通移动均须保证目标类型。
+  const targetParentIds = [
+    ...creationParentIds,
+    ...moves.map(({ targetParentId }) => targetParentId)
+  ];
+  for (const parentId of targetParentIds) {
+    if (!parentId || newFolderIds.has(parentId)) continue;
+    if (collections.get(parentId)?.type !== DatasetCollectionTypeEnum.folder) {
+      throw CommonErrEnum.invalidParams;
     }
   }
   return { ...identity, dataset: authorizedDataset, collections };

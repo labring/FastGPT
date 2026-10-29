@@ -31,7 +31,7 @@ async function handler(
     bodySchema: CreateHttpToolsBodySchema
   });
 
-  const { teamId, tmbId, userId } = parentId
+  const { teamId, tmbId } = parentId
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
@@ -66,7 +66,6 @@ async function handler(
   pushTrack.createApp({
     type: AppTypeEnum.httpToolSet,
     appId: httpToolsetId,
-    uid: userId,
     teamId,
     tmbId
   });

@@ -41,8 +41,7 @@ const model: LLMModelDataType = {
   model: 'local-tool-call-simulator',
   name: 'Local simulator',
   isActive: true,
-  inputPrice: 1,
-  outputPrice: 2,
+  pricing: { tiers: [{ inputPrice: 1, outputPrice: 2 }] },
   config: {
     maxContext: 128000,
     maxResponse: 4096,

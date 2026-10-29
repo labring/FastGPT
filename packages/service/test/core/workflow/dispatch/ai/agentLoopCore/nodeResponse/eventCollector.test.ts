@@ -1,4 +1,5 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { createAgentLoopCoreNodeResponseEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/eventCollector';
 import { describe, expect, it } from 'vitest';
 
@@ -77,6 +78,29 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
   });
 
+  it('stores only display text for failed LLM responses', () => {
+    const { collector, nodeResponses } = createCollector();
+
+    collector.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_config_error',
+      finishReason: 'error',
+      error: new UserConfigError('Invalid API key'),
+      usages: [],
+      seconds: 0.2
+    } as any);
+
+    expect(nodeResponses).toEqual([
+      expect.objectContaining({
+        errorText: 'Invalid API key'
+      })
+    ]);
+
+    expect(nodeResponses[0]).not.toHaveProperty('error');
+  });
+
   it('records tool responses and compression as separate flat rows', () => {
     const { collector, nodeResponses } = createCollector();
 
@@ -100,7 +124,6 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         id: 'call_search',
         name: 'search'
       }),
-      rawResponse: 'raw',
       response: 'compressed',
       seconds: 0.5,
       toolResponseCompress: {
@@ -150,7 +173,6 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     collector.emitEvent({
       type: 'tool_run_end',
       call,
-      rawResponse: 'search unavailable',
       response: 'search unavailable',
       errorMessage: 'search unavailable',
       seconds: 0.4
@@ -221,30 +243,27 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         steps: [{ id: 'step_1', name: 'Implement plan events', status: 'pending' }]
       }
     });
-    collector.emitEvent({
-      type: 'ask_start',
-      id: 'call_ask',
-      seconds: 0.1,
-      params: '{}',
-      ask: {
-        reason: 'Need input',
-        blockerType: 'missing_required_input',
-        questions: [
-          {
-            question: 'Confirm?',
-            options: [
-              { summary: 'Yes', value: 'Yes' },
-              { summary: 'No', value: 'No' }
-            ]
-          },
-          {
-            question: 'Include examples?',
-            options: [
-              { summary: 'Yes', value: 'Yes' },
-              { summary: 'No', value: 'No' }
-            ]
-          }
+    const argumentsText = JSON.stringify({
+      reason: 'Need confirmation',
+      blockerType: 'user_choice',
+      questions: ['Confirm?', 'Include examples?'].map((question) => ({
+        question,
+        options: [
+          { summary: 'Yes', value: 'Yes' },
+          { summary: 'No', value: 'No' }
         ]
+      }))
+    });
+    collector.emitEvent({
+      type: 'tool_interactive',
+      call: {
+        id: 'call_ask',
+        type: 'function',
+        function: { name: 'ask_user', arguments: argumentsText }
+      },
+      interactive: {
+        type: 'agentAsk',
+        params: { toolCallId: 'call_ask', arguments: argumentsText }
       }
     });
 

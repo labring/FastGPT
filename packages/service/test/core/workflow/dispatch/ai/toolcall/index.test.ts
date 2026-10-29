@@ -1,10 +1,12 @@
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
+import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import {
   createNodeSummary,
   createWorkflowRuntimeSummary
@@ -137,7 +139,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
     ...overrides
   }) as any;
 
-describe('dispatchRunTools file context', () => {
+describe('dispatchRunTools', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.feConfigs = { ...global.feConfigs, show_agent_sandbox: true };
@@ -178,6 +180,85 @@ describe('dispatchRunTools file context', () => {
       error: undefined,
       requestIds: []
     });
+  });
+
+  it.each([
+    { name: 'success', runtimeResult: {} },
+    { name: 'error', runtimeResult: { error: 'model request failed after tool execution' } },
+    {
+      name: 'interactive pause',
+      runtimeResult: {
+        toolWorkflowInteractiveResponse: {
+          type: 'toolChildrenInteractive',
+          params: { toolCallId: 'tool_1' }
+        }
+      }
+    }
+  ])(
+    'preserves complete tool history and next-turn model context on $name',
+    async ({ runtimeResult }) => {
+      const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const assistantResponses: AIChatItemValueItemType[] = [
+        {
+          tools: [
+            {
+              id: 'tool_1',
+              toolName: 'Search',
+              toolAvatar: '',
+              functionName: 'search',
+              params: '{"query":"FastGPT"}',
+              response
+            }
+          ]
+        },
+        { text: { content: 'answer' } }
+      ];
+      runToolCallMock.mockResolvedValueOnce({
+        toolDispatchFlowResponses: [],
+        toolCallInputTokens: 0,
+        toolCallOutputTokens: 0,
+        toolCallTotalPoints: 0,
+        completeMessages: [],
+        finish_reason: 'stop',
+        requestIds: [],
+        ...runtimeResult,
+        assistantResponses
+      });
+
+      const result = await dispatchRunTools(createProps());
+
+      expect(result.assistantResponses).toEqual(assistantResponses);
+      const messages = buildAgentLoopCoreRequestMessages({
+        messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses ?? [] }]
+      });
+      expect(messages.find((message) => message.role === 'tool')).toMatchObject({
+        tool_call_id: 'tool_1',
+        content: response
+      });
+    }
+  );
+
+  it('preserves user config classification from runToolCall', async () => {
+    runToolCallMock.mockResolvedValueOnce({
+      toolWorkflowInteractiveResponse: undefined,
+      toolDispatchFlowResponses: [],
+      toolCallInputTokens: 0,
+      toolCallOutputTokens: 0,
+      toolCallTotalPoints: 0,
+      completeMessages: [],
+      assistantResponses: [],
+      finish_reason: 'error',
+      error: new UserConfigError('Invalid API key'),
+      requestIds: []
+    });
+
+    const result = await dispatchRunTools(createProps());
+
+    expect(result.rawError).toMatchObject({
+      message: 'Invalid API key',
+      name: 'UserConfigError'
+    });
+    expect(result.responseData).toMatchObject({ errorText: 'Invalid API key' });
   });
 
   it('does not restore history files when the node has no selected file link input', async () => {

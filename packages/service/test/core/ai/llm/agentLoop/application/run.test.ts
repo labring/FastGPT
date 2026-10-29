@@ -46,7 +46,6 @@ describe('runAgentLoopApplication tool visibility', () => {
   ): Extract<AgentLoopEvent, { type: 'tool_run_end' }> => ({
     type: 'tool_run_end',
     call,
-    rawResponse: 'tool result',
     response: 'tool result',
     seconds: 1
   });
@@ -120,7 +119,7 @@ describe('runAgentLoopApplication tool visibility', () => {
       }
     });
     expect(providerState.messages).toBe(messages);
-    expect(result.providerState).toBe(providerState);
+    expect(result.providerState).toBe(reject ? undefined : providerState);
     return { result, forwarded };
   };
 
@@ -486,6 +485,6 @@ describe('runAgentLoopApplication tool visibility', () => {
     expect(result.status).toBe('error');
     expect(result.completeMessages).toEqual([]);
     expect(forwarded).toEqual([]);
-    expect(result.providerState).toEqual({ messages });
+    expect(result.providerState).toBeUndefined();
   });
 });

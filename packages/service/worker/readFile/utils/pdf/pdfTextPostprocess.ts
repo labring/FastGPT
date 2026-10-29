@@ -12,6 +12,12 @@ const TOC_LINE_RE = /\.{4,}\s*\d+$/;
 const PAGE_NO_RE = /^[-—]?\s*\d{1,5}\s*[-—]?$/;
 const URL_NOISE_RE = /^\/?[a-z]{2}(?:\/|\))|^\(\/[a-z]{2}\/?\)$/i;
 
+/** 行数/项数可能超过函数参数上限，统一用 reduce 求最值避免 RangeError。 */
+const minNumber = (values: number[]) =>
+  values.reduce((min, value) => Math.min(min, value), Infinity);
+const maxNumber = (values: number[]) =>
+  values.reduce((max, value) => Math.max(max, value), -Infinity);
+
 export type PdfTextPostprocessOptions = {
   normalizeUnicode?: boolean;
   trimPageEdge?: boolean;
@@ -155,8 +161,9 @@ const extractPositionedPageLines = (
 
       return {
         text: joinLineItems(sortedItems, medianHeight, opts).trim(),
-        y: Math.min(...sortedItems.map((item) => item.y)),
-        bottom: Math.max(...sortedItems.map((item) => item.y + item.height)),
+        // 单行项数可能超过函数参数上限（病态高密度页），用 reduce 求最值避免 RangeError。
+        y: minNumber(sortedItems.map((item) => item.y)),
+        bottom: maxNumber(sortedItems.map((item) => item.y + item.height)),
         pageHeight: Number(page.height) || 0,
         pageIndex,
         hasColumnGap: hasWideColumnGap(sortedItems, medianHeight, opts)
@@ -348,7 +355,8 @@ const findRepeatedEdgeLines = (
     if (repeatedPages / pageCount < REPEATED_EDGE_MIN_PAGE_RATIO) continue;
 
     const positions = group.map(({ line, edge }) => getRelativeEdgePosition(line, edge));
-    if (Math.max(...positions) - Math.min(...positions) > EDGE_POSITION_TOLERANCE_RATIO) continue;
+    // 跨页聚合的 group 规模随页数线性增长，PDF.js 路径无页数上限，用 reduce 求最值避免 RangeError。
+    if (maxNumber(positions) - minNumber(positions) > EDGE_POSITION_TOLERANCE_RATIO) continue;
 
     group.forEach(({ line }) => result.add(line));
   }

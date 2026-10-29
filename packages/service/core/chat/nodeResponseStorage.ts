@@ -149,16 +149,6 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
   ];
   numberKeys.forEach((key) => keepNumber(data, source, key));
 
-  // deepSearchResult 没有独立 child row；fallback row 丢弃嵌套结构时，把它折算进顶层
-  // token 字段，保留详情行中的 LLM 消耗信息。
-  const deepSearchResult = (source.deepSearchResult || {}) as Record<string, unknown>;
-  (['inputTokens', 'outputTokens'] as const).forEach((key) => {
-    const value = deepSearchResult[key];
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      data[key] = ((data[key] as number) || 0) + value;
-    }
-  });
-
   return data as ChatHistoryItemResType;
 };
 

@@ -159,7 +159,7 @@ const GetPreviewNodeBaseQuerySchema = z.object({
     example: 'debug:tmbId:tmb_xxx',
     description: '工具来源。调试状态下显式传入 debug source，不再拼接到 appId 中'
   }),
-  lang: LanguageSchema.optional().meta({ description: '预览文案语言；缺省使用当前请求语言' }),
+  lang: LanguageSchema.optional().meta({ description: '预览文案语言；缺省使用当前请求语言' })
 });
 
 export const GetPreviewNodeQuerySchema = z.union([

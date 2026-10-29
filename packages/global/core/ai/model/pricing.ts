@@ -1,195 +1,107 @@
-import type { ModelPriceTierType, PriceType, AIModelDocumentDataType } from './schema';
-import { ModelTypeEnum } from '../constants';
+import { round } from 'lodash-es';
+import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import {
+  LLMModelPricingSchema,
+  UnitModelPricingSchema,
+  type ModelPriceTierType,
+  type ModelPricingType,
+  type PriceType,
+  type AIModelDocumentDataType
+} from './schema';
 
 export const MAX_MODEL_PRICE_TIERS = 5;
 
-const isValidNumber = (value: unknown): value is number => {
-  return typeof value === 'number' && Number.isFinite(value);
-};
+/** 模型单价最多两位小数，undefined 按 0 处理；不舍入每次调用的最终费用。 */
+export const roundModelPrice = (price = 0) => (Number.isInteger(price) ? price : round(price, 2));
 
-const getSafePrice = (value: unknown) => (isValidNumber(value) ? value : 0);
-
-/*
-  格式化 tiers：最多保留五档，跳过降序梯度、支持末尾开放梯度
-  1. 只有一个梯度，不管有没有价格，都推送进去
-  2. 多个梯度，遇到没有 maxToken 就认为是最后的梯度。
-    2.1 如果有价格，则推送，认为是无限大梯度
-    2.2 如果没有价格，认为是空行，跳过
-*/
+/** 表单空行不落库；保留有效递增上限，遇到无限档结束，不保存可推导的下限。 */
 export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPriceTierType[] => {
-  if (!Array.isArray(tiers)) return [];
-
   const result: ModelPriceTierType[] = [];
-
-  for (const tier of tiers) {
+  for (const tier of tiers ?? []) {
     if (result.length >= MAX_MODEL_PRICE_TIERS) break;
-
-    if (result.length === 0) {
-      result.push({
-        minInputTokens: 0,
-        maxInputTokens: isValidNumber(tier?.maxInputTokens)
-          ? Math.max(0, tier.maxInputTokens)
-          : undefined,
-        inputPrice: getSafePrice(tier?.inputPrice),
-        outputPrice: getSafePrice(tier?.outputPrice)
-      });
-      continue;
-    }
-
-    const hasMaxInputTokens = isValidNumber(tier?.maxInputTokens);
-    const last = result[result.length - 1];
-    const minInputTokens = last.maxInputTokens ?? 0;
-
-    if (!hasMaxInputTokens) {
-      // 无上限梯度（开放末端）：有价格才算有效
-      const hasPrice = isValidNumber(tier?.inputPrice) || isValidNumber(tier?.outputPrice);
-      if (hasPrice) {
-        result.push({
-          minInputTokens,
-          inputPrice: getSafePrice(tier?.inputPrice),
-          outputPrice: getSafePrice(tier?.outputPrice)
-        });
-      }
-      break;
-    }
-
-    const maxInputTokens = Math.max(0, tier.maxInputTokens!);
-
-    // 跳过降序梯度（maxInputTokens 必须严格递增）
-    if (
-      last.maxInputTokens !== null &&
-      last.maxInputTokens !== undefined &&
-      maxInputTokens <= last.maxInputTokens
-    ) {
-      continue;
-    }
-
+    const hasInput = typeof tier.inputPrice === 'number' && Number.isFinite(tier.inputPrice);
+    const hasOutput = typeof tier.outputPrice === 'number' && Number.isFinite(tier.outputPrice);
+    const max =
+      typeof tier.maxInputTokens === 'number' && Number.isFinite(tier.maxInputTokens)
+        ? Math.max(0, tier.maxInputTokens)
+        : undefined;
+    if (!hasInput && !hasOutput && max === undefined) break;
+    const previous = result.at(-1)?.maxInputTokens;
+    if (max !== undefined && previous !== undefined && max <= previous) continue;
     result.push({
-      minInputTokens,
-      maxInputTokens,
-      inputPrice: getSafePrice(tier?.inputPrice),
-      outputPrice: getSafePrice(tier?.outputPrice)
+      ...(max === undefined ? {} : { maxInputTokens: max }),
+      inputPrice: hasInput ? tier.inputPrice : 0,
+      outputPrice: hasOutput ? tier.outputPrice : 0
     });
+    if (max === undefined) break;
   }
-
   return result;
 };
 
-// 计算模型价格梯度
-export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] => {
-  /** 最终只剩一档双零价格时视为空计费，保存与运行时加载共用该语义。 */
-  const removeEmptySingleTier = (tiers: ModelPriceTierType[]) => {
-    const [onlyTier] = tiers;
-    return tiers.length === 1 && onlyTier.inputPrice === 0 && onlyTier.outputPrice === 0
-      ? []
-      : tiers;
-  };
+/** 只解析新计价字段，绝不回退根级历史价格。 */
+export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] =>
+  sanitizeModelPriceTiers(config?.pricing?.tiers);
 
-  // 新梯度为空或只有一档双零时继续向旧字段回退，兼容迁移前后的混合数据。
-  if (Array.isArray(config?.priceTiers)) {
-    const priceTiers = removeEmptySingleTier(sanitizeModelPriceTiers(config.priceTiers));
-    if (priceTiers.length > 0) return priceTiers;
-  }
-
-  // 旧版的价格计费字段
-  const hasLegacyIOPrice = isValidNumber(config?.inputPrice) || isValidNumber(config?.outputPrice);
-
-  if (hasLegacyIOPrice) {
-    const legacyPriceTiers = removeEmptySingleTier(
-      sanitizeModelPriceTiers([
-        {
-          minInputTokens: 0,
-          inputPrice: getSafePrice(config?.inputPrice),
-          outputPrice: getSafePrice(config?.outputPrice)
-        }
-      ])
-    );
-    if (legacyPriceTiers.length > 0) return legacyPriceTiers;
-  }
-
-  if (isValidNumber(config?.charsPointsPrice)) {
-    const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
-
-    const comprehensivePriceTiers = removeEmptySingleTier(
-      sanitizeModelPriceTiers([
-        {
-          minInputTokens: 0,
-          inputPrice: comprehensivePrice,
-          outputPrice: comprehensivePrice
-        }
-      ])
-    );
-    if (comprehensivePriceTiers.length > 0) return comprehensivePriceTiers;
-  }
-
-  return [];
-};
-
-/** 编辑打开和 JSON 导入共用：将历史 LLM 计费转换为阶梯并移除旧字段，非 LLM 保持不变。 */
+/** 编辑读取时统一单价显示精度；不写库，运行期费用仍读取数据库原值。 */
 export const normalizeModelPricingForRead = (
-  modelData: AIModelDocumentDataType
-): AIModelDocumentDataType => {
-  if (modelData.type !== ModelTypeEnum.llm) return modelData;
-  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
-  return { ...data, priceTiers: getRuntimeResolvedPriceTiers(modelData) };
-};
+  model: AIModelDocumentDataType
+): AIModelDocumentDataType =>
+  model.pricing === undefined ? model : normalizeModelPricingForSave(model);
 
-/** 编辑保存和导入落库共用：只认转换/编辑后的新阶梯，免费配置不能再次回退旧字段。 */
+/** 保存仅规范新 pricing；空配置和显式零价均保留，不读取历史根字段。 */
 export const normalizeModelPricingForSave = (
-  modelData: AIModelDocumentDataType
+  model: AIModelDocumentDataType
 ): AIModelDocumentDataType => {
-  if (modelData.type !== ModelTypeEnum.llm) return modelData;
-  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
-  return { ...data, priceTiers: getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers }) };
+  /** 统一单价精度，不改变阶梯边界或未配置状态。 */
+  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
+    ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
+    ...(pricing.tiers === undefined
+      ? {}
+      : {
+          tiers: sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
+            ...tier,
+            inputPrice: roundModelPrice(tier.inputPrice),
+            outputPrice: roundModelPrice(tier.outputPrice)
+          }))
+        })
+  });
+
+  // 新版保存即使清空价格也持久化空对象，后台迁移不能再用历史价格覆盖此编辑。
+  const pricing = roundModelPricing(model.pricing ?? {});
+  if (model.type === ModelTypeEnum.llm)
+    return {
+      ...model,
+      pricing: LLMModelPricingSchema.parse(pricing)
+    };
+  return {
+    ...model,
+    pricing: UnitModelPricingSchema.parse(pricing)
+  };
 };
 
+/** 仅系统模型计费；新 pricing 缺失与团队模型均免费，分母只由模型类型决定。 */
 export const calculateModelPrice = ({
   config,
   inputTokens = 0,
-  outputTokens = 0,
-  multiple = 1000
+  outputTokens = 0
 }: {
-  config?: PriceType;
+  config?: PriceType & { type?: ModelTypeEnum; scope?: ModelScopeEnum };
   inputTokens?: number;
   outputTokens?: number;
-  multiple?: number;
 }) => {
   const tiers = getRuntimeResolvedPriceTiers(config);
-  // 匹配梯度区间，左开右闭 (prevMax, maxInputTokens]
-  // 第一个梯度特殊处理为左闭右闭 [0, maxInputTokens]
-  const getMatchingResolvedTier = (
-    resolvedTiers: ModelPriceTierType[],
-    currentInputTokens = 0
-  ): ModelPriceTierType | undefined => {
-    if (resolvedTiers.length === 0) return undefined;
-
-    for (let i = 0; i < resolvedTiers.length; i++) {
-      const tier = resolvedTiers[i];
-      const maxInputTokens = tier.maxInputTokens;
-
-      // 开放末端梯度（无 maxInputTokens）
-      if (maxInputTokens === null || maxInputTokens === undefined) {
-        return tier;
-      }
-
-      // 检查是否在当前梯度范围内
-      if (currentInputTokens <= maxInputTokens) {
-        return tier;
-      }
-    }
-
-    // 如果都不匹配，返回最后一个梯度
-    return resolvedTiers[resolvedTiers.length - 1];
-  };
-  const matchedTier = getMatchingResolvedTier(tiers, inputTokens / multiple);
-
+  const multiple = config?.type === ModelTypeEnum.stt ? 60 : 1000000;
+  const matchedTier =
+    tiers.find(
+      (tier) => tier.maxInputTokens === undefined || inputTokens / multiple <= tier.maxInputTokens
+    ) ?? tiers.at(-1);
   const totalPoints =
-    (matchedTier?.inputPrice ?? 0) * (inputTokens / multiple) +
-    (matchedTier?.outputPrice ?? 0) * (outputTokens / multiple);
-
-  return {
-    totalPoints,
-    matchedTier,
-    tiers
-  };
+    config?.scope !== ModelScopeEnum.system
+      ? 0
+      : config.type === ModelTypeEnum.llm
+        ? ((matchedTier?.inputPrice ?? 0) * inputTokens +
+            (matchedTier?.outputPrice ?? 0) * outputTokens) /
+          multiple
+        : ((inputTokens + outputTokens) / multiple) * (config.pricing?.unitPrice ?? 0);
+  return { totalPoints, tiers, matchedTier };
 };

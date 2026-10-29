@@ -32,6 +32,7 @@ export const trackTimerProcess = async () => {
   }
 };
 
+/** 刷新累计计数；点击保留入队时的小时桶，延迟或并发刷新都不会改变归属时间。 */
 export const countTrackTimer = async () => {
   if (!global.countTrackQueue || global.countTrackQueue.size === 0) {
     return;
@@ -46,6 +47,21 @@ export const countTrackTimer = async () => {
 
     const bulkOps = queuedItems
       .map(({ event, count, data }) => {
+        if (event === TrackEnum.workflowBuilderClick) {
+          return [
+            {
+              updateOne: {
+                filter: { event, createTime: data.createTime },
+                update: {
+                  $setOnInsert: { event, createTime: data.createTime },
+                  $inc: { 'data.count': count }
+                },
+                upsert: true
+              }
+            }
+          ];
+        }
+
         if (event === TrackEnum.datasetSearch) {
           const { teamId, datasetId } = data;
 

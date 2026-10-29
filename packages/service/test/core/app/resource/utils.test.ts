@@ -14,11 +14,24 @@ import {
   splitExtractedAppResources
 } from '@fastgpt/service/core/app/resource/utils';
 
-const createInput = (key: string, value: unknown, reference = false) => ({
+const createInput = (
+  key: string,
+  value: unknown,
+  reference = false,
+  options: {
+    defaultValue?: unknown;
+    renderTypeList?: FlowNodeInputTypeEnum[];
+    selectedType?: FlowNodeInputTypeEnum;
+  } = {}
+) => ({
   key,
   label: key,
   value,
-  renderTypeList: reference ? [FlowNodeInputTypeEnum.reference] : [FlowNodeInputTypeEnum.input]
+  ...(options.defaultValue !== undefined ? { defaultValue: options.defaultValue } : {}),
+  renderTypeList:
+    options.renderTypeList ??
+    (reference ? [FlowNodeInputTypeEnum.reference] : [FlowNodeInputTypeEnum.input]),
+  ...(options.selectedType ? { selectedType: options.selectedType } : {})
 });
 
 const createNode = ({
@@ -106,9 +119,7 @@ describe('extractAppResources', () => {
             createInput(NodeInputKeyEnum.datasetSearchUsingReRank, true),
             createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank-model-id'),
             createInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true),
-            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id'),
-            createInput(NodeInputKeyEnum.datasetDeepSearch, true),
-            createInput(NodeInputKeyEnum.datasetDeepSearchModelId, 'deep-search-model-id')
+            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id')
           ]
         }),
         createNode({
@@ -231,6 +242,48 @@ describe('extractAppResources', () => {
     });
 
     expect(resources).toEqual([]);
+  });
+
+  it('extracts only selected custom LLM model inputs as model resources', () => {
+    const selectorTypes = [FlowNodeInputTypeEnum.selectLLMModel];
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          inputs: [
+            createInput('custom-model', 'team-model-id', false, {
+              renderTypeList: selectorTypes,
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel
+            }),
+            createInput('default-model', undefined, false, {
+              defaultValue: 'default-model-id',
+              renderTypeList: selectorTypes,
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel
+            }),
+            createInput('dynamic-model', '{{selectedModel}}', false, {
+              renderTypeList: selectorTypes,
+              selectedType: FlowNodeInputTypeEnum.selectLLMModel
+            }),
+            createInput('other-mode', 'ignored-model-id', false, {
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel, FlowNodeInputTypeEnum.input],
+              selectedType: FlowNodeInputTypeEnum.input
+            }),
+            createInput('referenced-model', ['source-node', 'model'], false, {
+              renderTypeList: [
+                FlowNodeInputTypeEnum.selectLLMModel,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.reference
+            })
+          ]
+        })
+      ]
+    });
+
+    expect(resources).toEqual([
+      { type: 'model', id: 'default-model-id' },
+      { type: 'model', id: 'team-model-id' }
+    ]);
   });
 
   it('extracts all static canonical model inputs on a node with duplicate modelId keys', () => {

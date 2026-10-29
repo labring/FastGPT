@@ -1,4 +1,7 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
 import {
@@ -8,6 +11,7 @@ import {
   isTeamPluginSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
+import { resolveToolInputValues } from '../../../../../../app/tool/secretConfig';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -57,6 +61,7 @@ export type Props = {
   chatId: ChatDispatchProps['chatId'];
   uid: ChatDispatchProps['uid'];
   variableState: ChatDispatchProps['variableState'];
+  runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
@@ -68,8 +73,16 @@ export const dispatchTool = async ({
   chatId,
   uid,
   variableState,
+  runtimeNodesMap,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
+  const resolveReference = (value: ReferenceValueType) =>
+    getReferenceVariableValue({
+      value,
+      nodesMap: runtimeNodesMap ?? new Map(),
+      variables: variableState.toRuntimeRecord(),
+      isReferenceVal: true
+    });
   const getNodeResponse = ({
     result,
     response
@@ -148,13 +161,24 @@ export const dispatchTool = async ({
         source: runtimeToolSource,
         version
       });
+      const toolDetail = systemToolRepo.getSystemToolDetail
+        ? await systemToolRepo.getSystemToolDetail({
+            pluginId: toolConfig.systemTool.toolId,
+            source: toolSource,
+            version: tool.version ?? version,
+            fallbackLatestVersion: true
+          })
+        : undefined;
+      const inputList = jsonSchema2SecretInput({ jsonSchema: toolDetail?.secretSchema });
       const inputConfigParams = await (async () => {
         switch (system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
             return Promise.reject('This is not supported yet');
           case SystemToolSecretInputTypeEnum.manual:
-            return getSecretValue({
-              storeSecret: system_input_config.value || {}
+            return resolveToolInputValues({
+              value: system_input_config.value || {},
+              inputList,
+              resolveReference
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
@@ -226,7 +250,6 @@ export const dispatchTool = async ({
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: tool.id,
         result: 1,
         usagePoint: usagePoints,
@@ -277,7 +300,8 @@ export const dispatchTool = async ({
       const mcpClient = new MCPClient({
         url,
         headers: getSecretValue({
-          storeSecret: headerSecret ?? undefined
+          storeSecret: headerSecret ?? undefined,
+          resolveReference
         })
       });
 
@@ -334,7 +358,8 @@ export const dispatchTool = async ({
           : undefined,
         staticParams: httpTool.staticParams,
         staticHeaders: httpTool.staticHeaders,
-        staticBody: httpTool.staticBody
+        staticBody: httpTool.staticBody,
+        resolveReference
       });
 
       if (errorMsg) {
@@ -362,7 +387,6 @@ export const dispatchTool = async ({
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
         toolId: toolConfig.systemTool.toolId,
         result: 0,
         msg: getErrText(error)

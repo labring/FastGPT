@@ -294,51 +294,33 @@ describe('workflow model validation', () => {
     );
   });
 
-  it.each([undefined, null, '', '   '])(
-    'keeps strict model checks for deep search with the exact input label (%s)',
-    (value) => {
-      const node = makeModelNode(
-        [
-          {
-            key: NodeInputKeyEnum.datasetDeepSearch,
-            label: '深度搜索开关',
-            value: true,
-            renderTypeList: [FlowNodeInputTypeEnum.hidden]
-          },
-          {
-            key: NodeInputKeyEnum.datasetDeepSearchModelId,
-            label: '深度搜索模型',
-            value,
-            renderTypeList: [FlowNodeInputTypeEnum.hidden]
-          }
-        ],
-        FlowNodeTypeEnum.datasetSearchNode
-      );
-      node.data.name = '知识库搜索#2';
-      const issues = checkWorkflowNodeIssues({
-        nodes: [node],
-        edges: [],
-        modelData: createModelCheckData(models),
-        t: ((key: string, params?: { inputName?: string }) =>
-          key === 'common:core.workflow.check.model_required_short'
-            ? `未配置[${params?.inputName ?? ''}]模型`
-            : key) as any
-      })['model-node'];
-      expect(issues).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: WorkflowCheckIssueCodeEnum.modelRequired,
-            nodeId: 'model-node',
-            inputKey: NodeInputKeyEnum.datasetDeepSearchModelId,
-            message: '未配置[深度搜索模型]模型'
-          })
-        ])
-      );
-      expect(
-        issues?.some((issue) => issue.code === WorkflowCheckIssueCodeEnum.modelUnavailable)
-      ).toBe(false);
-    }
-  );
+  it('ignores retired search fields when validating a saved workflow', () => {
+    const node = makeModelNode(
+      [
+        {
+          key: 'datasetDeepSearch',
+          label: 'Retired search feature',
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: 'datasetDeepSearchModelId',
+          label: 'Retired search model',
+          value: 'deleted-model',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ],
+      FlowNodeTypeEnum.datasetSearchNode
+    );
+
+    expect(
+      getModelIssueCodes(node).filter(
+        (code) =>
+          code === WorkflowCheckIssueCodeEnum.modelRequired ||
+          code === WorkflowCheckIssueCodeEnum.modelUnavailable
+      )
+    ).toEqual([]);
+  });
 
   it('ignores disabled optional model features and reports a missing canonical model slot', () => {
     const disabledNode = makeModelNode(

@@ -7,6 +7,7 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -322,6 +323,50 @@ describe('pushChatRecords', () => {
       expect(aiItem?.value).toEqual(
         expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }])
       );
+    });
+
+    it('persists and reloads the complete model-visible tool response', async () => {
+      const response = `${'a'.repeat(6000)}important middle content${'z'.repeat(6000)}`;
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                tools: [
+                  {
+                    id: 'call_search',
+                    toolName: 'Search',
+                    toolAvatar: '',
+                    functionName: 'search',
+                    params: '{}',
+                    response
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+      const { histories } = await getChatItems({
+        sourceType: props.sourceType,
+        sourceId: props.sourceId,
+        chatId: props.chatId,
+        field: 'obj value',
+        limit: 2,
+        offset: 0
+      });
+
+      const aiItem = histories.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.value[0].tools?.[0].response).toBe(response);
+      const messages = buildAgentLoopCoreRequestMessages({ messages: histories });
+      expect(messages.find((message) => message.role === 'tool')).toMatchObject({
+        tool_call_id: 'call_search',
+        content: response
+      });
     });
 
     it('should drop inline responseData from aiContent and not persist response rows', async () => {
@@ -837,32 +882,36 @@ describe('pushChatRecords', () => {
     it.each(['agentAsk', 'workflowBuilderPreview'] as const)(
       'does not persist or reject an ephemeral %s reply',
       async (type) => {
-        const interactive: WorkflowInteractiveResponseType =
-          type === 'agentAsk'
-            ? {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                askId: 'ask-1',
-                params: {
-                  description: '',
-                  questions: [{ question: 'Question', options: [] }]
-                }
-              }
-            : {
-                type,
-                entryNodeIds: [],
-                memoryEdges: [],
-                nodeOutputs: [],
-                previewId: 'preview-1',
-                params: {
-                  title: 'Confirm?',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: []
-                }
-              };
+        const interactive: WorkflowInteractiveResponseType = {
+          type,
+          entryNodeIds: [],
+          memoryEdges: [],
+          nodeOutputs: [],
+          params: {
+            toolCallId: 'interactive-call',
+            arguments: JSON.stringify(
+              type === 'agentAsk'
+                ? {
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Question',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' }
+                        ]
+                      }
+                    ]
+                  }
+                : {
+                    title: 'Confirm?',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build' }]
+                  }
+            )
+          }
+        };
         const props = createMockProps(
           { chatId: 'NO_RECORD_HISTORIES' },
           { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -1306,19 +1355,23 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentAsk' as const,
-              askId: 'call_ask_agent',
+
               params: {
-                description: '需要用户明确任务目标',
-                questions: [
-                  {
-                    question: '请补充目标',
-                    options: [
-                      { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                      { summary: '改为研究 Go', value: '改为研究 Go' },
-                      { summary: '先给出学习路线', value: '先给出学习路线' }
-                    ]
-                  }
-                ]
+                toolCallId: 'call_ask_agent',
+                arguments: JSON.stringify({
+                  reason: '需要用户明确任务目标',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: '请补充目标',
+                      options: [
+                        { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                        { summary: '改为研究 Go', value: '改为研究 Go' },
+                        { summary: '先给出学习路线', value: '先给出学习路线' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -1341,22 +1394,26 @@ describe('pushChatRecords', () => {
 
       const interactive: WorkflowInteractiveResponseType = {
         type: 'agentAsk',
-        askId: 'call_ask_agent',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          description: '需要用户明确任务目标',
-          questions: [
-            {
-              question: '请补充目标',
-              options: [
-                { summary: '继续研究 Rust', value: '继续研究 Rust' },
-                { summary: '改为研究 Go', value: '改为研究 Go' },
-                { summary: '先给出学习路线', value: '先给出学习路线' }
-              ]
-            }
-          ]
+          toolCallId: 'call_ask_agent',
+          arguments: JSON.stringify({
+            reason: '需要用户明确任务目标',
+            blockerType: 'user_choice',
+            questions: [
+              {
+                question: '请补充目标',
+                options: [
+                  { summary: '继续研究 Rust', value: '继续研究 Rust' },
+                  { summary: '改为研究 Go', value: '改为研究 Go' },
+                  { summary: '先给出学习路线', value: '先给出学习路线' }
+                ]
+              }
+            ]
+          })
         }
       };
 
@@ -1374,33 +1431,40 @@ describe('pushChatRecords', () => {
             ? {
                 ...runtime,
                 type: 'agentAsk',
-                askId: 'ask-1',
+
                 params: {
-                  description: '',
-                  questions: [
-                    {
-                      question: '方向？',
-                      options: [
-                        { summary: 'Rust', value: 'rust' },
-                        { summary: 'Go', value: 'go' }
-                      ]
-                    }
-                  ]
+                  toolCallId: 'ask-1',
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: '方向？',
+                        options: [
+                          { summary: 'Rust', value: 'rust' },
+                          { summary: 'Go', value: 'go' }
+                        ]
+                      }
+                    ]
+                  })
                 }
               }
             : {
                 ...runtime,
                 type: 'workflowBuilderPreview',
-                previewId: 'preview-1',
+
                 params: {
-                  title: '确认方案？',
-                  mermaid: 'flowchart LR; A --> B',
-                  sections: [],
-                  actions: [
-                    { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-                    { value: 'revise', label: 'Revise', inputMode: 'text' },
-                    { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-                  ]
+                  toolCallId: 'preview-1',
+                  arguments: JSON.stringify({
+                    title: '确认方案？',
+                    mermaid: 'flowchart LR; A --> B',
+                    sections: [{ title: 'Goal', content: 'Build the workflow' }],
+                    actions: [
+                      { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+                      { value: 'revise', label: 'Revise', inputMode: 'text' },
+                      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+                    ]
+                  })
                 }
               };
         const select = {
@@ -1520,9 +1584,7 @@ describe('pushChatRecords', () => {
                   memoryEdges: [],
                   nodeOutputs: []
                 },
-                toolParams: {
-                  toolCallId: 'call_select_1'
-                }
+                toolCallId: 'call_select_1'
               }
             }
           }
@@ -1595,9 +1657,7 @@ describe('pushChatRecords', () => {
             memoryEdges: [],
             nodeOutputs: []
           },
-          toolParams: {
-            toolCallId: 'call_select_1'
-          }
+          toolCallId: 'call_select_1'
         },
         entryNodeIds: [],
         memoryEdges: [],

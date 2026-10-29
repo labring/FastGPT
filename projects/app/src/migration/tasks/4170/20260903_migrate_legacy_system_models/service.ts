@@ -1,12 +1,14 @@
-import {
-  AIModelDocumentDataSchema,
-  type AIModelDocumentDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import { type AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
-import { getLegacyDefaultModelFlags, repairSystemModelDocument } from './utils';
+import {
+  getLegacyDefaultModelFlags,
+  repairSystemModelDocument,
+  LegacyAIModelDocumentSchema,
+  type LegacyAIModelDocumentType
+} from './utils';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { assertSystemModelTypesMatchPluginTemplates } from '@fastgpt/service/core/ai/model/transform';
 import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/model/catalog/entity';
@@ -37,7 +39,8 @@ export const inspectLegacySystemModelMigration = async () => {
  * 将旧 system_models 确定性合并到 ai_models。
  *
  * 同名模型保留新表 `_id`，其余 canonical 字段以旧表为准；旧表独有模型沿用旧 `_id`
- * 新增，新表独有模型保留。模型与默认配置在同一事务内写入，整体可幂等重放。
+ * 新增，新表独有模型保留。模型、默认配置与目录修订号原子提交，整体可幂等重放；
+ * 其他节点即使已加载空目录，也能通过运行期修订号检查刷新快照。
  */
 export const bootstrapAIModelsFromLegacy = async ({
   pluginDocuments
@@ -50,7 +53,7 @@ export const bootstrapAIModelsFromLegacy = async ({
   const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
   const modelIds = new Set<string>();
   type MigrationCandidate = {
-    document: AIModelDocumentDataType & {
+    document: LegacyAIModelDocumentType & {
       _id: (typeof records)[number]['_id'];
     };
     defaultFlags: ReturnType<typeof getLegacyDefaultModelFlags>;
@@ -86,7 +89,7 @@ export const bootstrapAIModelsFromLegacy = async ({
     pluginDocuments
   });
 
-  return mongoSessionRun(async (session) => {
+  return runModelTransaction({ scope: ModelScopeEnum.system }, async (session) => {
     // 同一 MongoDB 事务 session 内串行执行，避免驱动不支持的并行事务操作。
     const targetRecords = await MongoAIModel.collection
       .find({ scope: ModelScopeEnum.system }, { session })
@@ -97,7 +100,7 @@ export const bootstrapAIModelsFromLegacy = async ({
     );
     const targetModels = targetRecords.map((record) => ({
       _id: record._id,
-      document: AIModelDocumentDataSchema.parse(record)
+      document: LegacyAIModelDocumentSchema.parse(record)
     }));
     const targetByModel = new Map<string, (typeof targetModels)[number]>();
     const targetById = new Map(targetModels.map((model) => [String(model._id), model]));

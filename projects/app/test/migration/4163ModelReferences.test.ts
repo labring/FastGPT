@@ -127,9 +127,11 @@ describe('4163 dataset model reference migration', () => {
     expect(state.getFailedRecords()).toEqual([]);
   });
 
-  it('commits succeeded states through the runner for all four empty reference migrations', async () => {
+  it('commits succeeded states for the catalog prerequisite and all four empty reference migrations', async () => {
+    // 使用完整依赖链，先执行空源模型迁移，再验证四项引用回填的终态。
     const migrations = systemMigrations.filter((migration) =>
       [
+        '20260903_migrate_legacy_system_models',
         '20260903_backfill_model_permissions',
         '20260903_backfill_dataset_model_references',
         '20260903_backfill_evaluation_model_references',
@@ -142,9 +144,11 @@ describe('4163 dataset model reference migration', () => {
     });
     try {
       await runner.start();
+      await runner.waitForBlockingMigrations();
+      runner.startBackgroundMigrations();
       await runner.tick();
       const states = await getMigrationStates(migrations.map(({ id }) => id));
-      expect(states).toHaveLength(4);
+      expect(states).toHaveLength(5);
       for (const state of states) {
         expect(state.status).toBe(SystemMigrationStatusEnum.succeeded);
         expect(state.lastError).toBeUndefined();
@@ -401,6 +405,44 @@ describe('4163 dataset model reference migration', () => {
       true
     );
     expect(cacheMocks.clearAllMemberModelsCache).not.toHaveBeenCalled();
+  });
+
+  it('preserves the published migration behavior for retired model slots', async () => {
+    const llm = await createStoredModel({ model: 'gpt-model', type: ModelTypeEnum.llm });
+    const modules = [
+      { flowNodeType: FlowNodeTypeEnum.datasetSearchNode, enabled: true },
+      { flowNodeType: FlowNodeTypeEnum.agent, enabled: true },
+      { flowNodeType: FlowNodeTypeEnum.datasetSearchNode, enabled: false },
+      { flowNodeType: FlowNodeTypeEnum.tool, enabled: true }
+    ].map(({ flowNodeType, enabled }, index) => ({
+      nodeId: `historical-${index}`,
+      name: 'Historical workflow node',
+      flowNodeType,
+      inputs: [
+        { key: 'datasetDeepSearch', value: enabled },
+        {
+          key: 'datasetDeepSearchModel',
+          value: 'gpt-model',
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        }
+      ],
+      outputs: []
+    }));
+    const app = await MongoApp.collection.insertOne({ modules });
+
+    await backfillAppModelReferences(createContext().context);
+
+    const document = await MongoApp.collection.findOne({ _id: app.insertedId });
+    for (const node of document!.modules.slice(0, 2)) {
+      expect(node.inputs).toContainEqual(
+        expect.objectContaining({ key: 'datasetDeepSearchModelId', value: String(llm._id) })
+      );
+    }
+    expect(document!.modules.slice(2)).toEqual(modules.slice(2));
+
+    await backfillAppModelReferences(createContext().context);
+    const replay = await MongoApp.collection.findOne({ _id: app.insertedId });
+    expect(replay!.modules).toEqual(document!.modules);
   });
 
   it('preserves unrelated legacy workflow values while backfilling config and model IDs', async () => {

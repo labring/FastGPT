@@ -24,6 +24,7 @@ import {
   calculateInheritedResourceCollaborators,
   createInheritedResourceCollaboratorCalculator,
   mergeResourceCollaborators,
+  shouldInheritResourcePermission,
   toInheritedCollaborators
 } from '../resourcePermissionPolicy';
 import {
@@ -431,9 +432,18 @@ export const syncRootCollections = async ({
 };
 
 /**
- * dataset 有效 clbs 变更后，将受影响 dataset（含继承态后代）下全部 collection 的快照重新物化。
+ * dataset 有效 clbs 变更后，将受到影响的 collection 快照重新物化。
  * 根级继承态 collection 从 oldEffectiveClbs 物化到 newEffectiveClbs，folder 递归同步子树。
  * 由 dataset 写路径（collaborator/move/resume）在同一事务内调用。幂等（diff 写入）。
+ *
+ * 调用约束：必须在 dataset 树写入**之前**调用，`syncDatasetToCollections` 需要读到后代
+ * dataset 变更前的快照来推导 diff（参照 move.ts）。
+ *
+ * collection 权限开关按 dataset 独立判定：folder 类型 dataset 永远不会开启，不能因为被改节点
+ * 是 folder 就跳过整棵后代树；关闭态 dataset 自身的 collection 不写快照（读路径已短路）。
+ *
+ * 收集阶段按层查询并剪掉独立权限分支：`inheritPermission=false` 的子树不会受父级 ACL 变化影响，
+ * 既不遍历其后代，也不把它们的 ACL 送进批量查询，避免大目录下事务里的串行查询放大。
  */
 export async function syncDatasetToCollections({
   teamId,
@@ -450,44 +460,48 @@ export async function syncDatasetToCollections({
   newEffectiveClbs: CollaboratorItemType[];
   session: ClientSession;
 }): Promise<void> {
-  // 关闭态短路：关闭态不存在自定义 collection 权限，读路径已短路到 dataset 有效权限，
-  // 无需（也不应）写 collection 快照。
-  const collectionPermissionEnabled = await getDatasetCollectionPermissionEnabled({
-    teamId,
-    datasetId,
-    session
-  });
-  if (!collectionPermissionEnabled) return;
-
-  // 收集 root dataset + 全部后代 dataset（仅继承态后代的有效 clbs 会随父级变化）
-  const datasetNodes = new Map<string, { parentId: string | null; inheritPermission?: boolean }>();
-  const collectQueue = [datasetId];
-  while (collectQueue.length) {
-    const currentId = collectQueue.shift()!;
+  // 按层收集继承态后代 dataset。独立权限分支在收集阶段剪掉：父级 ACL 变化不会传播进去，
+  // 其整棵子树无需同步。不能用 collectionPermissionEnabled 剪枝——关闭态 folder 下可能有开启态知识库。
+  const datasetNodes = new Map<string, { collectionPermissionEnabled?: boolean }>();
+  // 父子邻接表：同步阶段按层下推，避免对每个节点全量扫描后代列表。
+  const childIdsByParentId = new Map<string, string[]>();
+  let pendingParentIds = [datasetId];
+  while (pendingParentIds.length > 0) {
     const children = await MongoDataset.find(
-      { teamId, parentId: currentId },
-      '_id parentId inheritPermission'
+      { teamId, parentId: { $in: pendingParentIds } },
+      '_id parentId inheritPermission collectionPermissionEnabled'
     )
       .lean()
       .session(session);
-    for (const child of children) {
+    const inheritingChildren = children.filter((child) =>
+      shouldInheritResourcePermission(child.inheritPermission)
+    );
+
+    for (const child of inheritingChildren) {
       const childId = String(child._id);
+      const parentId = String(child.parentId);
       datasetNodes.set(childId, {
-        parentId: child.parentId ? String(child.parentId) : null,
-        inheritPermission: child.inheritPermission
+        collectionPermissionEnabled: child.collectionPermissionEnabled
       });
-      collectQueue.push(childId);
+      const siblings = childIdsByParentId.get(parentId) ?? [];
+      siblings.push(childId);
+      childIdsByParentId.set(parentId, siblings);
     }
+
+    pendingParentIds = inheritingChildren.map((child) => String(child._id));
   }
 
   // 批量加载后代 dataset 物化快照（无 N+1）
   const descendantIds = Array.from(datasetNodes.keys());
-  const allClbs = await resourcePermissionRepo.findByResourceIds({
-    teamId,
-    resourceType: PerResourceTypeEnum.dataset,
-    resourceIds: descendantIds,
-    session
-  });
+  const [allClbs, rootCollectionPermissionEnabled] = await Promise.all([
+    resourcePermissionRepo.findByResourceIds({
+      teamId,
+      resourceType: PerResourceTypeEnum.dataset,
+      resourceIds: descendantIds,
+      session
+    }),
+    getDatasetCollectionPermissionEnabled({ teamId, datasetId, session })
+  ]);
   const ownClbsMap = new Map<string, CollaboratorItemType[]>();
   for (const clb of allClbs) {
     const id = String(clb.resourceId);
@@ -495,6 +509,11 @@ export async function syncDatasetToCollections({
     arr.push(clb);
     ownClbsMap.set(id, arr);
   }
+  const collectionPermissionEnabledByDatasetId = new Map<string, boolean>();
+  for (const [id, node] of datasetNodes) {
+    collectionPermissionEnabledByDatasetId.set(id, node.collectionPermissionEnabled === true);
+  }
+  collectionPermissionEnabledByDatasetId.set(datasetId, rootCollectionPermissionEnabled);
 
   // BFS 自顶向下：seed 用 root dataset 的旧/新有效 clbs，逐 dataset 重新物化根级 collection
   const syncQueue: Array<{
@@ -509,18 +528,18 @@ export async function syncDatasetToCollections({
     if (visited.has(currentId)) continue;
     visited.add(currentId);
 
-    await syncRootCollections({
-      teamId,
-      datasetId: currentId,
-      oldRootClbs: oldClbs,
-      rootClbs: newClbs,
-      session
-    });
+    // 关闭态 dataset 不写 collection 快照，但必须继续向下遍历：关闭态 folder 下可以有启用态知识库
+    if (collectionPermissionEnabledByDatasetId.get(currentId) === true) {
+      await syncRootCollections({
+        teamId,
+        datasetId: currentId,
+        oldRootClbs: oldClbs,
+        rootClbs: newClbs,
+        session
+      });
+    }
 
-    for (const childId of descendantIds) {
-      const node = datasetNodes.get(childId)!;
-      if (node.parentId !== currentId) continue;
-      if (node.inheritPermission === false) continue;
+    for (const childId of childIdsByParentId.get(currentId) ?? []) {
       const oldChildClbs = ownClbsMap.get(childId) ?? [];
       const newChildClbs = calculateInheritedResourceCollaborators({
         oldParentCollaborators: oldClbs,

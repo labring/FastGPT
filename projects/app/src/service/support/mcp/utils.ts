@@ -49,6 +49,7 @@ import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { markProfileError, profileStage, setProfileMeta } from '@fastgpt/service/common/profiling';
 import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
 import {
   LimitTypeEnum,
@@ -153,25 +154,35 @@ export const workflow2InputSchema = (chatConfig?: {
  * 不再因为创建人的应用权限后续变化而隐藏工具，避免已发布集成被普通权限调整意外中断。
  */
 export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const mcp = await MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean();
+  const mcp = await profileStage({ event: 'mcpKey.read' }, () =>
+    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1 }).lean()
+  );
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
-  await assertMcpTeamUsable(mcp);
+
+  setProfileMeta({ appCount: mcp.apps.length });
+  await profileStage({ event: 'team.check' }, () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await MongoApp.find(
-    {
-      _id: { $in: mcp.apps.map((app) => app.appId) },
-      type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-      }
-    },
-    { name: 1, intro: 1, publishedVersionId: 1 }
-  ).lean();
+  const appList = await profileStage(
+    { event: 'app.list', params: { appCount: mcp.apps.length } },
+    () =>
+      MongoApp.find(
+        {
+          _id: { $in: mcp.apps.map((app) => app.appId) },
+          type: {
+            $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+          }
+        },
+        { name: 1, intro: 1, publishedVersionId: 1 }
+      ).lean()
+  );
 
   // Get latest version
-  const versionList = await Promise.all(appList.map((app) => getAppLatestVersion(app._id, app)));
+  const versionList = await profileStage({ event: 'app.versions' }, () =>
+    Promise.all(appList.map((app) => getAppLatestVersion(app._id, app)))
+  );
 
   // Compute mcp tools
   const tools = versionList.map<Tool>((version, index) => {
@@ -201,6 +212,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
  * 并将对话与运行用户上下文归属到该有效成员。
  */
 export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: toolCallProps) => {
+  setProfileMeta({ toolName });
   const dispatchApp = async (
     app: AppSchemaType,
     variables: Record<string, any>,
@@ -210,10 +222,16 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
     // Get app latest version
-    const { versionId, nodes, edges, chatConfig, resources } = await getAppLatestVersion(
-      app._id,
-      app
+    const { versionId, nodes, edges, chatConfig, resources } = await profileStage(
+      { event: 'app.version', params: { appId: String(app._id) } },
+      () => getAppLatestVersion(app._id, app)
     );
+
+    setProfileMeta({
+      appId: String(app._id),
+      isPlugin,
+      nodeCount: nodes.length
+    });
 
     const userQuestion: UserChatItemType = (() => {
       if (isPlugin) {
@@ -262,67 +280,87 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
       query: workflowQuery,
       maxFileAmount,
       maxBytesPerFile
-    } = await prepareWorkflowFileQuery({
-      teamId: String(app.teamId),
-      chatConfig,
-      query: userQuestion.value
-    });
+    } = await profileStage({ event: 'file.limit' }, () =>
+      prepareWorkflowFileQuery({
+        teamId: String(app.teamId),
+        chatConfig,
+        query: userQuestion.value
+      })
+    );
     const workflowUserQuestion: UserChatItemType = {
       ...userQuestion,
       value: workflowQuery
     };
-    const preparedRound = await preChatRound({
-      ...chatSource,
-      chatId,
-      teamId: String(app.teamId),
-      tmbId: effectiveTmbId,
-      source: ChatSourceEnum.mcp,
-      userContent: workflowUserQuestion,
-      responseChatItemId,
-      fixedTitle: pluginFixedTitle
-    });
+    const preparedRound = await profileStage({ event: 'chat.prepare' }, () =>
+      preChatRound({
+        ...chatSource,
+        chatId,
+        teamId: String(app.teamId),
+        tmbId: effectiveTmbId,
+        source: ChatSourceEnum.mcp,
+        userContent: workflowUserQuestion,
+        responseChatItemId,
+        fixedTitle: pluginFixedTitle
+      })
+    );
     let chatRoundFinalized = false;
 
     try {
+      // 保持在 dispatchWorkFlow 参数求值时的原始顺序：先读运行成员，再构建资源快照。
+      const runningUserInfo = await profileStage({ event: 'runningUser.read' }, () =>
+        getRunningUserInfoByTmbId(effectiveTmbId)
+      );
+      const resourceContext = createWorkflowResourceContext({
+        resources,
+        teamId: app.teamId
+      });
+
       const {
         assistantResponses,
         newVariables,
         durationSeconds,
         system_memories,
         workflowRuntimeSummary
-      } = await dispatchWorkFlow({
-        chatId: preparedRound.chatId,
-        mode: 'chat',
-        usageSource: UsageSourceEnum.mcp,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: String(app._id),
-          name: app.name,
-          teamId: String(app.teamId),
-          tmbId: String(app.tmbId)
-        },
-        runningUserInfo: await getRunningUserInfoByTmbId(effectiveTmbId),
-        uid: effectiveTmbId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
-        resourceContext: createWorkflowResourceContext({
-          resources,
-          teamId: app.teamId
-        }),
-        variables,
-        responseChatItemId: preparedRound.responseChatItemId,
-        query: removeEmptyUserInput(workflowQuery),
-        maxFileAmount,
-        maxBytesPerFile,
-        chatConfig,
-        histories: [],
-        stream: false,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        nodeResponseWriteConfig: {
-          persistToDb: true,
-          retainInMemory: false
-        }
-      });
+      } = await profileStage(
+        { event: 'workflow.dispatch', params: { nodeCount: runtimeNodes.length } },
+        () =>
+          dispatchWorkFlow({
+            chatId: preparedRound.chatId,
+            mode: 'chat',
+            usageSource: UsageSourceEnum.mcp,
+            runningAppInfo: {
+              sourceType: ChatSourceTypeEnum.app,
+              sourceId: String(app._id),
+              name: app.name,
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
+            runningUserInfo,
+            uid: effectiveTmbId,
+            runtimeNodes,
+            runtimeEdges: storeEdges2RuntimeEdges(edges),
+            resourceContext,
+            variables,
+            responseChatItemId: preparedRound.responseChatItemId,
+            query: removeEmptyUserInput(workflowQuery),
+            maxFileAmount,
+            maxBytesPerFile,
+            chatConfig,
+            histories: [],
+            stream: false,
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+            nodeResponseWriteConfig: {
+              persistToDb: true,
+              retainInMemory: false
+            }
+          })
+      );
+
+      // dispatchWorkFlow 正常返回但工作流内部存在未捕获错误时，本次调用仍应视为失败，
+      // 避免失败请求进入成功分位数；响应与落库行为保持不变。
+      if (workflowRuntimeSummary?.errorCount || workflowRuntimeSummary?.errorText) {
+        markProfileError(workflowRuntimeSummary.errorText || 'Workflow run failed');
+      }
 
       // Save chat
       const aiResponse: AIChatItemType & { dataId?: string } = {
@@ -346,7 +384,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         durationSeconds,
         workflowRuntimeSummary
       };
-      await finalizeChatRound(saveParams);
+      await profileStage({ event: 'chat.finalize' }, () => finalizeChatRound(saveParams));
       chatRoundFinalized = true;
 
       // Get MCP response type
@@ -379,23 +417,28 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     }
   };
 
-  const mcp = await MongoMcpKey.findOne(
-    { key },
-    { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }
-  ).lean();
+  const mcp = await profileStage({ event: 'mcpKey.read' }, () =>
+    MongoMcpKey.findOne({ key }, { apps: 1, teamId: 1, tmbId: 1, authProxy: 1 }).lean()
+  );
 
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
   }
-  await assertMcpTeamUsable(mcp);
+
+  setProfileMeta({ appCount: mcp.apps.length });
+  await profileStage({ event: 'team.check' }, () => assertMcpTeamUsable(mcp));
 
   // Get app list
-  const appList = await MongoApp.find({
-    _id: { $in: mcp.apps.map((app) => app.appId) },
-    type: {
-      $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
-    }
-  }).lean();
+  const appList = await profileStage(
+    { event: 'app.list', params: { appCount: mcp.apps.length } },
+    () =>
+      MongoApp.find({
+        _id: { $in: mcp.apps.map((app) => app.appId) },
+        type: {
+          $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool]
+        }
+      }).lean()
+  );
 
   const app = appList.find((app) => {
     const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
@@ -407,18 +450,24 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const effectiveTmbId = await resolveMcpEffectiveTmbId({ mcp, authProxy });
-  await authAppByTmbId({
-    tmbId: effectiveTmbId,
-    appId: String(app._id),
-    per: ReadPermissionVal
-  });
+  const effectiveTmbId = await profileStage({ event: 'identity.resolve' }, () =>
+    resolveMcpEffectiveTmbId({ mcp, authProxy })
+  );
+  await profileStage({ event: 'app.auth', params: { appId: String(app._id) } }, () =>
+    authAppByTmbId({
+      tmbId: effectiveTmbId,
+      appId: String(app._id),
+      per: ReadPermissionVal
+    })
+  );
 
   // 校验所属团队的对话 QPM 频次限制，防止无限制调用打满集群或下游模型并发
-  await assertTeamFrequencyLimit({
-    teamId: String(app.teamId),
-    type: LimitTypeEnum.chat
-  });
+  await profileStage({ event: 'team.frequency' }, () =>
+    assertTeamFrequencyLimit({
+      teamId: String(app.teamId),
+      type: LimitTypeEnum.chat
+    })
+  );
 
   return await dispatchApp(app, inputs, effectiveTmbId);
 };

@@ -1,5 +1,80 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { NodeInputAutomationMeta } from '@fastgpt/global/core/workflow/template/type';
+
+/**
+ * 为描述符、输入写入和草稿校验提供同一份值契约。
+ * 工具授权从 inputList 派生画布实际使用的 { type, value: { key: { value, secret } } } 结构；
+ * 允许草稿保留待填字段，完整授权仍由运行/发布前检查，不支持尚未实现的团队密钥来源。
+ */
+export const getNodeInputValueSchema = ({
+  input,
+  automationMeta
+}: {
+  input: FlowNodeInputItemType;
+  automationMeta?: NodeInputAutomationMeta;
+}): Record<string, unknown> | undefined => {
+  const explicitSchema = automationMeta?.valueSchema ?? input.customJsonSchema;
+  if (explicitSchema) return explicitSchema;
+  if (input.key !== NodeInputKeyEnum.systemInputConfig) return undefined;
+
+  const properties = Object.fromEntries(
+    (input.inputList ?? []).map((item) => {
+      const valueSchema = (() => {
+        if (item.inputType === 'numberInput') return { type: 'number' };
+        if (item.inputType === 'switch') return { type: 'boolean' };
+        if (item.inputType === 'select' && item.list?.length) {
+          return { type: 'string', enum: item.list.map(({ value }) => value) };
+        }
+        return { type: 'string' };
+      })();
+      return [
+        item.key,
+        {
+          type: 'object',
+          title: item.label,
+          description: [
+            item.description,
+            item.required ? 'Required when running the tool.' : undefined
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          additionalProperties: false,
+          properties: {
+            // 画布在尚未填写或清空字段时使用空字符串，不能因此阻止保存草稿。
+            value: { anyOf: [valueSchema, { const: '' }] },
+            secret: {
+              type: 'string',
+              description: 'Preserve existing ciphertext; do not invent it.'
+            }
+          }
+        }
+      ];
+    })
+  );
+  return {
+    oneOf: [
+      {
+        type: 'object',
+        required: ['type'],
+        additionalProperties: false,
+        properties: { type: { const: SystemToolSecretInputTypeEnum.system } }
+      },
+      {
+        type: 'object',
+        required: ['type', 'value'],
+        additionalProperties: false,
+        properties: {
+          type: { const: SystemToolSecretInputTypeEnum.manual },
+          value: { type: 'object', additionalProperties: false, properties }
+        }
+      }
+    ]
+  };
+};
 
 type JsonSchema = {
   type?: string | string[];

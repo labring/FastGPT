@@ -1,20 +1,18 @@
-import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { AgentAskPayload } from '../../../../../../ai/llm/agentLoop/interface';
+import { type AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 
 /**
- * 将 agent-loop 的 ask_user 暂停转换成 workflow interactive。
+ * 将 Ask 原始调用封装为 interactive；展示字段在消费时解析，不重复保存或序列化。
  */
 export const createAgentLoopCoreAskInteractive = ({
-  askId,
-  ask
+  toolCallId,
+  arguments: argumentsText
 }: {
-  askId: string;
-  ask: AgentAskPayload;
-}): InteractiveNodeResponseType => ({
+  toolCallId: string;
+  arguments: string;
+}): AgentAskInteractive => ({
   type: 'agentAsk',
-  askId,
   params: {
-    description: ask.reason,
-    questions: ask.questions
+    toolCallId,
+    arguments: argumentsText
   }
 });

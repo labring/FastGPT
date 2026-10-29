@@ -19,7 +19,7 @@ import type { LegacyStoreNodeItem, LegacyWorkflowData, LegacyWorkflowDataInput }
 /**
  * Legacy `FlowNodeTypeEnum.systemConfig`.
  */
-const legacySystemConfigNodeType = 'userGuide';
+export const legacySystemConfigNodeType = 'userGuide';
 /**
  * Legacy `FlowNodeTypeEnum.pluginConfig`.
  */

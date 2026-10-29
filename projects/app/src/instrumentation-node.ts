@@ -39,7 +39,7 @@ export async function registerNodeInstrumentation() {
       { validateAgentSandboxProxyEnv },
       { getReadableSystemResourceInfo },
       { startSystemMigrationRunner },
-      { appEnv }
+      { startBusinessAfterSystemMigrations }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -67,7 +67,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/env.util'),
       import('@fastgpt/service/common/system/resource'),
       import('@/migration/runner'),
-      import('@/env')
+      import('@/migration/startup')
     ]);
 
     console.log('System resources detected', getReadableSystemResourceInfo());
@@ -180,7 +180,7 @@ export async function registerNodeInstrumentation() {
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
-      action: () => initSystemUser({ defaultRootPassword: appEnv.DEFAULT_ROOT_PSW }),
+      action: () => initSystemUser(),
       logger,
       getErrText
     });
@@ -238,8 +238,8 @@ export async function registerNodeInstrumentation() {
     });
 
     /**
-     * 阻塞迁移完成后才启动业务消费者并结束 instrumentation 注册。
-     * 这样不仅 HTTP readiness 被阻塞，队列、cron、watch 也不会在旧数据结构上提前消费。
+     * 启动链成功且本节点模型缓存刷新后才启动业务消费者。
+     * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
       await Promise.all([
@@ -278,21 +278,18 @@ export async function registerNodeInstrumentation() {
       logger.info('System business services are ready');
     };
 
-    if (migrationRunner.hasBlockingMigrations) {
-      // 所有节点都会等待并查询状态，只有 lease owner 执行；失败时此 await 按设计不返回。
-      logger.info('App node will remain not ready until all blocking migrations succeed');
-      await migrationRunner.waitForBlockingMigrations();
-
-      // 每个节点只需重新读取迁移后的数据库模型；插件模板和自动预装已在初始加载阶段完成。
-      await runInitializationStep({
-        step: 'reload-system-models-after-blocking-migrations',
-        stage: InitialErrorEnum.PLUGIN_ERROR,
-        action: () => loadInstalledModels(),
-        logger,
-        getErrText
-      });
-    }
-    await startBusinessServices();
+    await startBusinessAfterSystemMigrations({
+      runner: migrationRunner,
+      reloadModels: () =>
+        runInitializationStep({
+          step: 'reload-system-models-after-startup-migrations',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => loadInstalledModels(),
+          logger,
+          getErrText
+        }),
+      startBusinessServices
+    });
 
     logger.info('System initialized successfully');
   } catch (error) {

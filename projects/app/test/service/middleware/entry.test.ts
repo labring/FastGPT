@@ -13,7 +13,7 @@ vi.mock('@fastgpt/next/middle/cors', () => ({
 const { NextAPI } = await import('@/service/middleware/entry');
 
 describe('NextAPI', () => {
-  it('only registers CORS, with no model refresh or request context wrapper', async () => {
+  it('delegates request context to the shared entry and registers CORS/CSRF', async () => {
     mocks.createApiEntry.mockClear();
     NextAPI(async () => undefined);
 

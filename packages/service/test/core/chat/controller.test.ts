@@ -71,6 +71,85 @@ describe('getChatItems', () => {
     return items;
   };
 
+  it('restores the continuous checkpoint tail and a preceding null plan marker', async () => {
+    const items = await createChatItems(26);
+    await MongoChatItem.updateOne(
+      { dataId: items[1].dataId },
+      { $set: { value: [{ plan: null }] } }
+    );
+    await MongoChatItem.updateOne(
+      { dataId: items[21].dataId },
+      { $set: { value: [{ contextCheckpoint: 'Summary', hideInUI: true }] } }
+    );
+    await MongoChatItem.updateOne(
+      { dataId: items[25].dataId },
+      { $set: { value: [{ displayOnly: true, contextCheckpoint: 'Child summary', plan: null }] } }
+    );
+    const result = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 0,
+      field: 'obj value'
+    });
+    expect(result.histories.map((item) => item.dataId)).toEqual([
+      items[1].dataId,
+      ...items.slice(21).map((item) => item.dataId)
+    ]);
+    expect(result.histories[0].value[0]).toHaveProperty('plan', null);
+    expect(result.total).toBe(26);
+  });
+
+  it('keeps internal tool context for recovery and redacts it from ordinary history reads', async () => {
+    const items = await createChatItems(2);
+    const tool = {
+      id: 'private',
+      functionName: 'sandbox_read_file',
+      params: '{"path":"/private/state"}',
+      response: 'private fact',
+      internalOnly: true,
+      hideInUI: true,
+      toolName: 'Read',
+      toolAvatar: ''
+    };
+    await MongoChatItem.updateOne(
+      { dataId: items[1].dataId },
+      {
+        $set: {
+          value: [
+            {
+              modelResponseId: 'response',
+              tools: [tool],
+              inputContext: { content: 'Private prepared input' }
+            }
+          ]
+        }
+      }
+    );
+    const restored = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 0,
+      field: 'obj value'
+    });
+    expect(restored.histories[1].value[0]).toMatchObject({
+      tools: [tool],
+      inputContext: { content: 'Private prepared input' }
+    });
+    const displayed = await getChatItems({
+      ...chatSource(),
+      chatId,
+      offset: 0,
+      limit: 20,
+      field: 'obj value'
+    });
+    expect(displayed.histories[1].value[0]).toMatchObject({
+      tools: [{ params: '', response: '', hideDetails: true }]
+    });
+    expect(displayed.histories[1].value[0]).not.toHaveProperty('inputContext');
+  });
+
   describe('Normal Pagination Mode', () => {
     it('should return empty array when chatId is not provided', async () => {
       const result = await getChatItems({

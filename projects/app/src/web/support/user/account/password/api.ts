@@ -16,7 +16,7 @@ export const createPasswordVerification = (body: CreatePasswordVerificationBody)
 export const authorizePasswordChange = (body: PasswordAuthorizationBody) =>
   POST<PasswordAuthorizationResponse>('/proApi/support/user/account/password/authorization', body);
 
-/** 沿用现有登录协议，只向服务端提交新密码的 SHA-256 摘要。 */
+/** 沿用现有登录协议，只向服务端提交新密码的 SHA-256 摘要和一次性改密 Session。 */
 export const updatePassword = ({
   newPassword,
   passwordChangeSession
@@ -27,4 +27,22 @@ export const updatePassword = ({
   POST<void>('/support/user/account/password/update', {
     newPsw: hashStr(newPassword),
     passwordChangeSession
+  });
+
+/** 开源版 root 改密：没有商业版认证服务，改为向专用端点提交旧密码和新密码摘要。 */
+export const updateRootPassword = ({
+  oldPassword,
+  newPassword
+}: {
+  oldPassword?: string;
+  newPassword: string;
+}) =>
+  POST<void>('/support/user/account/password/updateRoot', {
+    ...(oldPassword ? { oldPsw: hashStr(oldPassword) } : {}),
+    newPsw: hashStr(newPassword)
+  });
+
+export const activateAccount = ({ newPassword }: { newPassword: string }) =>
+  POST<void>('/support/user/account/password/activate', {
+    newPsw: hashStr(newPassword)
   });

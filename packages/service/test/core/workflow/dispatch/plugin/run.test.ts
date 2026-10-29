@@ -58,7 +58,8 @@ const createVariableState = () =>
   WorkflowVariableState.create({
     timezone: 'Asia/Shanghai',
     runningAppInfo: {
-      id: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       name: 'app',
       teamId: 'team',
       tmbId: 'member'
@@ -75,6 +76,21 @@ describe('dispatchRunPlugin', () => {
     runWorkflowMock.mockReset();
     getSystemToolWorkflowRuntimeMock.mockReset();
     computedAppToolUsageMock.mockReset().mockResolvedValue(1);
+  });
+
+  it('returns its own resource-load exception in rawError', async () => {
+    const error = new Error('Plugin resource unavailable');
+    getSystemToolWorkflowRuntimeMock.mockRejectedValueOnce(error);
+
+    const result = await dispatchRunPlugin({
+      node: { pluginId: 'commercial-system-workflow' },
+      query: [],
+      params: {}
+    } as any);
+
+    expect(result.rawError).toBe(error);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(error.message);
+    expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -170,7 +186,7 @@ describe('dispatchRunPlugin', () => {
           id: 'failedResponse',
           nodeId: 'failedNode',
           moduleName: 'Failed node',
-          moduleType: FlowNodeTypeEnum.systemConfig,
+          moduleType: FlowNodeTypeEnum.chatNode,
           errorText: 'child failed'
         }
       ])
@@ -214,7 +230,7 @@ describe('dispatchRunPlugin', () => {
     );
   });
 
-  it('treats pluginOutput.error as a standard workflow tool failure', async () => {
+  it('keeps business failure output separate from the original exception', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
       id: 'commercial-system-workflow',
       name: 'System Workflow',
@@ -270,7 +286,8 @@ describe('dispatchRunPlugin', () => {
     } as any);
 
     expect(computedAppToolUsageMock).toHaveBeenCalledWith(expect.objectContaining({ error: true }));
-    expect(result.error).toEqual({
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(result.error).toMatchObject({
       [NodeOutputKeyEnum.errorText]: 'upstream unavailable'
     });
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
@@ -406,7 +423,7 @@ describe('dispatchRunPlugin', () => {
       childResponseCount: 1
     });
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
-    expect(result.data?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeUndefined();
   });
 
   it('Workflow Tool child context only inherits selected files from the parent context', async () => {

@@ -115,6 +115,9 @@ describe('createWorkflowAgentLoopRuntime', () => {
       retainDatasetCite: undefined
     });
     expect(runtime.lang).toBe('zh-CN');
+    expect(runtime.fileContext).toEqual({
+      limits: { maxFileAmount: 20, maxBytesPerFile: 1024 }
+    });
     expect(runtime.systemTools).toMatchObject({
       plan: { enabled: true },
       ask: { enabled: true }
@@ -165,7 +168,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: 'sandbox output',
       response: 'sandbox output',
       seconds: 0.2,
       metadata: {
@@ -212,7 +214,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
-      rawResponse: 'sandbox output',
       response: 'sandbox output',
       seconds: 0.2,
       metadata: {
@@ -530,7 +531,6 @@ describe('createWorkflowAgentLoopRuntime', () => {
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call: toolCall({ id: 'call_failed', name: 'search' }),
-      rawResponse: 'secret error text',
       response: 'secret error text',
       errorMessage: result.errorMessage,
       seconds: 0.1

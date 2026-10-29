@@ -18,14 +18,11 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import {
-  buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreChildInteractiveParams,
-  createAgentLoopCoreToolCallNodeResponse,
-  filterAgentLoopCoreToolResponseToPreview,
-  getAgentLoopCorePersistedTextOutput,
-  summarizeAgentLoopCoreToolRunFlowResponses
-} from '../agentLoopCore/interface';
+import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
+import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
+import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
+import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
+import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
@@ -36,6 +33,10 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
 }>;
 
+/**
+ * 执行 ToolCall 节点，并返回可供后续模型恢复的完整聊天记录。
+ * assistantResponses 会直接落库，必须保留本轮模型使用的工具结果，不做额外的展示裁剪。
+ */
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
     node: { nodeId, isEntry, inputs },
@@ -213,7 +214,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
-    const previewAssistantResponses = filterAgentLoopCoreToolResponseToPreview(assistantResponses);
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
       totalPoints: modelTotalPoints,
       toolCallInputTokens,
@@ -236,7 +236,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           [DispatchNodeResponseKeyEnum.runTimes]: runTimes
         }),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-          ? previewAssistantResponses
+          ? assistantResponses
           : undefined
       };
     }
@@ -245,14 +245,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       return {
         [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-          ? previewAssistantResponses
+          ? assistantResponses
           : undefined,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
         [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
       };
     }
 
-    const answerText = getAgentLoopCorePersistedTextOutput(previewAssistantResponses);
+    const answerText = getAgentLoopCorePersistedTextOutput(assistantResponses);
 
     return {
       data: {
@@ -261,7 +261,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.toolResponse]: answerText,
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
-        ? previewAssistantResponses
+        ? assistantResponses
         : undefined,
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse

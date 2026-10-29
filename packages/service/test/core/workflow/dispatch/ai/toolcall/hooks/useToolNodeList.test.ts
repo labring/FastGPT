@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -18,6 +22,31 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
   }) as any;
 
 describe('useToolNodeList', () => {
+  it('keeps a required password tool configured by the ordinary reference selector', () => {
+    const result = useToolNodeList({
+      nodeId: 'toolcall',
+      runtimeEdges: [
+        { source: 'toolcall', target: 'tool_1', targetHandle: NodeOutputKeyEnum.selectedTools }
+      ] as any,
+      runtimeNodes: [
+        createToolNode({
+          inputs: [
+            {
+              key: 'apiKey',
+              label: 'API key',
+              valueType: 'string',
+              required: true,
+              renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: [VARIABLE_NODE_ID, 'token']
+            }
+          ]
+        })
+      ]
+    });
+    expect(result.map((tool) => tool.nodeId)).toEqual(['tool_1']);
+  });
+
   it('returns configured selected tool nodes and extracts params/schema', () => {
     const inputSchema = {
       type: 'object',

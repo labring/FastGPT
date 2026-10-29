@@ -1,11 +1,14 @@
 import { serviceEnv } from '@fastgpt/service/env';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 
 const {
   mockUserFindOne,
   mockUserFind,
   mockUserCreate,
+  mockUserUpdateOne,
   mockTeamMemberFindOne,
   mockTeamMemberFind,
   mockTeamMemberCreate,
@@ -15,6 +18,7 @@ const {
   mockUserFindOne: vi.fn(),
   mockUserFind: vi.fn(),
   mockUserCreate: vi.fn(),
+  mockUserUpdateOne: vi.fn(),
   mockTeamMemberFindOne: vi.fn(),
   mockTeamMemberFind: vi.fn(),
   mockTeamMemberCreate: vi.fn(),
@@ -26,7 +30,8 @@ vi.mock('@fastgpt/service/support/user/schema', () => ({
   MongoUser: {
     findOne: mockUserFindOne,
     find: mockUserFind,
-    create: mockUserCreate
+    create: mockUserCreate,
+    updateOne: mockUserUpdateOne
   }
 }));
 
@@ -80,6 +85,7 @@ describe('system user initialization and agent user check', () => {
 
     mockUserFindOne.mockResolvedValue(null);
     mockUserCreate.mockResolvedValue([{ _id: 'root-id' }]);
+    mockUserUpdateOne.mockResolvedValue({ matchedCount: 1 });
     mockTeamMemberFindOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ teamId: 'root-team-id' })
     });
@@ -168,5 +174,52 @@ describe('system user initialization and agent user check', () => {
     expect(getAgentUserTmbIds()).toEqual(new Set(['tmb-agent-a']));
     expect(checkIsAgentUser('tmb-agent-a')).toBe(true);
     expect(mockWithLease).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks a root without persisted status as inactive without changing its password', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id' });
+
+    await initSystemUser();
+
+    expect(mockUserCreate).not.toHaveBeenCalled();
+    expect(mockUserUpdateOne).toHaveBeenCalledWith(
+      { _id: 'root-id', status: { $exists: false } },
+      { $set: { status: UserStatusEnum.inactive } },
+      { session: expect.anything() }
+    );
+  });
+
+  it('guards root status backfill so an existing status is not overwritten', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue({ _id: 'root-id', status: UserStatusEnum.active });
+
+    await initSystemUser();
+
+    // Mongo matches the $exists:false filter against the persisted document, not Mongoose defaults.
+    expect(mockUserUpdateOne).toHaveBeenCalledWith(
+      { _id: 'root-id', status: { $exists: false } },
+      { $set: { status: UserStatusEnum.inactive } },
+      { session: expect.anything() }
+    );
+  });
+
+  it('creates root with the fixed default password and as unactivated', async () => {
+    mutableServiceEnv.AGENT_USERS = undefined;
+    mockUserFindOne.mockResolvedValue(null);
+    mockUserCreate.mockResolvedValue([{ _id: 'root-id' }]);
+
+    await initSystemUser();
+
+    expect(mockUserCreate).toHaveBeenCalledWith(
+      [
+        {
+          username: 'root',
+          password: hashStr('123456'),
+          status: UserStatusEnum.inactive
+        }
+      ],
+      { session: expect.anything(), ordered: true }
+    );
   });
 });

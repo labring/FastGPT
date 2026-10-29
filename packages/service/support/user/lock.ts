@@ -1,8 +1,7 @@
 import { LeaseCache } from '@fastgpt/dal/redis/caches';
-import { getLogger, LogCategories } from '../../common/logger';
 
 const lockTtlMs = 10 * 60 * 1000;
-const leaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
+const leaseCache = new LeaseCache();
 
 /** 在用户维度串行化会修改用户、团队归属或账号状态的操作。 */
 export const withUserLock = async <T>(userId: string, fn: () => Promise<T>) =>

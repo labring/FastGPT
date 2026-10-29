@@ -17,7 +17,6 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types
 import { useUserContext } from './adapter/userContext';
 import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
@@ -26,6 +25,7 @@ import {
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { getNodeErrResponse } from '../../utils';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -95,7 +95,7 @@ type Response = DispatchNodeResultType<{
 
 /**
  * Agent 节点入口。
- * 负责准备历史、文件、工具、能力插件和持久化 memory，然后把实际循环执行交给统一 agentLoop 入口。
+ * 负责准备历史、文件、工具和能力插件，并仅为 Pi 保留原生恢复状态，然后把实际循环执行交给统一 agentLoop 入口。
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
@@ -184,6 +184,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const parseHistoryFiles = !!fileUrlInput?.value?.length;
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
+  const provider = getWorkflowAgentLoopProvider();
   try {
     if (!isAppChat && sandboxRequested) {
       await assertSandboxAvailable(runningAppInfo.teamId);
@@ -242,9 +243,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 转化成请求的 messages
     // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
     // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
-    const requestMessages = lastInteractive
-      ? rewrittenHistories
-      : [...rewrittenHistories, currentUserMessage];
+    const requestMessages =
+      provider === 'fastAgent' && lastInteractive?.type === 'agentAsk'
+        ? [...rewrittenHistories, { ...currentUserMessage, value: query }]
+        : lastInteractive
+          ? rewrittenHistories
+          : [...rewrittenHistories, currentUserMessage];
     const loopMessages = buildAgentLoopCoreRequestMessages({
       messages: requestMessages,
       removeSystemMessages: true
@@ -300,13 +304,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // providerState 统一保存 provider 内部恢复信息。
-    // fastAgent/piAgent 的 ask_user 都在其中保存标准 pendingMainContext，用户回答后恢复同一条 messages。
-    const restoredMemory = readAgentLoopCoreProviderStateMemory({
-      histories: chatHistories,
-      nodeId
-    });
+    // FastAgent 只使用 ChatItem；Pi 暂时保留其原生 providerState。
+    const restoredMemory =
+      provider === 'piAgent'
+        ? readAgentLoopCoreProviderStateMemory({ histories: chatHistories, nodeId })
+        : {};
     const activePlan = readAgentLoopCoreActivePlan({ histories });
-    const provider = getWorkflowAgentLoopProvider();
     const { providerState: runtimeProviderState, isAskResume } =
       prepareAgentLoopCoreProviderRunState({
         restoredProviderState: restoredMemory.providerState,
@@ -314,20 +317,22 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
-    const { summary: outputSummary } = await runAgentLoopCoreWithSummary({
+    const { result: coreResult, summary: outputSummary } = await runAgentLoopCoreWithSummary({
       provider,
       runtime,
       input: buildAgentLoopCoreInput({
         messages: loopMessages,
         systemPrompt: agentSystemPrompt,
         activePlan,
-        providerState: runtimeProviderState,
-        userAnswer: isAskResume ? queryInput || userChatInput : undefined,
+        providerState: provider === 'fastAgent' ? undefined : runtimeProviderState,
+        userAnswer:
+          provider !== 'fastAgent' && isAskResume ? queryInput || userChatInput : undefined,
         childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
           lastInteractive
         })
       }),
       assistantResponses: {
+        persistInputContext: provider === 'fastAgent' && !lastInteractive,
         // Workflow Agent 的文本、普通工具和 plan/ask 元事件由 core 按事件统一维护。
         eventTarget: assistantResponses,
         showReasoning: aiChatReasoning !== false,
@@ -350,9 +355,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
       return {
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
-          nodeId,
-          providerState: outputSummary.providerState
+        ...(provider === 'piAgent' && {
+          [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
+            nodeId,
+            providerState: outputSummary.providerState
+          })
         }),
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
@@ -367,36 +374,35 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       hideReason: aiChatReasoning === false
     });
 
-    return {
+    const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(outputSummary.errorText && {
-        error: {
-          [NodeOutputKeyEnum.errorText]: outputSummary.errorText
-        }
-      }),
-      [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
-        nodeId
+      ...(provider === 'piAgent' && {
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
+    // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
+    return coreResult.status === 'error'
+      ? {
+          ...result,
+          rawError: coreResult.error,
+          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' }
+        }
+      : result;
   } catch (error) {
-    // dispatch 层兜底：异常仍要清理 pending memory；内部详情已经由 sink 发布。
+    // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
-    const errorText = getErrText(error);
     return {
-      error: {
-        [NodeOutputKeyEnum.errorText]: errorText
-      },
-      [DispatchNodeResponseKeyEnum.toolResponse]: {
-        error: errorText
-      },
-      [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
-        nodeId,
-        memory: {}
+      ...getNodeErrResponse({ error }),
+      ...(provider === 'piAgent' && {
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
+          nodeId,
+          memory: {}
+        })
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
     };

@@ -141,11 +141,15 @@ describe('dispatchFormInput', () => {
     { type: FlowNodeInputTypeEnum.select, required: true, sourceValue: [] },
     { type: FlowNodeInputTypeEnum.multipleSelect, required: false, sourceValue: [] },
     { type: FlowNodeInputTypeEnum.select, required: true, sourceValue: ['   ', '\n\t'] }
-  ])('rejects empty dynamic $type options (required: $required)', async (props) => {
-    await expect(dispatchOptionForm(props)).rejects.toThrow(
-      'workflow:form_input_no_available_options'
-    );
-  });
+  ])(
+    'returns a business failure for empty dynamic $type options (required: $required)',
+    async (props) => {
+      await expect(dispatchOptionForm(props)).resolves.toEqual({
+        error: { [NodeOutputKeyEnum.errorText]: 'workflow:form_input_no_available_options' },
+        responseData: { errorText: 'workflow:form_input_no_available_options' }
+      });
+    }
+  );
 
   it('presigns key-only fileSelect values before exposing form outputs', async () => {
     mockCreateGetChatFileURL.mockResolvedValueOnce({

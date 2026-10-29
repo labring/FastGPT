@@ -1,4 +1,4 @@
-import { AgentAskInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
 import {
   extractDeepestInteractive,
   isAgentAskInteractive
@@ -53,7 +53,8 @@ export async function getChatItems({
   offset,
   initialId,
   prevId,
-  nextId
+  nextId,
+  includeInternalContext = offset === 0 && limit === 0
 }: {
   includeDeleted?: boolean;
   sourceType: ChatSourceTypeEnum;
@@ -68,6 +69,7 @@ export async function getChatItems({
   initialId?: string;
   prevId?: string;
   nextId?: string;
+  includeInternalContext?: boolean;
 }): Promise<{
   histories: ChatItemMiniType[];
   total: number;
@@ -84,6 +86,12 @@ export async function getChatItems({
       if (item.obj !== ChatRoleEnum.AI) return;
 
       item.value.forEach((value) => {
+        if (!includeInternalContext) delete value.inputContext;
+        if (!includeInternalContext && value.tools) {
+          value.tools = value.tools.map((tool) =>
+            tool.internalOnly ? { ...tool, params: '', response: '', hideDetails: true } : tool
+          );
+        }
         if (value.agentAsk && !AgentLoopAskSchema.safeParse(value.agentAsk).success)
           value.agentAsk = undefined;
         if (value.interactive) {
@@ -124,6 +132,43 @@ export async function getChatItems({
     : { ...buildChatSourceQuery(chatSource), chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
+    // Agent 的 limit=0 是恢复模式：读取最新压缩点后的连续历史，并保留最新计划（含 null）。
+    // 没有压缩点时必须读取完整会话，不能用分页窗口替代已移除的 Ask 消息快照。
+    if (offset === 0 && limit === 0) {
+      const [checkpoint, plan, count] = await Promise.all([
+        MongoChatItem.findOne(
+          {
+            ...baseCondition,
+            obj: ChatRoleEnum.AI,
+            value: {
+              $elemMatch: { contextCheckpoint: { $type: 'string' }, displayOnly: { $ne: true } }
+            }
+          },
+          { _id: 1 }
+        )
+          .sort({ _id: -1 })
+          .lean(),
+        MongoChatItem.findOne(
+          {
+            ...baseCondition,
+            obj: ChatRoleEnum.AI,
+            value: { $elemMatch: { plan: { $exists: true }, displayOnly: { $ne: true } } }
+          },
+          field
+        )
+          .sort({ _id: -1 })
+          .lean(),
+        MongoChatItem.countDocuments(baseCondition)
+      ]);
+      const tail = await MongoChatItem.find(
+        { ...baseCondition, ...(checkpoint ? { _id: { $gte: checkpoint._id } } : {}) },
+        field
+      )
+        .sort({ _id: 1 })
+        .lean();
+      if (checkpoint && plan && String(plan._id) < String(checkpoint._id)) tail.unshift(plan);
+      return { histories: tail, total: count, hasMorePrev: false, hasMoreNext: false };
+    }
     // Mode 1: offset pagination (original logic)
     if (offset !== undefined) {
       const [foundHistories, count] = await Promise.all([
