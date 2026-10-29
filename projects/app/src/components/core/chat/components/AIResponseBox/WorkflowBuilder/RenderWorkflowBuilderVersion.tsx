@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import LikeFeedbackButton from '../../../ChatContainer/ChatBox/components/LikeFeedbackButton';
+import { ChatFeedbackContext } from '../../../ChatContainer/context/chatFeedbackContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 import {
   ChatItemContext,
@@ -17,6 +22,7 @@ import {
   workflowBuilderAppliedFeedbackDuration
 } from './utils';
 
+/** 版本卡片独立呈现应用状态，并复用所属消息的反馈；已应用和过期均不限制赞踩。 */
 const RenderWorkflowBuilderVersion = ({
   version,
   responseChatItemId
@@ -24,12 +30,27 @@ const RenderWorkflowBuilderVersion = ({
   version: WorkflowBuilderVersion;
   responseChatItemId: string;
 }) => {
-  const { t } = useTranslation('workflow');
+  const { t } = useTranslation(['workflow', 'chat']);
   const actions = useContextSelector(
     ChatItemContext,
     (value) => value.workflowBuilderVersionActions
   ) as WorkflowBuilderVersionActions | undefined;
-  const [displayVersion, setDisplayVersion] = useState(version);
+  const feedback = useContextSelector(ChatFeedbackContext, (value) => value);
+  const chat = useContextSelector(ChatRecordContext, (value) =>
+    value.chatRecords.find(
+      (item) => item.obj === ChatRoleEnum.AI && item.dataId === responseChatItemId
+    )
+  );
+  const onLike = chat ? feedback?.onAddUserLike(chat) : undefined;
+  const onDislike = chat ? feedback?.onAddUserDislike(chat) : undefined;
+  const isFeedbackPending = feedback?.pendingFeedbackIds.includes(responseChatItemId) ?? false;
+  const [localAppliedAt, setLocalAppliedAt] = useState<string>();
+  // 本地应用结果立即显示；记录被历史刷新或外层应用操作更新时，以最新 props 为准。
+  const currentVersion = useMemo(
+    () => ({ ...version, appliedAt: version.appliedAt ?? localAppliedAt }),
+    [version, localAppliedAt]
+  );
+  const hasApplied = !!currentVersion.appliedAt;
   const [loading, setLoading] = useState(false);
   const [showApplied, setShowApplied] = useState(false);
   const [runtimeExpired, setRuntimeExpired] = useState(false);
@@ -38,8 +59,8 @@ const RenderWorkflowBuilderVersion = ({
     () =>
       runtimeExpired
         ? 'expired'
-        : getWorkflowBuilderVersionDisplayState({ version: displayVersion }),
-    [displayVersion, runtimeExpired]
+        : getWorkflowBuilderVersionDisplayState({ version: currentVersion }),
+    [currentVersion, runtimeExpired]
   );
   const buttonState = getWorkflowBuilderVersionButtonState({
     displayState: state,
@@ -89,13 +110,14 @@ const RenderWorkflowBuilderVersion = ({
   const apply = () =>
     run(async () => {
       if (!actions) return;
-      if (displayVersion.expiresAt && new Date(displayVersion.expiresAt).getTime() <= Date.now()) {
+      if (currentVersion.expiresAt && new Date(currentVersion.expiresAt).getTime() <= Date.now()) {
         markExpired();
         return;
       }
 
       try {
-        setDisplayVersion(await actions.applyVersion(displayVersion, responseChatItemId));
+        const appliedVersion = await actions.applyVersion(currentVersion, responseChatItemId);
+        setLocalAppliedAt(appliedVersion.appliedAt);
         markApplied();
       } catch (error) {
         if (isWorkflowBuilderVersionExpiredError(error)) {
@@ -125,23 +147,82 @@ const RenderWorkflowBuilderVersion = ({
       bg="white"
       maxW="100%"
     >
-      <MyIcon name="core/app/workflowVersion" boxSize="24px" flexShrink={0} />
-      <Text
-        flex={1}
-        minW={0}
-        color="#485264"
-        fontSize="16px"
-        lineHeight="24px"
-        letterSpacing="0.5px"
-        noOfLines={1}
-      >
-        <Text as="span" color="#2B5FD9">
-          {displayVersion.name}
+      <MyIcon
+        name="core/app/workflowVersion"
+        boxSize="24px"
+        flexShrink={0}
+        color={hasApplied ? 'myGray.600' : 'primary.600'}
+        sx={hasApplied ? { '& path': { fill: 'currentColor' } } : undefined}
+      />
+      <Flex flex={1} minW={0} alignItems="center" justifyContent="space-between" pr="8px">
+        <Text
+          minW={0}
+          color="myGray.600"
+          fontSize="16px"
+          lineHeight="24px"
+          letterSpacing="0.5px"
+          noOfLines={1}
+        >
+          <Text as="span" color={hasApplied ? 'myGray.600' : '#2B5FD9'}>
+            {currentVersion.name}
+          </Text>
+          {hasApplied
+            ? ` ${t('workflow_builder_version_applied')}`
+            : t('workflow_builder_version_ready_suffix')}
         </Text>
-        {t('workflow_builder_version_ready_suffix')}
-      </Text>
+        {onLike && onDislike && (
+          <Flex gap="8px" alignItems="center" flexShrink={0} ml="8px">
+            <MyTooltip label={t('chat:feedback_helpful')} shouldWrapChildren={false}>
+              <Flex as="span">
+                <LikeFeedbackButton
+                  w="16px"
+                  h="16px"
+                  p="4px"
+                  isActive={chat?.obj === ChatRoleEnum.AI && !!chat.userGoodFeedback}
+                  isDisabled={isFeedbackPending}
+                  ariaLabel={t('chat:feedback_helpful')}
+                  effectTrigger={
+                    feedback?.likeFeedbackEffect?.dataId === responseChatItemId
+                      ? feedback.likeFeedbackEffect.trigger
+                      : undefined
+                  }
+                  disableHoverTranslate
+                  onClick={onLike}
+                />
+              </Flex>
+            </MyTooltip>
+            <MyTooltip label={t('chat:feedback_unhelpful')} shouldWrapChildren={false}>
+              <Button
+                variant="unstyled"
+                w="24px"
+                minW="24px"
+                h="24px"
+                minH="24px"
+                p="4px"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                borderRadius="6px"
+                aria-label={t('chat:feedback_unhelpful')}
+                aria-pressed={chat?.obj === ChatRoleEnum.AI && !!chat.userBadFeedback}
+                isDisabled={isFeedbackPending}
+                color={
+                  chat?.obj === ChatRoleEnum.AI && chat.userBadFeedback
+                    ? 'primary.600'
+                    : 'myGray.400'
+                }
+                _hover={{ color: 'primary.600' }}
+                onClick={onDislike}
+              >
+                <MyIcon name="core/chat/feedback/badLight" boxSize="16px" />
+              </Button>
+            </MyTooltip>
+          </Flex>
+        )}
+      </Flex>
       <Button
         h="32px"
+        minH="32px"
         minW={loading ? '90px' : undefined}
         px="14px"
         py={2}

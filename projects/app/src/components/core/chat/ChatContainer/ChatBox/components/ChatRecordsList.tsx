@@ -46,6 +46,7 @@ export type ChatRecordsListProps = {
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
   workflowBuilderStyle?: boolean;
+  showUserFeedback?: boolean;
   feedbackUserName?: string;
   onCloseCustomFeedback: (
     chat: ChatSiteItemType,
@@ -85,6 +86,7 @@ const ChatRecordsList = ({
   disableFooterHoverTranslate,
   footerRunDetailPosition,
   workflowBuilderStyle,
+  showUserFeedback = true,
   feedbackUserName,
   onCloseCustomFeedback,
   onToggleFeedbackReadStatus
@@ -244,8 +246,8 @@ const ChatRecordsList = ({
                           item,
                           formatChatValue2InputType(previousRecord?.value)?.text
                         ),
-                        onAddUserLike: onAddUserLike(item),
-                        onAddUserDislike: onAddUserDislike(item),
+                        onAddUserLike: showUserFeedback ? onAddUserLike(item) : undefined,
+                        onAddUserDislike: showUserFeedback ? onAddUserDislike(item) : undefined,
                         likeFeedbackEffectTrigger:
                           likeFeedbackEffect?.dataId === item.dataId
                             ? likeFeedbackEffect.trigger

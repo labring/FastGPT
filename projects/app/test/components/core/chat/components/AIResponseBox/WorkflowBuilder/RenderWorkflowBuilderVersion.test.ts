@@ -6,29 +6,72 @@ import RenderWorkflowBuilderVersion from '@/components/core/chat/components/AIRe
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 
 const mocks = vi.hoisted(() => ({
   isApplying: false,
   applyVersion: vi.fn(),
-  notifyVersionExpired: vi.fn()
+  notifyVersionExpired: vi.fn(),
+  feedbackEnabled: false,
+  records: [] as ChatSiteItemType[],
+  pendingFeedbackIds: [] as string[],
+  likeFeedbackEffect: undefined as { dataId: string; trigger: number } | undefined,
+  onAddUserLike: vi.fn(),
+  onAddUserDislike: vi.fn(),
+  onLike: vi.fn(),
+  onDislike: vi.fn()
 }));
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: ({ name, color }: any) =>
+    React.createElement('svg', { 'data-icon': name, 'data-color': color })
+}));
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: any) => children
+}));
+vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/LikeFeedbackButton', () => ({
+  default: ({ onClick, isActive, isDisabled, ariaLabel, effectTrigger }: any) =>
+    React.createElement('button', {
+      onClick,
+      disabled: isDisabled,
+      'aria-label': ariaLabel,
+      'aria-pressed': isActive,
+      'data-effect': effectTrigger
+    })
+}));
 vi.mock('@/web/core/chat/context/chatItemContext', () => ({ ChatItemContext: {} }));
+vi.mock('@/web/core/chat/context/chatRecordContext', () => ({ ChatRecordContext: 'records' }));
+vi.mock('@/components/core/chat/ChatContainer/context/chatFeedbackContext', () => ({
+  ChatFeedbackContext: 'feedback'
+}));
 vi.mock('use-context-selector', () => ({
-  useContextSelector: (_context: unknown, select: (value: unknown) => unknown) =>
-    select({ workflowBuilderVersionActions: mocks })
+  useContextSelector: (context: unknown, select: (value: unknown) => unknown) => {
+    if (context === 'records') return select({ chatRecords: mocks.records });
+    if (context === 'feedback') return select(mocks.feedbackEnabled ? mocks : undefined);
+    return select({ workflowBuilderVersionActions: mocks });
+  }
 }));
 vi.mock('@chakra-ui/react', async () => {
   const { createElement } = await import('react');
-  const Text = ({ as = 'span', children }: any) => createElement(as, null, children);
+  const Text = ({ as = 'span', children, color }: any) =>
+    createElement(as, { 'data-color': color }, children);
   return {
     Flex: ({ children }: any) => createElement('div', null, children),
     Text,
     Spinner: () => null,
-    Button: ({ children, onClick, isDisabled, isLoading }: any) =>
-      createElement('button', { onClick, disabled: isDisabled || isLoading }, children)
+    Button: ({ children, onClick, isDisabled, isLoading, ...props }: any) =>
+      createElement(
+        'button',
+        {
+          onClick,
+          disabled: isDisabled || isLoading,
+          'aria-label': props['aria-label'],
+          'aria-pressed': props['aria-pressed']
+        },
+        children
+      )
   };
 });
 
@@ -52,6 +95,20 @@ describe('RenderWorkflowBuilderVersion', () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.resetAllMocks();
     mocks.isApplying = false;
+    mocks.feedbackEnabled = false;
+    mocks.pendingFeedbackIds = [];
+    mocks.likeFeedbackEffect = undefined;
+    mocks.records = [
+      {
+        id: 'response-1',
+        dataId: 'response-1',
+        obj: ChatRoleEnum.AI,
+        status: ChatStatusEnum.finish,
+        value: []
+      }
+    ];
+    mocks.onAddUserLike.mockReturnValue(mocks.onLike);
+    mocks.onAddUserDislike.mockReturnValue(mocks.onDislike);
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -61,10 +118,11 @@ describe('RenderWorkflowBuilderVersion', () => {
     await act(async () => root.unmount());
     container.remove();
     window.close();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  const renderAndApply = async (currentVersion = version) => {
+  const render = async (currentVersion = version) => {
     await act(async () =>
       root.render(
         React.createElement(RenderWorkflowBuilderVersion, {
@@ -73,7 +131,11 @@ describe('RenderWorkflowBuilderVersion', () => {
         })
       )
     );
-    await act(async () => container.querySelector('button')!.click());
+  };
+  const applyButton = () => [...container.querySelectorAll('button')].at(-1)!;
+  const renderAndApply = async (currentVersion = version) => {
+    await render(currentVersion);
+    await act(async () => applyButton().click());
   };
 
   it('marks an API expiration response as expired without repeating the parent toast', async () => {
@@ -84,8 +146,8 @@ describe('RenderWorkflowBuilderVersion', () => {
     await renderAndApply();
 
     expect(mocks.applyVersion).toHaveBeenCalledWith(version, 'response-1');
-    expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_expired');
-    expect(container.querySelector('button')!.disabled).toBe(true);
+    expect(applyButton().textContent).toBe('workflow_builder_version_expired');
+    expect(applyButton().disabled).toBe(true);
     expect(mocks.notifyVersionExpired).not.toHaveBeenCalled();
   });
 
@@ -93,24 +155,32 @@ describe('RenderWorkflowBuilderVersion', () => {
     mocks.applyVersion.mockRejectedValue({ code: 500, message: 'Upstream token expired' });
     await renderAndApply();
 
-    expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_apply');
-    expect(container.querySelector('button')!.disabled).toBe(false);
+    expect(applyButton().textContent).toBe('workflow_builder_version_apply');
+    expect(applyButton().disabled).toBe(false);
     expect(mocks.notifyVersionExpired).not.toHaveBeenCalled();
   });
 
-  it('preserves the applied feedback after a successful request', async () => {
+  it('keeps the title and icon applied after the temporary button feedback ends', async () => {
+    vi.useFakeTimers();
     mocks.applyVersion.mockResolvedValue({ ...version, appliedAt: new Date().toISOString() });
     await renderAndApply();
 
-    expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_applied');
-    expect(container.querySelector('button')!.disabled).toBe(true);
+    expect(applyButton().textContent).toBe('workflow_builder_version_applied');
+    expect(applyButton().disabled).toBe(true);
+    await act(async () => vi.advanceTimersByTime(1200));
+    expect(applyButton().textContent).toBe('workflow_builder_version_apply');
+    expect(applyButton().disabled).toBe(false);
+    expect(container.textContent).toContain(`${version.name} workflow_builder_version_applied`);
+    expect(
+      container.querySelector('[data-icon="core/app/workflowVersion"]')?.getAttribute('data-color')
+    ).toBe('myGray.600');
   });
 
   it('disables other version cards until the shared application finishes', async () => {
     mocks.isApplying = true;
     await renderAndApply();
 
-    expect(container.querySelector('button')!.disabled).toBe(true);
+    expect(applyButton().disabled).toBe(true);
     expect(mocks.applyVersion).not.toHaveBeenCalled();
 
     mocks.isApplying = false;
@@ -118,6 +188,61 @@ describe('RenderWorkflowBuilderVersion', () => {
     await renderAndApply({ ...version });
 
     expect(mocks.applyVersion).toHaveBeenCalledOnce();
-    expect(container.querySelector('button')!.textContent).toBe('workflow_builder_version_applied');
+    expect(applyButton().textContent).toBe('workflow_builder_version_applied');
+  });
+
+  it('restores applied state and feedback from history while allowing feedback before and after applying', async () => {
+    mocks.feedbackEnabled = true;
+    mocks.records[0] = {
+      ...mocks.records[0],
+      obj: ChatRoleEnum.AI,
+      value: [],
+      userGoodFeedback: 'yes'
+    };
+    mocks.likeFeedbackEffect = { dataId: 'response-1', trigger: 1 };
+    await render();
+    expect(container.textContent).toContain('workflow_builder_version_ready_suffix');
+    expect(
+      container.querySelector('[data-icon="core/app/workflowVersion"]')?.getAttribute('data-color')
+    ).toBe('primary.600');
+    const like = () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="chat:feedback_helpful"]')!;
+    const dislike = () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="chat:feedback_unhelpful"]')!;
+    expect(like().getAttribute('aria-pressed')).toBe('true');
+    expect(like().getAttribute('data-effect')).toBe('1');
+    await act(async () => like().click());
+    expect(mocks.onLike).toHaveBeenCalledOnce();
+    expect(mocks.onAddUserLike).toHaveBeenLastCalledWith(mocks.records[0]);
+
+    mocks.records[0] = {
+      ...mocks.records[0],
+      obj: ChatRoleEnum.AI,
+      value: [],
+      userGoodFeedback: undefined,
+      userBadFeedback: '缺少节点'
+    };
+    await render({ ...version, appliedAt: '2026-10-29T01:00:00.000Z' });
+    expect(like().getAttribute('aria-pressed')).toBe('false');
+    expect(dislike().getAttribute('aria-pressed')).toBe('true');
+    expect(container.textContent).toContain(`${version.name} workflow_builder_version_applied`);
+    expect(applyButton().disabled).toBe(false);
+    await act(async () => dislike().click());
+    expect(mocks.onDislike).toHaveBeenCalledOnce();
+  });
+
+  it('disables feedback during submission and hides it without an enabled feedback context', async () => {
+    mocks.feedbackEnabled = true;
+    mocks.pendingFeedbackIds = ['response-1'];
+    await render();
+    const buttons = container.querySelectorAll('button');
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[1].disabled).toBe(true);
+    expect(applyButton().disabled).toBe(false);
+
+    mocks.feedbackEnabled = false;
+    await render({ ...version });
+    expect(container.querySelectorAll('button')).toHaveLength(1);
   });
 });

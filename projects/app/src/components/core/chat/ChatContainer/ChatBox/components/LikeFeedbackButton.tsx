@@ -21,6 +21,8 @@ type LikeFeedbackButtonProps = Pick<BoxProps, 'cursor'> &
     isActive: boolean;
     effectTrigger?: number;
     disableHoverTranslate?: boolean;
+    isDisabled?: boolean;
+    ariaLabel?: string;
     onClick?: () => void;
   };
 
@@ -63,9 +65,11 @@ const LikeFeedbackButton = ({
   h,
   boxSize,
   p,
+  isDisabled = false,
+  ariaLabel,
   disableHoverTranslate = false
 }: LikeFeedbackButtonProps) => {
-  const buttonRef = useRef<HTMLSpanElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef<number>();
@@ -188,15 +192,19 @@ const LikeFeedbackButton = ({
   useEffect(() => stopAnimation, [stopAnimation]);
 
   const handleClick = useCallback(() => {
-    if (!onClick) return;
+    if (!onClick || isDisabled) return;
 
     setIconPopTrigger((trigger) => trigger + 1);
     onClick();
-  }, [onClick]);
+  }, [onClick, isDisabled]);
 
   return (
     <Box
-      as="span"
+      as="button"
+      type="button"
+      disabled={isDisabled}
+      aria-label={ariaLabel}
+      aria-pressed={isActive}
       ref={buttonRef}
       display="inline-flex"
       position="relative"

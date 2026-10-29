@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { useMemoizedFn } from 'ahooks';
+import { useLatest, useMemoizedFn } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { AdminFbkType } from '@fastgpt/global/core/chat/type';
 import {
@@ -15,7 +17,12 @@ import type { AdminMarkType } from '../components/SelectMarkCollection';
 import { ChatTypeEnum, FeedbackTypeEnum } from '../constants';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
-import { hasChatTargetInput, useChatApiTarget, useChatAuthApiTarget } from '@/web/core/chat/utils';
+import {
+  getChatSourceKey,
+  hasChatTargetInput,
+  useChatApiTarget,
+  useChatAuthApiTarget
+} from '@/web/core/chat/utils';
 
 type UseChatFeedbackActionsProps = {
   feedbackType?: `${FeedbackTypeEnum}`;
@@ -39,8 +46,8 @@ type LikeFeedbackEffectState = {
  * 设计边界：
  * - hook 负责动作和 modal 状态，`FeedbackModal`、`SelectMarkCollection` 的 JSX 仍留在
  *   `ChatBox/index.tsx`，避免本 PR 同时进入 UI 组件拆分。
- * - 用户点赞/取消点赞、点踩/取消点踩、关闭 custom feedback 都沿用原来的乐观更新策略：
- *   先更新本地 `chatRecords`，API 异常保持静默，不在本次拆分里新增 toast 或回滚。
+ * - 点赞和取消反馈在请求成功后回写，按消息防止重复提交；失败保留原状态并提示。
+ * - 切换会话后不再回写旧请求，避免相同 dataId 的其他来源消息受到影响。
  * - admin mark 的弹窗流程需要跨三步选择 dataset、collection、输入数据，因此 hook 只保存
  *   当前 modal 数据和 success 回写逻辑，不改 `SelectMarkCollection` 内部交互。
  */
@@ -53,6 +60,8 @@ export const useChatFeedbackActions = ({
   const [feedbackId, setFeedbackId] = useState<string>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkState>();
   const [likeFeedbackEffect, setLikeFeedbackEffect] = useState<LikeFeedbackEffectState>();
+  const [pendingFeedbackIds, setPendingFeedbackIds] = useState<string[]>([]);
+  const pendingFeedbackRef = useRef(new Set<string>());
   const likeFeedbackEffectTrigger = useRef(0);
   const likeFeedbackEffectTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -63,6 +72,10 @@ export const useChatFeedbackActions = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const hasChatTarget = hasChatTargetInput(chatTarget);
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const feedbackScope = `${getChatSourceKey(sourceTarget)}:${chatId}`;
+  const latestFeedbackScope = useLatest(feedbackScope);
 
   useEffect(() => {
     return () => {
@@ -80,6 +93,51 @@ export const useChatFeedbackActions = ({
     }
     setLikeFeedbackEffect(undefined);
   });
+
+  /** 等待现有反馈接口写入成功，再更新所属消息；同一消息的反馈请求串行提交。 */
+  const submitUserFeedback = useMemoizedFn(
+    async ({
+      chat,
+      userGoodFeedback,
+      onSuccess
+    }: {
+      chat: ChatSiteItemType;
+      userGoodFeedback?: string;
+      onSuccess: () => void;
+    }) => {
+      if (!chat.dataId || !chatId || !hasChatTarget || pendingFeedbackRef.current.has(chat.dataId))
+        return;
+
+      const scope = feedbackScope;
+      pendingFeedbackRef.current.add(chat.dataId);
+      setPendingFeedbackIds([...pendingFeedbackRef.current]);
+      try {
+        await updateChatUserFeedback({
+          ...chatAuthTarget,
+          chatId,
+          dataId: chat.dataId,
+          userGoodFeedback
+        });
+        if (latestFeedbackScope.current !== scope) return;
+
+        setChatRecords((state) =>
+          state.map((item) =>
+            item.obj === ChatRoleEnum.AI && item.dataId === chat.dataId
+              ? { ...item, userGoodFeedback, userBadFeedback: undefined }
+              : item
+          )
+        );
+        onSuccess();
+      } catch {
+        if (latestFeedbackScope.current === scope) {
+          toast({ status: 'error', title: t('common:core.chat.Feedback Failed') });
+        }
+      } finally {
+        pendingFeedbackRef.current.delete(chat.dataId);
+        setPendingFeedbackIds([...pendingFeedbackRef.current]);
+      }
+    }
+  );
 
   /**
    * 生成 admin mark 入口回调。
@@ -122,46 +180,23 @@ export const useChatFeedbackActions = ({
   const onAddUserLike = useMemoizedFn((chat: ChatSiteItemType) => {
     if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
 
-    return () => {
-      if (!chat.dataId || !chatId || !hasChatTarget) return;
-
-      const isGoodFeedback = !!chat.userGoodFeedback;
-      setChatRecords((state) =>
-        state.map((chatItem) =>
-          chatItem.dataId === chat.dataId
-            ? {
-                ...chatItem,
-                userGoodFeedback: isGoodFeedback ? undefined : 'yes',
-                userBadFeedback: undefined
-              }
-            : chatItem
-        )
-      );
-      if (!isGoodFeedback) {
-        const trigger = ++likeFeedbackEffectTrigger.current;
-        if (likeFeedbackEffectTimer.current) {
-          clearTimeout(likeFeedbackEffectTimer.current);
+    return () =>
+      submitUserFeedback({
+        chat,
+        userGoodFeedback: chat.userGoodFeedback ? undefined : 'yes',
+        onSuccess: () => {
+          if (chat.userGoodFeedback) {
+            clearLikeFeedbackEffect();
+            return;
+          }
+          const trigger = ++likeFeedbackEffectTrigger.current;
+          if (likeFeedbackEffectTimer.current) clearTimeout(likeFeedbackEffectTimer.current);
+          setLikeFeedbackEffect({ dataId: chat.dataId, trigger });
+          likeFeedbackEffectTimer.current = setTimeout(() => {
+            setLikeFeedbackEffect((state) => (state?.trigger === trigger ? undefined : state));
+          }, 800);
         }
-        setLikeFeedbackEffect({
-          dataId: chat.dataId,
-          trigger
-        });
-        likeFeedbackEffectTimer.current = setTimeout(() => {
-          setLikeFeedbackEffect((state) => (state?.trigger === trigger ? undefined : state));
-        }, 800);
-      } else {
-        clearLikeFeedbackEffect();
-      }
-
-      try {
-        updateChatUserFeedback({
-          ...chatAuthTarget,
-          chatId,
-          dataId: chat.dataId,
-          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-        });
-      } catch {}
-    };
+      });
   });
 
   /**
@@ -175,26 +210,12 @@ export const useChatFeedbackActions = ({
     if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
 
     if (chat.userBadFeedback) {
-      return () => {
-        clearLikeFeedbackEffect();
-        if (!chat.dataId || !chatId || !hasChatTarget) return;
-        setChatRecords((state) =>
-          state.map((chatItem) =>
-            chatItem.dataId === chat.dataId ? { ...chatItem, userBadFeedback: undefined } : chatItem
-          )
-        );
-
-        try {
-          updateChatUserFeedback({
-            ...chatAuthTarget,
-            chatId,
-            dataId: chat.dataId
-          });
-        } catch {}
-      };
+      return () => submitUserFeedback({ chat, onSuccess: clearLikeFeedbackEffect });
     }
 
     return () => {
+      if (!chat.dataId || !chatId || !hasChatTarget || pendingFeedbackRef.current.has(chat.dataId))
+        return;
       clearLikeFeedbackEffect();
       setFeedbackId(chat.dataId);
     };
@@ -278,7 +299,7 @@ export const useChatFeedbackActions = ({
     clearLikeFeedbackEffect();
     setChatRecords((state) =>
       state.map((item) =>
-        item.dataId === feedbackId
+        item.obj === ChatRoleEnum.AI && item.dataId === feedbackId
           ? { ...item, userGoodFeedback: undefined, userBadFeedback: content }
           : item
       )
@@ -320,6 +341,7 @@ export const useChatFeedbackActions = ({
     adminMarkData,
     setAdminMarkData,
     likeFeedbackEffect,
+    pendingFeedbackIds,
     onMark,
     onAddUserLike,
     onAddUserDislike,

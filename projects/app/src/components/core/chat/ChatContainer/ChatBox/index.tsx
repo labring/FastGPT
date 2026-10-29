@@ -79,6 +79,7 @@ import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatInstanceActionsContext } from '../context/chatInstanceActionsContext';
+import { ChatFeedbackContext } from '../context/chatFeedbackContext';
 import {
   registerChatInstanceActions,
   retainExternalChatPromptListener,
@@ -116,6 +117,8 @@ type Props = ChatProviderProps &
 
 export type ChatBoxFeatures = {
   feedbackType?: `${FeedbackTypeEnum}`;
+  /** 工作流版本反馈显示在卡片内，避免与消息底部重复。 */
+  feedbackPlacement?: 'footer' | 'workflowBuilderVersion';
   mark?: boolean;
   /** 语音识别输入开关。 */
   voice?: boolean;
@@ -143,6 +146,7 @@ const resolveChatBoxFeatures = (
   feedbackType: `${FeedbackTypeEnum}`;
 } => ({
   feedbackType: features?.feedbackType ?? FeedbackTypeEnum.hidden,
+  feedbackPlacement: features?.feedbackPlacement ?? 'footer',
   mark: features?.mark ?? false,
   voice: features?.voice ?? true,
   tts: features?.tts ?? true,
@@ -434,6 +438,7 @@ const ChatBox = ({
     adminMarkData,
     setAdminMarkData,
     likeFeedbackEffect,
+    pendingFeedbackIds,
     onMark,
     onAddUserLike,
     onAddUserDislike,
@@ -447,6 +452,21 @@ const ChatBox = ({
     chatType,
     onTriggerRefresh
   });
+  const versionFeedbackActions = useMemo(
+    () =>
+      resolvedFeatures.feedbackPlacement === 'workflowBuilderVersion' &&
+      resolvedFeatures.feedbackType === FeedbackTypeEnum.user
+        ? { onAddUserLike, onAddUserDislike, likeFeedbackEffect, pendingFeedbackIds }
+        : undefined,
+    [
+      resolvedFeatures.feedbackPlacement,
+      resolvedFeatures.feedbackType,
+      onAddUserLike,
+      onAddUserDislike,
+      likeFeedbackEffect,
+      pendingFeedbackIds
+    ]
+  );
 
   const statusBoxData = useCreation(() => {
     if (!isChatting) return;
@@ -464,6 +484,7 @@ const ChatBox = ({
     // Reset local UI state when switching chats.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on chat switch
     setQuestionGuide([]);
+    setFeedbackId(undefined);
     setChatGeneratingConflict(undefined);
     setValue('chatStarted', false);
     resumedChatTargetRef.current = undefined;
@@ -472,7 +493,7 @@ const ChatBox = ({
     return () => {
       abortRequest('leave');
     };
-  }, [chatId, sourceKey, abortRequest, setValue]);
+  }, [chatId, sourceKey, abortRequest, setValue, setFeedbackId]);
 
   useEffect(() => {
     if (
@@ -697,6 +718,7 @@ const ChatBox = ({
       disableFooterHoverTranslate: resolvedFeatures.disableFooterHoverTranslate,
       footerRunDetailPosition: resolvedFeatures.footerRunDetailPosition,
       workflowBuilderStyle: resolvedFeatures.workflowBuilderInput,
+      showUserFeedback: resolvedFeatures.feedbackPlacement === 'footer',
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -720,6 +742,7 @@ const ChatBox = ({
       resolvedFeatures.disableFooterHoverTranslate,
       resolvedFeatures.footerRunDetailPosition,
       resolvedFeatures.workflowBuilderInput,
+      resolvedFeatures.feedbackPlacement,
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -777,23 +800,25 @@ const ChatBox = ({
           </MyBox>
         ) : (
           <>
-            <AppChatMain
-              ScrollData={ScrollData}
-              ScrollContainerRef={ScrollContainerRef}
-              welcomeText={welcomeText}
-              welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
-              chatStarted={chatStarted}
-              chatForm={chatForm}
-              chatType={chatType}
-              recordsListProps={recordsListProps}
-              maxW={props.maxW}
-              boxBodyProps={boxBodyProps}
-              EmptyState={
-                chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
-                  ? EmptyState
-                  : undefined
-              }
-            />
+            <ChatFeedbackContext.Provider value={versionFeedbackActions}>
+              <AppChatMain
+                ScrollData={ScrollData}
+                ScrollContainerRef={ScrollContainerRef}
+                welcomeText={welcomeText}
+                welcomeQuestions={resolvedFeatures.quickReplies ? welcomeQuestions : []}
+                chatStarted={chatStarted}
+                chatForm={chatForm}
+                chatType={chatType}
+                recordsListProps={recordsListProps}
+                maxW={props.maxW}
+                boxBodyProps={boxBodyProps}
+                EmptyState={
+                  chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                    ? EmptyState
+                    : undefined
+                }
+              />
+            </ChatFeedbackContext.Provider>
             <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
               {canRenderChatInput && (
                 <>
