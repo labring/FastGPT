@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -13,6 +13,8 @@ type TimeInputProps = {
   maxDate?: Date;
   isDisabled?: boolean;
 };
+
+type TimePartName = 'hour' | 'minute' | 'second';
 
 const TimeInput: React.FC<TimeInputProps> = ({
   value: initialValue,
@@ -35,6 +37,10 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const hour = formatValue ? formatValue.getHours() : 0;
   const minute = formatValue ? formatValue.getMinutes() : 0;
   const second = formatValue ? formatValue.getSeconds() : 0;
+  const [timePartDraft, setTimePartDraft] = useState<
+    { part: TimePartName; value: number | string } | undefined
+  >();
+  const ignoreChangeAfterBlurRef = useRef(false);
 
   const validateAndSetDateTime = (newDate: Date) => {
     if (minDate && newDate < minDate) {
@@ -48,32 +54,52 @@ const TimeInput: React.FC<TimeInputProps> = ({
     onDateTimeChange(newDate);
   };
 
+  const normalizeTimePart = (value: number | string | undefined, max: number) => {
+    const numericValue = Number(value ?? 0);
+    return Math.min(max, Math.max(0, Number.isFinite(numericValue) ? Math.trunc(numericValue) : 0));
+  };
+
+  const getTimePartInputValue = (part: TimePartName, value: number) =>
+    timePartDraft?.part === part ? timePartDraft.value : value;
+
+  const handleTimePartChange = (part: TimePartName, value?: number) => {
+    if (ignoreChangeAfterBlurRef.current) {
+      ignoreChangeAfterBlurRef.current = false;
+      return;
+    }
+    setTimePartDraft({
+      part,
+      value: value !== undefined && !Number.isFinite(value) ? 0 : (value ?? '')
+    });
+  };
+
+  const handleTimePartBlur = (
+    value: number | undefined,
+    max: number,
+    setDatePart: (date: Date, value: number) => void
+  ) => {
+    const normalizedValue = normalizeTimePart(value, max);
+    setTimePartDraft(undefined);
+    ignoreChangeAfterBlurRef.current = true;
+
+    const newDate = formatValue ? new Date(formatValue) : new Date();
+    setDatePart(newDate, normalizedValue);
+    validateAndSetDateTime(newDate);
+  };
+
   const handleDateChange = (date: Date | undefined) => {
     if (!date) {
       onDateTimeChange(undefined);
       return;
     }
 
+    const nextHour = normalizeTimePart(getTimePartInputValue('hour', hour), 23);
+    const nextMinute = normalizeTimePart(getTimePartInputValue('minute', minute), 59);
+    const nextSecond = normalizeTimePart(getTimePartInputValue('second', second), 59);
+    setTimePartDraft(undefined);
+
     const newDate = new Date(date);
-    newDate.setHours(hour, minute, second);
-    validateAndSetDateTime(newDate);
-  };
-
-  const handleHourChange = (newHour?: number) => {
-    const newDate = formatValue ? formatValue : new Date();
-    newDate.setHours(newHour || 0);
-    validateAndSetDateTime(newDate);
-  };
-
-  const handleMinuteChange = (newMinute?: number) => {
-    const newDate = formatValue ? formatValue : new Date();
-    newDate.setMinutes(newMinute || 0);
-    validateAndSetDateTime(newDate);
-  };
-
-  const handleSecondChange = (newSecond?: number) => {
-    const newDate = formatValue ? formatValue : new Date();
-    newDate.setSeconds(newSecond || 0);
+    newDate.setHours(nextHour, nextMinute, nextSecond);
     validateAndSetDateTime(newDate);
   };
 
@@ -82,12 +108,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const enableSecond = timeGranularity === 'second';
 
   return (
-    <Flex
-      alignItems={'center'}
-      gap={2}
-      w={'100%'}
-      minW={0}
-    >
+    <Flex alignItems={'center'} gap={2} w={'100%'} minW={0}>
       <Box flex={'1 1 0'} minW={0}>
         <DateTimePicker
           selectedDateTime={formatValue}
@@ -106,8 +127,9 @@ const TimeInput: React.FC<TimeInputProps> = ({
       </Box>
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
-          value={hour}
-          onChange={handleHourChange}
+          value={getTimePartInputValue('hour', hour)}
+          onChange={(value) => handleTimePartChange('hour', value)}
+          onBlur={(value) => handleTimePartBlur(value, 23, (date, hour) => date.setHours(hour))}
           min={0}
           max={23}
           w={'100%'}
@@ -136,8 +158,11 @@ const TimeInput: React.FC<TimeInputProps> = ({
       </Box>
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
-          value={minute}
-          onChange={handleMinuteChange}
+          value={getTimePartInputValue('minute', minute)}
+          onChange={(value) => handleTimePartChange('minute', value)}
+          onBlur={(value) =>
+            handleTimePartBlur(value, 59, (date, minute) => date.setMinutes(minute))
+          }
           min={0}
           max={59}
           w={'100%'}
@@ -166,8 +191,11 @@ const TimeInput: React.FC<TimeInputProps> = ({
       </Box>
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
-          value={second}
-          onChange={handleSecondChange}
+          value={getTimePartInputValue('second', second)}
+          onChange={(value) => handleTimePartChange('second', value)}
+          onBlur={(value) =>
+            handleTimePartBlur(value, 59, (date, second) => date.setSeconds(second))
+          }
           min={0}
           max={59}
           w={'100%'}

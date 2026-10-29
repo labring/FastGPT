@@ -21,6 +21,7 @@ import {
 import type { ButtonProps, MenuItemProps, MenuProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest } from '../../../hooks/useRequest';
+import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
@@ -103,6 +104,7 @@ const MySelect = <T = any,>(
 ) => {
   const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
+  const MenuRef = useRef<HTMLDivElement>(null);
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -124,6 +126,8 @@ const MySelect = <T = any,>(
     }
     customOnClose?.();
   }, [customOnClose, defaultOnClose, isSearch]);
+
+  useCloseOnFlowNodeDragAreaPointerDown(MenuRef, onClose, isOpen);
 
   const filterList = useMemo(() => {
     if (!isSearch || !search) {
@@ -201,7 +205,7 @@ const MySelect = <T = any,>(
 
   const isSelecting = loading || isLoading;
   return (
-    <Box>
+    <Box ref={MenuRef}>
       <Menu
         autoSelect={isSearch}
         initialFocusRef={isSearch ? searchInputRef : undefined}
