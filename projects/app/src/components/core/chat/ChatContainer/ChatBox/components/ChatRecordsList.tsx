@@ -1,4 +1,4 @@
-import React, { type ChangeEvent, type MutableRefObject, useCallback, useMemo } from 'react';
+import React, { type MutableRefObject, useCallback, useMemo } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -18,13 +18,15 @@ import {
   hasAiProcessingContent
 } from './AIChatBubble/utils';
 import { getChatItemRenderKey } from '../utils/recordGroups';
+import { useContextSelector } from 'use-context-selector';
+import { ChatFeedbackContext } from '../../context/chatFeedbackContext';
+import { FeedbackTypeEnum } from '../constants';
 
 export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
   expandedDeletedGroups: Set<string>;
   itemRefs: MutableRefObject<Map<string, HTMLElement | null>>;
   enableTTS: boolean;
-  enableMark: boolean;
   enableSandbox: boolean;
   statusBoxData:
     | {
@@ -36,31 +38,17 @@ export type ChatRecordsListProps = {
   onToggleDeletedGroup: (dataIds: string[]) => void;
   onRetry: (dataId?: string, hideInUI?: boolean) => (() => Promise<void>) | undefined;
   onEdit: (dataId?: string) => ((input: ChatBoxInputType) => Promise<void>) | undefined;
-  onMark: (chat: ChatSiteItemType, q?: string) => (() => void) | undefined;
-  onAddUserLike: (chat: ChatSiteItemType) => (() => void) | undefined;
-  onAddUserDislike: (chat: ChatSiteItemType) => (() => void) | undefined;
-  likeFeedbackEffect?: {
-    dataId: string;
-    trigger: number;
-  };
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
   workflowBuilderStyle?: boolean;
-  showUserFeedback?: boolean;
-  feedbackUserName?: string;
-  onCloseCustomFeedback: (
-    chat: ChatSiteItemType,
-    index: number
-  ) => (e: ChangeEvent<HTMLInputElement>) => void;
-  onToggleFeedbackReadStatus: (chat: ChatSiteItemType) => (() => Promise<void>) | undefined;
 };
 
 /**
  * 渲染 ChatBox 的聊天记录列表。
  *
  * 本组件只接收已经预处理好的 `records`，不负责 log 模式 deleted group 的计算，也不直接
- * 调用删除、重试、反馈、标注 API。所有动作都由上层 hook 生成后作为 props 注入，组件内部
- * 只负责把 human/AI 记录、折叠按钮、自定义反馈和 admin mark 展示拼成原来的 JSX。
+ * 调用删除、重试、反馈、标注 API。反馈和标注从 ChatFeedbackContext 获取，其他动作由 props
+ * 注入，组件内部只负责拼装 human/AI 记录、折叠按钮、自定义反馈和 admin mark 展示。
  *
  * 设计边界：
  * - `expandedDeletedGroups` 只用于判断 deleted record 是否渲染，展开/收起状态更新仍在父组件。
@@ -72,26 +60,27 @@ const ChatRecordsList = ({
   expandedDeletedGroups,
   itemRefs,
   enableTTS,
-  enableMark,
   enableSandbox,
   statusBoxData,
   questionGuides,
   onToggleDeletedGroup,
   onRetry,
   onEdit,
-  onMark,
-  onAddUserLike,
-  onAddUserDislike,
-  likeFeedbackEffect,
   disableFooterHoverTranslate,
   footerRunDetailPosition,
-  workflowBuilderStyle,
-  showUserFeedback = true,
-  feedbackUserName,
-  onCloseCustomFeedback,
-  onToggleFeedbackReadStatus
+  workflowBuilderStyle
 }: ChatRecordsListProps) => {
   const { t } = useTranslation();
+  const enableMark = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.fbTypes.includes(FeedbackTypeEnum.mark)
+  );
+  const enableCustomFeedback = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.fbTypes.includes(FeedbackTypeEnum.custom)
+  );
+  const onCloseCustomFeedback = useContextSelector(
+    ChatFeedbackContext,
+    (value) => value?.onCloseCustomFeedback
+  );
 
   const canMergeAiProcessingRecord = useCallback((item: ChatSiteItemType) => {
     if (item.obj !== ChatRoleEnum.AI || item.hideInUI || item.deleteTime) return false;
@@ -242,44 +231,35 @@ const ChatRecordsList = ({
                         statusBoxData,
                         questionGuides,
                         onRetry: retryPreviousHuman,
-                        onMark: onMark(
-                          item,
-                          formatChatValue2InputType(previousRecord?.value)?.text
-                        ),
-                        onAddUserLike: showUserFeedback ? onAddUserLike(item) : undefined,
-                        onAddUserDislike: showUserFeedback ? onAddUserDislike(item) : undefined,
-                        likeFeedbackEffectTrigger:
-                          likeFeedbackEffect?.dataId === item.dataId
-                            ? likeFeedbackEffect.trigger
-                            : undefined,
+                        markQuestion: formatChatValue2InputType(previousRecord?.value).text,
                         disableFooterHoverTranslate,
-                        footerRunDetailPosition,
-                        feedbackUserName,
-                        onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
+                        footerRunDetailPosition
                       }}
                     >
-                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                        <Box>
-                          <ChatBoxDivider
-                            icon={'core/app/customFeedback'}
-                            text={t('common:core.app.feedback.Custom feedback')}
-                          />
-                          {item.customFeedbacks.map((text, i) => (
-                            <Box key={i}>
-                              <MyTooltip
-                                label={t('common:core.app.feedback.close custom feedback')}
-                              >
-                                <Checkbox
-                                  onChange={onCloseCustomFeedback(item, i)}
-                                  icon={<MyIcon name={'common/check'} w={'12px'} />}
+                      {enableCustomFeedback &&
+                        item.customFeedbacks &&
+                        item.customFeedbacks.length > 0 && (
+                          <Box>
+                            <ChatBoxDivider
+                              icon={'core/app/customFeedback'}
+                              text={t('common:core.app.feedback.Custom feedback')}
+                            />
+                            {item.customFeedbacks.map((text, i) => (
+                              <Box key={i}>
+                                <MyTooltip
+                                  label={t('common:core.app.feedback.close custom feedback')}
                                 >
-                                  {text}
-                                </Checkbox>
-                              </MyTooltip>
-                            </Box>
-                          ))}
-                        </Box>
-                      )}
+                                  <Checkbox
+                                    onChange={onCloseCustomFeedback?.(item, i)}
+                                    icon={<MyIcon name={'common/check'} w={'12px'} />}
+                                  >
+                                    {text}
+                                  </Checkbox>
+                                </MyTooltip>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
                       {enableMark && item.adminFeedback && (
                         <Box fontSize={'sm'}>
                           <ChatBoxDivider

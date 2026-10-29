@@ -4,10 +4,7 @@ import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
-import {
-  ChatTypeEnum,
-  FeedbackTypeEnum
-} from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
@@ -314,10 +311,7 @@ const WorkflowBuilderChatContent = ({
           chatId={chatId}
           chatType={ChatTypeEnum.test}
           features={{
-            feedbackType: watchExternalChat ? FeedbackTypeEnum.hidden : FeedbackTypeEnum.user,
-            feedbackPlacement: 'workflowBuilderVersion',
             markRead: false,
-            mark: false,
             voice: true,
             tts: false,
             inputGuide: false,

@@ -14,6 +14,8 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import LikeFeedbackButton from './LikeFeedbackButton';
+import { ChatFeedbackContext } from '../../context/chatFeedbackContext';
+import { FeedbackTypeEnum } from '../constants';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -21,16 +23,11 @@ export type ChatControllerProps = {
   enableTTS?: boolean;
   onRetry?: () => void;
   onDelete?: () => void;
-  onMark?: () => void;
-  onAddUserLike?: () => void;
-  onAddUserDislike?: () => void;
-  likeFeedbackEffectTrigger?: number;
-  onToggleFeedbackReadStatus?: () => void;
+  markQuestion?: string;
   variant?: 'panel' | 'footer';
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
   footerAfterCopySlot?: React.ReactNode;
-  feedbackUserName?: string;
 };
 
 const controlIconStyle = {
@@ -58,13 +55,9 @@ const footerIconStyle = {
 const ChatController = ({
   chat,
   enableTTS,
-  onMark,
+  markQuestion = '',
   onRetry,
   onDelete,
-  onAddUserDislike,
-  onAddUserLike,
-  likeFeedbackEffectTrigger,
-  onToggleFeedbackReadStatus,
   variant = 'panel',
   disableFooterHoverTranslate = false,
   footerAfterCopySlot
@@ -86,7 +79,31 @@ const ChatController = ({
 
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
-  const isLogMode = chatType === 'log';
+  const fbTypes = useContextSelector(ChatFeedbackContext, (value) => value?.fbTypes);
+  const onMarkAction = useContextSelector(ChatFeedbackContext, (value) => value?.onMark);
+  const onLikeAction = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.active ? value.onAddUserLike : undefined
+  );
+  const onDislikeAction = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.active ? value.onAddUserDislike : undefined
+  );
+  const onToggleReadAction = useContextSelector(
+    ChatFeedbackContext,
+    (value) => value?.onToggleFeedbackReadStatus
+  );
+  const likeFeedbackEffectTrigger = useContextSelector(ChatFeedbackContext, (value) =>
+    value?.likeFeedbackEffect?.dataId === chat.dataId ? value.likeFeedbackEffect.trigger : undefined
+  );
+  const isFeedbackPending = useContextSelector(
+    ChatFeedbackContext,
+    (value) => value?.pendingFeedbackIds.includes(chat.dataId) ?? false
+  );
+  const showUserFeedback = fbTypes?.includes(FeedbackTypeEnum.user);
+  const onAddUserLike = showUserFeedback ? onLikeAction?.(chat) : undefined;
+  const onAddUserDislike = showUserFeedback ? onDislikeAction?.(chat) : undefined;
+  const onMark = onMarkAction?.(chat, { q: markQuestion, a: chatText });
+  const onToggleFeedbackReadStatus = onToggleReadAction?.(chat);
+
   const isFooter = variant === 'footer';
   const renderTooltip = (label: string, children: React.ReactNode) => (
     <MyTooltip label={label}>{children}</MyTooltip>
@@ -118,7 +135,7 @@ const ChatController = ({
         bg: 'yellow.500'
       };
   const showLogFeedbackAction =
-    isLogMode &&
+    fbTypes?.includes(FeedbackTypeEnum.log) &&
     chat.obj === ChatRoleEnum.AI &&
     (!!chat.userGoodFeedback || !!chat.userBadFeedback);
   const unreadFeedbackBadge =
@@ -341,7 +358,7 @@ const ChatController = ({
                 ))}
             </Flex>
           )}
-          {chat.obj === ChatRoleEnum.AI && !isLogMode && (
+          {chat.obj === ChatRoleEnum.AI && (
             <>
               {!!onAddUserLike && (
                 <MyTooltip label={t('chat:feedback_helpful')}>
@@ -349,6 +366,7 @@ const ChatController = ({
                     <LikeFeedbackButton
                       {...iconStyle}
                       isActive={!!chat.userGoodFeedback}
+                      isDisabled={isFeedbackPending}
                       effectTrigger={likeFeedbackEffectTrigger}
                       disableHoverTranslate={disableFooterHoverTranslate}
                       onClick={onAddUserLike}

@@ -32,7 +32,7 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  *
  * 设计边界：
  * - 本 hook 只处理删除和重试，不处理点赞、点踩、admin mark、log read status。
- *   这些反馈类动作会进入后续 `useChatFeedbackActions`，避免阶段四的单个 PR 过大。
+ *   这些反馈类动作由 `ChatFeedbackProvider` 统一管理。
  * - `sendPrompt` 由生成 hook 提供，本 hook 不关心普通发送的 placeholder、SSE 合并、
  *   TTS、问题引导等细节，只在重试时把恢复出的输入和裁剪后的 history 交还给生成链路。
  * - 本地 `chatRecords` 会先按现有逻辑乐观更新；远端删除失败时只对重试流程 toast，

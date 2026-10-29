@@ -159,7 +159,6 @@ const ChatAgentHelperChatBox = ({
       chatType={ChatTypeEnum.test}
       features={{
         markRead: false,
-        mark: false,
         voice: false,
         tts: false,
         inputGuide: false,
