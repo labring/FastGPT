@@ -4,7 +4,6 @@ import {
 } from '@fastgpt/global/common/string/markdown';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { addHours } from 'date-fns';
-import type { ClientSession } from '../../../../common/mongo';
 import { MongoS3TTL } from '../../../../common/s3/models/ttl';
 import { S3Buckets } from '../../../../common/s3/config/constants';
 import { createOpaqueS3FileKey } from '../../../../common/s3/opaqueKey';
@@ -15,7 +14,6 @@ import {
   detectUploadFileEvidence,
   resolveUploadFile
 } from '../../../../common/s3/uploadPolicy/service';
-import { getDatasetInlineImageOwner } from './entity';
 
 /**
  * 将已鉴权 API 分块中的内嵌图片转存到所属知识库；只替换图片地址，保留正文和分块边界。
@@ -100,48 +98,4 @@ export const normalizeDatasetDataImages = async <T extends { q?: string; a?: str
     });
   }
   return normalizedData;
-};
-
-/**
- * 写入引用时同事务更新图片归属记录，和回收事务竞争同一文档锁。
- * 待删除或已回收的图片不能重新引用；持久记录会在最后一个分块/历史/任务引用消失后回收。
- */
-export const persistDatasetDataImages = async ({
-  teamId,
-  datasetId,
-  data,
-  session
-}: {
-  teamId: string;
-  datasetId: string;
-  data: Array<{ q?: string; a?: string; imageId?: string }>;
-  session: ClientSession;
-}) => {
-  const keys = new Set(
-    data.flatMap(({ q, a, imageId }) =>
-      [
-        imageId ?? '',
-        ...[q ?? '', a ?? ''].flatMap((text) =>
-          matchDocumentImages(text).map((image) =>
-            image.format === 'markdown' ? unescapeMarkdownImageUrl(image.url) : image.url
-          )
-        )
-      ].filter((key) => getDatasetInlineImageOwner(key) === String(datasetId))
-    )
-  );
-  if (keys.size > 0) {
-    const renewed = await MongoS3TTL.updateMany(
-      {
-        minioKey: { $in: [...keys] },
-        bucketName: S3Buckets.private,
-        'datasetInlineImage.teamId': teamId,
-        'datasetInlineImage.datasetId': datasetId,
-        'datasetInlineImage.cleanupPending': { $ne: true }
-      },
-      { $set: { expiredTime: addHours(new Date(), 3) } },
-      { session }
-    );
-    if (renewed.matchedCount !== keys.size)
-      throw new UserError('Inline image is no longer available');
-  }
 };

@@ -23,7 +23,7 @@ import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
-import { persistDatasetDataImages } from '../data/inlineImages/service';
+import { persistDatasetDataImages } from '../data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 

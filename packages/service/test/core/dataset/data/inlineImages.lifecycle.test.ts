@@ -3,8 +3,10 @@ import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { claimDatasetInlineImageCleanup } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
-import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
+import {
+  claimDatasetInlineImageCleanup,
+  persistDatasetDataImages
+} from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { clearExpiredMinioFiles } from '@fastgpt/service/common/s3/lifecycle/cleanup';
@@ -116,6 +118,92 @@ describe('dataset inline image lifecycle', () => {
     await executeS3DeleteJob({ bucketName, key });
     expect(deleteObjectsByMultiKeys).not.toHaveBeenCalled();
     expect(await MongoS3TTL.countDocuments()).toBe(1);
+  });
+
+  it.each([
+    'q',
+    'a',
+    'history.q',
+    'history.a',
+    'indexes',
+    'training.q',
+    'training.a',
+    'training.indexes'
+  ] as const)(
+    'retains escaped Markdown image references in %s until the final reference disappears',
+    async (target) => {
+      await createRecord();
+      const text = `![image](${key.replace(/[./-]/g, '\\$&')})`;
+      // 与写入侧使用相同的实际引用获取路径，正文仍保留 Markdown 转义。
+      await mongoSessionRun(async (session) => {
+        await persistDatasetDataImages({ teamId, datasetId, data: [{ q: text }], session });
+        if (target.startsWith('training.')) {
+          await MongoDatasetTraining.create(
+            [
+              {
+                teamId,
+                tmbId,
+                datasetId,
+                collectionId,
+                billId: 'test',
+                mode: 'qa',
+                ...(target === 'training.indexes'
+                  ? { q: 'current text', indexes: [{ type: 'custom', text }] }
+                  : { [target.slice(9)]: text })
+              }
+            ],
+            { session }
+          );
+        } else {
+          await MongoDatasetData.create(
+            [
+              {
+                teamId,
+                tmbId,
+                datasetId,
+                collectionId,
+                ...(target.startsWith('history.')
+                  ? {
+                      q: 'current text',
+                      history: [{ [target.slice(8)]: text, updateTime: new Date() }]
+                    }
+                  : target === 'indexes'
+                    ? { q: 'current text', indexes: [{ type: 'custom', text, dataId: 'test' }] }
+                    : { [target]: text })
+              }
+            ],
+            { session }
+          );
+        }
+      });
+
+      await expire();
+      await clearExpiredMinioFiles();
+      await executeS3DeleteJob({ bucketName, key });
+      expect(addDeleteJob).not.toHaveBeenCalled();
+      expect(deleteObjectsByMultiKeys).not.toHaveBeenCalled();
+      expect(await MongoS3TTL.findOne({ minioKey: key }).lean()).toMatchObject({
+        datasetInlineImage: { cleanupPending: false }
+      });
+
+      await MongoDatasetData.deleteMany({});
+      await MongoDatasetTraining.deleteMany({});
+      await expire();
+      await clearExpiredMinioFiles();
+      await executeS3DeleteJob({ bucketName, key });
+      expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [key] });
+      expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(0);
+    }
+  );
+
+  it('does not retain an image merely because another key contains the same random filename', async () => {
+    await createRecord();
+    await createData(`![other](${key.replace('/file/', '/other/').replace(/[./-]/g, '\\$&')})`);
+    await clearExpiredMinioFiles();
+    expect(addDeleteJob).toHaveBeenCalledWith({ key });
+    await executeS3DeleteJob({ bucketName, key });
+    expect(deleteObjectsByMultiKeys).toHaveBeenCalledWith({ keys: [key] });
+    expect(await MongoS3TTL.countDocuments({ minioKey: key })).toBe(0);
   });
 
   it('rejects new references after cleanup is claimed and retries failed storage deletion', async () => {

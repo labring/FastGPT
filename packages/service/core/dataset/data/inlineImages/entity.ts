@@ -4,6 +4,10 @@ import { MongoS3TTL } from '../../../../common/s3/models/ttl';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { MongoDatasetData } from '../schema';
 import { MongoDatasetTraining } from '../../training/schema';
+import { getDatasetImageReferences, type DatasetImageReferenceContent } from './utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import type { ClientSession } from '../../../../common/mongo';
+import { S3Buckets } from '../../../../common/s3/config/constants';
 
 /** 专用命名空间标识本功能管理的对象，不能把普通数据集文件纳入引用回收。 */
 export const getDatasetInlineImageOwner = (key: string) =>
@@ -47,7 +51,44 @@ export const claimDatasetInlineImageCleanup = async (file: S3TtlSchemaType) => {
           session
         );
 
-    if (dataReference || trainingReference) {
+    // 原始 key 查询保持既有保守匹配；转义地址再用写入侧解析器确认。
+    // 随机文件名只含十六进制字符，Markdown 转义不会改变它，可先缩小候选范围。
+    const hasEscapedReference = async () => {
+      const filename = file.minioKey.split('/').pop()!.split('.')[0];
+      const candidatePattern = new RegExp(filename);
+      const fields = [
+        { q: candidatePattern },
+        { a: candidatePattern },
+        { 'indexes.text': candidatePattern }
+      ];
+      const queries = [
+        MongoDatasetData.find({
+          teamId,
+          datasetId,
+          $or: [...fields, { 'history.q': candidatePattern }, { 'history.a': candidatePattern }]
+        })
+          .select('q a imageId indexes.text history.q history.a')
+          .session(session)
+          .lean(),
+        MongoDatasetTraining.find({ teamId, datasetId, $or: fields })
+          .select('q a imageId indexes.text')
+          .session(session)
+          .lean()
+      ];
+      for (const query of queries) {
+        const cursor = query.cursor({ batchSize: 100 });
+        try {
+          for await (const candidate of cursor) {
+            if (getDatasetImageReferences(candidate).has(file.minioKey)) return true;
+          }
+        } finally {
+          await cursor.close();
+        }
+      }
+      return false;
+    };
+
+    if (dataReference || trainingReference || (await hasEscapedReference())) {
       await MongoS3TTL.updateOne(
         { _id: file._id },
         {
@@ -102,4 +143,43 @@ export const completeDatasetInlineImageCleanup = async ({
     minioKey: { $in: managedKeys },
     'datasetInlineImage.cleanupPending': true
   });
+};
+
+/**
+ * 写入引用时同事务更新图片归属记录，和回收事务竞争同一文档锁。
+ * 待删除或已回收的图片不能重新引用；持久记录会在最后一个分块/历史/任务引用消失后回收。
+ */
+export const persistDatasetDataImages = async ({
+  teamId,
+  datasetId,
+  data,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  data: DatasetImageReferenceContent[];
+  session: ClientSession;
+}) => {
+  const keys = new Set(
+    data.flatMap((item) =>
+      [...getDatasetImageReferences(item)].filter(
+        (key) => getDatasetInlineImageOwner(key) === String(datasetId)
+      )
+    )
+  );
+  if (keys.size > 0) {
+    const renewed = await MongoS3TTL.updateMany(
+      {
+        minioKey: { $in: [...keys] },
+        bucketName: S3Buckets.private,
+        'datasetInlineImage.teamId': teamId,
+        'datasetInlineImage.datasetId': datasetId,
+        'datasetInlineImage.cleanupPending': { $ne: true }
+      },
+      { $set: { expiredTime: addHours(new Date(), 3) } },
+      { session }
+    );
+    if (renewed.matchedCount !== keys.size)
+      throw new UserError('Inline image is no longer available');
+  }
 };

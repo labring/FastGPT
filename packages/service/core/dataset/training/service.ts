@@ -16,6 +16,7 @@ import {
 
 import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './utils';
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
+import { persistDatasetDataImages } from '../data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -165,6 +166,15 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
     });
   const transition = async (next: TrainingStageResult) =>
     commit(async (session) => {
+      const current = await MongoDatasetTraining.findOne(getFilter()).session(session).lean();
+      if (!current) throw new TrainingLeaseLostError();
+      // 阶段生成的正文/索引同样可能引入图片，必须与阶段结果在同一事务获取引用。
+      await persistDatasetDataImages({
+        teamId: String(current.teamId),
+        datasetId: String(current.datasetId),
+        data: [{ ...current, ...next }],
+        session
+      });
       const readyUpdate = getTrainingTaskReadyUpdate();
       const result = await MongoDatasetTraining.updateOne(
         getFilter(),

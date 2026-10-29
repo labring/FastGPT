@@ -34,7 +34,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
 import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
-import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/service';
+import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -250,7 +250,7 @@ export class DatasetDataOperation {
           await persistDatasetDataImages({
             teamId,
             datasetId,
-            data: [{ q: dataQ, a, imageId }],
+            data: [{ q: dataQ, a, imageId, indexes: results }],
             session: mongoSession
           });
           const [{ _id }] = await MongoDatasetData.create(
@@ -422,7 +422,7 @@ export class DatasetDataOperation {
           await persistDatasetDataImages({
             teamId: String(mongoData.teamId),
             datasetId: String(mongoData.datasetId),
-            data: [{ q: nextQ, a: nextA, imageId: nextImageId }],
+            data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: newIndexes }],
             session: mongoSession
           });
           // 重试只改变状态、不更新 updateTime；失败修复还需校验状态，不能覆盖已恢复的任务。
@@ -758,7 +758,7 @@ export class DatasetDataOperation {
         await persistDatasetDataImages({
           teamId: String(mongoData.teamId),
           datasetId: String(mongoData.datasetId),
-          data: [{ q: nextQ, a: nextA, imageId: nextImageId }],
+          data: [{ q: nextQ, a: nextA, imageId: nextImageId, indexes: nextIndexes }],
           session
         });
         const updateResult = await MongoDatasetData.updateOne(

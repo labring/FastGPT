@@ -24,6 +24,7 @@ import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/
 import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { getDatasetSynonymTransformContext } from '@fastgpt/service/core/dataset/synonym/entity';
 import { serviceEnv } from '@fastgpt/service/env';
+import { persistDatasetDataImages } from '@fastgpt/service/core/dataset/data/inlineImages/entity';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -770,7 +771,15 @@ export class DatasetDataIndexOperation {
         throw new Error('同义词配置已变化，请重试索引更新');
       }
 
+      const imageReferences = [{ indexes: [newIndex] }];
       await mongoSessionRun(async (session) => {
+        // 自定义索引也能引用图片，保存前同事务获取引用，阻止写入已取得回收权的对象。
+        await persistDatasetDataImages({
+          teamId: String(sourceData.teamId),
+          datasetId: String(sourceData.datasetId),
+          data: imageReferences,
+          session
+        });
         const updateResult = targetIndex
           ? await MongoDatasetData.updateOne(
               {
@@ -818,7 +827,7 @@ export class DatasetDataIndexOperation {
         }
       });
     } catch (error) {
-      if (synonymContext && newIndex) {
+      if (newIndex) {
         await this.deleteVectors({
           teamId: sourceData.teamId,
           idList: [newIndex.dataId]
