@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import {
   graphNode,
   graphEdge,
@@ -155,6 +162,89 @@ describe('child workflow data transfer without mocking runWorkflow', () => {
     expect(result.workflowRuntimeSummary.errorCount).toBe(0);
     expect(Object.hasOwn(result, 'error')).toBe(false);
   });
+
+  it.each([
+    { failed: false, catchError: true },
+    { failed: true, catchError: true },
+    { failed: true, catchError: false }
+  ])(
+    'routes commercial plugin output with failed=$failed and catchError=$catchError',
+    async ({ failed, catchError }) => {
+      const message = failed ? 'upstream unavailable' : '';
+      const input = graphNode({
+        id: 'plugininput',
+        type: FlowNodeTypeEnum.pluginInput,
+        params: { value: '', error: '' },
+        outputs: ['value', 'error']
+      });
+      const output = graphNode({
+        id: 'pluginoutput',
+        type: FlowNodeTypeEnum.pluginOutput,
+        inputs: ['value', 'error'].map((key) => graphReference({ key, from: ['plugininput', key] }))
+      });
+      vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolWorkflowRuntime').mockResolvedValue({
+        id: 'commercial-regression',
+        associatedPluginId: 'system-workflow',
+        name: 'Commercial workflow',
+        avatar: '',
+        nodes: [input, output],
+        edges: [graphEdge({ source: 'plugininput', target: 'pluginoutput' })],
+        chatConfig: {}
+      });
+      const plugin = graphNode({
+        id: 'plugin',
+        type: FlowNodeTypeEnum.pluginModule,
+        pluginId: 'commercial-regression',
+        params: { value: 'partial output', error: message },
+        outputs: [
+          'value',
+          NodeOutputKeyEnum.errorText,
+          {
+            id: 'default',
+            key: 'default',
+            label: 'default',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: true,
+            defaultValue: 'success only'
+          }
+        ],
+        isEntry: true,
+        catchError
+      });
+      const normal = graphNode({
+        id: 'normal',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: [graphReference({ key: 'value', from: ['plugin', 'value'] })],
+        outputs: ['value']
+      });
+      const caught = graphNode({
+        id: 'caught',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: [graphReference({ key: 'message', from: ['plugin', NodeOutputKeyEnum.errorText] })],
+        outputs: ['message']
+      });
+      const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+      const { result, responses } = await runGraph({
+        nodes: [plugin, normal, caught],
+        edges: [
+          graphEdge({ source: 'plugin', target: 'normal' }),
+          graphEdge({ source: 'plugin', target: 'caught', error: true })
+        ]
+      });
+
+      expect(graphValues(normal).value).toBe(failed ? undefined : 'partial output');
+      expect(graphValues(caught).message).toBe(failed && catchError ? message : undefined);
+      expect(graphValues(plugin).value).toBe('partial output');
+      expect(graphValues(plugin).default).toBe(failed ? undefined : 'success only');
+      expect(responses.find((response) => response.nodeId === 'plugin')?.errorCaptured).toBe(
+        failed && catchError ? true : undefined
+      );
+      expect(result.workflowRuntimeSummary.errorCount).toBe(failed && !catchError ? 1 : 0);
+      expect(Object.hasOwn(result, 'error')).toBe(false);
+      expect(warn).not.toHaveBeenCalledWith('Workflow node returned error', expect.anything());
+    }
+  );
 
   it.each([FlowNodeTypeEnum.appModule, FlowNodeTypeEnum.pluginModule])(
     '%s exposes its own resource-load failure through the catch branch',

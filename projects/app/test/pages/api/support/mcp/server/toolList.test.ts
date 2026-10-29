@@ -24,6 +24,12 @@ import {
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { AccountCancellationStatus } from '@fastgpt/global/support/user/account/cancellation/constants';
 import { assertTeamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import { markProfileError } from '@fastgpt/service/common/profiling';
+
+vi.mock('@fastgpt/service/common/profiling', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/profiling')>()),
+  markProfileError: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
   MongoMcpKey: {
@@ -284,7 +290,7 @@ describe('callMcpServerTool', () => {
     ).rejects.toBe(error);
   });
 
-  it('returns workflowTool pluginOutput using the same value source as main', async () => {
+  it.each([0, 1])('returns pluginOutput with errorCount=%s', async (errorCount) => {
     vi.mocked(MongoMcpKey.findOne).mockReturnValue({
       lean: () => ({
         teamId: 'team-id',
@@ -329,7 +335,9 @@ describe('callMcpServerTool', () => {
       memberName: 'member',
       contact: '',
       teamId: 'team-id',
-      tmbId: 'tmb-id'
+      tmbId: 'tmb-id',
+      timezone: 'Asia/Shanghai',
+      externalProvider: { openaiAccount: undefined, externalWorkflowVariables: undefined }
     });
     vi.mocked(dispatchWorkFlow).mockResolvedValue({
       assistantResponses: [],
@@ -337,6 +345,7 @@ describe('callMcpServerTool', () => {
       toolResponse: { result: 'tool response should not be the plugin source' },
       durationSeconds: 1,
       workflowRuntimeSummary: {
+        errorCount,
         responseIds: ['plugin-output-response-id'],
         finishedNodeIds: [],
         hasLoopRunBreak: false,
@@ -363,6 +372,9 @@ describe('callMcpServerTool', () => {
         inputs: {}
       })
     ).resolves.toBe(JSON.stringify({ result: 'plugin output value' }));
+
+    if (errorCount) expect(markProfileError).toHaveBeenCalledWith('Workflow run failed');
+    else expect(markProfileError).not.toHaveBeenCalled();
 
     expect(authAppByTmbId).toHaveBeenCalledWith({
       tmbId: 'publisher-tmb-id',

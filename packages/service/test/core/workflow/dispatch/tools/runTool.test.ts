@@ -73,16 +73,6 @@ vi.mock('@fastgpt/service/common/logger', () => {
   const logCategories = new Proxy({}, { get: () => logCategories });
   return {
     LogCategories: logCategories,
-    getLogger: vi.fn(() => ({
-      error: vi.fn()
-    }))
-  };
-});
-
-vi.mock('@fastgpt/service/common/logger', () => {
-  const logCategories = new Proxy({}, { get: () => logCategories });
-  return {
-    LogCategories: logCategories,
     getLogger: vi.fn(() => mockLogger)
   };
 });

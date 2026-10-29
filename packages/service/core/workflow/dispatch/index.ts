@@ -914,12 +914,13 @@ export class WorkflowQueue {
           try {
             const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
 
-            if (Object.hasOwn(result, 'error')) {
-              const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
-              // 节点可直接返回原始异常；统一补齐错误输出，供 catch 分支按原 key 引用。
+            const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+            const responseError = nodeResponseBase?.errorText ?? nodeResponseBase?.error;
+            // 原始异常与节点明确返回的业务失败共用错误路由；展示文本不重建顶层异常。
+            if (Object.hasOwn(result, 'error') || responseError !== undefined) {
               const errText =
                 result.data?.[NodeOutputKeyEnum.errorText] ??
-                nodeResponseBase?.errorText ??
+                responseError ??
                 getErrText(result.error);
               const errorData = {
                 ...result.data,
@@ -927,10 +928,7 @@ export class WorkflowQueue {
               };
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
-                // Callback returned with `result.error` set instead of throwing;
-                // mirror the catch-branch convention and copy it onto nodeResponse
-                // so runLoopRun / parallelRun failure detection and OTel span
-                // status see `.error` uniformly across both failure paths.
+                // 未捕获的失败统一保留详情并停止所有下游，异常归属仍只读取原始 error。
                 return {
                   ...result,
                   data: errorData,
@@ -1076,8 +1074,8 @@ export class WorkflowQueue {
       // writer/output 已接管响应时，才从 queue 返回值中移除当前响应。
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
-      // Add output default value
-      if (dispatchRes.data && !hasDispatchError) {
+      // 仅成功节点补齐默认值；商业插件等业务失败可能只有错误详情，没有原始异常。
+      if (dispatchRes.data && !hasDispatchError && currentNodeError === undefined) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
