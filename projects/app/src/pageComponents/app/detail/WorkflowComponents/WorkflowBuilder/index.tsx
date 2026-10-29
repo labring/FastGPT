@@ -148,15 +148,12 @@ const WorkflowBuilder = () => {
           chatConfig: appliedChatConfig,
           customTitle: version.name
         });
-        setActivity((current) => {
-          if (current.latestVersion?.version.checksum !== archivedVersion.checksum) return current;
-          return {
-            ...current,
-            latestVersion: {
-              ...current.latestVersion,
-              version: archivedVersion
-            }
-          };
+        // 横幅和卡片共用记录状态，活动摘要再由记录派生，避免两个入口展示不一致。
+        chatPanelRef.current?.updateAppliedVersion({
+          appId,
+          chatId: builderChatId,
+          responseChatItemId,
+          version: archivedVersion
         });
         myToast({
           status: 'success',
@@ -208,7 +205,6 @@ const WorkflowBuilder = () => {
       pushPastSnapshot,
       requestAutoLayout,
       setAppDetail,
-      setActivity,
       notifyVersionExpired,
       myToast,
       t

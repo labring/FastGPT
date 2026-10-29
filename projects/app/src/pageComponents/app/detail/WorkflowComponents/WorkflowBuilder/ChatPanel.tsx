@@ -28,6 +28,7 @@ import {
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { streamWorkflowBuilderChat } from './api';
 import type { WorkflowBuilderVersionActions } from '@/web/core/chat/context/chatItemContext';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { WorkflowBuilderActivity } from './context';
@@ -42,6 +43,13 @@ import { WORKFLOW_BUILDER_CHAT_ID_QUERY_KEY } from '@/web/core/app/utils';
 
 export type WorkflowBuilderChatPanelRef = {
   restartChat: () => void;
+  /** 将已提交版本写回当前会话记录；忽略切换会话后迟到的应用结果。 */
+  updateAppliedVersion: (data: {
+    appId: string;
+    chatId: string;
+    responseChatItemId: string;
+    version: WorkflowBuilderVersion;
+  }) => void;
 };
 
 const WorkflowBuilderChatContent = ({
@@ -73,6 +81,7 @@ const WorkflowBuilderChatContent = ({
   const chatBoxData = useContextSelector(ChatItemContext, (value) => value.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (value) => value.ChatBoxRef);
   const chatRecords = useContextSelector(ChatRecordContext, (value) => value.chatRecords);
+  const setChatRecords = useContextSelector(ChatRecordContext, (value) => value.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(
     ChatRecordContext,
     (value) => value.isChatRecordsLoaded
@@ -120,6 +129,25 @@ const WorkflowBuilderChatContent = ({
       // 新对话只重置当前展示和会话 ID，保留服务端历史及其版本归档。
       clearChatRecords();
       onRestart();
+    },
+    updateAppliedVersion: (data) => {
+      if (data.appId !== appId || data.chatId !== chatId) return;
+      // 以消息和版本共同定位，避免同一配置重复生成时误标其他版本。
+      setChatRecords((records) =>
+        records.map((record) => {
+          if (record.obj !== ChatRoleEnum.AI || record.dataId !== data.responseChatItemId) {
+            return record;
+          }
+          return {
+            ...record,
+            value: record.value.map((item) =>
+              item.workflowBuilderVersion?.checksum === data.version.checksum
+                ? { ...item, workflowBuilderVersion: data.version }
+                : item
+            )
+          };
+        })
+      );
     }
   }));
 

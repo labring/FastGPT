@@ -3,6 +3,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 import type { UserType } from '@fastgpt/global/support/user/type';
 import type { WorkflowBuilderChatPanelRef } from '@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/ChatPanel';
 
@@ -21,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   onChatIdChange: vi.fn(),
   onActivityChange: vi.fn(),
   toast: vi.fn(),
+  records: [] as ChatSiteItemType[],
   t: (key: string) => key
 }));
 
@@ -42,10 +46,48 @@ vi.mock('@/pageComponents/chat/ChatWindow/ChatAIModelSelector', () => ({ default
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: (select: (state: unknown) => unknown) => select({ feConfigs: {} })
 }));
-vi.mock('@/components/core/chat/ChatContainer/ChatBox', () => ({
-  default: ({ chatId }: { chatId: string }) =>
-    React.createElement('div', { 'data-chat-id': chatId })
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: ({ name, color }: { name: string; color: string }) =>
+    React.createElement('svg', { 'data-icon': name, 'data-color': color })
 }));
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children
+}));
+vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/LikeFeedbackButton', () => ({
+  default: () => null
+}));
+vi.mock('@/components/core/chat/ChatContainer/context/chatFeedbackContext', async () => {
+  const { createContext } = await import('use-context-selector');
+  return { ChatFeedbackContext: createContext(undefined) };
+});
+vi.mock('@/components/core/chat/ChatContainer/ChatBox', async () => {
+  const { useContextSelector } = await import('use-context-selector');
+  const { ChatRecordContext } = await import('@/web/core/chat/context/chatRecordContext');
+  const { default: VersionCard } =
+    await import('@/components/core/chat/components/AIResponseBox/WorkflowBuilder/RenderWorkflowBuilderVersion');
+  return {
+    default: ({ chatId }: { chatId: string }) => {
+      const records = useContextSelector(ChatRecordContext, (value) => value.chatRecords);
+      return React.createElement(
+        'div',
+        { 'data-chat-id': chatId },
+        records
+          .filter((record) => record.obj === ChatRoleEnum.AI)
+          .flatMap((record) =>
+            record.value.map(
+              (item, index) =>
+                item.workflowBuilderVersion &&
+                React.createElement(VersionCard, {
+                  key: `${record.dataId}:${index}`,
+                  version: item.workflowBuilderVersion,
+                  responseChatItemId: record.dataId
+                })
+            )
+          )
+      );
+    }
+  };
+});
 vi.mock('@/web/core/chat/context/chatItemContext', async () => {
   const { createContext } = await import('use-context-selector');
   return {
@@ -59,10 +101,27 @@ vi.mock('@/web/core/chat/context/chatItemContext', async () => {
 });
 vi.mock('@/web/core/chat/context/chatRecordContext', async () => {
   const { createContext } = await import('use-context-selector');
+  const ChatRecordContext = createContext({
+    chatRecords: [] as ChatSiteItemType[],
+    isChatRecordsLoaded: true,
+    setChatRecords: (() => {}) as React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>
+  });
   return {
-    default: ({ params, children }: { params: { chatId: string }; children: React.ReactNode }) =>
-      React.createElement('div', { 'data-record-chat-id': params.chatId }, children),
-    ChatRecordContext: createContext({ chatRecords: [], isChatRecordsLoaded: true })
+    default: ({ params, children }: { params: { chatId: string }; children: React.ReactNode }) => {
+      const [chatRecords, setChatRecords] = React.useState(mocks.records);
+      return React.createElement(
+        'div',
+        { 'data-record-chat-id': params.chatId },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: { chatRecords, setChatRecords, isChatRecordsLoaded: true }
+          },
+          children
+        )
+      );
+    },
+    ChatRecordContext
   };
 });
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', async () => {
@@ -134,6 +193,7 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    mocks.records = [];
     mocks.router.isReady = true;
     mocks.router.query = {};
     mocks.router.replace.mockResolvedValue(true);
@@ -161,6 +221,60 @@ describe('WorkflowBuilder ChatPanel session recovery', () => {
     if (mounted) await act(async () => root.unmount());
     dom.window.close();
     vi.unstubAllGlobals();
+  });
+
+  it('updates the version card and activity together without marking other messages or sessions', async () => {
+    const version: WorkflowBuilderVersion = {
+      versionNo: 1,
+      name: 'AI 生成版本 1',
+      filename: 'version-1.json',
+      checksum: `sha256:${'1'.repeat(64)}`,
+      generatedAt: '2026-10-19T00:00:00.000Z',
+      expiresAt: '2099-10-20T00:00:00.000Z'
+    };
+    const appliedVersion = { ...version, appliedAt: '2026-10-19T01:00:00.000Z' };
+    // 相同 checksum 可以出现在不同消息；只有指定 AI 消息的版本应被标记。
+    mocks.records = [ChatRoleEnum.Human, ChatRoleEnum.AI, ChatRoleEnum.AI].map((obj, index) => ({
+      id: `record-${index}`,
+      dataId: index === 0 ? 'response-1' : `response-${index}`,
+      obj,
+      status: ChatStatusEnum.finish,
+      value: [{ workflowBuilderVersion: version }]
+    }));
+    await render();
+    const update = {
+      appId: 'app-1',
+      chatId: 'saved-chat',
+      responseChatItemId: 'response-2',
+      version: appliedVersion
+    };
+    await act(async () => {
+      panelRef.current!.updateAppliedVersion({ ...update, appId: 'other-app' });
+      panelRef.current!.updateAppliedVersion({ ...update, chatId: 'old-chat' });
+      panelRef.current!.updateAppliedVersion({
+        ...update,
+        version: { ...appliedVersion, checksum: 'other-version' }
+      });
+    });
+    expect(document.body.textContent).not.toContain('workflow_builder_version_applied');
+
+    await act(async () => panelRef.current!.updateAppliedVersion(update));
+    expect(document.body.textContent?.match(/workflow_builder_version_applied/g)).toHaveLength(1);
+    expect(document.querySelectorAll('[data-color="myGray.600"]')).toHaveLength(1);
+    expect(mocks.onActivityChange.mock.lastCall![0].latestVersion).toEqual({
+      version: appliedVersion,
+      responseChatItemId: 'response-2'
+    });
+
+    // 新会话即使保留相同消息窗口，也不能接收旧会话的应用回写。
+    await act(async () => panelRef.current!.restartChat());
+    await act(async () =>
+      panelRef.current!.updateAppliedVersion({
+        ...update,
+        responseChatItemId: 'response-1'
+      })
+    );
+    expect(document.body.textContent?.match(/workflow_builder_version_applied/g)).toHaveLength(1);
   });
 
   it('restores server history after login clears the local session index before mounting the chat', async () => {
