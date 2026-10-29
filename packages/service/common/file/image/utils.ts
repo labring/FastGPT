@@ -1,4 +1,4 @@
-import { axios } from '../../api/axios';
+import { axios, axiosWithoutSSRF } from '../../api/axios';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { getAxiosContentType, getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { getLogger, LogCategories } from '../../logger';
@@ -116,6 +116,25 @@ export const guessBase64ImageType = (str: string): string => {
 };
 
 /**
+ * 判断一次图片下载是否命中调用方声明的可信 origin。
+ *
+ * 沙箱预览地址来自服务端配置（AGENT_SANDBOX_PREVIEW_PROXY_URL），可能部署在内网，
+ * 不能被公共 SSRF 内网拦截误杀；这类地址不是用户任意输入，因此允许对该 origin 走
+ * 受限通道。origin 之外的地址仍然走 safe axios，避免把“可信”扩大成任意内网访问。
+ */
+export const isTrustedOriginUrl = (url: string, trustedOrigin?: string) => {
+  if (!trustedOrigin) return false;
+
+  try {
+    const target = new URL(url, serverRequestBaseUrl);
+    const trusted = new URL(trustedOrigin, serverRequestBaseUrl);
+    return target.origin === trusted.origin;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * 下载远程图片并返回 Buffer。
  *
  * 该函数用于文档解析链路中转存 markdown http 图片，因此默认限制为 180 秒和 10MB：
@@ -127,6 +146,8 @@ export const getImageBuffer = async (
   options: {
     timeoutMs?: number;
     maxSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
   } = {}
 ) => {
   logger.debug('Load image to buffer', { url });
@@ -134,7 +155,8 @@ export const getImageBuffer = async (
   try {
     const timeoutMs = options.timeoutMs ?? DEFAULT_IMAGE_DOWNLOAD_TIMEOUT_MS;
     const maxSize = options.maxSize ?? DEFAULT_IMAGE_DOWNLOAD_MAX_SIZE;
-    const response = await axios.get(url, {
+    const requestClient = isTrustedOriginUrl(url, options.trustedOrigin) ? axiosWithoutSSRF : axios;
+    const response = await requestClient.get(url, {
       baseURL: serverRequestBaseUrl,
       responseType: 'stream',
       timeout: timeoutMs,
@@ -205,6 +227,8 @@ export const getImageBase64 = async (
     timeoutMs?: number;
     maxSize?: number;
     maxBase64BufferSize?: number;
+    /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
+    trustedOrigin?: string;
   } = {}
 ) => {
   logger.debug('Load image to base64', { url });
@@ -212,7 +236,8 @@ export const getImageBase64 = async (
   try {
     const { buffer, mime } = await getImageBuffer(url, {
       timeoutMs: options.timeoutMs,
-      maxSize: options.maxSize
+      maxSize: options.maxSize,
+      trustedOrigin: options.trustedOrigin
     });
     const maxBase64BufferSize = options.maxBase64BufferSize ?? DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE;
 

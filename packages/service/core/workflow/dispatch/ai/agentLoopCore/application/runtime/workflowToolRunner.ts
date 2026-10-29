@@ -104,7 +104,6 @@ export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {
 };
 
 // 结构化 content 的提取规则由 workflow 工具与 Agent V2 业务工具共用，实现在 domain 层。
-export { extractAgentLoopCoreToolContent };
 
 /**
  * 初始化阶段直接在传入的 runtime edge/node 上标记入口状态。
