@@ -391,6 +391,59 @@ docker compose up -d
 
 4. 执行初始化脚本（如果有）
 
+### 如何从 MinIO 迁移到 RustFS？
+
+`main` 版本的新部署默认使用 RustFS。已有 MinIO 部署不要直接替换 `docker-compose.yml`，否则会切换到空的 `fastgpt-rustfs` 数据卷。可以按下面步骤迁移对象数据：
+
+1. 保留旧部署运行，记录旧 MinIO 的 Access Key / Secret Key（内置 MinIO 对应 `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`）。
+2. 在新目录按正常安装流程生成新版 `docker-compose.yml`（例如运行 `install.sh`），先把 `fastgpt-rustfs` 的宿主机端口临时改成 `9010:9000` 和 `9011:9001`，避免和旧 MinIO 的 `9000/9001` 冲突，然后只启动 RustFS：
+
+   ```bash
+   docker compose up -d fastgpt-rustfs
+   ```
+
+   新凭据在 `docker-compose.yml` 的 `x-rustfs-access-key` / `x-rustfs-secret-key` 锚点中。
+
+3. 在宿主机安装 [MinIO Client](https://min.io/docs/minio/linux/reference/minio-mc.html)，创建目标桶并迁移两个桶：
+
+   ```bash
+   mc alias set old http://127.0.0.1:9000 <旧AccessKey> <旧SecretKey>
+   mc alias set new http://127.0.0.1:9010 <新AccessKey> <新SecretKey>
+   mc mb --ignore-existing new/fastgpt-public new/fastgpt-private
+   mc mirror --overwrite old/fastgpt-public new/fastgpt-public
+   mc mirror --overwrite old/fastgpt-private new/fastgpt-private
+   ```
+
+   如果旧部署改过 MinIO 的 `9000` 端口，请使用实际端口；如果改过 `STORAGE_PUBLIC_BUCKET` / `STORAGE_PRIVATE_BUCKET`，请换成实际桶名。
+
+4. 在旧部署目录停止 FastGPT 应用，冻结写入：
+
+   ```bash
+   docker compose stop fastgpt-app fastgpt-plugin
+   ```
+
+   然后重复执行第 3 步的 `mc mirror` 命令同步增量数据，并用 `mc du` 核对两个桶的对象数量和大小：
+
+   ```bash
+   mc mirror --overwrite old/fastgpt-public new/fastgpt-public
+   mc mirror --overwrite old/fastgpt-private new/fastgpt-private
+   mc du old/fastgpt-public new/fastgpt-public
+   mc du old/fastgpt-private new/fastgpt-private
+   ```
+
+5. 编辑新版 `docker-compose.yml`，把 RustFS 端口改回 `9000:9000` / `9001:9001`，停止旧部署并启动新部署：
+
+   ```bash
+   # 旧部署目录
+   docker compose down
+   # 新部署目录
+   docker compose up -d
+   ```
+
+   确认文件上传、下载和知识库文件访问正常后，再删除旧的 `fastgpt-minio` 数据卷；删除前保留该卷用于回滚。
+
+> `fastgpt-public` 的匿名只读策略会在 FastGPT 启动时自动设置，迁移完成后、FastGPT 启动前公开文件会返回 403；`fastgpt-private` 始终保持私有。
+
 ### 如何自定义环境变量？
 
 修改 `docker-compose.yml` 中 `fastgpt-app` 的 `environment` 配置，并执行 `docker compose up -d` 重启容器。具体配置参考[环境变量说明](../config/env.mdx)。
