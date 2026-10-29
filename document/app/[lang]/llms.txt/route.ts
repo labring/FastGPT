@@ -1,57 +1,71 @@
-import * as fs from 'node:fs/promises';
-import fg from 'fast-glob';
-import matter from 'gray-matter';
-import { remark } from 'remark';
-import remarkGfm from 'remark-gfm';
-import remarkStringify from 'remark-stringify';
-import remarkMdx from 'remark-mdx';
-import { remarkInclude } from 'fumadocs-mdx/config';
+import { source } from '@/lib/source';
+import { getFastGPTDocsOriginForLocale } from '@/lib/fastgpt-home-url';
 import { i18n } from '@/lib/i18n';
 
 export const revalidate = false;
 
-const includeMdxFiles = remarkInclude as unknown as typeof remarkMdx;
-
-const processor = remark()
-  .use(remarkMdx)
-  // https://fumadocs.vercel.app/docs/mdx/include
-  .use(includeMdxFiles)
-  // gfm styles
-  .use(remarkGfm)
-  // .use(your remark plugins)
-  .use(remarkStringify); // to string
-
-/** Export the requested edition, with deterministic ordering and no language fallback. */
+/** Export an llmstxt.org-compliant Markdown index of active documentation pages with canonical URLs. */
 export async function GET(_request: Request, { params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   if (!i18n.languages.includes(lang)) return new Response('Unknown language', { status: 404 });
 
-  const files = (await fg('./content/**/*.mdx'))
+  // 1. Filter active locale pages and exclude utility/deprecated/outdated upgrade notes.
+  const isEn = lang === 'en';
+  const domain = getFastGPTDocsOriginForLocale(isEn ? 'en' : 'zh-CN');
+  const pages = source
+    .getPages(lang)
     .filter(
-      (file) =>
-        file.endsWith('.en.mdx') === (lang === 'en') &&
-        !/\/toc(?:\.en)?\.mdx$/.test(file)
+      (page) =>
+        page.data._file.path.endsWith('.en.mdx') === isEn &&
+        !page.data.deprecated &&
+        !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path) &&
+        !page.data._file.path.startsWith('self-host/upgrading/outdated/')
     )
-    .sort();
+    .sort((a, b) => a.url.localeCompare(b.url));
 
-  const scan = files.map(async (file: string) => {
-    const fileContent = await fs.readFile(file);
-    const { content, data } = matter(fileContent.toString());
+  // 2. Group pages into reader-facing sections with localized section titles.
+  const sectionDefs = [
+    {
+      title: isEn ? 'Use FastGPT' : '使用 FastGPT',
+      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/guide/`)
+    },
+    {
+      title: isEn ? 'Developers & OpenAPI' : '开发者与 OpenAPI',
+      match: (pageUrl: string) =>
+        pageUrl.startsWith(`/${lang}/developers`) ||
+        pageUrl.startsWith(`/${lang}/openapi/`) ||
+        pageUrl.startsWith(`/${lang}/plugin/`)
+    },
+    {
+      title: isEn ? 'Deploy and Operate' : '部署与运维',
+      match: (pageUrl: string) =>
+        pageUrl === `/${lang}/self-host` || pageUrl.startsWith(`/${lang}/self-host/`)
+    },
+    {
+      title: isEn ? 'FAQ' : '常见问题',
+      match: (pageUrl: string) => pageUrl.startsWith(`/${lang}/faq/`)
+    }
+  ];
 
-    const processed = await processor.process({
-      path: file,
-      value: content
-    });
+  // 3. Render the llmstxt.org Markdown header and section lists.
+  const header = isEn
+    ? `# FastGPT Documentation\n\n> Official documentation for FastGPT: AI agent building, knowledge base RAG, visual workflow orchestration, System OpenAPI, plugins, and self-hosted operations.\n\n- [Full Documentation Corpus](${domain}/${lang}/llms-full.txt): Complete Markdown text of all active FastGPT documentation topics.`
+    : `# FastGPT 文档\n\n> FastGPT 官方文档：涵盖 AI Agent 构建、知识库 RAG、可视化工作流编排、System OpenAPI、插件开发与私有化部署运维。\n\n- [完整文档语料库](${domain}/${lang}/llms-full.txt): 全部现行 FastGPT 文档页面的完整 Markdown 正文。`;
 
-    return `file: ${file}
-meta: ${JSON.stringify(data, null, 2)}
+  const sections = sectionDefs
+    .map((section) => {
+      const items = pages
+        .filter((page) => section.match(page.url))
+        .map((page) => {
+          const desc = page.data.description ? `: ${page.data.description}` : '';
+          return `- [${page.data.title}](${domain}${page.url})${desc}`;
+        });
+      return items.length > 0 ? `## ${section.title}\n\n${items.join('\n')}` : '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
 
-${processed}`;
-  });
-
-  const scanned = await Promise.all(scan);
-
-  return new Response(scanned.join('\n\n'), {
+  return new Response(`${header}\n\n${sections}\n`, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' }
   });
 }

@@ -18,7 +18,7 @@ export function GET() {
 
   const pages = source
     .getPages(locale)
-    .filter((page) => !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path));
+    .filter((page) => !page.data.deprecated && !/^toc(?:\.en)?\.mdx$/.test(page.data._file.path));
 
   const urlEntries = pages
     .map((page) => {

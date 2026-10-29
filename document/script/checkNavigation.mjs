@@ -19,11 +19,15 @@ const files = fs.readdirSync(root, { recursive: true })
         `Empty image alt text in ${name}`
       );
       if (!/^toc(?:\.en)?\.mdx$/.test(name)) {
-        const minDescLength = name.endsWith('.en.mdx') ? 40 : 20;
+        const minDescLength = name.endsWith('.en.mdx') ? 60 : 20;
+        const descLength = String(data.description ?? '').trim().length;
         assert.ok(
-          String(data.description ?? '').trim().length >= minDescLength,
+          descLength >= minDescLength,
           `Description below ${minDescLength} characters in ${name}`
         );
+        if (name.endsWith('.en.mdx')) {
+          assert.ok(descLength <= 160, `Description above 160 characters in ${name}`);
+        }
       }
       return { type: 'page', path: name, data };
     }

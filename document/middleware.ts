@@ -12,28 +12,48 @@ const exactMap: Record<string, string> = {
 
   // Version / home.
   '/commercial/intro': '/guide/version/commercial',
-  '/shopping_cart/intro': '/guide/version/commercial',
   '/introduction': defaultHomePath,
   '/introduction/community': defaultHomePath,
-  '/introduction/shopping_cart/intro': '/guide/version/commercial',
   '/introduction/cloud': '/guide/version/cloud/intro',
   '/introduction/opensource': '/guide/version/opensource/intro',
   '/introduction/version': '/guide/version/commercial',
+  '/protocol': '/guide/version/opensource/license',
+  '/protocol/open-source': '/guide/version/opensource/license',
   '/protocol/terms': '/guide/version/cloud/terms',
   '/protocol/privacy': '/guide/version/cloud/privacy',
 
   // Self-host.
   '/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   '/upgrading': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading': '/self-host/upgrading/upgrade-instruction',
   '/self-host/upgrading/intro': '/self-host/upgrading/upgrade-instruction',
   // Pre-rename misspellings of the upgrade page keep resolving.
   '/self-host/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
   '/upgrading/upgrade-intruction': '/self-host/upgrading/upgrade-instruction',
+  '/self-host/upgrading/4-12': '/self-host/upgrading/4-12/4124',
+  '/self-host/upgrading/4-12/4125': '/self-host/upgrading/4-12/4124',
+  '/self-host/upgrading/4-13': '/self-host/upgrading/4-13/4132',
+  '/self-host/upgrading/4-14': '/self-host/upgrading/4-14/41431',
+  '/self-host/upgrading/4-14/41930': '/self-host/upgrading/4-14/4143',
+  '/self-host/upgrading/4-15': '/self-host/upgrading/4-15/4158',
   '/self-host/upgrading/4-15/4150': '/self-host/upgrading/4-15/41500',
+  '/self-host/upgrading/4-16': '/self-host/upgrading/4-16/4162',
   '/self-host/upgrading/4-16/4163': '/self-host/upgrading/4-17/4170',
+  '/self-host/upgrading/4-17': '/self-host/upgrading/4-17/4173',
+  '/self-host/upgrading/outdated': '/self-host/upgrading/outdated/4111',
+  '/self-host/upgrading/outdated/4112': '/self-host/upgrading/outdated/4111',
   '/development/docker': '/self-host/deploy/docker',
   '/development/sealos': '/self-host/deploy/sealos',
   '/development/intro': '/self-host/dev',
+  '/self-host/quick-start': '/self-host/deploy/docker',
+  '/self-host/community': defaultHomePath,
+  '/self-host/custom-models': '/self-host/config/model/intro',
+  '/self-host/config': '/self-host/config/model/intro',
+  '/self-host/config/sandbox': '/self-host/config/sandbox/opensandbox',
+  '/self-host/deploy': '/self-host/deploy/docker',
+  '/self-host/design': '/self-host/design/dataset',
+  '/self-host/migration': '/self-host/migration/docker_db',
+  '/self-host/troubleshooting': '/self-host/troubleshooting/attention',
   '/self-host/object-storage': '/self-host/config/object-storage',
   '/self-host/configuration': '/self-host/config/env',
   '/self-host/signoz': '/self-host/config/signoz',
@@ -62,6 +82,7 @@ const exactMap: Record<string, string> = {
 
   // Knowledge base third-party pages moved under dataset/third-party.
   '/guide/knowledge_base': '/guide/dataset/rag',
+  '/guide/dataset/externalFile': '/guide/dataset/third-party/third_dataset',
   '/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
   '/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
   '/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
@@ -91,10 +112,33 @@ const exactMap: Record<string, string> = {
   '/guide/plugins/design_plugin': '/plugin/intro',
   '/guide/plugins/dev_system_tool': '/plugin/system-tool-development',
   '/guide/build/tools/system-plugins/dev_system_tool': '/plugin/system-tool-development',
+  '/guide/build/tools/system-plugins/how_to_submit_system_plugin': '/plugin/system-tool-development',
   '/guide/build/tools/system-plugins/bing_search_plugin': '/plugin/team-installation',
   '/guide/build/tools/system-plugins/doc2x_plugin_guide': '/plugin/team-installation',
   '/guide/build/tools/system-plugins/google_search_plugin_guide': '/plugin/team-installation',
   '/guide/build/tools/system-plugins/searxng_plugin_guide': '/plugin/team-installation',
+  '/guide/build/publish/iframe_integration': '/guide/build/publish/link',
+  '/guide/build/publish/onwechat': '/guide/build/publish/wechat',
+
+  // Section folder landings.
+  '/guide/build': '/guide/build/chat-agent',
+  '/guide/build/agentv2': '/guide/build/agentv2/settings',
+  '/guide/build/general': '/guide/build/general/ai_settings',
+  '/guide/build/publish': '/guide/build/publish/versions',
+  '/guide/build/skill': '/guide/build/skill/intro',
+  '/guide/build/tools': '/guide/build/tools/overview',
+  '/guide/build/tools/system-plugins': '/guide/build/tools/system-plugins/upload_system_tool',
+  '/guide/build/workflow': '/guide/build/workflow/intro',
+  '/guide/build/workflow/nodes': '/guide/build/workflow/nodes/ai_chat',
+  '/guide/chat': '/guide/chat/html',
+  '/guide/dataset': '/guide/dataset/lifecycle',
+  '/guide/dataset/third-party': '/guide/dataset/third-party/api_dataset',
+  '/guide/getting-started/examples': '/guide/getting-started/examples/email-assistant',
+  '/guide/version': '/guide/version/cloud/intro',
+  '/guide/version/cloud': '/guide/version/cloud/intro',
+  '/guide/version/opensource': '/guide/version/opensource/intro',
+  '/guide/workspace': '/guide/workspace/team/team_roles_permissions',
+  '/guide/workspace/team': '/guide/workspace/team/team_roles_permissions',
 
   // Workspace.
   '/introduction/commercial': '/guide/version/commercial',
@@ -119,6 +163,7 @@ const exactMap: Record<string, string> = {
   '/guide': defaultHomePath,
   '/use-cases': defaultHomePath,
   '/openapi': '/openapi/intro',
+  '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
   '/plugin': '/plugin/intro',
   '/faq': '/faq/chat'
@@ -128,8 +173,8 @@ const exactMap: Record<string, string> = {
 const prefixMap: Record<string, string> = {
   '/introduction/FAQ': '/faq',
   '/FAQ': '/faq',
-  '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
+  '/introduction/openapi': '/openapi',
   '/introduction/guide': '/guide',
   '/introduction/development': '/development',
   '/development/openapi': '/openapi',
@@ -168,6 +213,9 @@ function applyRedirectMaps(path: string): string | null {
   const matchesPrefix = (prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
   if (path in exactMap) return exactMap[path];
   if (matchesPrefix('/use-cases/app-cases')) return '/guide/getting-started';
+  if (matchesPrefix('/shopping_cart') || matchesPrefix('/introduction/shopping_cart')) {
+    return '/guide/version/commercial';
+  }
   if (matchesPrefix('/introduction/development/proxy') || matchesPrefix('/self-host/proxy')) {
     return '/self-host/deploy/docker';
   }

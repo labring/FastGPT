@@ -21,14 +21,31 @@ test('tutorial downloads preserve their bytes for both language preferences', as
 
 for (const locale of ['zh-CN', 'en']) {
   test(`${locale} machine-readable export contains only the requested language`, async () => {
+    const host = locale === 'en' ? 'doc.fastgpt.io' : 'doc.fastgpt.cn';
     const response = await fetch(`${origin}/${locale}/llms.txt`);
     assert.equal(response.status, 200);
     const body = await response.text();
-    const files = [...body.matchAll(/^file: (.+)$/gm)].map((match) => match[1]);
-    assert.ok(files.length >= 257, 'Every documentation topic is exported');
+    assert.ok(body.includes(`https://${host}/${locale}/llms-full.txt`));
+    assert.ok(body.includes(`https://${host}/${locale}/guide/getting-started`));
+    assert.ok(!body.includes(`/${locale}/toc`));
+    assert.ok(!body.includes(`/${locale}/openapi/legacy/`));
+    assert.ok(!body.includes(`/${locale}/self-host/upgrading/outdated/`));
+    assert.match(response.headers.get('content-type'), /text\/plain/);
+
+    const fullResponse = await fetch(`${origin}/${locale}/llms-full.txt`);
+    assert.equal(fullResponse.status, 200);
+    const fullBody = await fullResponse.text();
+    const files = [...fullBody.matchAll(/^file: (.+)$/gm)].map((match) => match[1]);
+    const urls = [...fullBody.matchAll(/^url: (.+)$/gm)].map((match) => match[1]);
+    const titles = [...fullBody.matchAll(/^title: (.+)$/gm)].map((match) => match[1]);
+    assert.ok(files.length >= 180, 'Active documentation topics are exported');
+    assert.equal(urls.length, files.length, 'Every exported file includes its canonical URL');
+    assert.equal(titles.length, files.length, 'Every exported file includes its title');
     assert.ok(files.every((file) => file.endsWith('.en.mdx') === (locale === 'en')));
     assert.ok(files.every((file) => !/\/toc(?:\.en)?\.mdx$/.test(file)));
-    assert.match(response.headers.get('content-type'), /text\/plain/);
+    assert.ok(files.every((file) => !file.includes('/self-host/upgrading/outdated/')));
+    assert.ok(urls.every((url) => url.startsWith(`https://${host}/${locale}/`)));
+    assert.match(fullResponse.headers.get('content-type'), /text\/plain/);
   });
 }
 
@@ -61,7 +78,7 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     }
     assert.ok(html.includes('<link rel="alternate" hrefLang="x-default" href="https://doc.fastgpt.io/en/openapi/intro"'));
     assert.ok(html.includes('"@type":"TechArticle"'));
-    assert.ok(html.includes(`https://${host}/favicon/favicon.svg`));
+    assert.ok(html.includes(`https://${host}/favicon/android-chrome-512x512.png`));
     assert.ok(html.includes(`https://${host}/og-image.png`));
     assert.ok(html.includes('/og-image.png'));
     const filename = locale === 'en' ? 'intro.en.mdx' : 'intro.mdx';
@@ -80,7 +97,34 @@ for (const [locale, host] of [['zh-CN', 'doc.fastgpt.cn'], ['en', 'doc.fastgpt.i
     const urls = breadcrumb.itemListElement.map((item) => item.item);
     assert.equal(new Set(urls).size, urls.length, 'BreadcrumbList URLs are unique');
 
-    for (const noindexRoute of [`/${locale}/toc`, `/${locale}/guide/chat/htmlRendering`]) {
+    const deepResponse = await fetch(`${origin}/${locale}/guide/build/workflow/nodes/ai_chat`);
+    assert.equal(deepResponse.status, 200);
+    const deepHtml = await deepResponse.text();
+    const deepScripts = [...deepHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
+      JSON.parse(m[1])
+    );
+    const deepBreadcrumb = deepScripts.find((item) => item['@type'] === 'BreadcrumbList');
+    assert.ok(deepBreadcrumb && deepBreadcrumb.itemListElement.length >= 3, 'Deep page retains intermediate folder hierarchy');
+    assert.equal(
+      deepBreadcrumb.itemListElement.at(-1).name,
+      locale === 'en' ? 'AI Chat' : 'AI 对话'
+    );
+
+    const faqResponse = await fetch(`${origin}/${locale}/faq/chat`);
+    assert.equal(faqResponse.status, 200);
+    const faqHtml = await faqResponse.text();
+    const faqScripts = [...faqHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) =>
+      JSON.parse(m[1])
+    );
+    const faqSchema = faqScripts.find((item) => item['@type'] === 'FAQPage');
+    assert.ok(faqSchema && faqSchema.mainEntity.length > 0, 'FAQPage JSON-LD present on FAQ page');
+
+    for (const noindexRoute of [
+      `/${locale}/toc`,
+      `/${locale}/guide/chat/htmlRendering`,
+      `/${locale}/openapi/legacy/app`,
+      `/${locale}/guide/build/workflow/nodes/loop`
+    ]) {
       const res = await fetch(`${origin}${noindexRoute}`);
       assert.equal(res.status, 200, noindexRoute);
       const body = await res.text();
@@ -151,5 +195,12 @@ test('social preview image and static search export satisfy discovery contracts'
   assert.equal(staticResponse.status, 200);
   const records = await staticResponse.json();
   assert.ok(Array.isArray(records) && records.length > 0);
-  assert.ok(records.every((record) => !/\/toc$/.test(record.url)));
+  assert.ok(
+    records.every(
+      (record) =>
+        !/\/toc$/.test(record.url) &&
+        !record.url.includes('/openapi/legacy/') &&
+        !record.url.endsWith('/guide/chat/htmlRendering')
+    )
+  );
 });

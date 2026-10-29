@@ -202,6 +202,21 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(getDocPath('/guide/version/cloud/privacy')).toBe(
       'https://docs.example.com/guide/version/cloud/privacy'
     );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.cn';
+    });
+    expect(getDocPath('/guide/version/cloud/privacy')).toBe(
+      'https://doc.fastgpt.cn/zh-CN/guide/version/cloud/privacy'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://doc.fastgpt.io';
+    });
+    expect(getDocPath('/guide/version/cloud/privacy')).toBe(
+      'https://doc.fastgpt.io/en/guide/version/cloud/privacy'
+    );
+    useSystemStore.setState((state) => {
+      state.feConfigs.docUrl = 'https://docs.example.com';
+    });
 
     global.subPlans = { extraDatasetSize: { price: 8 } };
     mocks.referer = '';

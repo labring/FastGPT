@@ -10,7 +10,7 @@ export function GET() {
   const results: DocumentRecord[] = [];
 
   for (const page of source.getPages(getFastGPTDocsLocale())) {
-    if (/^toc(?:\.en)?\.mdx$/.test(page.data._file.path)) continue;
+    if (page.data.deprecated || /^toc(?:\.en)?\.mdx$/.test(page.data._file.path)) continue;
     results.push({
       _id: page.url,
       structured: page.data.structuredData,

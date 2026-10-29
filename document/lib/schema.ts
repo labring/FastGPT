@@ -1,4 +1,4 @@
-import type { BreadcrumbList, TechArticle, WithContext } from 'schema-dts';
+import type { BreadcrumbList, FAQPage, TechArticle, WithContext } from 'schema-dts';
 
 /** Build a TechArticle JSON-LD object with a host-aligned publisher logo URL. */
 export function generateArticleSchema(params: {
@@ -32,9 +32,44 @@ export function generateArticleSchema(params: {
       name: 'FastGPT',
       logo: {
         '@type': 'ImageObject',
-        url: `${origin}/favicon/favicon.svg`
+        url: `${origin}/favicon/android-chrome-512x512.png`
       }
     }
+  };
+}
+
+/** Build a FAQPage JSON-LD object from Fumadocs structured headings and section contents. */
+export function generateFaqSchema(params: {
+  headings?: Array<{ id: string; content: string }>;
+  contents?: Array<{ heading?: string; content: string }>;
+}): WithContext<FAQPage> | null {
+  const headings = params.headings ?? [];
+  const contents = params.contents ?? [];
+  const nonQuestionHeadingPattern = /^(?:\d+\.\s+|下一步$|Next\s+steps?$)/i;
+  const mainEntity = headings
+    .map((heading) => {
+      const answerText = contents
+        .filter((item) => item.heading === heading.id && item.content.trim().length > 0)
+        .map((item) => item.content.trim())
+        .join('\n\n');
+      const name = heading.content.trim();
+      if (!name || !answerText || nonQuestionHeadingPattern.test(name)) return null;
+      return {
+        '@type': 'Question' as const,
+        name,
+        acceptedAnswer: {
+          '@type': 'Answer' as const,
+          text: answerText
+        }
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  if (mainEntity.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity
   };
 }
 
