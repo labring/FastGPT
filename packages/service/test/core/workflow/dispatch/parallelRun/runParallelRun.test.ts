@@ -1,3 +1,5 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
@@ -20,7 +22,8 @@ import {
 
 const runWorkflowMock = vi.fn();
 
-vi.mock('@fastgpt/global/common/system/utils', () => ({
+vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   batchRun: async (list: any[], handler: (item: any, index: number) => Promise<any>) =>
     Promise.all(list.map((item, index) => handler(item, index)))
 }));
@@ -29,14 +32,20 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   runWorkflow: (args: any) => runWorkflowMock(args)
 }));
 
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    WORKFLOW_MAX_LOOP_TIMES: 10,
-    WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
-  }
-}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      WORKFLOW_MAX_LOOP_TIMES: 10,
+      WORKFLOW_PARALLEL_MAX_CONCURRENCY: 3
+    }
+  };
+});
 
 import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const createNodeResponseSinkMock = () => ({
   publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
@@ -128,6 +137,88 @@ const makeProps = (override: Record<string, any> = {}) => {
 };
 
 describe('dispatchParallelRun', () => {
+  it.each([new Error('task state clone failed'), undefined])(
+    'returns task-local exceptions to dispatch without logging or merging them: %s',
+    async (error) => {
+      const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+      warn.mockClear();
+      const props = makeProps();
+      props.params.loopInputArray = ['a', 'b'];
+      props.variableState.clone.mockImplementation(() => {
+        throw error;
+      });
+      try {
+        const result = await dispatchParallelRun(props);
+        expect(Object.hasOwn(result, 'rawError')).toBe(true);
+        expect(result.rawError).toBe(error);
+        expect(warn).not.toHaveBeenCalled();
+        expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+        expect(runWorkflowMock).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
+
+  it('does not return an old task-local exception after a successful retry', async () => {
+    const props = makeProps();
+    props.params.parallelRunMaxRetryTimes = 1;
+    props.variableState.clone.mockImplementationOnce(() => {
+      throw new Error('transient state clone failure');
+    });
+    runWorkflowMock.mockResolvedValueOnce(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'recovered'
+          })
+        ]
+      })
+    );
+
+    const result = await dispatchParallelRun(props);
+
+    expect(props.variableState.clone).toHaveBeenCalledTimes(2);
+    expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+    expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(ParallelRunStatusEnum.success);
+    expect(result.data?.[NodeOutputKeyEnum.parallelSuccessResults]).toEqual(['recovered']);
+  });
+
+  it.each([false, true])(
+    'aggregates child task status without promoting its raw exception: fails=%s',
+    async (fails) => {
+      const error = new UserConfigError('Invalid key');
+      runWorkflowMock.mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem(
+              fails ? 'chatNode' : 'nestedEnd',
+              fails
+                ? { error: error.message }
+                : { moduleType: FlowNodeTypeEnum.nestedEnd, loopOutputValue: 'done' }
+            )
+          ]
+        })
+      );
+      const props = makeProps();
+      const result = await dispatchParallelRun(props);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+      expect(Object.hasOwn(props.nodeSummary, 'error')).toBe(false);
+      expect(result.data?.[NodeOutputKeyEnum.parallelStatus]).toBe(
+        fails ? ParallelRunStatusEnum.failed : ParallelRunStatusEnum.success
+      );
+      if (fails) {
+        expect(result.data?.[NodeOutputKeyEnum.parallelFullResults]).toMatchObject([
+          { success: false, message: error.message }
+        ]);
+      }
+
+      expect(result.responseData).not.toHaveProperty('error');
+    }
+  );
+
   beforeEach(() => {
     runWorkflowMock.mockReset();
   });
@@ -215,7 +306,7 @@ describe('dispatchParallelRun', () => {
         makeDispatchFlowResponse({
           workflowRuntimeSummary: {
             ...createWorkflowRuntimeSummary(),
-            hasError: true,
+            errorCount: 1,
             llmInputTokens: 11,
             llmOutputTokens: 2
           },
@@ -281,7 +372,7 @@ describe('dispatchParallelRun', () => {
     expect(props.nodeSummary).toMatchObject({
       llmInputTokens: 34,
       llmOutputTokens: 7,
-      hasError: false,
+      errorCount: 0,
       hasNestedEnd: false
     });
   });

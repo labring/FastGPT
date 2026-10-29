@@ -167,8 +167,8 @@ const toToolRunResult = <TChildrenResponse = unknown>(
   result: AgentLoopCoreToolRunResult<TChildrenResponse>;
   flowResponse: AgentLoopCoreToolRunFlowResponse;
 } => {
-  const errorMessage = toolRunResponse.workflowRuntimeSummary?.hasError
-    ? toolRunResponse.workflowRuntimeSummary.errorText || 'Tool execution failed'
+  const errorMessage = !!toolRunResponse.workflowRuntimeSummary?.errorCount
+    ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
     : undefined;
 
   const rawToolResponses = toolRunResponse.toolResponses;
