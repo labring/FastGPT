@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { Readable } from 'node:stream';
+import {
+  createExternalHttpFileSource,
+  createS3FileSource
+} from '@fastgpt/service/common/file/read/source';
 
 // Hoist all mock functions so they're available in vi.mock factories
 const {
   mockReadRawContentFromBuffer,
   mockReadRawContentFromSource,
   mockAxiosPost,
+  mockReadExternalFileBuffer,
   mockSomarkParsePDF,
   mockDoc2xParsePDF,
   mockTextinParsePDF,
@@ -42,6 +48,7 @@ const {
     formatText: 'source-content'
   }),
   mockAxiosPost: vi.fn(),
+  mockReadExternalFileBuffer: vi.fn(),
   mockSomarkParsePDF: vi.fn().mockResolvedValue({
     pages: 2,
     text: 'somark-parsed-text'
@@ -83,6 +90,10 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/common/file/read/external', () => ({
+  readExternalFileBuffer: mockReadExternalFileBuffer
+}));
+
 vi.mock('@fastgpt/service/thirdProvider/doc2x', () => ({
   useDoc2xServer: vi.fn(() => ({
     parsePDF: mockDoc2xParsePDF
@@ -110,7 +121,8 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createPdfParseUsage: mockCreatePdfParseUsage
 }));
 
-vi.mock('@fastgpt/service/common/s3/utils', () => ({
+vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/common/s3/utils')>()),
   uploadImage2S3Bucket: mockUploadImage2S3Bucket
 }));
 
@@ -332,6 +344,9 @@ describe('readFileContentByBuffer', () => {
       'http://custom-pdf-service.com/parse',
       expect.anything(),
       expect.objectContaining({ timeout: 1200000 })
+    );
+    expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+      'Content-Disposition: form-data; name="file"; filename="file.pdf"'
     );
   });
 
@@ -965,6 +980,142 @@ describe('readFileContentBySource', () => {
       formatText: 'source-content'
     });
   });
+
+  it.each([
+    ['Annual Report 2026.pdf', 'Annual Report 2026.pdf'],
+    ['广州环际云计算有限公司商标驳回通知书.PDF', '广州环际云计算有限公司商标驳回通知书.pdf'],
+    ['Annual.Report.2026.Pdf', 'Annual.Report.2026.pdf']
+  ])('自定义解析请求保留文件名主体并统一使用小写后缀：%s', async (filename, expectedFilename) => {
+    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    mockAxiosPost.mockResolvedValueOnce({
+      data: { pages: 1, markdown: 'parsed-content' }
+    });
+    const buffer = Buffer.from('pdf-content');
+    const source = createS3FileSource({
+      sizeBytes: buffer.length,
+      metadata: { filename },
+      getStream: async () => Readable.from([buffer])
+    });
+
+    await expect(
+      readFileContentBySource({ teamId, tmbId, source, customPdfParse: true })
+    ).resolves.toMatchObject({ rawText: 'parsed-content', sourceMetadata: { filename } });
+
+    const multipart = mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8');
+    expect(multipart).toContain(
+      'Content-Disposition: form-data; name="file"; filename="' + expectedFilename + '"'
+    );
+    expect(multipart).toContain('Content-Type: application/pdf');
+    expect(multipart).toContain('pdf-content');
+  });
+
+  it.each([undefined, '', ' \t '])('来源缺少文件名时保留默认名称（%s）', async (filename) => {
+    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
+    const buffer = Buffer.from('pdf-content');
+    const source = createS3FileSource({
+      sizeBytes: buffer.length,
+      metadata: { filename, extension: 'pdf' },
+      getStream: async () => Readable.from([buffer])
+    });
+
+    await readFileContentBySource({ teamId, tmbId, source, customPdfParse: true });
+
+    expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+      'Content-Disposition: form-data; name="file"; filename="file.pdf"'
+    );
+  });
+
+  it.each(['年度报表', '年度报表.'])('来源原名没有有效后缀时补全格式（%s）', async (filename) => {
+    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
+    const buffer = Buffer.from('pdf-content');
+    const source = createS3FileSource({
+      sizeBytes: buffer.length,
+      metadata: { filename, contentType: 'application/pdf' },
+      getStream: async () => Readable.from([buffer])
+    });
+
+    await readFileContentBySource({ teamId, tmbId, source, customPdfParse: true });
+
+    expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+      'Content-Disposition: form-data; name="file"; filename="年度报表.pdf"'
+    );
+  });
+
+  it.each([
+    ['folder/"report"\r\n.pdf', 'folder__report___.pdf'],
+    ['folder\\report.pdf', 'folder_report.pdf']
+  ])('文件名不会破坏 multipart 请求头（%s）', async (filename, expectedFilename) => {
+    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
+    const buffer = Buffer.from('pdf-content');
+    const source = createS3FileSource({
+      sizeBytes: buffer.length,
+      metadata: { filename, extension: 'pdf' },
+      getStream: async () => Readable.from([buffer])
+    });
+
+    await readFileContentBySource({ teamId, tmbId, source, customPdfParse: true });
+
+    expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+      'Content-Disposition: form-data; name="file"; filename="' + expectedFilename + '"\r\n'
+    );
+  });
+
+  it('自定义解析请求以物化格式修正来源文件名后缀', async () => {
+    global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+    mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
+    const buffer = Buffer.from('pdf-content');
+    const source = createS3FileSource({
+      sizeBytes: buffer.length,
+      metadata: { filename: 'Annual Report 2026.txt', extension: 'pdf' },
+      getStream: async () => Readable.from([buffer])
+    });
+
+    await readFileContentBySource({ teamId, tmbId, source, customPdfParse: true });
+
+    const multipart = mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8');
+    expect(multipart).toContain(
+      'Content-Disposition: form-data; name="file"; filename="Annual Report 2026.pdf"'
+    );
+    expect(multipart).toContain('Content-Type: application/pdf');
+  });
+
+  it.each([
+    ["attachment; filename*=UTF-8''" + encodeURIComponent('年度财务报表.pdf'), '年度财务报表.pdf'],
+    ['attachment; filename="report.pdf "', 'report.pdf'],
+    [
+      "attachment; filename*=UTF-8''" + encodeURIComponent(' \t年度财务 报表.PDF \t'),
+      '年度财务 报表.pdf'
+    ]
+  ])(
+    '自定义解析请求规范化 HTTP 下载返回的真实文件名（%s）',
+    async (contentDisposition, filename) => {
+      global.systemEnv.customPdfParse = { url: 'http://custom-pdf-service.test/parse' };
+      mockAxiosPost.mockResolvedValueOnce({ data: { pages: 1, markdown: 'parsed-content' } });
+      mockReadExternalFileBuffer.mockResolvedValueOnce({
+        buffer: Buffer.from('pdf-content'),
+        contentType: 'application/pdf',
+        contentDisposition
+      });
+      const source = createExternalHttpFileSource({
+        url: 'https://example.com/download',
+        maxSizeBytes: 1024,
+        metadata: { filename: 'download.pdf' }
+      });
+
+      await readFileContentBySource({ teamId, tmbId, source, customPdfParse: true });
+
+      expect(mockReadExternalFileBuffer).toHaveBeenCalledTimes(1);
+      expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+        'Content-Disposition: form-data; name="file"; filename="' + filename + '"'
+      );
+      expect(mockAxiosPost.mock.calls[0][1].getBuffer().toString('utf-8')).toContain(
+        'Content-Type: application/pdf'
+      );
+    }
+  );
 
   it.each(['file.xlsx', 'file.csv', 'unknown'])(
     'keeps unselected sources in the worker without materializing them (%s)',

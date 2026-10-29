@@ -1,6 +1,7 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
+  NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -57,7 +58,9 @@ export const getInputReferenceSourceNodes = ({
     getNodeById: (id) => nodesById.get(id),
     edges: document.executionEdges.map((edge) => ({
       source: edge.source.nodeId,
-      target: edge.target.nodeId
+      target: edge.target.nodeId,
+      targetHandle:
+        edge.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
     })),
     includeChildren: input.canEdit === true,
     childrenNodeIdListMap: {

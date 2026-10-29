@@ -314,17 +314,21 @@ const MultipleReferenceSelector = ({
 }: SelectProps<true>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
-      if (!value) return [];
+      if (!value) return {};
 
       const firstColumn = list.find((item) => item.value === value[0]);
       if (!firstColumn) {
-        return [];
+        return {};
       }
       const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
       if (!secondColumn) {
-        return [];
+        return {};
       }
-      return [firstColumn.label, secondColumn.label];
+      return {
+        nodeName: firstColumn.name || firstColumn.label,
+        avatar: firstColumn.name ? firstColumn.avatar : undefined,
+        outputName: secondColumn.label
+      };
     },
     [list]
   );
@@ -333,14 +337,7 @@ const MultipleReferenceSelector = ({
   const formatList = useMemo(() => {
     if (!value || !Array.isArray(value)) return [];
 
-    return value.map((item) => {
-      const [nodeName, outputName] = getSelectValue(item);
-      return {
-        rawValue: item,
-        nodeName,
-        outputName
-      };
-    });
+    return value.map((item) => ({ rawValue: item, ...getSelectValue(item) }));
   }, [getSelectValue, value]);
 
   const validList = useMemo(() => {
@@ -365,7 +362,9 @@ const MultipleReferenceSelector = ({
           validList.length > 0 ? (
             <Grid
               py={3}
-              gridTemplateColumns={'1fr 1fr'}
+              w={'100%'}
+              minW={0}
+              gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
               gap={2}
               fontSize={'sm'}
               fontWeight={'normal'}
@@ -376,11 +375,12 @@ const MultipleReferenceSelector = ({
                 }
               }}
             >
-              {validList.map(({ nodeName, outputName }, index) => {
+              {validList.map(({ nodeName, outputName, avatar }, index) => {
                 return (
                   <Flex
                     key={index}
                     w={'100%'}
+                    minW={0}
                     alignItems={'center'}
                     bg={'primary.50'}
                     color={'myGray.900'}
@@ -388,15 +388,42 @@ const MultipleReferenceSelector = ({
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
-                      {nodeName}
+                    <Flex alignItems={'center'} flex={'1 1 0'} minW={0}>
+                      <Flex alignItems={'center'} flex={'0 1 auto'} minW={0}>
+                        {!!avatar && (
+                          <Avatar src={avatar} w={'1rem'} borderRadius={'xs'} flexShrink={0} />
+                        )}
+                        <Box
+                          ml={avatar ? 1 : 0}
+                          minW={0}
+                          maxW={'10ch'}
+                          flex={'0 1 auto'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                          title={typeof nodeName === 'string' ? nodeName : undefined}
+                        >
+                          {nodeName}
+                        </Box>
+                      </Flex>
                       <MyIcon
                         name={'common/rightArrowLight'}
                         mx={1}
                         w={'12px'}
+                        flexShrink={0}
                         color={'myGray.500'}
                       />
-                      {outputName}
+                      <Box
+                        minW={0}
+                        maxW={'10ch'}
+                        flex={'0 1 auto'}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                        whiteSpace={'nowrap'}
+                        title={outputName}
+                      >
+                        {outputName}
+                      </Box>
                     </Flex>
                     <MyIcon
                       className="delete"
@@ -404,6 +431,7 @@ const MultipleReferenceSelector = ({
                       name={'common/closeLight'}
                       w={'1rem'}
                       ml={1}
+                      flexShrink={0}
                       cursor={'pointer'}
                       color={'myGray.500'}
                       _hover={{

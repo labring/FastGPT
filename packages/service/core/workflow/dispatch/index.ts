@@ -1006,6 +1006,11 @@ export class WorkflowQueue {
           moduleType: node.flowNodeType,
           moduleLogo: node.avatar,
           ...nodeResponse,
+          // 工具类型也能作为画布普通节点执行，不能仅凭类型把错误当成模型可恢复的工具结果。
+          ...(node.flowNodeType === FlowNodeTypeEnum.tool ||
+          node.flowNodeType === FlowNodeTypeEnum.toolSet
+            ? { isToolCall: this.data.isToolCall === true }
+            : {}),
           ...(nodeResponse?.childResponseCount === undefined &&
           currentNodeChildResponseCount !== undefined
             ? { childResponseCount: currentNodeChildResponseCount }

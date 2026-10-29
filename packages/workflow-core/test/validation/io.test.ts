@@ -49,11 +49,11 @@ const makeInput = (overrides: Partial<Input> = {}): Input => ({
   ...overrides
 });
 
-/** 工具上下文通过实际的 selectedTools 边表达，不用 mock 输入来源判断。 */
+/** 工具上下文用上游 → 调用者 → selectedTools 子节点表达，区分可用上游与尚未完成的调用者。 */
 const check = (node: StoreNodeItemType, isTool = false) => {
   const source = makeNode({
     nodeId: 'source',
-    flowNodeType: isTool ? FlowNodeTypeEnum.toolCall : FlowNodeTypeEnum.workflowStart,
+    flowNodeType: FlowNodeTypeEnum.workflowStart,
     outputs: [
       {
         id: 'text',
@@ -64,18 +64,30 @@ const check = (node: StoreNodeItemType, isTool = false) => {
       }
     ]
   });
+  const caller = makeNode({
+    nodeId: 'caller',
+    flowNodeType: FlowNodeTypeEnum.toolCall,
+    outputs: source.outputs
+  });
   const document = createWorkflowDocument({
-    nodes: [source, node],
-    executionEdges: [
-      {
-        source: isTool
-          ? { kind: 'selectedTools', nodeId: 'source' }
-          : { kind: 'next', nodeId: 'source' },
-        target: isTool
-          ? { kind: 'selectedTools', nodeId: node.nodeId }
-          : { kind: 'target', nodeId: node.nodeId }
-      }
-    ]
+    nodes: isTool ? [source, caller, node] : [source, node],
+    executionEdges: isTool
+      ? [
+          {
+            source: { kind: 'next', nodeId: source.nodeId },
+            target: { kind: 'target', nodeId: caller.nodeId }
+          },
+          {
+            source: { kind: 'selectedTools', nodeId: caller.nodeId },
+            target: { kind: 'selectedTools', nodeId: node.nodeId }
+          }
+        ]
+      : [
+          {
+            source: { kind: 'next', nodeId: source.nodeId },
+            target: { kind: 'target', nodeId: node.nodeId }
+          }
+        ]
   });
   const diagnostics: WorkflowDiagnostic[] = [];
   validateNodeIO({ document, node, diagnostics });
@@ -593,6 +605,7 @@ describe('validateNodeIO', () => {
     { value: 'legacy-plaintext' },
     { value: { value: 'plaintext', secret: '' } },
     { value: { ref: ['source', 'text'] } },
+    { value: JSON.stringify({ ref: ['source', 'text'] }) },
     { value: { value: '', secret: 'encrypted-placeholder' } },
     { defaultValue: { secret: 'encrypted-default' } }
   ])('accepts configured password storage values in ordinary and tool contexts: %j', (config) => {
@@ -608,6 +621,23 @@ describe('validateNodeIO', () => {
     expect(check(node)).toEqual([]);
     expect(check(node, true)).toEqual([]);
   });
+
+  it.each([{ ref: ['caller', 'text'] }, JSON.stringify({ ref: ['caller', 'text'] })])(
+    'rejects password references to the pending tool caller: %j',
+    (value) => {
+      const node = makeNode({
+        inputs: [makeInput({ renderTypeList: [FlowNodeInputTypeEnum.password], value })]
+      });
+
+      expect(check(node, true)).toEqual([
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
+          inputKey: 'parameter',
+          params: expect.objectContaining({ sourceNodeId: 'caller', outputKey: 'text' })
+        })
+      ]);
+    }
+  );
 
   it.each([{ ref: ['deleted-node', 'text'] }, JSON.stringify({ ref: ['deleted-node', 'text'] })])(
     'validates reference targets in every supported password encoding: %j',

@@ -8,13 +8,12 @@ import type {
   FileWriteResult,
   MoveEntry,
   PermissionEntry,
-  ReadFileOptions,
   SearchResult
 } from '../types';
 
 /** Filesystem contract. Batch result order always matches input order. */
 export type IFileSystem = {
-  readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]>;
+  readFiles(paths: string[]): Promise<FileReadResult[]>;
   writeFiles(entries: FileWriteEntry[]): Promise<FileWriteResult[]>;
   deleteFiles(paths: string[]): Promise<FileDeleteResult[]>;
   moveFiles(entries: MoveEntry[]): Promise<void>;

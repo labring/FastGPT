@@ -15,6 +15,7 @@ import {
 import { getSecretValue } from '../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../app/tool/secretConfig';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
+import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -68,6 +69,7 @@ type RunToolResponse = DispatchNodeResultType<
   Record<string, any>
 >;
 
+/** 执行系统、HTTP 和 MCP 工具，并把协议执行错误转换为节点错误分支与展示详情。 */
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
@@ -85,6 +87,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
+  /** MCP 执行失败通过 isError 返回，保留原结果供详情和模型读取，不构造重复的 rawError。 */
+  const getMcpResponse = (result: any): RunToolResponse => {
+    const errorText = getMCPToolErrorText(result);
+    return {
+      data: { [NodeOutputKeyEnum.rawResponse]: result },
+      ...(errorText !== undefined ? { error: { [NodeOutputKeyEnum.errorText]: errorText } } : {}),
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        toolInput,
+        toolRes: result,
+        moduleLogo: avatar,
+        ...(errorText !== undefined ? { errorText } : {})
+      },
+      [DispatchNodeResponseKeyEnum.toolResponse]: result
+    };
+  };
   const resolveReference = (value: ReferenceValueType) =>
     getReferenceVariableValue({
       value,
@@ -332,15 +349,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ...(mcpTool.requestMeta !== undefined ? { requestMeta: mcpTool.requestMeta } : {}),
         closeConnection: false
       });
-      return {
-        data: { [NodeOutputKeyEnum.rawResponse]: result },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolInput,
-          toolRes: result,
-          moduleLogo: avatar
-        },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
-      };
+      return getMcpResponse(result);
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
       if (!parentId || !toolName) {
@@ -429,17 +438,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ...(requestMeta !== undefined ? { requestMeta } : {})
       });
 
-      return {
-        data: {
-          [NodeOutputKeyEnum.rawResponse]: result
-        },
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          toolInput,
-          toolRes: result,
-          moduleLogo: avatar
-        },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
-      };
+      return getMcpResponse(result);
     }
   } catch (error) {
     if (isWorkflowResourceError(error)) throw error;

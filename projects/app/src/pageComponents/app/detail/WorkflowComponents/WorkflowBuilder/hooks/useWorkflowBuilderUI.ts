@@ -79,15 +79,26 @@ export const useWorkflowBuilderUI = () => {
     dismissBanner();
   }, [acknowledgeAttention, dismissBanner]);
 
+  /** 主动打开面板即结束首次引导，避免工具栏移出画布后引导浮层仍留在原位。 */
+  const dismissGuideForPanel = useCallback(() => {
+    if (!guideStep) return;
+
+    // 用户已选择目标面板，不再执行引导结束后的 Builder 自动打开。
+    autoOpenAfterGuideRef.current = false;
+    setGuideStep(undefined);
+    completeWorkflowBuilderFirstEntryGuide();
+  }, [guideStep, autoOpenAfterGuideRef, setGuideStep, completeWorkflowBuilderFirstEntryGuide]);
+
   /** 进入或离开 Builder 都视为已查看，统一处理工具栏、横幅和面板切换入口。 */
   const openLeftPanel = useCallback(
     (panel: NonNullable<typeof activeLeftPanel>) => {
+      dismissGuideForPanel();
       if (panel === 'workflowBuilder' || activeLeftPanel === 'workflowBuilder') {
         acknowledgeWorkflowBuilderView();
       }
       setActiveLeftPanel(panel);
     },
-    [acknowledgeWorkflowBuilderView, activeLeftPanel, setActiveLeftPanel]
+    [acknowledgeWorkflowBuilderView, activeLeftPanel, dismissGuideForPanel, setActiveLeftPanel]
   );
   const closeLeftPanel = useCallback(
     (panel?: typeof activeLeftPanel) => {
@@ -100,12 +111,13 @@ export const useWorkflowBuilderUI = () => {
   );
   const toggleLeftPanel = useCallback(
     (panel: NonNullable<typeof activeLeftPanel>) => {
+      dismissGuideForPanel();
       if (panel === 'workflowBuilder' || activeLeftPanel === 'workflowBuilder') {
         acknowledgeWorkflowBuilderView();
       }
       setActiveLeftPanel((current) => (current === panel ? undefined : panel));
     },
-    [acknowledgeWorkflowBuilderView, activeLeftPanel, setActiveLeftPanel]
+    [acknowledgeWorkflowBuilderView, activeLeftPanel, dismissGuideForPanel, setActiveLeftPanel]
   );
   const requestInputFocus = useCallback(
     () => setFocusRequestId((current) => current + 1),

@@ -19,6 +19,7 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
@@ -65,6 +66,7 @@ export type Props = {
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
+/** 执行 Agent 选择的工具；协议执行错误保留原结果，并返回模型可处理的错误标记。 */
 export const dispatchTool = async ({
   tool: { name, avatar, version, toolConfig },
   params: { system_input_config, ...params },
@@ -89,7 +91,7 @@ export const dispatchTool = async ({
   }: RequireOnlyOne<{
     result?: any;
     response?: string;
-  }>): DispatchSubAppResponse['nodeResponse'] => {
+  }>): NonNullable<DispatchSubAppResponse['nodeResponse']> => {
     return {
       moduleType: FlowNodeTypeEnum.tool,
       moduleName: name,
@@ -310,11 +312,14 @@ export const dispatchTool = async ({
         params,
         ...(mcpTool.requestMeta !== undefined ? { requestMeta: mcpTool.requestMeta } : {})
       });
+      const errorMessage = getMCPToolErrorText(result);
       return {
         response: JSON.stringify(result),
-        nodeResponse: getNodeResponse({
-          result: result
-        })
+        ...(errorMessage !== undefined ? { errorMessage } : {}),
+        nodeResponse: {
+          ...getNodeResponse({ result }),
+          ...(errorMessage !== undefined ? { errorText: errorMessage } : {})
+        }
       };
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
