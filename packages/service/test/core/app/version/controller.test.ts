@@ -333,6 +333,7 @@ describe('getAppLatestVersion', () => {
 
   it('preserves full MCP tool definitions on the MCP toolset App root', async () => {
     const toolSetConfig = {
+      toolId: '',
       url: 'https://mcp.example.com',
       toolList: [
         {
@@ -352,7 +353,10 @@ describe('getAppLatestVersion', () => {
 
     const result = await getAppLatestVersion('app-id', { type: AppTypeEnum.mcpToolSet } as any);
 
-    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual(toolSetConfig);
+    expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
+      url: toolSetConfig.url,
+      toolList: toolSetConfig.toolList
+    });
   });
 
   it('preserves full HTTP tool definitions and import config on the HTTP toolset App root', async () => {

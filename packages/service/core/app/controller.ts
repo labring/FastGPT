@@ -9,8 +9,7 @@ import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { formatToolInputSecrets } from './tool/secretConfig';
-import { encryptSecretValue } from '../../common/secret/utils';
-import type { SecretValueType } from '@fastgpt/global/common/secret/type';
+import { storeSecretValue } from '../../common/secret/utils';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
 import { MongoOutLink } from '../../support/outLink/schema';
@@ -43,12 +42,6 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { deleteChatResourcesBySource } from '../chat/delete';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
-
-/** 仅加密明文工具集请求头，避免保存链路重复调用时二次加密。 */
-const storeToolSetSecret = <T extends Record<string, SecretValueType>>(secret: T): T =>
-  Object.fromEntries(
-    Object.entries(secret).map(([key, value]) => [key, encryptSecretValue(value)])
-  ) as T;
 
 /**
  * 在更新应用前，对工作流节点数据进行格式化和安全处理。
@@ -91,13 +84,13 @@ export const beforeUpdateAppFormat = async ({
       mcpToolSet.headerSecret !== null &&
       mcpToolSet.headerSecret !== undefined
     ) {
-      mcpToolSet.headerSecret = storeToolSetSecret(mcpToolSet.headerSecret);
+      mcpToolSet.headerSecret = storeSecretValue(mcpToolSet.headerSecret);
     }
     const httpToolSet = node.toolConfig?.httpToolSet;
     if (httpToolSet && !('toolId' in httpToolSet)) {
       const headerSecret = StoreSecretValueTypeSchema.safeParse(httpToolSet.headerSecret);
       if (headerSecret.success) {
-        Object.assign(httpToolSet, { headerSecret: storeToolSetSecret(headerSecret.data) });
+        Object.assign(httpToolSet, { headerSecret: storeSecretValue(headerSecret.data) });
       }
 
       const runtimeToolSet = HttpToolSetRuntimeConfigSchema.safeParse(httpToolSet);
@@ -108,7 +101,7 @@ export const beforeUpdateAppFormat = async ({
           }
           return {
             ...httpToolSet.toolList[index],
-            headerSecret: storeToolSetSecret(tool.headerSecret)
+            headerSecret: storeSecretValue(tool.headerSecret)
           };
         });
         Object.assign(httpToolSet, { toolList });

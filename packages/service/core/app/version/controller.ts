@@ -3,14 +3,12 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type AppResourcesType, type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { LegacyMcpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/migration/legacy/schema';
 import {
   FlowNodeTypeEnum,
   isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  HttpToolSetRuntimeConfigSchema,
-  McpToolSetRuntimeConfigSchema
-} from '@fastgpt/global/core/workflow/type/node';
+import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
@@ -61,7 +59,7 @@ export const normalizeAppWorkflow = (
     }
 
     if (appType === AppTypeEnum.mcpToolSet) {
-      const parsed = McpToolSetRuntimeConfigSchema.strict().safeParse(root.toolConfig.mcpToolSet);
+      const parsed = LegacyMcpToolSetRuntimeConfigSchema.safeParse(root.toolConfig.mcpToolSet);
       if (!parsed.success) return;
       return {
         node: root,
@@ -123,6 +121,7 @@ export const normalizeAppWorkflow = (
   };
 };
 
+/** 将持久化 Version 按所属 App 类型送入工作流规范化流程。 */
 const normalizeStoredVersionWorkflow = (
   version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>,
   appType?: AppTypeEnum

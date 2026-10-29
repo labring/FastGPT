@@ -275,7 +275,7 @@ const SchemaConfigModal = ({
       onClose={onClose}
       iconSrc={'common/setting'}
       iconColor={'primary.600'}
-      title={t(isWorkflowNodeConfig ? 'app:toolset_config' : 'app:Params_config')}
+      title={isWorkflowNodeConfig ? t('app:toolset_config') : t('app:Params_config')}
       w={600}
     >
       <ModalBody px={9}>

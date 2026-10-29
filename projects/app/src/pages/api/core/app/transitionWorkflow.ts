@@ -15,7 +15,6 @@ import {
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -32,8 +31,7 @@ async function handler(
     per: OwnerPermissionVal
   });
 
-  // 前端仅从 Simple App 表单转换流程调用此接口。不涉及其他类型，所以暂不考虑 SimpleApp 以外的应用类型转换。
-  if (app.type !== AppTypeEnum.simple) throw AppErrEnum.invalidAppType;
+  // 当前前端只从 Simple App 表单调用；不在 API 层限制应用类型转换。
 
   const draftWorkflow = await getAppDraftWorkflow(app._id, app);
   if (createNew) {
