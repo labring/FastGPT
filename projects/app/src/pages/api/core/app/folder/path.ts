@@ -8,7 +8,6 @@ import {
   PerResourceTypeEnum
 } from '@fastgpt/global/support/permission/constant';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -38,14 +37,14 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
     authToken: true,
     per: ReadPermissionVal
   });
-  if (type === 'parent') {
-    // 编辑页传入的是资源 ID；先校验资源读取权限，再根据它的 parentId 回溯目录路径。
-    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+
+  /** 返回资源所在目录的面包屑路径（不含资源自身）；父级不是目录或不存在时返回空数组。 */
+  const getContainingFolderPath = async () => {
     const sourceApp = await MongoApp.findOne({ _id: appId, teamId, deleteTime: null })
       .select('parentId')
       .lean();
     const parentFolderId = sourceApp?.parentId ? String(sourceApp.parentId) : null;
-    if (!parentFolderId) return GetAppFolderPathResponseSchema.parse([]);
+    if (!parentFolderId) return [];
 
     const parentFolder = await MongoApp.findOne({
       _id: parentFolderId,
@@ -55,9 +54,9 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
     })
       .select('type')
       .lean();
-    if (!parentFolder) return GetAppFolderPathResponseSchema.parse([]);
+    if (!parentFolder) return [];
 
-    const parentPaths = await getFolderParentPathItems({
+    return getFolderParentPathItems({
       folderId: parentFolderId,
       findFolder: (id) =>
         MongoApp.findOne({
@@ -69,14 +68,24 @@ async function handler(req: NextApiRequest): Promise<ParentTreePathItemType[]> {
           .select('_id name parentId')
           .lean()
     });
-    return GetAppFolderPathResponseSchema.parse(parentPaths);
+  };
+
+  if (type === 'parent') {
+    // 编辑页传入的是资源 ID；先校验资源读取权限，再根据它的 parentId 回溯目录路径。
+    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    return GetAppFolderPathResponseSchema.parse(await getContainingFolderPath());
   }
 
   const folderScope = await getAppFolderListScope({ teamId, currentFolderId: appId });
   const folder = folderScope.folders.find(({ _id }) => _id === appId);
   if (!folder) {
-    await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
-    throw CommonErrEnum.invalidParams;
+    // 非目录资源（如 MCP/HTTP 工具集、应用）：工具选择器等入口会把它当作“当前节点”进入，
+    // 此时没有目录导航语义，按真实读取权限校验后返回“所在目录路径 + 资源自身”。
+    const { app } = await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+    return GetAppFolderPathResponseSchema.parse([
+      ...(await getContainingFolderPath()),
+      { parentId: appId, parentName: app.name }
+    ]);
   }
 
   // 仅导航目录可以通过后代资源授权浏览；这里同时记录自身是否有真实读取权限，供 UI 隐藏写操作。
