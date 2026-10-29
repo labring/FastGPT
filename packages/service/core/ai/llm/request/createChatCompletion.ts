@@ -40,7 +40,8 @@ export const createChatCompletion = async ({
 
   const { ai, requestMeta } = getAIApi({
     userKey,
-    timeout: formatTimeout
+    timeout: formatTimeout,
+    model: modelData
   });
 
   try {

@@ -26,9 +26,10 @@ export const requestSpeech = async ({
   maxRetries?: number;
   onRequestStart?: () => void;
 }) => {
-  const { ai, requestMeta } = getAIApi(
-    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
-  );
+  const { ai, requestMeta } = getAIApi({
+    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+    model
+  });
   onRequestStart?.();
   try {
     return await ai.audio.speech.create(

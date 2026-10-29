@@ -186,3 +186,42 @@ describe('AI config user OpenAI account', () => {
     });
   });
 });
+
+describe('model request client selection', () => {
+  it('uses the SSRF-protected axios when a custom endpoint is configured', async () => {
+    vi.resetModules();
+    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
+      import('@fastgpt/service/core/ai/config'),
+      import('@fastgpt/service/common/api/axios')
+    ]);
+
+    expect(
+      getModelRequestClient({
+        scope: 'team',
+        requestUrl: 'https://api.example.com/v1'
+      })
+    ).toBe(axiosModule.axios);
+  });
+
+  it('keeps axiosWithoutSSRF for models served by AI Proxy', async () => {
+    vi.resetModules();
+    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
+      import('@fastgpt/service/core/ai/config'),
+      import('@fastgpt/service/common/api/axios')
+    ]);
+
+    expect(getModelRequestClient({ scope: 'team' })).toBe(axiosModule.axiosWithoutSSRF);
+  });
+
+  it('keeps the original transport for system models with custom endpoints', async () => {
+    vi.resetModules();
+    const [{ getModelRequestClient }, axiosModule] = await Promise.all([
+      import('@fastgpt/service/core/ai/config'),
+      import('@fastgpt/service/common/api/axios')
+    ]);
+
+    expect(
+      getModelRequestClient({ scope: 'system', requestUrl: 'https://api.example.com/v1' })
+    ).toBe(axiosModule.axiosWithoutSSRF);
+  });
+});

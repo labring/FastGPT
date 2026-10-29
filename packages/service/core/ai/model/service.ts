@@ -21,6 +21,7 @@ import { deleteModelRecords } from './cleanup';
 import { importSystemModels as importSystemModelRecords } from './import';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
+import { assertTeamModelRequestUrlSafe } from './requestUrlSafety';
 import { getModelConfigUpdate, sanitizeTeamModelData } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
@@ -70,6 +71,9 @@ export const updateModel = async ({
   ...owner
 }: Omit<UpdateModelBody, 'channelType'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const change = await runModelTransaction(context, async (session) => {
     const existing = await MongoAIModel.findOne({ _id: modelId, ...filter })
       .session(session)
@@ -146,6 +150,9 @@ export const createModel = async ({
   ...owner
 }: Pick<CreateModelBody, 'modelData' | 'channelIds'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
+  if (context.scope === ModelScopeEnum.team) {
+    await assertTeamModelRequestUrlSafe(modelData);
+  }
   const {
     tmbId: _tmbId,
     teamId: _teamId,
@@ -193,6 +200,9 @@ export const createModelsFromTemplates = async ({
       })
     ).values()
   );
+  if (context.scope === ModelScopeEnum.team) {
+    await Promise.all(selected.map((template) => assertTeamModelRequestUrlSafe(template)));
+  }
   const existing = await MongoAIModel.find({
     ...filter,
     model: { $in: selected.map(({ model }) => model) }

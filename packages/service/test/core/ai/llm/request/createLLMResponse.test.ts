@@ -236,7 +236,8 @@ describe('createLLMResponse', () => {
         userKey: {
           baseUrl: 'https://user.example.com/v1'
         },
-        timeout: 600000
+        timeout: 600000,
+        model: modelData
       });
       expect(createMock.mock.calls[0][1]).toMatchObject({
         path: 'https://model.example.com/v1/chat/completions',
@@ -289,7 +290,8 @@ describe('createLLMResponse', () => {
         userKey: {
           key: 'user-key'
         },
-        timeout: 600000
+        timeout: 600000,
+        model: expect.anything()
       });
       expect(createMock.mock.calls[0][1]).not.toHaveProperty('path');
       expect(createMock.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
@@ -327,7 +329,8 @@ describe('createLLMResponse', () => {
 
       expect(mockGetAIApi).toHaveBeenCalledWith({
         userKey: undefined,
-        timeout: 15_000
+        timeout: 15_000,
+        model: expect.anything()
       });
     });
 

@@ -1,4 +1,3 @@
-import { axiosWithoutSSRF } from '../../../common/api/axios';
 import { getSystemModelHandle } from '../model/catalog/service';
 
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -8,7 +7,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { text2Chunks } from '../../../worker/function';
-import { getModelAxiosConfig } from '../config';
+import { getModelAxiosConfig, getModelRequestClient } from '../config';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
@@ -117,7 +116,7 @@ export async function reRankRecall({
   };
 
   onRequestStart?.();
-  const apiResult = await axiosWithoutSSRF
+  const apiResult = await getModelRequestClient(model)
     .post<PostReRankResponse>(axiosConfig.url, requestBody, {
       headers: axiosConfig.headers,
       timeout: timeoutMs ?? 30000,

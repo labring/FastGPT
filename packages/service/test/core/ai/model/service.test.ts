@@ -256,6 +256,90 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
+    it('rejects a team model whose custom endpoint points at a metadata address', async () => {
+      await expect(
+        createModel({
+          ...owner,
+          modelData: {
+            ...draft,
+            requestUrl: 'http://169.254.169.254/latest/meta-data'
+          }
+        })
+      ).rejects.toThrow('requestUrl');
+
+      expect(await MongoAIModel.countDocuments({})).toBe(0);
+    });
+    it('persists a safe team custom endpoint', async () => {
+      const result = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+
+      expect(await MongoAIModel.findById(result.modelId).lean()).toMatchObject({
+        requestUrl: 'https://93.184.216.34/v1',
+        requestAuth: 'sk-team'
+      });
+    });
+    it('validates and clears team endpoints on update', async () => {
+      const created = await createModel({
+        ...owner,
+        modelData: {
+          ...draft,
+          requestUrl: 'https://93.184.216.34/v1',
+          requestAuth: 'sk-team'
+        }
+      });
+
+      await expect(
+        updateModel({
+          ...owner,
+          modelId: created.modelId,
+          modelData: {
+            ...draft,
+            requestUrl: 'http://169.254.169.254/latest/meta-data'
+          }
+        })
+      ).rejects.toThrow('requestUrl');
+
+      await updateModel({
+        ...owner,
+        modelId: created.modelId,
+        modelData: {
+          ...draft,
+          requestUrl: '',
+          requestAuth: ''
+        }
+      });
+
+      const stored = await MongoAIModel.findById(created.modelId).lean();
+      expect(stored?.requestUrl).toBeUndefined();
+      expect(stored?.requestAuth).toBeUndefined();
+    });
+    it('rejects an unsafe endpoint carried by a team model template', async () => {
+      const templateModule = await import('@fastgpt/service/core/ai/model/template');
+      const unsafeTemplate = {
+        ...draft,
+        requestUrl: 'http://169.254.169.254/latest/meta-data'
+      };
+      const templateSpy = vi
+        .spyOn(templateModule, 'refreshModelTemplates')
+        .mockResolvedValue([unsafeTemplate]);
+      try {
+        await expect(
+          createModelsFromTemplates({
+            ...owner,
+            templates: [{ model: draft.model, type: draft.type }]
+          })
+        ).rejects.toThrow('requestUrl');
+        expect(await MongoAIModel.countDocuments({})).toBe(0);
+      } finally {
+        templateSpy.mockRestore();
+      }
+    });
     it('rolls back a batch that includes another member model', async () => {
       const own = await createModel({ ...owner, modelData: draft });
       const other = await createModel({

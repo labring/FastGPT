@@ -17,12 +17,21 @@ vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
   countPromptTokens: mockCountPromptTokens
 }));
 
-// rerank 走 axiosWithoutSSRF(管理员配置的 url 允许内网),mock 它的 .post 返回 axios 风格的 { data, ... }
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axiosWithoutSSRF: {
+// 自定义端点与 AI Proxy 的客户端选择由 config.test 覆盖；这里直接固定返回 mock 客户端。
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/config')>()),
+  getModelRequestClient: () => ({
     post: (...args: any[]) => Promise.resolve(mockAxiosPost(...args)).then((data) => ({ data }))
-  }
+  })
 }));
+
+// rerank 自定义端点走带 SSRF 拦截的 axios，其余走 axiosWithoutSSRF；两者共用同一 mock。
+vi.mock('@fastgpt/service/common/api/axios', () => {
+  const createClient = () => ({
+    post: (...args: any[]) => Promise.resolve(mockAxiosPost(...args)).then((data) => ({ data }))
+  });
+  return { axios: createClient(), axiosWithoutSSRF: createClient() };
+});
 
 // Mock text2Chunks：按 chunkSize 字符切分，保证测试确定性
 vi.mock('@fastgpt/service/worker/function', () => ({

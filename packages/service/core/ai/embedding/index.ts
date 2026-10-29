@@ -100,9 +100,10 @@ export async function getVectors({
     });
   }
 
-  const { ai, requestMeta } = getAIApi(
-    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
-  );
+  const { ai, requestMeta } = getAIApi({
+    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+    model
+  });
 
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
