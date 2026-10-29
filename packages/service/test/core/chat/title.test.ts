@@ -9,6 +9,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
@@ -62,7 +63,7 @@ const createChat = (override: Record<string, unknown> = {}) =>
     ...override
   });
 
-const fileOnlyContent = {
+const fileOnlyContent: UserChatItemType = {
   obj: ChatRoleEnum.Human,
   value: [
     {
@@ -74,9 +75,9 @@ const fileOnlyContent = {
       }
     }
   ]
-} as const;
+};
 
-const textContent = (content: string) => ({
+const textContent = (content: string): UserChatItemType => ({
   obj: ChatRoleEnum.Human,
   value: [{ text: { content } }]
 });
