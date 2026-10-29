@@ -4,6 +4,7 @@ import {
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -12,6 +13,11 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import {
+  getCollectionAuditLocation,
+  getCollectionAuditObjectType
+} from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { fileId, customPdfParse, ...body } = parseApiInput({
@@ -43,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     insertLen: 1
   });
 
-  return createCollectionAndInsertData({
+  const result = await createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       ...body,
@@ -55,6 +61,24 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       customPdfParse
     }
   });
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+    params: {
+      collectionName: metadata.filename,
+      objectType: getCollectionAuditObjectType(DatasetCollectionTypeEnum.file),
+      location: await getCollectionAuditLocation({
+        datasetName: dataset.name,
+        teamId: String(dataset.teamId),
+        datasetId: String(dataset._id),
+        parentId: body.parentId
+      })
+    }
+  });
+
+  return result;
 }
 
 export default NextAPI(handler);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDatasetCollectionPaths } from '@/pages/api/core/dataset/collection/paths';
+import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/paths';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { defaultSubtreeMaxDepth } from '@fastgpt/global/common/parentFolder/subtree';

@@ -62,7 +62,11 @@ vi.mock('@fastgpt/global/common/i18n/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: { MODULE: { DATASET: { COLLECTION: 'dataset-collection' } } },
+  LogCategories: {
+    MODULE: { DATASET: { COLLECTION: 'dataset-collection' } },
+    // 审计模块顶层会取 INFRA.MONGO 建 logger；漏掉会在模块初始化阶段直接抛错
+    INFRA: { MONGO: 'mongo' }
+  },
   getLogger: () => ({
     warn: vi.fn(),
     error: vi.fn()

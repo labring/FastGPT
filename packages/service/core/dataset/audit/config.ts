@@ -1,5 +1,5 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/config';
+import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/metadata';
 import type { ModelReferenceType } from '@fastgpt/global/core/ai/model/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { ModelHandle } from '../../ai/model/catalog/handle';

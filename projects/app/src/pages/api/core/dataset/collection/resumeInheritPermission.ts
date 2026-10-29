@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBody>) {
@@ -45,13 +45,14 @@ async function handler(req: ApiRequestProps<ResumeCollectionInheritPermissionBod
   addAuditLog({
     teamId,
     tmbId,
-    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    event: DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME,
     resources: [
       { datasetId: String(collection.datasetId) },
       { collectionId: String(collection._id) }
     ],
     params: {
-      targetResource: collection.name,
+      datasetName: collection.dataset.name,
+      collectionName: collection.name,
       ...(parentResourceName !== undefined ? { parentResource: parentResourceName } : {})
     }
   });

@@ -1,5 +1,6 @@
 import handler from '@/pages/api/core/dataset/collection/resumeInheritPermission';
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -11,11 +12,42 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
 describe('resume collection inherit permission api', () => {
+  it('does not restore permissions or write audit logs without manage permission', async () => {
+    const users = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      name: 'denied-audit-dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      vectorModelId: 'test-model',
+      collectionPermissionEnabled: true
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'denied-audit-collection',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      inheritPermission: false
+    });
+
+    const res = await Call(handler, {
+      auth: users.members[0],
+      body: { collectionId: String(collection._id) }
+    });
+
+    expect(res.code).not.toBe(200);
+    await expect(MongoDatasetCollection.findById(collection._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+    await expect(MongoTeamAudit.countDocuments({ teamId: users.owner.teamId })).resolves.toBe(0);
+  });
+
   beforeEach(async () => {
     await MongoTeamAudit.deleteMany({});
   });
 
-  it('writes a dataset audit for a root collection', async () => {
+  it('writes the dedicated collection event without a generic inheritance event', async () => {
     const users = await getFakeUsers(1);
     const dataset = await MongoDataset.create({
       name: 'audit-dataset',
@@ -48,7 +80,7 @@ describe('resume collection inherit permission api', () => {
       async () => {
         const audit = await MongoTeamAudit.findOne({
           teamId: users.owner.teamId,
-          event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+          event: DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME
         }).lean();
         expect(audit).not.toBeNull();
         expect(audit?.resources).toEqual([
@@ -56,9 +88,16 @@ describe('resume collection inherit permission api', () => {
           { collectionId: collection._id }
         ]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'audit-collection',
+          datasetName: 'audit-dataset',
+          collectionName: 'audit-collection',
           parentResource: 'audit-dataset'
         });
+        await expect(
+          MongoTeamAudit.countDocuments({
+            teamId: users.owner.teamId,
+            event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+          })
+        ).resolves.toBe(0);
       },
       { timeout: 5000 }
     );
@@ -107,14 +146,15 @@ describe('resume collection inherit permission api', () => {
       async () => {
         const audit = await MongoTeamAudit.findOne({
           teamId: users.owner.teamId,
-          event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+          event: DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME
         }).lean();
         expect(audit?.resources).toEqual([
           { datasetId: dataset._id },
           { collectionId: collection._id }
         ]);
         expect(audit?.metadata).toEqual({
-          targetResource: 'nested-audit-collection',
+          datasetName: 'nested-audit-dataset',
+          collectionName: 'nested-audit-collection',
           ...(parentExists ? { parentResource: 'audit-folder' } : {})
         });
       },

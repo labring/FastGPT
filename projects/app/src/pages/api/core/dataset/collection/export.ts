@@ -1,8 +1,9 @@
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
@@ -22,6 +23,8 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { getCollectionAuditObjectType } from '@fastgpt/service/core/dataset/audit/collection';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -32,7 +35,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     collection,
     teamId: userTeamId,
     tmbId,
-    chatTime
+    chatTime,
+    authType
   } = await (async () => {
     if (!('chatItemDataId' in parseBody)) {
       const result = await authDatasetCollection({
@@ -86,6 +90,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     };
   })();
 
+  const shouldAuditExport =
+    !('chatItemDataId' in parseBody) &&
+    (authType === AuthUserTypeEnum.token || authType === AuthUserTypeEnum.root);
+
   await assertMemberRateLimit({
     policy: MemberRateLimitPolicy.ExportDataset,
     memberId: String(tmbId)
@@ -120,6 +128,26 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res,
     readStream: cursor
   });
+  // 流式导出没有统一完成点，用一次性开关保证成功/失败只落一条审计
+  let auditFinished = false;
+  const recordExportAudit = () => {
+    if (auditFinished) return;
+
+    auditFinished = true;
+    if (!shouldAuditExport) return;
+
+    void addAuditLog({
+      teamId: String(collection.teamId),
+      tmbId,
+      event: DatasetAuditEventEnum.DATASET_COLLECTION_EXPORT,
+      params: {
+        datasetName: collection.dataset.name,
+        collectionName: collection.name,
+        objectType: getCollectionAuditObjectType(collection.type),
+        exportScope: 'collection'
+      }
+    });
+  };
 
   write(`\uFEFFq,a`);
 
@@ -138,6 +166,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       write(`\n${sanitizedQ},${sanitizedA}`);
     } catch (error) {
       logger.error(`export usage error`, { error });
+      recordExportAudit();
       cursor.destroy();
       return;
     }
@@ -147,11 +176,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   cursor.on('end', () => {
     cursor.close();
+    recordExportAudit();
     res.end();
   });
 
   cursor.on('error', (err) => {
     logger.error(`export usage error`, { error: err });
+    recordExportAudit();
     res.status(500);
     res.end();
   });
