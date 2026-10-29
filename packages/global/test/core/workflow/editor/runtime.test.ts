@@ -7,6 +7,7 @@ import {
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
@@ -1174,6 +1175,7 @@ describe('workflow editor runtime modules', () => {
             key: 'customerName',
             label: 'Customer name',
             type: 'input',
+            valueType: WorkflowIOValueTypeEnum.string,
             description: 'Name used by the workflow'
           }
         ]
@@ -1899,6 +1901,266 @@ const createReasoningRuntime = ({
 };
 
 describe('workflow environment facts', () => {
+  it('invalidates changed source metadata candidates without touching unrelated roots', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Old source',
+          inputs: [],
+          outputs: [
+            {
+              id: 'out',
+              key: 'out',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'consumer',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Consumer',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'unrelated',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Unrelated',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'consumer',
+          sourceHandle: 'out',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    const consumerQuery = { nodeId: 'consumer', fieldKey: 'value' };
+    const unrelatedQuery = { nodeId: 'unrelated', fieldKey: 'value' };
+    expect(editor.getField(consumerQuery)?.referenceOptions).toContainEqual(
+      expect.objectContaining({ sourceLabel: 'Old source' })
+    );
+    expect(
+      editor.getReferenceOptions({
+        nodeId: 'consumer',
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toContainEqual(expect.objectContaining({ sourceLabel: 'Old source' }));
+    const fieldListener = vi.fn();
+    const unrelatedListener = vi.fn();
+    const referenceListener = vi.fn();
+    editor.subscribeField(consumerQuery, fieldListener);
+    editor.subscribeField(unrelatedQuery, unrelatedListener);
+    editor.subscribeReferenceOptions(referenceListener);
+
+    const source = editor.getNode('source')!;
+    const result = editor.dispatch({
+      type: 'updateNode',
+      nodeId: 'source',
+      patch: { name: 'New source' }
+    });
+
+    expect(result.change?.affectedRecords.referenceOptions).toBe(true);
+    expect(editor.getField(consumerQuery)?.referenceOptions).toContainEqual(
+      expect.objectContaining({ sourceLabel: 'New source' })
+    );
+    expect(
+      editor.getReferenceOptions({
+        nodeId: 'consumer',
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toContainEqual(expect.objectContaining({ sourceLabel: 'New source' }));
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
+    expect(unrelatedListener).not.toHaveBeenCalled();
+    expect(result.change?.affectedRecords.nodeIds).not.toContain('unrelated');
+    expect(source.name).toBe('Old source');
+
+    fieldListener.mockClear();
+    referenceListener.mockClear();
+    expect(editor.undo().ok).toBe(true);
+    expect(editor.getField(consumerQuery)?.referenceOptions).toContainEqual(
+      expect.objectContaining({ sourceLabel: 'Old source' })
+    );
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes empty candidates when chat config variables change', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'consumer',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Consumer',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'consumer', fieldKey: 'value' };
+    editor.getField(query);
+    const fieldListener = vi.fn();
+    const referenceListener = vi.fn();
+    editor.subscribeField(query, fieldListener);
+    editor.subscribeReferenceOptions(referenceListener);
+
+    const result = editor.dispatch({
+      type: 'updateChatConfig',
+      chatConfig: {
+        variables: [
+          {
+            key: 'customerName',
+            label: 'Customer name',
+            type: 'input',
+            valueType: WorkflowIOValueTypeEnum.string,
+            description: 'Name used by the workflow'
+          }
+        ]
+      }
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.change?.affectedRecords.referenceOptions).toBe(true);
+    expect(editor.getWorkflowData().chatConfig.variables).toEqual([
+      expect.objectContaining({ key: 'customerName' })
+    ]);
+    expect(editor.getField(query)?.referenceOptions).toContainEqual(
+      expect.objectContaining({ reference: [VARIABLE_NODE_ID, 'customerName'] })
+    );
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes cached candidates when mounted tools change', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.toolCall,
+          name: 'Agent',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'tool',
+          flowNodeType: FlowNodeTypeEnum.httpRequest468,
+          name: 'Tool',
+          inputs: [
+            {
+              key: 'city',
+              label: 'City',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              valueType: WorkflowIOValueTypeEnum.string,
+              canEdit: true,
+              defaultToAgentGenerated: true
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'consumer',
+          flowNodeType: FlowNodeTypeEnum.toolCall,
+          name: 'Consumer',
+          inputs: [
+            {
+              key: 'value',
+              label: 'Value',
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'tool',
+          target: 'consumer',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'consumer', fieldKey: 'value' };
+    expect(
+      editor.getField(query)?.referenceOptions.some((option) => option.reference[0] === 'tool')
+    ).toBe(false);
+    const fieldListener = vi.fn();
+    const referenceListener = vi.fn();
+    editor.subscribeField(query, fieldListener);
+    editor.subscribeReferenceOptions(referenceListener);
+
+    editor.dispatch({
+      type: 'connectEdge',
+      edge: {
+        source: 'agent',
+        target: 'tool',
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    });
+
+    expect(
+      editor.getReferenceOptions({
+        nodeId: 'consumer',
+        valueType: WorkflowIOValueTypeEnum.string
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reference: ['tool', 'city'],
+          sourceType: WorkflowIOValueTypeEnum.string
+        })
+      ])
+    );
+    expect(
+      editor
+        .getField(query)
+        ?.referenceOptions.some(
+          (option) => option.reference[0] === 'tool' && option.reference[1] === 'city'
+        )
+    ).toBe(true);
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
+  });
+
   it.each([
     { name: 'supported', modelValue: 'reasoning-model', reasoning: true, invalid: false },
     { name: 'unsupported', modelValue: 'reasoning-model', reasoning: false, invalid: true },
@@ -2058,6 +2320,85 @@ describe('workflow environment facts', () => {
     expect(editor.getField({ nodeId: 'consumer', fieldKey: 'reasoning' })?.references).toEqual([
       expect.objectContaining({ code: 'invalid_reference' })
     ]);
+  });
+
+  it('refreshes empty candidates and subscriptions when model validity changes', () => {
+    const { editor, environment } = createReasoningRuntime({
+      modelValue: 'reasoning-model',
+      reasoning: false
+    });
+    const fieldQuery = { nodeId: 'consumer', fieldKey: 'reasoning' };
+    const fieldListener = vi.fn();
+    const referenceListener = vi.fn();
+    editor.subscribeField(fieldQuery, fieldListener);
+    editor.subscribeReferenceOptions(referenceListener);
+
+    const consumer = editor.getNode('consumer')!;
+    editor.dispatch({
+      type: 'updateNode',
+      nodeId: 'consumer',
+      patch: {
+        inputs: consumer.inputs.map((input) => ({ ...input, value: undefined }))
+      }
+    });
+    expect(
+      editor
+        .getField(fieldQuery)
+        ?.referenceOptions.some((option) => option.reference[0] === 'source')
+    ).toBe(false);
+
+    const unsupportedModel = environment.models![0]!;
+    environment.models = [
+      unsupportedModel,
+      {
+        ...unsupportedModel,
+        modelId: 'supported-reasoning-model',
+        model: 'supported-reasoning-model',
+        config: { ...unsupportedModel.config!, reasoning: true }
+      }
+    ];
+    const selectModel = (modelValue: string) => {
+      const node = editor.getNode('source')!;
+      return editor.dispatch({
+        type: 'updateNode',
+        nodeId: 'source',
+        patch: {
+          inputs: node.inputs.map((input) =>
+            input.key === NodeInputKeyEnum.aiModelId ? { ...input, value: modelValue } : input
+          )
+        }
+      });
+    };
+
+    fieldListener.mockClear();
+    referenceListener.mockClear();
+    expect(selectModel('supported-reasoning-model').ok).toBe(true);
+    expect(
+      editor
+        .getField(fieldQuery)
+        ?.referenceOptions.some(
+          (option) =>
+            option.reference[0] === 'source' &&
+            option.reference[1] === NodeOutputKeyEnum.reasoningText
+        )
+    ).toBe(true);
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
+
+    fieldListener.mockClear();
+    referenceListener.mockClear();
+    expect(selectModel('reasoning-model').ok).toBe(true);
+    expect(
+      editor
+        .getField(fieldQuery)
+        ?.referenceOptions.some(
+          (option) =>
+            option.reference[0] === 'source' &&
+            option.reference[1] === NodeOutputKeyEnum.reasoningText
+        )
+    ).toBe(false);
+    expect(fieldListener).toHaveBeenCalledOnce();
+    expect(referenceListener).toHaveBeenCalledOnce();
   });
 
   it('recomputes Runtime invalid after semantic history replay', () => {

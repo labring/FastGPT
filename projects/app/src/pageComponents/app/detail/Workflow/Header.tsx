@@ -104,7 +104,7 @@ const Header = () => {
   );
   const onClickSaveForButton = useCallback(
     async (options: { isPublish?: boolean; versionName?: string }) => {
-      await onClickSave(options);
+      return onClickSave(options);
     },
     [onClickSave]
   );

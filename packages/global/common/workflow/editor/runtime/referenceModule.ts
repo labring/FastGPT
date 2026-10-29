@@ -544,6 +544,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         changedSourceNodeIds.add(edge.data.target);
       }
     });
+    changedSourceNodeIds.forEach((nodeId) => meta.candidateSourcesChanged.add(nodeId));
     invalidateSourceMetadata(
       meta.chatConfigVariablesChanged
         ? [...changedSourceNodeIds, VARIABLE_NODE_ID]
@@ -564,6 +565,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
 
     if (meta.chatConfigVariablesChanged) {
       const variableSources = new Set([VARIABLE_NODE_ID]);
+      meta.candidateSourcesChanged.add(VARIABLE_NODE_ID);
       addAffectedConsumerFields({ meta, graph: beforeGraph, sourceNodeIds: variableSources });
       addAffectedConsumerFields({ meta, graph: committedGraph, sourceNodeIds: variableSources });
       addAffectedConsumerFields({
@@ -596,6 +598,37 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         ?.record.data.inputs.find((item) => item.key === field.key);
       return input ? getInputReferences(input).length > 0 : false;
     });
+  };
+
+  /** 输出有效性变化会改变候选来源；空字段没有引用依赖，仍需刷新候选快照。 */
+  const getOutputInvalidationFields = (
+    sourceNodeIds: Iterable<string>
+  ): WorkflowFieldIdentity[] => {
+    const fields = new Map<string, WorkflowFieldIdentity>();
+    const { bySource, childrenByParent } = document.getGraphIndex();
+    const sources = [...sourceNodeIds];
+    const nodeIds = new Set<string>(
+      sources.includes(VARIABLE_NODE_ID)
+        ? document.getDocument().nodes.map((node) => node.data.nodeId)
+        : []
+    );
+    const queue = sources;
+    for (let index = 0; index < queue.length; index++) {
+      const nodeId = queue[index]!;
+      if (nodeIds.has(nodeId)) continue;
+      nodeIds.add(nodeId);
+      bySource.get(nodeId)?.forEach((edge) => queue.push(edge.data.target));
+      childrenByParent.get(nodeId)?.forEach((childId) => queue.push(childId));
+    }
+    nodeIds.forEach((nodeId) => {
+      document.getNodeById(nodeId)?.data.inputs.forEach((input) => {
+        if (!('renderTypeList' in input)) return;
+        if (!isEmptyValue(input.value ?? input.defaultValue)) return;
+        const identity = { nodeId, key: input.key, kind: 'input' as const };
+        fields.set(getFieldIdentityKey(identity), identity);
+      });
+    });
+    return [...fields.values()];
   };
 
   // endregion
@@ -1125,6 +1158,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     captureSnapshots,
     compactSnapshots,
     getStructureInvalidationFields,
+    getOutputInvalidationFields,
     getFieldStatuses,
     getValueStatuses,
     getReferenceValueType,

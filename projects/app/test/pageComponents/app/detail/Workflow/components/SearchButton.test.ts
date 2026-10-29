@@ -23,14 +23,19 @@ vi.mock('@chakra-ui/react', () => {
   return {
     Box: primitive('div'),
     Flex: primitive('div'),
-    Input: ({ value, placeholder, onFocus, onChange, onKeyDown }: Record<string, any>) =>
-      React.createElement('input', {
+    Input: React.forwardRef<HTMLInputElement, Record<string, any>>(function TestInput(
+      { value, placeholder, onFocus, onChange, onKeyDown },
+      ref
+    ) {
+      return React.createElement('input', {
+        ref,
         value,
         placeholder,
         onFocus,
         onChange,
         onKeyDown
-      }),
+      });
+    }),
     Button: ({ children, isDisabled, ...props }: Record<string, any>) =>
       React.createElement('button', { onClick: props.onClick, disabled: isDisabled }, children),
     IconButton: ({ icon, onClick }: Record<string, any>) =>
@@ -99,6 +104,11 @@ describe('SearchButton', () => {
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('navigator', dom.window.navigator);
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn(() => 1)
+    );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);

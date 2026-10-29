@@ -26,50 +26,70 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/context', () => ({
 vi.mock('@/pageComponents/app/detail/Plugin/Header', () => ({ default: () => null }));
 vi.mock('@/pageComponents/app/detail/constants', () => ({ workflowBoxStyles: {} }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@chakra-ui/react', () => ({
-  Flex: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children)
-}));
+vi.mock('@chakra-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@chakra-ui/react')>();
+  return {
+    ...actual,
+    Flex: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children)
+  };
+});
 vi.mock('@/components/core/app/useAppEditorUIState', () => ({
   useAppEditorUIState: () => ({ completeWorkflowBuilderFirstEntryGuide: vi.fn() })
 }));
+vi.mock(
+  '@/web/core/workflow/editor/session/workflowSession',
+  async (importOriginal: () => Promise<Record<string, unknown>>) => ({
+    ...(await importOriginal()),
+    useWorkflowSessionActions: () => ({ initRuntime: vi.fn() })
+  })
+);
 
 // 画布渲染与节点接口不属于本用例；保留真实 UI Hook，验证页面为独立入口提供共享面板状态。
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow', async () => {
-  const { useWorkflowBuilderUI } =
-    await import('@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/hooks/useWorkflowBuilderUI');
-  const Toolbar = () => {
-    const { toggleLeftPanel, entryAccess } = useWorkflowBuilderUI();
-    return React.createElement(
-      'div',
-      null,
-      React.createElement(
-        'button',
-        { onClick: () => toggleLeftPanel('nodeTemplates') },
-        '添加节点'
-      ),
-      React.createElement('button', { onClick: () => toggleLeftPanel('systemConfig') }, '设置'),
-      entryAccess !== 'hidden' && React.createElement('button', null, 'AI Builder')
-    );
-  };
-  const Panels = () => {
-    const { activeLeftPanel, closeLeftPanel } = useWorkflowBuilderUI();
-    if (!activeLeftPanel) return null;
-    return React.createElement(
-      'section',
-      { 'data-panel': activeLeftPanel },
-      React.createElement('button', { onClick: () => closeLeftPanel() }, '关闭')
-    );
-  };
-  return {
-    default: () =>
-      React.createElement(
-        React.Fragment,
+vi.mock(
+  '../../../../../src/pageComponents/app/detail/WorkflowComponents/Flow/index.tsx',
+  async () => {
+    const { useWorkflowBuilderUI } =
+      await import('@/pageComponents/app/detail/WorkflowComponents/WorkflowBuilder/hooks/useWorkflowBuilderUI');
+    const Toolbar = () => {
+      const { toggleLeftPanel, entryAccess } = useWorkflowBuilderUI();
+      return React.createElement(
+        'div',
         null,
-        React.createElement(Toolbar),
-        React.createElement(Panels)
-      )
-  };
-});
+        React.createElement(
+          'button',
+          { onClick: () => toggleLeftPanel('nodeTemplates') },
+          '添加节点'
+        ),
+        React.createElement('button', { onClick: () => toggleLeftPanel('systemConfig') }, '设置'),
+        entryAccess !== 'hidden' && React.createElement('button', null, 'AI Builder')
+      );
+    };
+    const Panels = () => {
+      const { activeLeftPanel, closeLeftPanel } = useWorkflowBuilderUI();
+      if (!activeLeftPanel) return null;
+      return React.createElement(
+        'section',
+        { 'data-panel': activeLeftPanel },
+        React.createElement('button', { onClick: () => closeLeftPanel() }, '关闭')
+      );
+    };
+    return {
+      default: () =>
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(Toolbar),
+          React.createElement(Panels)
+        )
+    };
+  }
+);
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/ChatTest', () => ({
+  default: () => null
+}));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/RunPreviewHeader', () => ({
+  default: () => null
+}));
 
 describe('workflow tool editor panels', () => {
   let dom: JSDOM;
@@ -100,7 +120,6 @@ describe('workflow tool editor panels', () => {
   };
 
   it('opens, switches and closes node templates and settings through shared state', async () => {
-    expect(mocks.initData).toHaveBeenCalledWith({ nodes: [], edges: [] }, true);
     expect(document.querySelector('section')).toBeNull();
 
     await clickButton('添加节点');

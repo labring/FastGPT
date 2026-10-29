@@ -252,6 +252,7 @@ export type WorkflowAffectedRecords = {
   nodeIds: string[];
   fieldIds: WorkflowFieldIdentity[];
   structure: boolean;
+  referenceOptions: boolean;
 };
 
 type WorkflowChangeBase = {

@@ -123,7 +123,9 @@ export const createSubscriptionModule = () => {
     if (
       change.kind === 'replace' ||
       change.affectedRecords.structure ||
-      change.changedRecords.edgeIds.length > 0
+      change.affectedRecords.referenceOptions ||
+      change.changedRecords.edgeIds.length > 0 ||
+      change.changedRecords.fieldIds.some((field) => field.kind === 'output')
     ) {
       notify(referenceListeners);
     }

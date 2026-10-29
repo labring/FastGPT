@@ -97,6 +97,7 @@ export type MutationMeta = {
   affectedNodeIds: Set<string>;
   affectedFieldIds: Map<string, WorkflowFieldIdentity>;
   structureChanged: boolean;
+  candidateSourcesChanged: Set<string>;
   chatConfigChanged: boolean;
   chatConfigVariablesChanged: boolean;
   nodeChanges: Map<string, { before?: NodeRecord; after?: NodeRecord; afterIndex?: number }>;

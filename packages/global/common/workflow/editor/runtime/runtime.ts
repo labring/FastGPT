@@ -12,6 +12,7 @@ import type {
   WorkflowRuntimeOptions,
   WorkflowSavepoint
 } from '../../../../core/workflow/editor/types';
+import { VARIABLE_NODE_ID } from '../../../../core/workflow/constants';
 import {
   addFieldIdentity,
   cloneValue,
@@ -69,6 +70,7 @@ const createMutationMeta = (kind: MutationMeta['kind'] = 'semantic'): MutationMe
   affectedNodeIds: new Set(),
   affectedFieldIds: new Map(),
   structureChanged: false,
+  candidateSourcesChanged: new Set(),
   chatConfigChanged: false,
   chatConfigVariablesChanged: false,
   nodeChanges: new Map(),
@@ -256,7 +258,8 @@ export const createWorkflowEditor = (
     const affectedRecords: WorkflowAffectedRecords = {
       nodeIds: [...meta.affectedNodeIds],
       fieldIds: [...meta.affectedFieldIds.values()],
-      structure: meta.structureChanged
+      structure: meta.structureChanged,
+      referenceOptions: meta.candidateSourcesChanged.size > 0
     };
     return freezeValue({
       ...base,
@@ -397,6 +400,7 @@ export const createWorkflowEditor = (
       const validity = applyRuntimeOutputValidity(working.nodes);
       working.nodes = validity.nodes;
       runtimeValidityNodeIds = validity.changes.map(({ after }) => after.data.nodeId);
+      runtimeValidityNodeIds.forEach((nodeId) => meta.candidateSourcesChanged.add(nodeId));
       if (meta.kind !== 'replace') {
         validity.changes.forEach(({ index, before, after }) =>
           commitNodeRecordUpdate({
@@ -457,11 +461,20 @@ export const createWorkflowEditor = (
             issueNodeIds!.add(nodeId);
           });
         }
+        const outputInvalidationFields = reference.getOutputInvalidationFields(
+          meta.candidateSourcesChanged
+        );
+        outputInvalidationFields.forEach((field) => {
+          meta.affectedNodeIds.add(field.nodeId);
+          addFieldIdentity(meta.affectedFieldIds, field);
+        });
         snapshots.invalidateFieldCaches([
           ...meta.changedFieldIds.values(),
           ...cacheOnlyFieldIds.values(),
-          ...reference.getStructureInvalidationFields(meta)
+          ...reference.getStructureInvalidationFields(meta),
+          ...outputInvalidationFields
         ]);
+        if (meta.candidateSourcesChanged.size > 0) snapshots.clearReferenceOptions();
       }
     } catch (error) {
       restoreTransactionState(transactionState);
@@ -517,6 +530,7 @@ export const createWorkflowEditor = (
     let stagedDocument = transactionState.document;
     let hasSemanticReplay = false;
     let issuesRebuilt = false;
+    let candidateSourcesReplayed = false;
     const meta = createMutationMeta('geometry');
 
     /** 把一条 history 记录携带的变更集合并入整批 meta；replay 只借 meta 组装事件，视图值已由记录恢复。 */
@@ -537,6 +551,12 @@ export const createWorkflowEditor = (
         addFieldIdentity(meta.affectedFieldIds, field)
       );
       meta.structureChanged = meta.structureChanged || originalChange.affectedRecords.structure;
+      if (originalChange.affectedRecords.referenceOptions) {
+        candidateSourcesReplayed = true;
+        originalChange.affectedRecords.nodeIds.forEach((nodeId) =>
+          meta.candidateSourcesChanged.add(nodeId)
+        );
+      }
     };
 
     entries.forEach((entry) => {
@@ -601,6 +621,9 @@ export const createWorkflowEditor = (
       );
     }
     history.commitEntries(direction, entries.length);
+    if (candidateSourcesReplayed && meta.candidateSourcesChanged.size === 0) {
+      meta.candidateSourcesChanged.add(VARIABLE_NODE_ID);
+    }
     const change = makeChange(meta, direction);
     pruneSnapshotCaches();
     publish(change);

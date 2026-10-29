@@ -103,7 +103,7 @@ const Header = ({
         versionName,
         autoSave
       });
-      if (!saved) return;
+      if (!saved) return false;
       setPast((prevPast) =>
         prevPast.map((item, index) =>
           index === 0
@@ -114,6 +114,7 @@ const Header = ({
             : item
         )
       );
+      return true;
     }
   );
 

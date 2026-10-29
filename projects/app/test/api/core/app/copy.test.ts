@@ -24,6 +24,7 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppDraftVersion } from '@fastgpt/service/core/app/version/controller';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
@@ -128,8 +129,7 @@ describe('Copy', () => {
       edges: [],
       chatConfig: {},
       referenceSnapshots,
-      isAutoSave: true,
-      time: new Date('2020-01-01T00:00:00.000Z')
+      isAutoSave: true
     });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
@@ -179,10 +179,7 @@ describe('Copy', () => {
     );
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    const copiedVersion = await MongoAppVersion.findOne({
-      appId: res4.data?.appId,
-      isPublish: true
-    }).lean();
+    const copiedVersion = await getAppDraftVersion(res4.data?.appId);
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
       getCachedSystemModelHandle()
