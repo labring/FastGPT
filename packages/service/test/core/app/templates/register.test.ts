@@ -162,6 +162,41 @@ describe('getAppTemplatesAndLoadThem', () => {
     });
   });
 
+  it('keeps deleted reference snapshots from a database template workflow', async () => {
+    const referenceSnapshots = [
+      {
+        reference: ['deleted', 'output'],
+        sourceLabel: 'Deleted source',
+        outputLabel: 'Output',
+        icon: 'deleted-avatar'
+      }
+    ];
+    mocks.listWorkflows.mockResolvedValue([]);
+    mocks.findTemplates.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          templateId: `${AppToolSourceEnum.commercial}-workflow-template`,
+          name: 'Workflow template',
+          intro: 'intro',
+          avatar: 'avatar',
+          tags: [],
+          type: AppTypeEnum.workflow,
+          isActive: true,
+          workflow: {
+            nodes: [],
+            edges: [],
+            chatConfig: {},
+            referenceSnapshots
+          }
+        }
+      ])
+    });
+
+    const [template] = await getAppTemplatesAndLoadThem(true);
+
+    expect(template?.workflow).toHaveProperty('referenceSnapshots', referenceSnapshots);
+  });
+
   it('migrates legacy workflow fields before returning templates', async () => {
     mocks.listWorkflows.mockResolvedValue([]);
     mocks.findTemplates.mockReturnValue({

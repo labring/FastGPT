@@ -119,20 +119,20 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('ignores duplicate tool parameter deltas', () => {
+  it('appends repeated streaming parameter fragments', () => {
     const collector = createAgentLoopCoreAssistantEventCollector();
     collector.emitEvent({ type: 'tool_call', call: call('streamed', 'search', '') });
     collector.emitEvent({
       type: 'tool_params',
       callId: 'streamed',
-      argsDelta: '{"query":"FastGPT"}'
+      argsDelta: 'a'
     });
     collector.emitEvent({
       type: 'tool_params',
       callId: 'streamed',
-      argsDelta: '{"query":"FastGPT"}'
+      argsDelta: 'a'
     });
-    expect(collector.assistantResponses[0].tools?.[0].params).toBe('{"query":"FastGPT"}');
+    expect(collector.assistantResponses[0].tools?.[0].params).toBe('aa');
   });
 
   it.each([true, false])(

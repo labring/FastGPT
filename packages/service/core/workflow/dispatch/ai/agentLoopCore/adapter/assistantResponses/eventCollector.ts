@@ -21,12 +21,6 @@ export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   metaEventNames?: AgentLoopCoreAssistantMetaEventNames;
 };
 
-const appendUniqueDelta = (current: string | null | undefined, delta: string) => {
-  const currentValue = current || '';
-  if (!delta || currentValue === delta) return currentValue;
-  return `${currentValue}${delta}`;
-};
-
 /**
  * 按模型响应维护唯一 value。调用 ID 显式关联所属响应，执行完成顺序不影响工具顺序。
  * 子工具展示输出不属于父模型 transcript；隐藏工具仍完整保留调用和实际消费的结果。
@@ -154,7 +148,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         const tool = groupsByCall
           .get(event.callId)
           ?.tools?.find((tool) => tool.id === event.callId);
-        if (tool) tool.params = appendUniqueDelta(tool.params, event.argsDelta);
+        if (tool) tool.params += event.argsDelta;
         return;
       }
       case 'tool_activity': {

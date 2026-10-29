@@ -38,7 +38,8 @@ export const migrateAppTemplateWorkflowToCurrent = (
   const migrated = migrateWorkflowToCurrent({
     nodes: Array.isArray(workflow.nodes) ? workflow.nodes : [],
     edges: workflow.edges,
-    chatConfig: workflow.chatConfig
+    chatConfig: workflow.chatConfig,
+    referenceSnapshots: workflow.referenceSnapshots
   });
 
   return {
