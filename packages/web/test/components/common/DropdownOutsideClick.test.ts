@@ -85,30 +85,42 @@ describe('workflow dropdown outside click', () => {
           React.createElement(
             'div',
             {
-              className: 'react-flow__node',
-              onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
-                if ((event.target as HTMLElement).closest('.nodrag')) return;
-                selected = true;
-
-                // ReactFlow's drag listener captures mouseup on window before document listeners.
-                window.addEventListener(
-                  'mouseup',
-                  (mouseEvent) => {
-                    mouseEvent.preventDefault();
-                    mouseEvent.stopImmediatePropagation();
-                  },
-                  { capture: true, once: true }
-                );
-                event.nativeEvent.stopImmediatePropagation();
-              }
+              className: 'react-flow__pane',
+              'data-testid': 'flow-pane'
             },
-            menu,
-            React.createElement('div', { 'data-testid': 'drag-area' }, 'Draggable node area'),
             React.createElement(
               'div',
-              { className: 'nodrag', 'data-testid': 'no-drag-area' },
-              'Non-draggable node area'
-            )
+              { className: 'react-flow__viewport' },
+              React.createElement(
+                'div',
+                {
+                  className: 'react-flow__node',
+                  onMouseDown: (event: React.MouseEvent<HTMLDivElement>) => {
+                    if ((event.target as HTMLElement).closest('.nodrag')) return;
+                    selected = true;
+
+                    // ReactFlow's drag listener captures mouseup on window before document listeners.
+                    window.addEventListener(
+                      'mouseup',
+                      (mouseEvent) => {
+                        mouseEvent.preventDefault();
+                        mouseEvent.stopImmediatePropagation();
+                      },
+                      { capture: true, once: true }
+                    );
+                    event.nativeEvent.stopImmediatePropagation();
+                  }
+                },
+                menu,
+                React.createElement('div', { 'data-testid': 'drag-area' }, 'Draggable node area'),
+                React.createElement(
+                  'div',
+                  { className: 'nodrag', 'data-testid': 'no-drag-area' },
+                  'Non-draggable node area'
+                )
+              )
+            ),
+            React.createElement('div', { 'data-testid': 'canvas-background' }, 'Canvas background')
           )
         )
       );
@@ -126,6 +138,8 @@ describe('workflow dropdown outside click', () => {
       trigger,
       dragArea: container.querySelector<HTMLElement>('[data-testid="drag-area"]')!,
       noDragArea: container.querySelector<HTMLElement>('[data-testid="no-drag-area"]')!,
+      canvasBackground: container.querySelector<HTMLElement>('[data-testid="canvas-background"]')!,
+      flowPane: container.querySelector<HTMLElement>('[data-testid="flow-pane"]')!,
       isNodeSelected: () => selected
     };
   };
@@ -187,6 +201,31 @@ describe('workflow dropdown outside click', () => {
     await clickNodeArea(dragArea);
 
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it.each([
+    'MyMenu',
+    'MySelect',
+    'MultipleSelect',
+    'MultipleRowSelect',
+    'MultipleRowArraySelect'
+  ] as const)('closes %s when starting a canvas drag from the pane', async (kind) => {
+    const { trigger, canvasBackground, flowPane } = await render(kind);
+    let paneMouseDown = false;
+    flowPane.addEventListener('mousedown', () => {
+      paneMouseDown = true;
+    });
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    await act(async () => {
+      canvasBackground.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+      canvasBackground.dispatchEvent(
+        new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 })
+      );
+    });
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(paneMouseDown).toBe(true);
   });
 
   it.each([

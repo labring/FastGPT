@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 
-/** 在 React Flow 节点可拖拽区域、引用元素之外按下时调用关闭处理。 */
+/** 在 React Flow 节点或画布拖拽区域、引用元素之外按下时调用关闭处理。 */
 export const useCloseOnFlowNodeDragAreaPointerDown = <T extends HTMLElement>(
   ref: RefObject<T>,
   handler: (event: Event) => void,
@@ -17,7 +17,10 @@ export const useCloseOnFlowNodeDragAreaPointerDown = <T extends HTMLElement>(
           (target) => target instanceof HTMLElement && target.classList.contains('nodrag')
         ) ||
         !path.some(
-          (target) => target instanceof HTMLElement && target.classList.contains('react-flow__node')
+          (target) =>
+            target instanceof HTMLElement &&
+            (target.classList.contains('react-flow__node') ||
+              target.classList.contains('react-flow__pane'))
         )
       ) {
         return;
