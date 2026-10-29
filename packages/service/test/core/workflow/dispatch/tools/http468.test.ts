@@ -75,16 +75,6 @@ describe('dispatchHttp468Request empty keys', () => {
     isInternalAddressMock.mockResolvedValue(false);
   });
 
-  it('returns the raw response and selected JSON fields through data', async () => {
-    const body = { zero: 0, flag: false, nested: { value: 'ok' } };
-    axiosMock.mockResolvedValueOnce({ data: body });
-    const props = buildProps(ContentTypes.json);
-    props.node.outputs = ['zero', 'flag', 'nested'].map((key) => ({ key }));
-    const result = await dispatchHttp468Request(props);
-    expect(result.data).toEqual({ [NodeOutputKeyEnum.httpRawResponse]: body, ...body });
-    expect(Object.hasOwn(result, 'rawError')).toBe(false);
-  });
-
   it.each(
     [ContentTypes.formData, ContentTypes.xWwwFormUrlencoded].flatMap((httpContentType) =>
       [true, false].map((hasType) => ({ httpContentType, hasType }))

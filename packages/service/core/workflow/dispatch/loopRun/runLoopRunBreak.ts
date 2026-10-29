@@ -1,7 +1,7 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../types/runtime';
 
-type Response = DispatchNodeResultType;
+type Response = DispatchNodeResultType<Record<string, never>>;
 
 // Signal-only node. The workflow runtime records its moduleType into
 // workflowRuntimeSummary so the parent loopRun can terminate the loop.

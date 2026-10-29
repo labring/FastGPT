@@ -97,7 +97,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         errorText: 'Invalid API key'
       })
     ]);
-    expect(nodeResponses[0]).not.toHaveProperty('errorType');
+
     expect(nodeResponses[0]).not.toHaveProperty('error');
   });
 

@@ -79,9 +79,12 @@ type HttpRequestProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 type HttpResponse = DispatchNodeResultType<
-  Record<string, any>,
   {
-    [NodeOutputKeyEnum.error]?: string; // 适配字段
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.errorText]: string; //未使用，仅作类型。
+    [NodeOutputKeyEnum.error]: string; // 适配字段
     [NodeOutputKeyEnum.httpRawError]?: Omit<ReturnType<typeof formatHttpError>, 'rawText'>;
   }
 >;

@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -152,11 +150,6 @@ describe('abandoned dispatchAppRequest', () => {
         variables: []
       }
     } as any);
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.runApp,
-      result,
-      expectedData: result.data ?? {}
-    });
 
     const childVariableState = runWorkflowMock.mock.calls[0][0].variableState;
 

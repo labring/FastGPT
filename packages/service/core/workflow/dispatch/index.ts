@@ -15,7 +15,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
-import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
@@ -410,8 +409,6 @@ export class WorkflowQueue {
   // Workflow variables
   workflowRunTimes = 0;
   workflowRuntimeSummary: WorkflowRuntimeSummaryType;
-  /** 保留未捕获异常，优先保留系统错误；容器恢复摘要不保存该运行时对象。 */
-  runtimeFailure?: { rawError: unknown };
   chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   chatNodeUsages: ChatNodeUsageType[] = [];
   toolRunResponse: ToolRunResponseItemType; // Run with tool mode. Result will response to tool node.
@@ -914,25 +911,16 @@ export class WorkflowQueue {
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
-            const callbackResult = (await callbackMap[node.flowNodeType](
-              dispatchData
-            )) as NodeResponseType;
-            const responseData = callbackResult[DispatchNodeResponseKeyEnum.nodeResponse];
-            // 原始异常需要可展示的故障详情；只有分支输出时不生成故障状态。
-            const result = Object.hasOwn(callbackResult, 'rawError')
-              ? {
-                  ...callbackResult,
-                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                    ...responseData,
-                    error:
-                      responseData?.error ??
-                      responseData?.errorText ??
-                      getErrText(callbackResult.rawError)
-                  }
-                }
-              : callbackResult;
+            const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+            // 原始异常缺少故障详情时补展示文本；错误分支的数据不参与异常判定。
+            if (
+              Object.hasOwn(result, 'rawError') &&
+              result.responseData?.error === undefined &&
+              result.responseData?.errorText === undefined
+            ) {
+              result.responseData = { ...result.responseData, error: getErrText(result.rawError) };
+            }
 
-            const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
             // error 是错误分支的数据记录；主动选该分支不代表出现了系统异常。
             if (result.error) {
               // Run error and not catch error, skip all edges
@@ -952,13 +940,10 @@ export class WorkflowQueue {
 
               return {
                 ...result,
-                ...(nodeResponseBase &&
-                (Object.hasOwn(result, 'rawError') ||
-                  nodeResponseBase.error !== undefined ||
-                  nodeResponseBase.errorText !== undefined)
+                ...(result[DispatchNodeResponseKeyEnum.nodeResponse]
                   ? {
                       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                        ...nodeResponseBase,
+                        ...result[DispatchNodeResponseKeyEnum.nodeResponse],
                         errorCaptured: true
                       }
                     }
@@ -1042,25 +1027,10 @@ export class WorkflowQueue {
           [DispatchNodeResponseKeyEnum.nodeResponse]: formatCurrentNodeResponse
         }
       });
-      const hasRawError = Object.hasOwn(dispatchRes, 'rawError');
       const currentNodeError =
-        formatCurrentNodeResponse?.errorText ??
-        formatCurrentNodeResponse?.error ??
-        (hasRawError ? getErrText(dispatchRes.rawError) : undefined);
+        formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
       // 仅本轮原始异常参与分类；展示文本不用于重建用户错误身份。
-      const isUserConfigFailure = hasRawError && isUserConfigError(dispatchRes.rawError);
-      // 仅节点直接返回且未被捕获/工具边界消化的异常参与本轮失败；summary 只维护统计。
-      if (
-        hasRawError &&
-        !node.catchError &&
-        !formatCurrentNodeResponse?.errorCaptured &&
-        !(formatCurrentNodeResponse && isToolExecutionResponse(formatCurrentNodeResponse)) &&
-        (!this.runtimeFailure ||
-          isUserConfigError(this.runtimeFailure.rawError) ||
-          !isUserConfigFailure)
-      ) {
-        this.runtimeFailure = { rawError: dispatchRes.rawError };
-      }
+      const isUserConfigFailure = isUserConfigError(dispatchRes.rawError);
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
       // 均交给当前 workflow 的 sink scope 统一提取 summary。
@@ -1089,12 +1059,7 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = this.data.nodeResponseSink?.hasOutput ?? false;
 
       // 仅成功节点补齐默认值；商业插件等业务失败可能只有错误详情，没有原始异常。
-      if (
-        dispatchRes.data &&
-        !dispatchRes.error &&
-        !hasRawError &&
-        currentNodeError === undefined
-      ) {
+      if (dispatchRes.data && !dispatchRes.error && currentNodeError === undefined) {
         node.outputs.forEach((item) => {
           if (!item.required) return;
           if (dispatchRes.data?.[item.key] !== undefined) return;
@@ -1125,7 +1090,7 @@ export class WorkflowQueue {
       }
 
       // 统一日志只读取节点返回的原始 Error；responseData 的文本仅用于展示和流程控制。
-      if (hasRawError && dispatchRes.rawError instanceof Error) {
+      if (dispatchRes.rawError instanceof Error) {
         logger.warn('Workflow node returned error', { error: dispatchRes.rawError });
       }
 
@@ -1349,7 +1314,10 @@ export class WorkflowQueue {
     } => {
       pushStore(result);
 
-      const concatData = { ...result.data, ...result.error };
+      const concatData: Record<string, any> = {
+        ...(result.data ?? {}),
+        ...(result.error ?? {})
+      };
 
       // Assign the output value to the next node
       node.outputs.forEach((outputItem) => {
@@ -1608,6 +1576,7 @@ export class WorkflowQueue {
     };
   }
 }
+
 /** 执行当前层工作流，维护独立摘要，并在返回或抛出前完成本层错误上报。 */
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
   // 每个 workflow 层拥有独立 summary；底层 sink/writer 可以由 parent/child 共享。
@@ -1765,7 +1734,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             }
 
             return {
-              ...workflowQueue.runtimeFailure,
               flowUsages: workflowQueue.chatNodeUsages,
               debugResponse: workflowQueue.getDebugResponse(),
               workflowInteractiveResponse: interactiveResult,

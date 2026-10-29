@@ -128,9 +128,7 @@ describe('workflow data transfer through real nodes', () => {
     expect(responses.find((response) => response.nodeId === 'source')).toMatchObject({
       codeLog: 'intentional branch'
     });
-    expect(
-      responses.find((response) => response.nodeId === 'source')?.errorCaptured
-    ).toBeUndefined();
+    expect(responses.find((response) => response.nodeId === 'source')?.errorCaptured).toBe(true);
     expect(warn).not.toHaveBeenCalled();
     const observationIndex = stepObservation.mock.calls.findIndex(
       ([options]) => options.nodeType === internalRuntimeNodeType
@@ -518,7 +516,7 @@ describe('real code and HTTP node error routes', () => {
           graphEdge({ source: 'code', target: 'caught', error: true })
         ]
       });
-      expect(result.rawError).toBe(error);
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
       expect(result.workflowRuntimeSummary.errorCount).toBe(1);
       expect(responses.map((response) => response.nodeId)).toEqual(['code']);
       // mock logger 只验证原始异常的提交，配置错误的降级由 logger 自身测例验证。
@@ -547,7 +545,7 @@ describe('real code and HTTP node error routes', () => {
       nodes: [source, target],
       edges: [graphEdge({ source: 'code', target: 'target' })]
     });
-    expect(first.result.rawError).toBe(error);
+    expect(first.result.workflowRuntimeSummary.errorCount).toBe(1);
     expect(graphValues(source).system_error_text).toBe(error.message);
     source.isEntry = true;
     const second = await runGraph({
@@ -727,6 +725,8 @@ describe('real container child workflows', () => {
       const omitted = scenario === 'omitted';
       const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
       const failure = new Error('second item failed');
+      const warn = vi.spyOn(getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH), 'warn');
+      warn.mockClear();
       vi.mocked(codeSandbox.runCode).mockImplementation(async ({ variables }) => {
         if (variables.value === 'fail') throw failure;
         if (variables.value === 'omit') return { codeReturn: {}, log: '' };
@@ -778,6 +778,9 @@ describe('real container child workflows', () => {
         fails || omitted ? [0, undefined] : [0, false, '']
       );
       expect(codeSandbox.runCode).toHaveBeenCalledTimes(fails || omitted ? 2 : 3);
+      expect(warn).toHaveBeenCalledTimes(fails ? 1 : 0);
+      if (fails)
+        expect(warn).toHaveBeenCalledWith('Workflow node returned error', { error: failure });
     }
   );
 

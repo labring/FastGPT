@@ -215,11 +215,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
     [NodeOutputKeyEnum.parallelStatus]: status
   };
-  return {
-    ...parallelFailure,
-    ...(parallelFailure
-      ? { error: { [NodeOutputKeyEnum.errorText]: getErrText(parallelFailure.rawError) } }
-      : {}),
+  const result = {
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
@@ -232,4 +228,11 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined
   };
+  return parallelFailure
+    ? {
+        ...result,
+        ...parallelFailure,
+        error: { [NodeOutputKeyEnum.errorText]: getErrText(parallelFailure.rawError) }
+      }
+    : result;
 };

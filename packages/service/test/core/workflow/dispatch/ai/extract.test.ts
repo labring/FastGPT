@@ -295,7 +295,7 @@ describe('dispatchContentExtract', () => {
       success: true,
       name: ''
     });
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
   });
 
   it('extracts multiple fields and removes fields outside the schema', async () => {

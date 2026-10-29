@@ -173,12 +173,7 @@ export const parseTaskResponse = (params: {
  * Wrap a caught error into a failed ParallelTaskResult.
  */
 export const parseTaskError = (index: number, err: unknown): ParallelTaskResult => {
-  return {
-    success: false,
-    index,
-    error: getErrText(err),
-    totalPoints: 0
-  };
+  return { success: false, index, error: getErrText(err), totalPoints: 0 };
 };
 
 // ─── 5. aggregateParallelResults ──────────────────────────────────────────────

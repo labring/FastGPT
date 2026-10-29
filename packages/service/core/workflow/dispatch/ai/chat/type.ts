@@ -16,8 +16,13 @@ export type ChatProps = ModuleDispatchProps<
   }
 >;
 
-export type ChatResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.answerText]: string;
-  [NodeOutputKeyEnum.reasoningText]?: string;
-  [NodeOutputKeyEnum.history]: ChatItemMiniType[];
-}>;
+export type ChatResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.answerText]: string;
+    [NodeOutputKeyEnum.reasoningText]?: string;
+    [NodeOutputKeyEnum.history]: ChatItemMiniType[];
+  },
+  {
+    [NodeOutputKeyEnum.errorText]: string;
+  }
+>;

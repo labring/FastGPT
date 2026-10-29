@@ -192,7 +192,6 @@ describe('dispatchParallelRun', () => {
       const error = new UserConfigError('Invalid key');
       runWorkflowMock.mockResolvedValueOnce(
         makeDispatchFlowResponse({
-          rawError: error,
           nodeResponses: [
             makeResponseItem(
               fails ? 'chatNode' : 'nestedEnd',
@@ -215,7 +214,7 @@ describe('dispatchParallelRun', () => {
           { success: false, message: error.message }
         ]);
       }
-      expect(result.responseData).not.toHaveProperty('errorType');
+
       expect(result.responseData).not.toHaveProperty('error');
     }
   );

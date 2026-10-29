@@ -204,7 +204,7 @@ describe('MCPClient', () => {
       await expect(mcpClient.getTools()).rejects.toThrow('Get tools response is not an array');
     });
 
-    it('should not log user config errors', async () => {
+    it('preserves configuration errors for the centralized logger', async () => {
       const mcpClient = new MCPClient(config);
       const client = stubConnection(mcpClient);
       const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
@@ -218,12 +218,13 @@ describe('MCPClient', () => {
 
       expect(errorLog).not.toHaveBeenCalled();
       expect(warnLog).toHaveBeenCalledWith(
-        'MCP client user config error',
+        'MCP client failed to get tools',
         expect.objectContaining({
-          operation: 'getTools',
           urlHost: 'example.com',
-          errorCode: 401,
-          otel: false
+          error: expect.objectContaining({
+            name: 'UserConfigError',
+            cause: expect.objectContaining({ code: 401 })
+          })
         })
       );
     });
@@ -563,78 +564,36 @@ describe('MCPClient', () => {
       expect(closeSpy).toHaveBeenCalled();
     });
 
-    it('should not log user config errors', async () => {
-      const mcpClient = new MCPClient(config);
-      const client = stubConnection(mcpClient);
-      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
-      const errorLog = vi.spyOn(logger, 'error');
-      const warnLog = vi.spyOn(logger, 'warn');
-      client.callTool.mockRejectedValue(new StreamableHTTPError(410, 'Url is expired'));
+    it.each([
+      { code: 410, message: 'Url is expired', protocol: false },
+      { code: 404, message: 'Session not found', protocol: false },
+      { code: -32003, message: 'MCP error -32003: unsupported protocol version', protocol: true }
+    ])(
+      'preserves external failure $code for centralized log classification',
+      async ({ code, message, protocol }) => {
+        const mcpClient = new MCPClient(config);
+        const client = stubConnection(mcpClient);
+        const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+        const errorLog = vi.spyOn(logger, 'error');
+        const warnLog = vi.spyOn(logger, 'warn');
+        const error = protocol
+          ? Object.assign(new Error(message), { name: 'McpError', code })
+          : new StreamableHTTPError(code, message);
+        client.callTool.mockRejectedValue(error);
 
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
-        name: 'UserConfigError'
-      });
-
-      expect(errorLog).not.toHaveBeenCalled();
-      expect(warnLog).toHaveBeenCalledWith(
-        'MCP client user config error',
-        expect.objectContaining({
-          operation: 'toolCall',
-          errorCode: 410,
-          otel: false
-        })
-      );
-    });
-
-    it('classifies 404 after the connection is established as a user config error without error logging', async () => {
-      const mcpClient = new MCPClient(config);
-      const client = stubConnection(mcpClient);
-      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
-      const errorLog = vi.spyOn(logger, 'error');
-      const warnLog = vi.spyOn(logger, 'warn');
-      client.callTool.mockRejectedValue(new StreamableHTTPError(404, 'Session not found'));
-
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
-        name: 'UserConfigError'
-      });
-
-      expect(errorLog).not.toHaveBeenCalled();
-      expect(warnLog).toHaveBeenCalledWith(
-        'MCP client user config error',
-        expect.objectContaining({
-          operation: 'toolCall',
-          errorCode: 404,
-          otel: false
-        })
-      );
-    });
-
-    it('classifies MCP JSON-RPC protocol errors (like -32003 version mismatch) as user config error', async () => {
-      const mcpClient = new MCPClient(config);
-      const client = stubConnection(mcpClient);
-      const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
-      const errorLog = vi.spyOn(logger, 'error');
-      const warnLog = vi.spyOn(logger, 'warn');
-      const error = Object.assign(new Error('MCP error -32003: 不支持的协议版本[2025-11-25]'), {
-        name: 'McpError',
-        code: -32003
-      });
-      client.callTool.mockRejectedValue(error);
-
-      await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
-        name: 'UserConfigError'
-      });
-
-      expect(errorLog).not.toHaveBeenCalled();
-      expect(warnLog).toHaveBeenCalledWith(
-        'MCP client user config error',
-        expect.objectContaining({
-          operation: 'toolCall',
-          errorCode: -32003,
-          otel: false
-        })
-      );
-    });
+        await expect(mcpClient.toolCall({ toolName: 'bad', params: {} })).rejects.toMatchObject({
+          name: 'UserConfigError',
+          cause: error
+        });
+        expect(errorLog).not.toHaveBeenCalled();
+        expect(warnLog).toHaveBeenCalledWith(
+          'MCP client tool call failed',
+          expect.objectContaining({
+            error: expect.objectContaining({ name: 'UserConfigError', cause: error })
+          })
+        );
+      }
+    );
 
     it('treats unexpected internal error without MCP codes as system error without double error logging', async () => {
       const mcpClient = new MCPClient(config);
@@ -826,7 +785,6 @@ describe('MCPClient', () => {
           'MCP client tool call failed',
           expect.objectContaining({ error: internalError })
         );
-        expect(warnLog).not.toHaveBeenCalledWith('MCP client user config error', expect.anything());
       }
     );
 
@@ -866,21 +824,17 @@ describe('MCPClient', () => {
         const request = mcpClient.toolCall({ toolName: 'test', params: {} });
         if (external) {
           await expect(request).rejects.toMatchObject({ name: 'UserConfigError', cause: error });
-          expect(warnLog).toHaveBeenCalledWith(
-            'MCP client user config error',
-            expect.objectContaining({ otel: false })
-          );
         } else {
           await expect(request).rejects.toBe(error);
-          expect(warnLog).toHaveBeenCalledWith(
-            'MCP client tool call failed',
-            expect.objectContaining({ error })
-          );
-          expect(warnLog).not.toHaveBeenCalledWith(
-            'MCP client user config error',
-            expect.anything()
-          );
         }
+        expect(warnLog).toHaveBeenCalledWith(
+          'MCP client tool call failed',
+          expect.objectContaining({
+            error: external
+              ? expect.objectContaining({ name: 'UserConfigError', cause: error })
+              : error
+          })
+        );
         expect(infoLog).toHaveBeenCalledWith('Streamable HTTP error', {
           error,
           ...(external ? { otel: false } : {})
@@ -898,7 +852,7 @@ describe('MCPClient', () => {
       expect(result).toBe(client);
     });
 
-    it('should convert ZodError to UserError when MCP server returns invalid JSON-RPC response', async () => {
+    it('should convert ZodError to UserConfigError when MCP server returns invalid JSON-RPC response', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       // 模拟 MCP SDK 在收到不合规响应时抛出的 ZodError
@@ -909,12 +863,13 @@ describe('MCPClient', () => {
       await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
         name: 'UserConfigError',
         message: 'MCP server returned invalid response',
-        displayMessage: expect.stringContaining('JSON-RPC 2.0')
+        displayMessage: expect.stringContaining('JSON-RPC 2.0'),
+        cause: zodError
       });
       expect(client.connect).toHaveBeenCalledTimes(1);
     });
 
-    it('should convert protocol error in SSE fallback to UserError', async () => {
+    it('should convert protocol error in SSE fallback to UserConfigError', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       // Streamable HTTP 失败但 fallback 条件满足
@@ -926,7 +881,8 @@ describe('MCPClient', () => {
 
       await expect((mcpClient as any).getConnection()).rejects.toMatchObject({
         name: 'UserConfigError',
-        message: 'MCP server returned invalid response'
+        message: 'MCP server returned invalid response',
+        cause: zodError
       });
       expect(client.connect).toHaveBeenCalledTimes(2);
     });

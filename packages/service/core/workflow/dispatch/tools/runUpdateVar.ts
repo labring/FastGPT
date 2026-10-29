@@ -65,7 +65,7 @@ const applyNumberOp = (
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
 }>;
-type Response = DispatchNodeResultType;
+type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
   const { params, variableState, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;

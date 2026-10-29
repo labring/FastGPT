@@ -60,10 +60,13 @@ type RunToolProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 
-type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: any;
-  [key: string]: any;
-}>;
+type RunToolResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.rawResponse]?: any;
+    [key: string]: any;
+  },
+  Record<string, any>
+>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
@@ -294,9 +297,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;
       const mcpToolList = await getMCPChildren(app, workflow);
-      if (!mcpToolSet || !mcpToolList.length) {
-        throw new Error('MCP tool set is missing');
-      }
+      if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
       const mcpTool = getToolNameCandidates(toolName)
         .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);

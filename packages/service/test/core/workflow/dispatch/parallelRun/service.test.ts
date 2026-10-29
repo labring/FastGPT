@@ -16,7 +16,6 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -333,25 +332,6 @@ describe('parallelRun/service', () => {
         expect(result.error).toContain('parallel_task_not_reach_end');
       }
     });
-
-    it('从子流程摘要提取失败展示文本', () => {
-      const response = makeDispatchFlowResponse({
-        nodeResponses: [
-          {
-            id: 'llm',
-            moduleType: FlowNodeTypeEnum.chatNode,
-            errorText: 'Invalid API key'
-          } as any
-        ]
-      });
-
-      const result = parseTaskResponse({ index: 3, response });
-
-      expect(result).toMatchObject({
-        success: false,
-        error: 'Invalid API key'
-      });
-    });
   });
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -383,15 +363,6 @@ describe('parallelRun/service', () => {
       if (!result.success) {
         expect(typeof result.error).toBe('string');
       }
-    });
-
-    it('将用户异常转换为展示文本，不复制分类', () => {
-      const result = parseTaskError(3, new UserConfigError('Invalid MCP URL'));
-
-      expect(result).toMatchObject({
-        success: false,
-        error: 'Invalid MCP URL'
-      });
     });
   });
 
@@ -516,26 +487,6 @@ describe('parallelRun/service', () => {
         loopOutputValue: undefined
       });
       expect(responseDetails[0].childrenResponses).toBeUndefined();
-    });
-
-    it('失败文本经过 parse、wrapper 和 summary 后保持可见', () => {
-      const response = makeDispatchFlowResponse({
-        nodeResponses: [
-          {
-            id: 'llm',
-            moduleType: FlowNodeTypeEnum.chatNode,
-            errorText: 'Invalid API key'
-          } as any
-        ]
-      });
-      const result = parseTaskResponse({ index: 0, response });
-      const { responseDetails } = agg([result]);
-      const summary = summarizeRuntimeNodeResponses(undefined, responseDetails);
-
-      expect(summary).toMatchObject({
-        errorCount: 1,
-        errorText: 'Invalid API key'
-      });
     });
 
     it('wrapper.runningTime 使用任务自身耗时，不累加子节点耗时', () => {

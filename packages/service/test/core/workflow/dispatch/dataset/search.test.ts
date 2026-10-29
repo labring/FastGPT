@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -243,13 +241,9 @@ describe('dispatchDatasetSearch', () => {
       },
       nodeSummary
     );
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.datasetSearchNode,
-      result,
-      expectedData: { ...result.data, ...result.error }
-    });
+
     expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
         rerankModel: expect.objectContaining({ modelId: 'fallback-rerank' }),
@@ -333,7 +327,7 @@ describe('dispatchDatasetSearch', () => {
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ vlmModel: undefined })
     );
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(result.data?.quoteQA).toEqual([]);
   });
 
@@ -653,7 +647,7 @@ describe('dispatchDatasetSearch', () => {
       datasetDeepSearchBg: 'old settings'
     });
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(result.data?.quoteQA).toEqual(quotes);
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ textQueries: ['question'] })
@@ -748,11 +742,7 @@ describe('dispatchDatasetSearch', () => {
     const error = new WorkflowResourceError('App resource is unavailable: dataset:deleted_id');
     loadWorkflowDatasetResourceMock.mockRejectedValueOnce(error);
     const result = await runSearch();
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.datasetSearchNode,
-      result,
-      expectedData: { ...result.data, ...result.error }
-    });
+
     expect(result.rawError).toBe(error);
     expect(result).toMatchObject({
       error: { [NodeOutputKeyEnum.errorText]: error.message },

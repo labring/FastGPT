@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -57,11 +55,6 @@ describe('dispatchReadFiles', () => {
     const result = await dispatchReadFiles({
       ...baseProps,
       params: { fileUrlList: ['/a.pdf', '/b.pdf'] }
-    });
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.readFiles,
-      result,
-      expectedData: { ...result.data, ...result.error }
     });
 
     expect(mockparseFileContentFromUrls).toHaveBeenCalledWith({
@@ -291,11 +284,6 @@ describe('dispatchReadFiles', () => {
     const result = await dispatchReadFiles({
       ...baseProps,
       params: { fileUrlList: ['/a.pdf'] }
-    });
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.readFiles,
-      result,
-      expectedData: { ...result.data, ...result.error }
     });
 
     expect((result as any).error?.[NodeOutputKeyEnum.errorText]).toBe('boom');

@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import {
   ChatFileTypeEnum,
@@ -528,13 +526,8 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await resultPromise!;
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.agent,
-      result,
-      expectedData: { ...result.data, ...result.error }
-    });
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
     expect(systemPrompt).toContain('你是一个 Work Agent。');
     expect(systemPrompt).not.toContain('<user_system_prompt>');
@@ -641,7 +634,7 @@ describe('dispatchRunAgent user context', () => {
       () => dispatchRunAgent(props)
     );
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(authSkillByTmbIdMock).toHaveBeenCalledWith({
       tmbId: 'external_user_tmb',
       skillId,
@@ -698,7 +691,7 @@ describe('dispatchRunAgent user context', () => {
     );
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runAgentLoopMock).toHaveBeenCalledOnce();
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
   });
 
   it('returns the concrete silent migration failure reason', async () => {
@@ -797,39 +790,36 @@ describe('dispatchRunAgent user context', () => {
     ]);
   });
 
-  it('preserves user config classification from the normal core error result', async () => {
-    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
-    runAgentLoopMock.mockResolvedValueOnce({
-      status: 'error',
-      error: new UserConfigError('Invalid API key'),
-      completeMessages: [],
-      assistantMessages: [],
-      requestIds: [],
-      finishReason: 'error',
-      usages: []
-    });
+  it.each([new UserConfigError('Invalid API key'), new Error(''), undefined])(
+    'returns error output together with the original core exception: %j',
+    async (error) => {
+      const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+      runAgentLoopMock.mockResolvedValueOnce({
+        status: 'error',
+        error,
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: [],
+        finishReason: 'error',
+        usages: []
+      });
 
-    let resultPromise: Promise<any>;
-    runWithContext(
-      {
-        mcpClientMemory: {}
-      },
-      () => {
-        resultPromise = dispatchRunAgent(createProps());
-      }
-    );
-    const result = await resultPromise!;
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.agent,
-      result,
-      expectedData: { ...result.data, ...result.error }
-    });
+      let resultPromise: Promise<any>;
+      runWithContext(
+        {
+          mcpClientMemory: {}
+        },
+        () => {
+          resultPromise = dispatchRunAgent(createProps());
+        }
+      );
+      const result = await resultPromise!;
 
-    expect(result.rawError).toMatchObject({
-      message: 'Invalid API key',
-      name: 'UserConfigError'
-    });
-  });
+      expect(Object.hasOwn(result, 'rawError')).toBe(true);
+      expect(result.rawError).toBe(error);
+      expect(result.error).toEqual({ system_error_text: error?.message ?? '' });
+    }
+  );
 
   it('does not duplicate final answer already persisted from answer_delta', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
@@ -1431,7 +1421,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await promise;
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(result.data.answerText).toBe('ok');
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();

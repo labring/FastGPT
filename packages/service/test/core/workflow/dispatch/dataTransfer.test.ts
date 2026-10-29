@@ -1,16 +1,19 @@
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ModuleDispatchProps } from '@fastgpt/service/core/workflow/types/runtime';
+import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import {
   internalRuntimeNodeType,
   internalRuntimeNodeRunnerKey
 } from '@fastgpt/service/core/workflow/dispatch/internal/runtimeNode';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { expectNodeDataToReachDownstream } from './testUtils/dataTransfer';
+import {
+  graphNode,
+  graphEdge,
+  graphReference,
+  graphValues,
+  runGraph
+} from './testUtils/workflowGraph';
 
 vi.mock('@fastgpt/service/common/string/tiktoken/index', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/common/string/tiktoken/index')>()),
@@ -44,7 +47,8 @@ type DataCase = {
   type: keyof typeof callbackMap;
   params?: Record<string, unknown>;
   expectedData: Record<string, unknown>;
-  prepare?: (props: ModuleDispatchProps<Record<string, any>>) => void;
+  handle?: string;
+  prepare?: (props: Partial<RunWorkflowProps>) => void;
 };
 
 const cases: DataCase[] = [
@@ -91,6 +95,7 @@ const cases: DataCase[] = [
   },
   {
     type: FlowNodeTypeEnum.ifElseNode,
+    handle: 'ELSE',
     params: { ifElseList: [] },
     expectedData: { ifElseResult: 'ELSE' }
   },
@@ -205,72 +210,62 @@ describe('registered node data transfer', () => {
     for (const type of placeholders) expect(await callbackMap[type]()).toBeUndefined();
   });
 
-  it('internal runtime runner failures expose display data while retaining an Error object', async () => {
-    const result: any = await callbackMap[internalRuntimeNodeType]({ params: {} });
-    expect(result.rawError).toBeInstanceOf(Error);
-    await expectNodeDataToReachDownstream({
-      nodeType: internalRuntimeNodeType as any,
-      result,
-      expectedData: { [NodeOutputKeyEnum.errorText]: 'Internal runtime node runner is missing' }
+  it('internal runtime failures expose error outputs without leaking the original exception', async () => {
+    const keys = [NodeOutputKeyEnum.errorText, 'rawError', 'stack', 'cause'];
+    const source = graphNode({
+      id: 'source',
+      type: internalRuntimeNodeType as FlowNodeTypeEnum,
+      isEntry: true,
+      catchError: true,
+      outputs: keys
     });
+    const target = graphNode({
+      id: 'target',
+      type: FlowNodeTypeEnum.toolParams,
+      inputs: keys.map((key) => graphReference({ key, from: ['source', key] })),
+      outputs: keys
+    });
+    const { result } = await runGraph({
+      nodes: [source, target],
+      edges: [graphEdge({ source: 'source', target: 'target', error: true })]
+    });
+    expect(graphValues(target)).toEqual({
+      [NodeOutputKeyEnum.errorText]: 'Internal runtime node runner is missing',
+      rawError: undefined,
+      stack: undefined,
+      cause: undefined
+    });
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
   });
 
   it.each(cases)(
     '$type: actual node output is readable by a downstream node',
-    async ({ type, params = {}, expectedData, prepare }) => {
-      const variableState = await WorkflowVariableState.create({
-        timezone: 'Asia/Shanghai',
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: 'app',
-          name: 'app',
-          teamId: 'team',
-          tmbId: 'member'
-        },
-        uid: 'user',
-        chatId: 'chat',
-        histories: [],
-        variablesConfig: []
-      });
-      const props = {
-        node: {
-          nodeId: 'source',
-          name: type,
-          avatar: '',
-          flowNodeType: type,
-          isEntry: true,
-          inputs: [],
-          outputs: []
-        },
+    async ({ type, params = {}, expectedData, prepare, handle }) => {
+      const keys = Object.keys(expectedData);
+      const source = graphNode({
+        id: 'source',
+        type: type as FlowNodeTypeEnum,
         params,
-        query: [],
-        histories: [],
-        runtimeNodes: [],
-        runtimeNodesMap: new Map(),
-        runtimeEdges: [],
-        variableState,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: 'app',
-          name: 'app',
-          teamId: 'team',
-          tmbId: 'member'
-        },
-        runningUserInfo: { teamId: 'team', tmbId: 'member' },
-        externalProvider: {},
-        chatConfig: {},
-        usagePush: vi.fn(),
-        nodeSummary: createNodeSummary(),
-        checkIsStopping: () => false
-      } as unknown as ModuleDispatchProps<Record<string, any>>;
-      prepare?.(props);
-      const result = (await callbackMap[type](props)) as any;
-      expect(Object.hasOwn(result, 'rawError')).toBe(false);
-      const workflow = await expectNodeDataToReachDownstream({
-        nodeType: type as any,
-        result,
-        expectedData
+        outputs: keys,
+        isEntry: true
       });
+      const target = graphNode({
+        id: 'target',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: keys.map((key) => graphReference({ key, from: ['source', key] })),
+        outputs: keys
+      });
+      const overrides: Partial<RunWorkflowProps> = {};
+      prepare?.(overrides);
+      if (overrides.lastInteractive) overrides.lastInteractive.entryNodeIds = ['source'];
+      const { result: workflow, responses } = await runGraph({
+        nodes: [source, target],
+        edges: [graphEdge({ source: 'source', target: 'target', handle })],
+        overrides
+      });
+      expect(graphValues(target)).toEqual(expectedData);
+      expect(responses.some((response) => response.nodeId === 'target')).toBe(true);
+      expect(workflow.workflowRuntimeSummary.errorCount).toBe(0);
       if (type === FlowNodeTypeEnum.pluginOutput)
         expect(workflow.workflowRuntimeSummary.pluginOutput).toEqual(params);
       if (type === FlowNodeTypeEnum.nestedEnd)

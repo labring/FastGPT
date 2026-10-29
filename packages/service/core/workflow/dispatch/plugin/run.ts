@@ -48,9 +48,14 @@ type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
 }>;
-type RunPluginResponse = DispatchNodeResultType<{
-  [key: string]: any;
-}>;
+type RunPluginResponse = DispatchNodeResultType<
+  {
+    [key: string]: any;
+  },
+  {
+    [NodeOutputKeyEnum.errorText]?: string;
+  }
+>;
 
 /**
  * 工作流插件处理函数
@@ -240,7 +245,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       )
     ];
     const shouldStoreChildNodeResponses = !childWorkflowTool.associatedPluginId;
-    const childWorkflowResponse = await runWithDerivedWorkflowFileContext({
+    const {
+      flowUsages,
+      assistantResponses,
+      runTimes,
+      system_memories,
+      workflowRuntimeSummary,
+      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
+    } = await runWithDerivedWorkflowFileContext({
       histories: props.histories,
       files: childFileInputs,
       resourceContext: workflowToolResourceContext,
@@ -315,14 +327,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         });
       }
     });
-    const {
-      flowUsages,
-      assistantResponses,
-      runTimes,
-      system_memories,
-      [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
-    } = childWorkflowResponse;
-    const runtimeSummary = getWorkflowRuntimeSummary(childWorkflowResponse);
+    const runtimeSummary = getWorkflowRuntimeSummary({
+      workflowRuntimeSummary
+    });
     // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
     // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
     const pluginOutput = runtimeSummary.pluginOutput;
@@ -369,8 +376,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           }, {})
       : undefined;
     return {
-      data: { ...pluginOutput },
-      ...(pluginOutputError ? { error: { [NodeOutputKeyEnum.errorText]: pluginOutputError } } : {}),
+      data: pluginOutput || {},
+      ...(pluginOutputError
+        ? {
+            error: {
+              [NodeOutputKeyEnum.errorText]: pluginOutputError
+            }
+          }
+        : {}),
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
       assistantResponses: system_forbid_stream ? [] : assistantResponses,
       system_memories,

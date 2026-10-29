@@ -39,7 +39,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, any>>;
 
 /**
- * 逐轮执行子流程并保留输出快照；本轮未捕获的失败停止迭代，仅透传实际存在的原始异常。
+ * 逐轮执行子流程并保留输出快照；本轮未捕获的失败停止迭代，子节点异常在其调度层记录。
  * 恢复时累计历史统计，但失败判断只读取本轮结果，避免旧错误污染后续运行。
  */
 export const dispatchLoopRun = async (props: Props): Promise<Response> => {
@@ -109,7 +109,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
   // 本次调用的失败文本与可选原始异常不进入 checkpoint；业务失败不伪造 Error。
-  let loopFailure: { text: string; rawError?: unknown } | undefined;
+  let loopFailure: { text: string; rawError?: Error } | undefined;
   const getWrapperSummary = ({
     isResumeIteration,
     response
@@ -279,11 +279,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    // 本轮未捕获的业务失败也必须停止迭代，但只有实际原始异常才向上保留 rawError。
-    const hasRawError = Object.hasOwn(response, 'rawError');
-    if (hasRawError || !!childRuntimeSummary.errorCount) {
-      const errText = getErrText(childRuntimeSummary.errorText ?? response.rawError);
-      loopFailure = { text: errText, ...(hasRawError ? { rawError: response.rawError } : {}) };
+    // 子流程只传递本轮失败状态和输出；原始异常已经由出错节点上报。
+    if (childRuntimeSummary.errorCount) {
+      const errText = getErrText(childRuntimeSummary.errorText);
+      loopFailure = { text: errText };
       await pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
@@ -331,15 +330,14 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   };
 
   const errorText = loopFailure?.text;
-  return {
+  const result = {
     data,
-    ...(errorText !== undefined ? { error: { [NodeOutputKeyEnum.errorText]: errorText } } : {}),
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
     ...(errorText !== undefined ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {
-          type: 'loopRunInteractive',
+          type: 'loopRunInteractive' as const,
           params: {
             loopHistory,
             childrenResponse: interactiveResponse,
@@ -356,9 +354,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       ...(errorText !== undefined ? { errorText } : {})
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
-      customFeedbacks.length > 0 ? customFeedbacks : undefined,
-    ...(loopFailure && Object.hasOwn(loopFailure, 'rawError')
-      ? { rawError: loopFailure.rawError }
-      : {})
+      customFeedbacks.length > 0 ? customFeedbacks : undefined
   };
+  return loopFailure
+    ? {
+        ...result,
+        error: { [NodeOutputKeyEnum.errorText]: loopFailure.text },
+        ...(loopFailure.rawError ? { rawError: loopFailure.rawError } : {})
+      }
+    : result;
 };

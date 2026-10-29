@@ -117,15 +117,11 @@ export const runtimeSummaryToNodeSummary = (
  *
  * 工具内部错误已经记录在 nodeResponse，不再提升为整轮会话错误；token、积分、引用等
  * 业务汇总字段保留，由调用方通过 mergeNodeSummary 一次性合并。
- * 同时清理旧运行器可能携带的原始 error，避免旧对象越过工具边界。
  */
-export const stripNodeSummaryErrorFields = (
-  summary?: NodeSummary & { error?: unknown }
-): NodeSummary | undefined => {
+export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary | undefined => {
   if (!summary) return undefined;
 
   const controlSummary = { ...summary };
-  delete controlSummary.error;
   delete controlSummary.errorText;
   delete controlSummary.errorCount;
 

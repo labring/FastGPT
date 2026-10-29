@@ -192,11 +192,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
       textOutput: event.answerText,
       reasoningText: event.reasoningText,
       firstTokenTime: event.firstTokenTime,
-      ...(event.error
-        ? {
-            errorText: getErrText(event.error)
-          }
-        : {})
+      ...(event.error ? { errorText: getErrText(event.error) } : {})
     });
   };
 

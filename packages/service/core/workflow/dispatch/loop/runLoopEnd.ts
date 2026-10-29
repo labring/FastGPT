@@ -5,7 +5,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedEndInput]: any;
 }>;
-type Response = DispatchNodeResultType;
+type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchLoopEnd = async (props: Props): Promise<Response> => {
   const { params } = props;

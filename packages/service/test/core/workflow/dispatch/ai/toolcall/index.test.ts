@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -228,12 +226,6 @@ describe('dispatchRunTools', () => {
       });
 
       const result = await dispatchRunTools(createProps());
-      await expectNodeDataToReachDownstream({
-        nodeType: TransferNodeType.toolCall,
-        result,
-        expectedData: { ...result.data, ...result.error },
-        expectPause: 'toolWorkflowInteractiveResponse' in runtimeResult
-      });
 
       expect(result.assistantResponses).toEqual(assistantResponses);
       const messages = buildAgentLoopCoreRequestMessages({
@@ -261,18 +253,12 @@ describe('dispatchRunTools', () => {
     });
 
     const result = await dispatchRunTools(createProps());
-    await expectNodeDataToReachDownstream({
-      nodeType: TransferNodeType.toolCall,
-      result,
-      expectedData: { system_error_text: 'Invalid API key' }
-    });
 
     expect(result.rawError).toMatchObject({
       message: 'Invalid API key',
       name: 'UserConfigError'
     });
     expect(result.responseData).toMatchObject({ errorText: 'Invalid API key' });
-    expect(result.responseData).not.toHaveProperty('errorType');
   });
 
   it('does not restore history files when the node has no selected file link input', async () => {
@@ -353,7 +339,7 @@ describe('dispatchRunTools', () => {
     });
     const result = await dispatchRunTools(props);
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(useToolMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({ useSandbox: false })
@@ -488,7 +474,7 @@ describe('dispatchRunTools', () => {
         data: { sandboxId, phase: 'ready' }
       }
     ]);
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(getSandboxClientMock).toHaveBeenCalledOnce();
     expect(runToolCallMock).toHaveBeenCalledOnce();
   });

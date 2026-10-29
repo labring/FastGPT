@@ -373,19 +373,24 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       reasoningText: outputSummary.reasoningText,
       hideReason: aiChatReasoning === false
     });
-    return {
+
+    const result = {
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(outputSummary.errorText
-        ? { error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText } }
-        : {}),
-      ...(coreResult.status === 'error' ? { rawError: coreResult.error } : {}),
       ...(provider === 'piAgent' && {
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({ nodeId })
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
+    // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
+    return coreResult.status === 'error'
+      ? {
+          ...result,
+          rawError: coreResult.error,
+          error: { [NodeOutputKeyEnum.errorText]: outputSummary.errorText ?? '' }
+        }
+      : result;
   } catch (error) {
     // dispatch 层兜底：异常仅清理 Pi 的原生恢复状态；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {

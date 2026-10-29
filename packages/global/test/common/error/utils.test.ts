@@ -124,7 +124,6 @@ describe('UserError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
-    expect(err).not.toHaveProperty('type');
   });
 });
 
@@ -143,7 +142,7 @@ describe('UserConfigError', () => {
       cause
     });
     expect(error.cause).toBe(cause);
-    expect(error).not.toHaveProperty('type');
+
     expect(getErrText(error)).toBe('请检查密钥');
   });
 
@@ -170,10 +169,7 @@ describe('isUserConfigError', () => {
     new UserError('ordinary business error'),
     new Error('system error'),
     new Error('internal wrapper', { cause: new UserConfigError('invalid key') }),
-    Object.assign(new Error('system error'), { type: 'config' }),
     { name: 'UserError' },
-    { name: 'UserError', type: 'other' },
-    { type: 'config' },
     null,
     undefined,
     'config',

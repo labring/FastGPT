@@ -120,7 +120,6 @@ describe('dispatchChatCompletion token summary', () => {
         nodeSummary,
         usagePush
       } as any);
-
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
         inputTokens: 13,
         outputTokens: 4
@@ -277,7 +276,7 @@ describe('dispatchChatCompletion media file inputs', () => {
         } as any)
       );
 
-      expect(result.rawError).toBeUndefined();
+      expect(result.error).toBeUndefined();
       expect(requestMock).toHaveBeenCalledTimes(1);
       expect(requestMessages[0].content).toEqual(
         nodeMedia && modelMedia

@@ -20,8 +20,7 @@ import {
   createWorkflowRuntimeSummary,
   mergeWorkflowRuntimeSummary,
   runtimeSummaryToNodeSummary,
-  stripNodeSummaryErrorFields,
-  getNodeSummaryData
+  stripNodeSummaryErrorFields
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -1918,7 +1917,6 @@ describe('getNodeErrResponse', () => {
       errorText: 'Invalid MCP URL'
     });
     expect(isUserConfigError(result.rawError)).toBe(true);
-    expect(result.responseData).not.toHaveProperty('errorType');
   });
 
   it('should include responseData in nodeResponse', () => {
@@ -2316,7 +2314,6 @@ describe('stripNodeSummaryErrorFields', () => {
         llmOutputTokens: 4,
         totalPoints: 2,
         citeCollectionIds: ['collection-1'],
-        error: new UserConfigError('tool failure'),
         errorCount: 1,
         errorText: 'tool failed'
       })
@@ -2411,17 +2408,6 @@ describe('mergeWorkflowRuntimeSummary', () => {
 });
 
 describe('createNodeSummary', () => {
-  it('collects statistics without retaining a legacy raw exception', () => {
-    const source = { llmInputTokens: 2, error: new Error('legacy child error') };
-    const summary = createNodeSummary();
-
-    summary.mergeNodeSummary(source);
-
-    expect(summary).not.toHaveProperty('error');
-    expect(getNodeSummaryData(summary)).toEqual({ llmInputTokens: 2 });
-    expect(mergeWorkflowRuntimeSummary({ nodeSummary: source })).not.toHaveProperty('error');
-  });
-
   it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();
     summary.mergeNodeSummary({

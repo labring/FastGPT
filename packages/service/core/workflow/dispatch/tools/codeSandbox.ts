@@ -11,11 +11,18 @@ type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.code]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 }>;
-type RunCodeResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
-  [key: string]: any;
-  [NodeOutputKeyEnum.error]?: string;
-}>;
+type RunCodeResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
+    [key: string]: any;
+
+    /** @deprecated */
+    [NodeOutputKeyEnum.error]?: any;
+  },
+  {
+    [NodeOutputKeyEnum.error]: string;
+  }
+>;
 
 export const dispatchCodeSandbox = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {

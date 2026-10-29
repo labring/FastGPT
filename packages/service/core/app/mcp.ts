@@ -34,7 +34,6 @@ import {
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
-
 import { profileStage } from '../../common/profiling';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
@@ -381,7 +380,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 /** 保留 SSE transport 内部丢弃的 HTTP 状态码，供 MCP 错误分类统一读取。 */
-export class McpHttpStatusError extends Error {
+class McpHttpStatusError extends Error {
   constructor(
     readonly code: number,
     statusText?: string,
@@ -417,45 +416,6 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
 };
 
 /**
- * 提取 MCP SDK、协议响应或 fetch 错误中的状态码或错误代号。
- *
- * UserError 只保存 cause，需要沿 cause 继续读取状态码用于本地诊断。
- */
-const getMcpErrorCode = (
-  error: unknown,
-  visited = new Set<unknown>()
-): number | string | undefined => {
-  if (typeof error !== 'object' || error === null || visited.has(error)) {
-    return;
-  }
-  visited.add(error);
-
-  if (
-    error instanceof StreamableHTTPError ||
-    error instanceof McpHttpStatusError ||
-    error instanceof SseError ||
-    error instanceof McpError ||
-    (typeof error === 'object' && error !== null && 'name' in error && error.name === 'McpError')
-  ) {
-    if ('code' in error && (typeof error.code === 'number' || typeof error.code === 'string')) {
-      return error.code;
-    }
-  }
-  if ('code' in error && typeof error.code === 'string') {
-    return error.code;
-  }
-  if ('message' in error && typeof error.message === 'string') {
-    const statusMatch = error.message.match(/Non-200 status code \((\d{3})\)/);
-    if (statusMatch?.[1]) {
-      return Number(statusMatch[1]);
-    }
-  }
-  if ('cause' in error) {
-    return getMcpErrorCode(error.cause, visited);
-  }
-};
-
-/**
  * 提取 MCP transport 暴露的 HTTP 状态码。
  * MCP 工具请求的目标地址由用户配置，上游返回任何 4xx/5xx 都属于外部服务问题。
  */
@@ -487,10 +447,7 @@ const isMcpJsonRpcError = (error: unknown, visited = new Set<unknown>()): boolea
   }
   visited.add(error);
 
-  if (
-    error instanceof McpError ||
-    (typeof error === 'object' && error !== null && 'name' in error && error.name === 'McpError')
-  ) {
+  if (error instanceof McpError || ('name' in error && error.name === 'McpError')) {
     return true;
   }
   if (
@@ -584,27 +541,6 @@ const getMcpLogHost = (url: string) => {
   }
 };
 
-/**
- * 用户配置类 MCP 错误保留本地诊断信息，但不导出到 OTel。
- */
-const logMcpUserConfigError = ({
-  operation,
-  url,
-  error
-}: {
-  operation: string;
-  url: string;
-  error: unknown;
-}) => {
-  logger.warn('MCP client user config error', {
-    operation,
-    urlHost: getMcpLogHost(url),
-    errorCode: getMcpErrorCode(error),
-    error: getErrorMessage(error),
-    otel: false
-  });
-};
-
 const normalizeMcpClientError = (error: unknown) => {
   if (isUserConfigError(error)) {
     return error;
@@ -618,10 +554,11 @@ const normalizeMcpClientError = (error: unknown) => {
 /**
  * 将 MCP 协议格式错误转换为用户友好的错误提示。
  */
-const toMcpProtocolUserError = (): UserError => {
+const toMcpProtocolUserError = (error: unknown): UserError => {
   return new UserConfigError(
     'MCP server returned invalid response',
-    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确'
+    'MCP 服务器返回的响应格式不符合 JSON-RPC 2.0 规范，请检查 MCP 服务器配置是否正确',
+    { cause: error }
   );
 };
 
@@ -677,7 +614,7 @@ export class MCPClient {
         // 外部 server 返回不合规响应时，直接转换为用户配置错误，避免继续探测 SSE。
         if (isMcpResponseFormatError(streamableError)) {
           await this.closeSafeFetch();
-          throw toMcpProtocolUserError();
+          throw toMcpProtocolUserError(streamableError);
         }
 
         if (!shouldFallbackToSSE(streamableError)) {
@@ -702,7 +639,7 @@ export class MCPClient {
         } catch (sseError: any) {
           await this.closeSafeFetch();
           if (isMcpResponseFormatError(sseError)) {
-            throw toMcpProtocolUserError();
+            throw toMcpProtocolUserError(sseError);
           }
 
           const message = `MCP connection failed. Streamable HTTP: ${getErrorMessage(
@@ -723,19 +660,10 @@ export class MCPClient {
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
       if (error?.message?.includes('SSE stream: Not Found')) return;
-      // 外部服务连接、协议或网络错误属于用户配置/外部服务问题，仅保留本地诊断日志。
-      if (isMcpExternalFailure(error)) {
-        logMcpUserConfigError({
-          operation: 'connection',
-          url: this.url,
-          error
-        });
-      } else {
-        logger.warn('MCP client connection error', {
-          urlHost: getMcpLogHost(this.url),
-          error
-        });
-      }
+      logger.warn('MCP client connection error', {
+        urlHost: getMcpLogHost(this.url),
+        error: normalizeMcpClientError(error)
+      });
       this.connectionPromise = null;
       void this.closeSafeFetch();
     };
@@ -833,18 +761,10 @@ export class MCPClient {
       return tools;
     } catch (error) {
       const normalizedError = normalizeMcpClientError(error);
-      if (!isUserConfigError(normalizedError)) {
-        logger.warn('MCP client failed to get tools', {
-          urlHost: getMcpLogHost(this.url),
-          error: normalizedError
-        });
-      } else {
-        logMcpUserConfigError({
-          operation: 'getTools',
-          url: this.url,
-          error: normalizedError
-        });
-      }
+      logger.warn('MCP client failed to get tools', {
+        urlHost: getMcpLogHost(this.url),
+        error: normalizedError
+      });
       return Promise.reject(normalizedError);
     } finally {
       await this.closeConnection();
@@ -888,19 +808,11 @@ export class MCPClient {
       );
     } catch (error) {
       const normalizedError = normalizeMcpClientError(error);
-      if (!isUserConfigError(normalizedError)) {
-        logger.warn('MCP client tool call failed', {
-          urlHost: getMcpLogHost(this.url),
-          toolName,
-          error: normalizedError
-        });
-      } else {
-        logMcpUserConfigError({
-          operation: 'toolCall',
-          url: this.url,
-          error: normalizedError
-        });
-      }
+      logger.warn('MCP client tool call failed', {
+        urlHost: getMcpLogHost(this.url),
+        toolName,
+        error: normalizedError
+      });
       return Promise.reject(normalizedError);
     } finally {
       if (closeConnection) {

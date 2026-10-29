@@ -114,7 +114,6 @@ describe('dispatchRunAppNode', () => {
     };
 
     const result = await dispatchRunAppNode(props);
-
     // 验证资源加载时使用当前运行用户身份
     expect(mocks.loadChildWorkflowWithResource).toHaveBeenCalledWith({
       appId: 'child-app-id',

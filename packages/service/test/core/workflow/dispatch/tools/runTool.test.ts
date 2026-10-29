@@ -1,5 +1,3 @@
-import { FlowNodeTypeEnum as TransferNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { expectNodeDataToReachDownstream } from '@fastgpt/service/test/core/workflow/dispatch/testUtils/dataTransfer';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -98,8 +96,7 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/context', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/workflow/utils/context')>()),
+vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
   getWorkflowContext: vi.fn(() => workflowContextMock),
   getWorkflowResourceContext: vi.fn(() => undefined)
 }));
@@ -268,12 +265,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
 
       const result = await dispatchRunTool(props);
-      await expectNodeDataToReachDownstream({
-        nodeType: TransferNodeType.tool,
-        result,
-        expectedData: { ...result.data, ...result.error }
-      });
-      expect(result.rawError).toBeUndefined();
+      expect(result.error).toBeUndefined();
       const execute = source === 'mcp' ? mcpToolCallMock : runHTTPToolMock;
       expect(execute).toHaveBeenCalledOnce();
       expect(authAppByTmbIdMock).toHaveBeenCalledOnce();
@@ -476,7 +468,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(props);
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ params: { keyword: 'blocked', extra: true } })
     );
@@ -544,7 +536,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } }, { extra: true })
     );
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
@@ -658,8 +650,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       mcpToolCallMock.mockResolvedValueOnce({ ok: true });
 
       const result = await dispatchRunTool(props);
-
-      expect(result.rawError).toBeUndefined();
+      expect(result.error).toBeUndefined();
       expect(MCPClient).toHaveBeenCalledWith({
         url: 'https://mcp.example.com',
         headers: { Authorization: 'legacy-token', 'X-Key': 'api-key' }
@@ -690,7 +681,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(props);
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(MCPClient).toHaveBeenCalledWith({
       url: 'https://mcp.example.com',
       headers: { Authorization: 'legacy-token' }
@@ -708,7 +699,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
 
     const result = await dispatchRunTool(createRunToolProps({ systemTool: { toolId: 'search' } }));
 
-    expect(result.rawError).toBeUndefined();
+    expect(result.error).toBeUndefined();
     expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
     );

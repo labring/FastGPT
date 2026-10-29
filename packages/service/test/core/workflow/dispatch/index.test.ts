@@ -1503,20 +1503,18 @@ describe('Workflow runtime error summary', () => {
   const systemError = new Error('Database unavailable', { cause: new Error('private-cause') });
   const textError = 'upstream request failed';
   const recordError = { message: 'upstream returned an error record' };
-  const cases: { errors: unknown[]; expectedError: unknown; returnError?: boolean }[] = [
-    { errors: [configError], expectedError: configError },
-    { errors: [systemError], expectedError: systemError },
-    { errors: [undefined], expectedError: undefined },
-    { errors: [textError], expectedError: textError },
-    { errors: [recordError], expectedError: recordError },
-    { errors: [systemError], expectedError: systemError, returnError: true },
-    { errors: [configError], expectedError: configError, returnError: true },
-    { errors: [configError, systemError], expectedError: systemError },
-    { errors: [systemError, configError], expectedError: systemError }
+  const cases: { errors: unknown[]; returnError?: boolean }[] = [
+    { errors: [configError] },
+    { errors: [systemError] },
+    { errors: [undefined] },
+    { errors: [textError] },
+    { errors: [recordError] },
+    { errors: [systemError], returnError: true },
+    { errors: [configError], returnError: true }
   ];
   it.each(cases)(
-    'preserves the original uncaptured exception outside serialized node details: %j',
-    async ({ errors, expectedError, returnError = false }) => {
+    'reports node exceptions without serializing or returning them: %j',
+    async ({ errors, returnError = false }) => {
       const original = callbackMap[FlowNodeTypeEnum.textEditor];
       const nodes = errors.map((_, index) => {
         const node = createNode(`raw-error-node-${index}`, FlowNodeTypeEnum.textEditor);
@@ -1558,8 +1556,7 @@ describe('Workflow runtime error summary', () => {
           nodeResponseSink: { publish }
         } as any);
 
-        expect(Object.hasOwn(result, 'rawError')).toBe(true);
-        expect(result.rawError).toBe(expectedError);
+        expect(Object.hasOwn(result, 'rawError')).toBe(false);
         // 此处 logger 被 mock，只验证调度层提交原始 Error；日志降级由 logger 自身测例覆盖。
         const loggedErrors = errors.filter((error) => error instanceof Error);
         expect(warn).toHaveBeenCalledTimes(loggedErrors.length);
@@ -1570,10 +1567,9 @@ describe('Workflow runtime error summary', () => {
           errorCount: errors.length
         });
         expect(result.workflowRuntimeSummary).not.toHaveProperty('error');
-        expect(result.workflowRuntimeSummary).not.toHaveProperty('hasUserConfigError');
         for (const call of publish.mock.calls) {
           for (const { response } of call[0]) {
-            expect(typeof response.error).toBe('string');
+            expect(typeof (response.error ?? response.errorText)).toBe('string');
             expect(JSON.stringify(response)).not.toContain('private-cause');
           }
         }
@@ -1702,12 +1698,11 @@ describe('Workflow runtime error summary', () => {
 
 describe('Workflow raw error logging', () => {
   it.each([
-    { error: new Error('nested failure'), forwardError: false, logsPerRound: 1 },
-    { error: new Error('nested failure'), forwardError: true, logsPerRound: 2 },
-    { error: 'nested primitive failure', forwardError: true, logsPerRound: 0 }
+    { error: new Error('nested failure'), logsPerRound: 1 },
+    { error: 'nested primitive failure', logsPerRound: 0 }
   ])(
-    'logs only raw Error instances without deduplicating layers: forward=$forwardError, logs=$logsPerRound',
-    async ({ error, forwardError, logsPerRound }) => {
+    'child nodes report before returning; feature and dispatcher logs remain independent: logs=$logsPerRound',
+    async ({ error, logsPerRound }) => {
       const original = callbackMap[FlowNodeTypeEnum.textEditor];
       const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
       const warn = vi.spyOn(logger, 'warn');
@@ -1729,10 +1724,8 @@ describe('Workflow raw error logging', () => {
           (round - 1) * logsPerRound + (error instanceof Error ? 1 : 0)
         );
         expect(diagnosticLog).toHaveBeenCalledTimes(round);
-        expect(child.rawError).toBe(error);
-        return forwardError
-          ? getNodeErrResponse({ error: child.rawError })
-          : { responseData: { errorText: child.workflowRuntimeSummary.errorText } };
+        expect(Object.hasOwn(child, 'rawError')).toBe(false);
+        return { responseData: { errorText: child.workflowRuntimeSummary.errorText } };
       });
       try {
         for (round = 1; round <= 2; round += 1) {
@@ -1762,8 +1755,9 @@ describe('Workflow raw error logging', () => {
             maxRunTimes: 10,
             checkIsStopping: () => false
           } as any);
-          if (forwardError) expect(result.rawError).toBe(error);
-          else expect(result.workflowRuntimeSummary.errorText).toBe((error as Error).message);
+          expect(result.workflowRuntimeSummary.errorText).toBe(
+            error instanceof Error ? error.message : error
+          );
           expect(result.workflowRuntimeSummary.errorCount).toBeGreaterThan(0);
           expect(result.workflowRuntimeSummary).not.toHaveProperty('hasError');
           expect(warn).toHaveBeenCalledTimes(round * logsPerRound);

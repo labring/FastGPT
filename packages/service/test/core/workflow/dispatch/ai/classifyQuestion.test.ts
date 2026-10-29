@@ -44,7 +44,6 @@ describe('dispatchClassifyQuestion token summary', () => {
         nodeSummary,
         usagePush
       } as any);
-
       expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
         inputTokens: 11,
         outputTokens: 3
