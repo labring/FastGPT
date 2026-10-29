@@ -14,7 +14,8 @@ import type {
 import type { CanonicalWorkflowData } from '@fastgpt/global/core/workflow/migration/schema';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  LoopRunModeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
@@ -42,10 +43,7 @@ import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { IfElseNode } from '@fastgpt/global/core/workflow/template/system/ifElse/index';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
-import {
-  LoopRunModeEnum,
-  LoopRunNode
-} from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { LoopRunBreakNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunBreak';
 import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';

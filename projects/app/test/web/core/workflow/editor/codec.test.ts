@@ -7,7 +7,11 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
+import {
+  hydrateRuntime,
+  materializeWorkflow,
+  serializeRuntime
+} from '@/web/core/workflow/editor/codec';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -168,6 +172,10 @@ describe('workflow editor codec', () => {
       edges: [],
       chatConfig: {}
     };
+    const materialized = materializeWorkflow({ input, t });
+    expect(
+      materialized.nodes[0].outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)
+    ).toHaveProperty('invalidCondition');
     const getEnvironment = () => ({
       models: [
         {
@@ -187,7 +195,9 @@ describe('workflow editor codec', () => {
 
     const saved = serializeRuntime(hydrateRuntime({ input, t, getEnvironment }));
     expect(
-      saved.nodes.flatMap((node) => node.outputs).every((output) => !('invalid' in output))
+      saved.nodes
+        .flatMap((node) => node.outputs)
+        .every((output) => !('invalid' in output) && !('invalidCondition' in output))
     ).toBe(true);
 
     const reloaded = hydrateRuntime({ input: saved, t, getEnvironment });

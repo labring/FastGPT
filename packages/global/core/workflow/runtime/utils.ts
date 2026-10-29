@@ -318,23 +318,22 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
   );
 };
 
-/*
-  Get the value of the reference variable/node output.
-  来源节点已不存在（死引用）时取到 undefined，不会把 [nodeId, outputId] 元组当值传给下游：
-  出站裁剪删除后，脏引用可能随自动保存落库并被执行层读到。
-  1. [string,string]
-  2. [string,string][]
-*/
+/**
+ * 解析单个或批量工作流引用；死引用返回 undefined，避免引用元组传入下游。
+ * 二维表行与引用元组同为 string[]，字面值需传 isReferenceVal: false，不能仅靠数组结构区分。
+ */
 export const getReferenceVariableValue = ({
   value,
   nodesMap,
-  variables
+  variables,
+  isReferenceVal = true
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
+  isReferenceVal?: boolean;
 }) => {
-  if (!value) return value;
+  if (!isReferenceVal || !value) return value;
 
   /** 解析单个引用：全局变量走 variables，节点输出走 nodesMap；来源缺失一律 undefined。 */
   const resolveValue = (value: [string, string | undefined]) => {

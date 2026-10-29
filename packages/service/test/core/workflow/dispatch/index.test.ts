@@ -695,6 +695,67 @@ describe('getWorkflowNodeRunParams', () => {
     ).toEqual(['first', 'second', 'third']);
   });
 
+  it.each([
+    { label: 'string', value: 'debug value', valueType: WorkflowIOValueTypeEnum.string },
+    { label: 'number', value: 42, valueType: WorkflowIOValueTypeEnum.number },
+    { label: 'boolean', value: false, valueType: WorkflowIOValueTypeEnum.boolean },
+    { label: 'object', value: { nested: true }, valueType: WorkflowIOValueTypeEnum.object },
+    {
+      label: 'array',
+      value: ['first', 'second'],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ])('preserves $label debug overrides on reference inputs', ({ value, valueType }) => {
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      Object.assign(
+        {
+          key: 'payload',
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value,
+          valueType
+        },
+        { debugValueOverride: true }
+      )
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createWorkflowVariableState(),
+        isDebugMode: true
+      }).payload
+    ).toEqual(value);
+  });
+
+  it('ignores debug value override markers outside debug mode', () => {
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      Object.assign(
+        {
+          key: 'payload',
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: 'debug value',
+          valueType: WorkflowIOValueTypeEnum.string
+        },
+        { debugValueOverride: true }
+      )
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createWorkflowVariableState()
+      }).payload
+    ).toBeUndefined();
+  });
+
   it('全部来源失效时在 dispatch 参数边界忽略引用', () => {
     const variableState = createVariableState();
     const node = createNode('target', FlowNodeTypeEnum.textEditor);
@@ -1452,7 +1513,7 @@ describe('runWorkflow catchError', () => {
       }
     }
   );
-  describe('模型资源校验失败', () => {
+  describe('节点执行错误处理', () => {
     const teamId = '654a4107c32f3bf5f998452f';
     const tmbId = '65ab7007462ada7dbb899948';
     const errorText = 'model auth failed';
@@ -1487,12 +1548,15 @@ describe('runWorkflow catchError', () => {
         checkIsStopping: () => false
       }) as any;
 
-    it('开启 catchError 时转为节点错误输出，且不执行节点本体', async () => {
+    it('开启 catchError 时转为节点错误输出并执行错误分支', async () => {
       const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
-      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ params }) => ({
-        data: { [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput] }
-      }));
+      const textEditorDispatch = vi
+        .fn(originalTextEditorDispatch)
+        .mockRejectedValueOnce(new Error(errorText))
+        .mockImplementation(async ({ params }) => ({
+          data: { [NodeOutputKeyEnum.text]: params[NodeInputKeyEnum.textareaInput] }
+        }));
+      callbackMap[FlowNodeTypeEnum.textEditor] = textEditorDispatch;
 
       const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
       sourceNode.isEntry = true;
@@ -1533,9 +1597,9 @@ describe('runWorkflow catchError', () => {
           )
         );
 
-        // 校验失败的节点本体不执行，错误分支下游拿到 errorText。
-        expect(callbackMap[FlowNodeTypeEnum.textEditor]).toHaveBeenCalledTimes(1);
-        expect(vi.mocked(callbackMap[FlowNodeTypeEnum.textEditor]).mock.calls[0][0].params).toEqual(
+        // 首节点执行失败后，错误分支仍能将 errorText 传给下游。
+        expect(textEditorDispatch).toHaveBeenCalledTimes(2);
+        expect(textEditorDispatch.mock.calls[1][0].params).toEqual(
           expect.objectContaining({ [NodeInputKeyEnum.textareaInput]: `caught: ${errorText}` })
         );
       } finally {
@@ -1545,15 +1609,17 @@ describe('runWorkflow catchError', () => {
 
     it('未开启 catchError 时工作流正常结束，不向外抛出', async () => {
       const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-      vi.mocked(assertWorkflowNodeModelResources).mockRejectedValueOnce(new Error(errorText));
-      callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({ data: {} }));
+      const textEditorDispatch = vi
+        .fn(originalTextEditorDispatch)
+        .mockRejectedValueOnce(new Error(errorText));
+      callbackMap[FlowNodeTypeEnum.textEditor] = textEditorDispatch;
 
       const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
       sourceNode.isEntry = true;
 
       try {
         await expect(runWorkflow(createRunProps([sourceNode]))).resolves.toBeDefined();
-        expect(callbackMap[FlowNodeTypeEnum.textEditor]).not.toHaveBeenCalled();
+        expect(textEditorDispatch).toHaveBeenCalledOnce();
       } finally {
         callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
       }

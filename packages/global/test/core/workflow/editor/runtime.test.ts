@@ -239,9 +239,8 @@ describe('workflow start auto-fill runtime', () => {
 
     expect(editor.dispatch({ type: 'connectEdge', edge: fileEdge }).ok).toBe(true);
     expect(
-      editor
-        .getNode('target')
-        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+      editor.getNode('target')?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
+        ?.value
     ).toEqual([['start', NodeOutputKeyEnum.userFiles]]);
 
     expect(
@@ -256,9 +255,8 @@ describe('workflow start auto-fill runtime', () => {
       }).ok
     ).toBe(true);
     expect(
-      editor
-        .getNode('target')
-        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
+      editor.getNode('target')?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
+        ?.value
     ).toBeUndefined();
   });
 });
@@ -1970,6 +1968,52 @@ describe('workflow environment facts', () => {
     expect(editor.getSavepoint()).toEqual(beforeSavepoint);
   });
 
+  it('indexes and publishes live model-driven output validity during semantic dispatch', () => {
+    const { editor, environment } = createReasoningRuntime({
+      modelValue: 'reasoning-model',
+      reasoning: false
+    });
+    const changes: WorkflowChange[] = [];
+    const sourceNodeListener = vi.fn();
+    const sourceFieldListener = vi.fn();
+    editor.subscribe((change) => changes.push(change));
+    editor.subscribeNode('source', sourceNodeListener);
+    editor.subscribeField(
+      { nodeId: 'source', fieldKey: NodeOutputKeyEnum.reasoningText, kind: 'output' },
+      sourceFieldListener
+    );
+
+    environment.models![0].config = {
+      ...environment.models![0].config!,
+      reasoning: true
+    };
+    const result = editor.dispatch({
+      type: 'updateNode',
+      nodeId: 'consumer',
+      patch: { name: 'Updated consumer' }
+    });
+    const workflowOutput = editor
+      .getWorkflow()
+      .nodes.find((node) => node.nodeId === 'source')
+      ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText);
+    const indexedOutput = editor
+      .getNode('source')
+      ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText);
+
+    expect(result.ok).toBe(true);
+    expect(workflowOutput?.invalid).toBe(false);
+    expect(indexedOutput?.invalid).toBe(false);
+    expect(result.change?.changedRecords.nodeIds).toContain('source');
+    expect(result.change?.changedRecords.fieldIds).toContainEqual({
+      nodeId: 'source',
+      key: NodeOutputKeyEnum.reasoningText,
+      kind: 'output'
+    });
+    expect(changes).toHaveLength(1);
+    expect(sourceNodeListener).toHaveBeenCalledTimes(1);
+    expect(sourceFieldListener).toHaveBeenCalledTimes(1);
+  });
+
   it('recomputes Runtime invalid after semantic history replay', () => {
     const { editor, environment } = createReasoningRuntime({
       modelValue: 'reasoning-model',
@@ -1996,9 +2040,10 @@ describe('workflow environment facts', () => {
         ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
     ).toBe(false);
     expect(editor.getNode('source')?.name).toBe('Source');
-    expect(editor.getNode('source')?.inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)?.value).toBe(
-      'reasoning-model'
-    );
+    expect(
+      editor.getNode('source')?.inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId)
+        ?.value
+    ).toBe('reasoning-model');
     expect(editor.redo().ok).toBe(true);
     expect(
       editor

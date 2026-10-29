@@ -40,7 +40,8 @@ export const getWorkflowNodeRunParams = ({
   runtimeNodesMap,
   variableState,
   runtimeEdges,
-  runtimeEdgeIndex
+  runtimeEdgeIndex,
+  isDebugMode = false
 }: {
   node: RuntimeNodeItemType;
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
@@ -49,6 +50,7 @@ export const getWorkflowNodeRunParams = ({
   runtimeEdgeIndex?: {
     byTarget: ReadonlyMap<string, readonly RuntimeEdgeItemType[]>;
   };
+  isDebugMode?: boolean;
 }) => {
   let runtimeVariables: Record<string, unknown> | undefined;
   const getRuntimeVariables = () => {
@@ -230,6 +232,11 @@ export const getWorkflowNodeRunParams = ({
 
     const rawValue = input.value;
     const isReferenceInput = nodeInputIsReference(input);
+    const isDebugValueOverride =
+      isDebugMode &&
+      isReferenceInput &&
+      'debugValueOverride' in input &&
+      input.debugValueOverride === true;
     const isSecretInput = getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.password;
     const needsTextReplace = typeof rawValue === 'string' && rawValue.includes('{{');
     let value = rawValue;
@@ -238,7 +245,10 @@ export const getWorkflowNodeRunParams = ({
       value = resolveSecretInputReference(value);
     }
 
-    if (isReferenceInput && !needsTextReplace) {
+    if (isDebugValueOverride) {
+      // 调试表单提交的是字面值，即使保存态仍选中 Reference。
+      value = rawValue;
+    } else if (isReferenceInput && !needsTextReplace) {
       value = resolveReferenceInputValue(value);
     } else {
       if (needsTextReplace) {

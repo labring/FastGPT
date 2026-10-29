@@ -24,6 +24,7 @@ import { createDocumentModule } from './documentModule';
 import {
   applyWorkflowNodeOutputValidity,
   buildDocument,
+  commitNodeRecordUpdate,
   documentToCanonical,
   resolveStructureChanged
 } from './documentRules';
@@ -396,6 +397,18 @@ export const createWorkflowEditor = (
       const validity = applyRuntimeOutputValidity(working.nodes);
       working.nodes = validity.nodes;
       runtimeValidityNodeIds = validity.changes.map(({ after }) => after.data.nodeId);
+      if (meta.kind !== 'replace') {
+        validity.changes.forEach(({ index, before, after }) =>
+          commitNodeRecordUpdate({
+            meta,
+            referenceGraph: workingReferenceGraph,
+            nodeId: after.data.nodeId,
+            index,
+            before,
+            after
+          })
+        );
+      }
 
       // 事务内多次修改回到同一 canonical state 时，连 revision/history/change 都省略。
       const afterCanonical = documentToCanonical({ document: working, views });

@@ -35,6 +35,7 @@ import {
   hasValidSourceHandleMeasurement,
   getUnmeasuredViewportFitNodeIds,
   getViewportFitNodeIds,
+  shouldRenderMeasurementNode,
   type CanvasViewport,
   type DimensionMeasurement,
   type DimensionRegistration,
@@ -610,7 +611,12 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     nextNodes.forEach((node) => {
       const isFull = classification.fullNodeIds.has(node.id);
       const isHidden = classification.hiddenNodeIds.has(node.id);
-      const isMeasurement = measurementNodeIdsRef.current.has(node.id) && !isFull && !isHidden;
+      const isMeasurement = shouldRenderMeasurementNode({
+        isQueued: measurementNodeIdsRef.current.has(node.id),
+        isFull,
+        isHidden,
+        isPendingFit: pendingFitNodeIds.has(node.id)
+      });
       nextModes.set(node.id, isMeasurement ? 'measurement' : isFull ? 'full' : 'shell');
 
       if (pendingFitNodeIds.has(node.id)) {

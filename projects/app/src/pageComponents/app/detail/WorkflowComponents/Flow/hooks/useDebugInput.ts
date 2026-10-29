@@ -233,6 +233,7 @@ const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {
   }
 };
 
+/** 调试表单提交字面值；标记 Reference 输入，避免服务端按保存态配置解析。 */
 export const getDebugRuntimeInputs = ({
   inputs,
   nodeVariables = {}
@@ -247,7 +248,8 @@ export const getDebugRuntimeInputs = ({
 
     return {
       ...input,
-      value: parseDebugInputFormValue(input, nodeVariables[input.key])
+      value: parseDebugInputFormValue(input, nodeVariables[input.key]),
+      ...(nodeInputIsReference(input) ? { debugValueOverride: true as const } : {})
     };
   });
 };

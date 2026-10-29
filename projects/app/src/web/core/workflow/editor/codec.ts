@@ -136,8 +136,8 @@ export const uiWorkflow2StoreWorkflow = ({
 
 /**
  * 入站边界：migration 之后做 Template Materialization，剥离画布专用字段，
- * 得到严格 canonical 数据。模板目录与 i18n 都留在边界外；保存时归一化（工具序列化、
- * 引用裁剪）只发生在出站边界，入站提前执行会把未水合数据当成用户编辑结果处理。
+ * 得到 canonical 字段，并保留 Runtime-only 输出校验回调（出站序列化会剥离）。模板目录与 i18n
+ * 都留在边界外；保存时归一化（工具序列化、引用裁剪）只发生在出站边界，入站提前执行会把未水合数据当成用户编辑结果处理。
  * hydrate 与版本切换（replaceDocument）共用同一份物化结果。
  */
 
@@ -159,6 +159,7 @@ export const materializeWorkflow = ({
       .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
       .map((edge) => edge.target)
   );
+  const templateOutputsByNodeId = new Map<string, FlowNodeItemType['outputs']>();
   // Materialization：复用现有模板物化，
   // 保证字段命令按 key 能解析到模板新增而存量数据缺失的字段（ADR 0001）。
   const nodes = workflow.nodes.map((node) => {
@@ -167,19 +168,33 @@ export const materializeWorkflow = ({
       isTool: toolNodeIds.has(node.nodeId),
       t
     });
+    templateOutputsByNodeId.set(node.nodeId, flowNode.data.outputs);
     // canonical schema 剥离画布/模板专用字段，
     // 语义值保持物化结果原样，不在此处执行保存时归一化。
     return StoreNodeItemTypeSchema.parse({ ...flowNode.data, position: flowNode.position });
   });
 
   // 物化会重新引入模板默认的容器尺寸字段，再走一次 migration 统一清理，保证严格 canonical。
-  return migrateStoreWorkflow({
+  const canonical = migrateStoreWorkflow({
     nodes,
     edges: canonicalEdges,
     chatConfig: workflow.chatConfig,
     // 第二次 migration 只会保留声明过的根字段，快照必须显式带上。
     referenceSnapshots: workflow.referenceSnapshots
   });
+  return {
+    ...canonical,
+    nodes: canonical.nodes.map((node) => ({
+      ...node,
+      // Runtime 需要模板回调重算输出可用性；出站 codec 会剥离它，不进持久化数据。
+      outputs: node.outputs.map((output) => {
+        const invalidCondition = templateOutputsByNodeId
+          .get(node.nodeId)
+          ?.find((templateOutput) => templateOutput.id === output.id)?.invalidCondition;
+        return typeof invalidCondition === 'function' ? { ...output, invalidCondition } : output;
+      })
+    }))
+  };
 };
 
 /**

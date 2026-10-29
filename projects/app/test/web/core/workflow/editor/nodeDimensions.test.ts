@@ -9,6 +9,7 @@ import {
   getUnmeasuredViewportFitNodeIds,
   getViewportForNodeIds,
   hasValidSourceHandleMeasurement,
+  shouldRenderMeasurementNode,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/nodeDimensions';
 
@@ -233,6 +234,30 @@ describe('workflow viewport measurement scheduling', () => {
 });
 
 describe('workflow viewport fitting', () => {
+  it('measures offscreen fit targets without rendering folded descendants', () => {
+    const nodes = [
+      { id: 'container', position: { x: 1000, y: 1000 } },
+      { id: 'child', parentNodeId: 'container', position: { x: 1010, y: 1010 } },
+      { id: 'folded-parent', position: { x: 2000, y: 2000 }, isFolded: true },
+      { id: 'folded-child', parentNodeId: 'folded-parent', position: { x: 2010, y: 2010 } }
+    ];
+    const viewport = { x: 0, y: 0, zoom: 1, width: 500, height: 500 };
+    const dimensions = new Map();
+    const classification = classifyRenderableGraph({ nodes, edges: [], dimensions, viewport });
+    const pendingFitNodeIds = new Set(getUnmeasuredViewportFitNodeIds({ nodes, dimensions }));
+    const shouldMeasure = (nodeId: string) =>
+      shouldRenderMeasurementNode({
+        isQueued: true,
+        isFull: classification.fullNodeIds.has(nodeId),
+        isHidden: classification.hiddenNodeIds.has(nodeId),
+        isPendingFit: pendingFitNodeIds.has(nodeId)
+      });
+
+    expect(shouldMeasure('container')).toBe(true);
+    expect(shouldMeasure('child')).toBe(true);
+    expect(shouldMeasure('folded-child')).toBe(false);
+  });
+
   it('reports every unmeasured node that a full fit must wait for', () => {
     const nodes = [
       { id: 'measured', position: { x: 0, y: 0 } },

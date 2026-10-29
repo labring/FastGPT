@@ -1479,7 +1479,8 @@ describe('getReferenceVariableValue', () => {
     const result = getReferenceVariableValue({
       value: tableData,
       nodesMap: {},
-      variables: {}
+      variables: {},
+      isReferenceVal: false
     });
     expect(result).toEqual(tableData);
   });

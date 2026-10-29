@@ -541,7 +541,10 @@ describe('useDebugInput', () => {
       }
     });
 
-    expect(runtimeInput.value).toEqual(['https://files.example.com/local.pdf']);
+    expect(runtimeInput).toMatchObject({
+      value: ['https://files.example.com/local.pdf'],
+      debugValueOverride: true
+    });
     expect(referenceInput.value).toBe(referenceValue);
   });
 

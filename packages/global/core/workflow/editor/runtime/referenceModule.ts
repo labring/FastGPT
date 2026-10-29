@@ -656,11 +656,13 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   const getReferenceStatus = ({
     reference,
     targetType,
-    targetNodeId
+    targetNodeId,
+    allowLoopRunChildSource
   }: {
     reference: ReferenceItemValueType;
     targetType?: WorkflowIOValueTypeEnum;
     targetNodeId: string;
+    allowLoopRunChildSource?: boolean;
   }): WorkflowReferenceStatus => {
     /** 反向 DFS 只判断单个来源是否可达；命中即停，不物化目标的完整上游集合。 */
     const canReachUpstream = (sourceNodeId: string): boolean => {
@@ -751,7 +753,11 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     });
     if (selectableOutputs.length === 0)
       return { code: 'invalid_reference', reference, ...sourceMetadata };
-    if (!canReachUpstream(sourceNodeId)) {
+    // loopRun 的可编辑动态输出可引用直接子节点；其它字段仍限制为上游可达来源。
+    const isAllowedLoopRunChild =
+      allowLoopRunChildSource &&
+      document.getGraphIndex().parentByChild.get(sourceNodeId) === targetNodeId;
+    if (!isAllowedLoopRunChild && !canReachUpstream(sourceNodeId)) {
       return {
         code: 'unreachable_reference',
         sourceType: sourceOutput.valueType,
@@ -790,6 +796,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       return [];
     }
     const targetType = 'renderTypeList' in field ? field.valueType : undefined;
+    const allowLoopRunChildSource =
+      field.canEdit === true &&
+      document.getNodeById(nodeId)?.data.flowNodeType === FlowNodeTypeEnum.loopRun;
     const statuses =
       field.key === NodeInputKeyEnum.updateList && Array.isArray(value)
         ? (() => {
@@ -806,7 +815,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
                 getReferenceStatus({
                   reference,
                   targetType: referenceTargetType,
-                  targetNodeId: nodeId
+                  targetNodeId: nodeId,
+                  allowLoopRunChildSource
                 })
               );
             };
@@ -825,7 +835,12 @@ export const createReferenceModule = (document: DocumentReadApi) => {
             return result;
           })()
         : references.map((reference) =>
-            getReferenceStatus({ reference, targetType, targetNodeId: nodeId })
+            getReferenceStatus({
+              reference,
+              targetType,
+              targetNodeId: nodeId,
+              allowLoopRunChildSource
+            })
           );
     const result = hasMalformedReferenceArray(value)
       ? [{ code: 'invalid_reference' as const }, ...statuses]

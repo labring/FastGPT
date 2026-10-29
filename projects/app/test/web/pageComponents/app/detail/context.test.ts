@@ -7,6 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import type { PostPublishAppProps } from '@/global/core/app/api';
+import type { WorkflowSaveRequest } from '@/web/core/workflow/editor/session/workflowPersistence';
 import AppContextProvider, {
   AppContext,
   type AppSaveHandler
@@ -76,10 +77,12 @@ const renderProvider = async ({ hasWritePer }: { hasWritePer: boolean }) => {
   const root = createRoot(container);
   let onSaveApp: AppSaveHandler;
   let appDetail: AppDetailType;
+  let setAppDetail: React.Dispatch<React.SetStateAction<AppDetailType>>;
 
   const Capture = () => {
     onSaveApp = useContextSelector(AppContext, (value) => value.onSaveApp);
     appDetail = useContextSelector(AppContext, (value) => value.appDetail);
+    setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
     return null;
   };
 
@@ -103,7 +106,8 @@ const renderProvider = async ({ hasWritePer }: { hasWritePer: boolean }) => {
     root,
     render,
     getSaveApp: () => onSaveApp!,
-    getAppDetail: () => appDetail!
+    getAppDetail: () => appDetail!,
+    getSetAppDetail: () => setAppDetail!
   };
 };
 
@@ -248,6 +252,47 @@ describe('AppContext save result', () => {
     });
 
     expect(getAppDetail().nodes).toBeUndefined();
+    act(() => root.unmount());
+  });
+
+  it('preserves edits made after the save request snapshot', async () => {
+    const saveResponse = createDeferred<void>();
+    mocks.postPublishApp.mockImplementationOnce(() => saveResponse.promise);
+    const { root, getSaveApp, getAppDetail, getSetAppDetail } = await renderProvider({
+      hasWritePer: true
+    });
+    let contentRevision = 1;
+    const request = {
+      runtime: {
+        isDisposed: () => false,
+        getSavepoint: () => ({ contentRevision })
+      },
+      sessionId: 'session-1',
+      appId: 'app-1',
+      contentRevision: 1,
+      requestToken: 1,
+      data: saveData
+    } as unknown as WorkflowSaveRequest;
+
+    const save = getSaveApp()(saveData, request);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() => {
+      getSetAppDetail()((state) => ({
+        ...state,
+        chatConfig: { ...state.chatConfig, welcomeText: 'newer edit' }
+      }));
+      contentRevision = 2;
+    });
+
+    await act(async () => {
+      saveResponse.resolve();
+      await expect(save).resolves.toBe(true);
+    });
+
+    expect(getAppDetail().chatConfig.welcomeText).toBe('newer edit');
     act(() => root.unmount());
   });
 

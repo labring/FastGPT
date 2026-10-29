@@ -265,15 +265,22 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         }
         await postPublishApp(appId, data);
         if (!isCurrentSave()) return false;
-        setAppDetail((state) => ({
-          ...state,
-          nodes: data.nodes,
-          edges: data.edges,
-          chatConfig: data.chatConfig,
-          ...(data.referenceSnapshots !== undefined && {
-            referenceSnapshots: data.referenceSnapshots
-          })
-        }));
+        // 新编辑的 chatConfig 会从 appDetail 回灌 Runtime；只回填与请求内容版本相同的快照。
+        if (
+          !request ||
+          (!request.runtime.isDisposed() &&
+            request.runtime.getSavepoint().contentRevision === request.contentRevision)
+        ) {
+          setAppDetail((state) => ({
+            ...state,
+            nodes: data.nodes,
+            edges: data.edges,
+            chatConfig: data.chatConfig,
+            ...(data.referenceSnapshots !== undefined && {
+              referenceSnapshots: data.referenceSnapshots
+            })
+          }));
+        }
         reloadAppLatestVersion();
         return true;
       } catch (error: any) {

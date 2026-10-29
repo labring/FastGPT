@@ -47,7 +47,6 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => {
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 import {
-  getAppDraftResourceBaseline,
   getAppDraftVersion,
   getAppDraftWorkflow,
   getAppLatestVersion,
@@ -349,7 +348,7 @@ describe('getAppDraftWorkflow', () => {
   });
 });
 
-describe('getAppDraftResourceBaseline', () => {
+describe('getAppDraftVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -365,10 +364,10 @@ describe('getAppDraftResourceBaseline', () => {
     });
     findOneMock.mockReturnValue({ sort: sortMock });
 
-    const result = await getAppDraftResourceBaseline('app-id');
+    const result = await getAppDraftVersion('app-id');
 
     expect(sortMock).toHaveBeenCalledWith({ time: -1, isAutoSave: -1, _id: -1 });
-    expect(result).toContainEqual({ type: 'agent', id: 'saved-agent' });
+    expect(result).toEqual(version);
   });
 });
 

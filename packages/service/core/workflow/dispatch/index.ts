@@ -891,7 +891,8 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState,
         runtimeEdges: this.data.runtimeEdges,
-        runtimeEdgeIndex: this.edgeIndex
+        runtimeEdgeIndex: this.edgeIndex,
+        isDebugMode: this.isDebugMode
       });
       const nodeSummary = createNodeSummary();
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {

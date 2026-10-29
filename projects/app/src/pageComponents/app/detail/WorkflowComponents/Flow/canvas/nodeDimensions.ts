@@ -177,6 +177,19 @@ export const getUnmeasuredViewportFitNodeIds = ({
   dimensions: ReadonlyMap<string, NodeDimensions>;
 }) => getViewportFitNodeIds({ nodes, nodeIds }).filter((nodeId) => !dimensions.has(nodeId));
 
+/** 离屏节点仅在显式 fit 队列中临时测量；fit 候选已排除折叠祖先下的节点。 */
+export const shouldRenderMeasurementNode = ({
+  isQueued,
+  isFull,
+  isHidden,
+  isPendingFit
+}: {
+  isQueued: boolean;
+  isFull: boolean;
+  isHidden: boolean;
+  isPendingFit: boolean;
+}) => isQueued && !isFull && (!isHidden || isPendingFit);
+
 /**
  * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
  * 折叠子节点不进入测量队列。
