@@ -25,6 +25,11 @@ const CurrentNodeToolSetSchemas = {
   mcpToolSet: McpToolSetNodeConfigSchema,
   httpToolSet: HttpToolSetNodeConfigSchema
 };
+const LegacyToolSetRuntimeSchemas = {
+  mcpToolSet: McpToolSetRuntimeConfigSchema,
+  httpToolSet: HttpToolSetRuntimeConfigSchema
+};
+const ToolSetKeys = ['mcpToolSet', 'httpToolSet'] as const;
 
 /** 历史外部引用归一为资源摘要；工具集 App RuntimeConfig 保留完整工具 Schema。 */
 const normalizeLegacyToolSetNode = (value: unknown) => {
@@ -33,7 +38,7 @@ const normalizeLegacyToolSetNode = (value: unknown) => {
   if (!isRecord(value.toolConfig)) return value;
 
   const toolConfig = { ...value.toolConfig };
-  (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+  ToolSetKeys.forEach((key) => {
     const toolSet = toolConfig[key];
     if (!isRecord(toolSet)) return;
 
@@ -63,9 +68,7 @@ const normalizeLegacyToolSetNode = (value: unknown) => {
       return;
     }
 
-    const runtimeSchema =
-      key === 'mcpToolSet' ? McpToolSetRuntimeConfigSchema : HttpToolSetRuntimeConfigSchema;
-    const runtimeConfig = runtimeSchema.strict().safeParse(toolSet);
+    const runtimeConfig = LegacyToolSetRuntimeSchemas[key].strict().safeParse(toolSet);
     if (runtimeConfig.success) toolConfig[key] = runtimeConfig.data;
   });
 
@@ -118,7 +121,8 @@ export const LegacyStoreNodeItemSchema = z
       return;
     }
 
-    if (value.toolConfig.mcpToolSet && value.toolConfig.httpToolSet) {
+    const toolConfig = value.toolConfig;
+    if (toolConfig.mcpToolSet && toolConfig.httpToolSet) {
       ctx.addIssue({
         code: 'custom',
         path: ['toolConfig', 'httpToolSet'],
@@ -128,14 +132,14 @@ export const LegacyStoreNodeItemSchema = z
     }
     if (value.pluginId) return;
     if (
-      McpToolSetRuntimeConfigSchema.strict().safeParse(value.toolConfig.mcpToolSet).success ||
-      HttpToolSetRuntimeConfigSchema.strict().safeParse(value.toolConfig.httpToolSet).success
+      ToolSetKeys.some(
+        (key) => LegacyToolSetRuntimeSchemas[key].strict().safeParse(toolConfig[key]).success
+      )
     ) {
       return;
     }
 
-    const toolConfig = value.toolConfig;
-    (['mcpToolSet', 'httpToolSet'] as const).forEach((key) => {
+    ToolSetKeys.forEach((key) => {
       const toolSet = toolConfig[key];
       if (!isRecord(toolSet) || CurrentNodeToolSetSchemas[key].safeParse(toolSet).success) return;
       ctx.addIssue({
