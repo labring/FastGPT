@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   createDatasetAuditProcessors,
+  processDatasetCollectionSpecific,
   processDatasetConfigUpdateSpecific
 } from '@/pageComponents/account/team/Audit/dataset/audit';
 
@@ -10,10 +11,58 @@ const t = (key: string) =>
   ({
     'account_team:dataset_config_item_name': '名称',
     'account_team:dataset_config_item_externalReadUrl': '外部预览地址',
-    'account_team:dataset_config_item_chunkSettings': '分块参数'
+    'account_team:dataset_config_item_chunkSettings': '分块参数',
+    'account_team:dataset_content_change_item_name': '名称',
+    'account_team:dataset_content_change_item_status': '状态',
+    'account_team:dataset_content_status_enabled': '启用',
+    'account_team:dataset_content_status_disabled': '禁用',
+    'common:core.dataset.file': '文件',
+    'common:File': '文件'
   })[key] ?? key;
 
 describe('dataset audit processors', () => {
+  it('preserves collection names and paths while translating declared labels', () => {
+    const metadata = {
+      name: 'user:owner',
+      datasetName: 'docs:api',
+      collectionName: 'https://example.com/read',
+      objectType: 'common:core.dataset.file',
+      action: 'rename',
+      changeItem: 'account_team:dataset_content_change_item_name',
+      oldValue: 'common:File',
+      newValue: 'https://example.com/new'
+    };
+
+    expect(processDatasetCollectionSpecific(metadata, t)).toEqual({
+      ...metadata,
+      objectType: '文件',
+      changeItem: '名称'
+    });
+  });
+
+  it.each(['enable', 'disable'])('translates collection status values for %s', (action) => {
+    expect(
+      processDatasetCollectionSpecific(
+        {
+          action,
+          changeItem: 'account_team:dataset_content_change_item_status',
+          oldValue: 'account_team:dataset_content_status_enabled',
+          newValue: 'account_team:dataset_content_status_disabled'
+        },
+        t
+      )
+    ).toMatchObject({ changeItem: '状态', oldValue: '启用', newValue: '禁用' });
+  });
+
+  it('leaves tag snapshots untouched', () => {
+    const metadata = {
+      collectionName: 'common:File',
+      tagName: 'team:dev',
+      parentResource: 'docs:v2'
+    };
+    expect(processDatasetCollectionSpecific(metadata, t)).toEqual(metadata);
+  });
+
   it('registers a processor for the dataset config update event', () => {
     expect(createDatasetAuditProcessors[DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]).toBe(
       processDatasetConfigUpdateSpecific

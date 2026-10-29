@@ -1,5 +1,6 @@
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -11,6 +12,11 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import {
+  getCollectionAuditLocation,
+  getCollectionAuditObjectType
+} from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { name, text, ...body } = parseApiInput({
@@ -53,6 +59,23 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     }
   });
   await removeS3TTL({ key, bucketName: 'private' });
+
+  void addAuditLog({
+    tmbId,
+    teamId,
+    event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+    params: {
+      collectionName: filename,
+      objectType: getCollectionAuditObjectType(DatasetCollectionTypeEnum.file),
+      location: await getCollectionAuditLocation({
+        datasetName: dataset.name,
+        teamId: String(dataset.teamId),
+        datasetId: String(dataset._id),
+        parentId: body.parentId
+      })
+    }
+  });
+
   return res;
 }
 

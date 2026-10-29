@@ -1,4 +1,5 @@
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
+import { DatasetContentAuditActionEnum } from '@fastgpt/global/core/dataset/audit/constants/metadata';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { defaultMetadataProcessor } from '../processors/commonProcessor';
 
@@ -39,7 +40,82 @@ export const processDatasetConfigUpdateSpecific = (metadata: any, t: any) => {
   };
 };
 
+/** 集合审计只翻译已知类型、变更项和启停状态，集合名、标签名及路径始终保留原值。 */
+export const processDatasetCollectionSpecific = (metadata: any, t: (key: string) => string) => {
+  // 有限枚举保留字面量调用，静态 i18n 扫描无需依赖服务端同步声明翻译标记。
+  const translateObjectType = (value: string) => {
+    switch (value) {
+      case 'common:core.dataset.folder':
+        return t('common:core.dataset.folder');
+      case 'common:core.dataset.file':
+        return t('common:core.dataset.file');
+      case 'common:core.dataset.externalFile':
+        return t('common:core.dataset.externalFile');
+      case 'common:core.dataset.link':
+        return t('common:core.dataset.link');
+      case 'dataset:empty_collection':
+        return t('dataset:empty_collection');
+      case 'common:core.dataset.apiFile':
+        return t('common:core.dataset.apiFile');
+      case 'dataset:core.dataset.Image collection':
+        return t('dataset:core.dataset.Image collection');
+      default:
+        return value;
+    }
+  };
+  const translateChangeItem = (value: string) => {
+    switch (value) {
+      case 'account_team:dataset_content_change_item_name':
+        return t('account_team:dataset_content_change_item_name');
+      case 'account_team:dataset_content_change_item_location':
+        return t('account_team:dataset_content_change_item_location');
+      case 'account_team:dataset_content_change_item_status':
+        return t('account_team:dataset_content_change_item_status');
+      default:
+        return value;
+    }
+  };
+  const translateStatus = (value: unknown) => {
+    switch (value) {
+      case 'account_team:dataset_content_status_enabled':
+        return t('account_team:dataset_content_status_enabled');
+      case 'account_team:dataset_content_status_disabled':
+        return t('account_team:dataset_content_status_disabled');
+      default:
+        return value;
+    }
+  };
+
+  return {
+    ...metadata,
+    ...(typeof metadata.objectType === 'string'
+      ? { objectType: translateObjectType(metadata.objectType) }
+      : {}),
+    ...(typeof metadata.changeItem === 'string'
+      ? { changeItem: translateChangeItem(metadata.changeItem) }
+      : {}),
+    ...(metadata.action === DatasetContentAuditActionEnum.ENABLE ||
+    metadata.action === DatasetContentAuditActionEnum.DISABLE
+      ? {
+          oldValue: translateStatus(metadata.oldValue),
+          newValue: translateStatus(metadata.newValue)
+        }
+      : {})
+  };
+};
+
 export const createDatasetAuditProcessors = {
   UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific,
-  [DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]: processDatasetConfigUpdateSpecific
+  [DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]: processDatasetConfigUpdateSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_CREATE]: processDatasetCollectionSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_UPDATE]: processDatasetCollectionSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_EXPORT]: processDatasetCollectionSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_SYNC]: processDatasetCollectionSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD]: processDatasetCollectionSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_TAG_REMOVE]: processDatasetCollectionSpecific,
+  // 父目录缺失时仅在展示层填充占位，避免把知识库名误记为继承来源。
+  [DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME]: (metadata: any) => ({
+    ...metadata,
+    parentResource: metadata.parentResource ?? '-'
+  })
 };

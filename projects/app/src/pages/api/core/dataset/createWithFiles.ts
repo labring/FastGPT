@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
@@ -38,7 +39,12 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import {
+  addAuditLog,
+  addAuditLogs,
+  getI18nDatasetType
+} from '@fastgpt/service/support/user/audit/util';
+import { getCollectionAuditObjectType } from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
   const { datasetParams, files } = parseApiInput({
@@ -211,6 +217,23 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         }
       });
     })();
+
+    // 新知识库下每个文件都是一条集合，按「一个文件一条日志」逐条记录
+    if (files.length > 0) {
+      void addAuditLogs(
+        files.map((file) => ({
+          tmbId,
+          teamId,
+          event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+          params: {
+            collectionName: file.name,
+            objectType: getCollectionAuditObjectType(DatasetCollectionTypeEnum.file),
+            // 新建知识库的集合都落在根目录，没有父级路径需要展开
+            location: name
+          }
+        }))
+      );
+    }
 
     return CreateDatasetWithFilesResponseSchema.parse(result);
   } catch (error) {
