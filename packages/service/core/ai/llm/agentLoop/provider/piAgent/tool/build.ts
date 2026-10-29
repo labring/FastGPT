@@ -23,6 +23,7 @@ import {
   patchDatasetSearchParams
 } from '../../../domain/systemTool/datasetSearch';
 import {
+  buildToolMessageContent,
   normalizeAgentLoopUsages,
   type AgentLoopAssistantResponse,
   type AgentLoopEvent,
@@ -146,10 +147,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    // 工具返回结构化 content 时优先透传；否则用规范化后的 response 字符串兜底
-    const toolContent = result.content?.length
-      ? result.content
-      : normalizeToolResponseContent(result.response);
+    // 与 fastAgent 保持一致：业务 response 文本始终保留，结构化 parts 只在其后追加图片，
+    // 避免 `{ jobId, content: [image_url] }` 这类输出把业务字段丢掉。
+    const toolContent = buildToolMessageContent({
+      content: result.content,
+      text: normalizedResponse
+    });
     onToolResult({ call, response: normalizedResponse, assistantMessages, content: toolContent });
     return {
       ...result,

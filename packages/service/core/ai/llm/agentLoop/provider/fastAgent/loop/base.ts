@@ -16,6 +16,7 @@ import { countGptMessagesTokens } from '../../../../../../../common/string/tikto
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
+import { buildToolMessageContent } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopCompletionPolicy,
@@ -136,23 +137,6 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
   contextCheckpoint?: string;
 
   finish_reason: CompletionFinishReason | undefined;
-};
-
-/**
- * 构造写入 tool message 的 content：
- * - 无结构化 parts 时直接用文本字符串；
- * - 有 parts 时把最终要发送的文本作为 text part 拼在图片等 parts 前，
- *   保证模型实际拿到的文本与展示/计费统计一致（文本已压缩时传压缩后的值）。
- */
-export const buildToolMessageContent = ({
-  content,
-  text
-}: {
-  content?: ChatCompletionToolMessageContentPart[];
-  text: string;
-}): string | ChatCompletionToolMessageContentPart[] => {
-  if (!content?.length) return text;
-  return [{ type: 'text', text }, ...content.filter((part) => part.type !== 'text')];
 };
 
 /**

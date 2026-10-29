@@ -41,7 +41,6 @@ export {
   createAgentLoopCoreWorkflowToolRunner,
   type CreateAgentLoopCoreWorkflowToolRunnerParams
 } from '../application/runtime/workflowToolRunner';
-export { extractAgentLoopCoreToolContent } from '../domain/toolContent';
 
 export { createAgentLoopCoreChildInteractiveParams } from '../adapter/interactive/child';
 export {

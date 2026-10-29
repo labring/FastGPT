@@ -19,6 +19,7 @@ import { AgentUsageModuleName } from '../../domain/usage';
 import { askUserToolName, formatAgentAskToolResponse } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
+  buildToolMessageContent,
   normalizeAgentLoopUsages,
   type AgentLoopInput,
   type AgentLoopResult,
@@ -325,7 +326,11 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    const toolContent = result.content ?? normalizeToolResponseContent(result.response);
+    // 交互恢复与普通执行共用同一套组合规则：response 文本保留，图片追加在后。
+    const toolContent = buildToolMessageContent({
+      content: result.content,
+      text: normalizedResponse
+    });
     const piToolContent = await convertToolResponseContentToPiContent(toolContent, { useVision });
     initialPiMessages = replaceInteractiveToolResult({
       messages: initialPiMessages,

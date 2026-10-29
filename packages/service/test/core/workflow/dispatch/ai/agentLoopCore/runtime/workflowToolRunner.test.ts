@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createAgentLoopCoreWorkflowToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 import {
-  createAgentLoopCoreWorkflowToolRunner,
+  convertMcpToolContentToToolContent,
   extractAgentLoopCoreToolContent
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolContent';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
 
 const createCall = ({
@@ -654,6 +655,33 @@ describe('extractAgentLoopCoreToolContent', () => {
           }
         ]
       })
+    ).toBeUndefined();
+  });
+});
+
+describe('convertMcpToolContentToToolContent', () => {
+  it('converts MCP image blocks into data URI image parts', () => {
+    // MCP 原生图片块是 { type: 'image', data, mimeType }，不是 image_url。
+    expect(
+      convertMcpToolContentToToolContent([
+        { type: 'text', text: 'chart ready' },
+        { type: 'image', data: 'AAAA', mimeType: 'image/png' }
+      ])
+    ).toEqual([{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }]);
+  });
+
+  it('returns undefined when the result has no image block', () => {
+    expect(convertMcpToolContentToToolContent([{ type: 'text', text: 'ok' }])).toBeUndefined();
+    expect(convertMcpToolContentToToolContent(undefined)).toBeUndefined();
+    expect(convertMcpToolContentToToolContent([])).toBeUndefined();
+  });
+
+  it('drops image blocks with unusable payload', () => {
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: '', mimeType: 'image/png' }])
+    ).toBeUndefined();
+    expect(
+      convertMcpToolContentToToolContent([{ type: 'image', data: 'AAAA', mimeType: 'text/html' }])
     ).toBeUndefined();
   });
 });

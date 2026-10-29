@@ -41,7 +41,10 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
-import { extractAgentLoopCoreToolContent } from '../../../agentLoopCore/domain/toolContent';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent
+} from '../../../agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -318,7 +321,10 @@ export const dispatchTool = async ({
         params
       });
       const errorMessage = getMCPToolErrorText(result);
-      const content = extractAgentLoopCoreToolContent(result);
+      // MCP 图片块是 { type: 'image', data, mimeType }，需要先转成 data URI image_url。
+      const content = convertMcpToolContentToToolContent(
+        (result as { content?: unknown } | undefined)?.content
+      );
       return {
         response: JSON.stringify(result),
         ...(content ? { content } : {}),

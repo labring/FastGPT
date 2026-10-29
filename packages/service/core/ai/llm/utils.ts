@@ -58,6 +58,25 @@ export const maskImagePlaceholderUrl = (url: string) =>
   isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
 
 /**
+ * 按来源选择图片下载通道。
+ *
+ * 沙箱预览代理可能部署在内网，公共 SSRF 内网拦截会把配置里的合法预览地址一起拒掉，
+ * 导致工具图片全部丢失。这类地址的 origin 来自服务端配置而不是用户输入，因此只对
+ * 该 origin 使用受限通道；其它地址继续走安全的公共下载逻辑。
+ *
+ * fastAgent（loadRequestMessages）与 piAgent（工具 content 转换）都通过这里取图，
+ * 保证两条 provider 路径对沙箱预览地址的能力一致。
+ */
+export const loadImageBase64 = (url: string) => {
+  const previewProxyBase = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  if (!previewProxyBase || !isSandboxPreviewFileUrl(url)) {
+    return getImageBase64(url);
+  }
+
+  return getImageBase64(url, { trustedOrigin: previewProxyBase });
+};
+
+/**
  * 判断消息是否属于系统级提示。
  * 这类消息不参与普通会话窗口裁剪，避免 system/developer 指令被上下文截断。
  */
@@ -307,7 +326,7 @@ export const loadRequestMessages = async ({
     }
 
     try {
-      const { completeBase64: base64 } = await getImageBase64(part.image_url.url);
+      const { completeBase64: base64 } = await loadImageBase64(part.image_url.url);
       return {
         ...part,
         image_url: {
@@ -410,7 +429,7 @@ export const loadRequestMessages = async ({
 
     if (shouldLoadMediaAsBase64(imgUrl)) {
       try {
-        const { completeBase64: base64 } = await getImageBase64(imgUrl);
+        const { completeBase64: base64 } = await loadImageBase64(imgUrl);
 
         return {
           ...imageItem,

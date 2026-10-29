@@ -64,7 +64,7 @@ import {
   runFastAgentMainLoop,
   type AgentLoopRuntime
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop';
-import { buildToolMessageContent } from '@fastgpt/service/core/ai/llm/agentLoop/provider/fastAgent/loop/base';
+import { buildToolMessageContent } from '@fastgpt/service/core/ai/llm/agentLoop/domain/tool';
 
 const getFinalAssistantText = (result: { assistantMessages: any[] }) =>
   result.assistantMessages

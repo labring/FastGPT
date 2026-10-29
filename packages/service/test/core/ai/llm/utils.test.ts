@@ -1564,8 +1564,10 @@ describe('loadRequestMessages function tests', () => {
       expect(result[2].content).toEqual([
         { type: 'image_url', image_url: { url: 'data:image/png;base64,inlined' } }
       ]);
+      // 沙箱预览代理可能在内网，取图时按配置 origin 走受限通道。
       expect(mockGetImageBase64).toHaveBeenCalledWith(
-        'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+        'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
+        { trustedOrigin: 'https://sandbox-preview.example.com' }
       );
     });
 
