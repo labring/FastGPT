@@ -276,6 +276,138 @@ describe('persisted workflow node tool secrets', () => {
       expect(parseCreateNode(node)).toBe(false);
     }
   );
+
+  it.each([
+    {
+      appType: 'toolSet',
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' },
+            unsupportedToolField: true
+          }
+        ],
+        unsupportedRuntimeField: true
+      }
+    },
+    {
+      appType: 'httpToolSet',
+      toolSetKey: 'httpToolSet',
+      config: {
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        headerSecret: { Authorization: { value: 'secret' } },
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ],
+        unsupportedRuntimeField: true
+      }
+    }
+  ] as const)(
+    'accepts and cleans a full $toolSetKey runtime config on its source App root',
+    ({ appType, toolSetKey, config }) => {
+      const result = CreateAppRequestBodySchema.safeParse({
+        name: 'toolset app',
+        type: appType,
+        nodes: [
+          {
+            ...currentNode,
+            flowNodeType: 'toolSet',
+            toolConfig: { [toolSetKey]: config }
+          }
+        ],
+        edges: []
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      const parsedConfig = result.data.nodes?.[0].toolConfig?.[toolSetKey];
+      expect(parsedConfig).not.toHaveProperty('unsupportedRuntimeField');
+      expect(parsedConfig?.toolList?.[0]).not.toHaveProperty('unsupportedToolField');
+    }
+  );
+
+  it.each([
+    {
+      appType: 'httpToolSet',
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        toolList: [{ name: 'search', description: 'Search', inputSchema: { type: 'object' } }]
+      }
+    },
+    {
+      appType: 'toolSet',
+      toolSetKey: 'httpToolSet',
+      config: {
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }
+    }
+  ] as const)(
+    'rejects a full $toolSetKey config on a mismatched source App',
+    ({ appType, toolSetKey, config }) => {
+      expect(
+        CreateAppRequestBodySchema.safeParse({
+          name: 'mismatched toolset app',
+          type: appType,
+          nodes: [
+            {
+              ...currentNode,
+              flowNodeType: 'toolSet',
+              toolConfig: { [toolSetKey]: config }
+            }
+          ],
+          edges: []
+        }).success
+      ).toBe(false);
+    }
+  );
+
+  it('rejects a full MCP runtime config outside the source App root node', () => {
+    expect(
+      CreateAppRequestBodySchema.safeParse({
+        name: 'toolset app',
+        type: 'toolSet',
+        nodes: [
+          currentNode,
+          {
+            ...currentNode,
+            nodeId: 'toolset-2',
+            flowNodeType: 'toolSet',
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  { name: 'search', description: 'Search', inputSchema: { type: 'object' } }
+                ]
+              }
+            }
+          }
+        ],
+        edges: []
+      }).success
+    ).toBe(false);
+  });
 });
 
 describe('legacy chat model input schemas', () => {
