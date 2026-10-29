@@ -142,7 +142,7 @@ describe('workflow editor codec', () => {
     );
   });
 
-  it('recomputes runtime-owned output invalid state after save and reload', () => {
+  it('recomputes runtime-owned output invalid state on open and after save/reload', () => {
     const input = {
       nodes: [
         {
@@ -193,7 +193,14 @@ describe('workflow editor codec', () => {
       sandbox: { configured: true, planSupported: true }
     });
 
-    const saved = serializeRuntime(hydrateRuntime({ input, t, getEnvironment }));
+    const opened = hydrateRuntime({ input, t, getEnvironment });
+    expect(
+      opened
+        .getNode('chat')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
+
+    const saved = serializeRuntime(opened);
     expect(
       saved.nodes
         .flatMap((node) => node.outputs)

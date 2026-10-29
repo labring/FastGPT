@@ -2014,6 +2014,52 @@ describe('workflow environment facts', () => {
     expect(sourceFieldListener).toHaveBeenCalledTimes(1);
   });
 
+  it('updates indexed output validity when the selected model changes', () => {
+    const { editor, environment } = createReasoningRuntime({
+      modelValue: 'reasoning-model',
+      reasoning: false
+    });
+    const unsupportedModel = environment.models![0]!;
+    environment.models = [
+      unsupportedModel,
+      {
+        ...unsupportedModel,
+        modelId: 'supported-reasoning-model',
+        model: 'supported-reasoning-model',
+        config: { ...unsupportedModel.config!, reasoning: true }
+      }
+    ];
+    const selectModel = (modelValue: string) => {
+      const inputs = editor
+        .getNode('source')!
+        .inputs.map((input) =>
+          input.key === NodeInputKeyEnum.aiModelId ? { ...input, value: modelValue } : input
+        );
+      return editor.dispatch({
+        type: 'updateNode',
+        nodeId: 'source',
+        patch: { inputs }
+      });
+    };
+    const getReasoningOutput = (node: { outputs: readonly { id: string; invalid?: boolean }[] }) =>
+      node.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText);
+
+    expect(selectModel('supported-reasoning-model').ok).toBe(true);
+    expect(
+      getReasoningOutput(editor.getWorkflow().nodes.find((node) => node.nodeId === 'source')!)
+    ).toMatchObject({ invalid: false });
+    expect(getReasoningOutput(editor.getNode('source')!)).toMatchObject({ invalid: false });
+    expect(editor.getField({ nodeId: 'consumer', fieldKey: 'reasoning' })?.references).toEqual([
+      expect.objectContaining({ code: 'valid' })
+    ]);
+
+    expect(selectModel('reasoning-model').ok).toBe(true);
+    expect(getReasoningOutput(editor.getNode('source')!)).toMatchObject({ invalid: true });
+    expect(editor.getField({ nodeId: 'consumer', fieldKey: 'reasoning' })?.references).toEqual([
+      expect.objectContaining({ code: 'invalid_reference' })
+    ]);
+  });
+
   it('recomputes Runtime invalid after semantic history replay', () => {
     const { editor, environment } = createReasoningRuntime({
       modelValue: 'reasoning-model',

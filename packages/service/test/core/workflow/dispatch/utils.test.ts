@@ -26,7 +26,11 @@ import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
   DispatchNodeResponseKeyEnum
@@ -2502,5 +2506,46 @@ describe('getWorkflowNodeRunParams', () => {
       textReference: 'edge-value'
     });
     expect(params.ancestorReference).toBeUndefined();
+  });
+
+  it('preserves typed literal overrides for reference inputs in debug mode', () => {
+    const debugValues = [
+      { key: 'prompt', value: 'debug prompt', valueType: WorkflowIOValueTypeEnum.string },
+      { key: 'count', value: 0, valueType: WorkflowIOValueTypeEnum.number },
+      { key: 'enabled', value: false, valueType: WorkflowIOValueTypeEnum.boolean },
+      { key: 'options', value: { topK: 3 }, valueType: WorkflowIOValueTypeEnum.object },
+      { key: 'files', value: ['file-a'], valueType: WorkflowIOValueTypeEnum.arrayString }
+    ];
+    const [node] = storeNodes2RuntimeNodes(
+      [
+        {
+          nodeId: 'debug',
+          name: 'Debug',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          inputs: debugValues.map(({ key, value, valueType }) => ({
+            key,
+            label: key,
+            value,
+            valueType,
+            selectedType: FlowNodeInputTypeEnum.reference,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            debugValueOverride: true
+          })),
+          outputs: []
+        } as any
+      ],
+      []
+    );
+    if (!node) throw new Error('debug node fixture missing');
+    const runtimeNodesMap = new Map([[node.nodeId, node]]);
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap,
+      variableState: { toRuntimeRecord: () => ({}) } as any,
+      isDebugMode: true
+    });
+
+    expect(params).toEqual(Object.fromEntries(debugValues.map(({ key, value }) => [key, value])));
   });
 });

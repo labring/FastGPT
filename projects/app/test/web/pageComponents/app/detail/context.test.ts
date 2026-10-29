@@ -255,46 +255,52 @@ describe('AppContext save result', () => {
     act(() => root.unmount());
   });
 
-  it('preserves edits made after the save request snapshot', async () => {
-    const saveResponse = createDeferred<void>();
-    mocks.postPublishApp.mockImplementationOnce(() => saveResponse.promise);
-    const { root, getSaveApp, getAppDetail, getSetAppDetail } = await renderProvider({
-      hasWritePer: true
-    });
-    let contentRevision = 1;
-    const request = {
-      runtime: {
-        isDisposed: () => false,
-        getSavepoint: () => ({ contentRevision })
-      },
-      sessionId: 'session-1',
-      appId: 'app-1',
-      contentRevision: 1,
-      requestToken: 1,
-      data: saveData
-    } as unknown as WorkflowSaveRequest;
+  it.each([
+    { title: 'before Runtime synchronization', updateRuntimeRevision: false },
+    { title: 'after Runtime synchronization', updateRuntimeRevision: true }
+  ])(
+    'preserves edits made after the save request snapshot $title',
+    async ({ updateRuntimeRevision }) => {
+      const saveResponse = createDeferred<void>();
+      mocks.postPublishApp.mockImplementationOnce(() => saveResponse.promise);
+      const { root, getSaveApp, getAppDetail, getSetAppDetail } = await renderProvider({
+        hasWritePer: true
+      });
+      let contentRevision = 1;
+      const request = {
+        runtime: {
+          isDisposed: () => false,
+          getSavepoint: () => ({ contentRevision })
+        },
+        sessionId: 'session-1',
+        appId: 'app-1',
+        contentRevision: 1,
+        requestToken: 1,
+        data: saveData
+      } as unknown as WorkflowSaveRequest;
 
-    const save = getSaveApp()(saveData, request);
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    act(() => {
-      getSetAppDetail()((state) => ({
-        ...state,
-        chatConfig: { ...state.chatConfig, welcomeText: 'newer edit' }
-      }));
-      contentRevision = 2;
-    });
+      const save = getSaveApp()(saveData, request);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      act(() => {
+        getSetAppDetail()((state) => ({
+          ...state,
+          chatConfig: { ...state.chatConfig, welcomeText: 'newer edit' }
+        }));
+        if (updateRuntimeRevision) contentRevision = 2;
+      });
 
-    await act(async () => {
-      saveResponse.resolve();
-      await expect(save).resolves.toBe(true);
-    });
+      await act(async () => {
+        saveResponse.resolve();
+        await expect(save).resolves.toBe(true);
+      });
 
-    expect(getAppDetail().chatConfig.welcomeText).toBe('newer edit');
-    act(() => root.unmount());
-  });
+      expect(getAppDetail().chatConfig.welcomeText).toBe('newer edit');
+      act(() => root.unmount());
+    }
+  );
 
   it('ignores a previous app 404 after the route changes', async () => {
     const firstRequest = createDeferred<never>();

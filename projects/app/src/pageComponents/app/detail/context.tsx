@@ -70,6 +70,8 @@ type SaveAppParams = {
   data: PostPublishAppProps;
   request?: WorkflowSaveRequest;
   saveToken: number;
+  /** 捕获入队时的配置引用；Runtime effect 可能晚于保存响应同步编辑。 */
+  chatConfigSnapshot: AppDetailType['chatConfig'];
 };
 
 type QueuedSaveApp = SaveAppParams & {
@@ -246,7 +248,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const { runAsync: saveApp } = useRequest(
-    async ({ data, request, saveToken }: SaveAppParams) => {
+    async ({ data, request, saveToken, chatConfigSnapshot }: SaveAppParams) => {
       const isCurrentSave = () =>
         saveToken === saveTokenRef.current &&
         currentAppIdRef.current === appId &&
@@ -275,7 +277,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
             ...state,
             nodes: data.nodes,
             edges: data.edges,
-            chatConfig: data.chatConfig,
+            ...(state.chatConfig === chatConfigSnapshot ? { chatConfig: data.chatConfig } : {}),
             ...(data.referenceSnapshots !== undefined && {
               referenceSnapshots: data.referenceSnapshots
             })
@@ -307,7 +309,15 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       const saveToken = ++saveTokenRef.current;
       latestSaveRequestRef.current = request;
       return new Promise<boolean>((resolve, reject) => {
-        const save = { appId, data, request, saveToken, resolve, reject };
+        const save = {
+          appId,
+          data,
+          request,
+          saveToken,
+          chatConfigSnapshot: appDetail.chatConfig,
+          resolve,
+          reject
+        };
         if (saveInFlightRef.current) {
           pendingSaveRef.current?.resolve(false);
           pendingSaveRef.current = save;
@@ -322,7 +332,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         });
       });
     },
-    [appId, saveAppFn]
+    [appDetail.chatConfig, appId, saveAppFn]
   );
 
   const isAgent = AppTypeList.includes(appDetail.type);

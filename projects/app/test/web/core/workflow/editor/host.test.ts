@@ -10,8 +10,17 @@ import {
   getWorkflowModelDetails,
   peekWorkflowEnvironmentModels
 } from '@/web/core/workflow/modelData';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import {
   useWorkflowHistory,
@@ -26,7 +35,10 @@ import {
   type WorkflowSessionActions
 } from '@/web/core/workflow/editor/session/workflowSession';
 import { createWorkflowSaveCoordinator } from '@/web/core/workflow/editor/session/workflowPersistence';
-import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
+import type {
+  WorkflowRuntimeOptions,
+  WorkflowRuntimePort
+} from '@fastgpt/global/core/workflow/editor/types';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -199,6 +211,49 @@ const answerDocument = () =>
     chatConfig: {},
     t
   });
+
+const reasoningRuntimeOptions: WorkflowRuntimeOptions = {
+  getEnvironment: () => ({
+    models: [
+      {
+        modelId: 'reasoning-model',
+        model: 'reasoning-model',
+        type: ModelTypeEnum.llm,
+        config: {
+          maxContext: 1,
+          maxResponse: 1,
+          quoteMaxToken: 1,
+          reasoning: true
+        }
+      }
+    ],
+    sandbox: { configured: true, planSupported: true }
+  })
+};
+
+const createReasoningChatNode = () => ({
+  nodeId: 'reasoning',
+  flowNodeType: FlowNodeTypeEnum.chatNode,
+  name: 'Reasoning',
+  inputs: [
+    {
+      key: NodeInputKeyEnum.aiModelId,
+      label: 'Model',
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      valueType: WorkflowIOValueTypeEnum.string,
+      value: 'reasoning-model'
+    }
+  ],
+  outputs: [
+    {
+      id: NodeOutputKeyEnum.reasoningText,
+      key: NodeOutputKeyEnum.reasoningText,
+      type: FlowNodeOutputTypeEnum.static,
+      valueType: WorkflowIOValueTypeEnum.string,
+      invalid: true
+    }
+  ]
+});
 
 describe('WorkflowSessionProvider version history', () => {
   beforeEach(() => {
@@ -411,13 +466,13 @@ describe('WorkflowSessionProvider version history', () => {
   });
 
   it('switches to a cloud version without adding a local entry', async () => {
-    const initial = answerDocument();
-    const { root, appDetail, readHost } = await renderHost(initial.chatConfig);
-    act(() => readHost().initRuntime(initial));
+    const initial = materializeWorkflow({ input: { nodes: [], edges: [] }, chatConfig: {}, t });
+    const runtime = hydrateWorkflowEditor(initial, reasoningRuntimeOptions);
+    const { root, appDetail, readHost } = await renderHost(initial.chatConfig, runtime);
     const localCount = readHost().versions.length;
 
     const cloudVersion = {
-      nodes: [],
+      nodes: [createReasoningChatNode()],
       edges: [],
       chatConfig: { welcomeText: 'cloud hello' },
       versionName: 'v1'
@@ -432,6 +487,11 @@ describe('WorkflowSessionProvider version history', () => {
     expect(readHost().runtime!.getWorkflow().chatConfig).toEqual(
       expect.objectContaining({ welcomeText: 'cloud hello' })
     );
+    expect(
+      readHost()
+        .runtime!.getNode('reasoning')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
     // chatConfig 回写 appDetail（订阅回写与切换后的显式同步都走同一个 setter）。
     expect(appDetail.current.chatConfig.welcomeText).toBe('cloud hello');
     expect(readHost().versions.filter((item) => item.live)).toHaveLength(1);
@@ -440,6 +500,28 @@ describe('WorkflowSessionProvider version history', () => {
     );
     expect(readHost().versions.find((item) => item.live)?.content).toBeDefined();
 
+    act(() => root.unmount());
+  });
+
+  it('recomputes runtime-owned output validity when importing a workflow', async () => {
+    const initial = materializeWorkflow({ input: { nodes: [], edges: [] }, chatConfig: {}, t });
+    const runtime = hydrateWorkflowEditor(initial, reasoningRuntimeOptions);
+    const { root, readHost } = await renderHost(initial.chatConfig, runtime);
+    const imported = materializeWorkflow({
+      input: { nodes: [createReasoningChatNode()], edges: [] },
+      chatConfig: {},
+      t
+    });
+
+    act(() => {
+      expect(readHost().loadDocument(imported).ok).toBe(true);
+    });
+
+    expect(
+      readHost()
+        .runtime!.getNode('reasoning')
+        ?.outputs.find((output) => output.id === NodeOutputKeyEnum.reasoningText)?.invalid
+    ).toBe(false);
     act(() => root.unmount());
   });
 
