@@ -10,6 +10,7 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -353,6 +354,9 @@ const ChatPanel = React.forwardRef<
     ref
   ) => {
     const router = useRouter();
+    const showRunDetail = useSystemStore(
+      (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
+    );
     const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
     const sourceTarget = useMemo<ChatSourceTarget>(
       () => ({ sourceType: ChatSourceTypeEnum.workflowBuilder, sourceId: appId }),
@@ -397,7 +401,7 @@ const ChatPanel = React.forwardRef<
         isShowFullText={false}
         showRunningStatus={true}
         showSkillReferences={true}
-        showWholeResponse={false}
+        showWholeResponse={showRunDetail}
         showPoints={false}
         showAvatar={true}
         showSandboxAction={false}

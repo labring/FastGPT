@@ -17,6 +17,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { loadChatAgentConfig } from './api';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import type {
   ChatAgentConfigFormDataType,
@@ -175,6 +176,9 @@ const ChatAgentHelperChatBox = ({
 };
 
 const ChatAgentHelper = (props: ChatAgentHelperProps) => {
+  const showRunDetail = useSystemStore(
+    (state) => state.feConfigs.showAuxiliaryGenerationRunDetail ?? false
+  );
   const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({
@@ -241,7 +245,7 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
       isShowFullText={false}
       showRunningStatus={true}
       showSkillReferences={false}
-      showWholeResponse={false}
+      showWholeResponse={showRunDetail}
       showPoints={false}
       showAvatar={true}
       showSandboxAction={false}
