@@ -5,7 +5,7 @@ import {
   parseToolId
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
@@ -21,7 +21,8 @@ const {
   mcpToolCallMock,
   runToolStreamMock,
   getSystemToolRuntimeMock,
-  getSystemToolDetailMock
+  getSystemToolDetailMock,
+  workflowContextMock
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
@@ -31,7 +32,8 @@ const {
   mcpToolCallMock: vi.fn(),
   runToolStreamMock: vi.fn(),
   getSystemToolRuntimeMock: vi.fn(),
-  getSystemToolDetailMock: vi.fn()
+  getSystemToolDetailMock: vi.fn(),
+  workflowContextMock: { mcpClientMemory: {} as Record<string, unknown> }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -50,6 +52,13 @@ vi.mock('@fastgpt/service/core/app/http', () => ({
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   assertMCPUrlNotInternal: vi.fn(),
   getMCPChildren: getMCPChildrenMock,
+  normalizeLegacyMcpHeaderSecret: (headerSecret: any) => {
+    if (!headerSecret || typeof headerSecret !== 'object') return undefined;
+    if ('value' in headerSecret || 'secret' in headerSecret || 'ref' in headerSecret) {
+      return { Authorization: headerSecret };
+    }
+    return headerSecret;
+  },
   MCPClient: vi.fn(function () {
     return { toolCall: mcpToolCallMock };
   })
@@ -87,7 +96,7 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} })),
+  getWorkflowContext: vi.fn(() => workflowContextMock),
   getWorkflowResourceContext: vi.fn(() => undefined)
 }));
 
@@ -133,6 +142,8 @@ const createRunToolProps = (
 describe('dispatchRunTool runtime toolset auth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    workflowContextMock.mcpClientMemory = {};
+    mcpToolCallMock.mockResolvedValue({ ok: true });
     vi.mocked(getWorkflowResourceContext).mockReturnValue(undefined);
     authAppByTmbIdMock.mockResolvedValue({
       app: {
@@ -484,6 +495,53 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
+  it('resolves MCP auth references per call and reuses clients for matching auth', async () => {
+    const url = 'https://mcp.example.com';
+    const mcpTool = { name: 'search', description: 'Search' };
+    authAppByTmbIdMock.mockResolvedValue({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url,
+                headerSecret: {
+                  Authorization: { ref: [VARIABLE_NODE_ID, 'token'] }
+                },
+                toolList: [mcpTool]
+              }
+            }
+          }
+        ]
+      }
+    });
+    getMCPChildrenMock.mockResolvedValue([mcpTool]);
+
+    let token = 'token-a';
+    const props = createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } });
+    props.runtimeNodesMap = {};
+    props.variableState.toRuntimeRecord = () => ({ token });
+
+    await dispatchRunTool(props);
+    token = 'token-b';
+    await dispatchRunTool(props);
+    await dispatchRunTool(props);
+
+    expect(MCPClient).toHaveBeenNthCalledWith(1, {
+      url,
+      headers: { Authorization: 'token-a' }
+    });
+    expect(MCPClient).toHaveBeenNthCalledWith(2, {
+      url,
+      headers: { Authorization: 'token-b' }
+    });
+    expect(MCPClient).toHaveBeenCalledTimes(2);
+    expect(mcpToolCallMock).toHaveBeenCalledTimes(3);
+    expect(Object.keys(workflowContextMock.mcpClientMemory)).toHaveLength(2);
+    expect(Object.keys(workflowContextMock.mcpClientMemory).join(' ')).not.toContain('token-');
+  });
+
   it.each(['toolData', 'system_toolData'] as const)(
     'should keep the baseline fallback for legacy single MCP tool params (%s)',
     async (legacyKey) => {
@@ -516,6 +574,32 @@ describe('dispatchRunTool runtime toolset auth', () => {
       });
     }
   );
+
+  it('should normalize a legacy single MCP header secret', async () => {
+    const props = createRunToolProps({});
+    props.params = {
+      query: 'fastgpt',
+      toolData: {
+        name: 'search',
+        url: 'https://mcp.example.com',
+        headerSecret: { value: 'legacy-token' },
+        inputSchema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+          required: ['query']
+        }
+      }
+    };
+    mcpToolCallMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await dispatchRunTool(props);
+
+    expect(result.error).toBeUndefined();
+    expect(MCPClient).toHaveBeenCalledWith({
+      url: 'https://mcp.example.com',
+      headers: { Authorization: 'legacy-token' }
+    });
+  });
 
   it('should pass system tool params through without validating against the tool schema', async () => {
     getSystemToolDetailMock.mockResolvedValueOnce({

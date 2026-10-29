@@ -1,17 +1,90 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeInputTypeEnum,
+  type FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { encryptSecretValue, storeSecretValue } from '../../../common/secret/utils';
+import {
+  encryptSecretValue,
+  resolveSecretValue,
+  storeSecretValue
+} from '../../../common/secret/utils';
+import {
+  isSecretValueConfigured,
+  parseSecretValue,
+  type SecretValueReferenceResolver
+} from '@fastgpt/global/common/secret/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
+
+const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> = {
+  input: WorkflowIOValueTypeEnum.string,
+  numberInput: WorkflowIOValueTypeEnum.number,
+  secret: WorkflowIOValueTypeEnum.string,
+  switch: WorkflowIOValueTypeEnum.boolean,
+  select: WorkflowIOValueTypeEnum.string
+};
+
+/** 解析系统工具手工输入；未配置的静态项省略，显式 0/false 和引用结果保留。 */
+export const resolveToolInputValues = ({
+  value,
+  inputList,
+  resolveReference
+}: {
+  value?: Record<string, unknown>;
+  inputList?: InputConfigType[];
+  resolveReference?: SecretValueReferenceResolver;
+}) => {
+  if (!value) return value;
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, rawValue]) => {
+      if (rawValue === undefined || rawValue === null) return [];
+      const input = inputList?.find((item) => item.key === key);
+      const secretValue = input
+        ? normalizeToolInputValue({ value: rawValue, inputType: input.inputType })
+        : parseSecretValue(rawValue);
+      // 在解析引用前判断来源是否已配置，避免空静态项覆盖默认值，也保留有效引用的空结果。
+      if (secretValue && !isSecretValueConfigured(secretValue)) return [];
+      const resolvedValue = resolveSecretValue({
+        value: secretValue ?? rawValue,
+        resolveReference
+      });
+      if (!input) return [[key, resolvedValue]];
+
+      const valueType = inputTypeValueTypeMap[input.inputType];
+      if (resolvedValue !== null && typeof resolvedValue === 'object') {
+        throw new Error(`System tool input ${key} must resolve to a scalar`);
+      }
+
+      const valueForFormatting =
+        input.inputType === 'switch' && (resolvedValue === 'true' || resolvedValue === 'false')
+          ? resolvedValue === 'true'
+          : resolvedValue;
+
+      return [[key, valueTypeFormat(valueForFormatting, valueType)]];
+    })
+  );
+};
 
 /**
  * 格式化工具输入中的敏感值。
  * 保存和详情读取都经过这里，确保 Agent 嵌套工具与普通工具使用一致的密钥规则。
+ * 系统容器必须匹配节点类型和系统 key，普通业务中的同名参数保持原样。
  */
-export const formatToolInputSecrets = ({ inputs }: { inputs: FlowNodeInputItemType[] }) => {
+export const formatToolInputSecrets = ({
+  inputs,
+  flowNodeType
+}: {
+  inputs: Pick<FlowNodeInputItemType, 'key' | 'value' | 'renderTypeList' | 'inputList'>[];
+  flowNodeType: FlowNodeTypeEnum;
+}) => {
   inputs.forEach((input) => {
+    const secretInputKind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
     if (
-      input.key === NodeInputKeyEnum.systemInputConfig &&
+      secretInputKind === 'systemConfig' &&
       typeof input.value === 'object' &&
       input.value !== null
     ) {
@@ -30,7 +103,7 @@ export const formatToolInputSecrets = ({ inputs }: { inputs: FlowNodeInputItemTy
       }
     }
 
-    if (input.key === NodeInputKeyEnum.headerSecret && typeof input.value === 'object') {
+    if (secretInputKind === 'headers' && typeof input.value === 'object' && input.value !== null) {
       input.value = storeSecretValue(input.value);
     }
 

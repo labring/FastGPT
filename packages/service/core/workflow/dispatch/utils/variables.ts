@@ -307,7 +307,6 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
 
     if (config?.type === VariableInputEnum.password && typeof value === 'string') {
       const storeValue = {
-        value: '',
         secret: encryptSecret(value)
       };
       this.state.set(key, {
@@ -319,7 +318,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       return value;
     }
 
-    const runtimeValue = valueTypeFormat(value, config?.valueType);
+    const runtimeValue = valueTypeFormat(
+      value,
+      config?.valueType,
+      config?.type === VariableInputEnum.password
+    );
     this.state.set(key, {
       key,
       config,
@@ -397,7 +400,6 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
       const storeValue =
         typeof runtimeValue === 'string'
           ? {
-              value: '',
               secret: encryptSecret(runtimeValue)
             }
           : value;

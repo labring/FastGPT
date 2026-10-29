@@ -1,15 +1,24 @@
+import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-
-import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../app/mcp';
+import {
+  assertMCPUrlNotInternal,
+  getMCPChildren,
+  MCPClient,
+  normalizeLegacyMcpHeaderSecret
+} from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
+import { resolveToolInputValues } from '../../../app/tool/secretConfig';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
@@ -76,6 +85,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
+  const resolveReference = (value: ReferenceValueType) =>
+    getReferenceVariableValue({
+      value,
+      nodesMap: props.runtimeNodesMap,
+      variables: variableState.toRuntimeRecord(),
+      isReferenceVal: true
+    });
 
   const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
@@ -129,14 +145,24 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         version
       });
 
+      const toolDetail = await systemToolRepo.getSystemToolDetail({
+        pluginId: toolConfig.systemTool.toolId,
+        source: toolSource,
+        version: tool.version ?? version,
+        fallbackLatestVersion: true
+      });
+      const inputList = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+
       const inputConfigParams = await (async () => {
         switch (params.system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
             return Promise.reject(new Error('This is not supported yet'));
           case SystemToolSecretInputTypeEnum.manual:
             const val = params.system_input_config.value || {};
-            return getSecretValue({
-              storeSecret: val
+            return resolveToolInputValues({
+              value: val,
+              inputList,
+              resolveReference
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
@@ -147,12 +173,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
-      const toolDetail = await systemToolRepo.getSystemToolDetail({
-        pluginId: toolConfig.systemTool.toolId,
-        source: toolSource,
-        version: tool.version ?? version,
-        fallbackLatestVersion: true
-      });
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
@@ -289,16 +309,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       await assertMCPUrlNotInternal(url);
 
       const context = getWorkflowContext();
-      // Buffer mcpClient in this workflow
-      const mcpClient =
-        context.mcpClientMemory?.[url] ??
-        new MCPClient({
-          url,
-          headers: getSecretValue({
-            storeSecret: headerSecret ?? undefined
-          })
-        });
-      context.mcpClientMemory[url] = mcpClient;
+      const headers = getSecretValue({
+        storeSecret: headerSecret ?? undefined,
+        resolveReference
+      });
+      // 认证引用会随 workflow 变量变化；缓存键保存摘要，避免包含密钥原文。
+      const headersFingerprint = createHash('sha256')
+        .update(
+          JSON.stringify(
+            Object.entries(headers).sort(([left], [right]) => left.localeCompare(right))
+          )
+        )
+        .digest('hex');
+      const cacheKey = JSON.stringify([url, headersFingerprint]);
+      const mcpClient = context.mcpClientMemory?.[cacheKey] ?? new MCPClient({ url, headers });
+      context.mcpClientMemory[cacheKey] = mcpClient;
 
       toolInput = params;
       const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
@@ -354,7 +379,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           : undefined,
         staticParams: httpTool.staticParams,
         staticHeaders: httpTool.staticHeaders,
-        staticBody: httpTool.staticBody
+        staticBody: httpTool.staticBody,
+        resolveReference
       });
 
       if (errorMsg) {
@@ -387,7 +413,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const mcpClient = new MCPClient({
         url,
         headers: getSecretValue({
-          storeSecret: headerSecret
+          storeSecret: normalizeLegacyMcpHeaderSecret(headerSecret),
+          resolveReference
         })
       });
       toolInput = restParams;

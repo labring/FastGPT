@@ -592,6 +592,7 @@ describe('validateNodeIO', () => {
   it.each([
     { value: 'legacy-plaintext' },
     { value: { value: 'plaintext', secret: '' } },
+    { value: { ref: ['source', 'text'] } },
     { value: { value: '', secret: 'encrypted-placeholder' } },
     { defaultValue: { secret: 'encrypted-default' } }
   ])('accepts configured password storage values in ordinary and tool contexts: %j', (config) => {
@@ -608,6 +609,42 @@ describe('validateNodeIO', () => {
     expect(check(node, true)).toEqual([]);
   });
 
+  it.each([{ ref: ['deleted-node', 'text'] }, JSON.stringify({ ref: ['deleted-node', 'text'] })])(
+    'validates reference targets in every supported password encoding: %j',
+    (value) => {
+      const node = makeNode({
+        inputs: [
+          makeInput({
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            value
+          })
+        ]
+      });
+
+      expect(check(node).map((item) => item.code)).toEqual([
+        WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+      ]);
+    }
+  );
+
+  it.each(['short', { value: 'short' }])(
+    'applies the same plaintext constraints to legacy strings and wrappers: %j',
+    (value) => {
+      const node = makeNode({
+        inputs: [
+          makeInput({
+            renderTypeList: [FlowNodeInputTypeEnum.password],
+            customJsonSchema: { type: 'string', minLength: 8 },
+            value
+          })
+        ]
+      });
+      expect(check(node).map((item) => item.code)).toEqual([
+        WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid
+      ]);
+    }
+  );
+
   it('distinguishes empty required secrets from malformed storage values without exposing them', () => {
     const node = makeNode({
       inputs: [
@@ -615,6 +652,11 @@ describe('validateNodeIO', () => {
           key: 'empty',
           renderTypeList: [FlowNodeInputTypeEnum.password],
           value: { value: '', secret: '' }
+        }),
+        makeInput({
+          key: 'emptyPlain',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          value: { value: '' }
         }),
         makeInput({
           key: 'optional',
@@ -632,14 +674,22 @@ describe('validateNodeIO', () => {
           renderTypeList: [FlowNodeInputTypeEnum.password],
           required: false,
           value: []
+        }),
+        makeInput({
+          key: 'malformedReference',
+          renderTypeList: [FlowNodeInputTypeEnum.password],
+          required: false,
+          value: { ref: ['source'] }
         })
       ]
     });
     const diagnostics = check(node);
     expect(diagnostics.map((item) => [item.inputKey, item.code])).toEqual([
       ['empty', WorkflowDiagnosticCodeEnum.requiredInputMissing],
+      ['emptyPlain', WorkflowDiagnosticCodeEnum.requiredInputMissing],
       ['malformed', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid],
-      ['malformedEmpty', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]
+      ['malformedEmpty', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid],
+      ['malformedReference', WorkflowDiagnosticCodeEnum.inputValueSchemaInvalid]
     ]);
     expect(JSON.stringify(diagnostics)).not.toContain('invalid-with-private-data');
   });

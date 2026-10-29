@@ -19,8 +19,7 @@ import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../../../common/workflow/reference';
-
-import { isSecretValue } from '../../../common/secret/utils';
+import { parseSecretValue } from '../../../common/secret/utils';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 /**
@@ -71,8 +70,12 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   return limit * 2;
 };
 
-/* value type format */
-export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum) => {
+/** 按目标 workflow 类型转换运行时值；只有密码输入会保留合法 secret wrapper。 */
+export const valueTypeFormat = (
+  value: any,
+  valueType?: WorkflowIOValueTypeEnum,
+  isSecretInput = false
+) => {
   const isObjectString = (value: any) => {
     if (typeof value === 'string' && value !== 'false' && value !== 'true') {
       const trimmedValue = value.trim();
@@ -88,8 +91,11 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   if (value === undefined || value === null) return value;
   if (!valueType || valueType === WorkflowIOValueTypeEnum.any) return value;
 
-  // Password check
-  if (valueType === WorkflowIOValueTypeEnum.string && isSecretValue(value)) return value;
+  // `{ value }` 也可能是普通业务对象；仅密码输入按密钥 wrapper 透传。
+  if (isSecretInput && valueType === WorkflowIOValueTypeEnum.string) {
+    const secretValue = parseSecretValue(value);
+    if (secretValue) return secretValue;
+  }
 
   // 2. 如果值已经符合目标类型，直接返回
   if (

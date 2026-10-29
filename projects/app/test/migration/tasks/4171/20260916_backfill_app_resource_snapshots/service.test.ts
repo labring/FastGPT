@@ -503,4 +503,52 @@ describe('App resource snapshot migration service', () => {
       validateAppResourceRecords([migratedParent!, childApp1, childApp2])
     ).resolves.toEqual([]);
   });
+
+  it.each([
+    {
+      name: 'header map',
+      legacyHeader: { Authorization: { value: '', secret: 'encrypted-map-token' } },
+      expectedHeader: { Authorization: { secret: 'encrypted-map-token' } }
+    },
+    {
+      name: 'single token',
+      legacyHeader: { value: '', secret: 'encrypted-single-token' },
+      expectedHeader: { Authorization: { secret: 'encrypted-single-token' } }
+    }
+  ])(
+    'preserves legacy MCP $name secrets in published Versions',
+    async ({ legacyHeader, expectedHeader }) => {
+      const parentApp = createApp({ type: AppTypeEnum.mcpToolSet, modules: [] });
+      const childApp = createApp({
+        parentId: parentApp._id,
+        modules: [
+          {
+            inputs: [
+              {
+                value: {
+                  name: 'search',
+                  url: 'https://mcp.example.com/sse',
+                  headerSecret: legacyHeader,
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              }
+            ]
+          }
+        ]
+      });
+      await MongoApp.collection.insertMany([parentApp, childApp]);
+
+      await expect(backfillAppResourceRecords([parentApp, childApp])).resolves.toMatchObject({
+        updatedCount: 1,
+        createdVersionCount: 1,
+        failures: []
+      });
+
+      const version = await MongoAppVersion.collection.findOne({ appId: parentApp._id });
+      if (!version) throw new Error('Published Version was not created');
+
+      const [node] = decodeMcpToolSetNodesFromStorage(version.nodes);
+      expect(node.toolConfig?.mcpToolSet).toMatchObject({ headerSecret: expectedHeader });
+    }
+  );
 });

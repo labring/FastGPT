@@ -6,9 +6,23 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  InputConfigType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useForm, Controller, useWatch } from 'react-hook-form';
-import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import {
+  type SecretValueType,
+  type StoreSecretValueType
+} from '@fastgpt/global/common/secret/type';
+import {
+  formatSecretReference,
+  getSecretReferenceValue,
+  isSecretValueConfigured
+} from '@fastgpt/global/common/secret/utils';
+import { normalizeToolInputValue } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
@@ -18,6 +32,8 @@ import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/typ
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 
 export type ToolParamsFormType = {
@@ -26,6 +42,12 @@ export type ToolParamsFormType = {
 };
 
 type SecretInputFormProps = {
+  referenceList?: SecretReferenceList;
+  renderReference?: (params: {
+    list: SecretReferenceList;
+    value?: ReferenceValueType;
+    onSelect: (value?: ReferenceValueType) => void;
+  }) => React.ReactElement;
   parentId?: string;
   source?: string;
   isFolder?: boolean;
@@ -44,7 +66,67 @@ type SecretInputFormProps = {
   onSubmit?: (data: ToolParamsFormType) => void;
 };
 
+type SecretInputValue = SecretValueType;
+type FieldMode = 'manual' | 'reference';
+
+const secretInputModeTypeMap = {
+  input: FlowNodeInputTypeEnum.input,
+  numberInput: FlowNodeInputTypeEnum.numberInput,
+  secret: FlowNodeInputTypeEnum.password,
+  switch: FlowNodeInputTypeEnum.switch,
+  select: FlowNodeInputTypeEnum.select
+} satisfies Record<InputConfigType['inputType'], FlowNodeInputTypeEnum>;
+
+export type SecretReferenceList = {
+  label: string | React.ReactNode;
+  value: string;
+  name?: string;
+  avatar?: string;
+  children: {
+    label: string;
+    value: string;
+    valueType?: WorkflowIOValueTypeEnum;
+  }[];
+}[];
+
+/** 编辑器先复用凭据解析；旧数字/开关配置仅在声明的非密钥字段中转换为字符串。 */
+export const normalizeInputValue = (
+  value: unknown,
+  inputType: InputConfigType['inputType'] = 'secret'
+): SecretInputValue => {
+  return normalizeToolInputValue({ value, inputType }) ?? { value: '' };
+};
+
+export const formatManualInputValue = (value: unknown) =>
+  value === undefined || value === null ? '' : String(value);
+
+export const filterReferenceListByInputType = (
+  referenceList: SecretReferenceList,
+  inputType: InputConfigType['inputType']
+) => {
+  const valueType =
+    inputType === 'numberInput'
+      ? WorkflowIOValueTypeEnum.number
+      : inputType === 'switch'
+        ? WorkflowIOValueTypeEnum.boolean
+        : WorkflowIOValueTypeEnum.string;
+
+  return referenceList
+    .map((source) => ({
+      ...source,
+      children: source.children.filter(
+        (child) =>
+          child.valueType === undefined ||
+          child.valueType === WorkflowIOValueTypeEnum.any ||
+          child.valueType === valueType
+      )
+    }))
+    .filter((source) => source.children.length > 0);
+};
+
 export const SecretInputForm = ({
+  referenceList = [],
+  renderReference,
   parentId,
   source,
   hasSystemSecret,
@@ -68,27 +150,46 @@ export const SecretInputForm = ({
     defaultIsOpen: false
   });
   const inputList = inputConfig?.inputList || [];
+  const [fieldModes, setFieldModes] = useState<Record<string, FieldMode>>({});
 
-  const { register, setValue, getValues, handleSubmit, control } = useForm<ToolParamsFormType>({
+  const form = useForm<ToolParamsFormType>({
     defaultValues: (() => {
-      const defaultValue = inputConfig.value;
-      return (
-        defaultValue || {
-          type: hasSystemSecret
-            ? SystemToolSecretInputTypeEnum.system
-            : SystemToolSecretInputTypeEnum.manual,
-          value:
-            inputList?.reduce(
-              (acc, item) => {
-                acc[item.key] = { secret: '', value: '' };
-                return acc;
-              },
-              {} as Record<string, InputConfigType['value']>
-            ) || {}
-        }
-      );
+      const defaultValue = inputConfig.value as ToolParamsFormType | undefined;
+      const defaultFields = defaultValue?.value;
+      return defaultValue
+        ? {
+            ...defaultValue,
+            ...(defaultValue.type === SystemToolSecretInputTypeEnum.manual
+              ? {
+                  value: inputList.reduce(
+                    (acc, item) => {
+                      acc[item.key] = normalizeInputValue(
+                        defaultFields?.[item.key],
+                        item.inputType
+                      );
+                      return acc;
+                    },
+                    {} as Record<string, any>
+                  )
+                }
+              : {})
+          }
+        : {
+            type: hasSystemSecret
+              ? SystemToolSecretInputTypeEnum.system
+              : SystemToolSecretInputTypeEnum.manual,
+            value:
+              inputList?.reduce(
+                (acc, item) => {
+                  acc[item.key] = { value: '' };
+                  return acc;
+                },
+                {} as Record<string, InputConfigType['value']>
+              ) || {}
+          };
     })()
   });
+  const { register, unregister, setValue, getValues, handleSubmit, control } = form;
   const configType = useWatch({ control, name: 'type' });
   const formValues = useWatch({ control });
 
@@ -109,6 +210,21 @@ export const SecretInputForm = ({
       setValue('value', undefined);
     }
     onTypeChange?.(type);
+  };
+
+  const getFieldMode = (key: string, value?: SecretInputValue): FieldMode =>
+    fieldModes[key] || (getSecretReferenceValue(value) ? 'reference' : 'manual');
+
+  const changeFieldMode = (key: string, mode: FieldMode) => {
+    setFieldModes((prev) => ({ ...prev, [key]: mode }));
+    const fieldPath = `value.${key}` as any;
+    const fieldValuePath = `value.${key}.value` as any;
+    unregister(fieldValuePath);
+    setValue(fieldPath, undefined);
+
+    if (mode === 'manual') {
+      setValue(fieldValuePath, '');
+    }
   };
 
   const isCardExpanded = (type: SystemToolSecretInputTypeEnum) => configType === type && isExpanded;
@@ -316,24 +432,85 @@ export const SecretInputForm = ({
                       {inputList.map((item, i) => {
                         const inputKey = `value.${item.key}.value` as any;
                         const value = getValues(`value.${item.key}`);
-                        const showInput = !!value?.value || !value?.secret || editIndex === i;
+                        const fieldMode = getFieldMode(item.key, value);
+                        const manualInputType = secretInputModeTypeMap[item.inputType];
+                        const fieldReferenceList = filterReferenceListByInputType(
+                          referenceList,
+                          item.inputType
+                        );
+                        const showInput = !isSecretValueConfigured(value) || editIndex === i;
                         const fieldLabel = item.label;
 
                         return (
                           <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
-                            <Flex alignItems={'center'} mb={0.5}>
+                            <Flex alignItems={'center'} mb={1}>
                               <FormLabel required={item.required} color={'myGray.600'}>
                                 {fieldLabel}
                               </FormLabel>
                               {item.description && <QuestionTip label={item.description} />}
+                              {renderReference && (
+                                <Box ml={2} className="nodrag">
+                                  <NodeInputSelect
+                                    renderTypeList={[
+                                      manualInputType,
+                                      FlowNodeInputTypeEnum.reference
+                                    ]}
+                                    selectedType={
+                                      fieldMode === 'reference'
+                                        ? FlowNodeInputTypeEnum.reference
+                                        : manualInputType
+                                    }
+                                    onChange={(mode) =>
+                                      changeFieldMode(
+                                        item.key,
+                                        mode === FlowNodeInputTypeEnum.reference
+                                          ? 'reference'
+                                          : 'manual'
+                                      )
+                                    }
+                                  />
+                                </Box>
+                              )}
                               <Box flex={'1 0 0'} />
                             </Flex>
-                            {item.inputType === 'secret' ? (
+                            {fieldMode === 'reference' ? (
+                              <Controller
+                                control={control}
+                                name={`value.${item.key}` as any}
+                                rules={{
+                                  required: item.required
+                                }}
+                                render={({ field: { value: referenceValue, onChange } }) =>
+                                  renderReference &&
+                                  !Array.isArray(getSecretReferenceValue(referenceValue)?.[0]) ? (
+                                    renderReference({
+                                      list: fieldReferenceList,
+                                      value: getSecretReferenceValue(referenceValue),
+                                      onSelect: (ref) => onChange(ref ? { ref } : undefined)
+                                    })
+                                  ) : (
+                                    <Box
+                                      borderRadius={'6px'}
+                                      border={'0.5px solid'}
+                                      borderColor={'primary.200'}
+                                      bg={'primary.50'}
+                                      minH={8}
+                                      px={3}
+                                      display={'flex'}
+                                      alignItems={'center'}
+                                    >
+                                      {formatSecretReference(referenceValue) ||
+                                        t('common:core.workflow.inputType.Reference')}
+                                    </Box>
+                                  )
+                                }
+                              />
+                            ) : item.inputType === 'secret' ? (
                               <Flex alignItems={'center'}>
                                 {showInput ? (
                                   <Input
                                     bg={'myGray.50'}
-                                    h={'48px'}
+                                    h={10}
                                     py={0}
                                     display={'flex'}
                                     alignItems={'center'}
@@ -343,6 +520,7 @@ export const SecretInputForm = ({
                                     {...register(inputKey, {
                                       required: item.required
                                     })}
+                                    onFocus={() => setEditIndex(i)}
                                   />
                                 ) : (
                                   <>
@@ -352,7 +530,7 @@ export const SecretInputForm = ({
                                       border={'0.5px solid'}
                                       borderColor={'primary.200'}
                                       bg={'primary.50'}
-                                      h={8}
+                                      h={10}
                                       px={3}
                                       alignItems={'center'}
                                       gap={1}
@@ -372,7 +550,7 @@ export const SecretInputForm = ({
                                       onClick={() => {
                                         setEditIndex(i);
                                         // 进入编辑态即表示替换该密钥，空提交需要清除旧密文。
-                                        setValue(`value.${item.key}.secret` as any, '');
+                                        setValue(`value.${item.key}` as any, { value: '' });
                                       }}
                                     />
                                   </>
@@ -390,7 +568,7 @@ export const SecretInputForm = ({
                                     value={value ?? ''}
                                     onChange={(e) => onChange(e.target.value)}
                                     bg={'myGray.50'}
-                                    h={'48px'}
+                                    h={10}
                                     py={0}
                                     lineHeight={'normal'}
                                     _placeholder={{ lineHeight: 'normal' }}
@@ -414,15 +592,18 @@ export const SecretInputForm = ({
                                     item.required &&
                                     secretInputTypeToInputType(item.inputType) ===
                                       InputTypeEnum.switch
-                                      ? (value) => value !== undefined && value !== null
+                                      ? (value) =>
+                                          value !== undefined && value !== null && value !== ''
                                       : undefined
                                 }}
                                 render={({ field: { onChange, value }, fieldState: { error } }) => {
                                   return (
                                     <InputRender
                                       inputType={secretInputTypeToInputType(item.inputType)}
-                                      value={value}
-                                      onChange={onChange}
+                                      value={item.inputType === 'switch' ? value === 'true' : value}
+                                      onChange={(nextValue) =>
+                                        onChange(formatManualInputValue(nextValue))
+                                      }
                                       placeholder={
                                         item.inputType === 'numberInput'
                                           ? (item.placeholder ?? fieldLabel)

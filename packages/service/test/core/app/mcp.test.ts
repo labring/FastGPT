@@ -619,9 +619,7 @@ describe('MCPClient', () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
       // 模拟 MCP SDK 在收到不合规响应时抛出的 ZodError
-      const zodError = new Error(
-        'Invalid input: unrecognized_keys: "status", "info", "infocode"'
-      );
+      const zodError = new Error('Invalid input: unrecognized_keys: "status", "info", "infocode"');
       zodError.name = 'ZodError';
       client.connect = vi.fn().mockRejectedValue(zodError);
 
@@ -1031,6 +1029,40 @@ describe('getMCPChildren', () => {
             ]
           }
         ]
+      },
+      {
+        name: 'child_tool_3',
+        modules: [
+          {
+            inputs: [
+              {
+                value: {
+                  name: 'child_tool_3',
+                  url: 'http://child1.mcp',
+                  headerSecret: { Authorization: { value: '', secret: 'encrypted-map-token' } },
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'child_tool_4',
+        modules: [
+          {
+            inputs: [
+              {
+                value: {
+                  name: 'child_tool_4',
+                  url: 'http://child1.mcp',
+                  headerSecret: { value: '', secret: 'encrypted-single-token' },
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              }
+            ]
+          }
+        ]
       }
     ];
 
@@ -1044,7 +1076,7 @@ describe('getMCPChildren', () => {
       teamId,
       parentId
     });
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(4);
     expect(result[0]).toEqual({
       name: 'child_tool_1',
       description: 'Desc 1',
@@ -1062,6 +1094,12 @@ describe('getMCPChildren', () => {
       url: 'http://child1.mcp',
       headerSecret: { Authorization: { value: 'single-legacy-token' } },
       inputSchema: { type: 'object', properties: {} }
+    });
+    expect(result[2].headerSecret).toEqual({
+      Authorization: { secret: 'encrypted-map-token' }
+    });
+    expect(result[3].headerSecret).toEqual({
+      Authorization: { secret: 'encrypted-single-token' }
     });
   });
 

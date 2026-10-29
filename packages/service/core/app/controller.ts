@@ -2,7 +2,7 @@ import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { isSystemOrCommercialToolId } from '@fastgpt/global/core/app/tool/utils';
 import { MongoApp } from './schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -80,7 +80,7 @@ export const beforeUpdateAppFormat = async ({
 
     // Format header secret
     node.inputs.forEach((input) => {
-      formatToolInputSecrets({ inputs: [input] });
+      formatToolInputSecrets({ inputs: [input], flowNodeType: node.flowNodeType });
       if (nodeInputIsReference(input)) return;
       // 知识库
       if (isDatasetNode) {
@@ -137,20 +137,23 @@ export const beforeUpdateAppFormat = async ({
             configInputs.forEach((input) => {
               input.value = selectedTool.config[input.key];
             });
-            formatToolInputSecrets({ inputs: configInputs });
+            formatToolInputSecrets({ inputs: configInputs, flowNodeType: preview.flowNodeType });
             configInputs.forEach((input) => {
               selectedTool.config[input.key] = input.value;
             });
           } catch {
-            // 工具已删除或暂时不可用时，至少清理嵌套 system/team 临时值。
-            const systemInput = selectedTool.config.system_input_config;
-            if (
-              systemInput &&
-              typeof systemInput === 'object' &&
-              systemInput.type !== SystemToolSecretInputTypeEnum.manual
-            ) {
-              delete systemInput.value;
-            }
+            // 预览不可用时，只对可确认身份的系统工具清理临时值，不能猜测业务参数。
+            if (!isSystemOrCommercialToolId(selectedTool.id)) return;
+            formatToolInputSecrets({
+              flowNodeType: FlowNodeTypeEnum.tool,
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.systemInputConfig,
+                  renderTypeList: [],
+                  value: selectedTool.config[NodeInputKeyEnum.systemInputConfig]
+                }
+              ]
+            });
           }
         })
       );
