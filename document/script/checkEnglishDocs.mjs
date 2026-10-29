@@ -12,11 +12,6 @@ import { loader } from 'fumadocs-core/source';
 const documentRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const processor = remark().use(remarkMdx).use(remarkGfm).use(remarkHeading);
 const han = /\p{Script=Han}/u;
-// Preserve the community contributors' original handles from the Chinese sources.
-const contributorNames = {
-  'self-host/custom-models/chatglm2-m3e.en.mdx': ['不做了睡大觉'],
-  'self-host/custom-models/m3e.en.mdx': ['睡大觉']
-};
 
 /** Extract prose and links while keeping executable examples out of the language scan. */
 function parsePage(raw) {
@@ -80,8 +75,7 @@ export function checkEnglishDocs(contentDir = path.join(documentRoot, 'content')
     });
     if (!isEnglish) continue;
 
-    let prose = isPage ? data.prose.join('\n') : JSON.stringify(data);
-    for (const handle of contributorNames[name] ?? []) prose = prose.replaceAll(handle, '');
+    const prose = isPage ? data.prose.join('\n') : JSON.stringify(data);
     if (han.test(prose)) report(name, 'Chinese reader-facing text requires review');
     if (isPage && !data.title?.trim()) report(name, 'English title is missing');
   }
