@@ -15,8 +15,7 @@ export const createReadFilesTool = ({
   type: 'function',
   function: {
     name: READ_FILES_TOOL_NAME,
-    description:
-      'Read the text content of specified document files (supported formats: txt, md, html, pdf, docx, pptx, xlsx, csv). Do not call this tool on images, audio, video, or URLs already provided as multimodal inputs.',
+    description: 'Read the content of specified files.',
     parameters: {
       type: 'object',
       properties: {
