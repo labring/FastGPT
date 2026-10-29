@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constants';
 import { axios } from '@fastgpt/service/common/api/axios';
+import { s3AccessLinkService } from '@fastgpt/service/common/s3/accessLink/accessLinkService';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
@@ -66,6 +67,48 @@ describe('parseUrlToChatFileType', () => {
   );
 
   it.each([
+    [
+      'https://testdev.fastgpt.cn/api/system/file/d/',
+      {
+        objectKey: 'chat/app/app1/u1/c1/opaque-object',
+        filename: 'diagram.png',
+        responseContentType: 'image/png'
+      },
+      FileType.image,
+      'diagram.png'
+    ],
+    [
+      'https://files.example.com/f/',
+      {
+        objectKey: 'chat/app/app1/u1/c1/recording.mp3',
+        filename: 'Recording'
+      },
+      FileType.audio,
+      'Recording'
+    ]
+  ])(
+    '本机签发的短链 %s 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
+    async (prefix, resolved, expectedType, expectedFilename) => {
+      const signedAlias = 'q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
+      const shortUrl = `${prefix}${signedAlias}`;
+      vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias').mockResolvedValueOnce({
+        bucketName: 'fastgpt-private',
+        expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+        ...resolved
+      });
+
+      expect(await parseUrlToChatFileType({ url: shortUrl })).toEqual({
+        url: shortUrl,
+        name: shortUrl,
+        type: expectedType,
+        filename: expectedFilename
+      });
+      expect(s3AccessLinkService.verifyDownloadAlias).toHaveBeenCalledWith(signedAlias);
+      expect(axios.head).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
     ['data:IMAGE/PNG;base64,abc', undefined, FileType.image, 'image.png'],
     ['data:image/jpeg;base64,abc', '头像', FileType.image, '头像'],
     ['chat/nested/photo.jpg', undefined, FileType.image, 'photo.jpg'],
@@ -77,6 +120,10 @@ describe('parseUrlToChatFileType', () => {
     [`${url}.png?filename=report.pdf`, undefined, FileType.file, 'report.pdf'],
     [`${url}.png?filename=`, undefined, FileType.image, 'download.png'],
     ['https://files.example.com/file%20name.jpg', undefined, FileType.image, 'file name.jpg'],
+    ['https://files.example.com/photo%231.png', undefined, FileType.image, 'photo#1.png'],
+    ['https://files.example.com/photo%3F1.png', undefined, FileType.image, 'photo?1.png'],
+    [`${url}?filename=photo%231.png`, undefined, FileType.image, 'photo#1.png'],
+    [`${url}?filename=photo%3F1.png`, undefined, FileType.image, 'photo?1.png'],
     ['https://files.example.com/record%2Emp3?token=1', undefined, FileType.audio, 'record.mp3'],
     [
       'https://files.example.com/literal%2520name.pdf',

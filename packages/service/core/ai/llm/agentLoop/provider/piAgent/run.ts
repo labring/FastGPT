@@ -77,6 +77,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     useAudio: runtime.llmParams.useAudio && modelData.config.audio,
     useVideo: runtime.llmParams.useVideo && modelData.config.video,
     extractFiles: runtime.llmParams.extractFiles,
+    fileContext: runtime.fileContext,
     supportReason: modelData.config.reasoning
   });
   const requestIds: string[] = [];

@@ -17,6 +17,7 @@ import {
 } from '../../agentLoopCore/interface';
 import { createWorkflowAgentToolProvider } from '../toolProvider';
 import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
+import { getWorkflowFileContext } from '../../../../utils/context';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -111,6 +112,7 @@ export const createWorkflowAgentLoopRuntime = ({
     artifacts,
     runtime: createAgentLoopCoreNodeRuntime({
       teamId: context.runningUserInfo.teamId,
+      fileContext: getWorkflowFileContext(),
       environment: {
         node: context.node,
         workflowStreamResponse,

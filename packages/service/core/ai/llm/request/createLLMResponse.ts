@@ -59,6 +59,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     useAudio: useAudio && model.config.audio,
     useVideo: useVideo && model.config.video,
     extractFiles,
+    fileContext: args.fileContext,
     supportReason: model.config.reasoning
   });
   const rewriteMessages = (() => {
