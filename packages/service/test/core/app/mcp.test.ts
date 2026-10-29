@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
 import dns from 'dns/promises';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 // --- Hoisted mocks ---
 const { mockDereference } = vi.hoisted(() => ({
@@ -826,6 +827,64 @@ describe('MCPClient', () => {
           expect.objectContaining({ error: internalError })
         );
         expect(warnLog).not.toHaveBeenCalledWith('MCP client user config error', expect.anything());
+      }
+    );
+
+    it.each([
+      { code: 'EMFILE', external: false },
+      { code: 'ECONNREFUSED', external: true },
+      { code: 'ENOTFOUND', external: true },
+      { code: undefined, external: false },
+      { code: 'EMFILE', outerCode: 'UND_ERR_SOCKET', external: false }
+    ])(
+      'classifies fetch cause $code under wrapper $outerCode',
+      async ({ code, outerCode, external }) => {
+        // 使用真实 fetch 包装连接器异常，验证通用 TypeError 文案不会覆盖结构化原因。
+        const rootCause = Object.assign(new Error(code ?? 'unknown local failure'), { code });
+        const dispatcher = new Agent({
+          connect: (_options, callback) => callback(rootCause, null)
+        });
+        const fetchError = await undiciFetch('http://example.com/mcp', { dispatcher }).catch(
+          (error: unknown) => error
+        );
+        await dispatcher.close();
+        expect(fetchError).toBeInstanceOf(TypeError);
+        expect(fetchError).toMatchObject({ message: 'fetch failed', cause: rootCause });
+        const error = outerCode
+          ? Object.assign(new Error('network unreachable', { cause: fetchError }), {
+              code: outerCode
+            })
+          : fetchError;
+
+        const mcpClient = new MCPClient(config);
+        const client = getPrivateClient(mcpClient);
+        const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+        const warnLog = vi.spyOn(logger, 'warn');
+        const infoLog = vi.spyOn(logger, 'info');
+        client.connect = vi.fn().mockRejectedValue(error);
+
+        const request = mcpClient.toolCall({ toolName: 'test', params: {} });
+        if (external) {
+          await expect(request).rejects.toMatchObject({ name: 'UserConfigError', cause: error });
+          expect(warnLog).toHaveBeenCalledWith(
+            'MCP client user config error',
+            expect.objectContaining({ otel: false })
+          );
+        } else {
+          await expect(request).rejects.toBe(error);
+          expect(warnLog).toHaveBeenCalledWith(
+            'MCP client tool call failed',
+            expect.objectContaining({ error })
+          );
+          expect(warnLog).not.toHaveBeenCalledWith(
+            'MCP client user config error',
+            expect.anything()
+          );
+        }
+        expect(infoLog).toHaveBeenCalledWith('Streamable HTTP error', {
+          error,
+          ...(external ? { otel: false } : {})
+        });
       }
     );
 

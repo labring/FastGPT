@@ -507,45 +507,41 @@ const isMcpJsonRpcError = (error: unknown, visited = new Set<unknown>()): boolea
 };
 
 /**
- * 校验向外部 MCP 端点发起请求时是否发生网络不可达或传输层异常。
+ * 判断外部 MCP 网络故障，优先使用 cause 链上最底层的明确错误码。
+ * 未识别的结构化错误保留系统分类；无错误码时才使用受限网络/协议文案兜底。
+ * fetch failed 只是通用包装，不能据此隐藏 EMFILE 等本机资源故障。
  */
-const isMcpNetworkFailure = (error: unknown, visited = new Set<unknown>()): boolean => {
-  if (typeof error !== 'object' || error === null || visited.has(error)) {
-    return false;
-  }
-  visited.add(error);
+const isMcpNetworkFailure = (error: unknown): boolean => {
+  const visited = new Set<unknown>();
+  let current = error;
+  let codeClassification: boolean | undefined;
+  let matchesNetworkMessage = false;
 
-  if (
-    'code' in error &&
-    typeof error.code === 'string' &&
-    MCP_NETWORK_ERROR_CODES.has(error.code)
-  ) {
-    return true;
-  }
-  if ('name' in error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
-    return true;
-  }
-  if ('message' in error && typeof error.message === 'string') {
-    const msg = error.message;
-    if (
-      msg.includes('network unreachable') ||
-      msg.includes('handshake failed') ||
-      msg.includes('Invalid content type') ||
-      msg.includes('Non-200 status code') ||
-      msg.includes(PRIVATE_URL_TEXT) ||
-      msg.includes('Maximum MCP redirects exceeded') ||
-      msg.includes('connect ECONNREFUSED') ||
-      msg.includes('connect ETIMEDOUT') ||
-      msg.includes('getaddrinfo ENOTFOUND') ||
-      msg.includes('fetch failed')
-    ) {
-      return true;
+  while (typeof current === 'object' && current !== null && !visited.has(current)) {
+    visited.add(current);
+    if ('code' in current && typeof current.code === 'string') {
+      codeClassification = MCP_NETWORK_ERROR_CODES.has(current.code);
     }
+    if ('name' in current && (current.name === 'AbortError' || current.name === 'TimeoutError')) {
+      matchesNetworkMessage = true;
+    }
+    if ('message' in current && typeof current.message === 'string') {
+      const msg = current.message;
+      matchesNetworkMessage ||=
+        msg.includes('network unreachable') ||
+        msg.includes('handshake failed') ||
+        msg.includes('Invalid content type') ||
+        msg.includes('Non-200 status code') ||
+        msg.includes(PRIVATE_URL_TEXT) ||
+        msg.includes('Maximum MCP redirects exceeded') ||
+        msg.includes('connect ECONNREFUSED') ||
+        msg.includes('connect ETIMEDOUT') ||
+        msg.includes('getaddrinfo ENOTFOUND');
+    }
+    current = 'cause' in current ? current.cause : undefined;
   }
-  if ('cause' in error) {
-    return isMcpNetworkFailure(error.cause, visited);
-  }
-  return false;
+
+  return codeClassification ?? matchesNetworkMessage;
 };
 
 /**
