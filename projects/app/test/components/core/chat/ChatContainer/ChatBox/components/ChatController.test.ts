@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useContextSelector } from 'use-context-selector';
 import ChatController from '@/components/core/chat/ChatContainer/ChatBox/components/ChatController';
 import ChatRecordsList from '@/components/core/chat/ChatContainer/ChatBox/components/ChatRecordsList';
+import AIChatBubbleActions from '@/components/core/chat/ChatContainer/ChatBox/components/AIChatBubble/Actions';
 import {
   ChatFeedbackContext,
   ChatFeedbackProvider,
@@ -85,10 +86,15 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/LikeFeedbackBut
     })
 }));
 
-const { update, updateRead } = vi.hoisted(() => ({ update: vi.fn(), updateRead: vi.fn() }));
+const { update, updateRead, closeCustom } = vi.hoisted(() => ({
+  update: vi.fn(),
+  updateRead: vi.fn(),
+  closeCustom: vi.fn()
+}));
 vi.mock('@/web/core/chat/feedback/api', () => ({
   updateChatUserFeedback: update,
-  updateFeedbackReadStatus: updateRead
+  updateFeedbackReadStatus: updateRead,
+  closeCustomFeedback: closeCustom
 }));
 
 const message: ChatSiteItemType = {
@@ -121,6 +127,7 @@ describe('ChatController feedback context', () => {
     active = true,
     showVersion = false,
     showRecords = false,
+    showActions = false,
     initialMessage = message
   }: {
     fbTypes?: FeedbackTypeEnum[];
@@ -128,12 +135,14 @@ describe('ChatController feedback context', () => {
     active?: boolean;
     showVersion?: boolean;
     showRecords?: boolean;
+    showActions?: boolean;
     initialMessage?: ChatSiteItemType;
   }) => {
     const [records, setRecords] = useState<ChatSiteItemType[]>([initialMessage]);
     const recordContext = useContextSelector(ChatRecordContext, (value) => value);
     const content = React.createElement(ChatFeedbackProvider, {
       fbTypes,
+      feedbackUserName: '测试用户',
       active,
       sourceKey: `${sourceType}:app-1`,
       chatId: 'chat-1',
@@ -156,12 +165,22 @@ describe('ChatController feedback context', () => {
               onRetry: () => undefined,
               onEdit: () => undefined
             })
-          : React.createElement(ChatController, {
-              chat: records[0],
-              isLastChild: true,
-              variant: 'footer',
-              markQuestion: '上一问'
-            }),
+          : showActions
+            ? React.createElement(AIChatBubbleActions, {
+                historyItem: records[0],
+                chatControllerProps: { chat: records[0], isLastChild: true },
+                questionGuides: [],
+                showWholeResponse: false,
+                enableSandbox: false,
+                onOpenWholeModal: vi.fn(),
+                durationSeconds: 0
+              })
+            : React.createElement(ChatController, {
+                chat: records[0],
+                isLastChild: true,
+                variant: 'footer',
+                markQuestion: '上一问'
+              }),
         showVersion &&
           React.createElement(RenderWorkflowBuilderVersion, {
             version,
@@ -318,5 +337,48 @@ describe('ChatController feedback context', () => {
     expect(button('core/chat/feedback/goodLight')).toBeNull();
     expect(button('core/chat/feedback/badLight')).toBeNull();
     expect(button('copy')).not.toBeNull();
+  });
+
+  it('hides the log reason from user chat and toggles it with the saved read status in logs', async () => {
+    const props = {
+      showActions: true,
+      initialMessage: { ...message, userBadFeedback: '日志差评原因' }
+    };
+    await render({ ...props, fbTypes: [FeedbackTypeEnum.user] });
+    expect(document.body.textContent).not.toContain('日志差评原因');
+    await render({ ...props, fbTypes: [FeedbackTypeEnum.log] });
+    expect(document.body.textContent).toContain('日志差评原因');
+    expect(document.body.textContent).toContain('测试用户');
+    const readButton = () =>
+      [...document.querySelectorAll('button')].find(
+        (item) =>
+          item.textContent === 'chat:log.feedback.mark_as_read' ||
+          item.textContent === 'chat:log.feedback.read'
+      )!;
+    await act(async () => readButton().click());
+    expect(document.body.textContent).not.toContain('日志差评原因');
+    await act(async () => readButton().click());
+    expect(document.body.textContent).toContain('日志差评原因');
+    expect(updateRead).toHaveBeenLastCalledWith(expect.objectContaining({ isRead: false }));
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('closes custom feedback through the checkbox in the rendered log record', async () => {
+    await render({
+      showRecords: true,
+      fbTypes: [FeedbackTypeEnum.custom],
+      initialMessage: { ...message, customFeedbacks: ['待处理反馈'] }
+    });
+    expect(document.body.textContent).toContain('待处理反馈');
+    await act(async () =>
+      document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click()
+    );
+    expect(closeCustom).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      chatId: 'chat-1',
+      dataId: message.dataId,
+      index: 0
+    });
+    expect(document.body.textContent).not.toContain('待处理反馈');
   });
 });

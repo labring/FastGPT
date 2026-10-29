@@ -160,4 +160,29 @@ describe('ChatAgentHelper new conversation', () => {
     await act(async () => document.querySelector('button')!.click());
     expect(useChatStore.getState().appBuilderChatIdMap['app-1']).toBe('server-chat');
   });
+  it.each(['restart', 'logout'] as const)('ignores late chat details after %s', async (action) => {
+    let resolve!: (value: { chatId: string; title: string }) => void;
+    mocks.getInitChatInfo.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    let chatBoxData: Record<string, unknown> = {};
+    mocks.setChatBoxData.mockImplementation((update) => {
+      chatBoxData = typeof update === 'function' ? update(chatBoxData) : update;
+    });
+    mocks.getChatHistories.mockResolvedValue({ list: [{ chatId: 'restored-chat' }], total: 1 });
+    await render();
+    if (action === 'restart') {
+      await act(async () => helperRef.current!.restartChat());
+    } else {
+      // 模拟登录页清缓存和重新获取身份，组件需先恢复服务端历史再加载详情。
+      await act(async () => useChatStore.getState().resetChatCache());
+    }
+    const newChatId = useChatStore.getState().appBuilderChatIdMap['app-1'];
+    expect(chatBoxData.chatId).toBe(newChatId);
+    await act(async () => resolve({ chatId: 'saved-chat', title: '旧会话标题' }));
+    expect(chatBoxData.chatId).toBe(newChatId);
+    expect(chatBoxData.title).not.toBe('旧会话标题');
+  });
 });

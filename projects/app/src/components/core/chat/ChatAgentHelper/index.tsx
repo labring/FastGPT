@@ -66,6 +66,7 @@ const ChatAgentHelperChatBox = ({
         sourceKey,
         appId,
         chatId,
+        title: isSameChat ? prev.title : undefined,
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
         hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
         app: createChatAgentHelperAppConfig()
@@ -77,25 +78,28 @@ const ChatAgentHelperChatBox = ({
     async () => {
       if (!appId || !chatId) return;
 
-      const res = await getInitChatInfo({
+      return getInitChatInfo({
         appId,
         chatId,
         sourceType: ChatSourceTypeEnum.chatAgentHelper
       });
-
-      setChatBoxData((prev) => ({
-        ...prev,
-        sourceKey,
-        appId,
-        chatId: res.chatId || chatId,
-        title: res.title,
-        chatGenerateStatus: res.chatGenerateStatus,
-        hasBeenRead: res.hasBeenRead
-      }));
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId, sourceKey]
+      refreshDeps: [appId, chatId, sourceKey],
+      // 回写放在 onSuccess，让请求取消和卸载保护拦截旧会话的迟到响应。
+      onSuccess: (res) => {
+        if (!res) return;
+        setChatBoxData((prev) => ({
+          ...prev,
+          sourceKey,
+          appId,
+          chatId: res.chatId || chatId,
+          title: res.title,
+          chatGenerateStatus: res.chatGenerateStatus,
+          hasBeenRead: res.hasBeenRead
+        }));
+      }
     }
   );
 

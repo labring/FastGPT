@@ -157,28 +157,30 @@ const WorkflowBuilderChatContent = ({
   }, [appDetail, appId, builderChatConfig, chatId, setChatBoxData, sourceKey]);
 
   useRequest(
-    async () => {
-      const result = await getInitChatInfo({
+    () =>
+      getInitChatInfo({
         appId,
         chatId,
         sourceType: ChatSourceTypeEnum.workflowBuilder
-      });
-      setChatBoxData((previous) => ({
-        ...previous,
-        sourceKey,
-        appId,
-        chatId: result.chatId || chatId,
-        title: result.title,
-        chatGenerateStatus: result.chatGenerateStatus,
-        hasBeenRead: result.hasBeenRead
-      }));
-      setHydratedChatInfoKey(chatInfoRequestKey);
-    },
+      }),
     {
       manual: false,
       pollingInterval: watchExternalChat ? 1500 : undefined,
       refreshDeps: [appId, chatId, sourceKey],
-      errorToast: ''
+      errorToast: '',
+      // 只由仍有效的请求水合详情，避免旧会话覆盖新对话及其生成状态。
+      onSuccess: (result) => {
+        setChatBoxData((previous) => ({
+          ...previous,
+          sourceKey,
+          appId,
+          chatId: result.chatId || chatId,
+          title: result.title,
+          chatGenerateStatus: result.chatGenerateStatus,
+          hasBeenRead: result.hasBeenRead
+        }));
+        setHydratedChatInfoKey(chatInfoRequestKey);
+      }
     }
   );
 
