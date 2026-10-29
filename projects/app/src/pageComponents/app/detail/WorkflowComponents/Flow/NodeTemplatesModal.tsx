@@ -10,6 +10,7 @@ import { usePlacementContext } from '@/web/core/workflow/editor/react/useWorkflo
 import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useClearCanvasSelection } from './canvas/useCanvasController';
+import { useWorkflowCanvasRendererValue } from './canvas/workflowCanvasContext';
 import AppDetailPanelModal, { usePanelContentMounted } from '../../components/AppDetailPanelModal';
 
 type ModuleTemplateListProps = {
@@ -22,6 +23,7 @@ export const sliderWidth = 460;
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const actions = useWorkflowActions();
   const clearCanvasSelection = useClearCanvasSelection();
+  const selectNodes = useWorkflowCanvasRendererValue((value) => value.selectNodes);
   // 收起动画跑完再卸载头部与列表，否则内容会在动画第一帧就消失。
   const isContentMounted = usePanelContentMounted(isOpen);
   // 侧边栏是 root context：候选集与 unique 过滤全部由 Runtime 按文档根派生。
@@ -47,7 +49,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     async ({ newNodes }: { newNodes: Node<FlowNodeItemType, FlowNodeTypeEnum>[] }) => {
       clearCanvasSelection();
       // 新增节点的问题由 Runtime 在 addNode 事务后自行刷新，画布不需要额外触发。
-      return actions.addNodes(newNodes.map(canvasNodeToStoreNode));
+      const result = actions.addNodes(newNodes.map(canvasNodeToStoreNode));
+      if (result.ok) {
+        queueMicrotask(() => selectNodes(newNodes.map((node) => node.id)));
+      }
+      return result;
     }
   );
 
