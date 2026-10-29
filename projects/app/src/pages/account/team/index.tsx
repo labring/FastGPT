@@ -13,6 +13,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/team/context';
 import dynamic from 'next/dynamic';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
@@ -38,6 +39,7 @@ const Team = () => {
 
   const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
+  const subscriptionEnabled = useSystemStore((state) => !!state.subPlans?.standard);
   const standardPlan = teamPlanStatus?.standard;
   const [planCheckedAt, setPlanCheckedAt] = useState(Date.now);
   // 在套餐开始或到期时更新入口状态，长时间停留页面也不继续展示已到期能力。
@@ -55,12 +57,15 @@ const Team = () => {
     );
     return () => clearTimeout(timer);
   }, [planCheckedAt, standardPlan?.startTime, standardPlan?.expiredTime]);
+  // 与后端一致：未启用订阅体系时只要求团队管理权限。
   const canReadAudit = !!(
     userInfo?.team.permission.hasManagePer &&
-    standardPlan?.auditLogStoreDuration &&
-    standardPlan.auditLogStoreDuration > 0 &&
-    (!standardPlan.expiredTime || new Date(standardPlan.expiredTime).getTime() > planCheckedAt) &&
-    (!standardPlan.startTime || new Date(standardPlan.startTime).getTime() <= planCheckedAt)
+    (!subscriptionEnabled ||
+      (standardPlan?.auditLogStoreDuration &&
+        standardPlan.auditLogStoreDuration > 0 &&
+        (!standardPlan.expiredTime ||
+          new Date(standardPlan.expiredTime).getTime() > planCheckedAt) &&
+        (!standardPlan.startTime || new Date(standardPlan.startTime).getTime() <= planCheckedAt)))
   );
   const { toast } = useToast();
 

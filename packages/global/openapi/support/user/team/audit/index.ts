@@ -12,7 +12,7 @@ export const TeamAuditPath: OpenAPIPath = {
     post: {
       summary: '导出团队审计日志',
       description:
-        '要求团队管理权限及有效审计套餐。导出全部匹配记录，最多 50,000 条；超量拒绝，不按分页截断。记录一次发起导出动作。',
+        '要求团队管理权限；启用订阅体系的部署还需有效审计套餐。导出全部匹配记录，最多 50,000 条；超量拒绝，不按分页截断。记录一次发起导出动作。',
       tags: [DevApiTagsMap.teamManage],
       requestBody: { content: { 'application/json': { schema: AuditExportBodySchema } } },
       responses: {
