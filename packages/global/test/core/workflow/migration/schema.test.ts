@@ -107,6 +107,43 @@ describe('legacy ToolSet migration', () => {
     });
   });
 
+  it('preserves a full inline HTTP App runtime config and tool schemas', () => {
+    const httpToolSet = {
+      baseUrl: 'https://http.example.com',
+      apiSchemaStr: '{"openapi":"3.0.0"}',
+      customHeaders: '{}',
+      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          path: '/search',
+          method: 'POST',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        }
+      ]
+    };
+    const result = migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'http-app-root',
+          flowNodeType: 'toolSet',
+          name: 'HTTP App',
+          inputs: [],
+          outputs: [],
+          toolConfig: { httpToolSet }
+        }
+      ],
+      edges: []
+    });
+
+    expect(result.nodes[0].toolConfig?.httpToolSet).toEqual(httpToolSet);
+  });
+
   it('preserves a full inline MCP App runtime config and tool schemas', () => {
     const mcpToolSet = {
       url: 'https://mcp.example.com',
@@ -162,7 +199,7 @@ describe('legacy ToolSet migration', () => {
     ).toThrow();
   });
 
-  it('rejects the unpublished node-local full tool schema format', () => {
+  it('rejects an invalid inline HTTP App runtime config', () => {
     expect(() =>
       migrateWorkflowToCurrent({
         nodes: [
@@ -180,7 +217,6 @@ describe('legacy ToolSet migration', () => {
                     name: 'search',
                     description: 'Search',
                     path: '/search',
-                    method: 'GET',
                     inputSchema: { type: 'object' }
                   }
                 ]

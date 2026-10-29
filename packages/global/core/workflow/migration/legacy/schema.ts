@@ -7,6 +7,7 @@ import { FlowNodeInputItemTypeSchema } from '../../type/io';
 import { StoreEdgeItemTypeSchema } from '../../type/edge';
 import {
   HttpToolSetNodeConfigSchema,
+  HttpToolSetRuntimeConfigSchema,
   McpToolSetNodeConfigSchema,
   McpToolSetRuntimeConfigSchema,
   StoreNodeItemTypeSchema,
@@ -25,7 +26,7 @@ const CurrentNodeToolSetSchemas = {
   httpToolSet: HttpToolSetNodeConfigSchema
 };
 
-/** 历史外部引用归一为资源摘要；MCP App RuntimeConfig 保留完整工具 Schema。 */
+/** 历史外部引用归一为资源摘要；工具集 App RuntimeConfig 保留完整工具 Schema。 */
 const normalizeLegacyToolSetNode = (value: unknown) => {
   if (!isRecord(value)) return value;
   if (value.flowNodeType !== FlowNodeTypeEnum.toolSet) return value;
@@ -62,10 +63,10 @@ const normalizeLegacyToolSetNode = (value: unknown) => {
       return;
     }
 
-    if (key === 'mcpToolSet') {
-      const runtimeConfig = McpToolSetRuntimeConfigSchema.strict().safeParse(toolSet);
-      if (runtimeConfig.success) toolConfig[key] = runtimeConfig.data;
-    }
+    const runtimeSchema =
+      key === 'mcpToolSet' ? McpToolSetRuntimeConfigSchema : HttpToolSetRuntimeConfigSchema;
+    const runtimeConfig = runtimeSchema.strict().safeParse(toolSet);
+    if (runtimeConfig.success) toolConfig[key] = runtimeConfig.data;
   });
 
   return { ...value, toolConfig };
@@ -126,7 +127,10 @@ export const LegacyStoreNodeItemSchema = z
       return;
     }
     if (value.pluginId) return;
-    if (McpToolSetRuntimeConfigSchema.strict().safeParse(value.toolConfig.mcpToolSet).success) {
+    if (
+      McpToolSetRuntimeConfigSchema.strict().safeParse(value.toolConfig.mcpToolSet).success ||
+      HttpToolSetRuntimeConfigSchema.strict().safeParse(value.toolConfig.httpToolSet).success
+    ) {
       return;
     }
 

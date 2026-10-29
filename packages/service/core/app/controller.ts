@@ -85,7 +85,12 @@ export const beforeUpdateAppFormat = async ({
 
   nodes.forEach((node) => {
     const mcpToolSet = node.toolConfig?.mcpToolSet;
-    if (mcpToolSet && 'url' in mcpToolSet && mcpToolSet.headerSecret != null) {
+    if (
+      mcpToolSet &&
+      'url' in mcpToolSet &&
+      mcpToolSet.headerSecret !== null &&
+      mcpToolSet.headerSecret !== undefined
+    ) {
       mcpToolSet.headerSecret = storeToolSetSecret(mcpToolSet.headerSecret);
     }
     const httpToolSet = node.toolConfig?.httpToolSet;

@@ -234,28 +234,48 @@ describe('persisted workflow node tool secrets', () => {
     expect(parseCreateNode(node)).toBe(true);
   });
 
-  it('rejects full tool schemas on independent workflow nodes', () => {
-    const node = {
-      ...currentNode,
-      flowNodeType: 'toolSet',
-      toolConfig: {
-        httpToolSet: {
-          apiSchemaUrl: 'https://api.example.com/openapi.json',
-          toolList: [
-            {
-              name: 'search',
-              description: 'Search',
-              path: '/search',
-              method: 'GET',
-              inputSchema: { type: 'object' }
-            }
-          ]
-        }
+  it.each([
+    {
+      toolSetKey: 'mcpToolSet',
+      config: {
+        url: 'https://mcp.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' }
+          }
+        ]
       }
-    } as StoreNodeItemType;
+    },
+    {
+      toolSetKey: 'httpToolSet',
+      config: {
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }
+    }
+  ] as const)(
+    'rejects a full $toolSetKey runtime config on independent workflow nodes',
+    ({ toolSetKey, config }) => {
+      const node = {
+        ...currentNode,
+        flowNodeType: 'toolSet',
+        toolConfig: { [toolSetKey]: config }
+      } as StoreNodeItemType;
 
-    expect(parseCreateNode(node)).toBe(false);
-  });
+      expect(parseCreateNode(node)).toBe(false);
+    }
+  );
 });
 
 describe('legacy chat model input schemas', () => {
