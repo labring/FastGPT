@@ -55,6 +55,7 @@ import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDoc
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -263,6 +264,10 @@ export function RenderHttpProps({
     inputs.find((item) => item.key === NodeInputKeyEnum.httpFormBody) || defaultFormBody;
   const headerSecret = inputs.find((item) => item.key === NodeInputKeyEnum.headerSecret)!;
   const contentType = inputs.find((item) => item.key === NodeInputKeyEnum.httpContentType);
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.string
+  });
 
   const paramsLength = params?.value?.length || 0;
   const headersLength = headers?.value?.length || 0;
@@ -320,6 +325,16 @@ export function RenderHttpProps({
           <Flex flex={1} />
           <HeaderAuthConfig
             storeHeaderSecretConfig={headerSecret?.value}
+            renderReference={({ value, onChange, buttonProps }) => (
+              <ReferSelector
+                list={referenceList}
+                value={value}
+                isArray={false}
+                onSelect={onChange}
+                popDirection={'bottom'}
+                ButtonProps={buttonProps}
+              />
+            )}
             onUpdate={(data) => {
               headerSecretFieldActions.setValue(data);
             }}
@@ -396,6 +411,7 @@ export function RenderHttpProps({
     headerSecretFieldActions,
     nodeId,
     paramsLength,
+    referenceList,
     requestMethods,
     selectedTab,
     stringifyVariables,
@@ -753,12 +769,12 @@ const RenderBody = ({
       if (current.inputs.some((input) => input.key === NodeInputKeyEnum.httpContentType)) return {};
       return {
         inputs: current.inputs.concat({
-        key: NodeInputKeyEnum.httpContentType,
-        renderTypeList: [FlowNodeInputTypeEnum.hidden],
-        valueType: WorkflowIOValueTypeEnum.string,
-        value: ContentTypes.json,
-        label: '',
-        required: false
+          key: NodeInputKeyEnum.httpContentType,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: ContentTypes.json,
+          label: '',
+          required: false
         })
       };
     });

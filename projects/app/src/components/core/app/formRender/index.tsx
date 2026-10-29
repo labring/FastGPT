@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, IconButton, Input, Switch } from '@chakra-ui/react';
-import { isSecretValue } from '@fastgpt/global/common/secret/utils';
+import { getSecretPlainValue, isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
@@ -91,22 +91,20 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.password) {
-    const isPasswordConfigured = isSecretValue(value);
-    const val = typeof value === 'object' && value !== null ? value.value : '';
+    const isPasswordConfigured = isSecretValueConfigured(value);
+    const val = getSecretPlainValue(value) ?? '';
 
     return !isPasswordConfigured || isPasswordEditing ? (
       <Input
         {...commonProps}
         onChange={(e) => {
           const val = e.target.value;
-          onChange?.({
-            value: val,
-            secret: ''
-          });
+          onChange?.({ value: val });
         }}
         value={val}
         type="password"
         autoFocus={isPasswordEditing}
+        onFocus={() => setIsPasswordEditing(true)}
         onBlur={() => setIsPasswordEditing(false)}
         autoComplete="new-password"
         data-form-type="other"

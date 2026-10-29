@@ -643,19 +643,17 @@ describe('checkInteractiveResponseStatus', () => {
   it('creates a new message round for workflow preview decisions, including nested previews', () => {
     const preview = {
       type: 'workflowBuilderPreview' as const,
-      previewId: 'preview-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        title: 'Confirm workflow?',
-        mermaid: 'flowchart LR\n A --> B',
-        sections: [],
-        actions: [
-          { value: 'confirm' as const, label: 'Confirm', inputMode: 'none' as const },
-          { value: 'revise' as const, label: 'Revise', inputMode: 'text' as const },
-          { value: 'cancel' as const, label: 'Cancel', inputMode: 'none' as const }
-        ]
+        toolCallId: 'preview-1',
+        arguments: JSON.stringify({
+          title: 'Confirm workflow?',
+          mermaid: 'flowchart LR\n A --> B',
+          sections: [{ title: 'Goal', content: 'Build the workflow' }]
+        })
       }
     };
     for (const interactive of [
@@ -675,21 +673,25 @@ describe('checkInteractiveResponseStatus', () => {
   it('should always create a query round for agentAsk answers', () => {
     const interactive = {
       type: 'agentAsk' as const,
-      askId: 'call_ask',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: 'Need input',
-        questions: [
-          {
-            question: 'Need input?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: 'Need input',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Need input?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     };
     for (const answer of ['A', 'custom answer', '']) {
@@ -707,28 +709,30 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'childrenInteractive',
             params: {
               childrenId: 'child_1',
               childrenResponse: {
                 type: 'agentAsk',
-                askId: 'ask_1',
+
                 params: {
-                  description: '',
-                  questions: [
-                    {
-                      question: 'Choose one',
-                      options: [
-                        { summary: 'A', value: 'A' },
-                        { summary: 'B', value: 'B' },
-                        { summary: 'C', value: 'C' }
-                      ]
-                    }
-                  ]
+                  toolCallId: 'ask_1',
+                  arguments: JSON.stringify({
+                    reason: '',
+                    blockerType: 'user_choice',
+                    questions: [
+                      {
+                        question: 'Choose one',
+                        options: [
+                          { summary: 'A', value: 'A' },
+                          { summary: 'B', value: 'B' },
+                          { summary: 'C', value: 'C' }
+                        ]
+                      }
+                    ]
+                  })
                 }
               }
             }
@@ -746,9 +750,7 @@ describe('checkInteractiveResponseStatus', () => {
       interactive: {
         type: 'toolChildrenInteractive',
         params: {
-          toolParams: {
-            toolCallId: 'tool_1'
-          },
+          toolCallId: 'tool_1',
           childrenResponse: {
             type: 'userSelect',
             params: {

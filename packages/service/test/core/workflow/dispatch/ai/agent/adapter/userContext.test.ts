@@ -1050,18 +1050,22 @@ describe('useUserContext', () => {
               {
                 interactive: {
                   type: 'agentAsk',
-                  askId: 'ask_1',
+
                   params: {
-                    description: 'Choose one',
-                    questions: [
-                      {
-                        question: 'Choose one?',
-                        options: [
-                          { summary: 'A', value: 'A' },
-                          { summary: 'B', value: 'B' }
-                        ]
-                      }
-                    ]
+                    toolCallId: 'ask_1',
+                    arguments: JSON.stringify({
+                      reason: 'Choose one',
+                      blockerType: 'user_choice',
+                      questions: [
+                        {
+                          question: 'Choose one?',
+                          options: [
+                            { summary: 'A', value: 'A' },
+                            { summary: 'B', value: 'B' }
+                          ]
+                        }
+                      ]
+                    })
                   }
                 } as any
               }

@@ -125,7 +125,6 @@ describe('selectReadmeUrl', () => {
   });
 });
 
-
 describe('formatI18nLocationToZhEn', () => {
   it('should return zh for zh locales', () => {
     expect(formatI18nLocationToZhEn('zh-CN')).toBe('zh');

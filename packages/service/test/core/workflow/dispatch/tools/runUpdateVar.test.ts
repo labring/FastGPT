@@ -64,7 +64,6 @@ const createTestVariableState = ({
     const variableConfig = chatConfig.variables?.find((item: any) => item.key === key);
     if (variableConfig?.type === VariableInputEnum.password) {
       storeVariables[key] = {
-        value: '',
         secret: `mock-secret:${value}`
       };
     } else if (Object.keys(storeVariables).length > 0) {
@@ -345,7 +344,6 @@ describe('dispatchUpdateVariable — Store variables', () => {
     );
 
     expect(variables.pwd).toBe('new-secret');
-    expect(storeVariables.pwd).toHaveProperty('value', '');
     expect(storeVariables.pwd).toHaveProperty('secret');
     expect(typeof storeVariables.pwd.secret).toBe('string');
     expect(storeVariables.pwd.secret).not.toBe('new-secret');

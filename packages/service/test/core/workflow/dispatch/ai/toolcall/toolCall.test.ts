@@ -470,7 +470,13 @@ describe('runToolCall compression node responses', () => {
       return {
         ...createLoopResult({ usages: [] }),
         status: 'paused',
-        pause: { type: 'tool_child', childrenResponse, toolCallId: 'call_child' }
+        pause: {
+          toolCallId: 'call_child',
+          interactive: {
+            type: 'toolChildrenInteractive',
+            params: { childrenResponse, toolCallId: 'call_child' }
+          }
+        }
       };
     });
 
@@ -480,14 +486,12 @@ describe('runToolCall compression node responses', () => {
       type: 'toolChildrenInteractive',
       params: {
         childrenResponse,
-        toolParams: {
-          toolCallId: 'call_child'
-        }
+        toolCallId: 'call_child'
       }
     });
     expect(result.assistantResponses).toEqual([
-      expect.objectContaining({ text: { content: 'before pause' } }),
       expect.objectContaining({
+        text: { content: 'before pause' },
         tools: [expect.objectContaining({ id: 'call_child', response: 'partial child output' })]
       })
     ]);

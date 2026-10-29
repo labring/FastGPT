@@ -103,7 +103,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       } else {
         await runner.runInteractiveTool({
           childrenResponse: { entryNodeIds: ['search'] },
-          toolParams: { toolCallId: 'resume' }
+          toolCallId: 'resume'
         } as any);
       }
 
@@ -450,9 +450,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       childrenResponse: {
         entryNodeIds: ['search']
       },
-      toolParams: {
-        toolCallId: 'call_interactive'
-      }
+      toolCallId: 'call_interactive'
     } as any);
 
     expect(cacheToolFlowResponse).toHaveBeenLastCalledWith({
@@ -537,7 +535,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
         memoryEdges: [{ source: 'before', target: 'search', status: 'active' }],
         nodeOutputs: [{ nodeId: 'search', key: 'result', value: false }]
       },
-      toolParams: { toolCallId: 'resume' }
+      toolCallId: 'resume'
     } as any);
 
     expect(received.runtimeEdges).toEqual([
@@ -571,7 +569,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     await runInteractiveTool({
       call: createCall({ args: '{"userChatInput":"restored user prompt"}' }),
       childrenResponse: { entryNodeIds: ['search'] },
-      toolParams: { toolCallId: 'resume' }
+      toolCallId: 'resume'
     } as any);
 
     expect(received.runtimeNodes[0].inputs).toEqual([

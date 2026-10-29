@@ -206,7 +206,7 @@ describe('createToolCallToolProvider', () => {
       runWorkflowMock.mockClear();
       await provider.executeInteractiveTool!({
         childrenResponse,
-        toolParams: { toolCallId: 'call_search' }
+        toolCallId: 'call_search'
       } as any);
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import SecretInputModal, {
+  type SecretReferenceList,
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflowOverlayValue } from '@/web/core/workflow/editor/session/workflowSession';
+import { ReferSelector, useReference } from '../nodes/render/RenderInput/templates/Reference';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
@@ -24,6 +26,10 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
   // 教程地址是画布视图数据（不进文档），由 NodeCard 拉到工具详情后写进 host overlay；
   // 选择器返回原始值，overlay 更新时 host 会 bump，这里随之刷新。
   const courseUrl = useWorkflowOverlayValue(nodeId)?.courseUrl as string | undefined;
+  const { referenceList } = useReference({
+    nodeId: nodeId ?? '',
+    valueType: WorkflowIOValueTypeEnum.any
+  });
 
   const inputConfig = useMemo(
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
@@ -68,6 +74,10 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
       </Button>
       {isOpen && (
         <SecretInputModal
+          referenceList={referenceList as SecretReferenceList}
+          renderReference={({ list, value, onSelect }) => (
+            <ReferSelector list={list} value={value} onSelect={onSelect} />
+          )}
           isFolder={nodeData?.isFolder}
           inputConfig={inputConfig}
           hasSystemSecret={nodeData?.hasSystemSecret}

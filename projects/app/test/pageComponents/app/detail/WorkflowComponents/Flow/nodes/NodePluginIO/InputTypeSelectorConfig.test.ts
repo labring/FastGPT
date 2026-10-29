@@ -26,4 +26,15 @@ describe('plugin input type config', () => {
         ?.value
     ).toEqual([FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]);
   });
+
+  it('allows password tool inputs to use workflow references', () => {
+    const passwordInput = getPluginInputTypeRawList()
+      .flat()
+      .find((item) => item.value[0] === FlowNodeInputTypeEnum.password);
+
+    expect(passwordInput?.value).toEqual([
+      FlowNodeInputTypeEnum.password,
+      FlowNodeInputTypeEnum.reference
+    ]);
+  });
 });

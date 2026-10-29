@@ -219,30 +219,27 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         steps: [{ id: 'step_1', name: 'Implement plan events', status: 'pending' }]
       }
     });
-    collector.emitEvent({
-      type: 'ask_start',
-      id: 'call_ask',
-      seconds: 0.1,
-      params: '{}',
-      ask: {
-        reason: 'Need input',
-        blockerType: 'missing_required_input',
-        questions: [
-          {
-            question: 'Confirm?',
-            options: [
-              { summary: 'Yes', value: 'Yes' },
-              { summary: 'No', value: 'No' }
-            ]
-          },
-          {
-            question: 'Include examples?',
-            options: [
-              { summary: 'Yes', value: 'Yes' },
-              { summary: 'No', value: 'No' }
-            ]
-          }
+    const argumentsText = JSON.stringify({
+      reason: 'Need confirmation',
+      blockerType: 'user_choice',
+      questions: ['Confirm?', 'Include examples?'].map((question) => ({
+        question,
+        options: [
+          { summary: 'Yes', value: 'Yes' },
+          { summary: 'No', value: 'No' }
         ]
+      }))
+    });
+    collector.emitEvent({
+      type: 'tool_interactive',
+      call: {
+        id: 'call_ask',
+        type: 'function',
+        function: { name: 'ask_user', arguments: argumentsText }
+      },
+      interactive: {
+        type: 'agentAsk',
+        params: { toolCallId: 'call_ask', arguments: argumentsText }
       }
     });
 

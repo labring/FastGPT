@@ -259,27 +259,35 @@ export const getHistories = (
 /**
  * Agent loop 的交互恢复上下文不能被 history=0 一并裁掉。
  *
- * 普通请求仍严格遵守 history 配置；仅当零历史窗口的最后一轮确实包含未完成交互时，
- * 临时保留最近一轮，让 provider 能读取 providerState 或恢复原 tool call。
+ * 普通请求遵守 history 配置。未完成交互以原始 Human 为窗口边界，保留当时的历史及
+ * 连续交互链，避免交互回答消耗 recent-N 窗口；已有 checkpoint 时从该压缩点恢复。
  */
 export const getAgentLoopHistories = (
   history?: ChatItemMiniType[] | number,
   histories: ChatItemMiniType[] = []
 ) => {
   const filteredHistories = getHistories(history, histories);
-  if (history !== 0 || filteredHistories.length > 0) return filteredHistories;
+  if (Array.isArray(history) || !getLastInteractiveValue(histories)) return filteredHistories;
 
   const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
-  if (lastAIIndex < 0) return filteredHistories;
+  let startIndex = lastAIIndex;
+  for (let index = lastAIIndex - 1; index >= 0; index--) {
+    if (histories[index].obj !== ChatRoleEnum.Human) continue;
+    startIndex = index;
+    // 紧邻交互之后的 Human 是该工具的回答，继续回溯到本次任务的原始输入。
+    const previous = histories[index - 1];
+    if (!previous || !getLastInteractiveValue([previous])) break;
+  }
 
-  const lastAIMessage = histories[lastAIIndex];
-  if (!getLastInteractiveValue([lastAIMessage])) return filteredHistories;
-
-  const lastHumanIndex = histories
-    .slice(0, lastAIIndex)
-    .findLastIndex((item) => item.obj === ChatRoleEnum.Human);
-
-  return lastHumanIndex < 0 ? [lastAIMessage] : [histories[lastHumanIndex], lastAIMessage];
+  const originalHistories = getHistories(history, histories.slice(0, startIndex));
+  const checkpointIndex = histories.findLastIndex(hasContextCheckpoint);
+  if (checkpointIndex >= startIndex) {
+    return [
+      ...originalHistories.filter((item) => item.obj === ChatRoleEnum.System),
+      ...histories.slice(checkpointIndex)
+    ];
+  }
+  return [...originalHistories, ...histories.slice(startIndex)];
 };
 
 /**

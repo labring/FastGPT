@@ -1,5 +1,7 @@
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
-import SecretInputModal from '@/pageComponents/app/tool/SecretInputModal';
+import SecretInputModal, {
+  type SecretReferenceList
+} from '@/pageComponents/app/tool/SecretInputModal';
 import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
@@ -39,7 +41,11 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   type NodeGradients,
   AppNodeFlowNodeTypeMap,
@@ -93,6 +99,7 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
 import { useNodeHandleLayout } from './Handle/useNodeHandleLayout';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { ReferSelector, useReference } from './RenderInput/templates/Reference';
 
 /**
  * 节点卡片入参：只保留 renderer 交互状态与画布视图数据。
@@ -1274,6 +1281,10 @@ const NodeSecret = React.memo(function NodeSecret({
     fieldKey: NodeInputKeyEnum.systemInputConfig,
     kind: 'input'
   });
+  const { referenceList } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.any
+  });
 
   const [
     isOpenToolParamConfigModal,
@@ -1300,6 +1311,10 @@ const NodeSecret = React.memo(function NodeSecret({
 
       {inputConfig && isOpenToolParamConfigModal && (
         <SecretInputModal
+          referenceList={referenceList as SecretReferenceList}
+          renderReference={({ list, value, onSelect }) => (
+            <ReferSelector list={list} value={value} onSelect={onSelect} />
+          )}
           isFolder={isFolder}
           onClose={onCloseToolParamConfigModal}
           onSubmit={(data) => {

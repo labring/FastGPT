@@ -23,7 +23,11 @@ import type {
   NodeEdgeGroupsMap
 } from '../types/runtime';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  appendWorkflowInteractiveValue,
+  filterWorkflowEdges,
+  valueTypeFormat
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { isWorkflowEdgeSourceHandleValid } from '@fastgpt/global/core/workflow/editor/utils';
 import type {
   InteractiveNodeResponseType,
@@ -1553,7 +1557,6 @@ export class WorkflowQueue {
     }
 
     return {
-      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }
@@ -1701,7 +1704,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
                   nodeResponseId: workflowQueue.nodeInteractiveResponse.nodeResponseId
                 });
                 if (workflowQueue.isRootRuntime) {
-                  workflowQueue.chatAssistantResponse.push(interactiveAssistant);
+                  appendWorkflowInteractiveValue({
+                    values: workflowQueue.chatAssistantResponse,
+                    interactive: interactiveAssistant.interactive!
+                  });
                 }
                 return interactiveAssistant.interactive;
               }

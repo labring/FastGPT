@@ -337,12 +337,15 @@ describe('mergeResumeCompletedChatRecords', () => {
             type,
             memoryEdges: [],
             nodeOutputs: [],
-            askId: id,
             entryNodeIds: ['same-node'],
             usageId: 'same-usage',
             params: {
-              description: '',
-              questions: [{ question: 'Question', options: [] }]
+              toolCallId: id,
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [{ question: 'Question', options: [] }]
+              })
             }
           };
         }
@@ -350,14 +353,15 @@ describe('mergeResumeCompletedChatRecords', () => {
           type,
           memoryEdges: [],
           nodeOutputs: [],
-          previewId: id,
           entryNodeIds: ['same-node'],
           usageId: 'same-usage',
           params: {
-            title: 'Confirm?',
-            mermaid: '',
-            sections: [],
-            actions: []
+            toolCallId: id,
+            arguments: JSON.stringify({
+              title: 'Confirm?',
+              mermaid: 'flowchart TD; A-->B',
+              sections: [{ title: 'Goal', content: 'Build' }]
+            })
           }
         };
       };

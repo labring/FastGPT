@@ -97,8 +97,11 @@ describe('isAgentAskInteractive', () => {
         childrenResponse: {
           ...runtime,
           type: 'agentAsk',
-          askId: 'ask-1',
-          params: { description: '', questions: [] }
+
+          params: {
+            toolCallId: 'ask-1',
+            arguments: JSON.stringify({ reason: '', blockerType: 'user_choice', questions: [] })
+          }
         }
       }
     };
@@ -191,6 +194,24 @@ describe('extractDeepestInteractive', () => {
 });
 
 describe('getMaxHistoryLimitFromNodes', () => {
+  it.each([FlowNodeTypeEnum.agent, FlowNodeTypeEnum.toolCall])(
+    'uses continuous recovery history for %s',
+    (flowNodeType) => {
+      expect(
+        getMaxHistoryLimitFromNodes([
+          {
+            nodeId: 'agent',
+            name: 'Agent',
+            flowNodeType,
+            inputs: [],
+            outputs: [],
+            position: { x: 0, y: 0 }
+          }
+        ])
+      ).toBe(0);
+    }
+  );
+
   it('should return default limit 20 when no history inputs', () => {
     const nodes: StoreNodeItemType[] = [
       {
@@ -287,9 +308,13 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('test', WorkflowIOValueTypeEnum.any)).toBe('test');
   });
 
-  it('should return secret value as is for string type', () => {
-    const secretVal = { secret: true, value: 'password' };
-    expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string)).toBe(secretVal);
+  it('should preserve secret wrappers only for explicit secret inputs', () => {
+    const secretVal = { secret: 'cipher' };
+    expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string)).toBe('{"secret":"cipher"}');
+    expect(valueTypeFormat(secretVal, WorkflowIOValueTypeEnum.string, true)).toEqual(secretVal);
+    expect(valueTypeFormat({ value: 'plain' }, WorkflowIOValueTypeEnum.string, true)).toEqual({
+      value: 'plain'
+    });
   });
 
   it('should return value when already matches target type', () => {
@@ -310,6 +335,12 @@ describe('valueTypeFormat', () => {
   it('should convert to string type', () => {
     expect(valueTypeFormat(123, WorkflowIOValueTypeEnum.string)).toBe('123');
     expect(valueTypeFormat({ a: 1 }, WorkflowIOValueTypeEnum.string)).toBe('{"a":1}');
+    expect(valueTypeFormat({ value: 'hello' }, WorkflowIOValueTypeEnum.string)).toBe(
+      '{"value":"hello"}'
+    );
+    expect(valueTypeFormat({ value: 1, other: 'data' }, WorkflowIOValueTypeEnum.string)).toBe(
+      '{"value":1,"other":"data"}'
+    );
     expect(valueTypeFormat(true, WorkflowIOValueTypeEnum.string)).toBe('true');
   });
 
@@ -841,21 +872,25 @@ describe('getLastInteractiveValue', () => {
   it('derives a pending Ask from adjacent messages without mutating its questions', () => {
     const interactive: WorkflowInteractiveResponseType = {
       type: 'agentAsk',
-      askId: 'ask-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: '',
-        questions: [
-          {
-            question: 'Choose?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        toolCallId: 'ask-1',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Choose?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     };
     const ai: ChatItemMiniType = { obj: ChatRoleEnum.AI, value: [{ interactive }] };
@@ -922,22 +957,26 @@ describe('getLastInteractiveValue', () => {
   it('should return an unanswered top-level agentAsk', () => {
     const interactive = {
       type: 'agentAsk',
-      askId: 'call_ask',
+
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: '',
-        questions: [
-          {
-            question: 'What do you want?',
-            options: [
-              { summary: 'Use repo', value: 'Use repo' },
-              { summary: 'Use docs', value: 'Use docs' },
-              { summary: 'Use defaults', value: 'Use defaults' }
-            ]
-          }
-        ]
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'What do you want?',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ]
+            }
+          ]
+        })
       }
     } as WorkflowInteractiveResponseType;
 
@@ -949,19 +988,23 @@ describe('getLastInteractiveValue', () => {
     ];
     expect(getLastInteractiveValue(histories)).toMatchObject({
       type: 'agentAsk',
-      askId: 'call_ask',
+
       params: {
-        description: '',
-        questions: [
-          {
-            question: 'What do you want?',
-            options: [
-              { summary: 'Use repo', value: 'Use repo' },
-              { summary: 'Use docs', value: 'Use docs' },
-              { summary: 'Use defaults', value: 'Use defaults' }
-            ]
-          }
-        ]
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'What do you want?',
+              options: [
+                { summary: 'Use repo', value: 'Use repo' },
+                { summary: 'Use docs', value: 'Use docs' },
+                { summary: 'Use defaults', value: 'Use defaults' }
+              ]
+            }
+          ]
+        })
       }
     });
   });
@@ -981,19 +1024,17 @@ describe('getLastInteractiveValue', () => {
     (answered) => {
       const interactive: WorkflowInteractiveResponseType = {
         type: 'workflowBuilderPreview',
-        previewId: 'preview-1',
+
         entryNodeIds: [],
         memoryEdges: [],
         nodeOutputs: [],
         params: {
-          title: 'Confirm?',
-          mermaid: 'flowchart LR; A --> B',
-          sections: [],
-          actions: [
-            { value: 'confirm', label: 'Confirm', inputMode: 'none' },
-            { value: 'revise', label: 'Revise', inputMode: 'text' },
-            { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-          ]
+          toolCallId: 'preview-1',
+          arguments: JSON.stringify({
+            title: 'Confirm?',
+            mermaid: 'flowchart LR; A --> B',
+            sections: [{ title: 'Goal', content: 'Build the workflow' }]
+          })
         }
       };
       const messages: ChatItemMiniType[] = [{ obj: ChatRoleEnum.AI, value: [{ interactive }] }];
@@ -1004,12 +1045,13 @@ describe('getLastInteractiveValue', () => {
             {
               select: {
                 type: 'workflowBuilderPreview',
-                questions: [{ question: 'Confirm?', value: 'Confirm' }]
+                action: 'confirm'
               }
             }
           ]
         });
       expect(getLastInteractiveValue(messages)).toBe(answered ? undefined : interactive);
+      expect(interactive.params).not.toHaveProperty('decision');
     }
   );
 
