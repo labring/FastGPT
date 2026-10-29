@@ -211,6 +211,28 @@ describe('channel controller — delete protection / refs', () => {
     ]);
   });
 
+  it('excludes team models with a custom endpoint from affected models', async () => {
+    const direct = makeModel('own-a-direct', {
+      model: 'qwen-plus',
+      name: 'A Direct Qwen',
+      scope: ModelScopeEnum.team,
+      tmbId: TMB_A,
+      teamId: TEAM_ID,
+      requestUrl: 'https://direct.example.com/v1'
+    });
+    setModelTestSnapshot({ models: [...testModels, direct] });
+    getTeamModelHandleMock.mockResolvedValue(getCachedSystemModelHandle());
+
+    const affected = await getChannelsAffectedModels({
+      channels: [GROUP_A_CHANNELS[0]],
+      ...GROUP_A_SCOPE
+    });
+
+    expect(affected).toEqual([
+      { modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }
+    ]);
+  });
+
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {
     // qwen-plus appears once within group A (ch-b-1 is another owner's bucket)
     const aAffected = await getChannelsAffectedModels({

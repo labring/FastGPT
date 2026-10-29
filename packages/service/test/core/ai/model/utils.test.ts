@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { desensitizeModel, flatModelToDocumentData } from '../../../../core/ai/model/transform';
+import { sanitizeTeamModelData } from '../../../../core/ai/model/utils';
 
 describe('flatModelToDocumentData', () => {
   it('moves type-specific fields into config and normalizes plugin maxTokens', () => {
@@ -106,5 +107,25 @@ describe('system model response filtering', () => {
     });
     expect(model.requestAuth).toBe('model-secret');
     expect(JSON.stringify(result)).not.toContain('model-secret');
+  });
+});
+
+describe('sanitizeTeamModelData', () => {
+  it('keeps custom endpoint fields but strips test mode and ownership', () => {
+    const input = {
+      model: 'custom',
+      requestUrl: 'https://api.example.com/v1',
+      requestAuth: 'sk-team',
+      testMode: true,
+      tmbId: 'tmb-1',
+      teamId: 'team-1'
+    };
+
+    expect(sanitizeTeamModelData(input)).toEqual({
+      model: 'custom',
+      requestUrl: 'https://api.example.com/v1',
+      requestAuth: 'sk-team'
+    });
+    expect(input.requestUrl).toBe('https://api.example.com/v1');
   });
 });
