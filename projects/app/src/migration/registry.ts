@@ -601,7 +601,6 @@ export const systemMigrations = [
     ],
     // 阻塞启动：迁移成功前节点不进入 ready，避免运行时读到 Schema 默认值而导致配置被静默重置。
     blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: migrateInstanceConfigs
   },
   {
@@ -632,7 +631,6 @@ export const systemMigrations = [
     ],
     // 阻塞启动：残留字段会使 strictObject 校验失败，必须在节点 ready 前清理完成。
     blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: cleanupInstanceConfigDeprecatedFieldsTask
   }
 ] as const satisfies readonly SystemMigration[];

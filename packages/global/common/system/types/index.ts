@@ -58,9 +58,9 @@ export type FastGPTTeamModeType = z.infer<typeof FastGPTTeamModeSchema>;
 
 export const FastGPTFeConfigsSchema = z.looseObject({
   /**
-   * 能力投影，不是第二个服务端开关：唯一真相是 `DATASET_SYNONYM_ENABLED`（serviceEnv），
-   * 服务端逻辑直接读取 `serviceEnv.DATASET_SYNONYM_ENABLED`。该字段由宿主初始化时从同一变量
-   * 派生后供前端读取（本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
+   * 能力投影，不是第二个服务端开关：服务端唯一真相是实例配置 `feature.datasetSynonymEnabled`，
+   * `DATASET_SYNONYM_ENABLED` 只在迁移时作为初始值。该字段由宿主初始化时从同一配置派生后供前端读取
+   * （本仓库在 `initSystemConfig()` 中派生；agent-builder 由 backend 注入），
    * 用于决定编辑器是否提供带 `{{synonymMappings}}` 的引用模板。
    * 必须声明：`getInitData` 用 `.strip()` 的客户端 Schema 收口，未声明字段会被丢弃。
    */
@@ -233,6 +233,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .meta({ description: '分享免登对话页面的自定义独立域名' }),
 
   systemTitle: z.string().optional().meta({ description: '系统平台标题名称' }),
+  systemDescription: z.string().optional().meta({ description: '页面 Meta 描述' }),
   scripts: z
     .array(z.record(z.string(), z.string()))
     .optional()

@@ -171,14 +171,6 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    // 系统可用性验证
-    await runInitializationStep({
-      step: 'instrumentation-check',
-      action: () => instrumentationCheck(),
-      logger,
-      getErrText
-    });
-
     // 初始化系统用户
     await runInitializationStep({
       step: 'init-system-user',
@@ -244,6 +236,15 @@ export async function registerNodeInstrumentation() {
      * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
+      // Pro 健康检查必须放在阻塞迁移之后：App 先写入实例配置，Pro 才能完成自身初始化，
+      // 避免两个新进程冷启动时互相等待对方先就绪。
+      await runInitializationStep({
+        step: 'instrumentation-check',
+        action: () => instrumentationCheck(),
+        logger,
+        getErrText
+      });
+
       await Promise.all([
         runInitializationStep({
           step: 'start-mongo-watch',

@@ -23,6 +23,7 @@ export const buildAuthoritativeSystemEnv = ({
     openapiPrefix: instanceConfig.site.openApiPrefix,
     fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
     agentSandboxMax: instanceConfig.subservice.agentSandbox.common.maxEditDebug,
+    agentSandboxMaxPerTeam: instanceConfig.subservice.agentSandbox.common.maxPerTeam ?? undefined,
     workflowHttpNode: {
       ...(legacySystemEnv?.workflowHttpNode || {}),
       ignoreHttpsCertificate: instanceConfig.security.workflowHttpNode.ignoreHttpsCertificate
@@ -33,6 +34,7 @@ export const buildAuthoritativeSystemEnv = ({
     vlmMaxProcess: instanceConfig.performance.dataset.vlmMaxProcess,
     hnswEfSearch: instanceConfig.vector.hnswEfSearch,
     hnswMaxScanTuples: instanceConfig.vector.hnswMaxScanTuples,
+    vectorRecallConcurrency: instanceConfig.vector.vectorRecallConcurrency,
     customPdfParse: {
       // 旧库独有的计费/扩展字段（price 等）深合并保留
       ...(legacySystemEnv?.customPdfParse || {}),
@@ -76,6 +78,10 @@ export const buildAuthoritativeSystemEnv = ({
       },
       { path: 'vector.hnswEfSearch', value: instanceConfig.vector.hnswEfSearch },
       { path: 'vector.hnswMaxScanTuples', value: instanceConfig.vector.hnswMaxScanTuples },
+      {
+        path: 'vector.vectorRecallConcurrency',
+        value: instanceConfig.vector.vectorRecallConcurrency
+      },
       {
         path: 'providers.documentParse.customPdf.url',
         value: instanceConfig.providers.documentParse.customPdf.url

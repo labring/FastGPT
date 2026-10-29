@@ -1,6 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
-import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
+import {
+  SYSTEM_INSTANCE_CONFIG_DOMAINS,
+  type SystemInstanceConfigDomainKey
+} from '@fastgpt/global/common/system/config/schema';
 import {
   applyInstanceConfigMigration,
   inspectInstanceConfigMigration,
@@ -72,7 +75,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     };
 
     const first = await applyInstanceConfigMigration({ overrides, logger });
-    expect(first.migratedCount).toBe(2);
+    expect(first.migratedCount).toBe(SYSTEM_INSTANCE_CONFIG_DOMAINS.length);
 
     // 模拟管理员在首次迁移后修改了 site 配置
     await MongoSystemInstanceConfig.updateOne(
@@ -108,9 +111,10 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     const inspection = await inspectInstanceConfigMigration();
     expect(inspection.existingDomainCount).toBe(1);
 
-    // apply 按域补写缺失的 auth，而不是整体跳过
+    // apply 按域补写缺失的 auth，而不是整体跳过；其余空 domain 也要初始化，满足 Pro 启动断言。
     const result = await applyInstanceConfigMigration({ overrides, logger });
-    expect(result.domains).toEqual(['auth']);
+    expect(result.domains).toHaveLength(SYSTEM_INSTANCE_CONFIG_DOMAINS.length - 1);
+    expect(result.domains).toContain('auth');
 
     const authDoc = await MongoSystemInstanceConfig.findOne({ domain: 'auth' }).lean();
     expect(authDoc?.overrides.teamMode).toBe('multi');
@@ -129,7 +133,7 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     // 写入目标集合为空时 inspect 统计出的缺失域
     await applyInstanceConfigMigration({ overrides: before.overrides, logger });
     const after = await inspectInstanceConfigMigration();
-    expect(after.existingDomainCount).toBe(targetDomainCount);
+    expect(after.existingDomainCount).toBe(SYSTEM_INSTANCE_CONFIG_DOMAINS.length);
     expect(after.missingDomainCount).toBe(0);
     // 迁移写完后不应再有待补字段，否则任务每轮启动都会重复写入
     expect(after.pendingBackfillDomainCount).toBe(0);
@@ -182,8 +186,9 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger
     });
 
-    // site 只补缺，auth 整域新建
-    expect(result.createdDomains).toEqual(['auth']);
+    // site 只补缺，auth 与其他空 domain 初始化
+    expect(result.createdDomains).toHaveLength(SYSTEM_INSTANCE_CONFIG_DOMAINS.length - 1);
+    expect(result.createdDomains).toContain('auth');
     expect(result.backfilledDomains).toEqual(['site']);
     expect(result.backfilledPaths).toEqual(['site.docUrl']);
 
@@ -241,7 +246,9 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       logger
     });
 
-    expect(result.domains).toEqual([]);
+    // site 无写入；其余空 domain 只做初始化，不影响该域的 revision 与幂等判定。
+    expect(result.domains).toHaveLength(SYSTEM_INSTANCE_CONFIG_DOMAINS.length - 1);
+    expect(result.domains).not.toContain('site');
     expect(result.backfilledPaths).toEqual([]);
 
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
@@ -263,9 +270,12 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     });
 
     const warn = vi.fn();
+    const inspection = await inspectInstanceConfigMigration();
     const result = await applyInstanceConfigMigration({
       overrides: {
+        ...inspection.overrides,
         performance: {
+          ...inspection.overrides.performance,
           workflow: { maxRunTimes: 600, maxLoopTimes: 20 },
           dataset: { parseMaxProcess: 12 }
         }

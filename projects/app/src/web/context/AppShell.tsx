@@ -52,7 +52,10 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
   const router = useRouter();
   const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
   const shouldUseLayout = !router?.pathname || !routesWithoutLayout.includes(router.pathname);
-  const headDesc = appClientEnv.systemDescription || t('common:system_intro', { title });
+  const headDesc =
+    feConfigs?.systemDescription ||
+    appClientEnv.systemDescription ||
+    t('common:system_intro', { title });
   const headIcon = getWebReqUrl(feConfigs?.favicon || appClientEnv.systemFavicon);
   const page = setLayout(renderPage ? renderPage() : <Component {...pageProps} />);
 

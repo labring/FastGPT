@@ -6,8 +6,8 @@ describe('buildAuthoritativeSystemEnv', () => {
   it('instance config wins over legacy systemEnv for authoritative keys', () => {
     const instanceConfig = resolveSystemInstanceConfig({
       performance: { dataset: { parseMaxProcess: 42 } },
-      vector: { hnswEfSearch: 200 },
-      subservice: { agentSandbox: { common: { maxEditDebug: 12 } } },
+      vector: { hnswEfSearch: 200, vectorRecallConcurrency: 8 },
+      subservice: { agentSandbox: { common: { maxEditDebug: 12, maxPerTeam: 10000 } } },
       providers: { documentParse: { customPdf: { url: 'https://pdf.example.com' } } }
     });
 
@@ -24,6 +24,8 @@ describe('buildAuthoritativeSystemEnv', () => {
     expect(result.datasetParseMaxProcess).toBe(42);
     expect(result.hnswEfSearch).toBe(200);
     expect(result.agentSandboxMax).toBe(12);
+    expect(result.agentSandboxMaxPerTeam).toBe(10000);
+    expect(result.vectorRecallConcurrency).toBe(8);
     expect(result.customPdfParse?.url).toBe('https://pdf.example.com');
   });
 

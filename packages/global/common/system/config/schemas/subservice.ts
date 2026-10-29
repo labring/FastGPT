@@ -48,6 +48,8 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       suspendMinutes: positiveInteger(60),
       archiveInactiveDays: positiveInteger(7),
       maxEditDebug: nonNegativeInteger(100),
+      // 单团队活跃实例配额；null 表示不限制
+      maxPerTeam: z.number().int().positive().nullable().default(null),
       entrypointTimeoutSeconds: z.number().int().min(1).max(600).default(30),
       wsMaxMessageBytes: positiveInteger(64 * 1024 * 1024),
       wsMaxFrameBytes: positiveInteger(16 * 1024 * 1024),

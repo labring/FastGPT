@@ -35,6 +35,10 @@ import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/con
 import { initS3Buckets } from '@fastgpt/service/common/s3';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
+import {
+  buildOauthFeConfig,
+  buildRegisterMethods
+} from '@fastgpt/global/common/system/config/frontendProjection';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
@@ -179,6 +183,7 @@ async function doInitSystemConfig() {
 
       // 权威数据源：优先从 SystemInstanceConfig 读取
       systemTitle: instanceConfig.site.name,
+      systemDescription: instanceConfig.site.description,
       favicon: instanceConfig.site.favicon || '/favicon.ico',
       docUrl: instanceConfig.site.docUrl,
       openAPIDocUrl: instanceConfig.site.openApiDocUrl,
@@ -189,6 +194,14 @@ async function doInitSystemConfig() {
       navbarItems: instanceConfig.site.navbarItems,
 
       wecomLoginAutoRedirect: instanceConfig.auth.wecomLoginAutoRedirect,
+      oauth: buildOauthFeConfig(instanceConfig.auth),
+      register_method: buildRegisterMethods({
+        legacyMethods: fastgptConfig.feConfigs?.register_method,
+        auth: instanceConfig.auth
+      }),
+      accountCancellation: {
+        enabled: instanceConfig.auth.accountCancellation.enabled
+      },
 
       hideChatCopyrightSetting: instanceConfig.feature.hideChatCopyrightSetting,
       enable_team_plugin_upload: instanceConfig.feature.enableTeamPluginUpload,
@@ -225,6 +238,8 @@ async function doInitSystemConfig() {
       limit: {
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {}),
+        uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
+        uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
         maxFolderDepth: instanceConfig.resource.maxFolderDepth,
         exportDatasetLimitMinutes: instanceConfig.resource.exportDatasetLimitMinutes,
         websiteSyncLimitMinuted: instanceConfig.resource.websiteSyncLimitMinuted,
@@ -234,6 +249,7 @@ async function doInitSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
+      datasetSynonymEnabled: instanceConfig.feature.datasetSynonymEnabled,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
       show_batch_eval: licenseData?.functions?.eval,
@@ -245,13 +261,10 @@ async function doInitSystemConfig() {
       agentSandboxProxyUrl: instanceConfig.subservice.agentSandbox.proxy.wsUrl
     },
     // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
-    systemEnv: {
-      ...buildAuthoritativeSystemEnv({
-        legacySystemEnv: fastgptConfig.systemEnv,
-        instanceConfig
-      }),
-      agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM
-    },
+    systemEnv: buildAuthoritativeSystemEnv({
+      legacySystemEnv: fastgptConfig.systemEnv,
+      instanceConfig
+    }),
     subPlans: fastgptConfig.subPlans
   };
 

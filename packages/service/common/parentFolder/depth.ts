@@ -1,6 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { serviceEnv } from '../../env';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
 
 type FolderResourceDoc = {
   _id: unknown;
@@ -164,7 +164,7 @@ export const checkCreateResourceParent = async ({
   findResource,
   isFolderType,
   isFolder,
-  maxDepth = serviceEnv.MAX_FOLDER_DEPTH
+  maxDepth = getSystemInstanceConfig().resource.maxFolderDepth
 }: CheckCreateFolderDepthProps & { isFolder: boolean; maxDepth?: number }) => {
   await getParentFolderDepth({
     parentId,
@@ -190,7 +190,7 @@ export const checkMoveFolderDepth = async ({
   findChildren,
   isFolderType
 }: CheckMoveFolderDepthProps) => {
-  const maxDepth = serviceEnv.MAX_FOLDER_DEPTH;
+  const maxDepth = getSystemInstanceConfig().resource.maxFolderDepth;
 
   if (targetParentId && String(targetParentId) === String(resourceId)) {
     throw CommonErrEnum.invalidParams;
