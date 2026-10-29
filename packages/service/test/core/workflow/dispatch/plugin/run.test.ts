@@ -168,20 +168,20 @@ describe('dispatchRunPlugin', () => {
     }
   );
 
-  it('marks a failed child workflow as a billing error', async () => {
-    getSystemToolWorkflowRuntimeMock.mockResolvedValue({
-      id: 'commercial-system-workflow',
-      name: 'System Workflow',
-      avatar: '',
-      nodes: [],
-      edges: [],
-      chatConfig: { variables: [] },
-      currentCost: 10,
-      hasTokenFee: true
-    });
-    runWorkflowMock.mockResolvedValue({
-      flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
-      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
+  it.each(['child failed', undefined])(
+    'propagates child execution failure and marks billing as failed with errorText=%s',
+    async (errorText) => {
+      getSystemToolWorkflowRuntimeMock.mockResolvedValue({
+        id: 'commercial-system-workflow',
+        name: 'System Workflow',
+        avatar: '',
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] },
+        currentCost: 10,
+        hasTokenFee: true
+      });
+      const runtimeSummary = summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'failedResponse',
           nodeId: 'failedNode',
@@ -189,46 +189,56 @@ describe('dispatchRunPlugin', () => {
           moduleType: FlowNodeTypeEnum.chatNode,
           errorText: 'child failed'
         }
-      ])
-    });
+      ]);
+      runtimeSummary.errorText = errorText;
+      runWorkflowMock.mockResolvedValue({
+        flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
+        workflowRuntimeSummary: runtimeSummary
+      });
 
-    await dispatchRunPlugin({
-      node: {
-        nodeId: 'toolNode',
-        name: 'Tool',
-        avatar: '',
-        flowNodeType: FlowNodeTypeEnum.pluginModule,
-        pluginId: 'commercial-system-workflow',
-        inputs: [],
-        outputs: []
-      },
-      runningAppInfo: {
-        id: 'app',
-        name: 'app',
-        teamId: 'team',
-        tmbId: 'member'
-      },
-      query: [],
-      params: {},
-      histories: [],
-      timezone: 'Asia/Shanghai',
-      uid: 'user',
-      chatId: 'chat',
-      responseChatItemId: 'response',
-      variableState: await createVariableState(),
-      usagePush: vi.fn(),
-      runtimeNodes: [],
-      runtimeNodesMap: new Map(),
-      runtimeEdges: [],
-      nodeSummary: createNodeSummary()
-    } as any);
+      const result = await dispatchRunPlugin({
+        node: {
+          nodeId: 'toolNode',
+          name: 'Tool',
+          avatar: '',
+          flowNodeType: FlowNodeTypeEnum.pluginModule,
+          pluginId: 'commercial-system-workflow',
+          inputs: [],
+          outputs: []
+        },
+        runningAppInfo: {
+          id: 'app',
+          name: 'app',
+          teamId: 'team',
+          tmbId: 'member'
+        },
+        query: [],
+        params: {},
+        histories: [],
+        timezone: 'Asia/Shanghai',
+        uid: 'user',
+        chatId: 'chat',
+        responseChatItemId: 'response',
+        variableState: await createVariableState(),
+        usagePush: vi.fn(),
+        runtimeNodes: [],
+        runtimeNodesMap: new Map(),
+        runtimeEdges: [],
+        nodeSummary: createNodeSummary()
+      } as any);
 
-    expect(computedAppToolUsageMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: true
-      })
-    );
-  });
+      expect(computedAppToolUsageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: true
+        })
+      );
+      const expectedError = errorText ?? 'Run workflow tool failed';
+      expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(expectedError);
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.errorText).toBe(expectedError);
+      expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({ error: expectedError });
+      expect(Object.hasOwn(result, 'rawError')).toBe(false);
+    }
+  );
 
   it('keeps business failure output separate from the original exception', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
