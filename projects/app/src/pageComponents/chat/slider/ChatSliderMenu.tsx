@@ -176,7 +176,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       )}
 
       {isPc ? (
-        <MyTooltip label={t('common:core.chat.New Chat')}>
+        <MyTooltip label={t('common:core.chat.New Chat')} shouldWrapChildren={false}>
           <Button
             variant={'whitePrimary'}
             flex={1}

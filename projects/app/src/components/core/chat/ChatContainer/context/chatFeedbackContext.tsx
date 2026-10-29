@@ -152,11 +152,10 @@ export const ChatFeedbackProvider = ({
         onSuccess();
         toast({
           status: 'success',
-          title: t(
+          title:
             userGoodFeedback === undefined && userBadFeedback === undefined
-              ? 'common:core.chat.Feedback Cancelled'
-              : 'common:core.chat.Feedback Success'
-          )
+              ? t('common:core.chat.Feedback Cancelled')
+              : t('common:core.chat.Feedback Success')
         });
       } catch {
         if (latestScopeKey.current === scope) {
