@@ -63,4 +63,6 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   ) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   usagePush?: (usages: AgentLoopUsage[]) => void;
   emitEvent?: (event: AgentLoopEvent) => void;
+  /** 可信服务端持久化事件，不受对外展示裁剪影响。 */
+  recordEvent?: (event: AgentLoopEvent) => void;
 };

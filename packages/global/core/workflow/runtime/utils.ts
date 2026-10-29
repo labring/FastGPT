@@ -1,3 +1,4 @@
+import { AgentAskInteractiveSchema } from '../../ai/agent/type';
 import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
@@ -10,10 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  AgentAskInteractiveSchema,
-  type WorkflowInteractiveResponseType
-} from '../template/system/interactive/type';
+import { type WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '../builder/type';
 import type { RuntimeEdgeItemType, StoreEdgeItemType } from '../type/edge';
 import type { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
@@ -54,6 +52,15 @@ export const extractDeepestInteractive = (
   return current;
 };
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
+  // Agent 的恢复来源是完整 ChatItem；Mongo limit=0 表示不裁剪，模型侧仍按最新 checkpoint 压缩。
+  if (
+    nodes.some(
+      (node) =>
+        node.flowNodeType === FlowNodeTypeEnum.agent ||
+        node.flowNodeType === FlowNodeTypeEnum.toolCall
+    )
+  )
+    return 0;
   let limit = 10;
   nodes.forEach((node) => {
     node.inputs.forEach((input) => {
@@ -194,7 +201,10 @@ export const getLastInteractiveValue = (
   const lastAIMessage = histories[lastAIIndex];
 
   if (lastAIMessage?.obj === ChatRoleEnum.AI) {
-    const lastValue = lastAIMessage.value[lastAIMessage.value.length - 1];
+    const lastValue = lastAIMessage.value.findLast(
+      (value) =>
+        !value.displayOnly && !value.workflowBuilderVersion && !value.chatAgentBuilderVersion
+    );
 
     if (!lastValue || !lastValue.interactive) {
       return;
@@ -438,3 +448,31 @@ export function rewriteNodeOutputByHistories(
     };
   });
 }
+
+/** 补齐交互的工作流恢复字段，按调用 ID 更新唯一 value，不回写历史 AI。 */
+export const appendWorkflowInteractiveValue = ({
+  values,
+  interactive
+}: {
+  values: import('../../chat/type').AIChatItemValueItemType[];
+  interactive: WorkflowInteractiveResponseType;
+}) => {
+  const latest = extractDeepestInteractive(interactive);
+  if (isAskInteractive(latest)) {
+    const existing = values.find((value) => {
+      if (value.displayOnly || !value.interactive) return false;
+      const current = extractDeepestInteractive(value.interactive);
+      return isAgentAskInteractive(latest)
+        ? !!latest.params?.toolCallId &&
+            isAgentAskInteractive(current) &&
+            current.params?.toolCallId === latest.params.toolCallId
+        : current?.type === 'workflowBuilderPreview' &&
+            current.params.toolCallId === latest.params.toolCallId;
+    });
+    if (existing) {
+      existing.interactive = interactive;
+      return;
+    }
+  }
+  values.push({ interactive });
+};

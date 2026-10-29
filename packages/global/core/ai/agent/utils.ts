@@ -1,4 +1,15 @@
-import { AgentAskAnswerPayloadSchema, type AgentAskQuestion, type AgentPlanType } from './type';
+import {
+  AgentAskAnswerPayloadSchema,
+  AgentAskArgumentsSchema,
+  type AgentAskQuestion,
+  type AgentPlanType
+} from './type';
+
+/** 安全读取 Ask 展示参数；旧结构、损坏 JSON 和无效题目不阻断普通对话。 */
+export const parseAgentAskArguments = (value: unknown) => {
+  const parsed = AgentAskArgumentsSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+};
 
 /** 判断 plan 是否仍包含需要跨轮继续处理的步骤。 */
 export const hasUnfinishedAgentPlan = (plan: AgentPlanType) =>

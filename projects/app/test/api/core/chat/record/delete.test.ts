@@ -136,21 +136,25 @@ describe('delete chat record api', () => {
     };
     const interactive = {
       type: 'agentAsk',
-      askId: 'ask-1',
+
       entryNodeIds: [],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
-        description: '',
-        questions: [
-          {
-            question: 'Choose?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          }
-        ]
+        toolCallId: 'ask-1',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'Choose?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            }
+          ]
+        })
       }
     };
     const previousAi = await MongoChatItem.create({

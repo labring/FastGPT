@@ -574,18 +574,22 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
-                description: 'Choose one',
-                questions: [
-                  {
-                    question: 'Choose one?',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' }
-                    ]
-                  }
-                ]
+                toolCallId: 'ask_1',
+                arguments: JSON.stringify({
+                  reason: 'Choose one',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose one?',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' }
+                      ]
+                    }
+                  ]
+                })
               }
             } as any
           }
@@ -609,9 +613,7 @@ describe('getHistories', () => {
             interactive: {
               type: 'toolChildrenInteractive',
               params: {
-                toolParams: {
-                  toolCallId: 'tool_1'
-                },
+                toolCallId: 'tool_1',
                 childrenResponse: {
                   type: 'userSelect',
                   params: {
@@ -641,19 +643,23 @@ describe('getHistories', () => {
           {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask_1',
+
               params: {
-                description: '',
-                questions: [
-                  {
-                    question: 'Choose one',
-                    options: [
-                      { summary: 'A', value: 'A' },
-                      { summary: 'B', value: 'B' },
-                      { summary: 'C', value: 'C' }
-                    ]
-                  }
-                ]
+                toolCallId: 'ask_1',
+                arguments: JSON.stringify({
+                  reason: '',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: 'Choose one',
+                      options: [
+                        { summary: 'A', value: 'A' },
+                        { summary: 'B', value: 'B' },
+                        { summary: 'C', value: 'C' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -681,6 +687,82 @@ describe('getHistories', () => {
 
   it('keeps configured agent history unchanged when history is not 0', () => {
     expect(getAgentLoopHistories(1, MockHistories)).toEqual(getHistories(1, MockHistories));
+  });
+
+  it.each([0, 1])('honors history=%s for completed model response groups', (history) => {
+    const histories: ChatItemMiniType[] = Array.from({ length: 3 }, (_, index) => [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: `question-${index}` } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ modelResponseId: `response-${index}`, text: { content: `answer-${index}` } }]
+      }
+    ]).flat();
+
+    expect(getAgentLoopHistories(history, histories)).toEqual(
+      history === 0 ? [] : histories.slice(-2)
+    );
+  });
+
+  it.each([0, 1])('keeps the complete pending interaction chain with history=%s', (history) => {
+    const ask: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          modelResponseId: 'ask-response',
+          interactive: {
+            type: 'agentAsk',
+            entryNodeIds: [],
+            memoryEdges: [],
+            nodeOutputs: [],
+            params: {
+              toolCallId: 'ask-1',
+              arguments: JSON.stringify({
+                reason: '',
+                blockerType: 'user_choice',
+                questions: [
+                  {
+                    question: 'Choose?',
+                    options: [
+                      { summary: 'A', value: 'A' },
+                      { summary: 'B', value: 'B' }
+                    ]
+                  }
+                ]
+              })
+            }
+          }
+        }
+      ]
+    };
+    const pendingRound: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'start current task' } }] },
+      ask,
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ select: { type: 'agentAsk', questions: [{ question: 'Choose?', value: 'A' }] } }]
+      },
+      {
+        ...ask,
+        value: [
+          {
+            ...ask.value[0],
+            modelResponseId: 'next-ask-response'
+          }
+        ]
+      }
+    ];
+    expect(getAgentLoopHistories(history, [...MockHistories, ...pendingRound])).toEqual(
+      history === 0 ? pendingRound : [MockHistories[0], ...MockHistories.slice(-2), ...pendingRound]
+    );
+    expect(getAgentLoopHistories([ask], pendingRound)).toEqual([ask]);
+    expect(getAgentLoopHistories(0, [ask])).toEqual([ask]);
+    const checkpointAsk: ChatItemMiniType = {
+      ...ask,
+      value: [{ contextCheckpoint: 'compressed current task' }, ...ask.value]
+    };
+    expect(getAgentLoopHistories(0, [...pendingRound.slice(0, -1), checkpointAsk])).toEqual([
+      checkpointAsk
+    ]);
   });
 
   it('should use default empty histories', () => {

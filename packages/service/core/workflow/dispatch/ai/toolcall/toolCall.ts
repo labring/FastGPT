@@ -176,6 +176,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         usagePush
       }),
       assistantResponses: {
+        persistInputContext: !childrenInteractiveParams,
         showReasoning: aiChatReasoning,
         getEventToolInfo: getToolInfo
       }

@@ -673,16 +673,7 @@ describe('runFastAgentLoop', () => {
           childrenResponse: {
             type: 'userSelect'
           },
-          toolParams: {
-            toolCallId: 'call_interactive',
-            memoryRequestMessages: [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.Tool,
-                tool_call_id: 'call_interactive',
-                content: 'pending'
-              }
-            ]
-          }
+          toolCallId: 'call_interactive'
         }
       },
       runtime: createRuntime({
@@ -750,7 +741,7 @@ describe('runFastAgentLoop', () => {
         ],
         childrenInteractiveParams: {
           childrenResponse: { type: 'userSelect' },
-          toolParams: { toolCallId: 'call_interactive_error' }
+          toolCallId: 'call_interactive_error'
         }
       },
       runtime: createRuntime({

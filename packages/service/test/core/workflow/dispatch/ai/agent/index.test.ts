@@ -418,7 +418,7 @@ describe('dispatchRunAgent user context', () => {
         result = dispatchRunAgent(createProps());
       }
     );
-    await result;
+    const output = await result;
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     const historyText = getMessageTextForTest(loopInput.messages[0].content);
@@ -433,6 +433,11 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('## 知识库');
     expect(currentText).toContain('## 背景信息');
     expect(currentText).toContain('当前问题');
+    expect(
+      output[DispatchNodeResponseKeyEnum.assistantResponses].find(
+        (value: any) => value.inputContext
+      )?.inputContext.content
+    ).toBe(loopInput.messages[1].content);
   });
 
   it('removes history files when the node file input is not bound', async () => {
@@ -771,7 +776,11 @@ describe('dispatchRunAgent user context', () => {
     const result = await resultPromise!;
 
     expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+    expect(
+      result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+        (value: any) => value.text || value.reasoning
+      )
+    ).toMatchObject([
       {
         text: {
           content: 'ok'
@@ -812,7 +821,7 @@ describe('dispatchRunAgent user context', () => {
     const result = await resultPromise!;
 
     expect(result.data.answerText).toBe('ok');
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toMatchObject([
       {
         text: {
           content: 'ok'
@@ -970,10 +979,14 @@ describe('dispatchRunAgent user context', () => {
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
-      askId: 'legacy-plan',
+
       params: {
-        description: '',
-        questions: [{ question: 'Need confirmation', options: [] }]
+        toolCallId: 'legacy-plan',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Need confirmation', options: [] }]
+        })
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1033,27 +1046,41 @@ describe('dispatchRunAgent user context', () => {
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
-      askId: 'call_ask',
+
       params: {
-        description: 'Need confirmation',
-        questions: [
-          {
-            question: 'First?',
-            options: [
-              { summary: 'A', value: 'A' },
-              { summary: 'B', value: 'B' }
-            ]
-          },
-          {
-            question: 'Second?',
-            options: [
-              { summary: 'C', value: 'C' },
-              { summary: 'D', value: 'D' }
-            ]
-          }
-        ]
+        toolCallId: 'call_ask',
+        arguments: JSON.stringify({
+          reason: 'Need confirmation',
+          blockerType: 'user_choice',
+          questions: [
+            {
+              question: 'First?',
+              options: [
+                { summary: 'A', value: 'A' },
+                { summary: 'B', value: 'B' }
+              ]
+            },
+            {
+              question: 'Second?',
+              options: [
+                { summary: 'C', value: 'C' },
+                { summary: 'D', value: 'D' }
+              ]
+            }
+          ]
+        })
       }
     };
+    props.histories.at(-1).value.push({
+      modelResponseId: 'ask-response',
+      toolCallIds: ['call_ask'],
+      interactive: {
+        ...props.lastInteractive,
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      }
+    });
     props.query = runtimePrompt2ChatsValue({
       text: JSON.stringify({ answers: ['A', ''] })
     });
@@ -1088,7 +1115,13 @@ describe('dispatchRunAgent user context', () => {
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
-          userAnswer: '{"answers":["A",""]}'
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'tool',
+              tool_call_id: 'call_ask',
+              content: '## First?\n\n回答：A\n\n## Second?\n\n回答：未回答'
+            })
+          ])
         })
       })
     );
@@ -1100,10 +1133,14 @@ describe('dispatchRunAgent user context', () => {
     const props = createProps();
     props.lastInteractive = {
       type: 'agentAsk',
-      askId: 'call_ask_1',
+
       params: {
-        description: '',
-        questions: [{ question: 'Need confirmation', options: [] }]
+        toolCallId: 'call_ask_1',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Need confirmation', options: [] }]
+        })
       }
     };
     props.histories[props.histories.length - 1].memories = {
@@ -1137,20 +1174,25 @@ describe('dispatchRunAgent user context', () => {
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'paused',
       pause: {
-        type: 'ask',
-        askId: 'call_ask_2',
-        ask: {
-          reason: 'Need another confirmation',
-          blockerType: 'missing_required_input',
-          questions: [
-            {
-              question: 'Confirm again?',
-              options: [
-                { summary: 'Yes', value: 'Yes' },
-                { summary: 'No', value: 'No' }
+        toolCallId: 'call_ask_2',
+        interactive: {
+          type: 'agentAsk',
+          params: {
+            toolCallId: 'call_ask_2',
+            arguments: JSON.stringify({
+              reason: 'Need another confirmation',
+              blockerType: 'missing_required_input',
+              questions: [
+                {
+                  question: 'Confirm again?',
+                  options: [
+                    { summary: 'Yes', value: 'Yes' },
+                    { summary: 'No', value: 'No' }
+                  ]
+                }
               ]
-            }
-          ]
+            })
+          }
         }
       },
       providerState: {
@@ -1177,7 +1219,33 @@ describe('dispatchRunAgent user context', () => {
           ]
         }
       },
-      completeMessages: [],
+      completeMessages: [
+        {
+          role: 'assistant',
+          tool_calls: [
+            {
+              id: 'call_ask_2',
+              type: 'function',
+              function: {
+                name: 'ask_user',
+                arguments: JSON.stringify({
+                  reason: 'Need another confirmation',
+                  blockerType: 'missing_required_input',
+                  questions: [
+                    {
+                      question: 'Confirm again?',
+                      options: [
+                        { summary: 'Yes', value: 'Yes' },
+                        { summary: 'No', value: 'No' }
+                      ]
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        }
+      ],
       assistantMessages: [],
       requestIds: []
     });
@@ -1239,7 +1307,7 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
       expect.objectContaining({
-        askId: 'call_ask_2'
+        params: expect.objectContaining({ toolCallId: 'call_ask_2' })
       })
     );
   });
@@ -1272,7 +1340,11 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([
+    expect(
+      result[DispatchNodeResponseKeyEnum.assistantResponses].filter(
+        (value: any) => value.text || value.reasoning
+      )
+    ).toEqual([
       {
         reasoning: {
           content: 'hidden thinking'

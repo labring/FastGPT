@@ -654,7 +654,7 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     );
   });
 
-  it('keeps child nodeResponseId only inside childrenResponse when a tool call pauses', async () => {
+  it('keeps child nodeResponseId only inside interactive when a tool call pauses', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'waiting for user selection',
       assistantMessages: [],
@@ -703,15 +703,15 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(result.toolChildPause).toEqual(
+    expect(result.pause).toEqual(
       expect.objectContaining({
-        childrenResponse: expect.objectContaining({
+        interactive: expect.objectContaining({
           nodeResponseId: 'child_select_response'
         }),
         toolCallId: 'call_search'
       })
     );
-    expect(result.toolChildPause).not.toEqual(
+    expect(result.pause).not.toEqual(
       expect.objectContaining({
         nodeResponseId: expect.anything()
       })

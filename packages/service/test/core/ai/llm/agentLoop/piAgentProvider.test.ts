@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '@fastgpt/global/core/workflow/builder/constants';
+import { getWorkflowBuilderPreviewToolResponse } from '@fastgpt/global/core/workflow/builder/utils';
 
 const {
   agentPromptMock,
@@ -261,11 +266,22 @@ const modelData = {
   }
 } as any;
 
-const runPiAgentLoop: typeof runPiAgentLoopWithoutModelData = (props) =>
+type PiAgentLoopParams = Parameters<typeof runPiAgentLoopWithoutModelData>[0];
+
+/** 测试只指定模型名；执行时注入完整模型与默认团队，不冒用生产运行参数的类型。 */
+const runPiAgentLoop = (
+  props: Omit<PiAgentLoopParams, 'runtime'> & {
+    runtime: Omit<PiAgentLoopParams['runtime'], 'llmParams' | 'teamId'> & {
+      teamId?: string;
+      llmParams: Omit<PiAgentLoopParams['runtime']['llmParams'], 'model'> & { model: string };
+    };
+  }
+) =>
   runPiAgentLoopWithoutModelData({
     ...props,
     runtime: {
       ...props.runtime,
+      teamId: props.runtime.teamId ?? 'team_test',
       llmParams: {
         ...props.runtime.llmParams,
         model: modelData
@@ -931,9 +947,8 @@ describe('runPiAgentLoop', () => {
     expect(result).toMatchObject({
       status: 'paused',
       pause: {
-        type: 'tool_child',
         toolCallId: 'call_search',
-        childrenResponse: {
+        interactive: {
           type: 'userSelect'
         }
       }
@@ -1173,6 +1188,126 @@ describe('runPiAgentLoop', () => {
     });
   });
 
+  it.each([
+    { action: 'confirm' as const, followup: undefined },
+    { action: 'revise' as const, followup: undefined },
+    { action: 'revise' as const, followup: 'Use the revised preview and keep the answer brief.' }
+  ])(
+    'restores Preview $action from ChatItem with followup $followup',
+    async ({ action, followup }) => {
+      const toolCallId = 'call_preview';
+      const previewArguments = ` \n${JSON.stringify(
+        {
+          title: 'Workflow',
+          mermaid: 'flowchart TD; A-->B',
+          sections: [{ title: 'Goal', content: 'Build' }]
+        },
+        null,
+        2
+      )}\n`;
+      const feedback = 'Add an approval node.';
+      const histories: ChatItemMiniType[] = [
+        { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Build a workflow.' } }] },
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              modelResponseId: 'preview-response',
+              toolCallIds: [toolCallId],
+              interactive: {
+                type: 'workflowBuilderPreview',
+                params: { toolCallId, arguments: previewArguments },
+                entryNodeIds: ['workflow-builder-agent'],
+                memoryEdges: [],
+                nodeOutputs: []
+              }
+            }
+          ]
+        },
+        {
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              select:
+                action === 'revise'
+                  ? { type: 'workflowBuilderPreview', action, reviseText: feedback }
+                  : { type: 'workflowBuilderPreview', action }
+            }
+          ]
+        },
+        ...(followup ? [{ obj: ChatRoleEnum.Human, value: [{ text: { content: followup } }] }] : [])
+      ];
+      const messages = chats2GPTMessages({
+        messages: histories,
+        reserveId: false,
+        reserveTool: true
+      });
+      const response = JSON.stringify(
+        getWorkflowBuilderPreviewToolResponse({ previewId: toolCallId, action, feedback })
+      );
+      const executeTool = vi.fn();
+      const executeInteractiveTool = vi.fn();
+
+      const result = await runPiAgentLoop({
+        input: {
+          messages,
+          providerState: {
+            piMessages: [
+              {
+                role: 'toolResult',
+                toolCallId,
+                toolName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+                content: [{ type: 'text', text: 'Waiting for confirmation.' }],
+                details: {},
+                isError: false,
+                timestamp: 1
+              }
+            ]
+          }
+        },
+        runtime: {
+          llmParams: { model: 'gpt-5' },
+          toolCatalog: { runtimeTools: [] },
+          executeTool,
+          executeInteractiveTool,
+          checkIsStopping: () => false
+        }
+      });
+
+      expect(result.status).toBe('done');
+      expect(agentConstructorArgs.at(-1).initialState.messages).toEqual([
+        expect.objectContaining({ role: 'user', content: 'Build a workflow.' }),
+        expect.objectContaining({
+          role: 'assistant',
+          content: [
+            expect.objectContaining({
+              type: 'toolCall',
+              id: toolCallId,
+              name: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+              arguments: JSON.parse(previewArguments)
+            })
+          ]
+        }),
+        expect.objectContaining({
+          role: 'toolResult',
+          toolCallId,
+          toolName: WORKFLOW_BUILDER_PREVIEW_TOOL_NAME,
+          content: [{ type: 'text', text: response }]
+        })
+      ]);
+      expect(result.completeMessages.slice(0, messages.length)).toEqual(messages);
+      expect(executeTool).not.toHaveBeenCalled();
+      expect(executeInteractiveTool).not.toHaveBeenCalled();
+      if (followup) {
+        expect(agentPromptMock).toHaveBeenCalledExactlyOnceWith(followup);
+        expect(agentContinueMock).not.toHaveBeenCalled();
+      } else {
+        expect(agentContinueMock).toHaveBeenCalledTimes(1);
+        expect(agentPromptMock).not.toHaveBeenCalled();
+      }
+    }
+  );
+
   it('resumes child interactive through executeInteractiveTool and continues pi context', async () => {
     const emitEvent = vi.fn();
     const executeInteractiveTool = vi.fn().mockResolvedValue({
@@ -1219,9 +1354,7 @@ describe('runPiAgentLoop', () => {
             type: 'userSelect',
             entryNodeIds: ['select_1']
           },
-          toolParams: {
-            toolCallId: 'call_search'
-          }
+          toolCallId: 'call_search'
         }
       },
       runtime: {
@@ -1300,7 +1433,7 @@ describe('runPiAgentLoop', () => {
         },
         childrenInteractiveParams: {
           childrenResponse: { type: 'userSelect' },
-          toolParams: { toolCallId: 'call_search' }
+          toolCallId: 'call_search'
         }
       },
       runtime: {
@@ -1376,7 +1509,7 @@ describe('runPiAgentLoop', () => {
         },
         childrenInteractiveParams: {
           childrenResponse: { type: 'userSelect' },
-          toolParams: { toolCallId: 'call_search' }
+          toolCallId: 'call_search'
         }
       },
       runtime: {

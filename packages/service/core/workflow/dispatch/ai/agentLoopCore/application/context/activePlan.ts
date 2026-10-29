@@ -18,6 +18,7 @@ export const readAgentLoopCoreActivePlan = ({
 
     for (let valueIndex = history.value.length - 1; valueIndex >= 0; valueIndex--) {
       const value = history.value[valueIndex];
+      if (value.displayOnly) continue;
       if (!Object.prototype.hasOwnProperty.call(value, 'plan')) continue;
       if (value.plan === null) return;
 

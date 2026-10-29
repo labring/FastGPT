@@ -373,18 +373,21 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
           data: {
             interactive: {
               type: 'agentAsk',
-              askId: 'ask-1',
               params: {
-                description: '需要确认查询范围后继续。',
-                questions: [
-                  {
-                    question: '要查询哪个范围？',
-                    options: [
-                      { summary: '只查询当前电影', value: 'current_movie' },
-                      { summary: '查询导演的全部作品', value: 'all_movies' }
-                    ]
-                  }
-                ]
+                toolCallId: 'ask-1',
+                arguments: JSON.stringify({
+                  reason: '需要确认查询范围后继续。',
+                  blockerType: 'user_choice',
+                  questions: [
+                    {
+                      question: '要查询哪个范围？',
+                      options: [
+                        { summary: '只查询当前电影', value: 'current_movie' },
+                        { summary: '查询导演的全部作品', value: 'all_movies' }
+                      ]
+                    }
+                  ]
+                })
               }
             }
           }
@@ -414,7 +417,7 @@ export const getChatCompletionResponseExamples = (version: CompletionExampleVers
               type: 'toolChildrenInteractive',
               params: {
                 childrenResponse: userInputInteractive,
-                toolParams: { toolCallId: tool.id }
+                toolCallId: tool.id
               }
             }
           }

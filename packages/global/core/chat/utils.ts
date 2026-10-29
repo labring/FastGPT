@@ -29,7 +29,7 @@ export const concatHistories = (histories1: ChatItemMiniType[], histories2: Chat
 
 export const hasContextCheckpoint = (history: ChatItemMiniType) =>
   history.obj === ChatRoleEnum.AI &&
-  history.value.some((value) => Boolean(value.contextCheckpoint));
+  history.value.some((value) => !value.displayOnly && Boolean(value.contextCheckpoint));
 
 /**
  * 判定当前节点响应是否属于工具调用或工具执行详情。

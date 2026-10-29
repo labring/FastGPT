@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { AgentAskInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type AgentAskInteractive } from '@fastgpt/global/core/ai/agent/type';
 import type { WorkflowBuilderPreviewInteractive } from '@fastgpt/global/core/workflow/builder/type';
 import { getAIChatDisplayGroups } from '@/components/core/chat/ChatContainer/ChatBox/utils/agentAsk';
 
 const ask: AgentAskInteractive = {
   type: 'agentAsk',
-  askId: 'ask-1',
+
   params: {
-    description: 'Choose a direction',
-    questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
+    toolCallId: 'ask-1',
+    arguments: JSON.stringify({
+      reason: 'Choose a direction',
+      blockerType: 'user_choice',
+      questions: [{ question: 'Which direction?', options: [{ summary: 'Option A', value: 'a' }] }]
+    })
   }
 };
 const askValue = {
@@ -19,16 +23,14 @@ const before: AIChatItemValueItemType = { text: { content: 'Before ask' } };
 const after: AIChatItemValueItemType = { text: { content: 'After ask' } };
 const preview: WorkflowBuilderPreviewInteractive = {
   type: 'workflowBuilderPreview',
-  previewId: 'preview-1',
+
   params: {
-    title: 'Confirm this workflow?',
-    mermaid: 'flowchart LR\n  A --> B',
-    sections: [],
-    actions: [
-      { value: 'confirm', label: 'Confirm and build', inputMode: 'none' },
-      { value: 'revise', label: 'Revise', inputMode: 'text' },
-      { value: 'cancel', label: 'Cancel', inputMode: 'none' }
-    ]
+    toolCallId: 'preview-1',
+    arguments: JSON.stringify({
+      title: 'Confirm this workflow?',
+      mermaid: 'flowchart LR\n  A --> B',
+      sections: [{ title: 'Goal', content: 'Build the workflow' }]
+    })
   }
 };
 const previewValue = {
@@ -155,4 +157,24 @@ describe('getAIChatDisplayGroups', () => {
       ]);
     }
   );
+  it('does not render an empty bubble for hidden internal tools and preserves mixed visible text', () => {
+    const tool = {
+      id: 'internal',
+      functionName: 'ask_user',
+      params: 'invalid',
+      response: 'validation failed',
+      toolName: 'Ask',
+      toolAvatar: '',
+      hideInUI: true
+    };
+    expect(
+      getGroups([{ modelResponseId: 'hidden-response', hideInUI: true, tools: [tool] }])
+    ).toEqual([]);
+    const groups = getGroups([
+      { modelResponseId: 'mixed-response', text: { content: 'Visible' }, tools: [tool] }
+    ]);
+    expect(groups.flatMap((group) => group.values)).toMatchObject([
+      { text: { content: 'Visible' }, tools: [] }
+    ]);
+  });
 });
