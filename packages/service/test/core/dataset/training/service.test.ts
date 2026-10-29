@@ -66,9 +66,13 @@ describe('getDatasetIndexTrainingMode', () => {
 });
 
 describe('createTrainingTaskLease', () => {
-  it.each([false, true])(
-    'protects images introduced by a training stage transition (pending: %s)',
-    async (pending) => {
+  it.each(
+    [false, true].flatMap((pending) =>
+      (['image', 'link'] as const).map((syntax) => ({ pending, syntax }))
+    )
+  )(
+    'protects $syntax references introduced by a training stage transition (pending: $pending)',
+    async ({ pending, syntax }) => {
       const context = await createContext(DatasetDataIndexStatusEnum.indexing);
       const key = `dataset/${context.datasetId}/inline-images/file/${'c'.repeat(32)}.png`;
       await MongoS3TTL.create({
@@ -91,7 +95,10 @@ describe('createTrainingTaskLease', () => {
         lockTime: new Date()
       });
       const lease = createTrainingTaskLease(task);
-      const next = { mode: TrainingModeEnum.index, q: `![image](${key})` };
+      const next = {
+        mode: TrainingModeEnum.index,
+        q: `${syntax === 'image' ? '!' : ''}[view](${key})`
+      };
       try {
         if (pending) {
           await expect(lease.transition(next)).rejects.toThrow(

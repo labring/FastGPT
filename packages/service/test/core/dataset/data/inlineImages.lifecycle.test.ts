@@ -120,20 +120,27 @@ describe('dataset inline image lifecycle', () => {
     expect(await MongoS3TTL.countDocuments()).toBe(1);
   });
 
-  it.each([
-    'q',
-    'a',
-    'history.q',
-    'history.a',
-    'indexes',
-    'training.q',
-    'training.a',
-    'training.indexes'
-  ] as const)(
-    'retains escaped Markdown image references in %s until the final reference disappears',
-    async (target) => {
+  it.each(
+    (
+      [
+        'q',
+        'a',
+        'history.q',
+        'history.a',
+        'indexes',
+        'training.q',
+        'training.a',
+        'training.indexes'
+      ] as const
+    ).flatMap((target) => (['image', 'link'] as const).map((syntax) => ({ target, syntax })))
+  )(
+    'retains escaped Markdown $syntax references in $target until the final reference disappears',
+    async ({ target, syntax }) => {
       await createRecord();
-      const text = `![image](${key.replace(/[./-]/g, '\\$&')})`;
+      const text =
+        syntax === 'image'
+          ? `![image](${key.replace(/[./-]/g, '\\$&')})`
+          : `[view](${key.replace('.png', '\\.png')})`;
       // 与写入侧使用相同的实际引用获取路径，正文仍保留 Markdown 转义。
       await mongoSessionRun(async (session) => {
         await persistDatasetDataImages({ teamId, datasetId, data: [{ q: text }], session });

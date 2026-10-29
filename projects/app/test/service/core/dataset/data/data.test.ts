@@ -199,9 +199,13 @@ describe('Dataset data service', () => {
   });
 
   describe('managed inline image references', () => {
-    it.each([false, true])(
-      'only creates references to available images (cleanup pending: %s)',
-      async (pending) => {
+    it.each(
+      [false, true].flatMap((pending) =>
+        (['image', 'link'] as const).map((syntax) => ({ pending, syntax }))
+      )
+    )(
+      'only creates $syntax references to available images (cleanup pending: $pending)',
+      async ({ pending, syntax }) => {
         const { root, dataset, collection } = await createDatasetContext();
         const key = `dataset/${dataset._id}/inline-images/file/${'a'.repeat(32)}.png`;
         await MongoS3TTL.create({
@@ -219,7 +223,7 @@ describe('Dataset data service', () => {
           tmbId: String(root.tmbId),
           datasetId: String(dataset._id),
           collectionId: String(collection._id),
-          q: `![image](${key})`,
+          q: `${syntax === 'image' ? '!' : ''}[view](${key})`,
           embeddingModel
         });
         if (pending) {
@@ -234,11 +238,13 @@ describe('Dataset data service', () => {
 
     it.each(
       (['full', 'system'] as const).flatMap((kind) =>
-        [false, true].map((pending) => ({ kind, pending }))
+        [false, true].flatMap((pending) =>
+          (['image', 'link'] as const).map((syntax) => ({ kind, pending, syntax }))
+        )
       )
     )(
-      'only edits references to available images on $kind save (pending: $pending)',
-      async ({ kind, pending }) => {
+      'only edits $syntax references to available images on $kind save (pending: $pending)',
+      async ({ kind, pending, syntax }) => {
         const { data, root, dataset } = await createMongoData();
         const key = `dataset/${dataset._id}/inline-images/file/${'a'.repeat(32)}.png`;
         await MongoS3TTL.create({
@@ -251,7 +257,7 @@ describe('Dataset data service', () => {
             cleanupPending: pending
           }
         });
-        const q = `![image](${key})`;
+        const q = `${syntax === 'image' ? '!' : ''}[view](${key})`;
         const props = { dataId: String(data._id), q, a: '', model: embeddingModel };
         const update =
           kind === 'full'

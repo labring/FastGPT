@@ -991,9 +991,13 @@ describe('DatasetDataIndexOperation', () => {
   });
 
   describe('writeDatasetDataIndex', () => {
-    it.each([false, true])(
-      'protects images referenced only by custom index text (pending: %s)',
-      async (pending) => {
+    it.each(
+      [false, true].flatMap((pending) =>
+        (['image', 'link'] as const).map((syntax) => ({ pending, syntax }))
+      )
+    )(
+      'protects $syntax references in custom index text (pending: $pending)',
+      async ({ pending, syntax }) => {
         const { root, dataset, data, dataItem } = await createData();
         const key = `dataset/${dataset._id}/inline-images/file/${'d'.repeat(32)}.png`;
         await MongoS3TTL.create({
@@ -1006,16 +1010,17 @@ describe('DatasetDataIndexOperation', () => {
             cleanupPending: pending
           }
         });
+        const text = `${syntax === 'image' ? '!' : ''}[view](${key})`;
         const write = createDatasetDataIndex({
           data: dataItem,
           type: DatasetDataIndexTypeEnum.custom,
-          text: `![image](${key})`,
+          text,
           model: embeddingModel
         });
         if (pending) {
           await expect(write).rejects.toThrow('Inline image is no longer available');
           expect((await MongoDatasetData.findById(data._id).lean())!.indexes).not.toEqual(
-            expect.arrayContaining([expect.objectContaining({ text: `![image](${key})` })])
+            expect.arrayContaining([expect.objectContaining({ text })])
           );
           expect(mockVectorDelete).toHaveBeenCalledWith({
             teamId: String(root.teamId),

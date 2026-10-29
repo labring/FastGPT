@@ -22,9 +22,13 @@ vi.unmock('@fastgpt/service/support/user/audit/util');
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 describe('updateTrainingData', () => {
-  it.each(['pending', 'deleted'] as const)(
-    'rejects a new reference to a %s inline image and rolls back data and task state',
-    async (state) => {
+  it.each(
+    (['pending', 'deleted'] as const).flatMap((state) =>
+      (['image', 'link'] as const).map((syntax) => ({ state, syntax }))
+    )
+  )(
+    'rejects a new $syntax reference to a $state inline image and rolls back data and task state',
+    async ({ state, syntax }) => {
       const { root, scope } = await createDatasetCollectionFixture();
       const key = `dataset/${scope.datasetId}/inline-images/file/${'b'.repeat(32)}.png`;
       const record = await MongoS3TTL.create({
@@ -53,7 +57,7 @@ describe('updateTrainingData', () => {
       });
       const response = await Call(handler, {
         auth: root,
-        body: { dataId: task._id, q: `![image](${key})` }
+        body: { dataId: task._id, q: `${syntax === 'image' ? '!' : ''}[image](${key})` }
       });
       expect(response.code).not.toBe(200);
       expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
@@ -102,12 +106,19 @@ describe('updateTrainingData', () => {
     }
   );
 
-  it.each(['q', 'a'] as const)(
-    'renews an available escaped image in the final %s content and commits the retry',
-    async (field) => {
+  it.each(
+    (['q', 'a'] as const).flatMap((field) =>
+      (['image', 'link'] as const).map((syntax) => ({ field, syntax }))
+    )
+  )(
+    'renews an available $syntax in the final $field content and commits the retry',
+    async ({ field, syntax }) => {
       const { root, scope } = await createDatasetCollectionFixture();
       const key = `dataset/${scope.datasetId}/inline-images/file/${'b'.repeat(32)}.png`;
-      const text = `![image](${key.replace(/[./-]/g, '\\$&')})`;
+      const text =
+        syntax === 'image'
+          ? `![image](${key.replace(/[./-]/g, '\\$&')})`
+          : `[view](<${key}> "original image")`;
       const record = await MongoS3TTL.create({
         bucketName: S3Buckets.private,
         minioKey: key,
