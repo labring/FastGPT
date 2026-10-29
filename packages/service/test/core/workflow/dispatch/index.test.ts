@@ -1642,7 +1642,7 @@ describe('Workflow runtime error summary', () => {
     }
   );
 
-  it('工具执行错误只保留在节点详情中，不计入工作流失败', async () => {
+  it.each([false, true])('按调用上下文统计工具错误：isToolCall=%s', async (isToolCall) => {
     const original = callbackMap[FlowNodeTypeEnum.tool];
     const node = createNode('tool-node', FlowNodeTypeEnum.tool);
     node.isEntry = true;
@@ -1675,6 +1675,7 @@ describe('Workflow runtime error summary', () => {
         query: [],
         chatConfig: {},
         runtimeNodes: [node],
+        isToolCall,
         runtimeEdges: [],
         variableState: createWorkflowVariableState(),
         externalProvider: {},
@@ -1684,14 +1685,17 @@ describe('Workflow runtime error summary', () => {
       } as any);
 
       expect(result.workflowRuntimeSummary).toMatchObject({
-        errorCount: 0
+        errorCount: isToolCall ? 0 : 1
       });
-      expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
+      expect(result.workflowRuntimeSummary.errorText).toBe(
+        isToolCall ? undefined : 'invalid API key'
+      );
       expect(warn).toHaveBeenCalledWith('Workflow node returned error', {
         error: expect.objectContaining({ name: 'UserConfigError' })
       });
     } finally {
       callbackMap[FlowNodeTypeEnum.tool] = original;
+      warn.mockRestore();
     }
   });
 });
