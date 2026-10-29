@@ -97,6 +97,23 @@ export function useLinkedScroll<
   const { runAsync: callApi, loading: isLoading } = useRequest(api, { errorToast: '' });
 
   const scrollSign = useRef(false);
+
+  /** 本地替换完整窗口时同步游标，并丢弃替换前发出的请求，避免已删除的数据被重新合并。 */
+  const replaceDataList = useCallback(
+    (response: Pick<TData, 'list' | 'hasMorePrev' | 'hasMoreNext'>) => {
+      paramsVersionRef.current += 1;
+      scrollSign.current = false;
+      anchorRef.current = {
+        top: response.list[0] ?? null,
+        bottom: response.list.at(-1) ?? null
+      };
+      setHasMorePrev(response.hasMorePrev);
+      setHasMoreNext(response.hasMoreNext);
+      setDataList(response.list);
+    },
+    []
+  );
+
   const { runAsync: loadInitData } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       // 已经被加载的数据，直接滚动到该位置
@@ -327,6 +344,9 @@ export function useLinkedScroll<
   return {
     dataList,
     setDataList,
+    replaceDataList,
+    hasMorePrev,
+    hasMoreNext,
     isLoading,
     loadInitData,
     ScrollData,

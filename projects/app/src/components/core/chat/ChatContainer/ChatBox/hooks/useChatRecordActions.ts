@@ -35,8 +35,8 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  *   这些反馈类动作会进入后续 `useChatFeedbackActions`，避免阶段四的单个 PR 过大。
  * - `sendPrompt` 由生成 hook 提供，本 hook 不关心普通发送的 placeholder、SSE 合并、
  *   TTS、问题引导等细节，只在重试时把恢复出的输入和裁剪后的 history 交还给生成链路。
- * - 本地 `chatRecords` 会先按现有逻辑乐观更新；远端删除失败时只对重试流程 toast，
- *   单条删除仍保持原来的 fire-and-forget 行为，不在本次拆分里改变用户可见语义。
+ * - 重试和编辑先确认远端删除成功，再裁剪本地窗口；失败时保留原记录并提示。
+ *   单条删除仍沿用乐观更新和 fire-and-forget 行为。
  */
 export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) => {
   const { toast } = useToast();
@@ -45,7 +45,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
+  const truncateChatRecords = useContextSelector(ChatRecordContext, (v) => v.truncateChatRecords);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -68,12 +68,18 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
     });
   });
 
+  /** 重试和编辑共用删除入口；记录 Context 决定本地裁剪或补回缺失的历史窗口。 */
+  const deleteHistoryFrom = useMemoizedFn(async (index: number) => {
+    await onDelMessages(chatRecords.slice(index).map((item) => item.dataId));
+    return truncateChatRecords(chatRecords[index].dataId);
+  });
+
   /**
    * 生成某条 human 消息的“重试”回调。
    *
    * 按目标 `dataId` 裁剪该条及后续消息，再原样重发输入：
    * 1. 保存目标 user 的 text/files/select，裁剪该消息及后续记录。
-   * 2. 重新加载历史窗口和分页锚点，原 Ask/Preview 自然成为末轮待回答交互。
+   * 2. 删除成功后裁剪本地窗口和分页锚点，缺少前文时再补拉历史。
    * 3. 原样重发结构化输入；不补查原问题、不回写旧 AI。
    *
    * 如果没有传入 `dataId`，返回 undefined，让调用方不渲染无效动作。
@@ -84,18 +90,16 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
     return async () => {
       setIsRecordActionLoading(true);
       const index = chatRecords.findIndex((item) => item.dataId === dataId);
-      const delHistory = chatRecords.slice(index);
+      const user = chatRecords[index];
 
       try {
-        const user = delHistory[0];
         if (index < 0 || user?.obj !== ChatRoleEnum.Human) return;
-        await onDelMessages(delHistory.map((item) => item.dataId));
-        const refreshedHistory = await refreshChatRecords();
+        const history = await deleteHistoryFrom(index);
 
         sendPrompt({
           ...formatChatValue2InputType(user.value),
           hideInUI: hideInUI || user.hideInUI,
-          history: refreshedHistory
+          history
         });
       } catch (error) {
         toast({
@@ -112,7 +116,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
    * 生成某条 human 消息的“编辑后发送”回调。
    *
    * 结构化 Ask/Preview 回复没有普通文本编辑器，不提供编辑回调。普通消息先删除目标及
-   * 后续记录，再用编辑后的 text/files 和重新加载的 history 发起对话；保留原附件供复用。
+   * 后续记录，再用编辑后的 text/files 和剩余 history 发起对话；保留原附件供复用。
    */
   const editInput = useMemoizedFn((dataId?: string) => {
     if (!dataId) return;
@@ -122,16 +126,15 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
     return async (input: ChatBoxInputType) => {
       setIsRecordActionLoading(true);
       const index = chatRecords.findIndex((item) => item.dataId === dataId);
-      const delHistory = chatRecords.slice(index);
+      const currentUser = chatRecords[index];
 
       try {
-        if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
+        if (index < 0 || currentUser?.obj !== ChatRoleEnum.Human) return;
 
-        await onDelMessages(delHistory.map((item) => item.dataId));
-        const history = await refreshChatRecords();
+        const history = await deleteHistoryFrom(index);
 
         sendPrompt({
-          ...formatChatValue2InputType(delHistory[0].value),
+          ...formatChatValue2InputType(currentUser.value),
           ...input,
           history
         });
