@@ -86,14 +86,14 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           <Flex alignItems={'center'} gap={2}>
             <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
             <ChatVariableButton chatType={ChatTypeEnum.test} />
-            <MyTooltip label={t('common:core.chat.Restart')}>
+            <MyTooltip label={t('common:core.chat.New Chat')}>
               <IconButton
                 className="chat"
                 size={'smSquare'}
                 icon={<MyIcon name={'core/chat/chatLight'} w={'14px'} />}
                 variant={'whitePrimary'}
                 borderRadius={'md'}
-                aria-label={t('common:core.chat.Restart')}
+                aria-label={t('common:core.chat.New Chat')}
                 onClick={(e) => {
                   e.stopPropagation();
                   restartChat();

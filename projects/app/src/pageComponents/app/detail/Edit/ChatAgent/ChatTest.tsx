@@ -153,10 +153,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     chatConfig: appForm.chatConfig,
     isReady: !isAgentSkillSandboxUnavailable
   });
-  const restartChatLabel =
-    activeTab === AgentChatTestTabEnum.helper
-      ? t('common:core.chat.New Chat')
-      : t('common:core.chat.Restart');
+  const restartChatLabel = t('common:core.chat.New Chat');
   const onRestartChat = useCallback(() => {
     if (isAgentSkillSandboxUnavailable) {
       toast({
