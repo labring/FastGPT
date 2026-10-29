@@ -176,7 +176,8 @@ const RenderWorkflowBuilderVersion = ({
                     ? 'primary.600'
                     : 'myGray.400'
                 }
-                _hover={{ color: 'primary.600' }}
+                transition="transform 180ms ease"
+                _hover={{ transform: 'translateY(-1px)' }}
                 onClick={onDislike}
               >
                 <MyIcon name="core/chat/feedback/badLight" boxSize="16px" />

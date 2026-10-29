@@ -112,6 +112,8 @@ const ChatController = ({
     color,
     ...(isFooter && !disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {})
   });
+  const feedbackHoverStyle =
+    isFooter && !disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {};
   const iconStyle = isFooter
     ? {
         ...footerIconStyle,
@@ -374,11 +376,8 @@ const ChatController = ({
                   ) : (
                     <MyIcon
                       {...iconStyle}
-                      {...(!!chat.userGoodFeedback
-                        ? activeFeedbackStyle
-                        : {
-                            _hover: getIconHoverStyle('primary.600')
-                          })}
+                      {...(!!chat.userGoodFeedback ? activeFeedbackStyle : {})}
+                      _hover={feedbackHoverStyle}
                       borderRight={!onAddUserDislike ? 'none' : 'base'}
                       borderRightRadius={!onAddUserDislike ? 'sm' : 'none'}
                       name={'core/chat/feedback/goodLight'}
@@ -391,11 +390,8 @@ const ChatController = ({
                 <MyTooltip label={t('chat:feedback_unhelpful')}>
                   <MyIcon
                     {...iconStyle}
-                    {...(!!chat.userBadFeedback
-                      ? activeBadFeedbackStyle
-                      : {
-                          _hover: getIconHoverStyle('primary.600')
-                        })}
+                    {...(!!chat.userBadFeedback ? activeBadFeedbackStyle : {})}
+                    _hover={feedbackHoverStyle}
                     borderRight={isFooter ? undefined : 'none'}
                     borderRightRadius={isFooter ? undefined : 'sm'}
                     name={'core/chat/feedback/badLight'}

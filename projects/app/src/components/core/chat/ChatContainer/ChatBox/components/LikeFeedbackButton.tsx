@@ -218,7 +218,6 @@ const LikeFeedbackButton = ({
       filter={isActive ? 'drop-shadow(0 6px 12px rgba(51, 112, 255, 0.18))' : undefined}
       transition="color 180ms ease, transform 180ms ease, filter 180ms ease"
       _hover={{
-        color: 'primary.600',
         ...(!disableHoverTranslate && { transform: 'translateY(-1px)' })
       }}
       onClick={handleClick}
