@@ -160,13 +160,15 @@ describe('RenderWorkflowBuilderVersion', () => {
     expect(mocks.notifyVersionExpired).not.toHaveBeenCalled();
   });
 
-  it('keeps the title and icon applied after the temporary button feedback ends', async () => {
+  it('allows reapplying during the success hint and keeps the title and icon applied afterwards', async () => {
     vi.useFakeTimers();
     mocks.applyVersion.mockResolvedValue({ ...version, appliedAt: new Date().toISOString() });
     await renderAndApply();
 
     expect(applyButton().textContent).toBe('workflow_builder_version_applied');
-    expect(applyButton().disabled).toBe(true);
+    expect(applyButton().disabled).toBe(false);
+    await act(async () => applyButton().click());
+    expect(mocks.applyVersion).toHaveBeenCalledTimes(2);
     await act(async () => vi.advanceTimersByTime(1200));
     expect(applyButton().textContent).toBe('workflow_builder_version_apply');
     expect(applyButton().disabled).toBe(false);
@@ -174,6 +176,24 @@ describe('RenderWorkflowBuilderVersion', () => {
     expect(
       container.querySelector('[data-icon="core/app/workflowVersion"]')?.getAttribute('data-color')
     ).toBe('myGray.600');
+  });
+
+  it('locks a repeat application while pending and allows retry after failure', async () => {
+    mocks.applyVersion.mockResolvedValueOnce({ ...version, appliedAt: new Date().toISOString() });
+    await renderAndApply();
+    let reject!: (reason: Error) => void;
+    mocks.applyVersion.mockReturnValueOnce(
+      new Promise((_, fail) => {
+        reject = fail;
+      })
+    );
+    await act(async () => applyButton().click());
+    expect(applyButton().disabled).toBe(true);
+    await act(async () => applyButton().click());
+    expect(mocks.applyVersion).toHaveBeenCalledTimes(2);
+    await act(async () => reject(new Error('apply failed')));
+    expect(applyButton().disabled).toBe(false);
+    expect(applyButton().textContent).toBe('workflow_builder_version_apply');
   });
 
   it('disables other version cards until the shared application finishes', async () => {

@@ -77,6 +77,9 @@ const RenderWorkflowBuilderVersion = ({
 
   const run = async (callback: () => Promise<void>) => {
     if (loading || actions?.isApplying) return;
+    // 成功提示不阻止再次应用；新请求开始后清除上一次提示，避免失败时仍显示成功。
+    if (appliedResetTimerRef.current) clearTimeout(appliedResetTimerRef.current);
+    setShowApplied(false);
     setLoading(true);
     try {
       await callback();
@@ -130,8 +133,7 @@ const RenderWorkflowBuilderVersion = ({
   const isUnavailable = buttonState === 'expired';
   const buttonBackground =
     buttonState === 'loading' || isUnavailable ? 'rgba(51, 112, 255, 0.30)' : '#3370FF';
-  const isActionDisabled =
-    !actions || actions.isApplying || isUnavailable || buttonState === 'applied';
+  const isActionDisabled = !actions || actions.isApplying || isUnavailable;
 
   return (
     <Flex
@@ -237,14 +239,14 @@ const RenderWorkflowBuilderVersion = ({
         boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
         _hover={{
           bg:
-            buttonState === 'loading' || isUnavailable || buttonState === 'applied'
+            buttonState === 'loading' || isUnavailable
               ? buttonBackground
               : 'rgba(51, 112, 255, 0.90)'
         }}
         isLoading={buttonState === 'loading'}
         spinner={<Spinner boxSize="16px" thickness="2px" speed="0.65s" />}
         isDisabled={isActionDisabled}
-        _disabled={{ opacity: 1, cursor: buttonState === 'applied' ? 'default' : 'not-allowed' }}
+        _disabled={{ opacity: 1, cursor: 'not-allowed' }}
         onClick={() => void apply()}
       >
         {primaryText}

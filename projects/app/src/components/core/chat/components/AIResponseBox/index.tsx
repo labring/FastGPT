@@ -228,7 +228,7 @@ const AIResponseBox = ({
         key={`chatAgentBuilderVersion-${value.chatAgentBuilderVersion.s3Key}`}
         version={value.chatAgentBuilderVersion}
         responseChatItemId={chatItemDataId}
-        isChatting={isChatting}
+        isChatting={disableStreamingInteraction}
       />
     );
   }
