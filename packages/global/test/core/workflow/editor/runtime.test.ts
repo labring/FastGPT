@@ -1593,6 +1593,61 @@ describe('workflow editor runtime modules', () => {
     expect(getChildren()).toEqual(['floating', 'c1']);
   });
 
+  it('refreshes reachability downstream after reconnecting an unreachable node', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'start',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Source',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'target',
+          flowNodeType: FlowNodeTypeEnum.answerNode,
+          name: 'Target',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'target',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+    expect(editor.getNode('target')?.issues.map((issue) => issue.code)).toContain(
+      'unreachable_from_start'
+    );
+
+    expect(
+      editor.dispatch({
+        type: 'connectEdge',
+        edge: {
+          source: 'start',
+          target: 'source',
+          sourceHandle: 'source',
+          targetHandle: 'target'
+        }
+      }).ok
+    ).toBe(true);
+    expect(editor.getNode('target')?.issues).not.toContainEqual(
+      expect.objectContaining({ code: 'unreachable_from_start' })
+    );
+  });
+
   it('derives the container array value type from the referenced output', () => {
     const editor = createContainerRuntime();
     const getArrayValueType = () =>

@@ -91,7 +91,7 @@ export const createIssueModule = ({
     const queue: string[] = [];
     const queued = new Set<string>();
     const enqueue = (nodeId: string) => {
-      if (!affectedNodeIds.has(nodeId) || queued.has(nodeId)) return;
+      if (queued.has(nodeId)) return;
       queued.add(nodeId);
       queue.push(nodeId);
     };
