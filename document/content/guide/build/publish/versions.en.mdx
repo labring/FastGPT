@@ -16,7 +16,7 @@ The published snapshot contains workflow nodes, edges, and chat configuration. C
 | Configuration State | Accessed By | Included Scope | When Changes Take Effect |
 | --- | --- | --- | --- |
 | **Editor Draft** | Application editor canvas and the right-hand Debug Preview drawer | Current canvas nodes, edges, AI parameters, prompts, and tool bindings | Takes effect immediately in editor debugging after auto-save or clicking **Save Only** |
-| **Published Version** | Portal (`/chat`), share links, API (`/v1/chat/completions`), MCP services, WeCom/Feishu/DingTalk/WeChat channels, and scheduled triggers | Workflow topology, system configuration, and resource snapshot captured at publish time | Takes effect across all external channels immediately after clicking **Save → Save and Publish** |
+| **Published Version** | Portal, share links, API (`/v1/chat/completions`), MCP services, WeCom/Feishu/DingTalk/WeChat channels, and scheduled triggers | Workflow topology, system configuration, and resource snapshot captured at publish time | Takes effect across all external channels immediately after clicking **Save → Save and Publish** |
 | **Version History** | "Version History" drawer in the top-right corner of the editor | Version names, timestamps, and snapshots of previous releases | Restoring a historical version updates the editor draft; click **Save and Publish** again to make it the live version |
 
 ## Publish a change

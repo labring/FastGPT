@@ -3,6 +3,15 @@ title: 会话、流式响应与错误处理
 description: 管理 chatId，消费 SSE 内容，并区分请求错误和运行失败。
 ---
 
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="📖" context="info">
+  **在线 API 文档**：接口完整入参、出参 Schema 及开放范围以最新在线 API 文档说明为准：
+  - 中国大陆云服务：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+  - 国际云服务：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
+  - 私有化自部署：`<instance>/apidoc/systemopenapi`
+</Alert>
+
 先完成[首次请求](/zh-CN/openapi/intro)。当前接口支持 `stream: false` 的 JSON 响应及 `stream: true` 的事件流。
 
 ## 会话标识

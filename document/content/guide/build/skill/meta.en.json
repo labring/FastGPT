@@ -4,9 +4,9 @@
   "pages": [
     "intro",
     "initialization",
+    "development",
     "version",
     "integration",
-    "!development",
     "package-reference"
   ]
 }

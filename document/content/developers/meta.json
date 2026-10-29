@@ -12,9 +12,13 @@
     "../openapi/chat",
     "../openapi/dataset",
     "../guide/dataset/third-party/third_dataset",
-    "---扩展开发---",
-    "../plugin",
-    "../guide/build/skill/development",
+    "---插件系统---",
+    "../plugin/intro",
+    "../plugin/quick-start",
+    "../plugin/system-tool-development",
+    "../plugin/model-presets",
+    "../plugin/debugging-and-publishing",
+    "../plugin/package-reference",
     "---历史参考---",
     "../openapi/legacy"
   ]

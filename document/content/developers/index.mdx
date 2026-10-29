@@ -10,7 +10,7 @@ description: 选择 API 集成或扩展开发，连接 FastGPT 并开发插件�
 
 <Cards>
   <Card title="API 集成" href="/zh-CN/openapi/intro">完成首次请求，再接入应用、对话与知识库。</Card>
-  <Card title="扩展开发" href="#扩展开发与生态">开发工具插件、增加模型预设，或接入 Skill 与外部知识库。</Card>
+  <Card title="插件系统" href="#插件系统">开发系统工具插件、增加模型预设，并打包发布到工作台。</Card>
 </Cards>
 
 ## 开发者集成全景
@@ -39,13 +39,14 @@ API Key 保存在可信服务端。身份代理按需启用，要求接口支持
 4. [会话与 17 类流式事件](/zh-CN/openapi/chat)：管理持久化 `chatId`，深度解析回答、思考、节点状态、计划与交互挂起事件帧。
 5. [知识库全生命周期集成](/zh-CN/openapi/dataset)：通过 API 创建集合、异步推送文档到训练队列、检索测试与命中调优。
 
-## 扩展开发与生态
+<span id="扩展开发与生态" />
+
+## 插件系统
 
 - [插件开发专题](/zh-CN/plugin/intro)：了解插件类型与开发路径，从[首个工具教程](/zh-CN/plugin/quick-start)开始，继续完成[调试与发布](/zh-CN/plugin/debugging-and-publishing)。
 - [系统工具开发](/zh-CN/plugin/system-tool-development)：使用 `@fastgpt-plugin/cli` 研发单工具（`defineTool`）与工具集（`defineToolSet`）。
 - [模型预设扩展](/zh-CN/plugin/model-presets)：为新模型供应商添加静态配置与 AIProxy 渠道映射。
-- [Skill 技能研发](/zh-CN/guide/build/skill/development)：在沙箱环境中实现带持久上下文的 Agent 技能。
-- [外部知识库对接](/zh-CN/guide/dataset/third-party/third_dataset)：通过标准 HTTP 接口接入企业自建向量检索与知识源。
+- [插件包与 SDK 参考](/zh-CN/plugin/package-reference)：查阅插件目录规范、打包产物格式与 SDK 类型定义。
 
 ## 机器可读 OpenAPI 契约
 

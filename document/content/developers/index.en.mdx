@@ -10,7 +10,7 @@ description: Choose API integration or extension development to connect FastGPT 
 
 <Cards>
   <Card title="API integration" href="/en/openapi/intro">Make your first request, then integrate Apps, conversations, and Datasets.</Card>
-  <Card title="Extension development" href="#extension-development">Build tool plugins, contribute model presets, or connect Skills and external Datasets.</Card>
+  <Card title="Plugin system" href="#plugin-system">Build system tool plugins, contribute model presets, and package them for FastGPT.</Card>
 </Cards>
 
 ## Developer Integration Architecture
@@ -39,13 +39,14 @@ Each endpoint declares the credentials it accepts. Use the generated contract to
 4. [Conversations and 17 SSE Stream Events](/en/openapi/chat): Maintain persistent `chatId` sessions and parse answer chunks, thoughts, node statuses, plans, and interactive pauses.
 5. [Knowledge Base Integration](/en/openapi/dataset): Create collections via API, push content to training queues asynchronously, and run search tests.
 
-## Extension Development
+<span id="extension-development" />
+
+## Plugin System
 
 - [Plugin development](/en/plugin/intro): Explore plugin types and development paths, start with [your first tool](/en/plugin/quick-start), and continue to [debugging and publishing](/en/plugin/debugging-and-publishing).
 - [System Tool Development](/en/plugin/system-tool-development): Build single tools (`defineTool`) and tool suites (`defineToolSet`) with `@fastgpt-plugin/cli`.
 - [Model Presets](/en/plugin/model-presets): Register new model providers and map AIProxy channels.
-- [Skill Development](/en/guide/build/skill/development): Create persistent Agent skills in isolated sandbox environments.
-- [External Datasets](/en/guide/dataset/third-party/third_dataset): Connect custom vector engines and search APIs via standard HTTP contracts.
+- [Package and SDK Reference](/en/plugin/package-reference): Inspect plugin directory conventions, package archive formats, and SDK type definitions.
 
 ## Machine-Readable OpenAPI Contracts
 

@@ -6,7 +6,7 @@
     "sandbox",
     "object-storage",
     "env",
-    "!signoz",
-    "!remote-debug-suite"
+    "signoz",
+    "remote-debug-suite"
   ]
 }

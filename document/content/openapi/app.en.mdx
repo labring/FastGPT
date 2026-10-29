@@ -3,6 +3,15 @@ title: Integrate applications and workflow tools
 description: Select an application, call its published version, and verify input, output, and permissions.
 ---
 
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="📖" context="info">
+  **Online API Reference**: Always refer to the latest online API documentation for complete request/response schemas and endpoint availability:
+  - Mainland China Cloud: [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+  - International Cloud: [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
+  - Self-Hosted Instance: `<instance>/apidoc/systemopenapi`
+</Alert>
+
 ## Before calling
 
 Complete [your first request](/en/openapi/intro) and confirm that the current member can read the target application. Editing and publishing have their own permissions. Actual calls use published runtime configuration; see [published versions](/en/guide/build/publish/versions).
@@ -35,11 +44,9 @@ Workflow tools declare input and output contracts and can execute independently.
 
 For conversation reuse and streamed content, read [conversation integration](/en/openapi/chat); for interactive node suspension and file inputs, read [Interactive Suspension Resume and File Input API Flow](/en/openapi/interactive-and-variables).
 
-## System OpenAPI Endpoint Reference (App Logs and Models)
+## System OpenAPI Endpoint Reference (Application Logs and Analytics)
 
 The endpoints below accept team-level `Authorization: Bearer <apiKey>` authentication (commercial analytics endpoints use the `/api/proApi/` prefix):
-
-### 1. Application Logs and Analytics (`appLog`)
 
 | Method | Path | Summary | Key Parameters (Query / Body) |
 | --- | --- | --- | --- |
@@ -47,14 +54,6 @@ The endpoints below accept team-level `Authorization: Bearer <apiKey>` authentic
 | `POST` | `/api/core/app/logs/getUsers` | List users recorded in application logs | Body: `appId` (required), `dateStart`, `dateEnd`, `searchKey` |
 | `GET` | `/api/proApi/core/app/logs/getTotalData` | Get cumulative application totals (users, chats, consumed points) | Query: `appId` (required) |
 | `POST` | `/api/proApi/core/app/logs/getChartData` | Get time-series chart metrics (users, turns, feedback, token usage) | Body: `appId` (required), `dateStart`, `dateEnd`, `source` |
-
-### 2. Model Discovery (`model`)
-
-| Method | Path | Summary | Key Parameters and Response |
-| --- | --- | --- | --- |
-| `GET` | `/api/core/ai/model/list` | List active public system models and pricing | No parameters required; returns `model`, `name`, `type` (`llm`/`embedding`/`rerank`/`tts`/`stt`), and token rates |
-| `GET` | `/api/core/ai/model/catalog` | Get the current member's available model catalog and defaults | Query: `version` (optional version negotiation); returns accessible models, providers, and default model IDs |
-| `POST` | `/api/core/ai/model/summary` | Batch-fetch display metadata and availability for model IDs | Body: `modelIds` (string array), `appId` (optional); returns display names, icons, types, and status |
 
 [Historical application parameters](/en/openapi/legacy/app) preserve earlier log-interface documentation for maintaining existing integrations.
 

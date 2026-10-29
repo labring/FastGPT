@@ -3,51 +3,51 @@ title: Usage Dashboard, Billing, Invoices, and Subscription Plans
 description: Track team AI point consumption, manage subscription plans and add-on packs, request invoices, and configure personal account settings.
 ---
 
-In the **Account** center (`/account/*`), team owners and members can monitor AI point consumption, manage subscriptions and add-on resource packs, request invoices, and maintain personal profile and preference settings.
+In the **Account** center, team owners and members can monitor AI point consumption, manage subscriptions and add-on resource packs, request invoices, and maintain personal profile and preference settings.
 
-## 1. Usage Details and Dashboard (`/account/usage`)
+## 1. Usage Details and Dashboard
 
 Open **Account → Usage Records** to switch between **Usage Details** and the **Usage Dashboard**:
 
-### 1. Usage Details (`usageTab=detail`)
+### 1. Usage Details
 
 - **Multi-dimensional filters**: Filter by team member, usage source (editor debug, portal chat, share link, OpenAPI, knowledge indexing, automated evaluation, MCP call), project name, and date range.
 - **Line-item breakdown**: Inspect timestamp, member, source, target application or knowledge base, and consumed AI points, and expand any row to view input/output token counts and unit rates.
 - **CSV export**: Export filtered usage records to CSV for internal cost allocation and financial reconciliation.
 
-### 2. Usage Dashboard (`usageTab=dashboard`)
+### 2. Usage Dashboard
 
 - Visualize daily or monthly AI point consumption trends, top applications by usage, model call distribution, and knowledge indexing share to spot high-cost workflows or unexpected traffic spikes.
 
-## 2. Subscription Plans and Add-On Packs (`/price`)
+## 2. Subscription Plans and Add-On Packs
 
 Open **Plans & Pricing** to inspect your team's active plan tier and resource quotas:
 
 | Resource Category | Included Capabilities | Scaling and Activation Rules |
 | --- | --- | --- |
-| **Standard Plans (Monthly / Yearly)** | Team member cap, application limit, knowledge base dataset capacity, included AI points, and sandbox concurrency quotas | Plan upgrades take effect immediately; exact tier quotas follow your environment's `/price` page |
+| **Standard Plans (Monthly / Yearly)** | Team member cap, application limit, knowledge base dataset capacity, included AI points, and sandbox concurrency quotas | Plan upgrades take effect immediately; exact tier quotas follow your environment's pricing page |
 | **Extra AI Point Packs** | Standalone top-up packs of AI compute points | Consumed automatically when plan-included points are exhausted, with selectable quantity and validity period |
 | **Extra Knowledge Index Packs** | Additional vector index capacity for knowledge bases | Stacks onto your team's total dataset index quota during the pack's validity window |
 
-The **AI Point Pricing Table** at the bottom of `/price` lists per-1K-token point rates across language models, embedding models, rerankers, speech models, and enhanced PDF parsing.
+The **AI Point Pricing Table** at the bottom of the pricing page lists per-1K-token point rates across language models, embedding models, rerankers, speech models, and enhanced PDF parsing.
 
-## 3. Bills and Invoice Management (`/account/bill`)
+## 3. Bills and Invoice Management
 
 Open **Account → Bills & Invoices** to manage billing records across three tabs:
 
-1. **Bills (`invoiceTab=bill`)**: View subscription orders and add-on purchases, payment status, paid amount, and validity dates.
-2. **Invoices (`invoiceTab=invoice`)**: Select one or more paid bills to submit an invoice request and download issued PDF invoices.
-3. **Invoice Headers (`invoiceTab=invoiceHeader`)**: Save standard or VAT special invoice headers (company name, tax ID, bank account, registered address, phone, and recipient email) for reuse.
+1. **Bills**: View subscription orders and add-on purchases, payment status, paid amount, and validity dates.
+2. **Invoices**: Select one or more paid bills to submit an invoice request and download issued PDF invoices.
+3. **Invoice Headers**: Save standard or VAT special invoice headers (company name, tax ID, bank account, registered address, phone, and recipient email) for reuse.
 
 ## 4. Personal Profile, Security, and Preferences
 
-| Section | Route | Capabilities |
-| --- | --- | --- |
-| **Profile & Enterprise Verification** | `/account/info` | Update avatar, member display name, phone/email, and password; submit enterprise verification; redeem promo codes and inspect coupons |
-| **API Keys** | `/account/apikey` | Create, edit, set point/expiration limits, and revoke member OpenAPI keys; see [Access App via API](/en/guide/build/publish/openapi) |
-| **Notifications** | `/account/inform` | Read team invitations, quota alerts, billing reminders, and system announcements |
-| **Language & Timezone** | `/account/setting` | Switch UI language (Simplified Chinese, Traditional Chinese, English, Japanese) and default timezone |
-| **Third-Party Connections** | `/account/thirdParty` | Manage linked third-party login or external service authorizations |
-| **Account Cancellation** | `/account/cancel` | Review owned teams and assets before completing account deletion |
+| Section | Capabilities |
+| --- | --- |
+| **Account → Profile** | Update avatar, member display name, phone/email, and password; submit enterprise verification; redeem promo codes and inspect coupons |
+| **Account → API Keys** | Create, edit, set point/expiration limits, and revoke member OpenAPI keys; see [Access App via API](/en/guide/build/publish/openapi) |
+| **Account → Notifications** | Read team invitations, quota alerts, billing reminders, and system announcements |
+| **Account → Preferences** | Switch UI language (Simplified Chinese, Traditional Chinese, English, Japanese) and default timezone |
+| **Account → Third-Party Connections** | Manage linked third-party login or external service authorizations |
+| **Account → Account Cancellation** | Review owned teams and assets before completing account deletion |
 
 Next: Configure team organization in [Team Roles and Permissions](/en/guide/workspace/team/team_roles_permissions) or inspect [Available Team Models](/en/guide/workspace/models).

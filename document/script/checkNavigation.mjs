@@ -34,7 +34,7 @@ const files = fs.readdirSync(root, { recursive: true })
     return { type: 'meta', path: name, data: JSON.parse(raw) };
   });
 const source = loader({ baseUrl: '/', i18n: { defaultLanguage: 'zh-CN', languages: ['zh-CN', 'en'], hideLocale: 'never' }, source: { files } });
-const compatibilityLandings = new Set(['toc.mdx']);
+const compatibilityLandings = new Set(['toc.mdx', 'guide/chat/htmlRendering.mdx']);
 for (const locale of ['zh-CN', 'en']) {
   const tree = source.pageTree[locale];
   assert.equal(tree.children.length, 3, 'Three reader entrances');
@@ -70,7 +70,7 @@ for (const locale of ['zh-CN', 'en']) {
   }
   assert.equal(owners.get(`/${locale}/plugin/team-installation`), tree.children[0], 'Team installation belongs to Use FastGPT');
   assert.equal(owners.get(`/${locale}/plugin/runtime`), tree.children[2], 'Plugin operations belong to Deploy and Operate');
-  assert.equal(owners.get(`/${locale}/guide/build/tools/system-plugins/upload_system_tool`), tree.children[2], 'System installation belongs to Deploy and Operate');
+  assert.equal(owners.get(`/${locale}/guide/build/tools/system-plugins/upload_system_tool`), tree.children[0], 'System tool configuration belongs to Use FastGPT');
   assert.ok(!counts.has(`/${locale}/plugin`), 'The compatibility landing stays out of adjacent-page navigation');
   console.log(`${locale}: ${source.getPages(locale).length} pages accounted for under three entrances.`);
 }

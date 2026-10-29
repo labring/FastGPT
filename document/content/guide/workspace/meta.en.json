@@ -5,10 +5,6 @@
     "team",
     "models",
     "usage-and-billing",
-    "customDomain",
-    "../version/cloud/intro",
-    "../version/cloud/faq",
-    "../version/cloud/terms",
-    "../version/cloud/privacy"
+    "customDomain"
   ]
 }

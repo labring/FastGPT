@@ -3,7 +3,7 @@ title: Inspect and choose team models
 description: Select models by capabilities, access scope, and pricing, and find the relevant configuration entrance.
 ---
 
-Open **Account → Model Services** (`/account/model`) to inspect the active model catalog, filter by provider and model category, check tiered token pricing, and—when team model management is enabled—configure model channels.
+Open **Account → Model Services** to inspect the active model catalog, filter by provider and model category, check tiered token pricing, and—when team model management is enabled—configure model channels.
 
 ## Choose for the task
 
@@ -24,14 +24,14 @@ Display names, model instance identifiers, and provider model names serve differ
 
 Members with model-installation permission can configure team models through the templates and channels offered by the interface. Root administrators manage system models. SaaS accounts may expose only the available catalog. See [model configuration](/en/self-host/config/model/intro) for self-hosted administration.
 
-- **Available Model Catalog (`modelTab=active_model`)**: Displayed in all environments; filter by provider (such as Qwen, DeepSeek, OpenAI, GLM, MiniMax) and model type, and hover over pricing cells to inspect tiered input/output rates.
-- **Team & Platform Model Administration (when `feConfigs.enable_team_model` is enabled or under `/admin/resources/model`)**: Exposes **Model Config** (`config`), **Channels** (`channel`), **Channel Logs** (`channel_log`), and **Provider Health Monitoring** (`account_model`) tabs for AIProxy routing, connectivity tests, and webhook alerts.
+- **Available Model Catalog**: Displayed in all environments; filter by provider (such as Qwen, DeepSeek, OpenAI, GLM, MiniMax) and model type, and hover over pricing cells to inspect tiered input/output rates.
+- **Team & Platform Model Administration (when `feConfigs.enable_team_model` is enabled or in Admin Console → Resources → Models)**: Exposes **Model Config**, **Channels**, **Channel Logs**, and **Provider Health Monitoring** tabs for AIProxy routing, connectivity tests, and webhook alerts.
 
 If a listed model fails during execution, inspect the selected instance, member permissions, channel credentials, provider status, and quota. Test configuration updates before verifying dependent applications.
 
 ## Bulk Replace Invalid Team Model References
 
-When a model is retired or its identifier changes, a **Team Owner** can click **Replace unavailable models** in the filter bar of **Account → Model Services** (`/account/model`) to repair unavailable static model references across team assets:
+When a model is retired or its identifier changes, a **Team Owner** can click **Replace unavailable models** in the filter bar of **Account → Model Services** to repair unavailable static model references across team assets:
 
 1. **Select Replacement Models**: Choose the target **Language Model (LLM)**, **Text-to-Speech Model (TTS)**, and **Rerank Model** in the modal.
 2. **Scan and Replacement Scope**: Upon confirmation, the system scans the current team's **Datasets**, **Apps**, and **all historical App versions** (including custom model selector fields), replacing unavailable static model references with the selected targets and updating valid resource snapshots. Empty values, dynamic variable references, and Embedding models are skipped (changing an Embedding model requires an index rebuild in the knowledge base settings).
