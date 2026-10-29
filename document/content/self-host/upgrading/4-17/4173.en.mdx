@@ -157,6 +157,7 @@ This release adds the following automatic background migrations. They run indepe
 64. Fixed dropdowns staying open when dragging Workflow Nodes. Selectors, menus, date pickers, and variable reference popovers now close consistently when dragging starts.
 65. Fixed out-of-range time inputs unexpectedly advancing the date. On blur, hours are clamped to 0–23 and minutes and seconds to 0–59. Changing the date preserves the current time edits.
 66. Fixed the first-time guide remaining in its original position after opening a Workflow side panel. Opening a panel now dismisses the guide and cancels its automatic panel-opening action.
+67. Fixed failed MCP, HTTP, or system Tools run directly by a Workflow appearing only in run details without a chat error card. Direct Workflow execution is now distinguished from model Tool calls, and MCP responses with `isError: true` are recognized as execution failures. Caught errors do not appear as chat errors, while model Tool calls retain errors for the model to handle.
 
 ## 🛠️ Code improvements
 

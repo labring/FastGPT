@@ -864,6 +864,19 @@ describe('removeAIResponseCite', () => {
 });
 
 describe('isToolExecutionResponse', () => {
+  it.each([false, true])('prefers the recorded execution context isToolCall=%s', (isToolCall) => {
+    expect(
+      isToolExecutionResponse({
+        id: 'mcp-response',
+        nodeId: 'mcp-node',
+        moduleName: 'MCP',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: { error: 'failed' },
+        isToolCall
+      })
+    ).toBe(isToolCall);
+  });
+
   it('does not treat child workflow nodes as tools solely based on parentId', () => {
     expect(
       isToolExecutionResponse({

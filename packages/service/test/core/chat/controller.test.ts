@@ -1191,6 +1191,7 @@ describe('getChatItems', () => {
             id: 'tool-response',
             moduleName: 'Tool',
             moduleType: FlowNodeTypeEnum.tool,
+            isToolCall: false,
             toolRes: {
               citeLinks: [
                 {
@@ -1234,6 +1235,7 @@ describe('getChatItems', () => {
       });
 
       const item = result.histories[0];
+      if (item.obj !== ChatRoleEnum.AI) throw new Error('Expected an AI chat item');
       expect(item.responseData?.map((response) => response.id)).toEqual([
         'dataset-response',
         'tool-response',
@@ -1256,6 +1258,7 @@ describe('getChatItems', () => {
         ]
       });
       expect(item.responseData?.[1].errorText).toBe('tool failed');
+      expect(item.responseData?.[1].isToolCall).toBe(false);
       expect(item.responseData?.[2].historyPreview).toBeUndefined();
       expect(item.responseData?.[2].toolRes?.result).toBeUndefined();
     });

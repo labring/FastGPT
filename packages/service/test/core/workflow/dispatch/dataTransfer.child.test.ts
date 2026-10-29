@@ -16,6 +16,8 @@ import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import * as workflowMetrics from '@fastgpt/service/core/workflow/metrics';
+import * as mcp from '@fastgpt/service/core/app/mcp';
+import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import {
   graphNode,
   graphEdge,
@@ -66,6 +68,94 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('child workflow data transfer without mocking runWorkflow', () => {
+  /** 只替换外部 MCP 调用，实际执行节点、错误分支、摘要和前端共用的错误提取逻辑。 */
+  const mockMcpFailure = (failure: 'transport' | 'result') => {
+    const message = 'MCP requests through an HTTP proxy are not supported by SSRF protection';
+    vi.spyOn(mcp, 'assertMCPUrlNotInternal').mockResolvedValue(undefined);
+    const toolCall = vi.spyOn(mcp.MCPClient.prototype, 'toolCall');
+    if (failure === 'transport') toolCall.mockRejectedValue(new UserConfigError(message));
+    else toolCall.mockResolvedValue({ isError: true, content: [{ type: 'text', text: message }] });
+    return message;
+  };
+
+  const mcpNode = () =>
+    graphNode({
+      id: 'mcp',
+      type: FlowNodeTypeEnum.tool,
+      isEntry: true,
+      params: { toolData: { name: 'search', url: 'https://mcp.example.com' }, query: 'hello' },
+      outputs: [NodeOutputKeyEnum.rawResponse, NodeOutputKeyEnum.errorText]
+    });
+
+  it.each([
+    { failure: 'transport', catchError: false },
+    { failure: 'result', catchError: false },
+    { failure: 'transport', catchError: true },
+    { failure: 'result', catchError: true }
+  ] as const)(
+    'surfaces direct MCP $failure failures with catchError=$catchError',
+    async ({ failure, catchError }) => {
+      const message = mockMcpFailure(failure);
+      const source = { ...mcpNode(), catchError };
+      const normal = graphNode({ id: 'normal', type: FlowNodeTypeEnum.toolParams });
+      const caught = graphNode({
+        id: 'caught',
+        type: FlowNodeTypeEnum.toolParams,
+        inputs: [graphReference({ key: 'message', from: ['mcp', NodeOutputKeyEnum.errorText] })],
+        outputs: ['message']
+      });
+      const { result, responses } = await runGraph({
+        nodes: [source, normal, caught],
+        edges: [
+          graphEdge({ source: 'mcp', target: 'normal' }),
+          graphEdge({ source: 'mcp', target: 'caught', error: true })
+        ]
+      });
+      expect(responses.some((item) => item.nodeId === 'normal')).toBe(false);
+      expect(graphValues(caught).message).toBe(catchError ? message : undefined);
+      expect(result.workflowRuntimeSummary.errorCount).toBe(catchError ? 0 : 1);
+      expect(responses.find((item) => item.nodeId === 'mcp')).toMatchObject({
+        isToolCall: false,
+        errorText: message
+      });
+      expect(findFailedResponseNode(responses)?.errorText).toBe(catchError ? undefined : message);
+    }
+  );
+
+  it('propagates a child MCP failure to the canvas plugin and chat error', async () => {
+    const message = mockMcpFailure('transport');
+    loadChild.mockResolvedValue(childResource({ nodes: [mcpNode()], edges: [] }));
+    const plugin = graphNode({
+      id: 'plugin',
+      type: FlowNodeTypeEnum.pluginModule,
+      pluginId: 'childplugin',
+      isEntry: true,
+      outputs: [NodeOutputKeyEnum.errorText]
+    });
+    const { result, responses } = await runGraph({ nodes: [plugin] });
+    expect(result.workflowRuntimeSummary.errorCount).toBe(1);
+    expect(graphValues(plugin)[NodeOutputKeyEnum.errorText]).toBe(message);
+    expect(findFailedResponseNode(responses)).toMatchObject({
+      nodeId: 'plugin',
+      errorText: message
+    });
+  });
+
+  it('keeps model-invoked MCP failures in tool details for model recovery', async () => {
+    const message = mockMcpFailure('result');
+    const { result, responses } = await runGraph({
+      nodes: [mcpNode()],
+      overrides: { isToolCall: true }
+    });
+    expect(responses.find((item) => item.nodeId === 'mcp')).toMatchObject({
+      isToolCall: true,
+      errorText: message
+    });
+    expect(result.workflowRuntimeSummary.errorCount).toBe(0);
+    expect(findFailedResponseNode(responses)).toBeUndefined();
+    expect(result.toolResponse).toMatchObject({ isError: true });
+  });
+
   /** 仅替换系统工具资源读取，插件输入、输出和父子 Queue 均真实执行。 */
   const mockCommercialWorkflow = () => {
     const input = graphNode({

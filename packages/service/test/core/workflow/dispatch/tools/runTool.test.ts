@@ -494,7 +494,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
 
-  it('should pass MCP params through without validating against the tool schema', async () => {
+  it.each([false, true])('preserves modern MCP results and detects isError=%s', async (isError) => {
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -532,11 +532,20 @@ describe('dispatchRunTool runtime toolset auth', () => {
       }
     ]);
 
+    const toolResult = { isError, content: [{ type: 'text', text: 'MCP call failed' }] };
+    mcpToolCallMock.mockResolvedValueOnce(toolResult);
     const result = await dispatchRunTool(
       createRunToolProps({ mcpTool: { toolId: 'mcp-victim-toolset/search' } }, { extra: true })
     );
 
-    expect(result.error).toBeUndefined();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      isError ? 'MCP call failed' : undefined
+    );
+    expect(result.responseData?.errorText).toBe(isError ? 'MCP call failed' : undefined);
+    expect(result.rawError).toBeUndefined();
+    expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual(toolResult);
+    expect(result.responseData?.toolRes).toEqual(toolResult);
+    expect(result.toolResponse).toEqual(toolResult);
     expect(mcpToolCallMock).toHaveBeenCalledExactlyOnceWith({
       toolName: 'search',
       params: { extra: true },
