@@ -72,16 +72,22 @@ vi.mock('@/components/core/chat/ChatContainer/ChatBox/components/LikeFeedbackBut
   default: ({
     onClick,
     isActive,
-    isDisabled
+    isDisabled,
+    effectTrigger,
+    disableHoverTranslate = false
   }: {
     onClick?: () => void;
     isActive: boolean;
     isDisabled: boolean;
+    effectTrigger?: number;
+    disableHoverTranslate?: boolean;
   }) =>
     React.createElement('button', {
       'data-icon': 'core/chat/feedback/goodLight',
       'aria-pressed': isActive,
       disabled: isDisabled,
+      'data-effect': effectTrigger,
+      'data-disable-hover-translate': disableHoverTranslate,
       onClick
     })
 }));
@@ -235,6 +241,10 @@ describe('ChatController feedback context', () => {
       userBadFeedback: undefined
     });
     expect(button('core/chat/feedback/goodLight')!.getAttribute('aria-pressed')).toBe('true');
+    expect(button('core/chat/feedback/goodLight')!.getAttribute('data-effect')).toBe('1');
+    expect(
+      button('core/chat/feedback/goodLight')!.getAttribute('data-disable-hover-translate')
+    ).toBe('false');
     await act(async () => button('core/chat/feedback/badLight')!.click());
     expect(feedback?.feedbackId).toBe(message.dataId);
     await act(async () => button('core/app/markLight')!.click());
@@ -326,6 +336,10 @@ describe('ChatController feedback context', () => {
       userBadFeedback: undefined
     });
     expect(button('core/chat/feedback/goodLight')!.getAttribute('aria-pressed')).toBe('true');
+    expect(button('core/chat/feedback/goodLight')!.getAttribute('data-effect')).toBe('1');
+    expect(
+      button('core/chat/feedback/goodLight')!.getAttribute('data-disable-hover-translate')
+    ).toBe('false');
     await act(async () => button('core/chat/feedback/badLight')!.click());
     expect(feedback?.feedbackId).toBe(message.dataId);
     await act(async () => feedback?.onSubmitUserDislike('版本反馈'));

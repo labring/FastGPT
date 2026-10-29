@@ -141,24 +141,20 @@ const RenderWorkflowBuilderVersion = ({
         </Text>
         {onLike && onDislike && (
           <Flex gap="8px" alignItems="center" flexShrink={0} ml="8px">
-            <MyTooltip label={t('chat:feedback_helpful')} shouldWrapChildren={false}>
-              <Flex as="span">
-                <LikeFeedbackButton
-                  w="16px"
-                  h="16px"
-                  p="4px"
-                  isActive={chat?.obj === ChatRoleEnum.AI && !!chat.userGoodFeedback}
-                  isDisabled={isFeedbackPending}
-                  ariaLabel={t('chat:feedback_helpful')}
-                  effectTrigger={
-                    feedback?.likeFeedbackEffect?.dataId === responseChatItemId
-                      ? feedback.likeFeedbackEffect.trigger
-                      : undefined
-                  }
-                  disableHoverTranslate
-                  onClick={onLike}
-                />
-              </Flex>
+            <MyTooltip label={t('chat:feedback_helpful')}>
+              <LikeFeedbackButton
+                w="16px"
+                p="4px"
+                isActive={chat?.obj === ChatRoleEnum.AI && !!chat.userGoodFeedback}
+                isDisabled={isFeedbackPending}
+                ariaLabel={t('chat:feedback_helpful')}
+                effectTrigger={
+                  feedback?.likeFeedbackEffect?.dataId === responseChatItemId
+                    ? feedback.likeFeedbackEffect.trigger
+                    : undefined
+                }
+                onClick={onLike}
+              />
             </MyTooltip>
             <MyTooltip label={t('chat:feedback_unhelpful')} shouldWrapChildren={false}>
               <Button

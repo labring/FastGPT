@@ -377,6 +377,7 @@
   "core.chat.Feedback Modal": "結果回饋",
   "core.chat.Feedback Modal Tip": "輸入您對回答不滿意的部分",
   "core.chat.Feedback Submit": "送出回饋",
+  "core.chat.Feedback Cancelled": "已取消回饋",
   "core.chat.Feedback Success": "回饋成功！",
   "core.chat.Finish Speak": "語音輸入完成",
   "core.chat.History": "記錄",

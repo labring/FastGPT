@@ -146,6 +146,7 @@ describe('ChatFeedbackProvider', () => {
     });
     expect(ai().userGoodFeedback).toBeUndefined();
     expect(result.pendingFeedbackIds).toEqual(['response-1']);
+    expect(mocks.toast).not.toHaveBeenCalled();
     await act(async () => {
       resolve();
       await request;
@@ -153,10 +154,19 @@ describe('ChatFeedbackProvider', () => {
     expect(ai().userGoodFeedback).toBe('yes');
     expect(result.pendingFeedbackIds).toEqual([]);
     expect(result.likeFeedbackEffect).toMatchObject({ dataId: 'response-1' });
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'success',
+      title: 'common:core.chat.Feedback Success'
+    });
     await act(async () => vi.advanceTimersByTime(800));
     expect(result.likeFeedbackEffect).toBeUndefined();
     await act(async () => like());
     expect(ai().userGoodFeedback).toBeUndefined();
+    expect(result.likeFeedbackEffect).toBeUndefined();
+    expect(mocks.toast).toHaveBeenLastCalledWith({
+      status: 'success',
+      title: 'common:core.chat.Feedback Cancelled'
+    });
     expect(mocks.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ userGoodFeedback: undefined })
     );
@@ -193,6 +203,10 @@ describe('ChatFeedbackProvider', () => {
     });
     await act(async () => like());
     expect(ai().userBadFeedback).toBeUndefined();
+    expect(mocks.toast).toHaveBeenLastCalledWith({
+      status: 'success',
+      title: 'common:core.chat.Feedback Success'
+    });
     expect(ai().userGoodFeedback).toBe('yes');
   });
 
@@ -236,6 +250,10 @@ describe('ChatFeedbackProvider', () => {
     expect(result.feedbackId).toBeUndefined();
     await act(async () => dislike());
     expect(ai().userBadFeedback).toBeUndefined();
+    expect(mocks.toast).toHaveBeenLastCalledWith({
+      status: 'success',
+      title: 'common:core.chat.Feedback Cancelled'
+    });
     expect(mocks.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ userGoodFeedback: undefined })
     );
@@ -299,8 +317,10 @@ describe('ChatFeedbackProvider', () => {
     await render({ active: false });
     expect(result.onAddUserLike(message)).toBeUndefined();
     expect(result.onAddUserDislike(message)).toBeUndefined();
+    mocks.toast.mockClear();
     await act(async () => result.onSubmitUserDislike('旁观反馈'));
     expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.toast).not.toHaveBeenCalled();
   });
 
   it('exposes feedback configuration and keeps requests disabled without a persisted target', async () => {
@@ -315,6 +335,34 @@ describe('ChatFeedbackProvider', () => {
     expect(mocks.update).not.toHaveBeenCalled();
     expect(result.feedbackId).toBeUndefined();
   });
+
+  it.each(['like', 'dislike'] as const)(
+    'preserves a saved %s when cancellation fails, then confirms the successful retry',
+    async (kind) => {
+      await render();
+      const saved =
+        kind === 'like'
+          ? { ...message, userGoodFeedback: 'yes' }
+          : { ...message, userBadFeedback: '原因' };
+      await act(async () => setRecords([saved]));
+      mocks.update.mockRejectedValueOnce(new Error('cancel failed'));
+      const cancel = () => (kind === 'like' ? like() : dislike());
+      await act(async () => cancel());
+      expect(ai()).toEqual(saved);
+      expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+        status: 'error',
+        title: 'common:core.chat.Feedback Failed'
+      });
+      await act(async () => cancel());
+      expect(ai().userGoodFeedback).toBeUndefined();
+      expect(ai().userBadFeedback).toBeUndefined();
+      expect(result.likeFeedbackEffect).toBeUndefined();
+      expect(mocks.toast).toHaveBeenLastCalledWith({
+        status: 'success',
+        title: 'common:core.chat.Feedback Cancelled'
+      });
+    }
+  );
 
   it('keeps a failed dislike dialog open for retry and serializes submission with likes', async () => {
     await render();
@@ -400,7 +448,10 @@ describe('ChatFeedbackProvider', () => {
     });
     expect(ai().userGoodFeedback).toBe('yes');
     expect(ai().userBadFeedback).toBeUndefined();
-    expect(mocks.toast).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'success',
+      title: 'common:core.chat.Feedback Success'
+    });
   });
 
   it('creates and edits admin marks through the feedback API', async () => {

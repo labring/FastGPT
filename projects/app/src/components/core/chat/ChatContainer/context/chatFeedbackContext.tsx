@@ -150,6 +150,14 @@ export const ChatFeedbackProvider = ({
           )
         );
         onSuccess();
+        toast({
+          status: 'success',
+          title: t(
+            userGoodFeedback === undefined && userBadFeedback === undefined
+              ? 'common:core.chat.Feedback Cancelled'
+              : 'common:core.chat.Feedback Success'
+          )
+        });
       } catch {
         if (latestScopeKey.current === scope) {
           toast({ status: 'error', title: t('common:core.chat.Feedback Failed') });
@@ -231,7 +239,6 @@ export const ChatFeedbackProvider = ({
         clearLikeFeedbackEffect();
         // 提交期间可能已打开另一条消息的反馈，只关闭本次提交对应的弹窗。
         setFeedbackId((currentId) => (currentId === submittedFeedbackId ? undefined : currentId));
-        toast({ status: 'success', title: t('common:core.chat.Feedback Success') });
       }
     });
   });
