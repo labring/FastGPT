@@ -135,10 +135,10 @@ describe('getClientSystemToolPreviewNode', () => {
     });
     expect(created.document.nodes[0].inputs[0].value).toBeUndefined();
     const { nodes } = compileStoreWorkflow(configured.document);
-    formatToolInputSecrets({ inputs: nodes[0].inputs });
+    formatToolInputSecrets({ inputs: nodes[0].inputs, flowNodeType: nodes[0].flowNodeType });
     const authorization = nodes[0].inputs[0].value;
     expect(authorization.type).toBe('manual');
-    expect(authorization.value.apiKey.value).toBe('');
+    expect(authorization.value.apiKey.value).toBeUndefined();
     expect(authorization.value.apiKey.secret).toBeTruthy();
     expect(JSON.stringify(nodes)).not.toContain('test-only-api-key');
     expect(getSecretValue({ storeSecret: authorization.value })).toEqual({
@@ -146,7 +146,7 @@ describe('getClientSystemToolPreviewNode', () => {
     });
 
     const encryptedBefore = structuredClone(authorization);
-    formatToolInputSecrets({ inputs: nodes[0].inputs });
+    formatToolInputSecrets({ inputs: nodes[0].inputs, flowNodeType: nodes[0].flowNodeType });
     expect(nodes[0].inputs[0].value).toEqual(encryptedBefore);
     const diagnostics: WorkflowDiagnostic[] = [];
     validateNodeIO({ document: configured.document, node: nodes[0], diagnostics });
