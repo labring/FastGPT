@@ -4,34 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@fastgpt/web/components/common/DateTimePicker', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/Input/NumberInput', async () => {
-  const { createElement } = await import('react');
-  type NumberInputProps = {
-    value?: string | number;
-    min?: number;
-    max?: number;
-    onChange?: (value?: number) => void;
-    onBlur?: (value?: number) => void;
-  };
-  const getNumberValue = (inputValue: string) =>
-    inputValue === '' ? undefined : Number(inputValue);
-
-  return {
-    default: ({ value, min, max, onChange, onBlur }: NumberInputProps) =>
-      createElement('input', {
-        value: value ?? '',
-        'data-min': min,
-        'data-max': max,
-        onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
-          onChange?.(getNumberValue(event.target.value)),
-        onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
-          const nextValue = getNumberValue(event.currentTarget.value);
-          onBlur?.(nextValue);
-          onChange?.(nextValue);
-        }
-      })
-  };
-});
 
 describe('TimeInput deferred time parts', () => {
   let dom: JSDOM;
@@ -58,8 +30,14 @@ describe('TimeInput deferred time parts', () => {
     await act(async () => input.blur());
   };
 
-  const Harness = () => {
-    const [value, setValue] = React.useState(new Date(2024, 0, 2, 10, 20, 30));
+  const Harness = ({
+    initialValue = new Date(2024, 0, 2, 10, 20, 30),
+    minDate
+  }: {
+    initialValue?: Date;
+    minDate?: Date;
+  }) => {
+    const [value, setValue] = React.useState(initialValue);
     const handleChange = (date?: Date) => {
       onDateTimeChange(date);
       setValue(date);
@@ -68,6 +46,15 @@ describe('TimeInput deferred time parts', () => {
     return React.createElement(
       React.Fragment,
       null,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          'data-testid': 'external-update',
+          onClick: () => setValue(new Date(2024, 0, 2, 15, 40, 50))
+        },
+        'Update value'
+      ),
       React.createElement(
         'output',
         { 'data-testid': 'committed' },
@@ -80,6 +67,7 @@ describe('TimeInput deferred time parts', () => {
       React.createElement(TimeInput, {
         value,
         onDateTimeChange: handleChange,
+        minDate,
         timeGranularity: 'second'
       })
     );
@@ -179,5 +167,42 @@ describe('TimeInput deferred time parts', () => {
     expect(getInputs()[0]!.value).toBe('0');
     expect(getCommittedValue()).toBe('10:20:30');
     expect(onDateTimeChange).not.toHaveBeenCalled();
+  });
+
+  it('shows the clamped controlled value after blur formatting', async () => {
+    const minDate = new Date(2024, 0, 2, 12, 30, 30);
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ChakraProvider,
+          null,
+          React.createElement(Harness, { initialValue: minDate, minDate })
+        )
+      );
+    });
+
+    const hourInput = getInputs()[0]!;
+    await updateInput(hourInput, '10');
+    await blurInput(hourInput);
+
+    expect(getCommittedValue()).toBe('12:30:30');
+    expect(hourInput.value).toBe('12');
+  });
+
+  it('shows external controlled updates after clearing the blur draft', async () => {
+    await act(async () => {
+      root.render(React.createElement(ChakraProvider, null, React.createElement(Harness)));
+    });
+
+    const hourInput = getInputs()[0]!;
+    await updateInput(hourInput, '11');
+    await blurInput(hourInput);
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="external-update"]')?.click();
+    });
+
+    expect(getCommittedValue()).toBe('15:40:50');
+    expect(hourInput.value).toBe('15');
   });
 });

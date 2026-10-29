@@ -40,7 +40,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const [timePartDraft, setTimePartDraft] = useState<
     { part: TimePartName; value: number | string } | undefined
   >();
-  const ignoreChangeAfterBlurRef = useRef(false);
+  const focusedTimePartRef = useRef<TimePartName | undefined>(undefined);
 
   const validateAndSetDateTime = (newDate: Date) => {
     if (minDate && newDate < minDate) {
@@ -62,11 +62,15 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const getTimePartInputValue = (part: TimePartName, value: number) =>
     timePartDraft?.part === part ? timePartDraft.value : value;
 
+  const handleTimePartFocus = (part: TimePartName, value: number) => {
+    focusedTimePartRef.current = part;
+    setTimePartDraft({ part, value });
+  };
+
+  // Chakra 会在 blur 后再次触发格式化 onChange，只接受聚焦期间的编辑。
   const handleTimePartChange = (part: TimePartName, value?: number) => {
-    if (ignoreChangeAfterBlurRef.current) {
-      ignoreChangeAfterBlurRef.current = false;
-      return;
-    }
+    if (focusedTimePartRef.current !== part) return;
+
     setTimePartDraft({
       part,
       value: value !== undefined && !Number.isFinite(value) ? 0 : (value ?? '')
@@ -79,12 +83,12 @@ const TimeInput: React.FC<TimeInputProps> = ({
     setDatePart: (date: Date, value: number) => void
   ) => {
     const normalizedValue = normalizeTimePart(value, max);
-    setTimePartDraft(undefined);
-    ignoreChangeAfterBlurRef.current = true;
-
     const newDate = formatValue ? new Date(formatValue) : new Date();
     setDatePart(newDate, normalizedValue);
     validateAndSetDateTime(newDate);
+
+    focusedTimePartRef.current = undefined;
+    setTimePartDraft(undefined);
   };
 
   const handleDateChange = (date: Date | undefined) => {
@@ -96,6 +100,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
     const nextHour = normalizeTimePart(getTimePartInputValue('hour', hour), 23);
     const nextMinute = normalizeTimePart(getTimePartInputValue('minute', minute), 59);
     const nextSecond = normalizeTimePart(getTimePartInputValue('second', second), 59);
+    focusedTimePartRef.current = undefined;
     setTimePartDraft(undefined);
 
     const newDate = new Date(date);
@@ -128,6 +133,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={getTimePartInputValue('hour', hour)}
+          onFocus={() => handleTimePartFocus('hour', hour)}
           onChange={(value) => handleTimePartChange('hour', value)}
           onBlur={(value) => handleTimePartBlur(value, 23, (date, hour) => date.setHours(hour))}
           min={0}
@@ -159,6 +165,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={getTimePartInputValue('minute', minute)}
+          onFocus={() => handleTimePartFocus('minute', minute)}
           onChange={(value) => handleTimePartChange('minute', value)}
           onBlur={(value) =>
             handleTimePartBlur(value, 59, (date, minute) => date.setMinutes(minute))
@@ -192,6 +199,7 @@ const TimeInput: React.FC<TimeInputProps> = ({
       <Box position={'relative'} flex={'0 0 56px'} minW={0}>
         <MyNumberInput
           value={getTimePartInputValue('second', second)}
+          onFocus={() => handleTimePartFocus('second', second)}
           onChange={(value) => handleTimePartChange('second', value)}
           onBlur={(value) =>
             handleTimePartBlur(value, 59, (date, second) => date.setSeconds(second))
