@@ -170,9 +170,9 @@ export const getImageBuffer = async (
     });
 
     // 可信通道不跟随重定向时，3xx 会作为普通响应返回；必须显式拒绝，
-    // 否则会把跳转响应当成图片内容继续读取。
-    const status = response?.status ?? 0;
-    if (status < 200 || status >= 300) {
+    // 否则会把跳转响应当成图片内容继续读取。真实 axios 响应一定带 status。
+    const status = response?.status;
+    if (typeof status === 'number' && (status < 200 || status >= 300)) {
       response.data?.destroy?.();
       throw new Error(`Unexpected image response status: ${status}`);
     }
