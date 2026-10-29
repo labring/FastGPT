@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -17,10 +17,6 @@ import {
   isWorkflowBuilderVersionExpiredError
 } from '@fastgpt/global/core/workflow/builder/utils';
 import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
-import {
-  getWorkflowBuilderVersionButtonState,
-  workflowBuilderAppliedFeedbackDuration
-} from './utils';
 
 /** 版本卡片独立呈现应用状态，并复用所属消息的反馈；已应用和过期均不限制赞踩。 */
 const RenderWorkflowBuilderVersion = ({
@@ -52,9 +48,7 @@ const RenderWorkflowBuilderVersion = ({
   );
   const hasApplied = !!currentVersion.appliedAt;
   const [loading, setLoading] = useState(false);
-  const [showApplied, setShowApplied] = useState(false);
   const [runtimeExpired, setRuntimeExpired] = useState(false);
-  const appliedResetTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const state = useMemo(
     () =>
       runtimeExpired
@@ -62,24 +56,10 @@ const RenderWorkflowBuilderVersion = ({
         : getWorkflowBuilderVersionDisplayState({ version: currentVersion }),
     [currentVersion, runtimeExpired]
   );
-  const buttonState = getWorkflowBuilderVersionButtonState({
-    displayState: state,
-    loading,
-    showApplied
-  });
-
-  useEffect(
-    () => () => {
-      if (appliedResetTimerRef.current) clearTimeout(appliedResetTimerRef.current);
-    },
-    []
-  );
+  const isUnavailable = state === 'expired';
 
   const run = async (callback: () => Promise<void>) => {
     if (loading || actions?.isApplying) return;
-    // 成功提示不阻止再次应用；新请求开始后清除上一次提示，避免失败时仍显示成功。
-    if (appliedResetTimerRef.current) clearTimeout(appliedResetTimerRef.current);
-    setShowApplied(false);
     setLoading(true);
     try {
       await callback();
@@ -91,23 +71,13 @@ const RenderWorkflowBuilderVersion = ({
   };
 
   const primaryText = (() => {
-    if (buttonState === 'expired') return String(t('workflow_builder_version_expired'));
-    if (buttonState === 'applied') return String(t('workflow_builder_version_applied'));
+    if (isUnavailable) return String(t('workflow_builder_version_expired'));
     return String(t('workflow_builder_version_apply'));
   })();
 
   const markExpired = (showToast = true) => {
     setRuntimeExpired(true);
     if (showToast) actions?.notifyVersionExpired();
-  };
-
-  const markApplied = () => {
-    if (appliedResetTimerRef.current) clearTimeout(appliedResetTimerRef.current);
-    setShowApplied(true);
-    appliedResetTimerRef.current = setTimeout(() => {
-      setShowApplied(false);
-      appliedResetTimerRef.current = undefined;
-    }, workflowBuilderAppliedFeedbackDuration);
   };
 
   const apply = () =>
@@ -121,7 +91,6 @@ const RenderWorkflowBuilderVersion = ({
       try {
         const appliedVersion = await actions.applyVersion(currentVersion, responseChatItemId);
         setLocalAppliedAt(appliedVersion.appliedAt);
-        markApplied();
       } catch (error) {
         if (isWorkflowBuilderVersionExpiredError(error)) {
           markExpired(false);
@@ -130,9 +99,7 @@ const RenderWorkflowBuilderVersion = ({
       }
     });
 
-  const isUnavailable = buttonState === 'expired';
-  const buttonBackground =
-    buttonState === 'loading' || isUnavailable ? 'rgba(51, 112, 255, 0.30)' : '#3370FF';
+  const buttonBackground = loading || isUnavailable ? 'rgba(51, 112, 255, 0.30)' : '#3370FF';
   const isActionDisabled = !actions || actions.isApplying || isUnavailable;
 
   return (
@@ -238,19 +205,15 @@ const RenderWorkflowBuilderVersion = ({
         letterSpacing="0.5px"
         boxShadow="0 0 1px rgba(19, 51, 107, 0.08), 0 1px 2px rgba(19, 51, 107, 0.05)"
         _hover={{
-          bg:
-            buttonState === 'loading' || isUnavailable
-              ? buttonBackground
-              : 'rgba(51, 112, 255, 0.90)'
+          bg: loading || isUnavailable ? buttonBackground : 'rgba(51, 112, 255, 0.90)'
         }}
-        isLoading={buttonState === 'loading'}
+        isLoading={loading}
         spinner={<Spinner boxSize="16px" thickness="2px" speed="0.65s" />}
         isDisabled={isActionDisabled}
         _disabled={{ opacity: 1, cursor: 'not-allowed' }}
         onClick={() => void apply()}
       >
         {primaryText}
-        {buttonState === 'applied' && <MyIcon name="check" boxSize="16px" ml="6px" />}
       </Button>
     </Flex>
   );

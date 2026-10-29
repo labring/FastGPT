@@ -160,16 +160,15 @@ describe('RenderWorkflowBuilderVersion', () => {
     expect(mocks.notifyVersionExpired).not.toHaveBeenCalled();
   });
 
-  it('allows reapplying during the success hint and keeps the title and icon applied afterwards', async () => {
-    vi.useFakeTimers();
+  it('keeps the apply button unchanged while updating the applied title and allowing reapplication', async () => {
     mocks.applyVersion.mockResolvedValue({ ...version, appliedAt: new Date().toISOString() });
     await renderAndApply();
 
-    expect(applyButton().textContent).toBe('workflow_builder_version_applied');
+    expect(applyButton().textContent).toBe('workflow_builder_version_apply');
     expect(applyButton().disabled).toBe(false);
     await act(async () => applyButton().click());
     expect(mocks.applyVersion).toHaveBeenCalledTimes(2);
-    await act(async () => vi.advanceTimersByTime(1200));
+    expect(applyButton().querySelector('[data-icon="check"]')).toBeNull();
     expect(applyButton().textContent).toBe('workflow_builder_version_apply');
     expect(applyButton().disabled).toBe(false);
     expect(container.textContent).toContain(`${version.name} workflow_builder_version_applied`);
@@ -208,7 +207,7 @@ describe('RenderWorkflowBuilderVersion', () => {
     await renderAndApply({ ...version });
 
     expect(mocks.applyVersion).toHaveBeenCalledOnce();
-    expect(applyButton().textContent).toBe('workflow_builder_version_applied');
+    expect(applyButton().textContent).toBe('workflow_builder_version_apply');
   });
 
   it('restores applied state and feedback from history while allowing feedback before and after applying', async () => {
