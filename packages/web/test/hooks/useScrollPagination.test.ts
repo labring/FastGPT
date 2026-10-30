@@ -167,7 +167,7 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 };
 
 describe('useScrollPagination', () => {
-  it('滚动层只渲染一个节点，外层控制初始化遮罩且保留 ref、输入和滚动位置', async () => {
+  it('初始化、点击分页、外部操作和刷新共用滚动层，保留 ref、输入与滚动位置', async () => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn();
     const onScroll = vi.fn();
@@ -175,7 +175,7 @@ describe('useScrollPagination', () => {
     const host = document.createElement('div');
     const root = createRoot(host);
 
-    await renderHarness(root, {
+    const props: HarnessProps = {
       query: 'overlay',
       api,
       onState,
@@ -188,7 +188,8 @@ describe('useScrollPagination', () => {
         onScroll,
         children: React.createElement('input', { defaultValue: '' })
       }
-    });
+    };
+    await renderHarness(root, props);
     const viewport = host.querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!;
     const shell = host.querySelector('#shell')!;
     const draft = host.querySelector('input')!;
@@ -208,12 +209,17 @@ describe('useScrollPagination', () => {
     await act(async () => requests[0].resolve({ list: ['one'], total: 2 }));
     expect(host.querySelector('[data-loading-overlay]')).toBeNull();
     await act(async () => {
-      void onState.mock.lastCall?.[0].fetchData();
+      viewport.lastElementChild!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
+    expect(requests).toHaveLength(2);
+    expect(requests[1].params.offset).toBe(1);
     expect(host.querySelector('[data-loading-overlay]')).toBeNull();
     expect(host.textContent).toContain('common:is_requesting');
     expect(onState.mock.lastCall?.[0].isInitialLoading).toBe(false);
     expect(onState.mock.lastCall?.[0].isLoadingMore).toBe(true);
+    await renderHarness(root, { ...props, isOperating: true });
+    expect(host.querySelector('[data-loading-overlay]')).not.toBeNull();
+    await renderHarness(root, props);
     await act(async () => requests[1].resolve({ list: ['two'], total: 2 }));
     expect(scrollRef.current).toBe(viewport);
     expect(host.querySelector('input')).toBe(draft);
@@ -222,32 +228,6 @@ describe('useScrollPagination', () => {
     await act(async () => viewport.dispatchEvent(new Event('scroll')));
     expect(onScroll).toHaveBeenCalledOnce();
     expect(onScroll.mock.calls[0][0].target).toBe(viewport);
-    await act(async () => root.unmount());
-  });
-
-  it('触底请求只显示文字，同时保留外部操作和重新初始化的遮罩', async () => {
-    const { api, requests } = createDeferredApi();
-    const onState = vi.fn();
-    const host = document.createElement('div');
-    const root = createRoot(host);
-    const props = { query: 'loading-states', api, onState };
-
-    await renderHarness(root, props);
-    await act(async () => requests[0].resolve({ list: ['one'], total: 2 }));
-    await act(async () => {
-      host
-        .querySelector<HTMLDivElement>('[data-testid="scroll-data"]')!
-        .lastElementChild!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-    expect(requests).toHaveLength(2);
-    expect(requests[1].params.offset).toBe(1);
-    expect(host.querySelector('[data-loading-overlay]')).toBeNull();
-    expect(host.textContent).toContain('common:is_requesting');
-
-    await renderHarness(root, { ...props, isOperating: true });
-    expect(host.querySelector('[data-loading-overlay]')).not.toBeNull();
-    await renderHarness(root, props);
-    await act(async () => requests[1].resolve({ list: ['two'], total: 2 }));
     expect(host.querySelector('[data-loading-overlay]')).toBeNull();
     expect(host.textContent).not.toContain('common:is_requesting');
 
@@ -255,6 +235,9 @@ describe('useScrollPagination', () => {
     expect(host.querySelector('[data-loading-overlay]')).not.toBeNull();
     await act(async () => requests[2].resolve({ list: [], total: 0 }));
     expect(host.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(scrollRef.current).toBe(viewport);
+    expect(host.querySelector('input')).toBe(draft);
+    expect(draft.value).toBe('unsaved');
     await act(async () => root.unmount());
   });
 

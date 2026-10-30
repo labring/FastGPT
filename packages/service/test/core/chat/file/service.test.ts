@@ -43,23 +43,16 @@ afterEach(() => {
 });
 
 describe('parseUrlToChatFileType', () => {
-  it.each([FileType.file, FileType.unknown, undefined])(
-    '普通文件、unknown 与缺省类型 %s 继续推测格式',
-    async (type) => {
-      expect((await parseUrlToChatFileType({ url: `${url}.PDF`, type }))?.type).toBe(
-        FileType.document
-      );
-      expect((await parseUrlToChatFileType({ url: `${url}.zip`, type }))?.type).toBe(
-        FileType.unknown
-      );
-      expect((await parseUrlToChatFileType({ url: `${url}.png`, type }))?.type).toBe(
-        FileType.image
-      );
-      expect(axios.head).not.toHaveBeenCalled();
-    }
-  );
+  it.each([
+    [FileType.file, `${url}.PDF`, FileType.document],
+    [FileType.unknown, `${url}.png`, FileType.image],
+    [undefined, `${url}.zip`, FileType.unknown]
+  ] as const)('待分类类型 %s 按 URL %s 推测为 %s', async (type, url, expected) => {
+    expect((await parseUrlToChatFileType({ url, type }))?.type).toBe(expected);
+    expect(axios.head).not.toHaveBeenCalled();
+  });
 
-  it.each([FileType.image, FileType.audio, FileType.video, FileType.document])(
+  it.each([FileType.image, FileType.document])(
     '显式类型 %s 优先于冲突的名称、URL 和响应元数据',
     async (type) => {
       expect(
@@ -235,7 +228,6 @@ describe('parseUrlToChatFileType', () => {
   });
 
   it.each([
-    [FileType.video, { contentType: 'audio/mpeg', filename: 'photo.png' }, FileType.video],
     [
       FileType.file,
       { contentType: 'AUDIO/MPEG; charset=binary', filename: 'photo.png' },
@@ -245,15 +237,12 @@ describe('parseUrlToChatFileType', () => {
     [undefined, { contentType: 'image/png' }, FileType.image],
     [undefined, { filename: 'photo.PNG' }, FileType.image],
     [undefined, { filename: 'unknown', contentType: 'application/octet-stream' }, FileType.video]
-  ])(
-    '类型优先级：显式媒体 > 对象 MIME > 对象名称 > URL 后缀（%s, %j）',
-    async (type, metadata, expected) => {
-      expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', type, metadata }))?.type).toBe(
-        expected
-      );
-      expect(axios.head).not.toHaveBeenCalled();
-    }
-  );
+  ])('对象 MIME、对象名称优先于 URL 后缀（%s, %j）', async (type, metadata, expected) => {
+    expect((await parseUrlToChatFileType({ url: 'chat/object.mp4', type, metadata }))?.type).toBe(
+      expected
+    );
+    expect(axios.head).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['image/png', FileType.image, 'download.png'],

@@ -145,14 +145,11 @@ describe('sanitizeFileSelectValue', () => {
 });
 
 describe('inferFileSelectorType', () => {
-  it('recognizes filename query parameters and parser-supported aliases', () => {
+  it('按名称或 URL 归类，支持文件名参数和文档别名', () => {
     expect(inferFileSelectorType('https://example.com/download.php?filename=report.pdf')).toBe(
       ChatFileTypeEnum.document
     );
     expect(inferFileSelectorType('README.MARKDOWN')).toBe(ChatFileTypeEnum.document);
-  });
-
-  it('按 URL 或文件名区分媒体、文档和未知类型', () => {
     expect(inferFileSelectorType('https://example.com/image.png?token=1')).toBe(
       ChatFileTypeEnum.image
     );

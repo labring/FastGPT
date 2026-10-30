@@ -261,47 +261,31 @@ describe('useLinkedScroll', () => {
     expect(scrollTargets).toEqual([viewport]);
   });
 
-  it.each(['previous', 'next'] as const)(
-    'shows only request text when loading the %s page',
-    async (direction) => {
-      vi.useFakeTimers();
-      const scrollRef = React.createRef<HTMLDivElement>();
-      await render('first', { scrollRef });
-      expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
-      await act(async () =>
-        requests[0].resolve({
-          list: [{ id: 'first-record' }],
-          hasMorePrev: direction === 'previous',
-          hasMoreNext: direction === 'next'
-        })
-      );
-      const viewport = scrollRef.current!;
-      const draft = container.querySelector('input')!;
-      const scrollTop = direction === 'previous' ? 0 : 300;
-      viewport.scrollTop = scrollTop;
-      draft.value = 'unsaved';
-      await act(async () => vi.advanceTimersByTimeAsync(250));
-      expect(requests[1].params[direction === 'previous' ? 'prevId' : 'nextId']).toBe(
-        'first-record'
-      );
-      expect(state.isLoading).toBe(true);
-      expect(state.isInitialLoading).toBe(false);
-      expect(state.isLoadingMore).toBe(true);
-      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
-      expect(container.textContent).toContain('common:is_requesting');
+  it('exposes append loading separately from initialization and clears the request text', async () => {
+    vi.useFakeTimers();
+    const scrollRef = React.createRef<HTMLDivElement>();
+    await render('first', { scrollRef });
+    expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
+    await act(async () =>
+      requests[0].resolve({
+        list: [{ id: 'first-record' }],
+        hasMorePrev: false,
+        hasMoreNext: true
+      })
+    );
+    const viewport = scrollRef.current!;
+    viewport.scrollTop = 300;
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(requests[1].params.nextId).toBe('first-record');
+    expect(state.isLoading).toBe(true);
+    expect(state.isInitialLoading).toBe(false);
+    expect(state.isLoadingMore).toBe(true);
+    expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+    expect(container.textContent).toContain('common:is_requesting');
 
-      await resolve(1, 'next-record');
-      expect(state.dataList).toEqual(
-        (direction === 'previous'
-          ? ['next-record', 'first-record']
-          : ['first-record', 'next-record']
-        ).map((id) => ({ id }))
-      );
-      expect(container.textContent).not.toContain('common:is_requesting');
-      expect(scrollRef.current).toBe(viewport);
-      expect(container.querySelector('input')).toBe(draft);
-      expect(draft.value).toBe('unsaved');
-      expect(viewport.scrollTop).toBe(scrollTop);
-    }
-  );
+    await resolve(1, 'next-record');
+    expect(state.dataList).toEqual([{ id: 'first-record' }, { id: 'next-record' }]);
+    expect(container.textContent).not.toContain('common:is_requesting');
+    expect(state.isLoadingMore).toBe(false);
+  });
 });

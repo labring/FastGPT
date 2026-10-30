@@ -893,51 +893,33 @@ describe('formatAIChatUserQueryWithFiles', () => {
     expect(parseFileFn).toHaveBeenCalledWith(['/missing.pdf']);
   });
 
-  it('历史 file 归类为 document，未知格式不会进入自动文档解析', async () => {
+  it('历史 file 按名称归类，文档别名和下载接口进入解析，未知格式跳过且不修改原输入', async () => {
+    const documentUrls = [
+      'https://files.example.com/a.pdf',
+      'https://files.example.com/page.HtM',
+      'https://files.example.com/README.MARKDOWN',
+      'https://files.example.com/download.php?id=42'
+    ];
     const parseFileFn = vi.fn(async () => []);
     const query = [
-      attachment('https://files.example.com/a.pdf', ChatFileTypeEnum.file),
-      attachment('https://files.example.com/archive.zip', ChatFileTypeEnum.file)
+      attachment(documentUrls[0], ChatFileTypeEnum.file),
+      attachment('https://files.example.com/archive.zip', ChatFileTypeEnum.file),
+      attachment(documentUrls[1], ChatFileTypeEnum.file),
+      attachment(documentUrls[2], ChatFileTypeEnum.file),
+      { file: { name: 'report.pdf', url: documentUrls[3], type: ChatFileTypeEnum.file } }
     ];
     const result = await formatAIChatUserQueryWithFiles({ userQuery: query, parseFileFn });
     expect(result.map((item) => item.file?.type)).toEqual([
       ChatFileTypeEnum.document,
-      ChatFileTypeEnum.unknown
-    ]);
-    expect(parseFileFn).toHaveBeenCalledExactlyOnceWith(['https://files.example.com/a.pdf']);
-    expect(query.map((item) => item.file?.type)).toEqual([
-      ChatFileTypeEnum.file,
-      ChatFileTypeEnum.file
-    ]);
-  });
-
-  it('解析器支持的别名后缀仍进入自动文档解析', async () => {
-    const urls = [
-      'https://files.example.com/page.HtM',
-      'https://files.example.com/README.MARKDOWN'
-    ];
-    const parseFileFn = vi.fn(async () => []);
-    const result = await formatAIChatUserQueryWithFiles({
-      userQuery: urls.map((url) => attachment(url, ChatFileTypeEnum.file)),
-      parseFileFn
-    });
-
-    expect(result.map((item) => item.file?.type)).toEqual([
+      ChatFileTypeEnum.unknown,
+      ChatFileTypeEnum.document,
       ChatFileTypeEnum.document,
       ChatFileTypeEnum.document
     ]);
-    expect(parseFileFn).toHaveBeenCalledExactlyOnceWith(urls);
-  });
-
-  it('名称是文档时自动解析下载接口 URL，不按接口后缀跳过', async () => {
-    const url = 'https://files.example.com/download.php?id=42';
-    const parseFileFn = vi.fn(async () => []);
-    const result = await formatAIChatUserQueryWithFiles({
-      userQuery: [{ file: { name: 'report.pdf', url, type: ChatFileTypeEnum.file } }],
-      parseFileFn
-    });
-    expect(result[0].file?.type).toBe(ChatFileTypeEnum.document);
-    expect(parseFileFn).toHaveBeenCalledExactlyOnceWith([url]);
+    expect(parseFileFn).toHaveBeenCalledExactlyOnceWith(documentUrls);
+    expect(query.map((item) => item.file?.type)).toEqual(
+      Array(query.length).fill(ChatFileTypeEnum.file)
+    );
   });
 
   it.each([false, true])(

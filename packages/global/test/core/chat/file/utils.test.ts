@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { documentFileExtensions } from '../../../../common/file/constants';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 import {
   getChatFileTypeByFilename,
@@ -9,27 +8,24 @@ import {
 } from '../../../../core/chat/file/utils';
 
 describe('getChatFileTypeByFilename', () => {
-  it.each(['page.HtM', 'README.MARKDOWN'])('recognizes parser-supported alias %s', (filename) => {
-    expect(getChatFileTypeByFilename(filename)).toBe(ChatFileTypeEnum.document);
-  });
-
-  it.each(documentFileExtensions)('recognizes parser-supported format %s', (extension) => {
-    expect(getChatFileTypeByFilename(`report${extension.toUpperCase()}`)).toBe(
-      ChatFileTypeEnum.document
-    );
-  });
-
-  it.each(['archive.zip', 'script.js', 'README', 'report.pdf.zip', '', 'file.jp'])(
-    'keeps unsupported format %s unknown',
-    (filename) => {
-      expect(getChatFileTypeByFilename(filename)).toBe(ChatFileTypeEnum.unknown);
-    }
-  );
-
-  it('preserves media types', () => {
-    expect(getChatFileTypeByFilename('photo.PNG')).toBe(ChatFileTypeEnum.image);
-    expect(getChatFileTypeByFilename('voice.mp3')).toBe(ChatFileTypeEnum.audio);
-    expect(getChatFileTypeByFilename('movie.mp4')).toBe(ChatFileTypeEnum.video);
+  // 按分类与边界选代表值，不从实现使用的静态后缀表生成相同断言。
+  it.each([
+    ['photo.PNG', ChatFileTypeEnum.image],
+    ['voice.mp3', ChatFileTypeEnum.audio],
+    ['movie.mp4', ChatFileTypeEnum.video],
+    ['report.PDF', ChatFileTypeEnum.document],
+    ['legacy.doc', ChatFileTypeEnum.document],
+    ['page.HtM', ChatFileTypeEnum.document],
+    ['README.MARKDOWN', ChatFileTypeEnum.document],
+    ['archive.zip', ChatFileTypeEnum.unknown],
+    ['script.js', ChatFileTypeEnum.unknown],
+    ['README', ChatFileTypeEnum.unknown],
+    ['report.pdf.zip', ChatFileTypeEnum.unknown],
+    ['file.jp', ChatFileTypeEnum.unknown],
+    ['', ChatFileTypeEnum.unknown],
+    [undefined, ChatFileTypeEnum.unknown]
+  ])('classifies %s as %s', (filename, expected) => {
+    expect(getChatFileTypeByFilename(filename)).toBe(expected);
   });
 });
 
@@ -58,19 +54,21 @@ describe('normalizeChatFileType', () => {
     ChatFileTypeEnum.video,
     ChatFileTypeEnum.document
   ])('保留已经归类的 %s，不在下游重复猜测', (type) => {
-    expect(normalizeChatFileType({ type, filename: 'conflicting.zip' })).toBe(type);
+    expect(
+      normalizeChatFileType({
+        type,
+        filename: 'conflicting.zip',
+        url: 'https://example.com/movie.mp4'
+      })
+    ).toBe(type);
   });
 
   it.each([ChatFileTypeEnum.file, ChatFileTypeEnum.unknown, undefined, 'invalid'])(
-    '旧值或缺省类型 %s 在输入边界归类，未知格式不会变成文档',
+    '旧值、unknown、缺省和非法类型 %s 继续根据名称推测',
     (type) => {
       expect(normalizeChatFileType({ type, filename: 'report.PDF' })).toBe(
         ChatFileTypeEnum.document
       );
-      expect(normalizeChatFileType({ type, filename: 'archive.zip' })).toBe(
-        ChatFileTypeEnum.unknown
-      );
-      expect(normalizeChatFileType({ type, filename: 'photo.png' })).toBe(ChatFileTypeEnum.image);
     }
   );
 
@@ -79,6 +77,7 @@ describe('normalizeChatFileType', () => {
     ['https://example.com/download?filename=report.PDF', ChatFileTypeEnum.document],
     ['https://example.com/a%20b.mp3', ChatFileTypeEnum.audio],
     ['https://example.com/download', ChatFileTypeEnum.unknown],
+    ['', ChatFileTypeEnum.unknown],
     ['https://example.com/%invalid', ChatFileTypeEnum.unknown]
   ])('缺少文件名时根据 URL %s 归类', (url, type) => {
     expect(normalizeChatFileType({ type: ChatFileTypeEnum.file, url })).toBe(type);

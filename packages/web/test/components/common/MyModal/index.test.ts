@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import React, { act } from 'react';
-import { createRoot } from 'react-dom/client';
-import { describe, expect, it, vi } from 'vitest';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ModalV1 from '../../../../components/common/MyModal';
 import ModalV2 from '../../../../components/v2/common/MyModal';
 
@@ -42,12 +42,22 @@ vi.mock('@chakra-ui/react', () => {
 });
 
 describe('MyModal loading viewport', () => {
+  let host: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    host = document.createElement('div');
+    root = createRoot(host);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+  });
+
   it.each([
     ['V1', ModalV1],
     ['V2', ModalV2]
   ] as const)('%s 的遮罩独立于正文滚动，加载切换保留输入和滚动位置', async (_name, Modal) => {
-    const host = document.createElement('div');
-    const root = createRoot(host);
     const render = async (isLoading: boolean) =>
       act(async () => {
         root.render(
@@ -77,12 +87,9 @@ describe('MyModal loading viewport', () => {
     expect(input.value).toBe('未保存');
     expect(viewport.scrollTop).toBe(300);
     expect(host.querySelector('[data-loading-overlay]')).toBeNull();
-    await act(async () => root.unmount());
   });
 
   it('V2 将正文布局约束留在外壳，内容样式留在滚动层，footer 在遮罩之外', async () => {
-    const host = document.createElement('div');
-    const root = createRoot(host);
     await act(async () =>
       root.render(
         React.createElement(
@@ -104,15 +111,12 @@ describe('MyModal loading viewport', () => {
     expect(viewport.getAttribute('data-gap')).toBe('3');
     expect(viewport.getAttribute('data-overflow')).toBe('hidden');
     expect(shell.contains(host.querySelector('#footer'))).toBe(false);
-    await act(async () => root.unmount());
   });
 
   it.each([
     ['V1', ModalV1],
     ['V2', ModalV2]
   ] as const)('%s 显式允许溢出时，外壳不会裁剪正文中的选择器', async (_name, Modal) => {
-    const host = document.createElement('div');
-    const root = createRoot(host);
     await act(async () =>
       root.render(
         React.createElement(
@@ -128,6 +132,5 @@ describe('MyModal loading viewport', () => {
     const viewport = host.querySelector('input')!.parentElement!;
     expect(viewport.getAttribute('data-overflow')).toBe('unset');
     expect(viewport.parentElement?.getAttribute('data-overflow')).toBe('visible');
-    await act(async () => root.unmount());
   });
 });

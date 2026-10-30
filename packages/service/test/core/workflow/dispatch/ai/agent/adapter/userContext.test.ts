@@ -112,7 +112,7 @@ const getUserContextMessagesForTest = async ({
 };
 
 describe('buildAgentLoopCoreInputFilesPrompt', () => {
-  it('labels documents separately and preserves multimodal file types', () => {
+  it('serializes document, media and unknown files with their usage guidance', () => {
     const result = buildAgentLoopCoreInputFilesPrompt([
       {
         name: 'guide.pdf',
@@ -133,6 +133,11 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
         name: 'demo.mp4',
         type: ChatFileTypeEnum.video,
         url: 'https://files.example.com/demo.mp4'
+      },
+      {
+        name: 'archive.zip',
+        type: ChatFileTypeEnum.unknown,
+        url: '/files/archive.zip'
       }
     ]);
 
@@ -147,20 +152,10 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
     expect(result).toContain('<type>document</type>');
-    expect(result).not.toContain('<type>file</type>');
-  });
-
-  it('labels unsupported formats and extensionless files as unknown', () => {
-    const result = buildAgentLoopCoreInputFilesPrompt(
-      ['archive.zip', 'script.js', 'README', 'report.pdf.zip'].map((name) => ({
-        name,
-        type: ChatFileTypeEnum.unknown,
-        url: `/files/${name}`
-      }))
-    );
-    expect(result.match(/<type>unknown<\/type>/g)).toHaveLength(4);
-    expect(result).not.toContain('<type>file</type>');
+    expect(result).toContain('<type>unknown</type>');
+    expect(result).toContain('<url>/files/archive.zip</url>');
     expect(result).toContain('不要使用 read_files 读取');
+    expect(result).not.toContain('<type>file</type>');
   });
 
   it('serializes the classified type without inferring it again from display names', () => {

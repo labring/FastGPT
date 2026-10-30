@@ -54,6 +54,14 @@ const welcomeQuestions: string[] = [];
 const boxBodyProps = { id: 'history-viewport' };
 const noop = () => undefined;
 
+/** 构造分页返回的最小 Human 记录，避免初始化与两个方向分别重复存储结构。 */
+const createRecord = (id: string): GetRecordsV2ResponseType['list'][number] => ({
+  id,
+  dataId: id,
+  obj: ChatRoleEnum.Human,
+  value: [{ text: { content: id } }]
+});
+
 describe('AppChatMain pagination through memo and chat context', () => {
   let root: Root;
   let container: HTMLDivElement;
@@ -116,14 +124,7 @@ describe('AppChatMain pagination through memo and chat context', () => {
     expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
     await act(async () => {
       requests[0].resolve({
-        list: [
-          {
-            id: 'record',
-            dataId: 'record',
-            obj: ChatRoleEnum.Human,
-            value: [{ text: { content: 'record' } }]
-          }
-        ],
+        list: [createRecord('record')],
         total: 1,
         hasMorePrev,
         hasMoreNext
@@ -209,14 +210,7 @@ describe('AppChatMain pagination through memo and chat context', () => {
       requests
         .find(({ params }) => params.prevId)
         ?.resolve({
-          list: [
-            {
-              id: 'previous-record',
-              dataId: 'previous-record',
-              obj: ChatRoleEnum.Human,
-              value: [{ text: { content: 'previous' } }]
-            }
-          ],
+          list: [createRecord('previous-record')],
           total: 1,
           hasMorePrev: false,
           hasMoreNext: true
@@ -229,14 +223,7 @@ describe('AppChatMain pagination through memo and chat context', () => {
       requests
         .find(({ params }) => params.nextId)
         ?.resolve({
-          list: [
-            {
-              id: 'next-record',
-              dataId: 'next-record',
-              obj: ChatRoleEnum.Human,
-              value: [{ text: { content: 'next' } }]
-            }
-          ],
+          list: [createRecord('next-record')],
           total: 1,
           hasMorePrev: false,
           hasMoreNext: false

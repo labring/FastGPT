@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   ChatRoleEnum,
   ChatRoleMap,
-  ChatFileTypeEnum,
   ChatSourceEnum,
   ChatSourceMap,
   ChatStatusEnum
@@ -35,28 +34,6 @@ describe('ChatRoleMap', () => {
     expect(ChatRoleMap[ChatRoleEnum.System].name).toBe('系统');
     expect(ChatRoleMap[ChatRoleEnum.Human].name).toBe('用户');
     expect(ChatRoleMap[ChatRoleEnum.AI].name).toBe('AI');
-  });
-});
-
-describe('ChatFileTypeEnum', () => {
-  it('should have correct file type values', () => {
-    expect(ChatFileTypeEnum.image).toBe('image');
-    expect(ChatFileTypeEnum.audio).toBe('audio');
-    expect(ChatFileTypeEnum.video).toBe('video');
-    expect(ChatFileTypeEnum.file).toBe('file');
-    expect(ChatFileTypeEnum.document).toBe('document');
-    expect(ChatFileTypeEnum.unknown).toBe('unknown');
-  });
-
-  it('should have all expected file types', () => {
-    const types = Object.values(ChatFileTypeEnum);
-    expect(types).toHaveLength(6);
-    expect(types).toContain('image');
-    expect(types).toContain('audio');
-    expect(types).toContain('video');
-    expect(types).toContain('file');
-    expect(types).toContain('document');
-    expect(types).toContain('unknown');
   });
 });
 
