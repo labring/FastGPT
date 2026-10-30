@@ -1,4 +1,5 @@
 import { delay, withTimeout } from '@fastgpt/global/common/system/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { SimpleLRUCache } from '../../../../common/cache/simpleLru';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -75,12 +76,15 @@ export const getScopedTeamModelHandle = async ({
     const teamModels = models.map((model) =>
       formatDbModelToRuntimeModel(model, { fallbackProvider: true })
     );
+    const teamRuntimeVersion = hashStr(
+      JSON.stringify(teamModels.map(({ sortOrder: _sortOrder, ...model }) => model))
+    );
     const handle = createModelHandle({
       models: [...systemHandle.getSystemModels(), ...teamModels],
       defaultModels: systemHandle.defaultModels,
       configuredDefaultModelIds: systemHandle.configuredDefaultModelIds,
       revision: systemHandle.revision,
-      version: `${systemHandle.version}:team:${teamId}:${revision}`
+      version: `${systemHandle.version}:team:${teamId}:${teamRuntimeVersion}`
     });
     teamHandles.set(teamId, {
       handle,

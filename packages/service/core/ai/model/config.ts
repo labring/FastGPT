@@ -1,4 +1,5 @@
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import {
   GetModelDetailResponseSchema,
   GetSystemModelConfigResponseSchema,
@@ -24,7 +25,7 @@ export const getSystemModelConfigService = async (): Promise<GetSystemModelConfi
   const metadata = getModelProviderMetadata();
 
   return GetSystemModelConfigResponseSchema.parse({
-    models: modelHandle.getSystemModels().map((model) => ({
+    models: sortModelOrderItems(modelHandle.getSystemModels()).map((model) => ({
       ...desensitizeModel(model),
       channels: channelsByModel.get(model.model) ?? []
     })),
@@ -46,7 +47,7 @@ export const getTeamModelListService = async ({
   const channelsByModel = groupChannelSummariesByModel(channelItems);
   const metadata = getModelProviderMetadata();
   const handle = await getTeamModelHandle({ teamId });
-  const teamModels = handle.getTeamModels(tmbId);
+  const teamModels = sortModelOrderItems(handle.getTeamModels(tmbId));
 
   return GetTeamModelsResponseSchema.parse({
     models: teamModels.map((item) => ({

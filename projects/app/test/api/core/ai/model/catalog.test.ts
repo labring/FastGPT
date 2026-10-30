@@ -174,6 +174,79 @@ describe('GET /api/core/ai/model/catalog', () => {
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
   });
 
+  it('orders owned, shared and system models by independent ranks without changing defaults', async () => {
+    const systemFirst = { ...model, modelId: 'system-first', sortOrder: 0 };
+    const teamLast = {
+      ...model,
+      modelId: 'team-last',
+      scope: ModelScopeEnum.team,
+      tmbId: 'member',
+      sortOrder: 200
+    };
+    const teamFirst = { ...teamLast, modelId: 'team-first', sortOrder: 100 };
+    const systemLast = { ...model, modelId: 'system-last', sortOrder: 1 };
+    const sharedFirst = {
+      ...teamLast,
+      modelId: 'shared-first',
+      tmbId: 'other-member',
+      sortOrder: 0
+    };
+    const sharedLast = {
+      ...sharedFirst,
+      modelId: 'shared-last',
+      tmbId: 'third-member',
+      sortOrder: 1
+    };
+    const sourceModels = [systemLast, sharedLast, teamLast, sharedFirst, systemFirst, teamFirst];
+    setModelTestSnapshot({
+      models: sourceModels,
+      configuredDefaultModelIds: { llm: systemLast.modelId }
+    });
+
+    const result = await handler({ query: { orderBy: 'custom' } } as any);
+    expect(result.data?.models.map((item) => item.modelId)).toEqual([
+      'team-first',
+      'team-last',
+      'shared-first',
+      'shared-last',
+      'system-first',
+      'system-last'
+    ]);
+    expect(result.data?.defaultModelIds.llm).toBe(systemLast.modelId);
+    expect(result.data?.models.every((item) => !('requestAuth' in item))).toBe(true);
+    expect(
+      getCachedSystemModelHandle()
+        ?.getActiveModels()
+        .map((item) => item.modelId)
+    ).toEqual(sourceModels.map((item) => item.modelId));
+    const runtimeResult = await handler({ query: {} } as any);
+    expect(runtimeResult.data?.models.map((item) => item.modelId)).toEqual(
+      sourceModels.map((item) => item.modelId)
+    );
+  });
+
+  it('refreshes the display cache after a rank-only change while keeping the runtime version', async () => {
+    const first = { ...model, modelId: 'first', sortOrder: 100 };
+    const second = { ...model, modelId: 'second', sortOrder: 200 };
+    setModelTestSnapshot({ models: [first, second] });
+    const runtime = await handler({ query: {} } as any);
+    const initial = await handler({ query: { orderBy: 'custom' } } as any);
+    expect(initial.version).not.toBe(runtime.version);
+    expect(
+      await handler({ query: { orderBy: 'custom', version: initial.version } } as any)
+    ).toEqual({ version: initial.version });
+
+    setModelTestSnapshot({ models: [{ ...first, sortOrder: 300 }, second] });
+    const updated = await handler({
+      query: { orderBy: 'custom', version: initial.version }
+    } as any);
+    expect(updated.version).not.toBe(initial.version);
+    expect(updated.data?.models.map((item) => item.modelId)).toEqual(['second', 'first']);
+    expect(await handler({ query: { version: runtime.version } } as any)).toEqual({
+      version: runtime.version
+    });
+  });
+
   it('forwards the authenticated actor to getAuthorizedModelIds', async () => {
     mocks.authUserPer.mockResolvedValueOnce({
       teamId: 'admin-team',

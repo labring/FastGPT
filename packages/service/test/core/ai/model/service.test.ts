@@ -20,6 +20,7 @@ import {
   importSystemModels,
   restoreModelName,
   updateModel,
+  updateModelOrder,
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
@@ -65,6 +66,40 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
+  it('rewrites complete order with consecutive ranks without changing runtime fallback order', async () => {
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
+
+    // 完整顺序保存后，rank 从 1 开始连续赋值。
+    await updateModelOrder({
+      ...owner,
+      modelIds: [first.modelId, second.modelId]
+    });
+
+    const orderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ sortOrder: 1 })
+      .lean();
+    expect(orderedModels.map(({ model }) => model)).toEqual(['original', 'second']);
+    expect(orderedModels.map(({ sortOrder }) => sortOrder)).toEqual([1, 2]);
+
+    // 自定义顺序只用于管理员展示；ModelHandle 保持原有 `_id DESC` 的默认回退次序。
+    expect(
+      getCachedSystemModelHandle()
+        ?.getSystemModels()
+        .map((model) => model.modelId)
+    ).toEqual([second.modelId, first.modelId]);
+    expect(getCachedSystemModelHandle()?.getDefaultModelIds()[ModelTypeEnum.llm]).toBe(
+      second.modelId
+    );
+
+    await expect(
+      updateModelOrder({
+        ...owner,
+        modelIds: [first.modelId, '68ad85a7463006c963799a07']
+      })
+    ).rejects.toThrow('modelUnExist');
+  });
+
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
     const model = await createModel({ ...owner, modelData: draft, channelIds: [1] });
     await updateModel({
@@ -256,6 +291,43 @@ describe('team model writes', () => {
       expect(await readModelCatalogRevision(context)).toBe(1);
       expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
     });
+    it('keeps team model order isolated to the owning member', async () => {
+      const ownFirst = await createModel({ ...owner, modelData: draft });
+      const ownSecond = await createModel({
+        ...owner,
+        modelData: { ...draft, model: 'second' }
+      });
+      const otherTmbId = new Types.ObjectId().toString();
+      const other = await createModel({
+        ...owner,
+        tmbId: otherTmbId,
+        modelData: { ...draft, model: 'other' }
+      });
+
+      await updateModelOrder({
+        ...owner,
+        modelIds: [ownFirst.modelId, ownSecond.modelId]
+      });
+
+      await expect(
+        MongoAIModel.find({ scope: ModelScopeEnum.team, tmbId: owner.tmbId })
+          .sort({ sortOrder: 1 })
+          .lean()
+      ).resolves.toMatchObject([
+        { model: 'custom', sortOrder: 1 },
+        { model: 'second', sortOrder: 2 }
+      ]);
+      const otherModel = await MongoAIModel.findById(other.modelId).lean();
+      expect(otherModel).toMatchObject({ model: 'other' });
+      expect(otherModel).not.toHaveProperty('sortOrder');
+      await expect(
+        updateModelOrder({
+          ...owner,
+          modelIds: [ownSecond.modelId, other.modelId]
+        })
+      ).rejects.toThrow('modelUnExist');
+    });
+
     it('rolls back a batch that includes another member model', async () => {
       const own = await createModel({ ...owner, modelData: draft });
       const other = await createModel({

@@ -2,14 +2,17 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
+import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import type {
   CreateModelBody,
   CreateModelsFromTemplatesBody,
-  UpdateModelBody
+  UpdateModelBody,
+  UpdateModelOrderBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { invalidateTeamModelCatalog } from './catalog/cache';
-import type { ModelCatalogScope } from './catalog/entity';
+import { incrementModelCatalogRevision, type ModelCatalogScope } from './catalog/entity';
 import { updatedReloadSystemModel } from './catalog/service';
 import { runModelTransaction } from './catalog/transaction';
 import {
@@ -139,7 +142,61 @@ export const updateModelStatus = async ({
   await refreshMutationCatalog(context);
 };
 
-/** 创建时覆盖请求中的归属字段；团队模型去除系统专用的直连配置，唯一索引负责并发重名兜底。 */
+/** 在一个目录事务中按客户端提交的完整顺序写入连续的 1-based rank。 */
+export const updateModelOrder = async ({
+  modelIds,
+  ...owner
+}: Omit<UpdateModelOrderBody, 'channelType'> & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  const changed = await mongoSessionRun(
+    async (session) => {
+      // 读取完整作用域列表；旧数据缺失或重复 rank 时，先按历史稳定顺序构造当前列表。
+      const modelDocuments = await MongoAIModel.find(filter)
+        .select({ _id: 1, sortOrder: 1 })
+        .sort({ _id: -1 })
+        .session(session)
+        .lean();
+      const currentIds = sortModelOrderItems(
+        modelDocuments.map(({ _id, sortOrder }) => ({ modelId: String(_id), sortOrder }))
+      ).map(({ modelId }) => modelId);
+      const currentIdSet = new Set(currentIds);
+      if (
+        modelIds.length !== currentIds.length ||
+        new Set(modelIds).size !== modelIds.length ||
+        modelIds.some((modelId) => !currentIdSet.has(modelId))
+      ) {
+        throw new UserError(ModelErrEnum.unExist);
+      }
+
+      const modelById = new Map(
+        modelDocuments.map(({ _id, sortOrder }) => [String(_id), { sortOrder }])
+      );
+      const updates = modelIds.flatMap((modelId, index) => {
+        const sortOrder = index + 1;
+        if (modelById.get(modelId)?.sortOrder === sortOrder) return [];
+        return [
+          {
+            updateOne: {
+              filter: { _id: modelId, ...filter },
+              update: { $set: { sortOrder } }
+            }
+          }
+        ];
+      });
+      if (updates.length === 0) return false;
+
+      // 先写目录 revision 作为同作用域并发栅栏，再与完整 rank 更新一起提交。
+      await incrementModelCatalogRevision(context, session);
+      await MongoAIModel.bulkWrite(updates, { session });
+      return true;
+    },
+    { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } }
+  );
+
+  if (changed) await refreshMutationCatalog(context);
+};
+
+/** 创建时覆盖归属并忽略展示 rank；团队模型去除直连配置，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
   channelIds,
@@ -150,6 +207,7 @@ export const createModel = async ({
     tmbId: _tmbId,
     teamId: _teamId,
     scope: _scope,
+    sortOrder: _sortOrder,
     ...data
   } = normalizeModelPricingForSave(modelData);
   const [model] = await runModelTransaction(context, async (session) => {
@@ -189,7 +247,9 @@ export const createModelsFromTemplates = async ({
         const key = `${reference.type}:${reference.model}`;
         const template = templateMap.get(key);
         if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-        return [template.model, normalizeModelPricingForSave(template)] as const;
+        // 模板也只提供模型配置，不能把模板携带的 rank 写入本实例目录。
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(template);
+        return [template.model, modelData] as const;
       })
     ).values()
   );

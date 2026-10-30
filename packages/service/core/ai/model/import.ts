@@ -9,7 +9,8 @@ import { updatedReloadSystemModel } from './catalog/service';
 import { getModelConfigUpdate } from './utils';
 
 /**
- * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID，并在同一事务内清理派生权限与探测记录。
+ * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与展示 rank，并在同一事务内清理派生权限与探测记录。
+ * 输入中的 sortOrder 始终忽略，新建模型也不从配置继承 rank。
  */
 export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
   const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
@@ -67,7 +68,7 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
 
     const resolvedModels = importedModels.map(
       ({ data: { modelId: importedModelId, ...importedData }, existingModel }) => {
-        const modelData = normalizeModelPricingForSave(importedData);
+        const { sortOrder: _sortOrder, ...modelData } = normalizeModelPricingForSave(importedData);
         if (!existingModel) {
           return {
             modelId: importedModelId,

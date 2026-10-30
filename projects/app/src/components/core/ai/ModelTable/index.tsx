@@ -1,6 +1,5 @@
-import { getPublicModelCatalog } from '@/web/core/ai/model/catalogApi';
-import { useModelList } from '@/web/core/ai/model/useModelList';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { getPublicModelCatalog, getUserModelCatalog } from '@/web/core/ai/model/catalogApi';
+import { useModelQuery } from '@/web/core/ai/model/useModelQuery';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Button,
@@ -58,26 +57,29 @@ const ModelTable = ({
   onReplaceInvalidModels?: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
-  const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
-    useUserModelStore();
-  const { modelList: availableModels } = useModelList({ enabled: permissionConfig });
+  // 可用模型页独立读取展示目录；复用身份生命周期，切换团队时立即隐藏旧结果并忽略过期响应。
+  const { data: memberCatalog } = useModelQuery({
+    enabled: permissionConfig,
+    observeCatalog: false,
+    queryKey: 'available-models:custom',
+    read: useCallback(async () => (await getUserModelCatalog({ orderBy: 'custom' })).data, [])
+  });
   const { data: publicCatalog } = useRequest(getPublicModelCatalog, {
     manual: permissionConfig
   });
-  const publicProviderCache = useMemo(
-    () => formatModelProviders(publicCatalog?.providers ?? []),
-    [publicCatalog?.providers]
+  const catalog = permissionConfig ? memberCatalog : publicCatalog;
+  const providerCache = useMemo(
+    () => formatModelProviders(catalog?.providers ?? []),
+    [catalog?.providers]
   );
   const getModelProvider = useCallback(
     (provider?: string, language?: string) =>
-      permissionConfig
-        ? getMemberModelProvider(provider, language)
-        : getModelProviderFromCache({
-            cache: publicProviderCache.ModelProviderMapCache,
-            provider,
-            language
-          }),
-    [permissionConfig, getMemberModelProvider, publicProviderCache.ModelProviderMapCache]
+      getModelProviderFromCache({
+        cache: providerCache.ModelProviderMapCache,
+        provider,
+        language
+      }),
+    [providerCache.ModelProviderMapCache]
   );
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
@@ -86,12 +88,8 @@ const ModelTable = ({
 
   const [provider, setProvider] = useState<string | ''>('');
   const providers = useMemo(
-    () =>
-      getModelProviderListFromCache(
-        permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
-        i18n.language
-      ),
-    [i18n.language, memberModelProviders, permissionConfig, publicProviderCache]
+    () => getModelProviderListFromCache(providerCache.ModelProviderListCache, i18n.language),
+    [i18n.language, providerCache]
   );
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
@@ -99,16 +97,14 @@ const ModelTable = ({
   const [search, setSearch] = useState('');
 
   type TableSourceModel = MyModelItemType | PublicPriceSystemModel;
-  const remoteModels: TableSourceModel[] = permissionConfig
-    ? availableModels
-    : (publicCatalog?.models ?? []);
+  const remoteModels: TableSourceModel[] = catalog?.models ?? [];
 
   const { formattedList: modelList } = useModelTableFormat({
     models: remoteModels,
     modelType,
     provider,
     search,
-    sortByOrder: true,
+    sortByOrder: !permissionConfig,
     getModelProvider,
     language: i18n.language
   });

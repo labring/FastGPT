@@ -56,6 +56,10 @@ type Props<T = any> = {
   /** 成功、取消或移出列表时均调用，供调用方释放拖拽状态。 */
   onDragEnd?: () => void;
   renderClone?: DraggableChildrenFn;
+  /** 使用虚拟窗口时由调用方控制占位内容，并通过 renderClone 保留拖拽项。 */
+  mode?: 'standard' | 'virtual';
+  /** 将拖拽克隆挂载到指定容器，例如表格的 tbody。 */
+  getContainerForClone?: () => HTMLElement;
   children: ({
     provided,
     snapshot
@@ -71,6 +75,8 @@ type Props<T = any> = {
 function DndDrag<T>({
   children,
   renderClone,
+  mode = 'standard',
+  getContainerForClone,
   onDragEndCb,
   onBeforeCapture,
   onDragEnd,
@@ -80,13 +86,19 @@ function DndDrag<T>({
 }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
+  if (mode === 'virtual' && !renderClone) {
+    throw new Error('DndDrag virtual mode requires a renderClone callback');
+  }
+
   const onDragStart = (start: DragStart) => {
+    if (mode === 'virtual') return;
+
     const draggingNode = document.querySelector(`[data-rbd-draggable-id="${start.draggableId}"]`);
     setDraggingItemHeight(draggingNode?.getBoundingClientRect().height || 0);
   };
 
   const handleDragEnd = (result: DropResult) => {
-    setDraggingItemHeight(0);
+    if (mode === 'standard') setDraggingItemHeight(0);
     onDragEnd?.();
     if (!result.destination) {
       return;
@@ -108,11 +120,16 @@ function DndDrag<T>({
       onDragStart={onDragStart}
       onDragEnd={handleDragEnd}
     >
-      <Droppable droppableId="droppable" renderClone={renderClone}>
+      <Droppable
+        droppableId="droppable"
+        mode={mode}
+        renderClone={renderClone}
+        getContainerForClone={getContainerForClone}
+      >
         {(provided, snapshot) => (
           <>
             {children({ provided, snapshot })}
-            {snapshot.isDraggingOver && renderInnerPlaceholder && (
+            {snapshot.isDraggingOver && renderInnerPlaceholder && mode === 'standard' && (
               <Box height={`${draggingItemHeight / zoom}px`} />
             )}
           </>

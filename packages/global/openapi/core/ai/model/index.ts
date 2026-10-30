@@ -21,6 +21,7 @@ import {
   UpdateDefaultModelsBodySchema,
   UpdateModelBodySchema,
   UpdateModelChannelsBodySchema,
+  UpdateModelOrderBodySchema,
   UpdateModelStatusBodySchema,
   UpdateSystemModelsWithJsonBodySchema
 } from './api';
@@ -180,6 +181,17 @@ export const AIModelPath: OpenAPIPath = {
       responses: { 200: { description: '更新成功' } }
     }
   },
+  '/core/ai/model/updateOrder': {
+    put: {
+      summary: '更新模型展示顺序',
+      description: '按显式作用域提交完整模型 ID 列表；服务端按列表顺序写入连续排序值',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelOrderBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
   '/core/ai/model/getConfigJson': {
     get: {
       summary: '导出模型配置',
@@ -257,7 +269,7 @@ export const AIModelPath: OpenAPIPath = {
     get: {
       summary: '获取当前成员可用模型清单',
       description:
-        '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商',
+        '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商。orderBy=custom 时按自己的团队模型、共享给我的团队模型、系统模型依次展示，各组按自定义 rank 排列；省略时保留运行时顺序，默认模型不受展示排序影响',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
       requestParams: { query: GetModelCatalogQuerySchema },
       responses: {

@@ -130,6 +130,7 @@ const useVirtualWindow = <T,>({
   overscan: number;
 }) => {
   const size = useSize(containerRef);
+  const previousContainerRef = useRef<HTMLDivElement | null>(null);
   const [range, setRange] = useState({ start: 0, end: 0 });
   const rowHeight = Math.max(itemHeight, 1);
 
@@ -159,6 +160,14 @@ const useVirtualWindow = <T,>({
   useBrowserLayoutEffect(() => {
     syncWindow();
   }, [data.length, itemHeight, overscan, size?.height, size?.width, syncWindow]);
+
+  useBrowserLayoutEffect(() => {
+    // 模式切换可能重建同尺寸的滚动容器，需在绘制前按新容器的位置重算窗口。
+    if (previousContainerRef.current !== containerRef.current) {
+      previousContainerRef.current = containerRef.current;
+      syncWindow();
+    }
+  });
 
   const list = useMemo<VirtualListItem<T>[]>(
     () =>
