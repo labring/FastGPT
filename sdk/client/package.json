@@ -1,0 +1,67 @@
+{
+  "name": "@fastgpt-sdk/client",
+  "version": "0.1.0",
+  "description": "Typed FastGPT API client",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/client.js",
+  "types": "./dist/client.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./error": {
+      "types": "./dist/error.d.ts",
+      "import": "./dist/error.js"
+    },
+    "./type": {
+      "types": "./dist/type.d.ts",
+      "import": "./dist/type.js"
+    },
+    "./dataset/type": {
+      "types": "./dist/dataset/type.d.ts",
+      "import": "./dist/dataset/type.js"
+    },
+    "./dataset/operations": {
+      "types": "./dist/dataset/operations.d.ts",
+      "import": "./dist/dataset/operations.js"
+    },
+    "./dataset/schema": {
+      "types": "./dist/dataset/schema.d.ts",
+      "import": "./dist/dataset/schema.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.23.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "generate": "tsx scripts/generate.ts",
+    "generate:check": "tsx scripts/generate.ts --check",
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "devDependencies": {
+    "@fastgpt/global": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "mongoose": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "prettier": "catalog:lint",
+    "zod": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

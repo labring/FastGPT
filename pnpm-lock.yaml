@@ -472,6 +472,30 @@ importers:
         specifier: ^4.6.6
         version: 4.6.7
 
+  packages/cli:
+    devDependencies:
+      '@fastgpt-sdk/client':
+        specifier: workspace:*
+        version: link:../../sdk/client
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.5(vitest@4.1.5)
+      ajv:
+        specifier: 'catalog:'
+        version: 8.17.1
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.10(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+
   packages/dal:
     dependencies:
       '@fastgpt-sdk/otel':
@@ -2004,6 +2028,39 @@ importers:
       express:
         specifier: 'catalog:'
         version: 4.22.1
+
+  sdk/client:
+    devDependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../../packages/global
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.5(vitest@4.1.5)
+      mongoose:
+        specifier: 'catalog:'
+        version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+      prettier:
+        specifier: catalog:lint
+        version: 3.8.3
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.10(typescript@6.0.3)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.20.6
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.5(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
 
   sdk/otel:
     dependencies:

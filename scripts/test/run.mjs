@@ -10,6 +10,8 @@ const workspaceFilters = {
   global: '@fastgpt/global',
   service: '@fastgpt/service',
   web: '@fastgpt/web',
+  client: '@fastgpt-sdk/client',
+  cli: '@fastgpt/cli',
   'workflow-core': '@fastgpt/workflow-core',
   'workflow-cli': '@fastgpt/workflow-cli'
 };
