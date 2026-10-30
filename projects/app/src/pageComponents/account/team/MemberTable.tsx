@@ -38,7 +38,7 @@ import {
 import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useState, useMemo, type ComponentProps } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { downloadFetch, getIsMemberSyncMode } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -87,7 +87,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const [searchKey, setSearchKey] = useState<string>('');
   const {
     data: members = [],
-    isLoading: loadingMembers,
+    isInitialLoading: loadingMembers,
     refreshList: refetchMemberList,
     ScrollData: MemberScrollData
   } = useScrollPagination<
@@ -109,15 +109,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const onRefreshMembers = useCallback(() => {
     refetchMemberList();
   }, [refetchMemberList]);
-
-  // 外层统一显示成员请求 loading，避免滚动容器重复渲染 loading 覆盖层。
-  const MemberScrollContainer = useMemo(
-    () =>
-      function MemberScrollContainer(props: ComponentProps<typeof MemberScrollData>) {
-        return <MemberScrollData {...props} showLoadingOverlay={false} />;
-      },
-    [MemberScrollData]
-  );
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
@@ -296,7 +287,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       <MyBox isLoading={isLoading} flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0}>
         <FixedTableContainer
-          scrollContainer={MemberScrollContainer}
+          scrollContainer={MemberScrollData}
           maxH="none"
           minH={0}
           px={4}

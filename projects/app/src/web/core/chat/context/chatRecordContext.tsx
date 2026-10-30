@@ -17,6 +17,7 @@ type ChatRecordProviderParams = ChatAuthTargetInput & {
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
+  isInitialLoadingRecords: boolean;
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   refreshChatRecords: () => Promise<ChatSiteItemType[]>;
@@ -29,6 +30,7 @@ type ChatRecordContextType = {
 
 export const ChatRecordContext = createContext<ChatRecordContextType>({
   isLoadingRecords: false,
+  isInitialLoadingRecords: false,
   chatRecords: [],
   setChatRecords: function (_value: React.SetStateAction<ChatSiteItemType[]>): void {
     throw new Error('Function not implemented.');
@@ -52,13 +54,11 @@ const ChatRecordContextProvider = ({
   params,
   feedbackRecordId,
   fetchFn,
-  showInitialLoading = true,
   showPrevLoading = true
 }: {
   children: ReactNode;
   params: ChatRecordProviderParams;
   feedbackRecordId?: string;
-  showInitialLoading?: boolean;
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
@@ -76,6 +76,7 @@ const ChatRecordContextProvider = ({
     hasMoreNext,
     ScrollData,
     isLoading,
+    isInitialLoading,
     itemRefs,
     loadInitData
   } = useLinkedScroll(
@@ -118,7 +119,6 @@ const ChatRecordContextProvider = ({
       currentData,
       defaultScroll: 'bottom',
       showErrorToast: false,
-      showInitialLoading,
       showPrevLoading
     }
   );
@@ -146,6 +146,7 @@ const ChatRecordContextProvider = ({
   const contextValue = useMemoEnhance(() => {
     return {
       isLoadingRecords: isLoading,
+      isInitialLoadingRecords: isInitialLoading,
       chatRecords,
       setChatRecords,
       refreshChatRecords,
@@ -157,6 +158,7 @@ const ChatRecordContextProvider = ({
     };
   }, [
     isLoading,
+    isInitialLoading,
     chatRecords,
     setChatRecords,
     refreshChatRecords,

@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import { useLinkedScroll } from '../../hooks/useLinkedScroll';
+import MyBox from '../../components/common/MyBox';
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../hooks/useToast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -45,7 +46,7 @@ type Response = {
 type Params = LinkedPaginationProps<{ chatId: string }>;
 type HarnessProps = {
   chatId: string;
-  showInitialLoading?: boolean;
+  renderInitialOverlay?: boolean;
   scrollRef?: React.RefObject<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 };
@@ -59,12 +60,11 @@ describe('useLinkedScroll', () => {
   const api = vi.fn(
     (params: Params) => new Promise<Response>((resolve) => requests.push({ params, resolve }))
   );
-  const Harness = ({ chatId, showInitialLoading, scrollRef, onScroll }: HarnessProps) => {
+  const Harness = ({ chatId, renderInitialOverlay = true, scrollRef, onScroll }: HarnessProps) => {
     const params = useMemo(() => ({ chatId }), [chatId]);
-    state = useLinkedScroll(api, { params, showErrorToast: false, showInitialLoading });
+    state = useLinkedScroll(api, { params, showErrorToast: false });
     const scrollProps = {
       id: 'scroll-viewport',
-      containerProps: { id: 'scroll-shell' },
       ScrollContainerRef: scrollRef,
       onScroll,
       children: [
@@ -80,7 +80,16 @@ describe('useLinkedScroll', () => {
         )
       ]
     };
-    return React.createElement(state.ScrollData, scrollProps);
+    return React.createElement(
+      MyBox,
+      {
+        id: 'scroll-shell',
+        position: 'relative',
+        overflow: 'hidden',
+        isLoading: renderInitialOverlay && state.isInitialLoading
+      },
+      React.createElement(state.ScrollData, scrollProps)
+    );
   };
   const render = async (chatId: string, props: Omit<HarnessProps, 'chatId'> = {}) => {
     await act(async () => root.render(React.createElement(Harness, { chatId, ...props })));
@@ -190,18 +199,20 @@ describe('useLinkedScroll', () => {
   });
 
   it.each([undefined, false])(
-    'preserves default initial loading and allows callers to disable only the first overlay: %s',
-    async (showInitialLoading) => {
-      await render('first', { showInitialLoading });
+    'leaves initial loading presentation to the outer layout: %s',
+    async (renderInitialOverlay) => {
+      await render('first', { renderInitialOverlay });
       expect(!!container.querySelector('[data-loading-overlay]')).toBe(
-        showInitialLoading !== false
+        renderInitialOverlay !== false
       );
       expect(container.textContent).toBe('Composer');
       await resolve(0, 'first-record');
       expect(container.querySelector('[data-loading-overlay]')).toBeNull();
 
-      await render('second', { showInitialLoading });
-      expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
+      await render('second', { renderInitialOverlay });
+      expect(!!container.querySelector('[data-loading-overlay]')).toBe(
+        renderInitialOverlay !== false
+      );
       await resolve(1, 'second-record');
       expect(container.querySelector('[data-loading-overlay]')).toBeNull();
     }
@@ -249,4 +260,48 @@ describe('useLinkedScroll', () => {
     expect(onScroll).toHaveBeenCalledOnce();
     expect(scrollTargets).toEqual([viewport]);
   });
+
+  it.each(['previous', 'next'] as const)(
+    'shows only request text when loading the %s page',
+    async (direction) => {
+      vi.useFakeTimers();
+      const scrollRef = React.createRef<HTMLDivElement>();
+      await render('first', { scrollRef });
+      expect(container.querySelector('[data-loading-overlay]')).not.toBeNull();
+      await act(async () =>
+        requests[0].resolve({
+          list: [{ id: 'first-record' }],
+          hasMorePrev: direction === 'previous',
+          hasMoreNext: direction === 'next'
+        })
+      );
+      const viewport = scrollRef.current!;
+      const draft = container.querySelector('input')!;
+      const scrollTop = direction === 'previous' ? 0 : 300;
+      viewport.scrollTop = scrollTop;
+      draft.value = 'unsaved';
+      await act(async () => vi.advanceTimersByTimeAsync(250));
+      expect(requests[1].params[direction === 'previous' ? 'prevId' : 'nextId']).toBe(
+        'first-record'
+      );
+      expect(state.isLoading).toBe(true);
+      expect(state.isInitialLoading).toBe(false);
+      expect(state.isLoadingMore).toBe(true);
+      expect(container.querySelector('[data-loading-overlay]')).toBeNull();
+      expect(container.textContent).toContain('common:is_requesting');
+
+      await resolve(1, 'next-record');
+      expect(state.dataList).toEqual(
+        (direction === 'previous'
+          ? ['next-record', 'first-record']
+          : ['first-record', 'next-record']
+        ).map((id) => ({ id }))
+      );
+      expect(container.textContent).not.toContain('common:is_requesting');
+      expect(scrollRef.current).toBe(viewport);
+      expect(container.querySelector('input')).toBe(draft);
+      expect(draft.value).toBe('unsaved');
+      expect(viewport.scrollTop).toBe(scrollTop);
+    }
+  );
 });

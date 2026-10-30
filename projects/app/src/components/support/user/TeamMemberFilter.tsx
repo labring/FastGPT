@@ -64,10 +64,11 @@ const TeamMemberFilter = ({
     [onChange]
   );
 
-  const { data: members = [], ScrollData } = useScrollPagination<
-    any,
-    PaginationResponse<TeamMemberItemType>
-  >(getTeamMembers, {
+  const {
+    data: members = [],
+    ScrollData,
+    isInitialLoading
+  } = useScrollPagination<any, PaginationResponse<TeamMemberItemType>>(getTeamMembers, {
     pageSize: 20,
     params: {
       searchKey,
@@ -158,6 +159,7 @@ const TeamMemberFilter = ({
       onSearchChange={setSearchKey}
       filterLocal={false}
       ListContainer={ScrollData}
+      isLoading={isInitialLoading}
       listSize={'lg'}
       maxW={maxW}
       menuMaxW={menuMaxW}

@@ -9,6 +9,7 @@ import type { PaginationProps, PaginationResponseType } from '@fastgpt/global/op
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
@@ -62,7 +63,7 @@ const SelectOneResource = ({
     onCurrentParentIdChange?.(currentParentId);
   }, [currentParentId, onCurrentParentIdChange]);
 
-  const { data, ScrollData } = useScrollPagination(server, {
+  const { data, ScrollData, isInitialLoading } = useScrollPagination(server, {
     pageSize: 20,
     params: { parentId: currentParentId },
     refreshDeps: [currentParentId],
@@ -145,65 +146,68 @@ const SelectOneResource = ({
         ))}
       </Flex>
 
-      <ScrollData
+      <MyBox
+        isLoading={isInitialLoading}
+        position={'relative'}
+        overflow={'hidden'}
         flex={isAutoHeight ? '0 1 auto' : '1 1 0'}
         h={isAutoHeight ? 'auto' : '100%'}
         minH={0}
         maxH={maxH}
-        pt={0.5}
-        showLoadingOverlay
       >
-        {data.map((item) => {
-          const disabled = isItemDisabled(item);
-          const selected = item.id === value;
-          return (
-            <Flex
-              key={item.id}
-              alignItems={'center'}
-              h={'36px'}
-              flexShrink={0}
-              px={3}
-              borderRadius={'md'}
-              cursor={disabled ? 'not-allowed' : 'pointer'}
-              color={disabled ? 'myGray.400' : 'myGray.900'}
-              bg={selected ? 'primary.50 !important' : undefined}
-              _hover={disabled ? undefined : { bg: 'myGray.100' }}
-              onClick={() => onClickItem(item)}
-            >
-              <Flex alignItems={'center'} justifyContent={'center'} w={'20px'} h={'20px'} mr={2}>
-                <Avatar
-                  src={item.isFolder ? FolderImgUrl : item.avatar}
-                  w={'20px'}
-                  h={'20px'}
-                  borderRadius={'sm'}
-                />
-              </Flex>
-              <Box flex={'1 1 0'} minW={0} fontSize={['md', 'sm']} className={'textEllipsis'}>
-                {item.name}
-              </Box>
-              {item.isFolder && (
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  flex={'0 0 auto'}
-                  w={'20px'}
-                  h={'20px'}
-                  ml={2}
-                  borderRadius={'xs'}
-                  cursor={disabled ? 'not-allowed' : 'pointer'}
-                  _hover={disabled ? undefined : { bg: 'rgba(31, 35, 41, 0.08)' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    enterFolderFromArrow(item);
-                  }}
-                >
-                  <MyIcon name={'common/rightArrowFill'} w={'16px'} color={'myGray.500'} />
+        <ScrollData h={isAutoHeight ? 'auto' : '100%'} maxH={maxH} pt={0.5}>
+          {data.map((item) => {
+            const disabled = isItemDisabled(item);
+            const selected = item.id === value;
+            return (
+              <Flex
+                key={item.id}
+                alignItems={'center'}
+                h={'36px'}
+                flexShrink={0}
+                px={3}
+                borderRadius={'md'}
+                cursor={disabled ? 'not-allowed' : 'pointer'}
+                color={disabled ? 'myGray.400' : 'myGray.900'}
+                bg={selected ? 'primary.50 !important' : undefined}
+                _hover={disabled ? undefined : { bg: 'myGray.100' }}
+                onClick={() => onClickItem(item)}
+              >
+                <Flex alignItems={'center'} justifyContent={'center'} w={'20px'} h={'20px'} mr={2}>
+                  <Avatar
+                    src={item.isFolder ? FolderImgUrl : item.avatar}
+                    w={'20px'}
+                    h={'20px'}
+                    borderRadius={'sm'}
+                  />
                 </Flex>
-              )}
-            </Flex>
-          );
-        })}
-      </ScrollData>
+                <Box flex={'1 1 0'} minW={0} fontSize={['md', 'sm']} className={'textEllipsis'}>
+                  {item.name}
+                </Box>
+                {item.isFolder && (
+                  <Flex
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    flex={'0 0 auto'}
+                    w={'20px'}
+                    h={'20px'}
+                    ml={2}
+                    borderRadius={'xs'}
+                    cursor={disabled ? 'not-allowed' : 'pointer'}
+                    _hover={disabled ? undefined : { bg: 'rgba(31, 35, 41, 0.08)' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      enterFolderFromArrow(item);
+                    }}
+                  >
+                    <MyIcon name={'common/rightArrowFill'} w={'16px'} color={'myGray.500'} />
+                  </Flex>
+                )}
+              </Flex>
+            );
+          })}
+        </ScrollData>
+      </MyBox>
     </Box>
   );
 };

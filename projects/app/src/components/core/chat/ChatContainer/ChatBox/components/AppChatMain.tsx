@@ -13,12 +13,14 @@ import { QuickReplyContext } from '../../context/quickReplyContext';
 import { useChatInstanceActions } from '../../context/chatInstanceActionsContext';
 import { useMemoizedFn } from 'ahooks';
 import type { LinkedScrollDataProps } from '@fastgpt/web/hooks/useLinkedScroll';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type ScrollDataComponent = (props: LinkedScrollDataProps) => React.JSX.Element;
 
 type AppChatMainProps = BoxProps & {
   ScrollData: ScrollDataComponent;
   ScrollContainerRef: RefObject<HTMLDivElement>;
+  isLoading?: boolean;
   welcomeText?: string;
   welcomeQuestions?: string[];
   chatStarted: boolean;
@@ -42,6 +44,7 @@ type AppChatMainProps = BoxProps & {
 const AppChatMain = ({
   ScrollData,
   ScrollContainerRef,
+  isLoading,
   welcomeText,
   welcomeQuestions = [],
   chatStarted,
@@ -63,76 +66,85 @@ const AppChatMain = ({
   const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
 
   return (
-    <ScrollData
-      ScrollContainerRef={ScrollContainerRef}
-      containerProps={{ flex: '1 0 0', h: 0, w: '100%' }}
-      overflow={'overlay'}
-      overflowX={'hidden'}
-      px={[4, 6]}
-      pb={6}
-      {...boxBodyProps}
+    <MyBox
+      isLoading={isLoading}
+      position={'relative'}
+      overflow={'hidden'}
+      flex={'1 0 0'}
+      h={0}
+      minH={0}
+      w={'100%'}
     >
-      <Box
-        maxW={boxBodyProps?.maxW ?? maxW}
-        w={'100%'}
-        minW={0}
-        h={'100%'}
-        mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? 'auto'}
-        display={'flex'}
-        flexDirection={'column'}
+      <ScrollData
+        ScrollContainerRef={ScrollContainerRef}
+        overflow={'overlay'}
+        overflowX={'hidden'}
+        px={[4, 6]}
+        pb={6}
+        {...boxBodyProps}
       >
-        {/* Workflow Builder 在所有断点都保持 Figma 的完整内容宽度；
-            普通 ChatBox 继续沿用移动端额外收窄，避免改变既有聊天场景。 */}
         <Box
-          className="chat-box-card"
+          maxW={boxBodyProps?.maxW ?? maxW}
           w={'100%'}
-          maxW={workflowBuilderStyle ? '100%' : ['calc(100% - 25px)', ChatBoxContentMaxWidth]}
-          mx={workflowBuilderStyle ? 0 : 'auto'}
+          minW={0}
+          h={'100%'}
+          mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? 'auto'}
+          display={'flex'}
+          flexDirection={'column'}
         >
-          {!!welcomeText && (
-            <WelcomeBox
-              welcomeText={welcomeText}
-              onSendQuestion={onSendQuestion}
-              onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
-            />
-          )}
-          {visibleWelcomeQuestions.length > 0 && (
-            <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
-              {visibleWelcomeQuestions.map((text, index) => (
-                <QuickQuestionButton
-                  key={`${index}-${text}`}
-                  onClick={() => {
-                    if (onQuickReplyClick) {
-                      onQuickReplyClick(text);
-                    } else {
-                      sendMessage({ text });
-                    }
-                  }}
-                >
-                  {text}
-                </QuickQuestionButton>
-              ))}
-            </Flex>
-          )}
-        </Box>
-
-        <Box data-chat-variable-input>
-          <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
-        </Box>
-
-        {hasEmptyState ? (
-          <Flex flex={1} alignItems="center" justifyContent="center" textAlign="center">
-            {EmptyState}
-          </Flex>
-        ) : (
+          {/* Workflow Builder 在所有断点都保持 Figma 的完整内容宽度；
+            普通 ChatBox 继续沿用移动端额外收窄，避免改变既有聊天场景。 */}
           <Box
-            mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}
+            className="chat-box-card"
+            w={'100%'}
+            maxW={workflowBuilderStyle ? '100%' : ['calc(100% - 25px)', ChatBoxContentMaxWidth]}
+            mx={workflowBuilderStyle ? 0 : 'auto'}
           >
-            <ChatRecordsList {...recordsListProps} />
+            {!!welcomeText && (
+              <WelcomeBox
+                welcomeText={welcomeText}
+                onSendQuestion={onSendQuestion}
+                onQuickReplyClick={enableQuickReplies ? onQuickReplyClick : undefined}
+              />
+            )}
+            {visibleWelcomeQuestions.length > 0 && (
+              <Flex w={'100%'} flexDirection={'column'} alignItems={'flex-start'} gap={2}>
+                {visibleWelcomeQuestions.map((text, index) => (
+                  <QuickQuestionButton
+                    key={`${index}-${text}`}
+                    onClick={() => {
+                      if (onQuickReplyClick) {
+                        onQuickReplyClick(text);
+                      } else {
+                        sendMessage({ text });
+                      }
+                    }}
+                  >
+                    {text}
+                  </QuickQuestionButton>
+                ))}
+              </Flex>
+            )}
           </Box>
-        )}
-      </Box>
-    </ScrollData>
+
+          <Box data-chat-variable-input>
+            <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
+          </Box>
+
+          {hasEmptyState ? (
+            <Flex flex={1} alignItems="center" justifyContent="center" textAlign="center">
+              {EmptyState}
+            </Flex>
+          ) : (
+            <Box
+              mt={visibleWelcomeQuestions.length > 0 && recordsListProps.records.length > 0 ? 4 : 0}
+            >
+              <ChatRecordsList {...recordsListProps} />
+            </Box>
+          )}
+        </Box>
+      </ScrollData>
+    </MyBox>
   );
 };
 

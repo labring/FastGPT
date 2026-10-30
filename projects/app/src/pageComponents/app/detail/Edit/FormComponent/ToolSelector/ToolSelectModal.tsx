@@ -98,7 +98,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const {
     data: teamTemplates,
-    isLoading: isTeamLoading,
+    isInitialLoading: isTeamLoading,
     ScrollData: TeamScrollData
   } = useScrollPagination(getTeamAppTemplatesV2, {
     params: {
@@ -265,13 +265,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0} minH={0}>
         {isTeamTemplate ? (
-          <TeamScrollData
-            ScrollContainerRef={scrollContainerRef}
-            flex={1}
-            minH={0}
-            isLoading={isLoading}
-            showLoadingOverlay={false}
-          >
+          <TeamScrollData ScrollContainerRef={scrollContainerRef} flex={1} minH={0}>
             <RenderList
               templates={templates}
               type={templateType}

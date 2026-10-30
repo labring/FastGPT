@@ -3,7 +3,6 @@ import { type LinkedListResponse, type LinkedPaginationProps } from '@fastgpt/gl
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useDebounceEffect, useMemoizedFn } from 'ahooks';
-import MyScrollBox from '../components/common/MyScrollBox';
 import { useRequest } from './useRequest';
 
 const threshold = 200;
@@ -11,14 +10,13 @@ const threshold = 200;
 export type LinkedScrollDataProps = BoxProps & {
   children: ReactNode;
   ScrollContainerRef?: React.RefObject<HTMLDivElement>;
-  /** 外壳承接尺寸和 flex 布局；其余属性、滚动事件与 ref 仍属于内部滚动层。 */
-  containerProps?: BoxProps;
 };
 
 /**
  * 加载以锚点为中心的关联列表，并按滚动位置补充前后数据。
  * 关闭分页时仍保留滚动容器和初始锚点请求，适用于只展示单条数据的场景。
  * 查询参数变化时立即切换数据窗口，首次加载未完成时也会重查，并丢弃旧参数的响应。
+ * 滚动层只展示前后分页的请求文字；初始化与追加的加载状态交给外层决定显示效果。
  */
 export function useLinkedScroll<
   TParams extends LinkedPaginationProps,
@@ -32,8 +30,7 @@ export function useLinkedScroll<
     defaultScroll = 'top',
     enablePagination = true,
     showPrevLoading = true,
-    showErrorToast = true,
-    showInitialLoading = true
+    showErrorToast = true
   }: {
     pageSize?: number;
     params?: Record<string, any>;
@@ -42,8 +39,6 @@ export function useLinkedScroll<
     enablePagination?: boolean;
     showPrevLoading?: boolean;
     showErrorToast?: boolean;
-    /** 是否在初次历史请求期间覆盖滚动内容。关闭后可先渲染输入区。 */
-    showInitialLoading?: boolean;
   }
 ) {
   const { t } = useTranslation();
@@ -58,7 +53,6 @@ export function useLinkedScroll<
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
-  const isInit = useRef(false);
   const previousParamsRef = useRef(params);
   const paramsVersionRef = useRef(0);
   // 滚动事件和布局变化可能在请求状态完成渲染前重复触发，使用 ref 立即锁住同一方向的分页请求。
@@ -121,7 +115,7 @@ export function useLinkedScroll<
     []
   );
 
-  const { runAsync: loadInitData } = useRequest(
+  const { runAsync: loadInitData, loading: isInitialLoading } = useRequest(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
       // 已经被加载的数据，直接滚动到该位置
       const item = dataList.find((item) => item.id === currentData?.id);
@@ -157,9 +151,6 @@ export function useLinkedScroll<
     },
     {
       refreshDeps: [currentData],
-      onFinally() {
-        isInit.current = true;
-      },
       manual: false,
       errorToast: showErrorToast ? undefined : ''
     }
@@ -281,7 +272,6 @@ export function useLinkedScroll<
   const ScrollData = useMemoizedFn(function ScrollData({
     children,
     ScrollContainerRef,
-    containerProps,
     ...props
   }: LinkedScrollDataProps) {
     // If external ref is provided, use it; otherwise use internal ref
@@ -322,12 +312,7 @@ export function useLinkedScroll<
     );
 
     return (
-      <MyScrollBox
-        ref={setRefs}
-        containerProps={containerProps}
-        isLoading={isLoading && (showInitialLoading || isInit.current)}
-        {...props}
-      >
+      <Box ref={setRefs} h={'100%'} minH={0} overflow={'auto'} {...props}>
         {showPrevLoading && hasMorePrev && prevLoading && (
           <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
             {t('common:is_requesting')}
@@ -339,7 +324,7 @@ export function useLinkedScroll<
             {t('common:is_requesting')}
           </Box>
         )}
-      </MyScrollBox>
+      </Box>
     );
   });
 
@@ -350,6 +335,8 @@ export function useLinkedScroll<
     hasMorePrev,
     hasMoreNext,
     isLoading,
+    isInitialLoading,
+    isLoadingMore: prevLoading || nextLoading,
     loadInitData,
     ScrollData,
     itemRefs,

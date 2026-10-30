@@ -13,7 +13,7 @@ import {
 import MyBox from '../../../common/MyBox';
 import { useSystem } from '../../../../hooks/useSystem';
 
-export interface MyModalProps extends ModalContentProps {
+export type MyModalProps = Omit<ModalContentProps, 'title'> & {
   title?: any;
   isCentered?: boolean;
   isLoading?: boolean;
@@ -27,7 +27,7 @@ export interface MyModalProps extends ModalContentProps {
   headerStyles?: FlexProps;
   bodyStyles?: BoxProps;
   footerStyles?: FlexProps;
-}
+};
 
 const sizeMap = {
   sm: {
@@ -44,6 +44,7 @@ const sizeMap = {
   }
 };
 
+/** 正文尺寸约束由外壳承接，内容样式留在滚动层，头部及 footer 保持固定。 */
 const MyModal = ({
   isOpen = true,
   onClose,
@@ -64,6 +65,10 @@ const MyModal = ({
   const { isPc } = useSystem();
 
   const sizeData = sizeMap[size] || sizeMap.sm;
+  // 正文高度和 flex 约束属于可视外壳；padding 等内容样式留在实际滚动层。
+  const { flex, h, height, minH, minHeight, maxH, maxHeight, ...bodyContentProps } =
+    bodyStyles ?? {};
+  const bodyOverflow = bodyContentProps.overflow ?? props.overflow ?? 'overlay';
 
   return (
     <Modal
@@ -123,22 +128,34 @@ const MyModal = ({
 
         <MyBox
           isLoading={isLoading}
-          overflow={props.overflow || 'overlay'}
-          flex={'1 1 auto'}
-          h={'auto'}
-          minH={0}
+          position={'relative'}
+          overflow={['visible', 'unset'].includes(String(bodyOverflow)) ? 'visible' : 'hidden'}
+          flex={flex ?? '1 1 auto'}
+          h={h ?? height ?? 'auto'}
+          minH={minH ?? minHeight ?? 0}
+          maxH={maxH ?? maxHeight}
+          minW={0}
           display={'flex'}
           flexDirection={'column'}
-          px={8}
-          pt={title ? 6 : 8}
-          pb={footer ? 6 : 8}
-          fontSize={'14px'}
-          lineHeight={'20px'}
-          letterSpacing={'0.25px'}
-          color={'myGray.900'}
-          {...bodyStyles}
         >
-          {children}
+          <Box
+            overflow={bodyOverflow}
+            flex={'1 1 auto'}
+            h={'auto'}
+            minH={0}
+            display={'flex'}
+            flexDirection={'column'}
+            px={8}
+            pt={title ? 6 : 8}
+            pb={footer ? 6 : 8}
+            fontSize={'14px'}
+            lineHeight={'20px'}
+            letterSpacing={'0.25px'}
+            color={'myGray.900'}
+            {...bodyContentProps}
+          >
+            {children}
+          </Box>
         </MyBox>
 
         {!!footer && (
