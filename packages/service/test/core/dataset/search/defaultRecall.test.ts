@@ -3,6 +3,8 @@ import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core
 import type { FullTextSearchProps } from '@fastgpt/service/common/vectorDB/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { SearchDataResponseItemSchema } from '@fastgpt/global/core/dataset/type';
 
 const mockGetVectors = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
@@ -188,6 +190,66 @@ describe('default recall dataset search', () => {
       lean: vi.fn().mockResolvedValue([])
     });
     mockMongoDatasetDataTextAggregate.mockResolvedValue([]);
+  });
+
+  it.each([
+    DatasetSearchModeEnum.embedding,
+    DatasetSearchModeEnum.fullTextRecall,
+    DatasetSearchModeEnum.mixedRecall
+  ])('preserves chunk indexes through %s recall and response parsing', async (searchMode) => {
+    const dataId = '68ad85a7463006c963799a05';
+    const collectionId = '68ad85a7463006c963799a06';
+    const datasetId = '68ad85a7463006c963799a07';
+    const indexes = [
+      { dataId: 'index-question', text: '苹果', type: DatasetDataIndexTypeEnum.default },
+      { dataId: 'index-alias', text: '水果别名', type: DatasetDataIndexTypeEnum.custom }
+    ];
+    const metadata = { category: 'fruit' };
+    mockGetVectors.mockResolvedValue({ tokens: 5, vectors: [[0.1, 0.2]] });
+    mockRecallFromVectorStore.mockResolvedValue({
+      results: [{ id: 'index-question', collectionId, score: 0.9 }]
+    });
+    mockMongoDatasetDataTextAggregate.mockResolvedValue([{ dataId, collectionId, score: 2.5 }]);
+    mockMongoDatasetDataFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: dataId,
+          datasetId,
+          collectionId,
+          updateTime: new Date('2026-01-01'),
+          q: '苹果',
+          a: '一种水果',
+          chunkIndex: 0,
+          indexes,
+          metadata
+        }
+      ])
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return { lean: vi.fn().mockResolvedValue([{ _id: collectionId, name: 'Source' }]) };
+    });
+
+    const result = await searchDatasetData({
+      histories: [],
+      teamId: '68ad85a7463006c963799a08',
+      model: embeddingModel,
+      datasetIds: [datasetId],
+      reRankQuery: '苹果',
+      textQueries: ['苹果'],
+      limit: 5000,
+      searchMode,
+      usingReRank: false
+    });
+
+    expect(result.searchRes).toHaveLength(1);
+    expect(result.searchRes[0]).toMatchObject({ id: dataId, indexes, metadata });
+    // API 响应校验不能把召回阶段保留的索引再次裁掉。
+    const parsed = SearchDataResponseItemSchema.parse(result.searchRes[0]);
+    expect(parsed).toMatchObject({ indexes, metadata });
+    // 历史调用方不提供 indexes 时仍能通过响应校验。
+    const { indexes: _, ...legacyResult } = parsed;
+    expect(SearchDataResponseItemSchema.safeParse(legacyResult).success).toBe(true);
   });
 
   it('should ignore failed image caption and continue dataset search', async () => {

@@ -324,7 +324,9 @@ export const datasetQuoteValueDesc = `{
   sourceName: string;
   sourceId?: string;
   q: string;
-  a: string
+  a: string;
+  indexes?: { dataId: string; text: string; type: string }[];
+  metadata?: Record<string, any>;
 }[]`;
 export const datasetSelectValueDesc = `[
   {

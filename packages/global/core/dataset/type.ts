@@ -627,6 +627,7 @@ export const SearchDataResponseItemSchema = DatasetDataItemSchema.omit({
   metadata: true
 })
   .extend({
+    indexes: DatasetDataItemSchema.shape.indexes.optional(),
     score: z
       .array(
         z.object({
