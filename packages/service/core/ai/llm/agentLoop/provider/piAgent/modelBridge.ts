@@ -56,7 +56,11 @@ export function buildPiModel(
       ? normalizeBaseUrl(legacyEndpoint.baseUrl) || openaiBaseUrl
       : openaiBaseUrl;
 
-  const apiKey = hasUserOpenAIKey ? userKey.key : legacyEndpoint?.apiKey || openaiBaseKey;
+  const apiKey = hasUserOpenAIKey
+    ? userKey.key
+    : legacyEndpoint
+      ? legacyEndpoint.apiKey
+      : openaiBaseKey;
 
   const scopeHeaders = getAiproxyScopeHeaders(modelData, baseUrl);
   const headers = {
@@ -100,5 +104,6 @@ export function buildPiModel(
 export function getModelApiKey(modelData: LLMModelDataType, userKey?: OpenaiAccountType): string {
   if (userKey?.key) return userKey.key;
   const legacyEndpoint = getLegacyModelEndpoint(modelData);
-  return legacyEndpoint?.apiKey || openaiBaseKey || '';
+  // 命中自定义端点时不能回退到 AIPROXY_API_TOKEN，避免代理令牌被发往第三方地址。
+  return legacyEndpoint ? legacyEndpoint.apiKey || '' : openaiBaseKey || '';
 }

@@ -37,7 +37,7 @@ describe('Legacy requestUrl compatibility', () => {
       });
     });
 
-    it('strictly ignores requestUrl for team models', () => {
+    it('extracts endpoint and auth for team models (transitional capability)', () => {
       const model = {
         scope: ModelScopeEnum.team,
         tmbId: 'tmb-123',
@@ -45,8 +45,12 @@ describe('Legacy requestUrl compatibility', () => {
         requestAuth: 'sk-team-123'
       };
 
-      expect(hasLegacyRequestUrl(model)).toBe(false);
-      expect(getLegacyModelEndpoint(model)).toBeUndefined();
+      expect(hasLegacyRequestUrl(model)).toBe(true);
+      expect(getLegacyModelEndpoint(model)).toEqual({
+        baseUrl: 'https://api.custom.com/v1',
+        apiKey: 'sk-team-123',
+        authorization: 'Bearer sk-team-123'
+      });
     });
 
     it('returns undefined when requestUrl is empty or whitespace', () => {
@@ -79,6 +83,52 @@ describe('Legacy requestUrl compatibility', () => {
         headers: {
           'X-Custom': 'val',
           Authorization: 'Bearer sk-custom'
+        }
+      });
+    });
+
+    it('does not attach AI Proxy scope headers when a team model uses its own endpoint', () => {
+      const options = getLegacyOpenAIRequestOptions({
+        model: {
+          scope: ModelScopeEnum.team,
+          tmbId: 'tmb-123',
+          requestUrl: 'https://api.custom.com/v1',
+          requestAuth: 'sk-team'
+        },
+        usedUserOpenAIKey: false,
+        headers: { 'X-Custom': 'val' },
+        scopeHeaders: {
+          'X-Aiproxy-Group': 'group-a',
+          'X-Aiproxy-Group-Channel-Mode': 'own'
+        }
+      });
+
+      expect(options).toEqual({
+        path: 'https://api.custom.com/v1',
+        headers: {
+          'X-Custom': 'val',
+          Authorization: 'Bearer sk-team'
+        }
+      });
+    });
+
+    it('strips the client default Authorization when the endpoint has no auth', () => {
+      const options = getLegacyOpenAIRequestOptions({
+        model: {
+          scope: ModelScopeEnum.team,
+          tmbId: 'tmb-123',
+          requestUrl: 'https://api.custom.com/v1'
+        },
+        usedUserOpenAIKey: false,
+        headers: { 'X-Custom': 'val' },
+        scopeHeaders: { 'X-Aiproxy-Group': 'group-a' }
+      });
+
+      expect(options).toEqual({
+        path: 'https://api.custom.com/v1',
+        headers: {
+          'X-Custom': 'val',
+          Authorization: null
         }
       });
     });

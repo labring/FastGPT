@@ -64,15 +64,14 @@ export const getModelConfigUpdate = (
 };
 
 /**
- * 团队私有模型不允许配置直连地址、鉴权与测试模式（统一走成员渠道），
+ * 团队私有模型不允许配置测试模式（统一走成员渠道）；
+ * 自定义请求地址与鉴权 (requestUrl/requestAuth) 作为升级过渡期能力保留。
  * 返回剔除这些字段后的新对象，不修改入参。
  */
 export const sanitizeTeamModelData = <T extends object>(
   modelData: T
-): Omit<T, 'requestUrl' | 'requestAuth' | 'testMode' | 'tmbId' | 'teamId'> => {
-  const { requestUrl, requestAuth, testMode, tmbId, teamId, ...rest } = modelData as T & {
-    requestUrl?: unknown;
-    requestAuth?: unknown;
+): Omit<T, 'testMode' | 'tmbId' | 'teamId'> => {
+  const { testMode, tmbId, teamId, ...rest } = modelData as T & {
     testMode?: unknown;
     tmbId?: unknown;
     teamId?: unknown;
