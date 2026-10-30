@@ -2,19 +2,12 @@ import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
 import {
-  getWorkflowNodeModelInputs,
-  isWorkflowModelExpression
+  isWorkflowModelExpression,
+  walkWorkflowModelReferences
 } from '@fastgpt/global/common/workflow/model';
-import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
-import {
-  workflowDatasetParamModelSlots,
-  workflowSystemModelSlots
-} from '@fastgpt/global/core/workflow/model/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   AppResourcesSchema,
   type AppChatConfigType,
@@ -203,43 +196,32 @@ export const createInvalidReferenceReplacer = ({
     referenceNodes?: StoreNodeItemType[];
     changes: Record<ModelKind, Change>;
   }) => {
-    if (!Array.isArray(nodes)) return;
-    const referenceNodeById = new Map(referenceNodes?.map((node) => [node.nodeId, node]));
-    nodes.forEach((rawNode, nodeIndex) => {
-      if (!isObject(rawNode) || !Array.isArray(rawNode.inputs)) return;
-      const node = rawNode as StoreNodeItemType;
-      if (!node.inputs.every(isObject)) return;
-      const referenceNode = node.nodeId
-        ? referenceNodeById.get(node.nodeId)
-        : referenceNodes?.[nodeIndex];
-      const isReferenceInput = (input: StoreNodeItemType['inputs'][number]) =>
-        nodeInputIsReference(
-          referenceNode?.inputs.find((referenceInput) => referenceInput.key === input.key) ?? input
-        );
-
-      for (const slot of workflowSystemModelSlots) {
-        const { modelIdInputs, legacyInputs } = getWorkflowNodeModelInputs({ node, slot });
-        const effectiveInputs = modelIdInputs.length > 0 ? modelIdInputs : legacyInputs;
-        const kind = getKind(slot.type);
-        for (const input of effectiveInputs) {
-          if (isReferenceInput(input)) {
-            changes[kind].skippedReferences++;
-            continue;
-          }
-          const reference = {
-            modelId: input.key === slot.modelIdKey ? input.value : undefined,
-            model: input.key === slot.legacyKey ? input.value : legacyInputs[0]?.value
-          };
-          const invalid = isInvalid({ reference, type: slot.type });
+    walkWorkflowModelReferences({
+      nodes,
+      referenceNodes,
+      onReference: ({
+        source,
+        reference,
+        type,
+        input,
+        node,
+        config,
+        slot,
+        legacyInputs,
+        isReferenceInput
+      }) => {
+        const kind = getKind(type);
+        if (source === 'systemInput' && input && node && slot) {
+          const invalid = isInvalid({ reference, type });
           if (invalid === undefined) {
             changes[kind].skippedReferences++;
-            continue;
+            return;
           }
-          if (!invalid) continue;
+          if (!invalid) return;
           const target = targets[kind];
           if (input.key === slot.modelIdKey) {
             input.value = target.modelId;
-            legacyInputs.forEach((legacy) => {
+            legacyInputs?.forEach((legacy) => {
               if (!isReferenceInput(legacy)) legacy.value = target.model;
             });
           } else {
@@ -247,41 +229,18 @@ export const createInvalidReferenceReplacer = ({
             node.inputs.push({ ...input, key: slot.modelIdKey, value: target.modelId });
           }
           changes[kind].replacedReferences++;
+          return;
         }
-      }
 
-      if ((node.flowNodeType as string) === legacySystemConfigNodeType) {
-        // 读取路径会把旧 userGuide 配置迁入 chatConfig；写入时保留节点原形，只更新引用值。
-        for (const [inputKey, type] of [
-          [NodeInputKeyEnum.questionGuide, ModelTypeEnum.llm],
-          [NodeInputKeyEnum.tts, ModelTypeEnum.tts]
-        ] as const) {
-          const input = node.inputs.find(({ key }) => key === inputKey);
-          if (!input || isReferenceInput(input) || !isObject(input.value)) continue;
-
-          const config = input.value;
-          if (type === ModelTypeEnum.tts && config.type !== 'model') continue;
+        if (source === 'legacyConfig' || source === 'datasetConfig') {
           replaceConfigReference({
-            config,
-            modelIdKey: 'modelId',
-            legacyKey: 'model',
+            config: config!,
+            modelIdKey: slot?.modelIdKey ?? 'modelId',
+            legacyKey: slot?.legacyKey ?? 'model',
             type,
             changes
           });
         }
-      }
-
-      if (node.flowNodeType !== FlowNodeTypeEnum.agent) return;
-      const paramsInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.datasetParams);
-      if (!paramsInput || isReferenceInput(paramsInput) || !isObject(paramsInput.value)) return;
-      for (const slot of workflowDatasetParamModelSlots) {
-        replaceConfigReference({
-          config: paramsInput.value,
-          modelIdKey: slot.modelIdKey,
-          legacyKey: slot.legacyKey,
-          type: slot.type,
-          changes
-        });
       }
     });
   };
@@ -299,28 +258,20 @@ export const createInvalidReferenceReplacer = ({
     const nextChatConfig = cloneDeep(chatConfig);
     const changes = newChanges();
     replaceNodes({ nodes: nextNodes, referenceNodes, changes });
-    if (isObject(nextChatConfig) && isObject(nextChatConfig.questionGuide)) {
-      replaceConfigReference({
-        config: nextChatConfig.questionGuide,
-        modelIdKey: 'modelId',
-        legacyKey: 'model',
-        type: ModelTypeEnum.llm,
-        changes
-      });
-    }
-    if (
-      isObject(nextChatConfig) &&
-      isObject(nextChatConfig.ttsConfig) &&
-      nextChatConfig.ttsConfig.type === 'model'
-    ) {
-      replaceConfigReference({
-        config: nextChatConfig.ttsConfig,
-        modelIdKey: 'modelId',
-        legacyKey: 'model',
-        type: ModelTypeEnum.tts,
-        changes
-      });
-    }
+    walkWorkflowModelReferences({
+      chatConfig: nextChatConfig,
+      onReference: ({ source, config, type }) => {
+        if (source === 'chatConfig') {
+          replaceConfigReference({
+            config: config!,
+            modelIdKey: 'modelId',
+            legacyKey: 'model',
+            type,
+            changes
+          });
+        }
+      }
+    });
     return { nodes: nextNodes, chatConfig: nextChatConfig, changes };
   };
 

@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   formatModels,
   addModelNamesToWorkflow,
-  isWorkflowModelExpression
+  isWorkflowModelExpression,
+  walkWorkflowModelReferences
 } from '@fastgpt/global/common/workflow/model';
 import {
   FlowNodeInputTypeEnum,
@@ -12,6 +13,141 @@ import {
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { legacySystemConfigNodeType } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
+
+describe('walkWorkflowModelReferences', () => {
+  it('walks system inputs, legacy configs, dataset params and chat config once', () => {
+    const references: Array<{ source: string; type: ModelTypeEnum; value: unknown }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: 'chat-model'
+            }
+          ]
+        },
+        {
+          nodeId: 'legacy-system',
+          flowNodeType: legacySystemConfigNodeType,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.questionGuide,
+              value: { modelId: 'guide-model' }
+            }
+          ]
+        },
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetParams,
+              value: { [NodeInputKeyEnum.datasetSearchRerankModelId]: 'rerank-model' }
+            }
+          ]
+        }
+      ],
+      chatConfig: {
+        questionGuide: { modelId: 'app-guide-model' },
+        ttsConfig: { type: 'model', modelId: 'tts-model' }
+      },
+      onReference: ({ source, type, reference }) => {
+        if (reference.modelId === undefined && reference.model === undefined) return;
+        references.push({ source, type, value: reference.modelId });
+      }
+    });
+
+    expect(references).toEqual([
+      { source: 'systemInput', type: ModelTypeEnum.llm, value: 'chat-model' },
+      { source: 'legacyConfig', type: ModelTypeEnum.llm, value: 'guide-model' },
+      { source: 'datasetConfig', type: ModelTypeEnum.rerank, value: 'rerank-model' },
+      { source: 'chatConfig', type: ModelTypeEnum.llm, value: 'app-guide-model' },
+      { source: 'chatConfig', type: ModelTypeEnum.tts, value: 'tts-model' }
+    ]);
+  });
+
+  it('uses migrated input modes to skip reference-driven model values', () => {
+    const onReference = vi.fn();
+    const input = {
+      key: NodeInputKeyEnum.aiModelId,
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.selectLLMModel],
+      selectedTypeIndex: 1,
+      value: 'static-model'
+    };
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [input]
+        }
+      ],
+      referenceNodes: [
+        {
+          nodeId: 'chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              ...input,
+              selectedType: FlowNodeInputTypeEnum.reference,
+              value: 'reference-model'
+            }
+          ]
+        }
+      ],
+      onReference
+    });
+
+    expect(onReference).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed nodes and stops when the callback matches', () => {
+    const onReference = vi.fn(() => true);
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'invalid',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [{ key: NodeInputKeyEnum.aiModelId, renderTypeList: 1, value: 'invalid' }]
+        },
+        {
+          nodeId: 'chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: 'chat-model'
+            }
+          ]
+        },
+        {
+          nodeId: 'second-chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: 'second-model'
+            }
+          ]
+        }
+      ],
+      chatConfig: { questionGuide: { modelId: 'guide-model' } },
+      onReference
+    });
+
+    expect(onReference).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('isWorkflowModelExpression', () => {
   it.each(['{{selectedModel}}', '{{source.modelId}}'])('recognizes %s', (value) => {
