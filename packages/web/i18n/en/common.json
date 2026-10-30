@@ -1308,7 +1308,7 @@
   "password_confirm_placeholder": "Confirm password",
   "password_expired_action": "Set password",
   "password_expired_tip": "It has been a long time since you changed your password. To keep your account secure, set a new password.",
-  "password_new_placeholder": "Enter password",
+  "password_new_placeholder": "Enter new password",
   "password_not_match": "The Passwords Entered Do Not Match",
   "password_oauth_start": "Verify with {{provider}}",
   "password_old_placeholder": "Enter current password",

@@ -1299,7 +1299,7 @@
   "password_confirm_placeholder": "비밀번호 확인",
   "password_expired_action": "설정으로 이동",
   "password_expired_tip": "비밀번호를 변경한 지 오래되었습니다. 계정 보안을 위해 새 비밀번호를 설정해 주세요.",
-  "password_new_placeholder": "비밀번호를 입력하세요",
+  "password_new_placeholder": "새 비밀번호를 입력하세요",
   "password_not_match": "입력한 비밀번호가 일치하지 않습니다",
   "password_oauth_start": "{{provider}}로 인증하기",
   "password_old_placeholder": "현재 비밀번호를 입력하세요",

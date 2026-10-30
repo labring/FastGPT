@@ -100,7 +100,11 @@ Check connectivity from the FastGPT server to the model API. A server in mainlan
 
 ### How to change the root password
 
-Modify the `DEFAULT_ROOT_PSW` environment variable, and then restart FastGPT.
+- **Web UI**: Sign in as `root` and update your password in **Account Info** under the top-right avatar menu.
+- **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password immediately without restarting.
+- **Legacy versions (v4.17.2 and earlier)**: Modify the `DEFAULT_ROOT_PSW` environment variable and restart FastGPT.
+
+For detailed steps, see [Modify and Reset Root Password](/en/self-host/config/root-password).
 
 ---
 
