@@ -266,8 +266,8 @@ docker compose up -d
 ### 5. Access FastGPT
 
 Access FastGPT via the port/domain opened in step 3. The login username is `root`:
-- **Version >= v4.17.3**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login. If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
-- **Legacy versions (<= v4.17.2)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
+- **Version v4.17.3 and later**: The initial password is fixed at `123456`. An activation modal requires setting a new password upon first login. If forgotten, reset the password using the built-in CLI script. See [Modify and Reset Root Password](/en/self-host/config/root-password).
+- **Legacy versions (v4.17.2 and earlier)**: The password is set via `DEFAULT_ROOT_PSW` in `docker-compose.yml`. When deploying with the interactive script, a random password is generated and displayed upon completion. Each container restart updates the password to this value.
 
 ### 6. Configure Models
 
@@ -473,7 +473,7 @@ Caused by service initialization errors triggering a restart.
 
 - **Web UI**: Log in as `root`, navigate to **Account Info** from the top right avatar, and update your password in the security settings.
 - **CLI Reset (Forgotten Password)**: Run `docker compose exec fastgpt-app node /app/scripts/reset-root-password.cjs 'your_new_password'` inside the application container to reset the password without restarting.
-- **Legacy versions (<= v4.17.2)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
+- **Legacy versions (v4.17.2 and earlier)**: Update `DEFAULT_ROOT_PSW` in `docker-compose.yml` and restart the container.
 
 For more details, see [Modify and Reset Root Password](/en/self-host/config/root-password).
 
