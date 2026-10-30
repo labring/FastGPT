@@ -31,6 +31,33 @@ const createRuntime = (model: unknown, llmParams: Record<string, unknown> = {}) 
   }) as any;
 
 describe('mergePiAgentPayload', () => {
+  it.each([true, false])(
+    'restores omitted SDK reasoning fields only for reasoning models: %s',
+    (reasoning) => {
+      const model = createModel();
+      model.config.reasoning = reasoning;
+      const payload = {
+        messages: [
+          { role: 'user', content: 'Continue.' },
+          { role: 'assistant', content: 'Earlier answer.' },
+          { role: 'assistant', content: 'Answer.', reasoning_content: '' },
+          { role: 'assistant', content: 'Answer.', reasoning_content: 'Original reasoning.' }
+        ]
+      };
+      const original = structuredClone(payload);
+      const result = mergePiAgentPayload({ payload, runtime: createRuntime(model) });
+      expect(result).toEqual({
+        messages: [
+          payload.messages[0],
+          { ...payload.messages[1], ...(reasoning ? { reasoning_content: '' } : {}) },
+          payload.messages[2],
+          payload.messages[3]
+        ]
+      });
+      expect(payload).toEqual(original);
+    }
+  );
+
   it('maps supported model parameters and parses json5 response schemas', () => {
     const result = mergePiAgentPayload({
       payload: {
