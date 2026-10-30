@@ -238,7 +238,7 @@ const UserSetting = () => {
       </FormItem>*/}
       <FormItem
         title="账号注销倒计时提醒"
-        description="7 天和 1 天提醒共用。阿里云模板变量：${scheduledDeleteAt}、${days}。"
+        description="7 天和 1 天提醒共用。阿里云模板变量：`${scheduledDeleteAt}、${days}`。"
       >
         <Input
           {...register('sms.ACCOUNT_CANCELLATION_REMINDER')}
@@ -247,7 +247,7 @@ const UserSetting = () => {
       </FormItem>
       {/*<FormItem
         title="账号注销倒计时提醒(EN)"
-        description="7 天和 1 天提醒共用。阿里云模板变量：${scheduledDeleteAt}、${days}。"
+        description="7 天和 1 天提醒共用。阿里云模板变量：`${scheduledDeleteAt}、${days}`。"
       >
         <Input
           {...register('sms.ACCOUNT_CANCELLATION_REMINDER_EN')}
@@ -256,6 +256,12 @@ const UserSetting = () => {
       </FormItem>*/}
       <FormItem title="账号注销当天提醒" description="注销当天 10:00 发送。">
         <Input {...register('sms.ACCOUNT_CANCELLATION_TODAY')} placeholder="账号注销当天提醒" />
+      </FormItem>
+      <FormItem
+        title="模型下架提醒"
+        description="发送模型下架提醒时会用到. 阿里云模板变量：`${models}、${plannedDeprecationAt}`。"
+      >
+        <Input {...register('sms.MODEL_DEPRECATION')} placeholder="模型下架提醒" />
       </FormItem>
       {/*<FormItem title="账号注销当天提醒(EN)" description="注销当天 10:00 发送。">
         <Input

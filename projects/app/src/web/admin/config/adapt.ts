@@ -186,6 +186,11 @@ export function formatConfigStore2FormSchema({
           fastgptPro?.auth?.sms?.ACCOUNT_CANCELLATION_TODAY_EN ||
           fastgptPro?.auth?.sms?.ACCOUNT_CANCELLATION_TODAY ||
           '',
+        MODEL_DEPRECATION: fastgptPro?.auth?.sms?.MODEL_DEPRECATION || '',
+        MODEL_DEPRECATION_EN:
+          fastgptPro?.auth?.sms?.MODEL_DEPRECATION_EN ||
+          fastgptPro?.auth?.sms?.MODEL_DEPRECATION ||
+          '',
         EXPIRE_SOON: fastgptPro?.auth?.sms?.EXPIRE_SOON || '',
         EXPIRED: fastgptPro?.auth?.sms?.EXPIRED || '',
         FREE_CLEAN: fastgptPro?.auth?.sms?.FREE_CLEAN || '',
