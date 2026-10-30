@@ -1,4 +1,5 @@
 import React from 'react';
+import DeprecationTag from '@/components/core/ai/DeprecationTag';
 import { Box, Flex } from '@chakra-ui/react';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
@@ -15,7 +16,8 @@ export const ModelStatusLabel = ({
   error,
   emptyLabel,
   avatarSize = '1rem',
-  noTruncate = false
+  noTruncate = false,
+  showUpcomingDeprecationTag = false
 }: {
   modelId?: string;
   detail?: ModelSummary;
@@ -24,6 +26,7 @@ export const ModelStatusLabel = ({
   emptyLabel?: string;
   avatarSize?: string;
   noTruncate?: boolean;
+  showUpcomingDeprecationTag?: boolean;
 }) => {
   const { t } = useTranslation();
   if (isEmptyModelValue(modelId)) return <>{emptyLabel ?? t('common:not_model_config')}</>;
@@ -39,6 +42,7 @@ export const ModelStatusLabel = ({
   return (
     <Flex
       alignItems="center"
+      w="100%"
       minW={0}
       gap={2}
       color={detail.status === 'active' ? undefined : 'red.500'}
@@ -47,6 +51,7 @@ export const ModelStatusLabel = ({
       <MyTooltip label={text} showOnlyWhenOverflow shouldWrapChildren={false}>
         <Box
           data-preserve-width
+          flex={'1 1 0'}
           minW={noTruncate ? 'max-content' : 0}
           flexShrink={noTruncate ? 0 : undefined}
           noOfLines={noTruncate ? undefined : 1}
@@ -55,6 +60,11 @@ export const ModelStatusLabel = ({
           {text}
         </Box>
       </MyTooltip>
+      {showUpcomingDeprecationTag && detail.isUpcomingDeprecation === true && (
+        <Box mr={2}>
+          <DeprecationTag size={'sm'} />
+        </Box>
+      )}
     </Flex>
   );
 };
