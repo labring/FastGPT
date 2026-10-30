@@ -13,6 +13,10 @@ import {
   GetModelCatalogResponseSchema,
   GetModelTemplatesQuerySchema,
   GetModelTemplatesResponseSchema,
+  PreviewImportFromChannelQuerySchema,
+  PreviewImportFromChannelResponseSchema,
+  ApplyChangesBodySchema,
+  ApplyChangesResponseSchema,
   GetSystemModelConfigJsonResponseSchema,
   GetSystemModelsResponseSchema,
   ModelReferenceSchema,
@@ -94,6 +98,34 @@ export const AIModelPath: OpenAPIPath = {
         200: {
           description: '模型模板列表',
           content: { 'application/json': { schema: GetModelTemplatesResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/previewImportFromChannel': {
+    get: {
+      summary: '预览从系统渠道导入模型',
+      description: '读取渠道上游模型目录并返回现有模型、模板、歧义项与空白配置草稿',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: PreviewImportFromChannelQuerySchema },
+      responses: {
+        200: {
+          description: '按 AIProxy 原始目录顺序返回模型匹配预览',
+          content: { 'application/json': { schema: PreviewImportFromChannelResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/applyChanges': {
+    post: {
+      summary: '应用从系统渠道导入的模型变更',
+      description: '逐条关联或创建模型；单条失败不影响后续操作',
+      tags: [DevApiTagsMap.model],
+      requestBody: { content: { 'application/json': { schema: ApplyChangesBodySchema } } },
+      responses: {
+        200: {
+          description: '与请求操作顺序一致的逐条结果',
+          content: { 'application/json': { schema: ApplyChangesResponseSchema } }
         }
       }
     }

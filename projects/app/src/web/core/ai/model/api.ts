@@ -5,11 +5,15 @@ import type {
   CreateModelResponse,
   CreateModelsFromTemplatesBody,
   CreateModelsFromTemplatesResponse,
+  ApplyChangesBody,
+  ApplyChangesResponse,
   DeleteModelsBody,
   GetModelTemplatesResponse,
   GetModelDetailResponse,
   GetSystemModelConfigResponse,
   GetTeamModelsResponse,
+  PreviewImportFromChannelQuery,
+  PreviewImportFromChannelResponse,
   TestModelQuery,
   TestDraftModelBody,
   UpdateModelBody,
@@ -43,6 +47,14 @@ export const getModelConfig = <
 /** 获取模型模板列表，强制显式传递 channelType（成员创建团队模型时也走模板入口） */
 export const getModelTemplates = (data: { channelType: ChannelType }) =>
   GET<GetModelTemplatesResponse>(`${coreModelPath}/templates`, data);
+
+/** Preview upstream models and their local/template matches for one system channel. */
+export const getImportPreviewFromChannel = (data: PreviewImportFromChannelQuery) =>
+  GET<PreviewImportFromChannelResponse>(coreModelPath + '/previewImportFromChannel', data);
+
+/** Apply selected channel import operations and return one result per operation. */
+export const postApplyChannelImportChanges = (data: ApplyChangesBody) =>
+  POST<ApplyChangesResponse>(coreModelPath + '/applyChanges', data);
 
 /** 创建模型（系统模型或团队私有模型），强制显式传递 channelType */
 export const postCreateModel = (data: CreateModelBody) =>

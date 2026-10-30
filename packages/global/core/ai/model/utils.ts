@@ -1,4 +1,5 @@
-import { ModelScopeEnum } from '../constants';
+import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import type { AIModelDocumentDataType } from './schema';
 import type { ChannelType } from './scope';
 
 /**
@@ -50,3 +51,44 @@ export const resolveChannelType = ({
 /** embedding 模型是否支持图片输入；未配置时按纯文本模型处理。 */
 export const isImageEmbeddingModel = (model?: { config?: { vision?: boolean } }): boolean =>
   model?.config?.vision === true;
+
+/** 提交渠道导入时，将上游限制合入所选模板，保留模板的其他配置。 */
+export const mergeChannelTemplateModelData = ({
+  template,
+  contextLength,
+  maxCompletionTokens
+}: {
+  template: AIModelDocumentDataType;
+  contextLength?: number;
+  maxCompletionTokens?: number;
+}): AIModelDocumentDataType => {
+  switch (template.type) {
+    case ModelTypeEnum.llm:
+      return {
+        ...template,
+        config: {
+          ...template.config,
+          ...(contextLength === undefined ? {} : { maxContext: contextLength }),
+          ...(maxCompletionTokens === undefined ? {} : { maxResponse: maxCompletionTokens })
+        }
+      };
+    case ModelTypeEnum.embedding:
+      return {
+        ...template,
+        config: {
+          ...template.config,
+          ...(contextLength === undefined ? {} : { maxToken: contextLength })
+        }
+      };
+    case ModelTypeEnum.rerank:
+      return {
+        ...template,
+        config: {
+          ...template.config,
+          ...(contextLength === undefined ? {} : { maxToken: contextLength })
+        }
+      };
+    default:
+      return { ...template };
+  }
+};
