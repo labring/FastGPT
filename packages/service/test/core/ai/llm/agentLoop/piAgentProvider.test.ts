@@ -480,10 +480,7 @@ describe('runPiAgentLoop', () => {
       }),
       expect.objectContaining({
         role: 'assistant',
-        content: [
-          { type: 'thinking', thinking: '', thinkingSignature: 'reasoning_content' },
-          { type: 'text', text: 'previous answer' }
-        ]
+        content: [{ type: 'text', text: 'previous answer' }]
       })
     ]);
   });
@@ -1285,7 +1282,6 @@ describe('runPiAgentLoop', () => {
         expect.objectContaining({
           role: 'assistant',
           content: [
-            { type: 'thinking', thinking: '', thinkingSignature: 'reasoning_content' },
             expect.objectContaining({
               type: 'toolCall',
               id: toolCallId,

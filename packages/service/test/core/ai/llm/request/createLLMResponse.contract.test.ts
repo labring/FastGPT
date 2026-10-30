@@ -266,16 +266,8 @@ const body = (stream: boolean) => ({
 
 describe('createLLMResponse HTTP/SSE contract', () => {
   it.each([true, false])(
-    'preserves reasoning through legacy history, tool rounds and serialized resume: stream=%s',
+    'preserves reasoning through tool rounds and serialized resume: stream=%s',
     async (stream) => {
-      const historicalCall = { ...call('search'), id: 'call_history' };
-      const messages: ChatCompletionMessageParam[] = [
-        { role: 'user', content: 'Previous task.' },
-        { role: 'assistant', tool_calls: [historicalCall] },
-        { role: 'tool', tool_call_id: historicalCall.id, content: 'Previous result.' },
-        { role: 'assistant', content: 'Previous task complete.' },
-        { role: 'user', content: message }
-      ];
       rounds.push(
         { requireReasoning: true, toolCalls: [call('search')] },
         {
@@ -289,7 +281,7 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       const result = await runAgentLoop({
         teamId,
         maxRunAgentTimes: 3,
-        body: { ...body(stream), messages },
+        body: body(stream),
         isAborted: () => false,
         onRunTool: async () => ({ response: 'Tool completed.', assistantMessages: [], usages: [] }),
         onRunInteractiveTool: vi.fn()

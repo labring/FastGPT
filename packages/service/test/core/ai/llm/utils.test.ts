@@ -445,7 +445,7 @@ describe('loadRequestMessages function tests', () => {
 
   describe('Basic message processing', () => {
     it.each([undefined, '', 'Original reasoning.'])(
-      'normalizes legacy reasoning without changing tool relationships or input: %s',
+      'preserves existing reasoning without changing tool relationships or input: %s',
       async (reasoning) => {
         const messages: ChatCompletionMessageParam[] = [
           { role: 'user', content: 'Continue the task.' },
@@ -461,18 +461,20 @@ describe('loadRequestMessages function tests', () => {
             ]
           },
           { role: 'tool', tool_call_id: 'call_history', content: 'Tool completed.' },
-          { role: 'assistant', content: 'Task complete.' }
+          {
+            role: 'assistant',
+            content: 'Task complete.',
+            ...(reasoning !== undefined ? { reasoning_content: reasoning } : {})
+          }
         ];
         const original = structuredClone(messages);
         const result = await loadRequestMessages({ messages, supportReason: true });
+        const serializedResult = JSON.parse(JSON.stringify(result));
 
         expect(result).toHaveLength(messages.length);
-        expect(result[1]).toMatchObject({
-          ...messages[1],
-          reasoning_content: reasoning ?? ''
-        });
+        expect(serializedResult[1]).toEqual(messages[1]);
         expect(result[2]).toMatchObject(messages[2]);
-        expect(result[3]).toHaveProperty('reasoning_content', '');
+        expect(serializedResult[3]).toEqual(messages[3]);
         expect(result[0]).not.toHaveProperty('reasoning_content');
         expect(result[2]).not.toHaveProperty('reasoning_content');
         expect(messages).toEqual(original);
