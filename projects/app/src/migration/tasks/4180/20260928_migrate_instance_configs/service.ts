@@ -422,6 +422,23 @@ export const buildSparseLegacyOverrides = ({
     merged[domain] = { ...(merged[domain] ?? {}), ...proOverrides };
   }
 
+  // 旧邮箱注册真实开关可能在 feConfigs.register_method 中，而不是 Pro 的 auth.email.register。
+  // 只有后者缺失时才用旧数组推导，避免显式保存过的 Pro 开关被旧数组覆盖。
+  const legacyAuth = (merged.auth ?? {}) as LegacyFeConfigs;
+  const loginProviders = (legacyAuth.loginProviders ?? {}) as LegacyFeConfigs;
+  if (loginProviders.email?.register === undefined && Array.isArray(feConfigs.register_method)) {
+    merged.auth = {
+      ...legacyAuth,
+      loginProviders: {
+        ...loginProviders,
+        email: {
+          ...(loginProviders.email ?? {}),
+          register: feConfigs.register_method.includes('email')
+        }
+      }
+    };
+  }
+
   const sparse: DomainOverrides = {};
 
   for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {

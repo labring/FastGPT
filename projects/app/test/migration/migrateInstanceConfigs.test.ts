@@ -241,6 +241,25 @@ describe('migration buildSparseLegacyOverrides', () => {
     }
   });
 
+  it('derives email registration from legacy register_method when the Pro flag is absent', () => {
+    const sparse = buildSparseLegacyOverrides({
+      feConfigs: { register_method: ['email', 'phone'] },
+      systemEnv: {},
+      proConfig: { auth: { email: { smtp: 'smtp.example.com' } } }
+    });
+
+    expect(sparse.auth?.loginProviders?.email?.register).toBe(true);
+
+    const disabled = buildSparseLegacyOverrides({
+      feConfigs: { register_method: ['phone'] },
+      systemEnv: {},
+      proConfig: { auth: { email: { smtp: 'smtp.example.com' } } }
+    });
+    expect(
+      resolveDomainEffectiveConfig('auth', disabled.auth ?? {}).loginProviders.email.register
+    ).toBe(false);
+  });
+
   it('merges legacy fastgptPro login and payment config into auth/commercial', () => {
     const sparse = buildSparseLegacyOverrides({
       feConfigs: {},

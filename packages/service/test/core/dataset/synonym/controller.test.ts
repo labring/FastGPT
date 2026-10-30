@@ -9,12 +9,14 @@ import {
   searchDatasetSynonymMappings
 } from '@fastgpt/service/core/dataset/synonym/controller';
 import { Types } from '@fastgpt/service/common/mongo';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
 describe('dataset synonym controller', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    (global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
     vi.clearAllMocks();
   });
 
@@ -29,6 +31,7 @@ describe('dataset synonym controller', () => {
   });
 
   it('searches the requested offset, including zero, and falls back to page numbers', async () => {
+    (global as any).systemInstanceConfig.feature.datasetSynonymEnabled = true;
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const teamId = new Types.ObjectId().toString();
     const datasetId = new Types.ObjectId().toString();
