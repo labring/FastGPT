@@ -141,7 +141,7 @@ describe('VectorDB Controller', () => {
       forbidCollectionIdList: []
     };
 
-    it.each(['pg', 'milvus', 'oceanbase', 'seekdb', 'opengauss'])(
+    it.each(['mongo', 'pg', 'milvus', 'oceanbase', 'seekdb', 'opengauss'])(
       'applies the same shared limit to the %s provider',
       async (provider) => {
         vi.resetModules();

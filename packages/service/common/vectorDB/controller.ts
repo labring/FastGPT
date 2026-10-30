@@ -10,6 +10,7 @@ import type { VectorControllerType, InsertVectorControllerPropsType } from './ty
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
+import { MongoVectorCtrl } from './mongo';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
@@ -17,6 +18,8 @@ import { isProVersion } from '../system/constants';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
+    case 'mongo':
+      return new MongoVectorCtrl();
     case 'seekdb':
       return new SeekVectorCtrl({ type: 'seekdb' });
     case 'oceanbase':
