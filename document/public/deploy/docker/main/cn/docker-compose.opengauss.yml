@@ -179,7 +179,7 @@ services:
     volumes:
       - fastgpt-redis:/data
   fastgpt-rustfs:
-    image: rustfs/rustfs:1.0.4
+    image: docker.m.daocloud.io/rustfs/rustfs:1.0.4
     container_name: fastgpt-rustfs
     restart: always
     ports:
