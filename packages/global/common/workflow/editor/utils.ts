@@ -204,6 +204,9 @@ export const isWorkflowEdgeSourceHandleValid = (
   if (!sourceNode) return false;
 
   const { nodeId, flowNodeType, inputs } = sourceNode;
+  if (sourceHandle === getHandleId(nodeId, 'source_catch', 'right')) {
+    return true;
+  }
   if (flowNodeType === FlowNodeTypeEnum.userSelect) {
     if (!sourceHandle) return false;
     const input = inputs?.find((item) => item.key === NodeInputKeyEnum.userSelectOptions);

@@ -941,8 +941,14 @@ export class WorkflowQueue {
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
+                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+                const errorText = nodeResponseBase?.errorText ?? getErrText(result.error);
                 return {
                   ...result,
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...nodeResponseBase,
+                    error: errorText
+                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -964,13 +970,7 @@ export class WorkflowQueue {
                       }
                     }
                   : {}),
-                [DispatchNodeResponseKeyEnum.skipHandleId]: result[
-                  DispatchNodeResponseKeyEnum.skipHandleId
-                ]
-                  ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], ...skipHandleIds].filter(
-                      Boolean
-                    )
-                  : skipHandleIds
+                [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleIds
               };
             }
 

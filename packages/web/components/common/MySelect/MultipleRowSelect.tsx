@@ -555,6 +555,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
     <Box ref={ref} position={'relative'}>
       <Button
         width={'100%'}
+        aria-expanded={isOpen}
         variant={'whitePrimaryOutline'}
         size={'lg'}
         fontSize={'sm'}
