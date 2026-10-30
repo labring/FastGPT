@@ -1,420 +1,104 @@
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mockGetDefaultModelData = vi.hoisted(() => vi.fn());
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
-const mockAuthDataset = vi.hoisted(() => vi.fn());
-const mockCheckTeamAIPoints = vi.hoisted(() => vi.fn());
-const mockDefaultSearchDatasetData = vi.hoisted(() => vi.fn());
-const mockPushDatasetTestUsage = vi.hoisted(() => vi.fn());
-const mockUpdateApiKeyUsage = vi.hoisted(() => vi.fn());
-const mockGetRerankModelData = vi.hoisted(() => vi.fn());
-const mockGetEmbeddingModelData = vi.hoisted(() => vi.fn());
-const mockGetLLMModelData = vi.hoisted(() => vi.fn());
-const mockGetOptionalVlmModelData = vi.hoisted(() => vi.fn());
-const mockAddAuditLog = vi.hoisted(() => vi.fn());
-const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
-const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
-const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
-const mockAssertAuthModels = vi.hoisted(() => vi.fn());
-const mockGetAuthorizedModelIds = vi.hoisted(() => vi.fn());
-
-vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  assertAuthModels: mockAssertAuthModels,
-  getAuthorizedModelIds: mockGetAuthorizedModelIds
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), search: vi.fn() }));
+vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
+vi.mock('@fastgpt/service/support/permission/auth/common', async (original) => ({
+  ...(await original<object>()),
+  parseHeaderCert: mocks.auth
 }));
-
-vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
-  authDataset: mockAuthDataset
-}));
-
-vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
-  resolveReadableCollectionIds: mockResolveReadableCollectionIds
-}));
-
-vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
-  checkTeamAIPoints: mockCheckTeamAIPoints
-}));
-
-vi.mock('@fastgpt/service/core/dataset/search', () => ({
-  defaultSearchDatasetData: mockDefaultSearchDatasetData
-}));
-
-vi.mock('@/service/support/wallet/usage/push', () => ({
-  pushDatasetTestUsage: mockPushDatasetTestUsage
-}));
-
-vi.mock('@fastgpt/service/support/openapi/tools', () => ({
-  updateApiKeyUsage: mockUpdateApiKeyUsage
-}));
-
-vi.mock('@fastgpt/service/core/ai/model/catalog/service', async () => {
-  const { isModelConfigError } = await import('@fastgpt/global/common/error/model');
-  const getModelData = (
-    ref: unknown,
-    options?: {
-      type?: string;
-      vision?: boolean;
-      fallbackToDefault?: boolean;
-      authorizedIds?: ReadonlySet<string>;
-    }
-  ) => {
-    const resolve = () => {
-      if (options?.vision) return mockGetOptionalVlmModelData(ref, options);
-      if (options?.type === 'rerank') return mockGetRerankModelData(ref, options);
-      if (options?.type === 'embedding') return mockGetEmbeddingModelData(ref, options);
-      return mockGetLLMModelData(ref, options);
-    };
-    if (!options?.fallbackToDefault) return resolve();
-    try {
-      return resolve();
-    } catch (error) {
-      if (!isModelConfigError(error) || !options.type) throw error;
-      return mockGetDefaultModelData(options.type, {
-        authorizedIds: options.authorizedIds,
-        optional: true
-      });
-    }
-  };
-  return {
-    getSystemModelHandle: async () => ({
-      getAllModels: () => [],
-      version: 'test',
-      getDefaultModelData: mockGetDefaultModelData,
-      getModelData,
-      findModelData: mockGetOptionalVlmModelData
-    }),
-    getTeamModelHandle: async () => ({
-      getAllModels: () => [],
-      version: 'test',
-      getDefaultModelData: mockGetDefaultModelData,
-      getModelData,
-      findModelData: mockGetOptionalVlmModelData
-    })
-  };
-});
-
-vi.mock('@fastgpt/service/support/user/audit/util', () => ({
-  addAuditLog: mockAddAuditLog,
-  getI18nDatasetType: vi.fn((type: string) => type)
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({
-    createExternalUrl: mockCreateExternalUrl
-  })
-}));
-
-vi.mock('@/service/middleware/entry', () => ({
-  NextAPI: vi.fn((...args: unknown[]) => args.at(-1))
-}));
-
-vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
-  LimitTypeEnum: { chat: 'chat' },
-  teamFrequencyLimit: mockTeamFrequencyLimit
-}));
-
+vi.mock('@/service/core/dataset/searchTest', () => ({ searchDatasetTestForApi: mocks.search }));
 import { handler } from '@/pages/api/core/dataset/searchTest';
 
-const datasetId = '507f1f77bcf86cd799439011';
+const id = '507f1f77bcf86cd799439011';
+const auth = { teamId: id, tmbId: id, isRoot: false, apikey: 'test-key' };
+const request = (body: unknown) =>
+  ({ body, headers: { authorization: 'Bearer test-key' } }) as ApiRequestProps;
 
-describe('searchTest query image auth', () => {
-  it('uses defaults for unavailable query-extension and rerank selections', async () => {
-    mockGetLLMModelData.mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unExist);
-    });
-    mockGetRerankModelData.mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unConfigured);
-    });
-    mockGetDefaultModelData.mockImplementation((slot) => ({
-      modelId: slot === 'llm' ? 'default-query' : 'default-rerank',
-      name: 'Default model',
-      model: slot === 'llm' ? 'default-query' : 'default-rerank',
-      config: {}
-    }));
-    await handler(
-      {
-        body: {
-          datasetId,
-          text: 'question',
-          queryImageUrls: [],
-          usingReRank: true,
-          datasetSearchUsingExtensionQuery: true
-        }
-      } as any,
-      {} as any
-    );
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rerankModel: expect.objectContaining({ modelId: 'default-rerank' }),
-        datasetSearchExtensionModel: expect.objectContaining({ modelId: 'default-query' })
-      })
-    );
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.auth.mockResolvedValue(auth);
+  mocks.search.mockResolvedValue({
+    list: [],
+    duration: '0.010s',
+    limit: 5000,
+    searchMode: 'embedding',
+    usingReRank: false,
+    similarity: 0
   });
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockAssertAuthModels.mockResolvedValue({ models: [] });
+});
 
-    mockAuthDataset.mockResolvedValue({
-      dataset: {
-        name: 'dataset',
-        type: DatasetTypeEnum.dataset,
-        vectorModel: 'mock-vector-model',
-        vlmModel: 'mock-vlm-model'
-      },
-      teamId: 'team-1',
-      tmbId: 'tmb-1',
-      userId: 'user-1'
+describe('legacy searchTest HTTP boundary', () => {
+  it('validates the legacy shape and delegates authenticated execution', async () => {
+    const result = await handler(request({ datasetId: id, text: 'question' }));
+    expect(mocks.auth).toHaveBeenCalledWith(
+      expect.objectContaining({ authToken: true, authApiKey: true })
+    );
+    expect(mocks.search).toHaveBeenCalledExactlyOnceWith({
+      params: expect.objectContaining({ datasetId: id, text: 'question', queryImageUrls: [] }),
+      auth,
+      onRateLimit: expect.any(Function)
     });
-    mockTeamFrequencyLimit.mockResolvedValue(true);
-    mockCheckTeamAIPoints.mockResolvedValue(undefined);
-    mockResolveReadableCollectionIds.mockResolvedValue(undefined);
-    mockGetEmbeddingModelData.mockReturnValue({
-      modelId: '68ad85a7463006c963799a01',
-      model: 'mock-vector-model',
-      name: 'Mock vector model',
-      type: 'embedding',
-      config: {}
+    expect(result).toMatchObject({ list: [], limit: 5000, searchMode: 'embedding' });
+  });
+
+  it('retains rate limit response headers without putting policies in the HTTP handler', async () => {
+    const setHeader = vi.fn();
+    mocks.search.mockImplementationOnce(async ({ onRateLimit }) => {
+      onRateLimit({ limit: 100, remaining: 99, resetAt: 123456 });
+      return {
+        list: [],
+        duration: '0s',
+        limit: 5000,
+        searchMode: 'embedding',
+        usingReRank: false,
+        similarity: 0
+      };
     });
-    mockGetOptionalVlmModelData.mockReturnValue({
-      modelId: '68ad85a7463006c963799a02',
-      model: 'mock-vlm-model',
-      name: 'Mock VLM model',
-      isActive: true,
-      type: 'llm',
-      config: { vision: true }
-    });
-    mockGetRerankModelData.mockReturnValue({
-      modelId: '68ad85a7463006c963799a03',
-      model: 'mock-rerank-model',
-      name: 'Mock rerank model',
-      type: 'rerank',
-      config: {}
-    });
-    mockGetLLMModelData.mockReturnValue({
-      modelId: '68ad85a7463006c963799a04',
-      model: 'mock-llm-model',
-      name: 'Mock LLM model',
-      type: 'llm',
-      config: {}
-    });
-    mockPushDatasetTestUsage.mockReturnValue({
-      totalPoints: 0
-    });
-    mockDefaultSearchDatasetData.mockResolvedValue({
-      searchRes: [],
-      embeddingTokens: 0,
-      reRankInputTokens: 0,
-      usingReRank: false,
+    await handler(request({ datasetId: id, text: 'q' }), { setHeader } as unknown as Parameters<
+      typeof handler
+    >[1]);
+    expect(setHeader.mock.calls).toEqual([
+      ['X-RateLimit-Limit', 100],
+      ['X-RateLimit-Remaining', 99],
+      ['X-RateLimit-Reset', 123456]
+    ]);
+  });
+
+  it('retains image-only input and strips retired request options', async () => {
+    await handler(
+      request({ datasetId: id, queryImageUrls: ['temp/team/image.png'], retiredOption: 'ignored' })
+    );
+    const params = mocks.search.mock.calls[0][0].params;
+    expect(params.text).toBe('');
+    expect(params.queryImageUrls).toEqual(['temp/team/image.png']);
+    expect(params).not.toHaveProperty('retiredOption');
+  });
+
+  it.each([
+    { datasetId: id },
+    { datasetId: id, text: '   ' },
+    { datasetId: 'invalid', text: 'q' },
+    { datasetId: id, queryImageUrls: Array(11).fill('image') }
+  ])('rejects invalid input before authentication and search', async (body) => {
+    await expect(handler(request(body))).rejects.toBeInstanceOf(ApiRequestInputParseError);
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(mocks.auth).not.toHaveBeenCalled();
+  });
+
+  it('validates service output and strips private implementation fields', async () => {
+    mocks.search.mockResolvedValueOnce({
+      list: [],
+      duration: '0s',
       limit: 5000,
-      searchMode: DatasetSearchModeEnum.embedding,
-      similarity: 0
+      searchMode: 'embedding',
+      usingReRank: false,
+      similarity: 0,
+      apikey: 'private'
     });
-
-    mockCreateExternalUrl.mockResolvedValue({
-      url: 'https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'
-    });
-  });
-
-  it('continues search without a VLM when the configured model has been deleted', async () => {
-    mockGetOptionalVlmModelData.mockReturnValue(undefined);
-    await handler({ body: { datasetId, text: 'question', queryImageUrls: [] } } as any, {} as any);
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({ vlmModel: undefined })
-    );
-  });
-
-  it('should convert current-team temp image keys to external urls before dataset search', async () => {
-    const res = {} as any;
-    mockResolveReadableCollectionIds.mockResolvedValueOnce(['collection-1']);
-    await handler(
-      {
-        body: {
-          datasetId,
-          queryImageUrls: ['temp/team-1/search-image.png']
-        }
-      } as any,
-      res
-    );
-
-    expect(mockResolveReadableCollectionIds).toHaveBeenCalledWith({
-      teamId: 'team-1',
-      datasetIds: [datasetId],
-      tmbId: 'tmb-1'
-    });
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-1',
-        datasetIds: [datasetId],
-        textQueries: [],
-        imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'],
-        readableCollectionIdList: ['collection-1']
-      })
-    );
-    expect(mockCreateExternalUrl).toHaveBeenCalledWith({
-      key: 'temp/team-1/search-image.png',
-      expiredHours: 1
-    });
-    expect(mockTeamFrequencyLimit).toHaveBeenCalledWith({
-      teamId: 'team-1',
-      type: 'chat',
-      res
-    });
-  });
-
-  it('should reject non-temp or foreign-team query image keys before dataset search', async () => {
-    await expect(
-      handler(
-        {
-          body: {
-            datasetId,
-            queryImageUrls: [
-              'temp/team-2/search-image.png',
-              'dataset/dataset-1/image.png',
-              'chat/app-1/user-1/chat-1/image.png',
-              'https://example.com/image.png'
-            ]
-          }
-        } as any,
-        {} as any
-      )
-    ).rejects.toBe('Invalid query image key');
-
-    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
-    expect(mockCreateExternalUrl).not.toHaveBeenCalled();
-  });
-
-  it('preserves both text and authorized images for a mixed search', async () => {
-    await handler(
-      {
-        body: {
-          datasetId,
-          text: 'question',
-          queryImageUrls: ['temp/team-1/search-image.png']
-        }
-      } as any,
-      {} as any
-    );
-
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({
-        textQueries: ['question'],
-        imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock']
-      })
-    );
-  });
-
-  it('uses ordinary search for images without text and caps the token budget at 20000', async () => {
-    await handler(
-      {
-        body: {
-          datasetId,
-          queryImageUrls: ['temp/team-1/search-image.png'],
-          limit: 25000
-        }
-      } as any,
-      {} as any
-    );
-
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({ textQueries: [], limit: 20000 })
-    );
-  });
-
-  it('should stop before searching when the shared team chat QPM is exhausted', async () => {
-    mockTeamFrequencyLimit.mockResolvedValue(false);
-
-    await expect(
-      handler(
-        {
-          body: {
-            datasetId,
-            text: 'query'
-          }
-        } as any,
-        {} as any
-      )
-    ).resolves.toBeUndefined();
-
-    expect(mockCheckTeamAIPoints).not.toHaveBeenCalled();
-    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
-  });
-
-  it('ignores retired options and authorizes only the ordinary search models', async () => {
-    mockGetRerankModelData.mockReturnValue({
-      modelId: 'rerank-id',
-      model: 'rerank-model',
-      name: 'Rerank model',
-      type: 'rerank',
-      config: {}
-    });
-    mockGetLLMModelData.mockImplementation(({ modelId }) => ({
-      modelId: modelId || 'llm-id',
-      model: 'llm-model',
-      name: 'LLM model',
-      type: 'llm',
-      config: {}
-    }));
-
-    await handler(
-      {
-        body: {
-          datasetId,
-          text: 'question',
-          usingReRank: true,
-          rerankModelId: 'rerank-id',
-          datasetSearchUsingExtensionQuery: true,
-          datasetSearchExtensionModelId: 'extension-id',
-          datasetDeepSearch: true,
-          datasetDeepSearchModelId: 'deleted-model',
-          datasetDeepSearchModel: 'deleted-model',
-          datasetDeepSearchMaxTimes: 3,
-          datasetDeepSearchBg: 'old settings'
-        }
-      } as any,
-      {} as any
-    );
-
-    expect(mockAssertAuthModels).toHaveBeenCalledOnce();
-    expect(mockAssertAuthModels).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actor: expect.objectContaining({ teamId: 'team-1', tmbId: 'tmb-1' }),
-        modelIds: ['rerank-id', 'extension-id'],
-        action: 'use',
-        handle: expect.anything()
-      })
-    );
-    expect(mockGetLLMModelData).toHaveBeenCalledOnce();
-    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
-      expect.objectContaining({ textQueries: ['question'] })
-    );
-  });
-
-  it('should reject search when auxiliary model is unauthorized', async () => {
-    mockGetLLMModelData.mockReturnValue({
-      modelId: 'unauthorized-extension-id',
-      model: 'foreign-team-model',
-      name: 'Foreign Model',
-      type: 'llm',
-      config: {}
-    });
-    mockAssertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
-
-    await expect(
-      handler(
-        {
-          body: {
-            datasetId,
-            text: 'question',
-            datasetSearchUsingExtensionQuery: true,
-            datasetSearchExtensionModelId: 'unauthorized-extension-id'
-          }
-        } as any,
-        {} as any
-      )
-    ).rejects.toEqual(new UserError(ModelErrEnum.unAuthModel));
-
-    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
+    expect(await handler(request({ datasetId: id, text: 'q' }))).not.toHaveProperty('apikey');
+    mocks.search.mockResolvedValueOnce({ list: 'invalid' });
+    await expect(handler(request({ datasetId: id, text: 'q' }))).rejects.toThrow();
   });
 });

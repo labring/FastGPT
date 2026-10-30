@@ -1,3 +1,4 @@
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -187,6 +188,13 @@ describe('dispatchDatasetSearch', () => {
     } finally {
       serviceEnv.DATASET_SYNONYM_ENABLED = previous;
     }
+    expect(pushTrack.datasetSearch).toHaveBeenCalledExactlyOnceWith({
+      teamId: 'team_1',
+      datasetIds: ['dataset_1']
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ metadataFilterEnabled: false })
+    );
     expect(result.data?.quoteQA[0]).toMatchObject(quote);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.quoteList?.[0]).toMatchObject(quote);
     expect(

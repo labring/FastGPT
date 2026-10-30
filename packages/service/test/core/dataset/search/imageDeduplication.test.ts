@@ -113,6 +113,7 @@ const arrangeSearch = async (candidates: StoredCandidate[]) => {
     hits,
     search: (overrides: Partial<SearchDatasetDataProps> = {}) =>
       searchDatasetData({
+        metadataFilterEnabled: false,
         histories: [],
         teamId,
         datasetIds: [datasetId],

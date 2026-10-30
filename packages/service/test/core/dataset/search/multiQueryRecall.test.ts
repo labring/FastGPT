@@ -26,6 +26,7 @@ vi.mock('@fastgpt/service/core/dataset/search/defaultRecall/fullTextRecall', () 
 import { multiQueryRecall } from '@fastgpt/service/core/dataset/search/defaultRecall/multiQueryRecall';
 
 const baseParams = {
+  metadataFilterEnabled: true,
   teamId: 'team',
   datasetIds: ['dataset'],
   model: { model: 'embedding' } as any,
@@ -56,7 +57,12 @@ describe('multiQueryRecall collection filter routing', () => {
 
   it('calls filterCollectionByMetadata with provided collectionFilterMatch', async () => {
     await multiQueryRecall({ ...baseParams });
-    expect(filterCollectionByMetadataMock).toHaveBeenCalledOnce();
+    expect(filterCollectionByMetadataMock).toHaveBeenCalledExactlyOnceWith({
+      teamId: 'team',
+      datasetIds: ['dataset'],
+      collectionFilterMatch: '{}',
+      metadataFilterEnabled: true
+    });
   });
 
   // NFR-8（越权召回 = 0）：权限可读集合必须在召回阶段生效，空集合不得回退为「全部可读」。
