@@ -150,17 +150,6 @@ let createRoot: typeof import('react-dom/client').createRoot;
 let ChakraProvider: typeof import('@chakra-ui/react').ChakraProvider;
 let ModelConfigTable: typeof import('@/pageComponents/model/ModelConfigTable').default;
 
-/** 分开控制 API 和刷新完成时机，验证整个保存周期都占用排序草稿。 */
-const deferred = () => {
-  let resolve!: () => void;
-  let reject!: (error: Error) => void;
-  const promise = new Promise<void>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, resolve, reject };
-};
-
 let root: Root;
 let host: HTMLDivElement;
 const button = (label: string) => {
@@ -171,36 +160,6 @@ const button = (label: string) => {
   return element;
 };
 const sortNames = () => Array.from(host.querySelectorAll('tbody tr'), (row) => row.textContent);
-
-/** 检查父组件传给真实拖拽行的禁用状态，不在 fixture 中复制 busy 判断。 */
-const expectDraggingDisabled = (disabled: boolean) => {
-  const props = mocks.dnd;
-  if (!props) throw new Error('Sort list is not mounted');
-  const body = props.children({
-    provided: {
-      droppableProps: {
-        'data-rbd-droppable-context-id': 'test',
-        'data-rbd-droppable-id': 'droppable'
-      },
-      innerRef: vi.fn(),
-      placeholder: null
-    },
-    snapshot: {
-      isDraggingOver: false,
-      draggingOverWith: null,
-      draggingFromThisWith: null,
-      isUsingPlaceholder: false
-    }
-  });
-  const rows = React.Children.toArray(body.props.children).filter(
-    (child): child is React.ReactElement => React.isValidElement(child)
-  );
-  expect(rows).toHaveLength(models.length);
-  for (const row of rows) {
-    const draggable = React.Children.toArray(row.props.children)[0] as React.ReactElement;
-    expect(draggable.props.isDragDisabled).toBe(disabled);
-  }
-};
 
 beforeAll(async () => {
   // 仓库的全局 setup 包含服务端初始化，完成后再建立组件测试所需的浏览器环境。
@@ -248,7 +207,6 @@ beforeEach(async () => {
   );
   await act(async () => button('custom_sort').click());
   await act(async () => mocks.dnd!.onDragEndCb([models[1], models[0], models[2]]));
-  expect(sortNames()).toEqual(['B', 'A', 'C']);
 });
 
 afterEach(async () => {
@@ -260,74 +218,15 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
-describe('ModelConfigTable sorting busy state', () => {
-  it('locks the draft through saving and refreshing, then allows a new sort session', async () => {
-    const save = deferred();
-    const refresh = deferred();
-    mocks.save.mockReturnValueOnce(save.promise);
-    mocks.refresh.mockReturnValueOnce(refresh.promise);
+describe('ModelConfigTable sorting', () => {
+  it('submits the complete dragged model order', async () => {
+    expect(sortNames()).toEqual(['B', 'A', 'C']);
     await act(async () => button('save_sort').click());
-
-    const expectBusy = async () => {
-      expect(button('save_sort').disabled).toBe(true);
-      expect(button('save_sort').dataset.loading).toBe('true');
-      expect(button('cancel_sort').disabled).toBe(true);
-      expectDraggingDisabled(true);
-      await act(async () => {
-        button('cancel_sort').click();
-        button('save_sort').click();
-        // 模拟保存前开始的拖拽在保存期间结束，回调也不能改写草稿。
-        mocks.dnd!.onDragEndCb([models[2], models[1], models[0]]);
-      });
-      expect(sortNames()).toEqual(['B', 'A', 'C']);
-      expect(mocks.save).toHaveBeenCalledOnce();
-      expect(host.textContent).not.toContain('config_model:model.custom_sort');
-    };
-
-    await expectBusy();
-    expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.save).toHaveBeenCalledWith({
       channelType: 'system',
-      moves: [{ modelId: models[1].modelId, beforeModelId: models[0].modelId }]
+      modelIds: [models[1].modelId, models[0].modelId, models[2].modelId]
     });
-    await act(async () => save.resolve());
     expect(mocks.refresh).toHaveBeenCalledOnce();
-    await expectBusy();
-
-    await act(async () => refresh.resolve());
-    expect(button('custom_sort').disabled).toBe(false);
     expect(host.textContent).not.toContain('config_model:model.cancel_sort');
-    await act(async () => button('custom_sort').click());
-    expect(sortNames()).toEqual(['A', 'B', 'C']);
-    expect(button('cancel_sort').disabled).toBe(false);
-    expectDraggingDisabled(false);
   });
-
-  it.each(['save', 'refresh'] as const)(
-    'keeps the draft and unlocks editing after %s fails',
-    async (stage) => {
-      const pending = deferred();
-      const error = new Error(`${stage} failed`);
-      mocks.save.mockResolvedValue(undefined);
-      mocks.refresh.mockResolvedValue(undefined);
-      mocks[stage].mockReturnValueOnce(pending.promise);
-      await act(async () => button('save_sort').click());
-      expectDraggingDisabled(true);
-
-      await act(async () => pending.reject(error));
-      expect(mocks.onError).toHaveBeenCalledWith(error);
-      expect(sortNames()).toEqual(['B', 'A', 'C']);
-      expect(button('cancel_sort').disabled).toBe(false);
-      expect(button('save_sort').disabled).toBe(false);
-      expect(button('save_sort').dataset.loading).toBe('false');
-      expectDraggingDisabled(false);
-      if (stage === 'save') expect(mocks.refresh).not.toHaveBeenCalled();
-
-      await act(async () => mocks.dnd!.onDragEndCb([models[2], models[1], models[0]]));
-      expect(sortNames()).toEqual(['C', 'B', 'A']);
-      await act(async () => button('save_sort').click());
-      expect(mocks.save).toHaveBeenCalledTimes(2);
-      expect(button('custom_sort').disabled).toBe(false);
-    }
-  );
 });

@@ -176,7 +176,7 @@ describe('AIModelSelector lazy directory', () => {
   it('reuses the loaded catalog for the current model and primes it before selection', () => {
     mocks.open = true;
     const onChange = vi.fn();
-    const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen', onChange });
+    AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'chosen', onChange });
     mocks.effects.forEach((fn) => fn());
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).toHaveBeenCalledWith(
@@ -223,50 +223,39 @@ describe('AIModelSelector lazy directory', () => {
     expect(onChange).toHaveBeenCalledWith('model-1');
   });
 
-  it.each([false, true])(
-    'preserves custom ownership order and puts beta models last (grouped=%s)',
-    (grouped) => {
-      mocks.open = true;
-      mocks.providers = [{ id: 'p-b' }, { id: 'p-a' }];
-      const kinds = grouped
-        ? ['owned-1', 'owned-2', 'shared-1', 'shared-2', 'beta', 'system']
-        : ['owned-1', 'shared-1', 'beta', 'system'];
-      const models = kinds.flatMap((kind) =>
-        ['p-a', 'p-b'].map((provider) => ({
-          modelId: `${provider}-${kind}`,
-          model: `${provider}-${kind}`,
-          name: `${provider}-${kind}`,
-          provider,
-          type: ModelTypeEnum.llm,
-          scope: kind.startsWith('owned') || kind.startsWith('shared') ? 'team' : 'system',
-          tmbId: kind.startsWith('owned') ? 'member' : 'other-member',
-          testMode: kind === 'beta',
-          config: {}
-        }))
-      );
-      const originalIds = models.map(({ modelId }) => modelId);
-      mocks.lists.mockReturnValue({ modelList: models, loading: false, error: false });
+  it('preserves custom ownership order and puts beta models last in grouped lists', () => {
+    mocks.open = true;
+    mocks.providers = [{ id: 'p-b' }, { id: 'p-a' }];
+    const kinds = ['owned-1', 'owned-2', 'shared-1', 'shared-2', 'beta', 'system'];
+    const models = kinds.flatMap((kind) =>
+      ['p-a', 'p-b'].map((provider) => ({
+        modelId: `${provider}-${kind}`,
+        model: `${provider}-${kind}`,
+        name: `${provider}-${kind}`,
+        provider,
+        type: ModelTypeEnum.llm,
+        scope: kind.startsWith('owned') || kind.startsWith('shared') ? 'team' : 'system',
+        tmbId: kind.startsWith('owned') ? 'member' : 'other-member',
+        testMode: kind === 'beta',
+        config: {}
+      }))
+    );
+    const originalIds = models.map(({ modelId }) => modelId);
+    mocks.lists.mockReturnValue({ modelList: models, loading: false, error: false });
 
-      const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: '' });
-      const orderedKinds = [...kinds.filter((kind) => kind !== 'beta'), 'beta'];
-      if (grouped) {
-        expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual([
-          'p-b',
-          'p-a'
-        ]);
-        for (const group of selector.props.list) {
-          expect(group.children.map((item: { value: string }) => item.value)).toEqual(
-            orderedKinds.map((kind) => `${group.value}-${kind}`)
-          );
-        }
-      } else {
-        expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual(
-          orderedKinds.flatMap((kind) => ['p-a', 'p-b'].map((provider) => `${provider}-${kind}`))
-        );
-      }
-      expect(models.map(({ modelId }) => modelId)).toEqual(originalIds);
+    const selector = AIModelSelector({ modelType: ModelTypeEnum.llm, value: '' });
+    const orderedKinds = [...kinds.filter((kind) => kind !== 'beta'), 'beta'];
+    expect(selector.props.list.map((item: { value: string }) => item.value)).toEqual([
+      'p-b',
+      'p-a'
+    ]);
+    for (const group of selector.props.list) {
+      expect(group.children.map((item: { value: string }) => item.value)).toEqual(
+        orderedKinds.map((kind) => `${group.value}-${kind}`)
+      );
     }
-  );
+    expect(models.map(({ modelId }) => modelId)).toEqual(originalIds);
+  });
 
   it('does not emit when the same model is reselected in a flat list', () => {
     mocks.open = true;

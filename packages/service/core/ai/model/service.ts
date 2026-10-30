@@ -2,7 +2,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
-import { sortModelOrderItems, getValidModelOrderRank } from '@fastgpt/global/core/ai/model/order';
+import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import type {
   CreateModelBody,
   CreateModelsFromTemplatesBody,
@@ -142,199 +142,50 @@ export const updateModelStatus = async ({
   await refreshMutationCatalog(context);
 };
 
-/**
- * 在一个目录事务中应用相对移动操作；rank 有空间时只更新被移动模型，间隙耗尽时扩展局部窗口重排。
- * 读取当前作用域的小投影以校验所有锚点并规划最终 rank，不再要求客户端提交完整 ID 列表。
- */
+/** 在一个目录事务中按客户端提交的完整顺序写入连续的 1-based rank。 */
 export const updateModelOrder = async ({
-  moves,
+  modelIds,
   ...owner
 }: Omit<UpdateModelOrderBody, 'channelType'> & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
   const changed = await mongoSessionRun(
     async (session) => {
-      // 仅读取身份与 rank；该快照也提供历史数据的稳定 `_id DESC` 兜底顺序。
+      // 读取完整作用域列表；旧数据缺失或重复 rank 时，先按历史稳定顺序构造当前列表。
       const modelDocuments = await MongoAIModel.find(filter)
         .select({ _id: 1, sortOrder: 1 })
         .sort({ _id: -1 })
         .session(session)
         .lean();
-      type ModelOrderNode = {
-        modelId: string;
-        originalRank: number | undefined;
-        rank: number | undefined;
-        previous: ModelOrderNode | undefined;
-        next: ModelOrderNode | undefined;
-      };
-      const nodes: ModelOrderNode[] = sortModelOrderItems(
+      const currentIds = sortModelOrderItems(
         modelDocuments.map(({ _id, sortOrder }) => ({ modelId: String(_id), sortOrder }))
-      ).map(({ modelId, sortOrder }) => {
-        const rank = getValidModelOrderRank(sortOrder);
-        return { modelId, originalRank: rank, rank, previous: undefined, next: undefined };
-      });
-      const nodesById = new Map(nodes.map((node) => [node.modelId, node]));
-      let head: ModelOrderNode | undefined = nodes[0];
-      let tail: ModelOrderNode | undefined = nodes.at(-1);
-      nodes.forEach((node, index) => {
-        node.previous = nodes[index - 1];
-        node.next = nodes[index + 1];
-      });
-
-      // API 已拒绝重复移动源；服务层仍验证域内身份，避免内部调用绕过作用域约束。
-      const moveSources = new Set<string>();
-      for (const move of moves) {
-        if (
-          moveSources.has(move.modelId) ||
-          !nodesById.has(move.modelId) ||
-          (move.beforeModelId !== null && !nodesById.has(move.beforeModelId))
-        ) {
-          throw new UserError(ModelErrEnum.unExist);
-        }
-        moveSources.add(move.modelId);
+      ).map(({ modelId }) => modelId);
+      const currentIdSet = new Set(currentIds);
+      if (
+        modelIds.length !== currentIds.length ||
+        new Set(modelIds).size !== modelIds.length ||
+        modelIds.some((modelId) => !currentIdSet.has(modelId))
+      ) {
+        throw new UserError(ModelErrEnum.unExist);
       }
 
-      const initialIds = nodes.map(({ modelId }) => modelId);
-      const rankSet = new Set<number>();
-      let needsRankInitialization = false;
-      for (const node of nodes) {
-        if (node.rank === undefined) {
-          needsRankInitialization = true;
-        } else if (rankSet.has(node.rank)) {
-          needsRankInitialization = true;
-        } else {
-          rankSet.add(node.rank);
-        }
-      }
-
-      const rankStep = Math.min(
-        1_000_000,
-        Math.floor(Number.MAX_SAFE_INTEGER / (nodes.length + 1))
+      const modelById = new Map(
+        modelDocuments.map(({ _id, sortOrder }) => [String(_id), { sortOrder }])
       );
-      if (nodes.length > 0 && rankStep <= 1) {
-        throw new UserError(ModelErrEnum.invalidModelConfig);
-      }
-      if (needsRankInitialization) {
-        // 仅首次遇到旧模型或重复 rank 时回填；没有真实顺序变化则不会持久化这次初始化。
-        nodes.forEach((node, index) => {
-          node.rank = rankStep * (index + 1);
-        });
-      }
-
-      const detach = (node: ModelOrderNode) => {
-        if (node.previous) node.previous.next = node.next;
-        else head = node.next;
-        if (node.next) node.next.previous = node.previous;
-        else tail = node.previous;
-      };
-      const insertBefore = (node: ModelOrderNode, anchor: ModelOrderNode | undefined) => {
-        if (!anchor) {
-          node.previous = tail;
-          node.next = undefined;
-          if (tail) tail.next = node;
-          else head = node;
-          tail = node;
-          return;
-        }
-
-        node.previous = anchor.previous;
-        node.next = anchor;
-        if (anchor.previous) anchor.previous.next = node;
-        else head = node;
-        anchor.previous = node;
-      };
-
-      const rebalanceAround = (node: ModelOrderNode) => {
-        let radius = 8;
-        while (true) {
-          let start = node;
-          let end = node;
-          for (let index = 0; index < radius && start.previous; index++) start = start.previous;
-          for (let index = 0; index < radius && end.next; index++) end = end.next;
-
-          const window: ModelOrderNode[] = [];
-          let cursor: ModelOrderNode | undefined = start;
-          while (cursor) {
-            window.push(cursor);
-            if (cursor === end) break;
-            cursor = cursor.next;
-          }
-
-          const leftFence = start.previous?.rank ?? 0;
-          const rightFence = end.next?.rank ?? Number.MAX_SAFE_INTEGER;
-          const availableStep = Math.floor((rightFence - leftFence) / (window.length + 1));
-          const coversList = start === head && end === tail;
-          if (availableStep >= 1_000_000 || (coversList && availableStep > 1)) {
-            const step = Math.min(1_000_000, availableStep);
-            window.forEach((item, index) => {
-              item.rank = leftFence + step * (index + 1);
-            });
-            return;
-          }
-          if (coversList) throw new UserError(ModelErrEnum.invalidModelConfig);
-          radius = Math.min(nodes.length, radius * 2);
-        }
-      };
-
-      const allocateRank = (node: ModelOrderNode) => {
-        const leftRank = node.previous?.rank ?? 0;
-        const rightRank = node.next?.rank ?? Number.MAX_SAFE_INTEGER;
-        if (node.rank !== undefined && node.rank > leftRank && node.rank < rightRank) return;
-
-        const distance = rightRank - leftRank;
-        const nextRank =
-          distance <= 1
-            ? undefined
-            : !node.previous && rightRank > 1_000_000
-              ? rightRank - 1_000_000
-              : !node.next && leftRank <= Number.MAX_SAFE_INTEGER - 1_000_000
-                ? leftRank + 1_000_000
-                : leftRank + Math.floor(distance / 2);
-
-        if (
-          nextRank !== undefined &&
-          Number.isSafeInteger(nextRank) &&
-          nextRank > leftRank &&
-          nextRank < rightRank
-        ) {
-          node.rank = nextRank;
-        } else {
-          rebalanceAround(node);
-        }
-      };
-
-      // 移动按目标顺序从右向左执行；已放置的后继模型可作为稳定锚点。
-      for (const { modelId, beforeModelId } of moves) {
-        const node = nodesById.get(modelId)!;
-        const anchor = beforeModelId === null ? undefined : nodesById.get(beforeModelId)!;
-        if (node === anchor || (anchor ? node.next === anchor : node === tail)) continue;
-
-        detach(node);
-        insertBefore(node, anchor);
-        allocateRank(node);
-      }
-
-      const finalIds: string[] = [];
-      let current: ModelOrderNode | undefined = head;
-      while (current) {
-        finalIds.push(current.modelId);
-        current = current.next;
-      }
-      if (initialIds.every((modelId, index) => finalIds[index] === modelId)) return false;
-
-      const updates = nodes.flatMap(({ modelId, originalRank, rank }) => {
-        if (rank === undefined || rank === originalRank) return [];
+      const updates = modelIds.flatMap((modelId, index) => {
+        const sortOrder = index + 1;
+        if (modelById.get(modelId)?.sortOrder === sortOrder) return [];
         return [
           {
             updateOne: {
               filter: { _id: modelId, ...filter },
-              update: { $set: { sortOrder: rank } }
+              update: { $set: { sortOrder } }
             }
           }
         ];
       });
-      if (updates.length === 0) throw new UserError(ModelErrEnum.invalidModelConfig);
+      if (updates.length === 0) return false;
 
-      // 先写目录 revision 作为同作用域并发栅栏，再与 rank 更新一起提交；no-op 不推进 revision。
+      // 先写目录 revision 作为同作用域并发栅栏，再与完整 rank 更新一起提交。
       await incrementModelCatalogRevision(context, session);
       await MongoAIModel.bulkWrite(updates, { session });
       return true;

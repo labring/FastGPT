@@ -71,7 +71,7 @@ export const postUpdateModelChannels = (data: UpdateModelChannelsBody) =>
 export const putModelsStatus = (data: UpdateModelStatusBody) =>
   PUT(`${coreModelPath}/updateStatus`, data);
 
-/** 保存当前作用域的相对移动操作，强制显式传递 channelType */
+/** 保存当前作用域的完整模型顺序，强制显式传递 channelType */
 export const putUpdateModelOrder = (data: UpdateModelOrderBody) =>
   PUT(`${coreModelPath}/updateOrder`, data);
 

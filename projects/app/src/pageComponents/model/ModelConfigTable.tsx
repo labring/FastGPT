@@ -30,7 +30,6 @@ import {
   putUpdateModelOrder,
   postUpdateModelChannels
 } from '@/web/core/ai/model/api';
-import { buildModelOrderMoves } from '@fastgpt/global/core/ai/model/order';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -419,13 +418,10 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     setIsSortMode(false);
   }, [isSortBusy]);
 
-  /** 将草稿差异压缩成最少的移动操作；保存或刷新失败时保留草稿以便重试。 */
+  /** 保存完整草稿顺序；保存或刷新失败时保留草稿以便重试。 */
   const handleSaveModelOrder = useLockFn(async () => {
-    const moves = buildModelOrderMoves(
-      initialSortModelIds,
-      sortModels.map((model) => model.modelId)
-    );
-    if (moves.length === 0) {
+    const modelIds = sortModels.map((model) => model.modelId);
+    if (!isSortDirty) {
       cancelSortMode();
       return;
     }
@@ -433,7 +429,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
     // 保存和刷新共同占用草稿，避免请求完成时清除等待期间的新操作。
     setIsSortBusy(true);
     try {
-      await saveModelOrder({ channelType, moves });
+      await saveModelOrder({ channelType, modelIds });
       await refreshModels();
       setSortModels([]);
       setInitialSortModelIds([]);

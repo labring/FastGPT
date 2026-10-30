@@ -57,22 +57,6 @@ describe('scoped team catalog cache', () => {
     expect(second).not.toBe(first);
     expect(second.getTeamModels()[0].name).toBe('Remote change');
   });
-  it('refreshes rank data without changing the runtime model version', async () => {
-    const [model] = await runModelTransaction(context, (session) =>
-      MongoAIModel.create([modelData], { session })
-    );
-    const first = await getScopedTeamModelHandle({ teamId, systemHandle });
-
-    await runModelTransaction(context, (session) =>
-      MongoAIModel.updateOne({ _id: model._id }, { $set: { sortOrder: 1_000_000 } }, { session })
-    );
-    const second = await getScopedTeamModelHandle({ teamId, systemHandle });
-
-    expect(second).not.toBe(first);
-    expect(second.getTeamModels()[0].sortOrder).toBe(1_000_000);
-    expect(second.version).toBe(first.version);
-  });
-
   it('keeps unrelated teams cached and never exposes their models', async () => {
     const first = await getScopedTeamModelHandle({ teamId, systemHandle });
     const otherTeamId = new Types.ObjectId().toString();

@@ -66,102 +66,21 @@ beforeEach(async () => {
 });
 
 describe('model lifecycle', () => {
-  it.each(['system', 'team'] as const)(
-    'ignores supplied ranks when creating %s models',
-    async (channelType) => {
-      const modelOwner =
-        channelType === 'team'
-          ? {
-              channelType,
-              teamId: new Types.ObjectId().toString(),
-              tmbId: new Types.ObjectId().toString()
-            }
-          : owner;
-      const modelData = { ...draft, sortOrder: 123 };
-      const created = await createModel({ ...modelOwner, modelData });
-      const stored = await MongoAIModel.findById(created.modelId).lean();
-
-      expect(stored).toMatchObject({ model: draft.model, scope: channelType });
-      expect(stored).not.toHaveProperty('sortOrder');
-    }
-  );
-
-  it.each([0, undefined])(
-    'preserves persisted ranks through configuration updates with rank %s',
-    async (sortOrder) => {
-      const first = await createModel({ ...owner, modelData: draft });
-      const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
-      await updateModelOrder({
-        ...owner,
-        moves: [{ modelId: first.modelId, beforeModelId: second.modelId }]
-      });
-      const before = await MongoAIModel.findById(first.modelId).lean();
-      const modelData = { ...draft, name: 'Edited', sortOrder };
-      await updateModel({ ...owner, modelId: first.modelId, modelData });
-
-      expect(await MongoAIModel.findById(first.modelId).lean()).toMatchObject({
-        name: 'Edited',
-        sortOrder: before!.sortOrder
-      });
-    }
-  );
-
-  it.each([true, false])(
-    'preserves local ranks and ignores imported ranks (supplied: %s)',
-    async (supplied) => {
-      const first = await createModel({ ...owner, modelData: draft });
-      const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
-      await updateModelOrder({
-        ...owner,
-        moves: [{ modelId: first.modelId, beforeModelId: second.modelId }]
-      });
-      const before = await MongoAIModel.find({ scope: ModelScopeEnum.system })
-        .sort({ sortOrder: 1 })
-        .lean();
-      const importedRank = supplied ? { sortOrder: 0 } : {};
-      await importSystemModels({
-        config: [
-          { ...draft, modelId: first.modelId, name: 'Imported', ...importedRank },
-          { ...draft, model: 'second', modelId: 'external-second', ...importedRank },
-          { ...draft, model: 'new-model', modelId: 'external-new', ...importedRank }
-        ]
-      });
-
-      for (const model of before) {
-        expect(await MongoAIModel.findById(model._id).lean()).toMatchObject({
-          sortOrder: model.sortOrder
-        });
-      }
-      expect(await MongoAIModel.findById(first.modelId).lean()).toMatchObject({ name: 'Imported' });
-      expect(await MongoAIModel.findOne({ model: 'new-model' }).lean()).not.toHaveProperty(
-        'sortOrder'
-      );
-    }
-  );
-
-  it('saves relative moves with sparse ranks without changing runtime fallback order', async () => {
+  it('rewrites complete order with consecutive ranks without changing runtime fallback order', async () => {
     const first = await createModel({ ...owner, modelData: draft });
     const second = await createModel({ ...owner, modelData: { ...draft, model: 'second' } });
 
-    // 顺序已满足的保存不应仅为回填 rank 扫写整个历史列表或推进目录 revision。
+    // 完整顺序保存后，rank 从 1 开始连续赋值。
     await updateModelOrder({
       ...owner,
-      moves: [{ modelId: second.modelId, beforeModelId: first.modelId }]
-    });
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
-    expect(await MongoAIModel.exists({ sortOrder: { $exists: true } })).toBeNull();
-
-    // 新建时的旧展示顺序是 `_id DESC`：second 在 first 前；将 first 移到 second 前。
-    await updateModelOrder({
-      ...owner,
-      moves: [{ modelId: first.modelId, beforeModelId: second.modelId }]
+      modelIds: [first.modelId, second.modelId]
     });
 
     const orderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
       .sort({ sortOrder: 1 })
       .lean();
     expect(orderedModels.map(({ model }) => model)).toEqual(['original', 'second']);
-    expect(orderedModels.every(({ sortOrder }) => Number.isSafeInteger(sortOrder))).toBe(true);
+    expect(orderedModels.map(({ sortOrder }) => sortOrder)).toEqual([1, 2]);
 
     // 自定义顺序只用于管理员展示；ModelHandle 保持原有 `_id DESC` 的默认回退次序。
     expect(
@@ -172,83 +91,13 @@ describe('model lifecycle', () => {
     expect(getCachedSystemModelHandle()?.getDefaultModelIds()[ModelTypeEnum.llm]).toBe(
       second.modelId
     );
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(3);
-
-    // 当前目标位置已满足时不写 rank，也不推进 revision。
-    await updateModelOrder({
-      ...owner,
-      moves: [{ modelId: first.modelId, beforeModelId: second.modelId }]
-    });
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(3);
 
     await expect(
       updateModelOrder({
         ...owner,
-        moves: [{ modelId: first.modelId, beforeModelId: '68ad85a7463006c963799a07' }]
+        modelIds: [first.modelId, '68ad85a7463006c963799a07']
       })
     ).rejects.toThrow('modelUnExist');
-    expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(3);
-  });
-
-  it('applies a batch of relative moves in order within one transaction', async () => {
-    const models: Array<{ modelId: string }> = [];
-    for (const model of ['first', 'second', 'third', 'fourth']) {
-      models.push(await createModel({ ...owner, modelData: { ...draft, model } }));
-    }
-    const first = models[0]!;
-    const second = models[1]!;
-    const third = models[2]!;
-    const fourth = models[3]!;
-
-    // 当前 `_id DESC` 为 fourth, third, second, first；连续的锚点移动将其恢复为创建顺序。
-    await updateModelOrder({
-      ...owner,
-      moves: [
-        { modelId: third.modelId, beforeModelId: fourth.modelId },
-        { modelId: second.modelId, beforeModelId: third.modelId },
-        { modelId: first.modelId, beforeModelId: second.modelId }
-      ]
-    });
-
-    const orderedModels = await MongoAIModel.find({ scope: ModelScopeEnum.system })
-      .sort({ sortOrder: 1 })
-      .lean();
-    expect(orderedModels.map(({ model }) => model)).toEqual(['first', 'second', 'third', 'fourth']);
-  });
-
-  it('rebalances a local rank window when adjacent ranks have no integer gap', async () => {
-    const models = await Promise.all(
-      ['first', 'second', 'third', 'fourth'].map((model) =>
-        createModel({ ...owner, modelData: { ...draft, model } })
-      )
-    );
-    const orderedBefore = [...models].reverse();
-    await MongoAIModel.bulkWrite(
-      orderedBefore.map(({ modelId }, index) => ({
-        updateOne: {
-          filter: { _id: modelId },
-          update: { $set: { sortOrder: index + 10 } }
-        }
-      }))
-    );
-
-    await updateModelOrder({
-      ...owner,
-      moves: [
-        {
-          modelId: orderedBefore[3].modelId,
-          beforeModelId: orderedBefore[1].modelId
-        }
-      ]
-    });
-
-    const orderedAfter = await MongoAIModel.find({ scope: ModelScopeEnum.system })
-      .sort({ sortOrder: 1 })
-      .lean();
-    expect(orderedAfter.map(({ model }) => model)).toEqual(['fourth', 'first', 'third', 'second']);
-    const ranks = orderedAfter.map(({ sortOrder }) => sortOrder);
-    expect(ranks.every((rank) => Number.isSafeInteger(rank))).toBe(true);
-    expect(new Set(ranks).size).toBe(ranks.length);
   });
 
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
@@ -277,7 +126,7 @@ describe('model lifecycle', () => {
 
   it('binds already installed templates too and continues after one binding fails', async () => {
     const templates = await import('@fastgpt/service/core/ai/model/template');
-    const second = { ...draft, model: 'second', sortOrder: 123 };
+    const second = { ...draft, model: 'second' };
     const templateSpy = vi
       .spyOn(templates, 'refreshModelTemplates')
       .mockResolvedValue([draft, second]);
@@ -290,9 +139,6 @@ describe('model lifecycle', () => {
         channelIds: [1]
       });
       expect(result.models.map(({ model }) => model)).toEqual(['second']);
-      expect(await MongoAIModel.findOne({ model: 'second' }).lean()).not.toHaveProperty(
-        'sortOrder'
-      );
       expect(proxy.append.mock.calls.map(([arg]) => arg.model)).toEqual(['original', 'second']);
       expect(await MongoAIModel.countDocuments({})).toBe(2);
     } finally {
@@ -460,7 +306,7 @@ describe('team model writes', () => {
 
       await updateModelOrder({
         ...owner,
-        moves: [{ modelId: ownFirst.modelId, beforeModelId: ownSecond.modelId }]
+        modelIds: [ownFirst.modelId, ownSecond.modelId]
       });
 
       await expect(
@@ -468,8 +314,8 @@ describe('team model writes', () => {
           .sort({ sortOrder: 1 })
           .lean()
       ).resolves.toMatchObject([
-        { model: 'custom', sortOrder: 500_000 },
-        { model: 'second', sortOrder: 1_000_000 }
+        { model: 'custom', sortOrder: 1 },
+        { model: 'second', sortOrder: 2 }
       ]);
       const otherModel = await MongoAIModel.findById(other.modelId).lean();
       expect(otherModel).toMatchObject({ model: 'other' });
@@ -477,7 +323,7 @@ describe('team model writes', () => {
       await expect(
         updateModelOrder({
           ...owner,
-          moves: [{ modelId: ownSecond.modelId, beforeModelId: other.modelId }]
+          modelIds: [ownSecond.modelId, other.modelId]
         })
       ).rejects.toThrow('modelUnExist');
     });

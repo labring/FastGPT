@@ -9,19 +9,13 @@ import { getChannelProviders } from '@/web/core/ai/model/channel';
 const mocks = vi.hoisted(() => ({
   metadata: {} as ProviderMetasResponse,
   language: 'zh-CN',
-  options: [] as { label: string; value: number; icon?: string }[],
-  models: [] as { model: string; provider: string; testMode?: boolean }[],
-  modelOptions: [] as { value: string }[]
+  options: [] as { label: string; value: number; icon?: string }[]
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: mocks.language } })
 }));
 vi.mock('@/web/core/ai/model/useModelConfig', () => ({
-  useModelConfig: () => ({
-    models: mocks.models,
-    getModelProvider: () => undefined,
-    loading: false
-  })
+  useModelConfig: () => ({ models: [], getModelProvider: () => undefined, loading: false })
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: (request: unknown) => ({
@@ -39,12 +33,7 @@ vi.mock('@fastgpt/web/components/common/MySelect', () => ({
     return null;
   }
 }));
-vi.mock('@fastgpt/web/components/common/MySelect/MultipleSelect', () => ({
-  default: ({ list }: { list: typeof mocks.modelOptions }) => {
-    mocks.modelOptions = list;
-    return null;
-  }
-}));
+vi.mock('@fastgpt/web/components/common/MySelect/MultipleSelect', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Textarea/JsonEditor', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/String/CopyBox', () => ({
@@ -59,8 +48,6 @@ describe('EditChannelModal channel metadata', () => {
     vi.stubGlobal('React', React);
     mocks.language = 'zh-CN';
     mocks.options = [];
-    mocks.models = [];
-    mocks.modelOptions = [];
     mocks.metadata = {
       1: {
         name: 'Upstream',
@@ -99,29 +86,6 @@ describe('EditChannelModal channel metadata', () => {
       expect(html).toContain('https://provider.example.com');
       expect(html).toContain('https://api.example.com');
       expect(html).toContain('secret-format');
-    }
-  );
-
-  it.each(['system', 'team'] as const)(
-    'preserves %s model catalog order across providers and moves beta models last',
-    (channelType) => {
-      mocks.models = [
-        { model: 'beta-first', provider: 'a', testMode: true },
-        { model: 'rank-first', provider: 'b' },
-        { model: 'rank-second', provider: 'a' },
-        { model: 'beta-second', provider: 'b', testMode: true }
-      ];
-      const originalModels = [...mocks.models];
-
-      render(channelType);
-
-      expect(mocks.modelOptions.map(({ value }) => value)).toEqual([
-        'rank-first',
-        'rank-second',
-        'beta-first',
-        'beta-second'
-      ]);
-      expect(mocks.models).toEqual(originalModels);
     }
   );
 

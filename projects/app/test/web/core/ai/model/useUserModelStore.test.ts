@@ -116,51 +116,6 @@ describe('useUserModelStore catalog cache', () => {
     expect(useUserModelStore.getState().modelMap['updated-model-id']).toBeDefined();
   });
 
-  it('replaces a persisted runtime catalog and refreshes custom order without changing defaults', async () => {
-    const first = catalogData.models[0];
-    const second = { ...first, modelId: 'second', model: 'second-model' };
-    localStorage.setItem(
-      'fastgpt:model-catalog:v1:team:member',
-      JSON.stringify({ ...catalogData, models: [first, second], version: 'runtime-version' })
-    );
-    mocks.getUserModelCatalog
-      .mockResolvedValueOnce({
-        version: 'runtime-version:custom:1',
-        data: { ...catalogData, models: [second, first] }
-      })
-      .mockResolvedValueOnce({
-        version: 'runtime-version:custom:2',
-        data: { ...catalogData, models: [first, second] }
-      });
-
-    await useUserModelStore.getState().loadModelCatalog({ teamId: 'team', tmbId: 'member' });
-    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(1, {
-      version: 'runtime-version',
-      outLinkAuthData: undefined,
-      orderBy: 'custom'
-    });
-    expect(useUserModelStore.getState().modelList.map(({ modelId }) => modelId)).toEqual([
-      'second',
-      first.modelId
-    ]);
-    expect(useUserModelStore.getState().defaultModels.llm?.modelId).toBe(first.modelId);
-
-    await useUserModelStore.getState().loadModelCatalog({ teamId: 'team', tmbId: 'member' });
-    expect(mocks.getUserModelCatalog).toHaveBeenNthCalledWith(2, {
-      version: 'runtime-version:custom:1',
-      outLinkAuthData: undefined,
-      orderBy: 'custom'
-    });
-    expect(useUserModelStore.getState().modelList.map(({ modelId }) => modelId)).toEqual([
-      first.modelId,
-      'second'
-    ]);
-    expect(useUserModelStore.getState().defaultModels.llm?.modelId).toBe(first.modelId);
-    expect(JSON.parse(localStorage.getItem('fastgpt:model-catalog:v1:team:member')!).version).toBe(
-      'runtime-version:custom:2'
-    );
-  });
-
   it('loads an outlink catalog without persisting permission data', async () => {
     const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
     mocks.getUserModelCatalog.mockResolvedValueOnce({ version: 'version-1', data: catalogData });

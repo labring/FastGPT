@@ -286,14 +286,14 @@ describe('admin settings model create/update api', () => {
     }
   );
 
-  it('applies relative system model moves and rejects anchors outside the scope', async () => {
+  it('applies a complete system model order and rejects IDs outside the scope', async () => {
     const first = await insertSystemModel({ ...buildLlmDocument(), model: 'first' });
     const second = await insertSystemModel({ ...buildLlmDocument(), model: 'second' });
 
     const res = await callApi({
       handler: updateModelOrderApi,
       body: {
-        moves: [{ modelId: String(first._id), beforeModelId: String(second._id) }]
+        modelIds: [String(first._id), String(second._id)]
       }
     });
 
@@ -301,43 +301,20 @@ describe('admin settings model create/update api', () => {
     await expect(
       MongoAIModel.find({ scope: ModelScopeEnum.system }).sort({ sortOrder: 1 }).lean()
     ).resolves.toMatchObject([
-      { model: 'first', sortOrder: 500_000 },
-      { model: 'second', sortOrder: 1_000_000 }
+      { model: 'first', sortOrder: 1 },
+      { model: 'second', sortOrder: 2 }
     ]);
 
     const invalidAnchor = await callApi({
       handler: updateModelOrderApi,
       body: {
-        moves: [{ modelId: String(first._id), beforeModelId: '68ad85a7463006c963799a07' }]
+        modelIds: [String(first._id), '68ad85a7463006c963799a07']
       }
     });
     expect(invalidAnchor.error).toBeDefined();
     await expect(MongoAIModel.findById(first._id).lean()).resolves.toMatchObject({
-      sortOrder: 500_000
+      sortOrder: 1
     });
-  });
-
-  it('saves a complete order of more than 500 installed models through the API', async () => {
-    const models = await MongoAIModel.insertMany(
-      Array.from({ length: 501 }, (_, index) => ({
-        ...buildLlmDocument(),
-        model: `model-${index}`
-      }))
-    );
-    await mongoSessionRun((session) =>
-      incrementModelCatalogRevision({ scope: ModelScopeEnum.system }, session)
-    );
-    const modelIds = models.map(({ _id }) => String(_id));
-    const moves = modelIds.map((modelId) => ({ modelId, beforeModelId: null }));
-
-    const res = await callApi({ handler: updateModelOrderApi, body: { moves } });
-
-    expect(res.error).toBeUndefined();
-    const saved = await MongoAIModel.find({ scope: ModelScopeEnum.system })
-      .sort({ sortOrder: 1 })
-      .lean();
-    expect(saved.map(({ _id }) => String(_id))).toEqual(modelIds);
-    expect(saved.every(({ sortOrder }) => Number.isSafeInteger(sortOrder))).toBe(true);
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
