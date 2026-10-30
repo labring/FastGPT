@@ -1,6 +1,7 @@
 import {
   datasetQuoteValueDesc,
   datasetSelectValueDesc,
+  datasetTagFilterValueDesc,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -138,7 +139,8 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: i18nT('workflow:tag_filter'),
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
-      description: i18nT('workflow:tag_filter_description')
+      description: i18nT('workflow:tag_filter_description'),
+      valueDesc: datasetTagFilterValueDesc
     }
   ],
   outputs: [
