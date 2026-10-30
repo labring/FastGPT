@@ -76,6 +76,25 @@ describe('readModelCatalogSnapshot', () => {
     expect(snapshot.revision).toBe(0);
   });
 
+  it('keeps runtime snapshot order independent from management display ranks', async () => {
+    await MongoAIModel.create([
+      { ...modelData, model: 'rank-two', sortOrder: 2 },
+      { ...modelData, model: 'legacy' },
+      { ...modelData, model: 'rank-zero', sortOrder: 0 },
+      { ...modelData, model: 'rank-one', sortOrder: 1 }
+    ]);
+    const databaseOrder = await MongoAIModel.find({ scope: ModelScopeEnum.system })
+      .sort({ _id: -1 })
+      .select({ _id: 1 })
+      .lean();
+
+    const snapshot = await readModelCatalogSnapshot({ scope: ModelScopeEnum.system });
+
+    expect(snapshot.models.map(({ _id }) => String(_id))).toEqual(
+      databaseOrder.map(({ _id }) => String(_id))
+    );
+  });
+
   it('does not expose in-flight data with the uncommitted revision', async () => {
     const model = await MongoAIModel.create(modelData);
     await MongoAIModelCatalog.create({ scope: ModelScopeEnum.system, catalogRevision: 4 });

@@ -246,6 +246,44 @@ describe('upstream model selection semantics', () => {
     ).toBeUndefined();
   });
 
+  it.each([undefined, 'missing-llm', 'disabled-llm', 'second-llm'])(
+    'keeps runtime defaults independent from management display ranks (%s)',
+    (configuredId) => {
+      const second: LLMModelDataType = { ...vlm, modelId: 'second-llm', model: 'second-llm' };
+      const disabled: LLMModelDataType = {
+        ...vlm,
+        modelId: 'disabled-llm',
+        model: 'disabled-llm',
+        isActive: false
+      };
+      const before = createModelHandle({
+        models: [disabled, { ...vlm, sortOrder: 0 }, { ...second, sortOrder: 1 }],
+        configuredDefaultModelIds: { llm: configuredId },
+        revision: 1,
+        version: 'before'
+      });
+      const after = createModelHandle({
+        models: [disabled, { ...vlm, sortOrder: 1 }, { ...second, sortOrder: 0 }],
+        configuredDefaultModelIds: { llm: configuredId },
+        revision: 2,
+        version: 'after'
+      });
+      const expectedId = configuredId === second.modelId ? second.modelId : vlm.modelId;
+
+      expect(before.getDefaultModelData('llm').modelId).toBe(expectedId);
+      expect(after.getDefaultModelIds()).toMatchObject({
+        llm: expectedId,
+        datasetTextLLM: expectedId,
+        datasetImageLLM: undefined,
+        chatTitleLLM: undefined
+      });
+      expect(after.getDefaultModelData('llm').modelId).toBe(expectedId);
+      expect(after.getDefaultModelData('datasetTextLLM').modelId).toBe(expectedId);
+      expect(after.getDefaultModelData('datasetImageLLM')).toBeUndefined();
+      expect(after.getDefaultModelData('chatTitleLLM')).toBeUndefined();
+    }
+  );
+
   it('supports fallbackToDefault and authorizedIds in getModelData', () => {
     const defaultLlm: LLMModelDataType = { ...vlm, modelId: 'default-llm', model: 'default-llm' };
     const selectedLlm: LLMModelDataType = {

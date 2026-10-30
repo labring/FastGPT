@@ -1,3 +1,4 @@
+import { sortModelSelectorModels } from '@/components/Select/AIModelSelector.utils';
 import { findClientModelByValue } from '@/web/core/ai/model/modelReference';
 import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
@@ -26,7 +27,7 @@ const MobileModelSelectorDrawer = ({ isOpen, value, onChange, onClose }: Props) 
   });
   const { t, i18n } = useTranslation();
   const { getModelProviders, getModelProvider } = useUserModelStore();
-  const availableModelList = useMemo(() => modelList, [modelList]);
+  const availableModelList = useMemo(() => sortModelSelectorModels(modelList), [modelList]);
   const selectedModel = useMemo(
     () => findClientModelByValue({ models: availableModelList, value }),
     [availableModelList, value]

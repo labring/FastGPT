@@ -7,7 +7,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   effects: [] as (() => void)[],
   status: 'active' as 'active' | 'disabled' | 'deleted',
-  prime: vi.fn()
+  prime: vi.fn(),
+  models: [] as {
+    modelId: string;
+    model: string;
+    name: string;
+    type: string;
+    provider: string;
+    isActive: boolean;
+    testMode?: boolean;
+    config: { voices: { label: string; value: string }[] };
+  }[],
+  options: [] as { value: string; children: { value: string }[] }[]
 }));
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
@@ -30,17 +41,7 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
 }));
 vi.mock('@/web/core/ai/model/useModelList', () => ({
   useModelList: () => ({
-    modelList: [
-      {
-        modelId: 'tts',
-        model: 'tts-name',
-        name: 'Default TTS',
-        type: 'tts',
-        provider: 'OpenAI',
-        isActive: true,
-        config: { voices: [{ label: 'First voice', value: 'first' }] }
-      }
-    ]
+    modelList: mocks.models
   })
 }));
 vi.mock('@/web/core/ai/model/useModelDetail', () => ({
@@ -84,7 +85,10 @@ vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({ children }: { children: React.ReactNode }) => children
 }));
 vi.mock('@fastgpt/web/components/common/MySelect/MultipleRowSelect', () => ({
-  default: ({ label }: { label: React.ReactNode }) => label
+  default: ({ label, list }: { label: React.ReactNode; list: typeof mocks.options }) => {
+    mocks.options = list;
+    return label;
+  }
 }));
 vi.mock('@/components/core/app/AppConfigItem', () => ({
   default: ({ action }: { action: React.ReactNode }) => action,
@@ -105,6 +109,47 @@ describe('TTSSelect actual selection and display', () => {
     mocks.effects = [];
     mocks.status = 'active';
     mocks.prime.mockClear();
+    mocks.options = [];
+    mocks.models = [
+      {
+        modelId: 'tts',
+        model: 'tts-name',
+        name: 'Default TTS',
+        type: 'tts',
+        provider: 'OpenAI',
+        isActive: true,
+        config: { voices: [{ label: 'First voice', value: 'first' }] }
+      }
+    ];
+  });
+  it('keeps builtin modes first and custom model order with beta models last', () => {
+    const base = mocks.models[0];
+    mocks.models = [
+      { ...base, modelId: 'owned' },
+      { ...base, modelId: 'shared' },
+      { ...base, modelId: 'beta-first', testMode: true },
+      { ...base, modelId: 'system-first', provider: 'Other' },
+      { ...base, modelId: 'system-second' },
+      { ...base, modelId: 'beta-second', testMode: true }
+    ];
+    const originalIds = mocks.models.map(({ modelId }) => modelId);
+
+    renderToStaticMarkup(React.createElement(TTSSelect, { onChange: vi.fn() }));
+
+    expect(mocks.options.map(({ value }) => value)).toEqual([
+      TTSTypeEnum.none,
+      TTSTypeEnum.web,
+      'owned',
+      'shared',
+      'system-first',
+      'system-second',
+      'beta-first',
+      'beta-second'
+    ]);
+    expect(mocks.options.slice(2).every(({ children }) => children[0].value === 'first')).toBe(
+      true
+    );
+    expect(mocks.models.map(({ modelId }) => modelId)).toEqual(originalIds);
   });
   it('does not assign a model or switch modes merely by mounting', () => {
     const onChange = vi.fn();

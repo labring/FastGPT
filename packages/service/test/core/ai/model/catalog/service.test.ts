@@ -151,6 +151,19 @@ describe('loadSystemModels', () => {
     expect(getCachedSystemModelHandle()?.getActiveModels()).toEqual([]);
   });
 
+  it('does not change runtime content version for display-rank-only updates', async () => {
+    const model = await MongoAIModel.create(pluginLlmDocument);
+    await loadInstalledModels();
+    const first = getCachedSystemModelHandle()!;
+
+    await MongoAIModel.updateOne({ _id: model._id }, { $set: { sortOrder: 1_000_000 } });
+    await loadInstalledModels();
+    const second = getCachedSystemModelHandle()!;
+
+    expect(second.getSystemModels()[0].sortOrder).toBe(1_000_000);
+    expect(second.version).toBe(first.version);
+  });
+
   it('keeps the MongoDB newest-first order and derives the active list', async () => {
     const installedModels = [
       {

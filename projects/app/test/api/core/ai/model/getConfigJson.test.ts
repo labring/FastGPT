@@ -23,6 +23,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
       provider: 'OpenAI',
       name: 'Exported model',
       scope: 'system',
+      sortOrder: 123,
       isActive: true,
       requestUrl: 'https://example.com/v1',
       requestAuth: 'secret-token',
@@ -57,6 +58,7 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     expect(exported[0]).not.toHaveProperty('_id');
     expect(exported[0]).not.toHaveProperty('metadata');
     expect(exported[0]).not.toHaveProperty('unknownTopLevel');
+    expect(exported[0]).not.toHaveProperty('sortOrder');
     expect(exported[0]).toMatchObject({
       pricing: { tiers: [{ inputPrice: 1000, outputPrice: 2000 }] }
     });
@@ -65,7 +67,8 @@ describe('GET /api/core/ai/model/getConfigJson', () => {
     // 导出保留数据库中的旧价格，不触发格式转换或回写。
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
       inputPrice: 1,
-      outputPrice: 2
+      outputPrice: 2,
+      sortOrder: 123
     });
   });
 
