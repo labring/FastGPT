@@ -297,7 +297,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
-            ...(memoryState ? { memoryState } : {}),
+            memoryState,
             lastInteractive,
             query
           });
@@ -373,7 +373,7 @@ export const getExecuteTool = ({
             nodeResponseSink,
             nodeResponseParentId: callId,
             variableState,
-            ...(memoryState ? { memoryState } : {}),
+            memoryState,
             lastInteractive,
             query
           });

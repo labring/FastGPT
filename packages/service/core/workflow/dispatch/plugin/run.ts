@@ -43,7 +43,7 @@ import { createSystemToolResourceContext } from '../../resource/context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import type { WorkflowResourceContext } from '@fastgpt/global/core/workflow/runtime/type';
 import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
-import { WorkflowMemoryState } from '../utils/memories';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -288,9 +288,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           resolveInputFile
         });
         const runtimeVariables = childVariableState.toRuntimeRecord();
-        const childMemoryState = (
-          props.memoryState ?? WorkflowMemoryState.fromHistories(props.histories)
-        ).fork(props.node?.nodeId ? `node:${props.node.nodeId}` : undefined);
+        const childMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined
+        );
 
         return runWorkflow({
           ...props,

@@ -23,7 +23,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { loadWorkflowModelResource } from '../../resource/service';
-import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../utils/memories';
+import { getWorkflowNodeMemoryKey, readWorkflowNodeMemory } from '../../memory/state';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 

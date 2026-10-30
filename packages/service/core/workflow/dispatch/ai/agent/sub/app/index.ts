@@ -30,6 +30,7 @@ import {
 import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../../../utils/summary';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
+import { WorkflowMemoryState } from '../../../../../memory/state';
 import {
   computedAppToolUsage,
   getAppToolOwnUsage,
@@ -84,6 +85,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     userChatInput,
     ...data
   } = props;
+  const memoryState = WorkflowMemoryState.fromWorkflow(props);
 
   const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
     appId: app.id,
@@ -142,11 +144,12 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         sourceVariableState: variableState,
         resolveInputFile
       });
-      const childMemoryState = data.memoryState?.fork();
+      // 应用身份属于调用路径，后代插件即使来自同一模板也必须按调用方隔离。
+      const childMemoryState = memoryState.fork(`app:${childRunningAppInfo.sourceId}`);
 
       return runWorkflow({
         ...data,
-        ...(childMemoryState ? { memoryState: childMemoryState } : {}),
+        memoryState: childMemoryState,
         runningAppInfo: {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: String(appData._id),
@@ -178,7 +181,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       });
     }
   });
-  data.memoryState?.merge(system_memories);
+  memoryState.merge(system_memories);
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
   const runtimeSummary = getWorkflowRuntimeSummary({
@@ -220,6 +223,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     userChatInput,
     ...data
   } = props;
+  const memoryState = WorkflowMemoryState.fromWorkflow(props);
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
@@ -392,11 +396,11 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           showStatus: false
         };
       });
-      const childMemoryState = data.memoryState?.fork();
+      const childMemoryState = memoryState.fork(`app:${childRunningAppInfo.sourceId}`);
 
       return runWorkflow({
         ...data,
-        ...(childMemoryState ? { memoryState: childMemoryState } : {}),
+        memoryState: childMemoryState,
         runningAppInfo: {
           sourceType: ChatSourceTypeEnum.app,
           sourceId: childAppInfo.sourceId,
@@ -427,7 +431,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       });
     }
   });
-  data.memoryState?.merge(system_memories);
+  memoryState.merge(system_memories);
 
   const runtimeSummary = getWorkflowRuntimeSummary({
     workflowRuntimeSummary

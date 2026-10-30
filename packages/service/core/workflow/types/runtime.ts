@@ -26,7 +26,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowNodeResponseSinkLike } from '../dispatch/nodeResponseSink';
-import type { WorkflowMemoryState } from '../dispatch/utils/memories';
+import type { WorkflowMemoryState } from '../memory/state';
 import type { WorkflowRuntimeSummaryFields } from './summary';
 
 /*

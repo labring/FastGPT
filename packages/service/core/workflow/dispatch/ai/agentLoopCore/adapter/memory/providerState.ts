@@ -1,109 +1,59 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ChatDispatchProps } from '../../../../../types/runtime';
-import { getWorkflowNodeMemoryKey, WorkflowMemoryState } from '../../../../utils/memories';
-
-type RunningAppInfo = Pick<ChatDispatchProps['runningAppInfo'], 'sourceType' | 'sourceId'>;
-
-export type AgentLoopCoreMemoryKeys = {
-  memoryKey: string;
-};
+import {
+  getWorkflowNodeMemoryKey,
+  readWorkflowNodeMemory,
+  type WorkflowMemoryState
+} from '../../../../../memory/state';
+import type { WorkflowMemorySource } from '../../../../../memory/utils';
 
 export type AgentLoopCoreProviderStateMemory = {
   providerState?: unknown;
 };
 
-/**
- * 生成当前节点的统一 agent-loop providerState memory key。
- */
-export const getAgentLoopCoreMemoryKeys = ({
-  memoryState,
-  runningAppInfo,
-  nodeId
-}: {
-  memoryState?: WorkflowMemoryState;
-  runningAppInfo?: RunningAppInfo;
-  nodeId: string;
-}): AgentLoopCoreMemoryKeys => ({
-  memoryKey: getWorkflowNodeMemoryKey({
-    memoryState,
-    runningAppInfo,
-    nodeId
-  })
-});
-
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
-const readObject = (value: unknown): Record<string, unknown> =>
-  isObjectRecord(value) ? value : {};
-
 /**
  * 从当前工作流记忆状态（或上一条 AI history）中恢复 agent-loop providerState。
- * 只恢复 AI 轮次写入的 memories，避免把末尾为用户消息的轮次误当成可继续执行的 loop 状态。
+ * 普通请求遵守 history 配置且只读取 AI 轮次；显式交互恢复优先使用父流程传入的 checkpoint，
+ * 避免子应用的空历史或 history=0 裁掉恢复状态。
  * 同时通过 WorkflowMemoryState 自动兼容旧版 `agentLoopMemory-${nodeId}` 键格式。
  */
 export const readAgentLoopCoreProviderStateMemory = ({
   memoryState,
   history,
+  hasInteractiveResume = false,
   histories,
   runningAppInfo,
   nodeId
 }: {
   memoryState?: WorkflowMemoryState;
   history?: ChatItemMiniType[] | number;
+  hasInteractiveResume?: boolean;
   histories: ChatItemMiniType[];
-  runningAppInfo?: RunningAppInfo;
+  runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
 }): AgentLoopCoreProviderStateMemory => {
-  const lastHistory = histories[histories.length - 1];
-  if (histories.length > 0 && lastHistory?.obj !== ChatRoleEnum.AI) {
+  const selectedHistories = Array.isArray(history) ? history : histories;
+  if (
+    !(hasInteractiveResume && memoryState) &&
+    selectedHistories.length > 0 &&
+    selectedHistories.at(-1)?.obj !== ChatRoleEnum.AI
+  )
     return {};
-  }
-  if (histories.length === 0 && (history === 0 || Array.isArray(history) || !memoryState)) {
-    return {};
-  }
 
-  const state = (() => {
-    if (Array.isArray(history)) {
-      return WorkflowMemoryState.fromHistories(histories, memoryState);
-    }
-    return memoryState ?? WorkflowMemoryState.fromHistories(histories);
-  })();
-  const storedMemory = state.readNodeMemory({
+  const storedMemory = readWorkflowNodeMemory({
+    memoryState,
+    history,
+    histories,
+    hasInteractiveResume,
     runningAppInfo,
     nodeId
   });
   if (!isObjectRecord(storedMemory)) return {};
 
   return { providerState: storedMemory.providerState };
-};
-
-/**
- * 将本轮 providerState 转换为统一格式的 workflow memories。
- * 暂停态写入 providerState；完成态写 undefined，清理未完成状态。
- */
-export const buildAgentLoopCoreProviderStateMemories = ({
-  memoryState,
-  runningAppInfo,
-  nodeId,
-  memory
-}: {
-  memoryState?: WorkflowMemoryState;
-  runningAppInfo?: RunningAppInfo;
-  nodeId: string;
-  memory: AgentLoopCoreProviderStateMemory;
-}) => {
-  const keys = getAgentLoopCoreMemoryKeys({
-    memoryState,
-    runningAppInfo,
-    nodeId
-  });
-  const hasMemory = memory.providerState !== undefined;
-
-  return {
-    [keys.memoryKey]: hasMemory ? memory : undefined
-  };
 };
 
 /**
@@ -116,11 +66,12 @@ export const prepareAgentLoopCoreProviderRunState = ({
   restoredProviderState: unknown;
   hasLastInteractive: boolean;
 }) => {
-  const restoredState = readObject(restoredProviderState);
-
   return {
     providerState: restoredProviderState,
-    isAskResume: hasLastInteractive && isObjectRecord(restoredState.pendingMainContext)
+    isAskResume:
+      hasLastInteractive &&
+      isObjectRecord(restoredProviderState) &&
+      isObjectRecord(restoredProviderState.pendingMainContext)
   };
 };
 
@@ -134,18 +85,13 @@ export const buildAgentLoopCorePausedMemories = ({
   providerState
 }: {
   memoryState?: WorkflowMemoryState;
-  runningAppInfo?: RunningAppInfo;
+  runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
   providerState: unknown;
-}) =>
-  buildAgentLoopCoreProviderStateMemories({
-    memoryState,
-    runningAppInfo,
-    nodeId,
-    memory: {
-      providerState
-    }
-  });
+}) => ({
+  [getWorkflowNodeMemoryKey({ memoryState, runningAppInfo, nodeId })]:
+    providerState === undefined ? undefined : { providerState }
+});
 
 /**
  * 完成态 memory：统一清理未完成的 providerState。
@@ -157,12 +103,8 @@ export const buildAgentLoopCoreDoneMemories = ({
   nodeId
 }: {
   memoryState?: WorkflowMemoryState;
-  runningAppInfo?: RunningAppInfo;
+  runningAppInfo?: WorkflowMemorySource;
   nodeId: string;
-}) =>
-  buildAgentLoopCoreProviderStateMemories({
-    memoryState,
-    runningAppInfo,
-    nodeId,
-    memory: {}
-  });
+}) => ({
+  [getWorkflowNodeMemoryKey({ memoryState, runningAppInfo, nodeId })]: undefined
+});

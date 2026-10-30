@@ -18,7 +18,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { readWorkflowFileBuffer } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
-import { WorkflowMemoryState } from '../../utils/memories';
+import { WorkflowMemoryState } from '../../../memory/state';
 import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
@@ -176,9 +176,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     }
 
-    const toolCallMemoryState = (
-      props.memoryState ?? WorkflowMemoryState.fromHistories(histories)
-    ).fork(`node:${nodeId}`, {
+    const toolCallMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(`node:${nodeId}`, {
       history,
       histories: chatHistories,
       hasInteractiveResume: !!lastInteractive
@@ -246,7 +244,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           error,
           [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
           [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
-          ...(systemMemories ? { [DispatchNodeResponseKeyEnum.memories]: systemMemories } : {})
+          [DispatchNodeResponseKeyEnum.memories]: systemMemories
         }),
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? assistantResponses
@@ -260,7 +258,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
           ? assistantResponses
           : undefined,
-        ...(systemMemories ? { [DispatchNodeResponseKeyEnum.memories]: systemMemories } : {}),
+        [DispatchNodeResponseKeyEnum.memories]: systemMemories,
         [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
         [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
       };
@@ -277,7 +275,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
         ? assistantResponses
         : undefined,
-      ...(systemMemories ? { [DispatchNodeResponseKeyEnum.memories]: systemMemories } : {}),
+      [DispatchNodeResponseKeyEnum.memories]: systemMemories,
       [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };

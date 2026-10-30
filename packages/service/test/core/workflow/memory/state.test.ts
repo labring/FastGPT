@@ -3,10 +3,9 @@ import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/cons
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowNodeMemoryKey,
-  mergePersistedWorkflowMemories,
   readWorkflowNodeMemory,
   WorkflowMemoryState
-} from '@fastgpt/service/core/workflow/dispatch/utils/memories';
+} from '@fastgpt/service/core/workflow/memory/state';
 
 const rootAppInfo = {
   sourceType: ChatSourceTypeEnum.app,
@@ -132,7 +131,8 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         createAiHistory({
           'app:shared_child_app:extract_1': { legacyChild: true },
           'agentLoopMemory-agent_1': { providerState: { step: 2 } }
-        })
+        }),
+        { rootSource: rootAppInfo }
       );
 
       // 1. Legacy piAgent key is readable via unified readNodeMemory
@@ -184,7 +184,8 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         createAiHistory({
           'app:shared_child_app:extract_1': { staleUnscoped: true },
           'node:runApp_A/app:shared_child_app:extract_1': { fromA: true }
-        })
+        }),
+        { rootSource: rootAppInfo }
       );
 
       const childStateB = rootState.fork('node:runApp_B');
@@ -195,6 +196,78 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         })
       ).toBeUndefined();
     });
+
+    it('keeps root memories isolated and intact when the same app is entered recursively', () => {
+      const rootMemory = { city: 'root-city' };
+      const legacyAgentMemory = {
+        providerState: { pendingMainContext: { askToolCallId: 'root-ask' } }
+      };
+      const rootState = WorkflowMemoryState.fromRecord(
+        {
+          'app:root_app:extract_1': rootMemory,
+          'agentLoopMemory-agent_1': legacyAgentMemory
+        },
+        { rootSource: rootAppInfo }
+      );
+      const recursiveState = rootState.fork('node:child_B').fork('node:reenter_A');
+
+      expect(
+        recursiveState.readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })
+      ).toBeUndefined();
+      expect(
+        recursiveState.readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'agent_1' })
+      ).toBeUndefined();
+
+      const recursiveKey = recursiveState.getNodeMemoryKey({
+        runningAppInfo: rootAppInfo,
+        nodeId: 'extract_1'
+      });
+      const recursiveAgentKey = recursiveState.getNodeMemoryKey({
+        runningAppInfo: rootAppInfo,
+        nodeId: 'agent_1'
+      });
+      recursiveState.merge({
+        [recursiveKey]: { city: 'child-city' },
+        [recursiveAgentKey]: undefined
+      });
+      rootState.merge(recursiveState.getDelta());
+      expect(rootState.toRecord()).toEqual({
+        'app:root_app:extract_1': rootMemory,
+        'agentLoopMemory-agent_1': legacyAgentMemory,
+        [recursiveKey]: { city: 'child-city' },
+        [recursiveAgentKey]: undefined
+      });
+
+      const reloaded = WorkflowMemoryState.fromHistories(createAiHistory(rootState.toRecord()), {
+        rootSource: rootAppInfo
+      });
+      expect(reloaded.readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })).toEqual(
+        rootMemory
+      );
+      expect(
+        reloaded
+          .fork('node:child_B')
+          .fork('node:reenter_A')
+          .readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })
+      ).toEqual({ city: 'child-city' });
+    });
+
+    it('preserves ambiguous unscoped keys when the root source is unknown', () => {
+      const rootState = WorkflowMemoryState.fromRecord({
+        'app:root_app:extract_1': { keep: true }
+      });
+      const childState = rootState.fork('node:child');
+      expect(
+        childState.readNodeMemory({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })
+      ).toBeUndefined();
+      childState.merge({
+        [childState.getNodeMemoryKey({ runningAppInfo: rootAppInfo, nodeId: 'extract_1' })]: {
+          updated: true
+        }
+      });
+      rootState.merge(childState.getDelta());
+      expect(rootState.toRecord()['app:root_app:extract_1']).toEqual({ keep: true });
+    });
   });
 
   describe('history parameter 3-state contract', () => {
@@ -202,7 +275,8 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       const parentState = WorkflowMemoryState.fromHistories(
         createAiHistory({
           'node:agent_1/app:shared_child_app:extract_1': { fromSessionMemory: 'yes' }
-        })
+        }),
+        { rootSource: rootAppInfo }
       ).fork('node:agent_1');
 
       // 1. history === 0 disables memory read
@@ -298,28 +372,6 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
         })
       ).toEqual({ fromCustomArray: 'custom' });
     });
-
-    it('mergePersistedWorkflowMemories merges incoming delta and cleans up superseded legacy keys', () => {
-      const merged = mergePersistedWorkflowMemories(
-        {
-          'agentLoopMemory-node_1': { providerState: { step: 1 } },
-          'app:shared_child_app:extract_1': { oldUnscoped: true },
-          'app:root_app:keep_me': { keep: 1 }
-        },
-        {
-          'app:root_app:node_1': undefined,
-          'node:runApp_1/app:shared_child_app:extract_1': { scoped: true }
-        }
-      );
-
-      expect(merged).toEqual({
-        'app:root_app:keep_me': { keep: 1 },
-        'app:root_app:node_1': undefined,
-        'node:runApp_1/app:shared_child_app:extract_1': { scoped: true }
-      });
-      expect(Object.hasOwn(merged, 'agentLoopMemory-node_1')).toBe(false);
-      expect(Object.hasOwn(merged, 'app:shared_child_app:extract_1')).toBe(false);
-    });
   });
 
   describe('parallel multiple child nodes (并行多子节点) concurrency guarantees', () => {
@@ -352,37 +404,6 @@ describe('WorkflowMemoryState & unified node memory helpers', () => {
       expect(rootState.toRecord()).toEqual({
         'app:root_app:extract_fast': { step: 'turn_2_new' },
         'node:runApp_slow/app:shared_child_app:inner_node': { childDone: true }
-      });
-    });
-
-    it('isolates parallel canvas mounts of the exact same child app template', () => {
-      const rootState = WorkflowMemoryState.fromHistories();
-
-      // Parallel runApp_A and runApp_B mounting the same sharedChildAppInfo
-      const branchA = rootState.fork('node:runApp_A');
-      const branchB = rootState.fork('node:runApp_B');
-
-      const keyA = branchA.getNodeMemoryKey({
-        runningAppInfo: sharedChildAppInfo,
-        nodeId: 'extract_1'
-      });
-      const keyB = branchB.getNodeMemoryKey({
-        runningAppInfo: sharedChildAppInfo,
-        nodeId: 'extract_1'
-      });
-
-      expect(keyA).toBe('node:runApp_A/app:shared_child_app:extract_1');
-      expect(keyB).toBe('node:runApp_B/app:shared_child_app:extract_1');
-
-      branchA.merge({ [keyA]: { branch: 'A' } });
-      branchB.merge({ [keyB]: { branch: 'B' } });
-
-      rootState.merge(branchA.getDelta());
-      rootState.merge(branchB.getDelta());
-
-      expect(rootState.toRecord()).toEqual({
-        'node:runApp_A/app:shared_child_app:extract_1': { branch: 'A' },
-        'node:runApp_B/app:shared_child_app:extract_1': { branch: 'B' }
       });
     });
 

@@ -1344,6 +1344,63 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
+  it('resumes a nested Pi ask with history=0 using the parent workflow checkpoint', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
+    serviceEnvMock.AGENT_ENGINE = 'piAgent';
+    const props = createProps();
+    props.params.history = 0;
+    props.histories = [];
+    props.lastInteractive = {
+      type: 'agentAsk',
+      entryNodeIds: [],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        toolCallId: 'nested_ask',
+        arguments: JSON.stringify({
+          reason: '',
+          blockerType: 'user_choice',
+          questions: [{ question: 'Continue?', options: [] }]
+        })
+      }
+    };
+    const providerState = {
+      pendingMainContext: {
+        askToolCallId: 'nested_ask',
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'nested_ask',
+                type: 'function',
+                function: { name: 'ask_user', arguments: '{}' }
+              }
+            ]
+          }
+        ]
+      }
+    };
+    props.memoryState = WorkflowMemoryState.fromRecord(
+      {
+        'node:outer_agent/app:app_1:agent_node': { providerState }
+      },
+      { rootSource: { sourceType: ChatSourceTypeEnum.app, sourceId: 'parent-app' } }
+    )
+      .fork('node:outer_agent')
+      .fork('app:app_1');
+
+    await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'piAgent',
+        input: expect.objectContaining({ providerState, userAnswer: '前端原始问题' })
+      })
+    );
+  });
+
   it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();

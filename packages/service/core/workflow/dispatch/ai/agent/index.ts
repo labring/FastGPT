@@ -26,13 +26,12 @@ import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse } from '../../utils';
-import { WorkflowMemoryState } from '../../utils/memories';
+import { WorkflowMemoryState } from '../../../memory/state';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
@@ -186,7 +185,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
-  const memoryState = props.memoryState ?? WorkflowMemoryState.fromHistories(histories);
+  const memoryState = WorkflowMemoryState.fromWorkflow(props);
   const agentMemoryState = memoryState.fork(`node:${nodeId}`, {
     history,
     hasInteractiveResume: !!lastInteractive
@@ -322,8 +321,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const restoredMemory =
       provider === 'piAgent'
         ? readAgentLoopCoreProviderStateMemory({
-            memoryState: props.memoryState,
+            memoryState,
             history,
+            hasInteractiveResume: !!lastInteractive,
             histories: chatHistories,
             runningAppInfo,
             nodeId
@@ -385,9 +385,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       );
       return {
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        ...(interactiveMemories && {
-          [DispatchNodeResponseKeyEnum.memories]: interactiveMemories
-        }),
+        [DispatchNodeResponseKeyEnum.memories]: interactiveMemories,
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
     }
@@ -414,9 +412,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       data: {
         [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(doneMemories && {
-        [DispatchNodeResponseKeyEnum.memories]: doneMemories
-      }),
+      [DispatchNodeResponseKeyEnum.memories]: doneMemories,
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
     // 异常与错误分支输出必须同时返回，空错误文本也不能让节点走成功分支。
@@ -434,19 +430,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     const catchMemories = buildAgentMemories(
       provider === 'piAgent'
-        ? buildAgentLoopCoreProviderStateMemories({
+        ? buildAgentLoopCoreDoneMemories({
             memoryState,
             runningAppInfo,
-            nodeId,
-            memory: {}
+            nodeId
           })
         : undefined
     );
     return {
       ...getNodeErrResponse({ error }),
-      ...(catchMemories && {
-        [DispatchNodeResponseKeyEnum.memories]: catchMemories
-      }),
+      [DispatchNodeResponseKeyEnum.memories]: catchMemories,
       [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
     };
   } finally {

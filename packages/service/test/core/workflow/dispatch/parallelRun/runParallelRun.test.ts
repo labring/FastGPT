@@ -635,7 +635,7 @@ describe('dispatchParallelRun', () => {
 
   it('并发任务各自 fork 独立 memoryState，重试与失败隔离，并按任务索引顺序确定性合并成功任务的 system_memories', async () => {
     const parentMemoryState = (
-      await import('@fastgpt/service/core/workflow/dispatch/utils/memories')
+      await import('@fastgpt/service/core/workflow/memory/state')
     ).WorkflowMemoryState.fromRecord({
       'app:app_1:extract1': { memory: 'baseline' }
     });

@@ -19,7 +19,7 @@ import {
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
-import { WorkflowMemoryState } from '../utils/memories';
+import { WorkflowMemoryState } from '../../memory/state';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = ModuleDispatchProps<{
@@ -62,7 +62,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
   const attemptResults: ParallelTaskResult[] = [];
-  const parentMemoryState = props.memoryState ?? WorkflowMemoryState.fromHistories(props.histories);
+  const parentMemoryState = WorkflowMemoryState.fromWorkflow(props);
   const successfulTaskMemories: Array<Record<string, any> | undefined> = [];
   // 仅保留并行节点自身未恢复的异常；子流程失败只参与任务结果汇总。
   let parallelFailure: { rawError: unknown } | undefined;
@@ -232,9 +232,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-    ...(Object.keys(parallelMemories).length > 0
-      ? { [DispatchNodeResponseKeyEnum.memories]: parallelMemories }
-      : {}),
+    [DispatchNodeResponseKeyEnum.memories]:
+      Object.keys(parallelMemories).length > 0 ? parallelMemories : undefined,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       parallelInput: loopInputArray,
       parallelResult: filteredArray,

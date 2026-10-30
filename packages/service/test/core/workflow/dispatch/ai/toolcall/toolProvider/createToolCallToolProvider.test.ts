@@ -385,8 +385,7 @@ describe('createToolCallToolProvider', () => {
   });
 
   it('forks memoryState and merges child system_memories for parallel dataset_search and user tools', async () => {
-    const { WorkflowMemoryState } =
-      await import('@fastgpt/service/core/workflow/dispatch/utils/memories');
+    const { WorkflowMemoryState } = await import('@fastgpt/service/core/workflow/memory/state');
     const parentMemoryState = WorkflowMemoryState.fromRecord({
       'app:app_1:rootExtract': { memory: 'baseline' }
     }).fork('node:toolCall1');

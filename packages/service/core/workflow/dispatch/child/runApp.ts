@@ -20,7 +20,7 @@ import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../u
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
-import { WorkflowMemoryState } from '../utils/memories';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -154,13 +154,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           resolveInputFile
         });
 
-        const childrenMemoryState = (
-          props.memoryState ?? WorkflowMemoryState.fromHistories(histories)
-        ).fork(props.node?.nodeId ? `node:${props.node.nodeId}` : undefined, {
-          history,
-          histories: childHistories,
-          hasInteractiveResume: !!childrenInteractive
-        });
+        const childrenMemoryState = WorkflowMemoryState.fromWorkflow(props).fork(
+          props.node?.nodeId ? `node:${props.node.nodeId}` : undefined,
+          {
+            history,
+            histories: childHistories,
+            hasInteractiveResume: !!childrenInteractive
+          }
+        );
 
         return runWorkflow({
           ...props,

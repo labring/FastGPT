@@ -88,7 +88,7 @@ import {
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 import { getWorkflowSource } from './utils/source';
-import { WorkflowMemoryState } from './utils/memories';
+import { WorkflowMemoryState } from '../memory/state';
 import { prepareWorkflowFileContext } from '../utils/fileContext';
 import { markProfileError, profileStage } from '../../../common/profiling';
 
@@ -466,7 +466,7 @@ export class WorkflowQueue {
     this.maxConcurrency = maxConcurrency;
     this.resolve = resolve;
     this.workflowRuntimeSummary = workflowRuntimeSummary;
-    this.memoryState = data.memoryState ?? WorkflowMemoryState.fromHistories(data.histories);
+    this.memoryState = WorkflowMemoryState.fromWorkflow(data);
     this.runtimeNodesMap = new Map(data.runtimeNodes.map((item) => [item.nodeId, item]));
     this.isDebugMode = data.mode === 'debug';
 

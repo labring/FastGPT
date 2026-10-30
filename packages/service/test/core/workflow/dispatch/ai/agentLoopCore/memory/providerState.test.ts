@@ -4,12 +4,10 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreDoneMemories,
-  buildAgentLoopCoreProviderStateMemories,
-  getAgentLoopCoreMemoryKeys,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/memory/providerState';
-import { WorkflowMemoryState } from '@fastgpt/service/core/workflow/dispatch/utils/memories';
+import { WorkflowMemoryState } from '@fastgpt/service/core/workflow/memory/state';
 
 const runningAppInfo = {
   sourceType: ChatSourceTypeEnum.app,
@@ -20,13 +18,7 @@ const runningAppInfo = {
 };
 
 describe('agentLoopCore providerState memory', () => {
-  it('reads memory from the last AI history item using unified key', () => {
-    const keys = getAgentLoopCoreMemoryKeys({
-      runningAppInfo,
-      nodeId: 'node_1'
-    });
-    expect(keys.memoryKey).toBe('app:app_1:node_1');
-
+  it('reads memory from the last AI history item using unified and legacy keys', () => {
     const memory = {
       providerState: {
         pendingMainContext: {
@@ -35,51 +27,25 @@ describe('agentLoopCore providerState memory', () => {
         }
       }
     };
-    const histories = [
-      {
-        obj: ChatRoleEnum.Human,
-        value: [{ text: { content: 'hello' } }]
-      },
-      {
-        obj: ChatRoleEnum.AI,
-        value: [],
-        memories: {
-          [keys.memoryKey]: memory
-        }
-      }
-    ] satisfies ChatItemMiniType[];
 
+    // 1. Unified canonical key
     expect(
       readAgentLoopCoreProviderStateMemory({
-        histories,
+        histories: [
+          { obj: ChatRoleEnum.Human, value: [{ text: { content: 'hello' } }] },
+          { obj: ChatRoleEnum.AI, value: [], memories: { 'app:app_1:node_1': memory } }
+        ],
         runningAppInfo,
         nodeId: 'node_1'
       })
     ).toEqual(memory);
-  });
 
-  it('compatibly reads legacy agentLoopMemory-${nodeId} key', () => {
-    const memory = {
-      providerState: {
-        pendingMainContext: {
-          askToolCallId: 'call_legacy',
-          messages: [{ role: 'assistant' as const, content: 'question' }]
-        }
-      }
-    };
-    const histories: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [],
-        memories: {
-          'agentLoopMemory-node_1': memory
-        }
-      }
-    ];
-
+    // 2. Legacy agentLoopMemory key fallback
     expect(
       readAgentLoopCoreProviderStateMemory({
-        histories,
+        histories: [
+          { obj: ChatRoleEnum.AI, value: [], memories: { 'agentLoopMemory-node_1': memory } }
+        ],
         runningAppInfo,
         nodeId: 'node_1'
       })
@@ -143,40 +109,36 @@ describe('agentLoopCore providerState memory', () => {
     ).toEqual({});
   });
 
-  it('builds unified and scoped memory keys for the current node', () => {
+  it('writes complete piAgent state to unified and scoped providerState memories on pause', () => {
     const providerState = {
-      askToolCallId: 'call_ask',
-      messages: [{ role: 'assistant' as const, content: 'question' }]
+      pendingMainContext: {
+        askToolCallId: 'call_ask',
+        messages: [{ role: 'assistant' as const, content: 'question' }]
+      }
     };
 
+    // 1. Root unified key
     expect(
-      buildAgentLoopCoreProviderStateMemories({
+      buildAgentLoopCorePausedMemories({
         runningAppInfo,
         nodeId: 'node_1',
-        memory: {
-          providerState
-        }
+        providerState
       })
     ).toEqual({
-      'app:app_1:node_1': {
-        providerState
-      }
+      'app:app_1:node_1': { providerState }
     });
 
+    // 2. Scoped key
     const scopedState = WorkflowMemoryState.fromHistories([]).fork('node:parent_agent');
     expect(
-      buildAgentLoopCoreProviderStateMemories({
+      buildAgentLoopCorePausedMemories({
         memoryState: scopedState,
         runningAppInfo,
         nodeId: 'node_1',
-        memory: {
-          providerState
-        }
+        providerState
       })
     ).toEqual({
-      'node:parent_agent/app:app_1:node_1': {
-        providerState
-      }
+      'node:parent_agent/app:app_1:node_1': { providerState }
     });
   });
 
@@ -207,27 +169,6 @@ describe('agentLoopCore providerState memory', () => {
     ).toBe(false);
   });
 
-  it('writes complete piAgent state only to unified providerState memory on pause', () => {
-    const providerState = {
-      pendingMainContext: {
-        askToolCallId: 'call_ask',
-        messages: [{ role: 'assistant', content: 'question' }]
-      }
-    };
-
-    expect(
-      buildAgentLoopCorePausedMemories({
-        runningAppInfo,
-        nodeId: 'node_1',
-        providerState
-      })
-    ).toEqual({
-      'app:app_1:node_1': {
-        providerState
-      }
-    });
-  });
-
   it('clears providerState on done', () => {
     expect(
       buildAgentLoopCoreDoneMemories({
@@ -239,37 +180,76 @@ describe('agentLoopCore providerState memory', () => {
     });
   });
 
-  it('respects history === 0 in readAgentLoopCoreProviderStateMemory', () => {
-    const parentMemoryState = WorkflowMemoryState.fromRecord({
-      'app:app_1:node_1': {
-        providerState: {
-          pendingMainContext: { askToolCallId: 'from_session' }
-        }
-      }
+  it.each([0, []])(
+    'restores the nested checkpoint with history=%j only during interactive resume',
+    (history) => {
+      const providerState = {
+        pendingMainContext: {
+          askToolCallId: 'nested-ask',
+          messages: [{ role: 'assistant', content: 'waiting' }]
+        },
+        piMessages: [{ role: 'assistant', content: 'nested tool state' }]
+      };
+      const memoryState = WorkflowMemoryState.fromRecord(
+        {
+          'node:parent_agent/app:app_1:node_1': { providerState }
+        },
+        { rootSource: { ...runningAppInfo, sourceId: 'parent-app' } }
+      )
+        .fork('node:parent_agent')
+        .fork('app:app_1');
+
+      expect(
+        readAgentLoopCoreProviderStateMemory({
+          memoryState,
+          runningAppInfo,
+          nodeId: 'node_1',
+          history,
+          histories: []
+        })
+      ).toEqual({});
+      expect(
+        readAgentLoopCoreProviderStateMemory({
+          memoryState,
+          runningAppInfo,
+          nodeId: 'node_1',
+          history,
+          histories: [],
+          hasInteractiveResume: true
+        })
+      ).toEqual({ providerState });
+    }
+  );
+
+  it('reads from memoryState for numeric history and prefers custom histories when provided', () => {
+    const sessionMemory = { providerState: { origin: 'session' } };
+    const customMemory = { providerState: { origin: 'custom' } };
+    const memoryState = WorkflowMemoryState.fromRecord({
+      'app:app_1:node_1': sessionMemory
     });
 
+    // 1. Numeric history reads from memoryState
     expect(
       readAgentLoopCoreProviderStateMemory({
-        memoryState: parentMemoryState,
-        history: 0,
-        histories: [],
+        memoryState,
         runningAppInfo,
-        nodeId: 'node_1'
-      })
-    ).toEqual({});
-
-    expect(
-      readAgentLoopCoreProviderStateMemory({
-        memoryState: parentMemoryState,
+        nodeId: 'node_1',
         history: 6,
-        histories: [],
-        runningAppInfo,
-        nodeId: 'node_1'
+        histories: []
       })
-    ).toEqual({
-      providerState: {
-        pendingMainContext: { askToolCallId: 'from_session' }
-      }
-    });
+    ).toEqual(sessionMemory);
+
+    // 2. Custom histories array overrides memoryState
+    expect(
+      readAgentLoopCoreProviderStateMemory({
+        memoryState,
+        runningAppInfo,
+        nodeId: 'node_1',
+        history: [
+          { obj: ChatRoleEnum.AI, value: [], memories: { 'app:app_1:node_1': customMemory } }
+        ],
+        histories: []
+      })
+    ).toEqual(customMemory);
   });
 });

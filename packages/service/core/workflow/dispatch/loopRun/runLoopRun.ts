@@ -29,7 +29,7 @@ import {
   readCustomOutputSnapshot
 } from './service';
 import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
-import { WorkflowMemoryState } from '../utils/memories';
+import { WorkflowMemoryState } from '../../memory/state';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -137,9 +137,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
-  const loopMemoryState = (
-    props.memoryState ?? WorkflowMemoryState.fromHistories(props.histories)
-  ).fork();
+  const loopMemoryState = WorkflowMemoryState.fromWorkflow(props).fork();
   while (true) {
     if (checkIsStopping()) {
       break;
@@ -344,9 +342,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     // 循环失败时不产出 toolResponse，交给工具运行器的 errorMessage 兜底，避免用空快照挡住错误信息
     ...(errorText !== undefined ? {} : { [DispatchNodeResponseKeyEnum.toolResponse]: data }),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-    ...(Object.keys(loopMemories).length > 0
-      ? { [DispatchNodeResponseKeyEnum.memories]: loopMemories }
-      : {}),
+    [DispatchNodeResponseKeyEnum.memories]:
+      Object.keys(loopMemories).length > 0 ? loopMemories : undefined,
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {
           type: 'loopRunInteractive' as const,
