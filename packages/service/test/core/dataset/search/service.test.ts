@@ -4,36 +4,16 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetSearchInput } from '@fastgpt/global/core/dataset/search/type';
 import { DatasetSearchParamsSchema } from '@fastgpt/global/core/dataset/search/type';
 import type { DatasetSearchProps } from '../../../../core/dataset/search/type';
-import type { ModelHandle } from '../../../../core/ai/model/catalog/handle';
+import { search } from '../../../../core/dataset/search/service';
 
-const mocks = vi.hoisted(() => ({
+// 仅替换显式端口；导入搜索编排不需要 mock 权限、数据库、模型目录或存储模块。
+const mocks = {
   auth: vi.fn(),
   readable: vi.fn(),
-  authorizedModels: vi.fn(),
-  assertModels: vi.fn(),
+  models: vi.fn(),
   recall: vi.fn(),
-  signImage: vi.fn(),
-  vlm: vi.fn()
-}));
-vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
-  authDatasetByTmbId: mocks.auth
-}));
-vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
-  resolveReadableCollectionIds: mocks.readable
-}));
-vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  getAuthorizedModelIds: mocks.authorizedModels,
-  assertAuthModels: mocks.assertModels
-}));
-vi.mock('@fastgpt/service/core/dataset/search', () => ({ defaultSearchDatasetData: mocks.recall }));
-vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
-  getS3DatasetSource: () => ({ createExternalUrl: mocks.signImage })
-}));
-vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
-  findFirstDatasetSearchVlmModel: mocks.vlm
-}));
-
-import { search } from '../../../../core/dataset/search/service';
+  signImage: vi.fn()
+};
 
 const actor = {
   teamId: '507f1f77bcf86cd799439001',
@@ -68,28 +48,34 @@ const rerank = {
   type: ModelTypeEnum.rerank,
   config: {}
 };
-const getModelData = vi.fn((_reference: { modelId?: string }, options: { type: string }) =>
-  options.type === 'embedding' ? embedding : options.type === 'rerank' ? rerank : llm
-);
-const handle = { getModelData } as unknown as ModelHandle;
-
 const run = (
   params: DatasetSearchInput = { scope: { datasetIds: ids }, query: { text: 'question' } },
-  overrides: Partial<DatasetSearchProps> = {}
+  overrides: {
+    params?: DatasetSearchProps['params'];
+    context?: Partial<DatasetSearchProps['context']>;
+    deps?: Partial<DatasetSearchProps['deps']>;
+  } = {}
 ) => {
   const deps = {
-    getModelHandle: vi.fn(async () => handle),
+    permissions: { loadReadableDataset: mocks.auth, resolveReadableCollectionIds: mocks.readable },
+    resolveModels: mocks.models,
+    images: {
+      isAuthorizedKey: ({ key, teamId }: { key: string; teamId: string }) =>
+        key.startsWith(`temp/${teamId}/`),
+      createQueryUrl: mocks.signImage
+    },
+    recall: mocks.recall,
     beforeSearch: vi.fn(async () => {}),
     onUsage: vi.fn<DatasetSearchProps['deps']['onUsage']>(async () => {}),
-    onSearched: vi.fn(async () => {})
+    onSearched: vi.fn(async () => {}),
+    ...overrides.deps
   };
   return {
     deps,
     promise: search({
-      params: DatasetSearchParamsSchema.parse(params),
-      context: { actor },
-      deps,
-      ...overrides
+      params: overrides.params ?? DatasetSearchParamsSchema.parse(params),
+      context: { actor, capabilities: { metadataFilter: false }, ...overrides.context },
+      deps
     })
   };
 };
@@ -98,19 +84,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   global.feConfigs.isPlus = false;
   mocks.auth.mockImplementation(async ({ datasetId }) => ({
-    dataset: {
-      _id: datasetId,
-      teamId: actor.teamId,
-      name: datasetId,
-      type: 'dataset',
-      vectorModelId: embedding.modelId
-    }
+    _id: datasetId,
+    teamId: actor.teamId,
+    name: datasetId,
+    type: 'dataset',
+    vectorModelId: embedding.modelId
   }));
   mocks.readable.mockResolvedValue(undefined);
-  mocks.authorizedModels.mockResolvedValue(new Set([rerank.modelId, llm.modelId]));
-  mocks.assertModels.mockResolvedValue(undefined);
-  mocks.signImage.mockResolvedValue({ url: 'https://files.example.com/signed' });
-  mocks.vlm.mockReturnValue(undefined);
+  mocks.models.mockImplementation(async ({ datasets, rerank: rerankConfig, queryExtension }) => ({
+    embeddings: datasets.map(() => embedding),
+    rerank: rerankConfig.enabled ? rerank : undefined,
+    queryExtension: queryExtension.enabled ? llm : undefined
+  }));
+  mocks.signImage.mockResolvedValue('https://files.example.com/signed');
   mocks.recall.mockImplementation(async (params) => ({
     searchRes: [],
     embeddingTokens: 10,
@@ -121,9 +107,6 @@ beforeEach(() => {
     usingReRank: false,
     usingSimilarityFilter: true
   }));
-  getModelData.mockImplementation((_reference, options) =>
-    options.type === 'embedding' ? embedding : options.type === 'rerank' ? rerank : llm
-  );
 });
 
 describe('member knowledge search orchestration', () => {
@@ -187,7 +170,7 @@ describe('member knowledge search orchestration', () => {
   });
 
   it('rejects unauthorized auxiliary models before policies, retrieval and billing', async () => {
-    mocks.assertModels.mockRejectedValueOnce(new Error('model access denied'));
+    mocks.models.mockRejectedValueOnce(new Error('model access denied'));
     const { deps, promise } = run({
       scope: { datasetIds: ids },
       query: { text: 'q' },
@@ -195,12 +178,11 @@ describe('member knowledge search orchestration', () => {
       queryExtension: { enabled: true }
     });
     await expect(promise).rejects.toThrow('model access denied');
-    expect(mocks.assertModels).toHaveBeenCalledWith(
+    expect(mocks.models).toHaveBeenCalledWith(
       expect.objectContaining({
         actor,
-        modelIds: [rerank.modelId, llm.modelId],
-        action: 'use',
-        handle
+        rerank: { enabled: true, weight: 0.5 },
+        queryExtension: { enabled: true, background: '' }
       })
     );
     expect(deps.beforeSearch).not.toHaveBeenCalled();
@@ -212,7 +194,7 @@ describe('member knowledge search orchestration', () => {
     { teamId: 'other-team', type: 'dataset' },
     { teamId: actor.teamId, type: 'folder' }
   ])('rejects invalid resource scope even for a root actor', async (dataset) => {
-    mocks.auth.mockResolvedValue({ dataset });
+    mocks.auth.mockResolvedValue(dataset);
     await expect(
       run(undefined, { context: { actor: { ...actor, isRoot: true } } }).promise
     ).rejects.toBeDefined();
@@ -220,14 +202,9 @@ describe('member knowledge search orchestration', () => {
   });
 
   it('rejects incompatible vector models while allowing full-text joint retrieval', async () => {
-    getModelData.mockImplementation((reference, options) =>
-      options.type === 'embedding'
-        ? { ...embedding, modelId: reference.modelId ?? embedding.modelId }
-        : llm
-    );
-    mocks.auth.mockImplementation(async ({ datasetId }) => ({
-      dataset: { _id: datasetId, teamId: actor.teamId, type: 'dataset', vectorModelId: datasetId }
-    }));
+    mocks.models.mockResolvedValue({
+      embeddings: [embedding, { ...embedding, modelId: 'different-model' }]
+    });
     await expect(run().promise).rejects.toThrow('相同的向量模型');
     expect(mocks.recall).not.toHaveBeenCalled();
     await run({
@@ -275,8 +252,9 @@ describe('member knowledge search orchestration', () => {
       query: { text: 'q' }
     };
     await expect(run(params).promise).rejects.toThrow('不支持');
-    global.feConfigs.isPlus = true;
-    await run(params).promise;
+    // 全局开关关闭时，显式能力仍能完整传到召回适配器。
+    await run(params, { context: { capabilities: { metadataFilter: true } } }).promise;
+    expect(mocks.recall.mock.calls[0][0].metadataFilterEnabled).toBe(true);
     expect(JSON.parse(mocks.recall.mock.calls[0][0].collectionFilterMatch)).toEqual({
       collectionIds: [ids[0]],
       createTime: { $gte: '2026-01-01T00:00:00Z' },
@@ -288,7 +266,12 @@ describe('member knowledge search orchestration', () => {
   });
 
   it('accounts for every actually executed model phase without calculating monetary amounts', async () => {
-    mocks.vlm.mockReturnValue(llm);
+    mocks.models.mockResolvedValue({
+      embeddings: [embedding, embedding],
+      rerank,
+      queryExtension: llm,
+      imageCaption: llm
+    });
     mocks.recall.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 10,
@@ -313,7 +296,7 @@ describe('member knowledge search orchestration', () => {
       queryExtension: { enabled: true, modelId: llm.modelId }
     });
     expect((await promise).meta.queryExtensionModelId).toBe(llm.modelId);
-    const usage = deps.onUsage.mock.calls[0]?.[0];
+    const usage = vi.mocked(deps.onUsage).mock.calls[0]?.[0];
     expect(usage).toHaveProperty(
       'items',
       expect.arrayContaining([
@@ -336,14 +319,13 @@ describe('member knowledge search orchestration', () => {
     });
     await expect(
       run(undefined, {
-        deps: { getModelHandle: async () => handle, beforeSearch, onUsage: async () => {} }
+        deps: { beforeSearch, onUsage: async () => {} }
       }).promise
     ).rejects.toThrow('limit reached');
     expect(mocks.recall).not.toHaveBeenCalled();
     await expect(
       run(undefined, {
         deps: {
-          getModelHandle: async () => handle,
           beforeSearch: async () => {},
           onUsage: async () => {
             throw new Error('usage rejected');
@@ -368,5 +350,18 @@ describe('member knowledge search orchestration', () => {
     const { deps, promise } = run();
     await promise;
     expect(deps.onUsage).toHaveBeenCalledExactlyOnceWith({ items: [] });
+  });
+  it('rejects empty scope and incomplete model adapters before retrieval', async () => {
+    const params = DatasetSearchParamsSchema.parse({
+      scope: { datasetIds: ids },
+      query: { text: 'q' }
+    });
+    await expect(
+      run(undefined, { params: { ...params, scope: { datasetIds: [] } } }).promise
+    ).rejects.toThrow('不能为空');
+    expect(mocks.auth).not.toHaveBeenCalled();
+    mocks.models.mockResolvedValueOnce({ embeddings: [] });
+    await expect(run().promise).rejects.toThrow('每个知识库');
+    expect(mocks.recall).not.toHaveBeenCalled();
   });
 });

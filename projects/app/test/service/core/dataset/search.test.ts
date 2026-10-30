@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type {
   DatasetSearchProps,
   DatasetSearchUsage
@@ -16,11 +17,11 @@ const mocks = vi.hoisted(() => ({
   bill: vi.fn(),
   keyUsage: vi.fn(),
   audit: vi.fn(),
-  model: vi.fn()
+  runtime: vi.fn()
 }));
 vi.mock('@fastgpt/service/core/dataset/search/service', () => ({ search: mocks.search }));
-vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
-  getTeamModelHandle: mocks.model
+vi.mock('@fastgpt/service/core/dataset/search/runtime', () => ({
+  createDatasetSearchRuntime: mocks.runtime
 }));
 vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
   assertTeamFrequencyLimit: mocks.rate,
@@ -100,6 +101,11 @@ describe('search API business adapter', () => {
     );
     expect(mocks.keyUsage).toHaveBeenCalledExactlyOnceWith({ apikey: 'test-key', totalPoints: 10 });
     expect(mocks.audit).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(pushTrack.datasetSearch)).toHaveBeenCalledExactlyOnceWith({
+      teamId: 'team',
+      datasetIds: ['dataset']
+    });
+    expect(mocks.runtime).toHaveBeenCalledExactlyOnceWith({ modelHandle: undefined });
   });
 
   it('does not bill empty usage or bill user-provided model credentials', async () => {
@@ -137,5 +143,22 @@ describe('search API business adapter', () => {
     await expect(searchDatasetForApi({ params, auth })).rejects.toThrow('balance');
     mocks.audit.mockRejectedValueOnce(new Error('audit unavailable'));
     expect(await searchDatasetForApi({ params, auth })).toEqual({ list: [] });
+    vi.mocked(pushTrack.datasetSearch).mockImplementationOnce(() => {
+      throw new Error('tracking unavailable');
+    });
+    expect(await searchDatasetForApi({ params, auth })).toEqual({ list: [] });
   });
+
+  it.each([false, true])(
+    'injects metadata filter capability from the trusted application configuration: %s',
+    async (enabled) => {
+      global.feConfigs.isPlus = enabled;
+      await searchDatasetForApi({ params, auth });
+      expect(mocks.search).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({ capabilities: { metadataFilter: enabled } })
+        })
+      );
+    }
+  );
 });

@@ -2,7 +2,7 @@ import type { DatasetSearchParams } from '@fastgpt/global/core/dataset/search/ty
 import type { DatasetSearchProps } from '@fastgpt/service/core/dataset/search/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { search } from '@fastgpt/service/core/dataset/search/service';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { createDatasetSearchRuntime } from '@fastgpt/service/core/dataset/search/runtime';
 import type { ModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import {
   assertTeamFrequencyLimit,
@@ -16,6 +16,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 type SearchApiAuth = DatasetSearchProps['context']['actor'] & { apikey: string };
 
@@ -37,9 +38,12 @@ export const searchDatasetForApi = ({
 }) =>
   search({
     params,
-    context: { actor: { teamId: auth.teamId, tmbId: auth.tmbId, isRoot: auth.isRoot } },
+    context: {
+      actor: { teamId: auth.teamId, tmbId: auth.tmbId, isRoot: auth.isRoot },
+      capabilities: { metadataFilter: Boolean(global.feConfigs.isPlus) }
+    },
     deps: {
-      getModelHandle: modelHandle ? async () => modelHandle : getTeamModelHandle,
+      ...createDatasetSearchRuntime({ modelHandle }),
       beforeSearch: async () => {
         const result = await assertTeamFrequencyLimit({
           teamId: auth.teamId,
@@ -76,6 +80,17 @@ export const searchDatasetForApi = ({
         if (auth.apikey) updateApiKeyUsage({ apikey: auth.apikey, totalPoints });
       },
       onSearched: async ({ datasets }) => {
+        // 统计与审计均由入口注入；任一观测失败都不应使已计量的搜索变成失败。
+        try {
+          pushTrack.datasetSearch({
+            teamId: auth.teamId,
+            datasetIds: datasets.map((dataset) => String(dataset._id))
+          });
+        } catch (error) {
+          getLogger(LogCategories.MODULE.DATASET.DATA).warn('Knowledge search tracking failed', {
+            error
+          });
+        }
         // 审计失败沿用非阻断语义，不能让已执行并计量的搜索被客户端当作失败重试。
         try {
           for (const dataset of datasets) {

@@ -2,7 +2,6 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { pushTrack } from '../../../../common/middle/tracks/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
 import { formatDatasetDataValues } from '../../data/controller';
 import { getImageCaptionQueries } from './imageCaption';
@@ -53,6 +52,7 @@ export async function searchDatasetData(
     rerankCandidateNum,
     datasetIds = [],
     collectionFilterMatch,
+    metadataFilterEnabled,
     readableCollectionIdList
   } = props;
 
@@ -102,6 +102,7 @@ export async function searchDatasetData(
     model,
     imageQueries,
     collectionFilterMatch,
+    metadataFilterEnabled,
     readableCollectionIdList,
     embeddingLimit,
     fullTextLimit,
@@ -209,8 +210,6 @@ export async function searchDatasetData(
       ...formattedValues[index]!
     };
   });
-
-  pushTrack.datasetSearch({ datasetIds, teamId });
 
   return {
     searchRes: finalResult,
