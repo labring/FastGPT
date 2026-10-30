@@ -980,7 +980,7 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
     const secret = 'http-detail-secret';
     const httpToolSet = {
       baseUrl: 'https://api.example.com',
-      headerSecret: { Authorization: { value: secret, secret: '' } },
+      headerSecret: { Authorization: { value: secret } },
       toolList: [
         {
           name: 'search',
@@ -1013,7 +1013,6 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
       throw new Error('HTTP toolset auth is missing');
     }
     expect(resultToolSet.headerSecret?.Authorization).toMatchObject({
-      value: '',
       secret: expect.any(String)
     });
     expect(JSON.stringify(nodes)).not.toContain(secret);
@@ -1030,14 +1029,14 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
           description: 'Search',
           path: '/search',
           method: 'GET',
-          headerSecret: { Authorization: { value: '', secret: encryptedSecret } }
+          headerSecret: { Authorization: { secret: encryptedSecret } }
         },
         {
           name: 'create',
           description: 'Create',
           path: '/create',
           method: 'POST',
-          headerSecret: { Authorization: { value: secret, secret: '' } }
+          headerSecret: { Authorization: { value: secret } }
         }
       ]
     };
@@ -1059,10 +1058,10 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
     });
 
     expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[0]).toMatchObject({
-      headerSecret: { Authorization: { value: '', secret: encryptedSecret } }
+      headerSecret: { Authorization: { secret: encryptedSecret } }
     });
     expect(nodes[0].toolConfig?.httpToolSet?.toolList?.[1]).toMatchObject({
-      headerSecret: { Authorization: { value: '', secret: expect.any(String) } }
+      headerSecret: { Authorization: { secret: expect.any(String) } }
     });
     expect(JSON.stringify(nodes)).not.toContain(secret);
   });

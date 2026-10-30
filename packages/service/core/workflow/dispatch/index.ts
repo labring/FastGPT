@@ -150,17 +150,17 @@ export async function dispatchWorkFlow({
   const { res, stream, runningUserInfo, runningAppInfo, histories, query, chatId, apiVersion } =
     data;
   const responseChatItemId = data.responseChatItemId;
-  data.lastInteractive = rewriteLegacyInteractiveToolSetNodeIds({
-    lastInteractive: data.lastInteractive,
-    nodes: data.runtimeNodes
-  });
-  const rewrittenLastInteractive = data.lastInteractive;
   if (stream && res && !isWorkflowSseResponseInitialized(res)) {
     // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
     return Promise.reject(
       new Error('Workflow SSE response must be initialized before dispatchWorkFlow')
     );
   }
+  data.lastInteractive = rewriteLegacyInteractiveToolSetNodeIds({
+    lastInteractive: data.lastInteractive,
+    nodes: data.runtimeNodes
+  });
+  const rewrittenLastInteractive = data.lastInteractive;
   const chatSource = getWorkflowSource(runningAppInfo);
 
   /* Init function */

@@ -114,7 +114,7 @@ describe('toolset node debug', () => {
     const serverPath = 'https://api.example.com/v2';
     const baseUrl = 'https://gateway.example.com/v2';
     const customHeaders = '{"X-Team":"shared"}';
-    const headerSecret = { Authorization: { value: 'Bearer token', secret: '' } };
+    const headerSecret = { Authorization: { value: 'Bearer token' } };
     const remoteTool = {
       name: 'search',
       description: 'Remote description',
