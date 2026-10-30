@@ -46,7 +46,6 @@ export { createAgentLoopCoreChildInteractiveParams } from '../adapter/interactiv
 export {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreProviderStateMemories,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory
 } from '../adapter/memory/providerState';

@@ -17,6 +17,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowFileMaxAmount } from '../../../../utils/context';
 import type { DispatchFlowResponse } from '../../../type';
+import { WorkflowMemoryState } from '../../../../memory/state';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -54,6 +55,7 @@ export const createToolCallToolProvider = async ({
   cacheToolFlowResponse: CacheToolFlowResponse;
   onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
 }): Promise<ToolCallToolProvider> => {
+  const memoryState = WorkflowMemoryState.fromWorkflow(workflowProps);
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
     messages,
     toolNodes,
@@ -67,6 +69,7 @@ export const createToolCallToolProvider = async ({
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
+        memoryState: memoryState.fork(),
         // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
         // 简易应用在表单转换时强制禁流，不能在共用 ToolCall 层关闭所有工作流的输出。
         ...(lastInteractive ? { lastInteractive } : {}),
@@ -76,6 +79,7 @@ export const createToolCallToolProvider = async ({
         // 工具调用自身不再生成 wrapper，子工作流节点直接挂到外层 ToolCall 节点。
         nodeResponseParentId: workflowProps.nodeResponseParentId
       });
+      memoryState.merge(result[DispatchNodeResponseKeyEnum.memories]);
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
       return {

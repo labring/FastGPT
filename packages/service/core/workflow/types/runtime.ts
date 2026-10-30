@@ -26,6 +26,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowNodeResponseSinkLike } from '../dispatch/nodeResponseSink';
+import type { WorkflowMemoryState } from '../memory/state';
 import type { WorkflowRuntimeSummaryFields } from './summary';
 
 /*
@@ -91,6 +92,7 @@ export type ChatDispatchProps = {
   responseChatItemId: string;
   histories: ChatItemMiniType[];
   variableState: WorkflowVariableStateLike; // global variable state
+  memoryState?: WorkflowMemoryState; // workflow node memories state
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig?: AppChatConfigType;
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
