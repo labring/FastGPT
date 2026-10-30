@@ -1,6 +1,6 @@
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { defaultMetadataProcessor } from '../processors/commonProcessor';
+import { defaultMetadataProcessor } from './commonProcessor';
 
 /** 保留知识库类型等通用翻译，并将协作者角色转换为审计列表展示用的权限标记。 */
 export const processUpdateDatasetCollaboratorSpecific = (
