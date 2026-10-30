@@ -25,6 +25,10 @@ export const AuditFilterSchema = z
       example: '2026-01-07T23:59:59.999+08:00',
       description: '操作时间终点（包含），使用浏览器本地日的最后一毫秒'
     }),
+    timezone: z.string().optional().meta({
+      example: 'Asia/Shanghai',
+      description: '浏览器 IANA 时区，用于处理夏令时边界'
+    }),
     tmbIds: z
       .array(ObjectIdSchema)
       .optional()
@@ -45,17 +49,30 @@ export const AuditFilterSchema = z
   });
 export type AuditFilterType = z.infer<typeof AuditFilterSchema>;
 
-/** 统一校验时间顺序，并按 dateEnd 的固定 UTC offset 允许查询到今天结束。 */
+/** 统一校验时间顺序，并按客户端时区允许查询到今天结束。 */
 const validateAuditRange = (data: AuditFilterType, ctx: z.RefinementCtx) => {
   const start = new Date(data.dateStart);
   const end = new Date(data.dateEnd);
   if (start > end) {
     ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Start must not be after end' });
   }
-  // 跨夏令时时首尾 offset 可能不同，使用结束日的 offset，避免当天上限偏移一小时。
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return;
-  const todayEnd = dayjs().utcOffset(getTimezoneCodeFromStr(data.dateEnd)).endOf('day');
-  if (end.getTime() > todayEnd.valueOf()) {
+
+  const todayEnd = (() => {
+    if (data.timezone) {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: data.timezone }).format();
+        return dayjs().tz(data.timezone).endOf('day');
+      } catch {
+        ctx.addIssue({ code: 'custom', path: ['timezone'], message: 'Invalid timezone' });
+        return undefined;
+      }
+    }
+
+    // 兼容未携带 IANA 时区的旧客户端；新客户端必须传递 timezone 以覆盖夏令时边界。
+    return dayjs().utcOffset(getTimezoneCodeFromStr(data.dateStart)).endOf('day');
+  })();
+  if (todayEnd && end.getTime() > todayEnd.valueOf()) {
     ctx.addIssue({ code: 'custom', path: ['dateEnd'], message: 'Future dates are not allowed' });
   }
 };

@@ -36,6 +36,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const labels = useCommonFilterLabels();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [dateRange, setDateRange] = useState(getDefaultAuditDateRange);
+  const browserTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
   const exportInProgress = useRef(false);
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter());
   const [eventFilter, setEventFilter] =
@@ -55,10 +56,11 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
     () => ({
       dateStart: formatToISOWithTimezone(dateRange.from),
       dateEnd: formatToISOWithTimezone(dateRange.to),
+      timezone: browserTimezone,
       tmbIds: toMultiSelectFilterQuery(memberFilter),
       events: toMultiSelectFilterQuery(eventFilter)
     }),
-    [dateRange, eventFilter, memberFilter]
+    [browserTimezone, dateRange, eventFilter, memberFilter]
   );
 
   const {

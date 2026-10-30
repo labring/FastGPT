@@ -159,12 +159,12 @@ describe('audit filters and export interactions', () => {
       dateEnd: expect.stringContaining('2020-01-02'),
       tmbIds: ['member-a'],
       events: ['LOGIN'],
+      timezone: expect.any(String),
       locale: 'en'
     });
     expect(downloadBody).not.toHaveProperty('pageNum');
     expect(downloadBody).not.toHaveProperty('pageSize');
-    expect(downloadBody).not.toHaveProperty('timezone');
-    expect(mocks.getLogs.mock.lastCall![0]).not.toHaveProperty('timezone');
+    expect(mocks.getLogs.mock.lastCall![0]).toHaveProperty('timezone');
   });
 
   it('resets only the time range and clears old selections when switching teams', async () => {

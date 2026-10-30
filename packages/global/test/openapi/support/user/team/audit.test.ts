@@ -12,7 +12,7 @@ const filters = {
 describe('team audit date contracts', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('keeps milliseconds and embedded offsets without a separate timezone parameter', () => {
+  it('keeps milliseconds, embedded offsets and the browser timezone', () => {
     expect(AuditListBodySchema.parse({ ...filters, pageNum: 3, pageSize: 20 })).toMatchObject(
       filters
     );
@@ -20,11 +20,11 @@ describe('team audit date contracts', () => {
       AuditExportBodySchema.parse({
         ...filters,
         locale: 'zh-CN',
+        timezone: 'Asia/Shanghai',
         pageNum: 3,
-        pageSize: 20,
-        timezone: 'Asia/Shanghai'
+        pageSize: 20
       })
-    ).toEqual({ ...filters, locale: 'zh-CN' });
+    ).toEqual({ ...filters, locale: 'zh-CN', timezone: 'Asia/Shanghai' });
   });
 
   it.each([
@@ -72,7 +72,12 @@ describe('team audit date contracts', () => {
     'validates today and tomorrow across DST $transition',
     ({ now, dateStart, dateEnd, nextDay }) => {
       vi.useFakeTimers().setSystemTime(new Date(now));
-      const input = { dateStart, dateEnd, locale: 'en' };
+      const input = {
+        dateStart,
+        dateEnd,
+        timezone: 'America/New_York',
+        locale: 'en'
+      };
 
       // 跨夏令时的七天范围首尾 offset 不同，按结束日判断，避免误拒今天或放行明天。
       for (const schema of [AuditListBodySchema, AuditExportBodySchema]) {
@@ -91,6 +96,17 @@ describe('team audit date contracts', () => {
       }
     }
   );
+
+  it('rejects an invalid IANA timezone', () => {
+    const result = AuditListBodySchema.safeParse({
+      ...filters,
+      timezone: 'Not/A_Timezone'
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({ path: ['timezone'], message: 'Invalid timezone' })
+    ]);
+  });
 
   it('uses UTC when the ISO timestamps end in Z', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-03-09T23:00:00Z'));
