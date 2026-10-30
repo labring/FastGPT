@@ -1,6 +1,10 @@
 import { type ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/global/openapi/api';
-import { useLinkedScroll, type LinkedScrollDataProps } from '@fastgpt/web/hooks/useLinkedScroll';
+import {
+  useLinkedScroll,
+  type LinkedScrollDataProps,
+  type LinkedScrollPaginationLoading
+} from '@fastgpt/web/hooks/useLinkedScroll';
 import React, { type ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getChatRecords } from '../record/api';
@@ -18,6 +22,7 @@ type ChatRecordProviderParams = ChatAuthTargetInput & {
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
   isInitialLoadingRecords: boolean;
+  paginationLoading: LinkedScrollPaginationLoading;
   chatRecords: ChatSiteItemType[];
   setChatRecords: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   refreshChatRecords: () => Promise<ChatSiteItemType[]>;
@@ -31,6 +36,7 @@ type ChatRecordContextType = {
 export const ChatRecordContext = createContext<ChatRecordContextType>({
   isLoadingRecords: false,
   isInitialLoadingRecords: false,
+  paginationLoading: { prev: false, next: false },
   chatRecords: [],
   setChatRecords: function (_value: React.SetStateAction<ChatSiteItemType[]>): void {
     throw new Error('Function not implemented.');
@@ -77,6 +83,7 @@ const ChatRecordContextProvider = ({
     ScrollData,
     isLoading,
     isInitialLoading,
+    paginationLoading,
     itemRefs,
     loadInitData
   } = useLinkedScroll(
@@ -147,6 +154,7 @@ const ChatRecordContextProvider = ({
     return {
       isLoadingRecords: isLoading,
       isInitialLoadingRecords: isInitialLoading,
+      paginationLoading,
       chatRecords,
       setChatRecords,
       refreshChatRecords,
@@ -159,6 +167,7 @@ const ChatRecordContextProvider = ({
   }, [
     isLoading,
     isInitialLoading,
+    paginationLoading,
     chatRecords,
     setChatRecords,
     refreshChatRecords,

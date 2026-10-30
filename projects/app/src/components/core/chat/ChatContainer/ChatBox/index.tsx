@@ -206,6 +206,7 @@ const ChatBox = ({
     ChatRecordContext,
     (v) => v.isInitialLoadingRecords
   );
+  const paginationLoading = useContextSelector(ChatRecordContext, (v) => v.paginationLoading);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -751,6 +752,7 @@ const ChatBox = ({
             <>
               <AppChatMain
                 isLoading={showInitialLoading && isInitialLoadingRecords}
+                paginationLoading={paginationLoading}
                 ScrollData={ScrollData}
                 ScrollContainerRef={ScrollContainerRef}
                 welcomeText={welcomeText}
