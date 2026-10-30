@@ -1,5 +1,9 @@
 import { GET, POST } from '@/web/admin/common/request';
 import type {
+  CreateModelDeprecationInformBodyType,
+  CreateModelDeprecationInformResponseType,
+  ListModelDeprecationInformQueryType,
+  ListModelDeprecationInformResponseType,
   SendSystemInformBodyType,
   UpdateSystemModalBodyType,
   UpdateOperationalAdBodyType,
@@ -11,6 +15,18 @@ import type {
 
 export const postSendSystemMsg = (data: SendSystemInformBodyType) =>
   POST('/proApi/admin/system/inform/sendSystemInform', data);
+
+export const postCreateModelDeprecationInform = (data: CreateModelDeprecationInformBodyType) =>
+  POST<CreateModelDeprecationInformResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/create',
+    data
+  );
+
+export const postListModelDeprecationInforms = (data: ListModelDeprecationInformQueryType) =>
+  POST<ListModelDeprecationInformResponseType>(
+    '/proApi/admin/system/inform/modelDeprecation/list',
+    data
+  );
 
 // 系统公告
 export const getSystemMsgModal = () =>

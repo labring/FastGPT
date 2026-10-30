@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AIModelDocumentDataSchema } from '../../../../core/ai/model/schema';
 import {
   ModelReferenceSchema,
   CreateModelBodySchema,
@@ -7,9 +8,11 @@ import {
   TestModelQuerySchema,
   UpdateModelBodySchema,
   UpdateModelStatusBodySchema,
-  ImportedSystemModelSchema
+  ImportedSystemModelSchema,
+  MyLLMModelItemSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
+import { GetModelSummariesResponseSchema } from '../../../../openapi/core/ai/model/summary';
 import { GetAffectedModelsQuerySchema } from '../../../../openapi/core/ai/model/channel/api';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
@@ -160,6 +163,67 @@ describe('admin system model API schemas', () => {
         channelType: 'system'
       })
     ).toThrow();
+  });
+
+  it('round-trips the upcoming deprecation flag through model configuration and display schemas', () => {
+    const modelId = '68ad85a7463006c963799a05';
+    const modelData = {
+      type: 'llm' as const,
+      provider: 'OpenAI',
+      name: 'GPT',
+      scope: 'system' as const,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 },
+      isUpcomingDeprecation: true
+    };
+
+    const updated = UpdateModelBodySchema.parse({
+      modelId,
+      modelData,
+      channelType: 'system'
+    });
+    expect(updated.modelData.isUpcomingDeprecation).toBe(true);
+
+    const omittedUpdate = UpdateModelBodySchema.parse({
+      modelId,
+      modelData: {
+        ...modelData,
+        plannedDeprecationAt: '2026-10-31T00:00:00.000Z'
+      },
+      channelType: 'system'
+    });
+    expect(omittedUpdate.modelData.isUpcomingDeprecation).toBe(true);
+    expect(omittedUpdate.modelData).not.toHaveProperty('plannedDeprecationAt');
+    expect(() =>
+      CreateModelBodySchema.parse({
+        modelData: {
+          ...modelData,
+          model: 'gpt-create',
+          isUpcomingDeprecation: 'false',
+          plannedDeprecationAt: '2026-10-31T00:00:00.000Z'
+        },
+        channelType: 'system'
+      })
+    ).toThrow();
+    expect(() =>
+      AIModelDocumentDataSchema.parse({ ...modelData, isUpcomingDeprecation: 'false' })
+    ).toThrow();
+
+    const candidate = MyLLMModelItemSchema.parse({
+      modelId,
+      model: 'gpt-test',
+      name: 'GPT',
+      provider: 'OpenAI',
+      scope: 'system',
+      type: 'llm',
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 },
+      isUpcomingDeprecation: true
+    });
+    expect(candidate.isUpcomingDeprecation).toBe(true);
+
+    const currentValue = GetModelSummariesResponseSchema.parse({
+      models: [{ modelId, name: 'GPT', status: 'active', isUpcomingDeprecation: true }]
+    });
+    expect(currentValue.models[0].isUpcomingDeprecation).toBe(true);
   });
 
   it('loads every core model route into the DevAPI document under model resources', () => {

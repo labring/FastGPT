@@ -15,7 +15,7 @@ import {
   TTSModelDocumentSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
-import { IntSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
