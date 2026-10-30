@@ -381,7 +381,7 @@ replace_compose_service_port() {
     info="$(compose_service_port "$file" "$service" "$container_port")" || return 1
     IFS='|' read -r state old_host _ <<< "$info"
     [ "$state" = mapped ] || {
-        echo "错误: 无法唯一识别 $service 的宿主机端口映射（状态: $state）" >&2
+        echo "错误: 无法唯一识别 ${service} 的宿主机端口映射（状态: ${state}）" >&2
         return 1
     }
     tmp="${file}.port.tmp.$$"
@@ -445,16 +445,16 @@ configure_host_port() {
             ;;
         missing)
             if [ "$explicit" = true ] || [ "$host_port" != "$default_port" ]; then
-                echo "错误: Compose 中不存在 $service，无法设置宿主机端口 $host_port" >&2
+                echo "错误: Compose 中不存在 ${service}，无法设置宿主机端口 $host_port" >&2
                 return 1
             fi
             ;;
         unpublished | unsupported)
             if [ "$explicit" = true ] || [ "$host_port" != "$default_port" ]; then
-                echo "错误: $service 的端口映射格式为 $state，无法安全自动修改；请手工配置后重试" >&2
+                echo "错误: ${service} 的端口映射格式为 ${state}，无法安全自动修改；请手工配置后重试" >&2
                 return 1
             fi
-            echo "警告: $service 未使用可识别的直接端口映射，保留原 Compose 配置" >&2
+            echo "警告: ${service} 未使用可识别的直接端口映射，保留原 Compose 配置" >&2
             ;;
     esac
 
@@ -692,53 +692,141 @@ normalize_deploy_base_url() {
 detect_fastgpt_image_tag() {
     local file="${1:-docker-compose.yml}"
     [ -f "$file" ] || return 1
-    awk '
-      /^[[:space:]]*image:[[:space:]]*['"'"'"]?([^[:space:]'"'"'"]*\/)?fastgpt(:|['"'"'"]|$)/ {
-        line = $0
-        sub(/^[[:space:]]*image:[[:space:]]*/, "", line)
-        gsub(/['"'"'"]/, "", line)
-        sub(/[[:space:]].*$/, "", line)
-        if (match(line, /:([^:]+)$/)) {
-          print substr(line, RSTART + 1, RLENGTH - 1)
-        } else {
-          print "latest"
-        }
-        exit
-      }
-    ' "$file"
+
+    local raw_image=""
+
+    # 1. 优先尝试使用 docker compose 解析，以支持 Compose 变量展开（如 ${FASTGPT_IMAGE_TAG}）、.env 文件等
+    if command -v docker &>/dev/null; then
+        raw_image="$(docker compose -f "$file" config 2>/dev/null | awk '
+          /^[[:space:]]*image:[[:space:]]*['"'"'"]?([^[:space:]'"'"'"]*\/)?fastgpt(:|@|['"'"'"]|$)/ {
+            line = $0
+            sub(/^[[:space:]]*image:[[:space:]]*/, "", line)
+            gsub(/['"'"'"]/, "", line)
+            sub(/[[:space:]].*$/, "", line)
+            print line
+            exit
+          }
+        ')"
+    fi
+    if [ -z "$raw_image" ] && command -v docker-compose &>/dev/null; then
+        raw_image="$(docker-compose -f "$file" config 2>/dev/null | awk '
+          /^[[:space:]]*image:[[:space:]]*['"'"'"]?([^[:space:]'"'"'"]*\/)?fastgpt(:|@|['"'"'"]|$)/ {
+            line = $0
+            sub(/^[[:space:]]*image:[[:space:]]*/, "", line)
+            gsub(/['"'"'"]/, "", line)
+            sub(/[[:space:]].*$/, "", line)
+            print line
+            exit
+          }
+        ')"
+    fi
+
+    # 2. 回退到直接从 Compose 文件中读取
+    if [ -z "$raw_image" ]; then
+        raw_image="$(awk '
+          /^[[:space:]]*image:[[:space:]]*['"'"'"]?([^[:space:]'"'"'"]*\/)?fastgpt(:|@|['"'"'"]|$)/ {
+            line = $0
+            sub(/^[[:space:]]*image:[[:space:]]*/, "", line)
+            gsub(/['"'"'"]/, "", line)
+            sub(/[[:space:]].*$/, "", line)
+            print line
+            exit
+          }
+        ' "$file")"
+    fi
+
+    [ -n "$raw_image" ] || return 1
+
+    # 3. 剥离 digest (如 @sha256:...)
+    local image_without_digest="${raw_image%%@*}"
+
+    # 4. 提取 tag 部分
+    local tag=""
+    if [[ "$image_without_digest" == *:* ]]; then
+        tag="${image_without_digest##*:}"
+    else
+        tag="latest"
+    fi
+
+    # 5. 如果 tag 仍然包含未展开的环境变量插值（如回退模式下），进行变量解析
+    if [[ "$tag" =~ ^\$\{([A-Za-z_][A-Za-z0-9_]*):-(.*)\}$ ]]; then
+        local var_name="${BASH_REMATCH[1]}"
+        local default_val="${BASH_REMATCH[2]}"
+        if [ -n "${!var_name+x}" ] && [ -n "${!var_name}" ]; then
+            tag="${!var_name}"
+        else
+            tag="$default_val"
+        fi
+    elif [[ "$tag" =~ ^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$ ]] || [[ "$tag" =~ ^\$([A-Za-z_][A-Za-z0-9_]*)$ ]]; then
+        local var_name="${BASH_REMATCH[1]}"
+        if [ -n "${!var_name+x}" ] && [ -n "${!var_name}" ]; then
+            tag="${!var_name}"
+        elif [ -n "$FASTGPT_IMAGE_TAG" ]; then
+            tag="$FASTGPT_IMAGE_TAG"
+        else
+            tag=""
+        fi
+    fi
+
+    if [ -z "$tag" ] && [ -n "$FASTGPT_IMAGE_TAG" ]; then
+        tag="$FASTGPT_IMAGE_TAG"
+    fi
+
+    printf '%s\n' "$tag"
 }
 
 supports_root_activation() {
     local file="${1:-docker-compose.yml}"
-    local tag
-    tag="$(detect_fastgpt_image_tag "$file")"
-    [ -n "$tag" ] || return 1
 
-    local v="${tag#[vV]}"
-    case "$v" in
-        latest|main|dev|nightly|canary)
+    # 1. 显式环境变量优先
+    if [ -n "$FASTGPT_ROOT_ACTIVATION" ]; then
+        if is_true "$FASTGPT_ROOT_ACTIVATION"; then
             return 0
-            ;;
-    esac
-
-    local semver_regex='^([0-9]+)\.([0-9]+)(\.([0-9]+))?'
-    if [[ "$v" =~ $semver_regex ]]; then
-        local major="${BASH_REMATCH[1]}"
-        local minor="${BASH_REMATCH[2]}"
-        local patch="${BASH_REMATCH[4]:-0}"
-
-        if [ "$major" -gt 4 ]; then
-            return 0
-        elif [ "$major" -eq 4 ]; then
-            if [ "$minor" -gt 17 ]; then
-                return 0
-            elif [ "$minor" -eq 17 ] && [ "$patch" -gt 2 ]; then
-                return 0
-            fi
+        elif is_false "$FASTGPT_ROOT_ACTIVATION"; then
+            return 1
         fi
     fi
 
-    return 1
+    local tag
+    tag="$(detect_fastgpt_image_tag "$file")"
+    if [ -z "$tag" ] && [ -n "$FASTGPT_IMAGE_TAG" ]; then
+        tag="$FASTGPT_IMAGE_TAG"
+    fi
+
+    if [ -n "$tag" ]; then
+        local v="${tag#[vV]}"
+        case "$v" in
+            latest|main|dev|nightly|canary)
+                return 0
+                ;;
+        esac
+
+        local semver_regex='^([0-9]+)\.([0-9]+)(\.([0-9]+))?'
+        if [[ "$v" =~ $semver_regex ]]; then
+            local major="${BASH_REMATCH[1]}"
+            local minor="${BASH_REMATCH[2]}"
+            local patch="${BASH_REMATCH[4]:-0}"
+
+            if [ "$major" -gt 4 ]; then
+                return 0
+            elif [ "$major" -eq 4 ]; then
+                if [ "$minor" -gt 17 ]; then
+                    return 0
+                elif [ "$minor" -eq 17 ] && [ "$patch" -gt 2 ]; then
+                    return 0
+                fi
+            fi
+            return 1
+        fi
+    fi
+
+    # 无法通过镜像 tag 确定版本能力时（如自定义 tag、未知镜像）：
+    # 检查 Compose 中是否存在旧版默认密码锚点或环境变量，若存在则判定为旧版；若不存在则支持激活
+    if [ -f "$file" ] && LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw|DEFAULT_ROOT_PSW" "$file" 2>/dev/null; then
+        return 1
+    fi
+
+    return 0
 }
 
 # 新版本 root 初始密码固定为 123456，首次登录需通过账号激活设置新密码；
@@ -872,6 +960,11 @@ fi
 # 可选宿主机端口覆盖：只改变 Compose 映射左侧，容器端口和容器间访问地址不变。
 # FASTGPT_PORT 对应 fastgpt-app -> 3000，FASTGPT_SANDBOX_PROXY_PORT 对应
 # fastgpt-agent-sandbox-proxy -> 1006。未设置时使用 Compose 现有映射或官方默认值。
+
+# 可选：显式控制是否支持首次登录账号激活（true/false），未设置时根据实际解析的镜像 tag 和模板自动识别。
+# FASTGPT_ROOT_ACTIVATION=""
+# 可选：显式指定 FastGPT 应用镜像 tag，用于自定义 Compose 无法自动识别镜像版本时的兜底。
+# FASTGPT_IMAGE_TAG=""
 
 # 可选：指定部署文件下载源的站点地址，例如 https://doc.example.com 或
 # https://doc.example.com/deploy。适用于文档站使用自定义域名、内网镜像或本地调试。
@@ -1333,14 +1426,14 @@ fi
 if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
     randomize_compose_credentials
     if supports_root_activation docker-compose.yml; then
-        echo "已随机生成 docker-compose.yml 中的服务 Token、应用密钥和组件密码（root 登录密码固定为 $ROOT_LOGIN_PASSWORD）"
+        echo "已随机生成 docker-compose.yml 中的服务 Token、应用密钥和组件密码（root 登录密码固定为 ${ROOT_LOGIN_PASSWORD}）"
     else
         echo "已随机生成 docker-compose.yml 中的登录密码、服务 Token、应用密钥和组件密码"
     fi
 else
     if supports_root_activation docker-compose.yml; then
         ROOT_LOGIN_PASSWORD="123456"
-        echo "已跳过自动生成密钥，请确认 docker-compose.yml 中的默认凭证已手动修改（root 登录密码固定为 $ROOT_LOGIN_PASSWORD）"
+        echo "已跳过自动生成密钥，请确认 docker-compose.yml 中的默认凭证已手动修改（root 登录密码固定为 ${ROOT_LOGIN_PASSWORD}）"
     else
         if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
             ROOT_LOGIN_PASSWORD="1234"
@@ -1475,7 +1568,7 @@ echo ""
 echo "配置下载成功! 后续操作:"
 if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
     if supports_root_activation docker-compose.yml; then
-        echo "  注意: docker-compose.yml 已随机生成服务 Token、应用密钥和组件密码（root 登录密码固定为 $ROOT_LOGIN_PASSWORD）。"
+        echo "  注意: docker-compose.yml 已随机生成服务 Token、应用密钥和组件密码（root 登录密码固定为 ${ROOT_LOGIN_PASSWORD}）。"
     else
         echo "  注意: docker-compose.yml 已随机生成登录密码、服务 Token、应用密钥和组件密码。"
     fi
