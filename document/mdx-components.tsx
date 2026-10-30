@@ -40,7 +40,14 @@ function MdxImage({
       src={image.src}
       zoomInProps={{ src: originalSrc ?? image.src, alt: props.alt ?? '' }}
     >
-      <img {...props} src={image.src} alt={props.alt ?? ''} loading={props.loading ?? 'lazy'} />
+      <img
+        {...props}
+        src={image.src}
+        width={image.width ?? props.width}
+        height={image.height ?? props.height}
+        alt={props.alt ?? ''}
+        loading={props.loading ?? 'lazy'}
+      />
     </ImageZoom>
   );
   // CSS follows the site's manual theme selection and keeps the hidden variant out of accessibility.

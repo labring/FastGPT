@@ -120,6 +120,7 @@ html.dark [data-rmiz-modal-overlay='visible'] {
   display: block;
   margin: 1.5em 0;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .docs-diagram-dark,
@@ -134,6 +135,10 @@ html.dark .docs-diagram-dark {
 .docs-diagram > [data-rmiz] {
   display: block;
   min-width: 520px;
+}
+
+.docs-diagram [data-rmiz-content] {
+  display: block;
 }
 
 @media (max-width: 767px) {
