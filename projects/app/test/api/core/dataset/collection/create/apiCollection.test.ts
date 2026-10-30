@@ -24,7 +24,7 @@ vi.mock('@fastgpt/service/core/dataset/apiDataset/service', () => ({
   createApiDatasetCollection: (...args: any[]) => mockCreateApiDatasetCollection(...args)
 }));
 
-vi.mock('@/service/core/dataset/collection/auth', () => ({
+vi.mock('@fastgpt/service/core/dataset/model', () => ({
   getDatasetModelAuthContext: (...args: any[]) => mockGetDatasetModelAuthContext(...args)
 }));
 

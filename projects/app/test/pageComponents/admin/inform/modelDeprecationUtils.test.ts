@@ -27,7 +27,7 @@ describe('getLocalDateLabel', () => {
 });
 
 describe('getPlannedDeprecationDateLabel', () => {
-  it('shows the server-local calendar day returned by the API', () => {
-    expect(getPlannedDeprecationDateLabel('2026-12-30T16:00:00.000Z')).toBe('2026-12-31');
+  it('shows the server-normalized calendar day returned by the API', () => {
+    expect(getPlannedDeprecationDateLabel('2026-12-31T00:00:00.000Z')).toBe('2026-12-31');
   });
 });

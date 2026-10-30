@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
-import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import {
   CreateApiCollectionBodySchema,

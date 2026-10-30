@@ -1,6 +1,6 @@
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';

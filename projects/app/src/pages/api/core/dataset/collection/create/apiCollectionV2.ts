@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import { createApiDatasetCollection } from '@fastgpt/service/core/dataset/apiDataset/service';
-import { getDatasetModelAuthContext } from '@/service/core/dataset/collection/auth';
+import { getDatasetModelAuthContext } from '@fastgpt/service/core/dataset/model';
 import { authApiFileImportChanges } from '@fastgpt/service/core/dataset/apiDataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
