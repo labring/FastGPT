@@ -112,7 +112,7 @@ describe('legacy ToolSet migration', () => {
       baseUrl: 'https://http.example.com',
       apiSchemaStr: '{"openapi":"3.0.0"}',
       customHeaders: '{}',
-      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      headerSecret: { Authorization: { value: 'secret' } },
       toolList: [
         {
           name: 'search',
@@ -147,7 +147,7 @@ describe('legacy ToolSet migration', () => {
   it('preserves a full inline MCP App runtime config and tool schemas', () => {
     const mcpToolSet = {
       url: 'https://mcp.example.com',
-      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      headerSecret: { Authorization: { value: 'secret' } },
       toolList: [
         {
           name: 'search',
@@ -181,7 +181,7 @@ describe('legacy ToolSet migration', () => {
     const mcpToolSet = {
       toolId: '',
       url: 'https://mcp.example.com',
-      headerSecret: { Authorization: { value: 'secret', secret: '' } },
+      headerSecret: { Authorization: { value: 'secret' } },
       toolList: [
         {
           name: 'search',
@@ -330,8 +330,9 @@ describe('workflow migration boundary', () => {
             outputs: [],
             toolConfig: {
               [toolSetKey]: {
-                url: 'https://example.com/mcp',
-                baseUrl: 'https://example.com',
+                ...(toolSetKey === 'mcpToolSet'
+                  ? { url: 'https://example.com/mcp' }
+                  : { baseUrl: 'https://example.com' }),
                 toolList: [],
                 headerSecret: {
                   Authorization: {},
