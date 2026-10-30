@@ -5,7 +5,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getFileContentByUrl } from '../../../chat/fileContext';
 import { getWorkflowFileContext } from '../../utils/context';
-import { AgentNodeResponseDisplay } from './agentLoopCore/interface';
+import { AgentNodeResponseDisplay } from './agentLoopCore/domain/constants';
 
 export type WorkflowReadFileItem = {
   name?: string;
@@ -19,6 +19,8 @@ type DispatchWorkflowReadFilesParams = {
   customPdfParse?: boolean;
   usageId?: string;
   maxFileAmount: number;
+  /** 业务入口可在解析及缓存读取前追加文件归属校验，失败按单文件错误返回。 */
+  validateFile?: (file: WorkflowReadFileItem) => Promise<void>;
 };
 
 /**
@@ -35,13 +37,15 @@ export const dispatchWorkflowReadFiles = async ({
   tmbId,
   customPdfParse,
   usageId,
-  maxFileAmount
+  maxFileAmount,
+  validateFile
 }: DispatchWorkflowReadFilesParams) => {
   const usages: ChatNodeUsageType[] = [];
   const readFilesResult = await batchRun(
     files.slice(0, maxFileAmount),
     async ({ url, name: inputName }) => {
       try {
+        await validateFile?.({ url, name: inputName });
         const { name, content } = await getFileContentByUrl({
           url,
           teamId,

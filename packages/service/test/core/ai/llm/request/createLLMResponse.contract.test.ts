@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
+  ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   CompletionFinishReason,
   CompletionUsage
@@ -80,6 +81,7 @@ const chunk = (delta: Delta = {}, finish_reason: CompletionFinishReason = null):
 });
 const usageChunk: Chunk = { choices: [], usage };
 type Round = {
+  requireReasoning?: boolean;
   toolCalls?: ChatCompletionMessageToolCall[] | null;
   text?: string;
   reasoning?: string;
@@ -91,7 +93,12 @@ type Round = {
   malformedTail?: boolean;
   disconnect?: Promise<void>;
 };
-type Request = { stream?: boolean; model?: string; tools?: unknown[]; messages?: unknown[] };
+type Request = {
+  stream?: boolean;
+  model?: string;
+  tools?: unknown[];
+  messages?: ChatCompletionMessageParam[];
+};
 let server: Server;
 let baseUrl: string;
 let rounds: Round[];
@@ -116,6 +123,23 @@ beforeEach(async () => {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({ error: { message: 'Unexpected extra request', code: 'EXTRA_REQUEST' } })
+      );
+      return;
+    }
+    if (
+      round.requireReasoning &&
+      request.messages?.some(
+        (message) => message.role === 'assistant' && typeof message.reasoning_content !== 'string'
+      )
+    ) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          error: {
+            message: 'The reasoning_content in the thinking mode must be passed back to the API.',
+            code: 'invalid_request_error'
+          }
+        })
       );
       return;
     }
@@ -241,6 +265,99 @@ const body = (stream: boolean) => ({
 });
 
 describe('createLLMResponse HTTP/SSE contract', () => {
+  it.each([true, false])(
+    'preserves reasoning through legacy history, tool rounds and serialized resume: stream=%s',
+    async (stream) => {
+      const historicalCall = { ...call('search'), id: 'call_history' };
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'user', content: 'Previous task.' },
+        { role: 'assistant', tool_calls: [historicalCall] },
+        { role: 'tool', tool_call_id: historicalCall.id, content: 'Previous result.' },
+        { role: 'assistant', content: 'Previous task complete.' },
+        { role: 'user', content: message }
+      ];
+      rounds.push(
+        { requireReasoning: true, toolCalls: [call('search')] },
+        {
+          requireReasoning: true,
+          reasoning: 'Keep the original reasoning.',
+          toolCalls: [{ ...call('search'), id: 'call_second' }]
+        },
+        { requireReasoning: true, text: 'Task complete.', finish: 'stop' },
+        { requireReasoning: true, text: 'Resumed.', finish: 'stop' }
+      );
+      const result = await runAgentLoop({
+        teamId,
+        maxRunAgentTimes: 3,
+        body: { ...body(stream), messages },
+        isAborted: () => false,
+        onRunTool: async () => ({ response: 'Tool completed.', assistantMessages: [], usages: [] }),
+        onRunInteractiveTool: vi.fn()
+      });
+      expect(result.error).toBeUndefined();
+      expect(received).toHaveLength(3);
+      expect(
+        result.assistantMessages
+          .filter((message) => message.role === 'assistant')
+          .map((message) => message.reasoning_content)
+      ).toEqual(['', 'Keep the original reasoning.', '']);
+
+      const resumed = await createLLMResponse({
+        teamId,
+        maxRetries: 0,
+        body: {
+          ...body(stream),
+          messages: [
+            ...JSON.parse(JSON.stringify(result.completeMessages)),
+            { role: 'user', content: 'Continue.' }
+          ]
+        }
+      });
+      expect(resumed.error).toBeUndefined();
+      expect(resumed.answerText).toBe('Resumed.');
+      expect(received).toHaveLength(4);
+      for (const request of received) {
+        for (const message of request.messages ?? []) {
+          if (message.role === 'assistant') {
+            expect(message.reasoning_content).toBeTypeOf('string');
+          }
+        }
+      }
+      const record = await readRecord(resumed.requestId);
+      expect(record.body.messages).toEqual(received[3].messages);
+    }
+  );
+
+  it.each(
+    [true, false].flatMap((stream) => [true, false].map((reasoning) => ({ stream, reasoning })))
+  )(
+    'retains empty reasoning during text continuation only when supported: stream=$stream, reasoning=$reasoning',
+    async ({ stream, reasoning }) => {
+      rounds.push(
+        { text: 'Partial ', finish: 'length', requireReasoning: reasoning },
+        { text: 'answer.', finish: 'stop', requireReasoning: reasoning }
+      );
+      const result = await createLLMResponse({
+        teamId,
+        maxContinuations: 2,
+        body: {
+          ...body(stream),
+          model: { ...model, config: { ...model.config, reasoning } }
+        }
+      });
+      expect(result.answerText).toBe('Partial answer.');
+      expect(received).toHaveLength(2);
+      const assistant = received[1].messages?.find((message) => message.role === 'assistant');
+      if (reasoning) {
+        expect(assistant).toHaveProperty('reasoning_content', '');
+        expect(result.assistantMessage).toHaveProperty('reasoning_content', '');
+      } else {
+        expect(assistant).not.toHaveProperty('reasoning_content');
+        expect(result.assistantMessage).not.toHaveProperty('reasoning_content');
+      }
+    }
+  );
+
   const scenarios: Array<Round & { label: string; valid?: boolean }> = [
     { label: 'tool_calls omitted' },
     { label: 'explicit empty tool_calls', toolCalls: [] },

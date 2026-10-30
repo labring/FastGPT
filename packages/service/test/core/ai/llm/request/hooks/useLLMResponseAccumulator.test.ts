@@ -13,6 +13,32 @@ const createToolCall = (id: string, name: string, args = ''): ChatCompletionMess
 });
 
 describe('useLLMResponseAccumulator', () => {
+  it.each([true, false])(
+    'preserves empty reasoning for tool history and continuation only when supported: %s',
+    (supportReason) => {
+      const accumulator = useLLMResponseAccumulator({ supportReason });
+      accumulator.appendResponse({
+        answerText: '',
+        reasoningText: '',
+        finish_reason: 'tool_calls',
+        toolCalls: [createToolCall('call_empty_reasoning', 'search', '{}')]
+      });
+
+      const assistant = accumulator.getResponse().assistantMessage;
+      const continuation = accumulator.buildContinuationMessages({ baseMessages: [] })[0];
+      expect(continuation).toEqual(assistant);
+      expect(assistant.tool_calls).toEqual([
+        createToolCall('call_empty_reasoning', 'search', '{}')
+      ]);
+      const serialized = JSON.parse(JSON.stringify(assistant));
+      if (supportReason) {
+        expect(serialized).toHaveProperty('reasoning_content', '');
+      } else {
+        expect(serialized).not.toHaveProperty('reasoning_content');
+      }
+    }
+  );
+
   it('should keep the first response type and accumulate text, tool calls, usage', () => {
     const accumulator = useLLMResponseAccumulator();
 
