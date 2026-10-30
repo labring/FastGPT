@@ -82,9 +82,9 @@ const HandleInviteModal = ({
         await finishInvitation();
         toast({
           status,
-          title: t(
-            alreadyJoined ? 'account_team:already_joined' : 'account_team:join_team_success'
-          ),
+          title: alreadyJoined
+            ? t('account_team:already_joined')
+            : t('account_team:join_team_success'),
           duration: 3000
         });
         return;

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import z from 'zod';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const INVITATION_RESULT_TOAST_KEY = 'fastgpt:invitation-result-toast';
@@ -26,6 +27,7 @@ export const saveInvitationResultToast = (result: z.infer<typeof InvitationResul
 export const useInvitationResultToast = () => {
   const { userInfo } = useUserStore();
   const { toast } = useToast();
+  const { t } = useSafeTranslation();
   const userId = userInfo?._id;
   const teamId = userInfo?.team?.teamId;
 
@@ -46,12 +48,12 @@ export const useInvitationResultToast = () => {
         status: result.data.status,
         title:
           result.data.status === 'info'
-            ? 'account_team:already_joined'
-            : 'account_team:join_team_success',
+            ? t('account_team:already_joined')
+            : t('account_team:join_team_success'),
         duration: 3000
       });
     } catch (error) {
       console.error('[Team invitation] Failed to read invitation result:', error);
     }
-  }, [teamId, toast, userId]);
+  }, [t, teamId, toast, userId]);
 };

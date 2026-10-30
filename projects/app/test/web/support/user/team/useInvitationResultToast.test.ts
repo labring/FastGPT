@@ -13,6 +13,9 @@ vi.mock('react', async (importOriginal) => ({
   useEffect: (effect: () => void) => mocks.effects.push(effect)
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => `translated:${key}` })
+}));
 vi.mock('@/web/support/user/useUserStore', () => ({
   useUserStore: () => ({ userInfo: mocks.userInfo })
 }));
@@ -92,7 +95,10 @@ describe('useInvitationResultToast', () => {
 
       expect(mocks.toast).toHaveBeenCalledExactlyOnceWith({
         status,
-        title: status === 'info' ? 'account_team:already_joined' : 'account_team:join_team_success',
+        title:
+          status === 'info'
+            ? 'translated:account_team:already_joined'
+            : 'translated:account_team:join_team_success',
         duration: 3000
       });
       expect(storage.has(KEY)).toBe(false);
