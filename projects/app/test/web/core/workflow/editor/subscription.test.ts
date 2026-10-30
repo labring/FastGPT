@@ -11,7 +11,10 @@ import {
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
+import {
+  useWorkflowEditorAdapter,
+  WorkflowEditorProvider
+} from '@/web/core/workflow/editor/react/workflowEditorProvider';
 import { useField } from '@/web/core/workflow/editor/react/useField';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflow, useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
@@ -124,6 +127,46 @@ describe('workflow editor subscription API', () => {
     expect(actions.getEdges()).toHaveLength(0);
     expect(actions.getWorkflowSnapshot().nodes.map((node) => node.nodeId)).toEqual(['start']);
     expect(runtime.getNodeView('answer')).toBeUndefined();
+  });
+
+  it('serves empty snapshots until the runtime is hydrated', async () => {
+    const seen: WorkflowActionsHandle[] = [];
+    const nodeCounts: number[] = [];
+    const Leaf = () => {
+      seen.push(useWorkflowActions());
+      nodeCounts.push(useWorkflow((structure) => structure.nodes.length));
+      return null;
+    };
+
+    await act(async () => {
+      root.render(
+        React.createElement(WorkflowEditorProvider, { runtime: null }, React.createElement(Leaf))
+      );
+    });
+    expect(nodeCounts).toEqual([0]);
+    expect(seen[0].commitGeometry([]).ok).toBe(false);
+
+    await act(async () => {
+      root.render(
+        React.createElement(WorkflowEditorProvider, { runtime }, React.createElement(Leaf))
+      );
+    });
+    await act(async () => undefined);
+    expect(nodeCounts.at(-1)).toBe(2);
+    expect(seen.at(-1)?.getEdges()).toHaveLength(1);
+  });
+
+  it('still rejects workflow hooks outside the provider', () => {
+    const Leaf = () => {
+      useWorkflowEditorAdapter();
+      return null;
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    expect(() => act(() => root.render(React.createElement(Leaf)))).toThrow(
+      'Workflow hooks must be used inside WorkflowEditorProvider'
+    );
+    errorSpy.mockRestore();
   });
 
   it('bails out on unchanged primitives and passes the stable graph object', async () => {
