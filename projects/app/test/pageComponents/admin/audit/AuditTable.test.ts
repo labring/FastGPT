@@ -171,13 +171,13 @@ describe('AuditTable member pagination', () => {
   it('loads and selects members beyond the first page, including historical audit actors', async () => {
     await act(async () => root.render(React.createElement(AuditTable)));
     await settleRequests();
-    expect(host.querySelectorAll('[data-filter="操作人员"] button')).toHaveLength(20);
+    expect(host.querySelectorAll('[data-filter="admin:operator"] button')).toHaveLength(20);
     expect(mocks.getTeamMembers).toHaveBeenCalledWith(
       expect.objectContaining({ offset: 0, pageSize: 20 }),
       expect.any(AbortController)
     );
 
-    const list = host.querySelector<HTMLDivElement>('[data-testid="操作人员-members"]')!;
+    const list = host.querySelector<HTMLDivElement>('[data-testid="admin:operator-members"]')!;
     await act(async () => {
       list.scrollTop = 800;
       list.dispatchEvent(new Event('scroll'));
@@ -187,7 +187,7 @@ describe('AuditTable member pagination', () => {
       expect.objectContaining({ offset: 20, pageSize: 20 }),
       expect.any(AbortController)
     );
-    expect(host.querySelectorAll('[data-filter="操作人员"] button')).toHaveLength(30);
+    expect(host.querySelectorAll('[data-filter="admin:operator"] button')).toHaveLength(30);
 
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[data-member="member-30"]')!.click()
@@ -207,7 +207,7 @@ describe('AuditTable member pagination', () => {
     await settleRequests();
     expect(host.querySelector('[data-member="member-30"]')).toBeNull();
 
-    const input = host.querySelector<HTMLInputElement>('input[aria-label="操作人员"]')!;
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="admin:operator"]')!;
     await act(async () => {
       input.value = '成员30';
       input.dispatchEvent(new Event('input', { bubbles: true }));
