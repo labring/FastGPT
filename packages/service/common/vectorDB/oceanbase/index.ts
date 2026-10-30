@@ -5,6 +5,7 @@ import { type RowDataPacket } from 'mysql2/promise';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
+import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -146,6 +147,12 @@ export class ObVectorCtrl implements VectorControllerType {
       return { results: [] };
     }
 
+    const hnswEfSearch = global.systemEnv?.hnswEfSearch || 100;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.vectorDB.oceanbase.search',
+      source: 'bridged-system-env',
+      fields: [{ path: 'vector.hnswEfSearch', value: hnswEfSearch }]
+    });
     const rows = await this.obClient
       .query<
         ({
@@ -155,7 +162,7 @@ export class ObVectorCtrl implements VectorControllerType {
         } & RowDataPacket)[][]
       >(
         `BEGIN;
-          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SET ob_hnsw_ef_search = ${hnswEfSearch};
           SELECT id, collection_id, ${OceanBaseIndexConfig.distanceFunc}(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'

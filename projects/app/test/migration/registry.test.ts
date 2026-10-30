@@ -33,7 +33,9 @@ describe('validateSystemMigrationRegistry', () => {
       '20261009_migrate_dataset_rebuild_status',
       '20261009_backfill_agent_sandbox_team_id',
       '20261022_backfill_folder_ancestor_ids',
-      '20261025_token_prices_per_million'
+      '20261025_token_prices_per_million',
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
     ]);
     expect(
       systemMigrations.filter((task: SystemMigration) => task.delay).map(({ id }) => id)
@@ -51,11 +53,27 @@ describe('validateSystemMigrationRegistry', () => {
     });
     expect(
       systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
-    ).toEqual(['20260903_migrate_legacy_system_models']);
-    expect(systemMigrations.at(-1)).toMatchObject({
+    ).toEqual([
+      '20260903_migrate_legacy_system_models',
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ]);
+    expect(systemMigrations.at(-3)).toMatchObject({
       id: '20261025_token_prices_per_million',
       version: '4.17.3',
       progressSteps: [{ key: 'models' }]
+    });
+    expect(systemMigrations.at(-2)).toMatchObject({
+      id: '20260928_migrate_instance_configs',
+      version: '4.18.0',
+      blockStartup: true,
+      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260929_cleanup_instance_config_deprecated_fields',
+      version: '4.18.0',
+      blockStartup: true,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });

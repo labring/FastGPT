@@ -8,7 +8,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { serviceEnv } from '@fastgpt/service/env';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type SynonymRebuildContext = Pick<
   DatasetTrainingSchemaType,
@@ -24,7 +25,7 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
   context: SynonymRebuildContext,
   session?: ClientSession
 ) => {
-  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return false;
+  if (!isDatasetSynonymEnabled()) return false;
   const enqueue = async (session: ClientSession) => {
     const config = await MongoDatasetSynonym.findOne({
       teamId: context.teamId,
@@ -105,6 +106,11 @@ export const seedDatasetSynonymRebuildTasks = async (
 ) => {
   const seed = async (session: ClientSession) => {
     const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+    logInstanceConfigRead({
+      callsite: 'runtime.app.dataset.queue.rebuildSynonym',
+      source: 'bridged-system-env',
+      fields: [{ path: 'performance.dataset.vectorMaxProcess', value: seedCount / 2 }]
+    });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
       if (!(await enqueueNextDatasetSynonymRebuildTask(context, session))) break;

@@ -1,3 +1,38 @@
+// 消费点已接管实例配置（94ae033d7）：DATASET_SYNONYM_ENABLED / MULTIPLE_DATA_TO_BASE64 等
+// 改为快照叶子 ?? serviceEnv。预置"域存在、叶子缺省"种子快照以走 serviceEnv 兜底分支。
+(global as any).systemInstanceConfig = {
+  site: {},
+  auth: {},
+  security: {},
+  feature: {},
+  commercial: {},
+  resource: {},
+  performance: {
+    workflow: {},
+    parse: {},
+    dataset: {},
+    chat: {},
+    streamResume: {},
+    tracking: {},
+    task: {},
+    channel: {}
+  },
+  storage: {},
+  vector: {},
+  providers: {
+    documentParse: { customPdf: {}, sangfor: {} },
+    dataSource: {},
+    externalProviderWorkflowVariables: []
+  },
+  subservice: {
+    plugin: {},
+    codeSandbox: {},
+    aiProxy: {},
+    mcp: {},
+    agentSandbox: { provider: '', common: {}, sealosdevbox: {}, opensandbox: {}, proxy: {} }
+  }
+};
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';

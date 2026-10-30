@@ -150,7 +150,7 @@ describe('InvoiceManageTable', () => {
   it('keeps the selected invoice when it leaves the list and submits its original ID', async () => {
     await render();
     await act(async () => button('确认开票').click());
-    expect(button('确认提交').disabled).toBe(true);
+    expect(button('admin:confirm_submit').disabled).toBe(true);
 
     mocks.invoices = [];
     await render();
@@ -159,7 +159,7 @@ describe('InvoiceManageTable', () => {
     );
 
     await selectFile();
-    await act(async () => button('确认提交').click());
+    await act(async () => button('admin:confirm_submit').click());
 
     expect(mocks.finishInvoice).toHaveBeenCalledOnce();
     const formData: FormData = mocks.finishInvoice.mock.calls[0][0];
@@ -174,14 +174,14 @@ describe('InvoiceManageTable', () => {
     await render();
     await act(async () => button('确认开票').click());
     await selectFile();
-    await act(async () => button('确认提交').click());
+    await act(async () => button('admin:confirm_submit').click());
 
     expect(container.querySelector('[data-testid="invoice-modal"]')).not.toBeNull();
-    expect(button('确认提交').disabled).toBe(false);
+    expect(button('admin:confirm_submit').disabled).toBe(false);
     expect(mocks.getData).not.toHaveBeenCalled();
     expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }));
 
-    await act(async () => button('确认提交').click());
+    await act(async () => button('admin:confirm_submit').click());
     expect(mocks.finishInvoice).toHaveBeenCalledTimes(2);
     expect(container.querySelector('[data-testid="invoice-modal"]')).toBeNull();
   });

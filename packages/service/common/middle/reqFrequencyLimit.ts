@@ -1,4 +1,6 @@
 import { jsonRes } from '../response';
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 import { getClientIpFromRequest } from '../security/clientIp';
 import type { NodeApiResponse, NodeHttpRequest } from '../../types/http';
@@ -19,7 +21,22 @@ export function useIPFrequencyLimit({
   force?: boolean;
 }) {
   return async (req: NodeHttpRequest, res: NodeApiResponse) => {
-    if (!serviceEnv.USE_IP_LIMIT && !force) {
+    // 实例配置为权威来源（blockStartup 迁移已回填 env 初值）；?? 兜底仅覆盖
+    // 叶子缺省的部分快照（测试种子）场景——生产快照（含未初始化时的默认合成）
+    // 叶子恒被 schema 默认值填满，env 不是并行的第二生效来源。
+    const configuredUseIpLimit = getSystemInstanceConfig().security.useIpLimit;
+    const useIpLimit = configuredUseIpLimit ?? serviceEnv.USE_IP_LIMIT;
+    logInstanceConfigRead({
+      callsite: 'runtime.common.reqFrequencyLimit.useIPFrequencyLimit',
+      source: configuredUseIpLimit === undefined ? 'env-fallback' : 'instance-config',
+      fields: [
+        {
+          path: 'security.useIpLimit',
+          value: configuredUseIpLimit ?? useIpLimit
+        }
+      ]
+    });
+    if (!useIpLimit && !force) {
       return;
     }
 

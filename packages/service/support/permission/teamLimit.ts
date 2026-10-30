@@ -9,6 +9,8 @@ import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
 import { ReadPreference } from '../../common/mongo';
+import { getSystemInstanceConfig } from '../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../env';
 
 export const checkTeamAIPoints = async (teamId: string) => {
@@ -55,7 +57,21 @@ export const checkTeamDatasetFolderLimit = async ({
     teamId,
     type: DatasetTypeEnum.folder
   });
-  if (folderCount + amount > serviceEnv.DATASET_FOLDER_MAX_AMOUNT) {
+  const configuredMaxDatasetFolderAmount =
+    getSystemInstanceConfig().resource.datasetFolderMaxAmount;
+  const maxDatasetFolderAmount =
+    configuredMaxDatasetFolderAmount ?? serviceEnv.DATASET_FOLDER_MAX_AMOUNT;
+  logInstanceConfigRead({
+    callsite: 'runtime.support.permission.teamLimit.checkTeamDatasetFolderLimit',
+    source: configuredMaxDatasetFolderAmount === undefined ? 'env-fallback' : 'instance-config',
+    fields: [
+      {
+        path: 'resource.datasetFolderMaxAmount',
+        value: configuredMaxDatasetFolderAmount ?? maxDatasetFolderAmount
+      }
+    ]
+  });
+  if (folderCount + amount > maxDatasetFolderAmount) {
     return Promise.reject(TeamErrEnum.datasetFolderAmountNotEnough);
   }
 };
@@ -114,7 +130,18 @@ export const checkTeamAppTypeLimit = async ({
         $in: AppFolderTypeList
       }
     });
-    const maxAppFolderAmount = serviceEnv.APP_FOLDER_MAX_AMOUNT;
+    const configuredMaxAppFolderAmount = getSystemInstanceConfig().resource.appFolderMaxAmount;
+    const maxAppFolderAmount = configuredMaxAppFolderAmount ?? serviceEnv.APP_FOLDER_MAX_AMOUNT;
+    logInstanceConfigRead({
+      callsite: 'runtime.support.permission.teamLimit.checkTeamAppTypeLimit',
+      source: configuredMaxAppFolderAmount === undefined ? 'env-fallback' : 'instance-config',
+      fields: [
+        {
+          path: 'resource.appFolderMaxAmount',
+          value: configuredMaxAppFolderAmount ?? maxAppFolderAmount
+        }
+      ]
+    });
     if (folderCount + amount > maxAppFolderAmount) {
       return Promise.reject(TeamErrEnum.appFolderAmountNotEnough);
     }

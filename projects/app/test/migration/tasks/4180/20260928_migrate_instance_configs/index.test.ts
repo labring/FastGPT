@@ -1,0 +1,267 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
+import type { SystemMigrationContext } from '@/migration/registry';
+
+const mocks = vi.hoisted(() => ({
+  inspectInstanceConfigMigration: vi.fn(),
+  applyInstanceConfigMigration: vi.fn()
+}));
+
+vi.mock('@/migration/tasks/4180/20260928_migrate_instance_configs/service', () => ({
+  inspectInstanceConfigMigration: mocks.inspectInstanceConfigMigration,
+  applyInstanceConfigMigration: mocks.applyInstanceConfigMigration
+}));
+
+import { migrateInstanceConfigs } from '@/migration/tasks/4180/20260928_migrate_instance_configs';
+
+const createContext = () =>
+  ({
+    reportProgress: vi.fn(),
+    assertActive: vi.fn(),
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    }
+  }) as unknown as SystemMigrationContext;
+
+describe('migrateInstanceConfigs', () => {
+  const successPostInspection = {
+    existingDomainCount: 11,
+    missingDomainCount: 0,
+    pendingBackfillDomainCount: 0,
+    pendingBackfillPaths: [],
+    hasLegacyConfig: true,
+    hasLegacyProConfig: true,
+    envRehomedWarnings: [],
+    schemaSanitizedWarnings: [],
+    overrides: {}
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('skips writes when all target domains already exist with no missing field (idempotent)', async () => {
+    mocks.inspectInstanceConfigMigration.mockResolvedValue({
+      existingDomainCount: 5,
+      missingDomainCount: 0,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
+      hasLegacyConfig: true,
+      hasLegacyProConfig: true,
+      envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
+      overrides: { site: { name: 'ignored' } }
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 0, backfilledDomainCount: 0, skipped: true });
+    // 已初始化时绝不写入，避免覆盖管理员配置
+    expect(mocks.applyInstanceConfigMigration).not.toHaveBeenCalled();
+    expect(context.logger.info).toHaveBeenCalled();
+
+    // 跳过分支同样要把三个声明阶段全部置为 succeeded，否则 Runner 判定任务未完成
+    const succeededKeys = (context.reportProgress as any).mock.calls
+      .map(([arg]: any[]) => arg)
+      .filter((arg: any) => arg.status === SystemMigrationStatusEnum.succeeded)
+      .map((arg: any) => arg.key);
+    expect(succeededKeys).toEqual(expect.arrayContaining(['inspect', 'migrate', 'validate']));
+  });
+
+  it('does not skip when existing domains still miss fields (field-level backfill)', async () => {
+    // 域已齐全但字段缺失：客户已配置的环境变量还没进库，必须继续回填而不是整体跳过
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 2,
+        missingDomainCount: 0,
+        pendingBackfillDomainCount: 1,
+        pendingBackfillPaths: ['site.customApiDomain'],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: { site: { customApiDomain: 'https://api.example.com' } }
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['site'],
+      migratedCount: 1,
+      createdDomains: [],
+      backfilledDomains: ['site'],
+      backfilledPaths: ['site.customApiDomain']
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 1, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+    // 补写的字段要落在日志里，便于排查某个值为什么变成这个
+    expect(context.logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('backfilled'),
+      expect.objectContaining({ backfilledPaths: ['site.customApiDomain'] })
+    );
+  });
+
+  it('logs warnings for fields re-homed to environment variables', async () => {
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 0,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: false,
+        envRehomedWarnings: ['customApiDomain -> 请配置环境变量 CUSTOM_API_DOMAIN'],
+        schemaSanitizedWarnings: [],
+        overrides: { site: { name: 'My Site' } }
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['site'],
+      migratedCount: 1,
+      createdDomains: ['site'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const context = createContext();
+    await migrateInstanceConfigs(context);
+
+    expect(context.logger.warn).toHaveBeenCalledWith(expect.stringContaining('CUSTOM_API_DOMAIN'));
+  });
+
+  it('applies migrations and reports each stage when collection is empty', async () => {
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 0,
+        missingDomainCount: 2,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: { site: { name: 'My Site' }, auth: { teamMode: 'multi' } }
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['site', 'auth'],
+      migratedCount: 2,
+      createdDomains: ['site', 'auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 2, backfilledDomainCount: 0, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+
+    // 三个声明阶段都应被标记为成功
+    const succeededKeys = (context.reportProgress as any).mock.calls
+      .map(([arg]: any[]) => arg)
+      .filter((arg: any) => arg.status === SystemMigrationStatusEnum.succeeded)
+      .map((arg: any) => arg.key);
+    expect(succeededKeys).toEqual(expect.arrayContaining(['inspect', 'migrate', 'validate']));
+
+    // 长任务必须检查 lease
+    expect(context.assertActive).toHaveBeenCalled();
+  });
+
+  it('applies migration when collection has legacy-config domains already (partial repair)', async () => {
+    // 部分写入失败后的残缺状态：已有文档但目标 Domain 不齐全，必须重跑补齐
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 1,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: { site: { name: 'My Site' }, auth: { teamMode: 'multi' } }
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['auth'],
+      migratedCount: 1,
+      createdDomains: ['auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies migrations even when only legacy fastgptPro config exists', async () => {
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 0,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: false,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: { auth: { teamMode: 'multi' } }
+      })
+      .mockResolvedValueOnce(successPostInspection);
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['auth'],
+      migratedCount: 1,
+      createdDomains: ['auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws on validation when migration leaves unresolved gaps', async () => {
+    // 验证阶段发现仍有缺口：必须抛错，不能冒充成功
+    mocks.inspectInstanceConfigMigration
+      .mockResolvedValueOnce({
+        existingDomainCount: 0,
+        missingDomainCount: 1,
+        pendingBackfillDomainCount: 0,
+        pendingBackfillPaths: [],
+        hasLegacyConfig: true,
+        hasLegacyProConfig: true,
+        envRehomedWarnings: [],
+        schemaSanitizedWarnings: [],
+        overrides: { site: { name: 'My Site' } }
+      })
+      .mockResolvedValueOnce({
+        ...successPostInspection,
+        pendingBackfillDomainCount: 1,
+        pendingBackfillPaths: ['site.name']
+      });
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['site'],
+      migratedCount: 1,
+      createdDomains: ['site'],
+      backfilledDomains: [],
+      backfilledPaths: []
+    });
+
+    const context = createContext();
+    await expect(migrateInstanceConfigs(context)).rejects.toThrow(
+      /Instance config migration incomplete: site\.name failed to migrate/
+    );
+  });
+});

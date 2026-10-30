@@ -1,4 +1,5 @@
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
@@ -15,6 +16,9 @@ import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils
 import { runWithContext as runWithWorkflowContext } from '@fastgpt/service/core/workflow/utils/context';
 import { Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// getWorkflowAgentLoopProvider 优先读取实例快照，叶子缺省时继续保持 serviceEnv 驱动的测试语义。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
 
 const runWithContext: typeof runWithWorkflowContext = (value, fn) =>
   runWithWorkflowContext(

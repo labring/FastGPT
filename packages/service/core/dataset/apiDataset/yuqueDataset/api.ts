@@ -14,6 +14,8 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../../env';
 import type { AsyncCache } from '../../../../common/cache/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -52,6 +54,17 @@ type YuqueTocListResponse = {
 
 // 同一进程内，使用同一个缓存对象的浏览请求合并首次加载；结束后清除，不保存长期内存快照。
 const pendingSnapshots = new WeakMap<AsyncCache, Map<string, Promise<unknown>>>();
+// 实例配置优先；|| env 兜底仅在显式置空/未初始化/测试种子场景生效（见 common/dingtalk/endpoint.ts 同型注释）
+const getYuqueBaseUrl = () => {
+  const configured = getSystemInstanceConfig().providers.dataSource.yuqueDatasetBaseUrl;
+  const value = configured || serviceEnv.YUQUE_DATASET_BASE_URL;
+  logInstanceConfigRead({
+    callsite: 'runtime.dataset.apiDataset.yuque.getYuqueBaseUrl',
+    source: configured ? 'instance-config' : 'env-fallback',
+    fields: [{ path: 'providers.dataSource.yuqueDatasetBaseUrl', value: configured || value }]
+  });
+  return value;
+};
 
 /** 语雀 Provider 可注入浏览缓存；默认只复用本轮快照，不依赖缓存后端或持久化 TTL。 */
 export const useYuqueDatasetRequest = ({
@@ -61,12 +74,12 @@ export const useYuqueDatasetRequest = ({
   yuqueServer: YuqueServerType;
   cache?: AsyncCache;
 }) => {
-  const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
+  const yuqueBaseUrl = getYuqueBaseUrl();
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   // YUQUE_DATASET_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
   const instance = createProxyAxios(
     {
-      baseURL: yuqueBaseUrl,
+      baseURL: getYuqueBaseUrl(),
       timeout: 60000, // 超时时间
       headers: {
         'X-Auth-Token': yuqueServer.token
@@ -348,7 +361,7 @@ export const useYuqueDatasetRequest = ({
       'GET'
     );
 
-    return `${yuqueBaseUrl}/${yuqueServer.userId}/${parentSlug}/${fileSlug}`;
+    return `${getYuqueBaseUrl()}/${yuqueServer.userId}/${parentSlug}/${fileSlug}`;
   };
 
   const getFileDetail = async ({

@@ -118,13 +118,6 @@ export async function registerNodeInstrumentation() {
         getErrText
       }),
       runInitializationStep({
-        step: 'init-s3-buckets',
-        stage: InitialErrorEnum.S3_ERROR,
-        action: () => initS3Buckets(),
-        logger,
-        getErrText
-      }),
-      runInitializationStep({
         step: 'connect-main-mongo',
         stage: InitialErrorEnum.MONGO_ERROR,
         action: () =>
@@ -169,10 +162,11 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
-    // 系统可用性验证
+    // S3 bucket 的下载模式与公开地址依赖实例配置，必须在 get-init-config 之后构造。
     await runInitializationStep({
-      step: 'instrumentation-check',
-      action: () => instrumentationCheck(),
+      step: 'init-s3-buckets',
+      stage: InitialErrorEnum.S3_ERROR,
+      action: () => initS3Buckets(),
       logger,
       getErrText
     });
@@ -242,6 +236,15 @@ export async function registerNodeInstrumentation() {
      * 无关后台迁移延后执行，避免其耗时或 Redis 名额阻塞关键启动路径。
      */
     const startBusinessServices = async () => {
+      // Pro 健康检查必须放在阻塞迁移之后：App 先写入实例配置，Pro 才能完成自身初始化，
+      // 避免两个新进程冷启动时互相等待对方先就绪。
+      await runInitializationStep({
+        step: 'instrumentation-check',
+        action: () => instrumentationCheck(),
+        logger,
+        getErrText
+      });
+
       await Promise.all([
         runInitializationStep({
           step: 'start-mongo-watch',
@@ -280,14 +283,26 @@ export async function registerNodeInstrumentation() {
 
     await startBusinessAfterSystemMigrations({
       runner: migrationRunner,
-      reloadModels: () =>
-        runInitializationStep({
+      reloadModels: async () => {
+        // 实例配置迁移可能改变存储策略；每个节点都需在业务启动前重新应用，不能只依赖 lease owner。
+        await runInitializationStep({
+          step: 'reload-system-config-after-startup-migrations',
+          action: async () => {
+            await getInitConfig();
+            initS3Buckets();
+          },
+          logger,
+          getErrText
+        });
+
+        await runInitializationStep({
           step: 'reload-system-models-after-startup-migrations',
           stage: InitialErrorEnum.PLUGIN_ERROR,
           action: () => loadInstalledModels(),
           logger,
           getErrText
-        }),
+        });
+      },
       startBusinessServices
     });
 

@@ -1,4 +1,13 @@
 import FormData from 'form-data';
+import { LEAF_ABSENT_SNAPSHOT } from '@test/utils/instanceConfigSnapshot';
+
+// commit 94ae033d7 起 useSangforParse/parseFromSangfor 改为读取
+// `getSystemInstanceConfig().providers.documentParse.provider || serviceEnv.DOCUMENT_PARSE_PROVIDER`（extensions/timeoutSeconds 同理）：
+// 生产快照的叶子字段被 schema 默认值填满，`|| serviceEnv` 兜底分支永不触发。
+// 本文件通过 mock serviceEnv 驱动被测行为，因此预置"域对象存在、叶子字段全部缺省"的种子快照，
+// 使 getSystemInstanceConfig 首次调用采纳它、读取回落到 serviceEnv，保持原 env 驱动的测试意图。
+(global as any).systemInstanceConfig = LEAF_ABSENT_SNAPSHOT();
+
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -251,9 +260,76 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] global.systemEnv.customPdfParse.url is required');
+    ).rejects.toThrow('[sangfor] providers.documentParse.sangfor.url is required');
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('prefers sangfor.url from instance config over the legacy bridge', async () => {
+    // 权威来源为 providers.documentParse.sangfor.*；Admin 只填 sangfor.url/key 也应生效。
+    // 注意 currentSnapshot 会被 controller 记忆化，这里在原对象上就地改写而非替换 global，
+    // 并在用例结束后恢复，避免污染同 worker 的其它文件。
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: 'db-key',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'from-db' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer db-key' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
+  });
+
+  it('never pairs sangfor.url with the legacy customPdf key (atomic group resolution)', async () => {
+    // OCR 跨来源凭据风险：sangfor.url 已配置、sangfor.key 为空时，
+    // 不得把 customPdf 服务商的 Bearer Token 发给深信服服务——url/key 成组解析
+    const snapshot = (global as any).systemInstanceConfig;
+    const originalProvider = snapshot.providers.documentParse.provider;
+    const originalSangfor = snapshot.providers.documentParse.sangfor;
+    snapshot.providers.documentParse.provider = 'sangfor';
+    snapshot.providers.documentParse.sangfor = {
+      url: 'http://db-parser.test/parse',
+      key: '',
+      extensions: 'docx',
+      timeoutSeconds: 600
+    };
+    vi.stubGlobal('systemEnv', {
+      customPdfParse: { url: 'http://legacy.test/parse', key: 'custom-pdf-secret' }
+    });
+    postMock.mockResolvedValueOnce({ data: { pages: 1, markdown: 'ok' } });
+
+    try {
+      await parseFromSangfor({ fileBuffer: Buffer.from('docx'), extension: 'docx' });
+
+      expect(postMock).toHaveBeenCalledWith(
+        'http://db-parser.test/parse',
+        expect.any(FormData),
+        expect.objectContaining({
+          // key 只取 sangfor 组内值（空），customPdf 的 secret 不得出现在请求头
+          headers: expect.not.objectContaining({ Authorization: 'Bearer custom-pdf-secret' })
+        })
+      );
+    } finally {
+      snapshot.providers.documentParse.provider = originalProvider;
+      snapshot.providers.documentParse.sangfor = originalSangfor;
+    }
   });
 });
 

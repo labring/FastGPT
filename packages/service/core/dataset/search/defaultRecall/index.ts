@@ -14,6 +14,8 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
+import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { serviceEnv } from '../../../../env';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
 
@@ -122,11 +124,22 @@ export async function searchDatasetData(
 
   // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
   // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
-  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  // 上限由实例配置 performance.dataset.retrievalResultsLimit 控制（缺省回落 env），0 表示不产出。
+  const configuredRetrievalLimit =
+    getSystemInstanceConfig().performance.dataset.retrievalResultsLimit;
+  const retrievalLimit = configuredRetrievalLimit ?? serviceEnv.RETRIEVAL_RESULTS_LIMIT;
+  logInstanceConfigRead({
+    callsite: 'runtime.dataset.defaultRecall.searchDatasetData',
+    source: configuredRetrievalLimit === undefined ? 'env-fallback' : 'instance-config',
+    fields: [
+      {
+        path: 'performance.dataset.retrievalResultsLimit',
+        value: configuredRetrievalLimit ?? retrievalLimit
+      }
+    ]
+  });
   const retrievalResults =
-    usingReRank && serviceEnv.RETRIEVAL_RESULTS_LIMIT > 0
-      ? textRecallResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT)
-      : undefined;
+    usingReRank && retrievalLimit > 0 ? textRecallResults.slice(0, retrievalLimit) : undefined;
 
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
