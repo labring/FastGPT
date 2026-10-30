@@ -8,7 +8,9 @@
     "prepare": "husky install",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "gen:deploy": "node ./deploy/init.mjs",
-    "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks && pnpm run build:workflow-packages",
+    "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks && pnpm run build:workflow-packages && pnpm --filter @fastgpt/cli build",
+    "fastgpt": "node packages/cli/dist/cli.js",
+    "build:cli": "pnpm --filter @fastgpt-sdk/client build && pnpm --filter @fastgpt/cli build",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
     "lint": "turbo run lint",
@@ -18,7 +20,7 @@
     "test": "node ./scripts/test/run.mjs",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",
-    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web --filter=@fastgpt/workflow-core --filter=@fastgpt/workflow-cli",
+    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web --filter=@fastgpt/workflow-core --filter=@fastgpt/workflow-cli --filter=@fastgpt-sdk/client --filter=@fastgpt/cli",
     "test:app": "turbo run test --filter=@fastgpt/app",
     "test:admin": "turbo run test --filter=@fastgpt/admin",
     "test:global": "turbo run test --filter=@fastgpt/global",
@@ -28,7 +30,7 @@
     "test:service:integration:sandbox": "pnpm --dir packages/service test:integration:sandbox",
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build",
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter --filter @fastgpt-sdk/client build",
     "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/workflow-cli build"
   },
   "devDependencies": {
