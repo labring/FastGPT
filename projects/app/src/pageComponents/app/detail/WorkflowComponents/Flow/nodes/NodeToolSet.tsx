@@ -12,7 +12,7 @@ import {
   type McpToolSetNodeConfigType
 } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
@@ -26,7 +26,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [editingToolSet, setEditingToolSet] = useState<'mcp' | 'http'>();
   const localMcpToolSet = data.pluginId
     ? undefined
     : McpToolSetNodeConfigSchema.safeParse(data.toolConfig?.mcpToolSet).data;
@@ -88,13 +88,13 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         mb={0}
         minW={0}
       />
-      {localHttpToolSet && (
+      {(localMcpToolSet || localHttpToolSet) && (
         <Button
           size={'sm'}
           variant={'primary'}
           ml={3}
           leftIcon={<MyIcon name={'common/setting'} w={'16px'} />}
-          onClick={() => setIsConfigOpen(true)}
+          onClick={() => setEditingToolSet(localMcpToolSet ? 'mcp' : 'http')}
         >
           {t('app:toolset_config')}
         </Button>
@@ -116,15 +116,12 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box color={'myGray.500'} fontSize={'sm'}>
               {t('app:tool_not_configured')}
             </Box>
-            <Button size={'sm'} variant={'primary'} onClick={() => setIsConfigOpen(true)}>
+            <Button size={'sm'} variant={'primary'} onClick={() => setEditingToolSet('http')}>
               {t('app:click_to_config')}
             </Button>
           </Flex>
         ) : (
           <>
-            {localMcpToolSet && (
-              <McpToolSetForm initialConfig={localMcpToolSet} onUpdateConfig={onSaveMcpToolSet} />
-            )}
             <ToolSetList
               toolList={toolList}
               onSaveDescription={onSaveDescription}
@@ -135,10 +132,19 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </>
         )}
       </Container>
-      {isConfigOpen && localHttpToolSet && (
+      {editingToolSet === 'mcp' && localMcpToolSet && (
+        <McpToolSetForm
+          key={`${data.nodeId}:${JSON.stringify(localMcpToolSet)}`}
+          initialConfig={localMcpToolSet}
+          onUpdateConfig={onSaveMcpToolSet}
+          onClose={() => setEditingToolSet(undefined)}
+        />
+      )}
+      {editingToolSet === 'http' && localHttpToolSet && (
         <SchemaConfigModal
+          key={`${data.nodeId}:${JSON.stringify(localHttpToolSet)}`}
           initialConfig={localHttpToolSet}
-          onClose={() => setIsConfigOpen(false)}
+          onClose={() => setEditingToolSet(undefined)}
           onSaveConfig={onSaveHttpToolSet}
         />
       )}
@@ -150,15 +156,24 @@ export default React.memo(NodeToolSet);
 
 const McpToolSetForm = ({
   initialConfig,
-  onUpdateConfig
+  onUpdateConfig,
+  onClose
 }: {
   initialConfig: McpToolSetNodeConfigType;
   onUpdateConfig: (config: McpToolSetNodeConfigType) => void;
+  onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const [url, setUrl] = useState(initialConfig.url);
   const [headerSecret, setHeaderSecret] = useState<StoreSecretValueType>(
     initialConfig.headerSecret ?? {}
+  );
+  const closingRef = useRef(false);
+  useEffect(
+    () => () => {
+      closingRef.current = true;
+    },
+    []
   );
   const { runAsync: parseTools, loading } = useRequest(
     async () =>
@@ -169,6 +184,8 @@ const McpToolSetForm = ({
     {
       manual: true,
       onSuccess: (tools) => {
+        if (closingRef.current) return;
+
         const savedDescriptions = new Map(
           initialConfig.toolList.map((tool) => [tool.name, tool.description])
         );
@@ -211,8 +228,21 @@ const McpToolSetForm = ({
           placeholder={t('app:MCP_tools_url_placeholder')}
           value={url}
           onChange={(event) => setUrl(event.target.value)}
-          onBlur={() => onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret })}
+          onBlur={() => {
+            if (closingRef.current) return;
+            onUpdateConfig({ ...initialConfig, url: url.trim(), headerSecret });
+          }}
         />
+        <Button
+          size={'sm'}
+          variant={'whiteBase'}
+          onClick={() => {
+            closingRef.current = true;
+            onClose();
+          }}
+        >
+          {t('common:Close')}
+        </Button>
         <Button
           size={'sm'}
           variant={'whitePrimary'}

@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -62,6 +62,13 @@ const SchemaConfigModal = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
 
   const [schemaUrl, setSchemaUrl] = useState<string>('');
   const [apiSchemaUrl, setApiSchemaUrl] = useState(initialConfig?.apiSchemaUrl ?? '');
@@ -158,6 +165,7 @@ const SchemaConfigModal = ({
       }
 
       const schema = await getApiSchemaByUrl(schemaUrl);
+      if (!mountedRef.current) return;
       setValue('apiSchemaStr', JSON.stringify(schema, null, 2));
     },
     {
@@ -169,15 +177,18 @@ const SchemaConfigModal = ({
   const { runAsync: onRefreshWorkflowTools, loading: isRefreshingWorkflowTools } = useRequest(
     async (url: string) => {
       const schema = await getApiSchemaByUrl(url);
+      if (!mountedRef.current) return;
       const schemaStr = JSON.stringify(schema, null, 2);
       const { pathData } = await str2OpenApiSchema(schemaStr);
       const tools = await pathData2ToolList(pathData);
+      if (!mountedRef.current) return [];
       setWorkflowApiSchemaStr(schemaStr);
       return tools;
     },
     {
       manual: true,
       onSuccess: (tools) => {
+        if (!mountedRef.current || !tools) return;
         const savedDescriptions = new Map(toolList.map((tool) => [tool.name, tool.description]));
         setToolList(
           tools.map(({ name, description }) => ({
@@ -485,8 +496,13 @@ const SchemaConfigModal = ({
                             w={'14px'}
                             onClick={() =>
                               setCustomHeaders((prev) => {
-                                const newHeaders = prev.filter((h) => h.key !== item.key);
+                                const newHeaders = prev.filter((_, i) => i !== index);
                                 setValue('customHeaders', stringifyCustomHeaders(newHeaders));
+                                const {
+                                  [item.secretKey ?? item.key]: _removedSecret,
+                                  ...remainingSecrets
+                                } = headerSecret;
+                                setValue('headerSecret', remainingSecrets);
                                 return newHeaders;
                               })
                             }

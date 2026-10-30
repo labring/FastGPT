@@ -39,6 +39,89 @@ import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+
+describe('publish toolset App workflow', () => {
+  const createApp = (type: AppTypeEnum, user: Awaited<ReturnType<typeof getUser>>) =>
+    MongoApp.create({
+      name: `publish ${type}`,
+      type,
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+
+  it.each([
+    {
+      type: AppTypeEnum.mcpToolSet,
+      node: getMCPToolSetRuntimeNode({
+        url: 'https://mcp.example.com',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'mcpToolSet'
+    },
+    {
+      type: AppTypeEnum.httpToolSet,
+      node: getHTTPToolSetRuntimeNode({
+        baseUrl: 'https://api.example.com',
+        apiSchemaStr: '{"openapi":"3.0.0"}',
+        toolList: [
+          {
+            name: 'search',
+            description: 'Search',
+            path: '/search',
+            method: 'GET',
+            inputSchema: { type: 'object' }
+          }
+        ]
+      }),
+      configKey: 'httpToolSet'
+    }
+  ] as const)('preserves runtime schema for $type App', async ({ type, node, configKey }) => {
+    const user = await getUser(`publish-${type}`);
+    const app = await createApp(type, user);
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code, JSON.stringify(result)).toBe(200);
+    const workflow = await getAppLatestVersion(String(app._id), app);
+    expect(workflow.nodes[0].toolConfig?.[configKey]?.toolList[0]).toHaveProperty('inputSchema');
+  });
+
+  it('rejects a complete toolset root on a normal workflow App', async () => {
+    const user = await getUser('publish-workflow-toolset-reject');
+    const app = await createApp(AppTypeEnum.workflow, user);
+    const node = getMCPToolSetRuntimeNode({
+      url: 'https://mcp.example.com',
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search',
+          inputSchema: { type: 'object' }
+        }
+      ]
+    });
+
+    const result = await Call<PublishAppBodyType>(handler, {
+      auth: user,
+      query: { appId: String(app._id) },
+      body: { isPublish: true, nodes: [node] }
+    });
+
+    expect(result.code).toBe(500);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+});
 
 describe('publish manually selected datasets', () => {
   const createDatasetNode = (

@@ -121,7 +121,7 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
         const result = await request(...args);
         await options.onSuccess?.(result, args);
         return result;
-      } catch (error) {
+      } catch {
         if (options.errorToast) mocks.toast({ status: 'error', title: options.errorToast });
         return undefined;
       }
@@ -306,6 +306,7 @@ describe('NodeToolSet', () => {
       }
     });
 
+    await click('app:toolset_config');
     const urlInput = container.querySelector('input');
     if (!urlInput) throw new Error('Missing MCP URL input');
     await setFieldValue(urlInput, 'https://tools.example/mcp');
@@ -325,6 +326,72 @@ describe('NodeToolSet', () => {
       ]
     });
     expect(container.textContent).toContain('common:auth_config');
+  });
+
+  it('unloads the MCP form when closed and starts from the current config next time', async () => {
+    const initialNode = {
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://old.example/mcp',
+          headerSecret: {},
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }
+    };
+    await renderNode(initialNode);
+    mocks.onChangeNode.mockClear();
+
+    expect(container.querySelector('input')).toBeNull();
+    await click('app:toolset_config');
+    const urlInput = container.querySelector('input');
+    if (!urlInput) throw new Error('Missing MCP URL input');
+    await setFieldValue(urlInput, 'https://unsaved.example/mcp');
+    await click('common:Close');
+    expect(container.querySelector('input')).toBeNull();
+    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+
+    await renderNode({
+      ...initialNode,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://current.example/mcp',
+          headerSecret: {},
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }
+    });
+    await click('app:toolset_config');
+    expect(container.querySelector('input')?.value).toBe('https://current.example/mcp');
+  });
+
+  it('drops an MCP parse result that arrives after the form is closed', async () => {
+    let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
+    mocks.getMCPTools.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveTools = resolve;
+      })
+    );
+    await renderNode({
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://old.example/mcp',
+          headerSecret: {},
+          toolList: [{ name: 'search', description: 'Search' }]
+        }
+      }
+    });
+
+    await click('app:toolset_config');
+    await click('common:Parse');
+    await click('common:Close');
+    await act(async () => {
+      resolveTools?.(mocks.remoteMcpTools);
+      await Promise.resolve();
+    });
+
+    expect(mocks.onChangeNode).not.toHaveBeenCalled();
   });
 
   it('keeps referenced App tools on the description-only edit path', async () => {
@@ -374,6 +441,37 @@ describe('NodeToolSet', () => {
     expect(JSON.stringify(savedToolSet)).not.toContain('inputSchema');
     expect(savedToolSet).not.toHaveProperty('baseUrl');
     expect(savedToolSet).not.toHaveProperty('apiSchemaStr');
+  });
+
+  it('drops an HTTP schema result that arrives after the modal is closed', async () => {
+    let resolveSchema: ((schema: { openapi: string }) => void) | undefined;
+    mocks.getApiSchemaByUrl.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSchema = resolve;
+      })
+    );
+    await renderNode({
+      nodeId: 'node-http',
+      toolConfig: {
+        httpToolSet: {
+          apiSchemaUrl: 'https://api.example/openapi.json',
+          customHeaders: '{}',
+          headerSecret: {},
+          toolList: []
+        }
+      }
+    });
+
+    await click('app:click_to_config');
+    await click('common:Parse');
+    await click('common:Close');
+    await act(async () => {
+      resolveSchema?.({ openapi: '3.0.0' });
+      await Promise.resolve();
+    });
+
+    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    expect(container.querySelector('textarea')).toBeNull();
   });
 
   it('saves an editable base URL override for an independent HTTP toolset', async () => {

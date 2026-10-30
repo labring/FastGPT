@@ -67,6 +67,22 @@ enum TabEnum {
   node = 'node'
 }
 
+/** 子工具切换只刷新节点参数，保留用户正在填写的全局变量。 */
+export const resetDebugNodeVariables = ({
+  resetField,
+  inputs
+}: {
+  resetField: (name: 'nodeVariables', options: { defaultValue: Record<string, any> }) => void;
+  inputs: RuntimeNodeItemType['inputs'];
+}) => {
+  resetField('nodeVariables', {
+    defaultValue: inputs.reduce<Record<string, any>>((acc, input) => {
+      acc[input.key] = getDebugInputFormValue(input);
+      return acc;
+    }, {})
+  });
+};
+
 export const useDebug = () => {
   const { t } = useSafeTranslation();
   const { t: workflowT } = useTranslation();
@@ -238,6 +254,8 @@ export const useDebug = () => {
       data: ToolSetDebugData;
     }>();
     const [isLoadingToolSet, setIsLoadingToolSet] = useState(false);
+    const [toolSetDebugError, setToolSetDebugError] = useState<string>();
+    const [toolSetReloadKey, setToolSetReloadKey] = useState(0);
     const [toolPreview, setToolPreview] = useState<{
       id: string;
       node: Awaited<ReturnType<typeof getClientToolPreviewNode>>;
@@ -300,6 +318,7 @@ export const useDebug = () => {
       }
       let cancelled = false;
       setIsLoadingToolSet(true);
+      setToolSetDebugError(undefined);
       setToolSetDebugData(undefined);
       getToolSetDebugData(runtimeNode)
         .then((data) => {
@@ -308,7 +327,11 @@ export const useDebug = () => {
           setToolSetDebugData({ nodeId: runtimeNode.nodeId, data });
         })
         .catch((error) => {
-          if (!cancelled) toast({ status: 'error', title: getErrText(error) });
+          if (!cancelled) {
+            const message = getErrText(error);
+            setToolSetDebugError(message);
+            toast({ status: 'error', title: message });
+          }
         })
         .finally(() => {
           if (!cancelled) setIsLoadingToolSet(false);
@@ -317,7 +340,7 @@ export const useDebug = () => {
       return () => {
         cancelled = true;
       };
-    }, [runtimeNode, isIndependentToolSet, hasToolSetSummary, toast]);
+    }, [runtimeNode, isIndependentToolSet, hasToolSetSummary, toast, toolSetReloadKey]);
 
     const debugNode = useMemo(() => {
       if (!runtimeNode) return;
@@ -372,17 +395,11 @@ export const useDebug = () => {
         variables: defaultGlobalVariables
       }
     });
-    const { handleSubmit, reset } = variablesForm;
+    const { handleSubmit, resetField } = variablesForm;
 
     useEffect(() => {
-      reset({
-        nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
-          acc[input.key] = getDebugInputFormValue(input);
-          return acc;
-        }, {}),
-        variables: defaultGlobalVariables
-      });
-    }, [debugNode, renderInputs, reset]);
+      resetDebugNodeVariables({ resetField, inputs: renderInputs });
+    }, [debugNode, renderInputs, resetField]);
 
     const onClose = () => {
       setRuntimeNodeId(undefined);
@@ -523,6 +540,16 @@ export const useDebug = () => {
             })}
             {isToolSet && toolList.length === 0 && (
               <Box>{isLoadingToolSet ? t('common:Loading') : t('app:tools_no_data')}</Box>
+            )}
+            {isToolSet && toolSetDebugError && (
+              <Box>
+                <Box mb={2} color={'red.600'}>
+                  {toolSetDebugError}
+                </Box>
+                <Button size={'sm'} onClick={() => setToolSetReloadKey((value) => value + 1)}>
+                  {t('common:refresh')}
+                </Button>
+              </Box>
             )}
             {isToolSet && debugNode && renderInputs.length === 0 && (
               <Box>{t('app:this_tool_requires_no_input')}</Box>
